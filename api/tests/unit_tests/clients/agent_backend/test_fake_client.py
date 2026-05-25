@@ -1,4 +1,4 @@
-from dify_agent.protocol import ExecutionContext
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -13,12 +13,11 @@ def _request():
     return AgentBackendRunRequestBuilder().build_for_workflow_node(
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
-                tenant_id="tenant-1",
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=ExecutionContext(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )

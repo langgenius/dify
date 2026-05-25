@@ -1,17 +1,17 @@
-"""Client-safe DTOs for Dify plugin-backed Agenton layers.
+"""Client-safe DTOs for Dify plugin-backed Agenton business layers.
 
 This module intentionally contains only public config schemas and scalar type
-aliases plus stable layer type identifiers. Runtime objects such as HTTP
-clients, server settings, and adapter implementations live in sibling
-implementation modules so clients can build run requests without importing
-server-only dependencies.
+aliases plus stable plugin business-layer type identifiers. Runtime objects
+such as HTTP clients, server settings, and adapter implementations live in
+sibling implementation modules so clients can build run requests without
+importing server-only dependencies.
 
-The shared ``dify.plugin`` layer now carries only tenant/user daemon context.
-Concrete plugin ids belong to the business layers that actually invoke daemon
-features, namely the LLM and tools layers. Tool configs also carry the API-side
-prepared parameter declarations and model-visible JSON schema so the agent
-runtime does not have to re-fetch and re-merge tool declarations at execution
-time.
+Shared tenant/user/run context now lives in the sibling
+``dify_agent.layers.execution_context`` package. This module only covers the
+plugin-backed LLM and tools layers that invoke daemon features with concrete
+``plugin_id`` values. Tool configs also carry the API-side prepared parameter
+declarations and model-visible JSON schema so the agent runtime does not have to
+re-fetch and re-merge tool declarations at execution time.
 """
 
 from enum import StrEnum
@@ -26,7 +26,6 @@ from agenton.layers import LayerConfig
 DifyPluginCredentialValue: TypeAlias = str | int | float | bool | None
 DifyPluginToolCredentialType: TypeAlias = Literal["api-key", "oauth2", "unauthorized"]
 DifyPluginToolValue: TypeAlias = JsonValue
-DIFY_PLUGIN_LAYER_TYPE_ID: Final[str] = "dify.plugin"
 DIFY_PLUGIN_LLM_LAYER_TYPE_ID: Final[str] = "dify.plugin.llm"
 DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.plugin.tools"
 
@@ -103,15 +102,6 @@ class DifyPluginToolParameter(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", from_attributes=True)
 
 
-class DifyPluginLayerConfig(LayerConfig):
-    """Public config for the shared plugin daemon tenant/user context layer."""
-
-    tenant_id: str
-    user_id: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
-
-
 class DifyPluginLLMLayerConfig(LayerConfig):
     """Public config for selecting a plugin-backed business provider/model."""
 
@@ -172,12 +162,10 @@ class DifyPluginToolsLayerConfig(LayerConfig):
 
 
 __all__ = [
-    "DIFY_PLUGIN_LAYER_TYPE_ID",
     "DIFY_PLUGIN_LLM_LAYER_TYPE_ID",
     "DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID",
     "DifyPluginCredentialValue",
     "DifyPluginLLMLayerConfig",
-    "DifyPluginLayerConfig",
     "DifyPluginToolCredentialType",
     "DifyPluginToolConfig",
     "DifyPluginToolOption",

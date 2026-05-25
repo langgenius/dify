@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import httpx
 import pytest
@@ -24,10 +24,10 @@ from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSe
 from agenton.layers import ExitIntent, LifecycleState
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryRuntimeState
 from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
-    DifyPluginLayerConfig,
     DifyPluginToolConfig,
     DifyPluginToolParameter,
     DifyPluginToolParameterForm,
@@ -51,7 +51,7 @@ from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
 
 
 class StaticToolsTestLayer(ToolsLayer):
-    type_id = "test.static.tools"
+    type_id: ClassVar[str] = "test.static.tools"
 
 
 def _request(
@@ -59,7 +59,7 @@ def _request(
     *,
     include_history: bool = False,
     llm_layer_name: str = DIFY_AGENT_MODEL_LAYER_ID,
-    plugin_layer_name: str = "plugin",
+    execution_context_layer_name: str = "execution_context",
     on_exit: LayerExitSignals | None = None,
     output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
 ) -> CreateRunRequest:
@@ -75,14 +75,14 @@ def _request(
             else []
         ),
         RunLayerSpec(
-            name=plugin_layer_name,
-            type="dify.plugin",
-            config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+            name=execution_context_layer_name,
+            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+            config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
         ),
         RunLayerSpec(
             name=llm_layer_name,
             type="dify.plugin.llm",
-            deps={"plugin": plugin_layer_name},
+            deps={"execution_context": execution_context_layer_name},
             config=DifyPluginLLMLayerConfig(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
@@ -217,7 +217,7 @@ def _history_session_snapshot(
             lifecycle_state=LifecycleState.SUSPENDED,
             runtime_state=PydanticAIHistoryRuntimeState(messages=messages).model_dump(mode="json"),
         ),
-        LayerSessionSnapshot(name="plugin", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+        LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
         LayerSessionSnapshot(
             name=DIFY_AGENT_MODEL_LAYER_ID, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
         ),
@@ -250,7 +250,7 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
-    request = _request(plugin_layer_name="renamed-plugin")
+    request = _request(execution_context_layer_name="renamed-execution-context")
     sink = InMemoryRunEventSink()
 
     async def scenario() -> None:
@@ -277,7 +277,7 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
     assert terminal.data.output == "done"
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
         "prompt",
-        "renamed-plugin",
+        "renamed-execution-context",
         DIFY_AGENT_MODEL_LAYER_ID,
     ]
     assert [layer.lifecycle_state for layer in terminal.data.session_snapshot.layers] == [
@@ -331,14 +331,14 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                     config=PromptLayerConfig(prefix="system", user="hello"),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
@@ -349,7 +349,7 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                 RunLayerSpec(
                     name="tools",
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginToolsLayerConfig(
                         tools=[
                             DifyPluginToolConfig(
@@ -420,14 +420,14 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                     config=PromptLayerConfig(prefix="system", user="hello"),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
@@ -438,7 +438,7 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                 RunLayerSpec(
                     name="tools-1",
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginToolsLayerConfig(
                         tools=[
                             DifyPluginToolConfig(
@@ -455,7 +455,7 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                 RunLayerSpec(
                     name="tools-2",
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginToolsLayerConfig(
                         tools=[
                             DifyPluginToolConfig(
@@ -539,14 +539,14 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                 ),
                 RunLayerSpec(name="static-tools", type=cast(str, StaticToolsTestLayer.type_id)),
                 RunLayerSpec(
-                    name="plugin",
-                    type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
@@ -557,7 +557,7 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                 RunLayerSpec(
                     name="tools",
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginToolsLayerConfig(
                         tools=[
                             DifyPluginToolConfig(
@@ -627,7 +627,7 @@ def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monk
     assert isinstance(terminal, RunSucceededEvent)
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
         "prompt",
-        "plugin",
+        "execution_context",
         DIFY_AGENT_MODEL_LAYER_ID,
     ]
 
@@ -796,7 +796,7 @@ def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytes
     assert isinstance(terminal, RunSucceededEvent)
     assert {layer.name: layer.lifecycle_state for layer in terminal.data.session_snapshot.layers} == {
         "prompt": LifecycleState.CLOSED,
-        "plugin": LifecycleState.SUSPENDED,
+        "execution_context": LifecycleState.SUSPENDED,
         DIFY_AGENT_MODEL_LAYER_ID: LifecycleState.CLOSED,
     }
 
@@ -834,7 +834,12 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
         )
     )
     sink = InMemoryRunEventSink()
-    expected_snapshot_layer_names = ["prompt", "plugin", DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID]
+    expected_snapshot_layer_names = [
+        "prompt",
+        "execution_context",
+        DIFY_AGENT_MODEL_LAYER_ID,
+        DIFY_AGENT_OUTPUT_LAYER_ID,
+    ]
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
@@ -1038,14 +1043,14 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                     config=PromptLayerConfig(prefix="system", user="hello"),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
@@ -1107,14 +1112,14 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                     config=PromptLayerConfig(prefix="system", user="hello"),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
@@ -1198,14 +1203,14 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                     config=PromptLayerConfig(prefix="system", user="hello"),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type="dify.plugin",
-                    config=DifyPluginLayerConfig(tenant_id="tenant-1"),
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
@@ -1401,7 +1406,7 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
                 runtime_state={},
             ),
             LayerSessionSnapshot(
-                name="plugin",
+                name="execution_context",
                 lifecycle_state=LifecycleState.NEW,
                 runtime_state={},
             ),

@@ -111,11 +111,10 @@ import sys
 
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
-    DifyPluginLayerConfig,
 )
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
@@ -147,17 +146,18 @@ def build_request() -> CreateRunRequest:
                     config=PromptLayerConfig(prefix=SYSTEM_PROMPT, user=USER_PROMPT),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type=DIFY_PLUGIN_LAYER_TYPE_ID,
-                    config=DifyPluginLayerConfig(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
                         tenant_id=TENANT_ID,
                         user_id=USER_ID,
+                        invoke_from="workflow_run",
                     ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
                         plugin_id=PLUGIN_ID,
                         model_provider=MODEL_PROVIDER,

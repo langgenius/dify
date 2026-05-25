@@ -6,11 +6,12 @@ this module only keeps the invoke-time boundary:
 
 - POST ``/plugin/{tenant_id}/dispatch/tool/invoke``
 - request headers ``X-Api-Key``, ``X-Plugin-ID``, and ``Content-Type``
-- top-level ``user_id`` forwarding when shared plugin context includes one
+- top-level ``user_id`` forwarding when shared execution context includes one
 - stream decoding and blob-chunk merging for agent observations
 
-The shared plugin layer still owns tenant/user daemon context, while each tool's
-own ``plugin_id`` determines the transport identity placed in ``X-Plugin-ID``.
+The shared execution-context layer still owns tenant/user daemon context, while
+each tool's own ``plugin_id`` determines the transport identity placed in
+``X-Plugin-ID``.
 """
 
 from __future__ import annotations

@@ -2,6 +2,7 @@ from dataclasses import replace
 
 import pytest
 
+from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
@@ -93,9 +94,10 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
 
     dumped = result.request.model_dump(mode="json")
-    assert dumped["execution_context"]["agent_id"] == "agent-1"
-    assert dumped["execution_context"]["agent_config_version_id"] == "snapshot-1"
-    assert dumped["execution_context"]["invoke_from"] == "single_step"
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_id"] == "agent-1"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_config_version_id"] == "snapshot-1"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "single_step"
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
     assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Use the previous output."
@@ -145,7 +147,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     dumped = result.request.model_dump(mode="json")
-    assert dumped["execution_context"]["invoke_from"] == "workflow_run"
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "workflow_run"
     assert dumped["idempotency_key"] == "node-exec-1"
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
     assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"

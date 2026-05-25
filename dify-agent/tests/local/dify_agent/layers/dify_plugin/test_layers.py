@@ -8,11 +8,9 @@ from pydantic import JsonValue
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from dify_agent.adapters.llm import DifyLLMAdapterModel
 from dify_agent.layers.dify_plugin.configs import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
-    DifyPluginLayerConfig,
     DifyPluginToolConfig,
     DifyPluginToolOption,
     DifyPluginToolParameter,
@@ -21,12 +19,13 @@ from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolsLayerConfig,
 )
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 
 
-def _plugin_config() -> DifyPluginLayerConfig:
-    return DifyPluginLayerConfig(tenant_id="tenant-1", user_id="user-1")
+def _execution_context_config() -> DifyExecutionContextLayerConfig:
+    return DifyExecutionContextLayerConfig(tenant_id="tenant-1", user_id="user-1", invoke_from="workflow_run")
 
 
 def _llm_config() -> DifyPluginLLMLayerConfig:
@@ -75,19 +74,11 @@ def _missing_hidden_parameter_tools_config() -> DifyPluginToolsLayerConfig:
     )
 
 
-def _plugin_layer() -> DifyPluginLayer:
-    return DifyPluginLayer.from_config_with_settings(
-        _plugin_config(),
-        daemon_url="http://plugin-daemon",
-        daemon_api_key="daemon-secret",
-    )
-
-
-def _plugin_provider() -> LayerProvider[DifyPluginLayer]:
+def _execution_context_provider() -> LayerProvider[DifyExecutionContextLayer]:
     return LayerProvider.from_factory(
-        layer_type=DifyPluginLayer,
-        create=lambda config: DifyPluginLayer.from_config_with_settings(
-            DifyPluginLayerConfig.model_validate(config),
+        layer_type=DifyExecutionContextLayer,
+        create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
+            DifyExecutionContextLayerConfig.model_validate(config),
             daemon_url="http://plugin-daemon",
             daemon_api_key="daemon-secret",
         ),
@@ -208,65 +199,31 @@ def _tool_transport(
 
 
 def test_dify_plugin_type_id_constants_match_implementation_classes() -> None:
-    assert DIFY_PLUGIN_LAYER_TYPE_ID == DifyPluginLayer.type_id
     assert DIFY_PLUGIN_LLM_LAYER_TYPE_ID == DifyPluginLLMLayer.type_id
     assert DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID == DifyPluginToolsLayer.type_id
-
-
-def test_dify_plugin_layer_creates_daemon_provider_from_shared_http_client() -> None:
-    async def scenario() -> None:
-        plugin = _plugin_layer()
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(200))) as client:
-            provider = plugin.create_daemon_provider(plugin_id="langgenius/openai", http_client=client)
-
-            assert provider.name == "DifyPlugin/langgenius/openai"
-            assert provider.client.http_client is client
-            assert provider.client.tenant_id == "tenant-1"
-            assert provider.client.plugin_id == "langgenius/openai"
-            assert provider.client.user_id == "user-1"
-
-            async with provider:
-                pass
-            assert client.is_closed is False
-
-    asyncio.run(scenario())
-
-
-def test_dify_plugin_layer_rejects_closed_shared_http_client() -> None:
-    async def scenario() -> None:
-        plugin = _plugin_layer()
-        client = httpx.AsyncClient()
-        await client.aclose()
-
-        with pytest.raises(RuntimeError, match="open shared HTTP client"):
-            _ = plugin.create_daemon_provider(plugin_id="langgenius/openai", http_client=client)
-        with pytest.raises(RuntimeError, match="open shared HTTP client"):
-            _ = plugin.create_tool_client(plugin_id="langgenius/tools", http_client=client)
-
-    asyncio.run(scenario())
 
 
 def test_dify_plugin_llm_layer_builds_adapter_model_from_direct_dependency() -> None:
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("renamed-plugin", _plugin_provider()),
-                LayerNode("llm", DifyPluginLLMLayer, deps={"plugin": "renamed-plugin"}),
+                LayerNode("renamed-execution-context", _execution_context_provider()),
+                LayerNode("llm", DifyPluginLLMLayer, deps={"execution_context": "renamed-execution-context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(200))) as client:
             async with compositor.enter(
                 configs={
-                    "renamed-plugin": _plugin_config(),
+                    "renamed-execution-context": _execution_context_config(),
                     "llm": _llm_config(),
                 }
             ) as run:
-                plugin = run.get_layer("renamed-plugin", DifyPluginLayer)
+                execution_context = run.get_layer("renamed-execution-context", DifyExecutionContextLayer)
                 llm = run.get_layer("llm", DifyPluginLLMLayer)
 
                 model = llm.get_model(http_client=client)
 
-                assert llm.deps.plugin is plugin
+                assert llm.deps.execution_context is execution_context
                 assert isinstance(model, DifyLLMAdapterModel)
                 assert model.model_name == "demo-model"
                 assert model.model_provider == "openai"
@@ -281,12 +238,14 @@ def test_dify_plugin_tools_layer_uses_prepared_tool_definition_and_invokes_daemo
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport()) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": _tools_config()}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
                 tools_layer = run.get_layer("tools", DifyPluginToolsLayer)
                 tool = (await tools_layer.get_tools(http_client=client))[0]
 
@@ -356,12 +315,14 @@ def test_dify_plugin_tools_layer_uses_each_tool_plugin_id_for_transport() -> Non
 
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": tools_config}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": tools_config}
+            ) as run:
                 tools = await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client)
 
                 await tools[0].function_schema.call({"query": "first"}, None)  # pyright: ignore[reportArgumentType]
@@ -464,12 +425,14 @@ def test_dify_plugin_tools_layer_casts_prepared_parameter_values_before_invocati
 
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": tools_config}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": tools_config}
+            ) as run:
                 tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
 
                 result = await tool.function_schema.call(
@@ -526,12 +489,14 @@ def test_dify_plugin_tools_layer_sends_prepared_parameter_defaults_to_daemon() -
 
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": tools_config}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": tools_config}
+            ) as run:
                 tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
 
                 result = await tool.function_schema.call(
@@ -548,13 +513,16 @@ def test_dify_plugin_tools_layer_requires_hidden_runtime_parameters_in_prepared_
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport()) as client:
             async with compositor.enter(
-                configs={"plugin": _plugin_config(), "tools": _missing_hidden_parameter_tools_config()}
+                configs={
+                    "execution_context": _execution_context_config(),
+                    "tools": _missing_hidden_parameter_tools_config(),
+                }
             ) as run:
                 with pytest.raises(ValueError, match="requires non-LLM runtime_parameters for: auth_scope"):
                     await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client)
@@ -566,8 +534,8 @@ def test_dify_plugin_tools_layer_returns_agent_friendly_error_text() -> None:
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(
@@ -578,7 +546,9 @@ def test_dify_plugin_tools_layer_returns_agent_friendly_error_text() -> None:
                 }
             )
         ) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": _tools_config()}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
                 tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
                 result = await tool.function_schema.call(
                     {"query": "dify", "region": "global"},
@@ -594,8 +564,8 @@ def test_dify_plugin_tools_layer_propagates_unexpected_transport_errors() -> Non
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
 
@@ -606,7 +576,9 @@ def test_dify_plugin_tools_layer_propagates_unexpected_transport_errors() -> Non
             raise AssertionError(f"Unexpected request path: {request.url.path}")
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": _tools_config()}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
                 tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
 
                 with pytest.raises(RuntimeError, match="unexpected transport failure"):
@@ -654,12 +626,14 @@ def test_dify_plugin_tools_layer_maps_nested_plugin_invoke_errors_to_agent_text(
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport(invoke_error_payload=invoke_error_payload)) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": _tools_config()}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
                 tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
                 result = await tool.function_schema.call(
                     {"query": "dify", "region": "global"},
@@ -675,12 +649,14 @@ def test_dify_plugin_tools_layer_merges_blob_chunks_before_observation_conversio
     async def scenario() -> None:
         compositor = Compositor(
             [
-                LayerNode("plugin", _plugin_provider()),
-                LayerNode("tools", DifyPluginToolsLayer, deps={"plugin": "plugin"}),
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", DifyPluginToolsLayer, deps={"execution_context": "execution_context"}),
             ]
         )
         async with httpx.AsyncClient(transport=_tool_transport(chunked_blob=True)) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config(), "tools": _tools_config()}) as run:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
                 tool = (await run.get_layer("tools", DifyPluginToolsLayer).get_tools(http_client=client))[0]
                 result = await tool.function_schema.call(
                     {"query": "dify", "region": "global"},
@@ -689,21 +665,5 @@ def test_dify_plugin_tools_layer_merges_blob_chunks_before_observation_conversio
 
                 assert "hello world" in result
                 assert "sequence=0" not in result
-
-    asyncio.run(scenario())
-
-
-def test_dify_plugin_layer_lifecycle_does_not_manage_http_client() -> None:
-    async def scenario() -> None:
-        compositor = Compositor([LayerNode("plugin", _plugin_provider())])
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(200))) as client:
-            async with compositor.enter(configs={"plugin": _plugin_config()}) as run:
-                plugin = run.get_layer("plugin", DifyPluginLayer)
-                provider = plugin.create_daemon_provider(plugin_id="langgenius/openai", http_client=client)
-                run.suspend_layer_on_exit("plugin")
-
-            assert run.session_snapshot is not None
-            assert provider.client.http_client is client
-            assert client.is_closed is False
 
     asyncio.run(scenario())

@@ -6,8 +6,8 @@ declarations, credentials, and manual/runtime inputs.
 
 Unlike the plugin LLM layer, this layer may contain tools from multiple plugin
 packages. Each tool config carries its own `plugin_id`, while the shared
-[plugin layer](../plugin-layer/index.md) still carries only tenant/user daemon
-context.
+[execution context layer](../execution-context-layer/index.md) still carries
+only tenant/user daemon context.
 
 ## Responsibilities
 
@@ -51,10 +51,9 @@ Each tool config has these fields:
 ## Example: Dify API prepared Wikipedia tool
 
 ```python {test="skip" lint="skip"}
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-    DifyPluginLayerConfig,
     DifyPluginToolConfig,
     DifyPluginToolParameter,
     DifyPluginToolsLayerConfig,
@@ -80,17 +79,18 @@ parameters_json_schema = tool_runtime.get_llm_parameters_json_schema()
 composition = RunComposition(
     layers=[
         RunLayerSpec(
-            name="plugin",
-            type=DIFY_PLUGIN_LAYER_TYPE_ID,
-            config=DifyPluginLayerConfig(
+            name="execution_context",
+            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+            config=DifyExecutionContextLayerConfig(
                 tenant_id="replace-with-tenant-id",
                 user_id="replace-with-user-id",
+                invoke_from="workflow_run",
             ),
         ),
         RunLayerSpec(
             name="tools",
             type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-            deps={"plugin": "plugin"},
+            deps={"execution_context": "execution_context"},
             config=DifyPluginToolsLayerConfig(
                 tools=[
                     DifyPluginToolConfig(
@@ -111,8 +111,9 @@ composition = RunComposition(
 )
 ```
 
-`deps={"plugin": "plugin"}` means: bind the tool layer's dependency field named
-`plugin` to the composition layer named `plugin`.
+`deps={"execution_context": "execution_context"}` means: bind the tool layer's
+dependency field named `execution_context` to the composition layer named
+`execution_context`.
 
 ## Notes for Dify API callers
 
@@ -125,5 +126,5 @@ composition = RunComposition(
   intended for model input.
 - `runtime_parameters` should contain hidden/manual values selected by the user
   or derived from workflow variables.
-- Put each tool's `plugin_id` on the tool config. The shared plugin layer has no
-  package-specific identity.
+- Put each tool's `plugin_id` on the tool config. The shared execution-context
+  layer has no package-specific identity.

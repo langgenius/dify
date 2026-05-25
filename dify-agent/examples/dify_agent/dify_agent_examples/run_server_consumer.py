@@ -17,12 +17,11 @@ import asyncio
 
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
-    DifyPluginLayerConfig,
 )
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
@@ -50,14 +49,17 @@ async def main() -> None:
                             ),
                         ),
                         RunLayerSpec(
-                            name="plugin",
-                            type=DIFY_PLUGIN_LAYER_TYPE_ID,
-                            config=DifyPluginLayerConfig(tenant_id=TENANT_ID),
+                            name="execution_context",
+                            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                            config=DifyExecutionContextLayerConfig(
+                                tenant_id=TENANT_ID,
+                                invoke_from="workflow_run",
+                            ),
                         ),
                         RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
                             type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                            deps={"plugin": "plugin"},
+                            deps={"execution_context": "execution_context"},
                             config=DifyPluginLLMLayerConfig(
                                 plugin_id=PLUGIN_ID,
                                 model_provider=PLUGIN_PROVIDER,
@@ -78,7 +80,7 @@ async def main() -> None:
                         # RunLayerSpec(
                         #     name="tools",
                         #     type="dify.plugin.tools",
-                        #     deps={"plugin": "plugin"},
+                        #     deps={"execution_context": "execution_context"},
                         #     config=DifyPluginToolsLayerConfig(
                         #         tools=[
                         #             DifyPluginToolConfig(

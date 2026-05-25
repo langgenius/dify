@@ -17,6 +17,7 @@ from copy import deepcopy
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import ClassVar
 
 import httpx
 from pydantic_ai import RunContext, Tool
@@ -32,12 +33,12 @@ from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolParameterType,
     DifyPluginToolsLayerConfig,
 )
-from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
 from dify_agent.layers.dify_plugin.tool_client import (
     DifyPluginDaemonToolClient,
     DifyPluginToolClientError,
     DifyPluginToolInvokeMessage,
 )
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
@@ -50,14 +51,14 @@ PLUGIN_TOOL_STRICT = False
 class DifyPluginToolsDeps(LayerDeps):
     """Dependencies required by ``DifyPluginToolsLayer``."""
 
-    plugin: DifyPluginLayer  # pyright: ignore[reportUninitializedInstanceVariable]
+    execution_context: DifyExecutionContextLayer  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 @dataclass(slots=True)
 class DifyPluginToolsLayer(PlainLayer[DifyPluginToolsDeps, DifyPluginToolsLayerConfig]):
     """Layer that resolves Dify plugin tools into Pydantic AI tools."""
 
-    type_id = DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
+    type_id: ClassVar[str] = DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
 
     config: DifyPluginToolsLayerConfig
 
@@ -75,7 +76,10 @@ class DifyPluginToolsLayer(PlainLayer[DifyPluginToolsDeps, DifyPluginToolsLayerC
         for tool_config in self.config.tools:
             client = tool_clients.get(tool_config.plugin_id)
             if client is None:
-                client = self.deps.plugin.create_tool_client(plugin_id=tool_config.plugin_id, http_client=http_client)
+                client = self.deps.execution_context.create_tool_client(
+                    plugin_id=tool_config.plugin_id,
+                    http_client=http_client,
+                )
                 tool_clients[tool_config.plugin_id] = client
             effective_parameters = [parameter.model_copy(deep=True) for parameter in tool_config.parameters]
             _validate_required_hidden_parameters(tool_config, effective_parameters)
