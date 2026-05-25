@@ -58,7 +58,6 @@ class AgentBackendOutputConfig(BaseModel):
     """API-side structured output declaration for the conventional output layer."""
 
     json_schema: dict[str, JsonValue]
-    name: str = "final_result"
     description: str | None = None
     strict: bool | None = None
 
@@ -153,7 +152,6 @@ class AgentBackendRunRequestBuilder:
                     metadata=run_input.metadata,
                     config=DifyOutputLayerConfig(
                         json_schema=run_input.output.json_schema,
-                        name=run_input.output.name,
                         description=run_input.output.description,
                         strict=run_input.output.strict,
                     ),
