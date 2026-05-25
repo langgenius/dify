@@ -67,11 +67,6 @@ const SnippetCard = ({
     date: (updatedAt > 1_000_000_000_000 ? updatedAt : updatedAt * 1000),
     dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
   })
-  const updatedText = t('updatedBy', {
-    name: updatedByName,
-    time: updatedAtText,
-  })
-
   const initialValue = useMemo(() => ({
     name: snippet.name,
     description: snippet.description,
@@ -133,76 +128,95 @@ const SnippetCard = ({
 
   return (
     <>
-      <article className="group relative col-span-1 inline-flex h-55 w-full flex-col rounded-xl border border-components-card-border bg-components-card-bg p-6 shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg">
-        <Link href={`/snippets/${snippet.id}/orchestrate`} className="flex min-h-0 grow flex-col">
-          <div className="truncate text-lg leading-6 font-semibold text-text-secondary" title={snippet.name}>
-            {snippet.name}
+      <article className="group relative col-span-1 inline-flex h-40 w-full cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg">
+        <Link href={`/snippets/${snippet.id}/orchestrate`} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex h-16.5 shrink-0 grow-0 flex-col justify-center px-3.5 pt-3.5 pb-3">
+            <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
+              <div className="truncate" title={snippet.name}>{snippet.name}</div>
+            </div>
+            <div className="flex items-center gap-1 text-2xs leading-4.5 font-medium text-text-tertiary">
+              <div className="truncate" title={updatedByName}>{updatedByName}</div>
+              <div>·</div>
+              <div className="truncate" title={updatedAtText}>{updatedAtText}</div>
+            </div>
           </div>
-          <div className="mt-1 truncate text-sm leading-5 text-text-tertiary italic" title={updatedText}>
-            {updatedText}
-          </div>
-          <div className="mt-6 min-h-0 text-sm leading-5 text-text-tertiary">
-            <div className="line-clamp-3" title={snippet.description}>
+          <div className="h-22.5 px-3.5 text-xs leading-normal text-text-tertiary">
+            <div className="line-clamp-2" title={snippet.description}>
               {snippet.description}
             </div>
           </div>
         </Link>
-        <div className="mt-4 mr-10">
-          <TagSelector
-            placement="bottom-start"
-            type="snippet"
-            targetId={snippet.id}
-            value={snippet.tags}
-            onOpenTagManagement={onOpenTagManagement}
-            onTagsChange={onTagsChange}
-          />
-        </div>
-        {isCurrentWorkspaceEditor && (
+
+        <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
           <div
-            className={cn(
-              'absolute right-6 bottom-5 flex items-center transition-opacity',
-              isOperationsMenuOpen
-                ? 'pointer-events-auto opacity-100'
-                : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-            )}
+            className="flex w-0 grow items-center gap-1"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}
           >
-            <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
-              <DropdownMenuTrigger
-                aria-label={tCommon('operation.more', { ns: 'common' })}
-                className="flex size-8 items-center justify-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg p-2 text-text-tertiary shadow-xs hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset data-popup-open:bg-state-base-hover"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                }}
-              >
-                <span aria-hidden className="i-ri-more-fill size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                placement="bottom-end"
-                sideOffset={4}
-                popupClassName="w-[216px]"
-              >
-                <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
-                  <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
-                  <span className="system-sm-regular text-text-secondary">{t('menu.exportSnippet')}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="gap-2 px-3"
-                  onClick={() => {
-                    setIsOperationsMenuOpen(false)
-                    setIsDeleteDialogOpen(true)
+            <div className="mr-10.25 min-w-0 grow overflow-hidden">
+              <TagSelector
+                placement="bottom-start"
+                type="snippet"
+                targetId={snippet.id}
+                value={snippet.tags}
+                onOpenTagManagement={onOpenTagManagement}
+                onTagsChange={onTagsChange}
+              />
+            </div>
+          </div>
+          {isCurrentWorkspaceEditor && (
+            <div
+              className={cn(
+                'absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center transition-opacity',
+                isOperationsMenuOpen
+                  ? 'pointer-events-auto opacity-100'
+                  : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+              )}
+            >
+              <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
+              <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+                <DropdownMenuTrigger
+                  aria-label={tCommon('operation.more', { ns: 'common' })}
+                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
                   }}
                 >
-                  <span className="system-sm-regular">{t('menu.deleteSnippet')}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+                  <div className="flex size-8 cursor-pointer items-center justify-center rounded-md">
+                    <span className="sr-only">{tCommon('operation.more', { ns: 'common' })}</span>
+                    <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  placement="bottom-end"
+                  sideOffset={4}
+                  popupClassName="w-[216px]"
+                >
+                  <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
+                    <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
+                    <span className="system-sm-regular text-text-secondary">{t('menu.exportSnippet')}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="gap-2 px-3"
+                    onClick={() => {
+                      setIsOperationsMenuOpen(false)
+                      setIsDeleteDialogOpen(true)
+                    }}
+                  >
+                    <span className="system-sm-regular">{t('menu.deleteSnippet')}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
       </article>
       {isEditDialogOpen && (
         <CreateSnippetDialog
