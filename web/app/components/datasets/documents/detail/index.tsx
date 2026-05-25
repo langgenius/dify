@@ -98,7 +98,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     refetchInterval: (query) => {
       const status = query.state.data?.display_status
       if (!status || NON_TERMINAL_DISPLAY_STATUSES.has(status))
-        return 2500
+        return 5000
       return false
     },
   })

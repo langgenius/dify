@@ -138,7 +138,7 @@ export const useCommonModalState = ({
     subscriptionBuilder?.id || '',
     {
       enabled: createType === SupportedCreationMethods.MANUAL,
-      refetchInterval: 3000,
+      refetchInterval: 5000,
     },
   )
 

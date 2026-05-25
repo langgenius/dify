@@ -71,6 +71,8 @@ export const getMarketplacePluginsByCollectionId = async (
   }
   // eslint-disable-next-line unused-imports/no-unused-vars
   catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError')
+      throw e
     plugins = []
   }
 
@@ -102,6 +104,8 @@ export const getMarketplaceCollectionsAndPlugins = async (
   }
   // eslint-disable-next-line unused-imports/no-unused-vars
   catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError')
+      throw e
     marketplaceCollections = []
     marketplaceCollectionPluginsMap = {}
   }
@@ -160,7 +164,9 @@ export const getMarketplacePlugins = async (
       page_size,
     }
   }
-  catch {
+  catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError')
+      throw e
     return {
       plugins: [],
       total: 0,

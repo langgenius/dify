@@ -19,7 +19,7 @@ type IDocumentsProps = {
   datasetId: string
 }
 
-const POLLING_INTERVAL = 2500
+const POLLING_INTERVAL = 5000
 const TERMINAL_INDEXING_STATUSES = new Set(['completed', 'paused', 'error'])
 const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 

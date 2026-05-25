@@ -112,7 +112,6 @@ export const userProfileQueryOptions = () =>
       }
     },
     staleTime: 0,
-    gcTime: 0,
     retry: (failureCount, error) => !isLegacyBase401(error) && failureCount < 3,
   })
 
@@ -257,7 +256,6 @@ export const useVerifyForgotPasswordToken = (token?: string | null) => {
     queryFn: () => post<ForgotPasswordValidity>('/forgot-password/validity', { body: { token } }),
     enabled: !!token,
     staleTime: 0,
-    gcTime: 0,
     retry: false,
   })
 }

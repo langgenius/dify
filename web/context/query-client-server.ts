@@ -8,6 +8,11 @@ export function makeQueryClient() {
     defaultOptions: {
       queries: {
         staleTime: STALE_TIME,
+        retry: (failureCount, error) => {
+          if (error instanceof DOMException && error.name === 'AbortError')
+            return false
+          return failureCount < 3
+        },
       },
     },
   })

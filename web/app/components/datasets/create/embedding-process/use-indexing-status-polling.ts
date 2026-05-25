@@ -2,7 +2,7 @@ import type { IndexingStatusResponse } from '@/models/datasets'
 import { useEffect, useRef, useState } from 'react'
 import { fetchIndexingStatusBatch } from '@/service/datasets'
 
-const POLLING_INTERVAL = 2500
+const POLLING_INTERVAL = 5000
 const COMPLETED_STATUSES = ['completed', 'error', 'paused'] as const
 const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
 

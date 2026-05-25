@@ -72,16 +72,18 @@ const useThinkTimer = (children: any) => {
 
 type ThinkBlockProps = React.ComponentProps<'details'> & {
   'data-think'?: boolean
+  dataThink?: boolean
 }
 
 const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
-  const { 'data-think': isThink = false, className, open, ...rest } = props
+  const { 'data-think': dataThinkKebab, dataThink, className, open, ...rest } = props
+  const isThink = dataThinkKebab ?? dataThink ?? false
 
   if (!isThink)
-    return (<details {...props}>{children}</details>)
+    return (<details {...props}>{displayContent}</details>)
 
   return (
     <details

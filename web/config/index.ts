@@ -23,10 +23,7 @@ export const PUBLIC_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
   'http://localhost:5001/api',
 )
-export const MARKETPLACE_API_PREFIX = getStringConfig(
-  env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
-  'http://localhost:5002/api',
-)
+export const MARKETPLACE_API_PREFIX = env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX || ''
 export const MARKETPLACE_URL_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX,
   '',

@@ -60,7 +60,7 @@ export const useEmbeddingStatus = ({
       if (isTerminalStatus(status)) {
         return false
       }
-      return 2500
+      return 5000
     },
     refetchOnWindowFocus: false,
   })

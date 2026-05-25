@@ -297,14 +297,28 @@ class MessageService:
                     .limit(1)
                 )
             else:
-                conversation_override_model_configs = _app_model_config_adapter.validate_json(
-                    conversation.override_model_configs
+                try:
+                    conversation_override_model_configs = _app_model_config_adapter.validate_json(
+                        conversation.override_model_configs
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to validate override_model_configs for conversation %s, falling back to app config",
+                        conversation.id,
+                    )
+                    app_model_config = None
+                else:
+                    app_model_config = AppModelConfig(
+                        app_id=app_model.id,
+                    )
+                    app_model_config.id = conversation.app_model_config_id
+                    app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
+            if not app_model_config:
+                app_model_config = db.session.scalar(
+                    select(AppModelConfig)
+                    .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
+                    .limit(1)
                 )
-                app_model_config = AppModelConfig(
-                    app_id=app_model.id,
-                )
-                app_model_config.id = conversation.app_model_config_id
-                app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
             if not app_model_config:
                 raise ValueError("did not find app model config")
 

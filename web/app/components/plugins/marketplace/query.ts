@@ -10,6 +10,7 @@ export function useMarketplaceCollectionsAndPlugins(
   return useQuery({
     queryKey: marketplaceQuery.collections.queryKey({ input: { query: collectionsParams } }),
     queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(collectionsParams, { signal }),
+    retry: false,
   })
 }
 
@@ -31,5 +32,6 @@ export function useMarketplacePlugins(
     },
     initialPageParam: 1,
     enabled: queryParams !== undefined,
+    retry: false,
   })
 }

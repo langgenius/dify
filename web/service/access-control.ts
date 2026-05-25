@@ -13,7 +13,6 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
     queryFn: () => get<{ groups: AccessControlGroup[], members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
     enabled: !!appId && enabled,
     staleTime: 0,
-    gcTime: 0,
   })
 }
 
@@ -43,7 +42,6 @@ export const useSearchForWhiteListCandidates = (query: { keyword?: string, group
         return lastPage.currPage + 1
       return undefined
     },
-    gcTime: 0,
     staleTime: 0,
     enabled,
   })
@@ -86,6 +84,5 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }
     },
     enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,
-    gcTime: 0,
   })
 }
