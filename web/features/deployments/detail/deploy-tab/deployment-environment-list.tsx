@@ -147,7 +147,7 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
             <span aria-hidden className="i-ri-more-fill size-4" />
           </DropdownMenuTrigger>
           {actionsOpen && (
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44">
               <DropdownMenuItem
                 className="gap-2 px-3"
                 onClick={handleDeployAction}
@@ -280,7 +280,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
               <CurrentReleaseSummary release={row.currentRelease} />
             </DetailTableCell>
             <DetailTableCell>
-              <div className="flex justify-end">
+              <div className="flex min-h-8 justify-end">
                 <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
               </div>
             </DetailTableCell>
