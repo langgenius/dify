@@ -221,10 +221,11 @@ def initialize_extensions(app: DifyApp):
 
 def create_migrations_app() -> DifyApp:
     app = create_flask_app_with_configs()
-    from extensions import ext_database, ext_migrate
+    from extensions import ext_commands, ext_database, ext_migrate
 
     # Initialize only required extensions
     ext_database.init_app(app)
     ext_migrate.init_app(app)
+    ext_commands.init_app(app)
 
     return app

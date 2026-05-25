@@ -1,0 +1,1901 @@
+from __future__ import annotations
+
+import io
+import json
+import sys
+import uuid
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from dataclasses import asdict, dataclass
+import dataclasses
+from datetime import datetime
+from enum import IntEnum, StrEnum
+from typing import Protocol, cast
+
+import sqlalchemy as sa
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
+
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import naive_utc_now
+from models import LoadBalancingModelConfig, ProviderModel, ProviderModelSetting, Tenant, TenantDefaultModel
+from models.base import TypeBase
+from models.provider import ProviderModelCredential
+
+type ORMModel = type[TypeBase]
+
+
+def _json_default(value: object) -> object:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, (IntEnum, StrEnum)):
+        return value.value
+    return value
+
+
+def _normalize_log_value(field_name: str, value: object) -> object:
+    if field_name == "encrypted_config" and isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+    return value
+
+
+def _normalize_log_mapping(values: dict[str, object]) -> dict[str, object]:
+    return {key: _normalize_log_value(key, value) for key, value in values.items()}
+
+
+def _normalize_log_payload(value: object) -> object:
+    if value is None or isinstance(value, bool | int | float | str):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, (IntEnum, StrEnum)):
+        return value.value
+    if isinstance(value, dict):
+        return {str(key): _normalize_log_payload(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_normalize_log_payload(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        normalized_items = [_normalize_log_payload(item) for item in value]
+        return sorted(normalized_items, key=lambda item: json.dumps(item, sort_keys=True))
+
+    table_name = getattr(value, "__tablename__", None)
+    if isinstance(table_name, str):
+        return table_name
+
+    name = getattr(value, "name", None)
+    if isinstance(name, str):
+        return name
+
+    table = getattr(value, "table", None)
+    if table is not None:
+        referenced_table_name = getattr(table, "name", None)
+        if isinstance(referenced_table_name, str):
+            return referenced_table_name
+
+    return f"<{type(value).__module__}.{type(value).__qualname__}>"
+
+
+@dataclass(frozen=True, slots=True)
+class _RowWithRawModelType[T: TypeBase]:
+    row: T
+    raw_model_type: str
+    canonical_model_type: ModelType
+
+
+@dataclass(frozen=True, slots=True)
+class _CacheDeletePlan:
+    tenant_id: str
+    identity_id: str
+    cache_type: ProviderCredentialsCacheType
+    table_name: str
+    row_id: str
+    tx_id: str
+    business_key: _BusinessKey | Mapping[str, object]
+
+
+class _BusinessKey:
+    pass
+
+
+class _HasRowId(Protocol):
+    id: object
+
+
+class _HasRowIdAndUpdatedAt(_HasRowId, Protocol):
+    updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelBusinessKey(_BusinessKey):
+    tenant_id: str
+    provider_name: str
+    model_name: str
+    model_type: ModelType
+
+
+@dataclass(frozen=True, slots=True)
+class _TenantDefaultModelBusinessKey(_BusinessKey):
+    tenant_id: str
+    model_type: ModelType
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelSettingBusinessKey(_BusinessKey):
+    tenant_id: str
+    provider_name: str
+    model_name: str
+    model_type: ModelType
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelCredentialBusinessKey(_BusinessKey):
+    tenant_id: str
+    provider_name: str
+    model_name: str
+    credential_name: str
+    model_type: ModelType
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelGroupPlan:
+    group_row_ids: list[str]
+    winner: _RowWithRawModelType[ProviderModel] | None
+    loser_rows: list[_RowWithRawModelType[ProviderModel]]
+
+
+@dataclass(frozen=True, slots=True)
+class _TenantDefaultModelGroupPlan:
+    group_row_ids: list[str]
+    winner: _RowWithRawModelType[TenantDefaultModel] | None
+    loser_rows: list[_RowWithRawModelType[TenantDefaultModel]]
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelSettingGroupPlan:
+    group_row_ids: list[str]
+    winner: _RowWithRawModelType[ProviderModelSetting] | None
+    loser_rows: list[_RowWithRawModelType[ProviderModelSetting]]
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelReferenceRewritePlan:
+    row_id: str
+    old_credential_id: str
+    new_credential_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class _LoadBalancingCredentialRewritePlan:
+    row_id: str
+    old_credential_id: str | None
+    old_name: str
+    old_encrypted_config: str | None
+    new_credential_id: str
+    new_name: str
+    new_encrypted_config: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderModelCredentialGroupPlan:
+    group_row_ids: list[str]
+    winner: _RowWithRawModelType[ProviderModelCredential] | None
+    loser_rows: list[_RowWithRawModelType[ProviderModelCredential]]
+    provider_model_rewrites: list[_ProviderModelReferenceRewritePlan]
+    load_balancing_rewrites: list[_LoadBalancingCredentialRewritePlan]
+
+
+@dataclass(frozen=True, slots=True)
+class _LoadBalancingModelConfigRowPlan:
+    row_id: str
+    raw_model_type: str
+    canonical_model_type: ModelType
+    cache_plan: _CacheDeletePlan
+
+
+VALID_TABLE_NAMES: tuple[str, ...] = (
+    ProviderModel.__tablename__,
+    TenantDefaultModel.__tablename__,
+    ProviderModelSetting.__tablename__,
+    LoadBalancingModelConfig.__tablename__,
+    ProviderModelCredential.__tablename__,
+)
+
+_SUPPORTED_MODEL_TYPES: tuple[ModelType, ...] = (
+    ModelType.LLM,
+    ModelType.TEXT_EMBEDDING,
+    ModelType.RERANK,
+)
+_CANONICAL_TO_LEGACY: dict[ModelType, tuple[str, ...]] = {
+    ModelType.LLM: ("text-generation",),
+    ModelType.TEXT_EMBEDDING: ("embeddings",),
+    ModelType.RERANK: ("reranking",),
+}
+_LEGACY_TO_CANONICAL: dict[str, ModelType] = {
+    legacy_value: canonical_model_type
+    for canonical_model_type, legacy_values in _CANONICAL_TO_LEGACY.items()
+    for legacy_value in legacy_values
+}
+_RAW_MODEL_TYPE_COLUMN = "_raw_model_type"
+
+
+def _session_factory(engine: sa.Engine) -> Session:
+    return Session(bind=engine, expire_on_commit=False)
+
+
+class LegacyModelTypeMigrationService:
+    """
+    Migrate legacy provider-related model_type values to canonical values.
+
+    The command can scope the migration by table, tenant, and canonical model type. When
+    `provider_model_credentials` is selected, that migration also rewrites references in
+    `provider_models` and `load_balancing_model_configs`.
+    """
+
+    _engine: sa.Engine
+    _apply: bool
+    _output: io.TextIOBase
+    _model_types: tuple[ModelType, ...]
+    _orm_models: tuple[ORMModel, ...]
+    _tenant_ids: tuple[str, ...] | None
+
+    def __init__(
+        self,
+        engine: sa.Engine,
+        *,
+        apply: bool = False,
+        output: io.TextIOBase | None = None,
+        tables: Sequence[str] | None = None,
+        model_types: Sequence[ModelType] = _SUPPORTED_MODEL_TYPES,
+        tenant_ids: Sequence[str] | None = None,
+    ) -> None:
+        self._engine = engine
+        self._apply = apply
+        self._output = cast(io.TextIOBase, sys.stdout if output is None else output)
+        self._model_types = tuple(dict.fromkeys(model_types))
+        self._orm_models = self._resolve_models(tables)
+        self._tenant_ids = tuple(dict.fromkeys(tenant_ids)) if tenant_ids is not None else None
+
+    def _resolve_models(self, tables: Sequence[str] | None) -> tuple[ORMModel, ...]:
+        if tables is None:
+            return (
+                ProviderModel,
+                TenantDefaultModel,
+                ProviderModelSetting,
+                LoadBalancingModelConfig,
+                ProviderModelCredential,
+            )
+
+        ordered_models: list[ORMModel] = []
+        seen_tables: set[str] = set()
+        for table_name in tables:
+            if table_name in seen_tables:
+                continue
+            seen_tables.add(table_name)
+            if table_name == ProviderModel.__tablename__:
+                ordered_models.append(ProviderModel)
+            elif table_name == TenantDefaultModel.__tablename__:
+                ordered_models.append(TenantDefaultModel)
+            elif table_name == ProviderModelSetting.__tablename__:
+                ordered_models.append(ProviderModelSetting)
+            elif table_name == LoadBalancingModelConfig.__tablename__:
+                ordered_models.append(LoadBalancingModelConfig)
+            elif table_name == ProviderModelCredential.__tablename__:
+                ordered_models.append(ProviderModelCredential)
+            else:
+                raise ValueError(f"invalid table name: {table_name}")
+        return tuple(ordered_models)
+
+    def migrate(self) -> None:
+        for tenant_id in self._iter_tenant_ids():
+            Migration(
+                tenant_id=tenant_id,
+                engine=self._engine,
+                apply=self._apply,
+                output=self._output,
+                model_types=self._model_types,
+                orm_models=self._orm_models,
+            ).run()
+
+    def _iter_tenant_ids(self) -> Iterator[str]:
+        if self._tenant_ids is not None:
+            yield from self._tenant_ids
+            return
+
+        with _session_factory(self._engine) as session:
+            tenant_ids = session.execute(select(Tenant.id).order_by(Tenant.id.asc())).scalars().all()
+
+        yield from tenant_ids
+
+
+class Migration:
+    """
+    Execute the migration for one tenant.
+
+    The implementation is intentionally table-specific. Each table has its own scan function
+    and its own apply/dry-run path so the online migration logic stays explicit and auditable.
+    """
+
+    _tenant_id: str
+    _engine: sa.Engine
+    _apply: bool
+    _output: io.TextIOBase
+    _model_types: tuple[ModelType, ...]
+    _orm_models: tuple[ORMModel, ...]
+    _batch_size: int
+    _lock_timeout_seconds: int
+
+    def __init__(
+        self,
+        tenant_id: str,
+        engine: sa.Engine,
+        apply: bool,
+        output: io.TextIOBase,
+        model_types: Sequence[ModelType],
+        orm_models: Sequence[ORMModel],
+    ) -> None:
+        self._tenant_id = tenant_id
+        self._engine = engine
+        self._apply = apply
+        self._output = output
+        self._model_types = tuple(model_types)
+        self._orm_models = tuple(orm_models)
+        self._batch_size = 200
+        self._lock_timeout_seconds = 5
+
+    def run(self) -> None:
+        self._log_event(
+            "tenant_started",
+            "Started tenant migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "tables": [model.__tablename__ for model in self._orm_models],
+                "model_types": [model_type.value for model_type in self._model_types],
+            },
+        )
+
+        for orm_model in self._orm_models:
+            if orm_model is ProviderModel:
+                self._migrate_provider_models()
+            elif orm_model is TenantDefaultModel:
+                self._migrate_tenant_default_models()
+            elif orm_model is ProviderModelSetting:
+                self._migrate_provider_model_settings()
+            elif orm_model is LoadBalancingModelConfig:
+                self._migrate_load_balancing_model_configs()
+            elif orm_model is ProviderModelCredential:
+                self._migrate_provider_model_credentials()
+
+        self._log_event(
+            "tenant_completed",
+            "Completed tenant migration.",
+            {"tenant_id": self._tenant_id, "apply": self._apply},
+        )
+
+    def _selected_legacy_values(self) -> list[str]:
+        legacy_values: list[str] = []
+        for model_type in self._model_types:
+            legacy_values.extend(_CANONICAL_TO_LEGACY[model_type])
+        return legacy_values
+
+    def _allowed_values_for_canonical_model_type(self, canonical_model_type: ModelType) -> tuple[str, ...]:
+        return (*_CANONICAL_TO_LEGACY[canonical_model_type], canonical_model_type.value)
+
+    def _has_legacy_rows[T: TypeBase](self, rows: Sequence[_RowWithRawModelType[T]]) -> bool:
+        return any(row.raw_model_type in _LEGACY_TO_CANONICAL for row in rows)
+
+    def _select_winner[T: TypeBase](self, rows: Sequence[_RowWithRawModelType[T]]) -> _RowWithRawModelType[T]:
+        return max(rows, key=lambda row: self._winner_sort_key(row.row))
+
+    def _winner_sort_key(self, row: TypeBase) -> tuple[datetime, str]:
+        typed_row = cast(_HasRowIdAndUpdatedAt, row)
+        return typed_row.updated_at, str(typed_row.id)
+
+    def _row_id(self, row: TypeBase) -> str:
+        return str(cast(_HasRowId, row).id)
+
+    def _new_tx_id(self) -> str:
+        return str(uuid.uuid4())
+
+    def _migrate_provider_models(self) -> None:
+        self._log_event(
+            "table_started",
+            "Started table migration.",
+            {"tenant_id": self._tenant_id, "apply": self._apply, "table_name": ProviderModel.__tablename__},
+        )
+
+        seen_business_keys: dict[_ProviderModelBusinessKey, list[str]] = {}
+        processed_groups = 0
+        last_id: str | None = None
+
+        while True:
+            candidates = self._load_provider_model_candidates(last_id)
+            if not candidates:
+                break
+
+            for candidate in candidates:
+                last_id = str(candidate.row.id)
+                business_key = _ProviderModelBusinessKey(
+                    tenant_id=candidate.row.tenant_id,
+                    provider_name=candidate.row.provider_name,
+                    model_name=candidate.row.model_name,
+                    model_type=candidate.canonical_model_type,
+                )
+                if business_key in seen_business_keys:
+                    continue
+
+                seen_business_keys[business_key] = self._process_provider_model_group(candidate, business_key)
+                processed_groups += 1
+
+        self._log_event(
+            "table_completed",
+            "Completed table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": ProviderModel.__tablename__,
+                "processed_groups": processed_groups,
+            },
+        )
+
+    def _load_provider_model_candidates(self, last_id: str | None) -> list[_RowWithRawModelType[ProviderModel]]:
+        raw_model_type = sa.type_coerce(ProviderModel.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        with _session_factory(self._engine) as session:
+            stmt = (
+                select(ProviderModel, raw_model_type)
+                .where(
+                    ProviderModel.tenant_id == self._tenant_id,
+                    sa.type_coerce(ProviderModel.model_type, sa.String()).in_(self._selected_legacy_values()),
+                )
+                .order_by(ProviderModel.id.asc())
+                .limit(self._batch_size)
+            )
+            if last_id is not None:
+                stmt = stmt.where(ProviderModel.id > last_id)
+            rows = session.execute(stmt).all()
+
+        wrapped_rows: list[_RowWithRawModelType[ProviderModel]] = []
+        for provider_model, raw_value in rows:
+            canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
+            if canonical_model_type is None:
+                self._log_event(
+                    event="invalid_model_type",
+                    message=f"invalid model type: {raw_value}",
+                    attrs={"id": provider_model.id, "table_name": provider_model.__tablename__},
+                )
+                continue
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=provider_model,
+                    raw_model_type=str(raw_value),
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _load_provider_model_group(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[ProviderModel],
+        *,
+        lock_rows: bool,
+    ) -> list[_RowWithRawModelType[ProviderModel]]:
+        raw_model_type = sa.type_coerce(ProviderModel.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        stmt = (
+            select(ProviderModel, raw_model_type)
+            .where(
+                ProviderModel.tenant_id == candidate.row.tenant_id,
+                ProviderModel.provider_name == candidate.row.provider_name,
+                ProviderModel.model_name == candidate.row.model_name,
+                sa.type_coerce(ProviderModel.model_type, sa.String()).in_(
+                    self._allowed_values_for_canonical_model_type(candidate.canonical_model_type)
+                ),
+            )
+            .order_by(ProviderModel.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        rows = session.execute(stmt).all()
+        wrapped_rows: list[_RowWithRawModelType[ProviderModel]] = []
+        for provider_model, raw_value in rows:
+            raw_model_type_value = str(raw_value)
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=provider_model,
+                    raw_model_type=raw_model_type_value,
+                    canonical_model_type=_LEGACY_TO_CANONICAL.get(
+                        raw_model_type_value,
+                        candidate.canonical_model_type,
+                    ),
+                )
+            )
+        return wrapped_rows
+
+    def _build_provider_model_group_plan(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[ProviderModel],
+        *,
+        lock_rows: bool,
+    ) -> _ProviderModelGroupPlan:
+        rows = self._load_provider_model_group(session, candidate, lock_rows=lock_rows)
+        group_row_ids = [str(row.row.id) for row in rows]
+        if not self._has_legacy_rows(rows):
+            return _ProviderModelGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
+
+        winner = self._select_winner(rows)
+        return _ProviderModelGroupPlan(
+            group_row_ids=group_row_ids,
+            winner=winner,
+            loser_rows=[row for row in rows if row.row.id != winner.row.id],
+        )
+
+    def _emit_provider_model_group_plan(
+        self,
+        plan: _ProviderModelGroupPlan,
+        *,
+        session: Session,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> None:
+        if plan.winner is None:
+            return
+
+        cache_plans: list[_CacheDeletePlan] = []
+        for loser in plan.loser_rows:
+            self._log_row_deleted(
+                ProviderModel.__tablename__,
+                loser,
+                tx_id=tx_id,
+                business_key=business_key,
+                related_winner_id=str(plan.winner.row.id),
+            )
+            if self._apply:
+                session.execute(sa.delete(ProviderModel).where(ProviderModel.id == str(loser.row.id)))
+            cache_plans.append(
+                _CacheDeletePlan(
+                    tenant_id=self._tenant_id,
+                    identity_id=str(loser.row.id),
+                    cache_type=ProviderCredentialsCacheType.MODEL,
+                    table_name=ProviderModel.__tablename__,
+                    row_id=str(loser.row.id),
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            )
+
+        if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            self._log_row_updated(
+                ProviderModel.__tablename__,
+                str(plan.winner.row.id),
+                {"model_type": plan.winner.raw_model_type},
+                {"model_type": plan.winner.canonical_model_type.value},
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModel)
+                    .where(ProviderModel.id == str(plan.winner.row.id))
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
+            cache_plans.append(
+                _CacheDeletePlan(
+                    tenant_id=self._tenant_id,
+                    identity_id=str(plan.winner.row.id),
+                    cache_type=ProviderCredentialsCacheType.MODEL,
+                    table_name=ProviderModel.__tablename__,
+                    row_id=str(plan.winner.row.id),
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            )
+
+        self._log_cache_plans(cache_plans, apply=self._apply)
+        self._log_group_processed(
+            ProviderModel.__tablename__,
+            business_key,
+            plan.group_row_ids,
+            tx_id=tx_id,
+        )
+
+    def _process_provider_model_group(
+        self,
+        candidate: _RowWithRawModelType[ProviderModel],
+        business_key: _ProviderModelBusinessKey,
+    ) -> list[str]:
+        tx_id = self._new_tx_id()
+        group_row_ids = [str(candidate.row.id)]
+
+        try:
+            with _session_factory(self._engine) as session, session.begin():
+                self._configure_lock_timeout(session)
+                plan = self._build_provider_model_group_plan(session, candidate, lock_rows=True)
+                group_row_ids = plan.group_row_ids or group_row_ids
+                self._emit_provider_model_group_plan(
+                    plan,
+                    session=session,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+        except OperationalError as exc:
+            if self._is_lock_timeout_error(exc):
+                self._log_lock_timeout(
+                    ProviderModel.__tablename__,
+                    str(candidate.row.id),
+                    tx_id,
+                    business_key,
+                    exc,
+                )
+                return group_row_ids
+            raise
+
+        return group_row_ids
+
+    def _migrate_tenant_default_models(self) -> None:
+        self._log_event(
+            "table_started",
+            "Started table migration.",
+            {"tenant_id": self._tenant_id, "apply": self._apply, "table_name": TenantDefaultModel.__tablename__},
+        )
+
+        seen_business_keys: dict[_TenantDefaultModelBusinessKey, list[str]] = {}
+        processed_groups = 0
+        last_id: str | None = None
+
+        while True:
+            candidates = self._load_tenant_default_model_candidates(last_id)
+            if not candidates:
+                break
+
+            for candidate in candidates:
+                last_id = str(candidate.row.id)
+                business_key = _TenantDefaultModelBusinessKey(
+                    tenant_id=candidate.row.tenant_id,
+                    model_type=candidate.canonical_model_type,
+                )
+                if business_key in seen_business_keys:
+                    continue
+
+                seen_business_keys[business_key] = self._process_tenant_default_model_group(candidate, business_key)
+                processed_groups += 1
+
+        self._log_event(
+            "table_completed",
+            "Completed table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": TenantDefaultModel.__tablename__,
+                "processed_groups": processed_groups,
+            },
+        )
+
+    def _load_tenant_default_model_candidates(
+        self, last_id: str | None
+    ) -> list[_RowWithRawModelType[TenantDefaultModel]]:
+        raw_model_type = sa.type_coerce(TenantDefaultModel.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        with _session_factory(self._engine) as session:
+            stmt = (
+                select(TenantDefaultModel, raw_model_type)
+                .where(
+                    TenantDefaultModel.tenant_id == self._tenant_id,
+                    sa.type_coerce(TenantDefaultModel.model_type, sa.String()).in_(self._selected_legacy_values()),
+                )
+                .order_by(TenantDefaultModel.id.asc())
+                .limit(self._batch_size)
+            )
+            if last_id is not None:
+                stmt = stmt.where(TenantDefaultModel.id > last_id)
+            rows = session.execute(stmt).all()
+
+        wrapped_rows: list[_RowWithRawModelType[TenantDefaultModel]] = []
+        for tenant_default_model, raw_value in rows:
+            canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
+            if canonical_model_type is None:
+                continue
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=tenant_default_model,
+                    raw_model_type=str(raw_value),
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _load_tenant_default_model_group(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[TenantDefaultModel],
+        *,
+        lock_rows: bool,
+    ) -> list[_RowWithRawModelType[TenantDefaultModel]]:
+        raw_model_type = sa.type_coerce(TenantDefaultModel.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        stmt = (
+            select(TenantDefaultModel, raw_model_type)
+            .where(
+                TenantDefaultModel.tenant_id == candidate.row.tenant_id,
+                sa.type_coerce(TenantDefaultModel.model_type, sa.String()).in_(
+                    self._allowed_values_for_canonical_model_type(candidate.canonical_model_type)
+                ),
+            )
+            .order_by(TenantDefaultModel.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        rows = session.execute(stmt).all()
+        wrapped_rows: list[_RowWithRawModelType[TenantDefaultModel]] = []
+        for tenant_default_model, raw_value in rows:
+            raw_model_type_value = str(raw_value)
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=tenant_default_model,
+                    raw_model_type=raw_model_type_value,
+                    canonical_model_type=_LEGACY_TO_CANONICAL.get(
+                        raw_model_type_value,
+                        candidate.canonical_model_type,
+                    ),
+                )
+            )
+        return wrapped_rows
+
+    def _build_tenant_default_model_group_plan(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[TenantDefaultModel],
+        *,
+        lock_rows: bool,
+    ) -> _TenantDefaultModelGroupPlan:
+        rows = self._load_tenant_default_model_group(session, candidate, lock_rows=lock_rows)
+        group_row_ids = [str(row.row.id) for row in rows]
+        if not self._has_legacy_rows(rows):
+            return _TenantDefaultModelGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
+
+        winner = self._select_winner(rows)
+        return _TenantDefaultModelGroupPlan(
+            group_row_ids=group_row_ids,
+            winner=winner,
+            loser_rows=[row for row in rows if row.row.id != winner.row.id],
+        )
+
+    def _emit_tenant_default_model_group_plan(
+        self,
+        plan: _TenantDefaultModelGroupPlan,
+        *,
+        session: Session,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> None:
+        if plan.winner is None:
+            return
+
+        for loser in plan.loser_rows:
+            self._log_row_deleted(
+                TenantDefaultModel.__tablename__,
+                loser,
+                tx_id=tx_id,
+                business_key=business_key,
+                related_winner_id=str(plan.winner.row.id),
+            )
+            if self._apply:
+                session.execute(sa.delete(TenantDefaultModel).where(TenantDefaultModel.id == str(loser.row.id)))
+
+        if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            self._log_row_updated(
+                TenantDefaultModel.__tablename__,
+                str(plan.winner.row.id),
+                {"model_type": plan.winner.raw_model_type},
+                {"model_type": plan.winner.canonical_model_type.value},
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+            if self._apply:
+                session.execute(
+                    sa.update(TenantDefaultModel)
+                    .where(TenantDefaultModel.id == str(plan.winner.row.id))
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
+
+        self._log_group_processed(
+            TenantDefaultModel.__tablename__,
+            business_key,
+            plan.group_row_ids,
+            tx_id=tx_id,
+        )
+
+    def _process_tenant_default_model_group(
+        self,
+        candidate: _RowWithRawModelType[TenantDefaultModel],
+        business_key: _TenantDefaultModelBusinessKey,
+    ) -> list[str]:
+        tx_id = self._new_tx_id()
+        business_key_attrs = asdict(business_key)
+        group_row_ids = [str(candidate.row.id)]
+
+        try:
+            with _session_factory(self._engine) as session, session.begin():
+                self._configure_lock_timeout(session)
+                plan = self._build_tenant_default_model_group_plan(session, candidate, lock_rows=True)
+                group_row_ids = plan.group_row_ids or group_row_ids
+                self._emit_tenant_default_model_group_plan(
+                    plan,
+                    session=session,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+        except OperationalError as exc:
+            if self._is_lock_timeout_error(exc):
+                self._log_lock_timeout(
+                    TenantDefaultModel.__tablename__,
+                    str(candidate.row.id),
+                    tx_id,
+                    business_key,
+                    exc,
+                )
+                return group_row_ids
+            raise
+        return group_row_ids
+
+    def _migrate_provider_model_settings(self) -> None:
+        self._log_event(
+            "table_started",
+            "Started table migration.",
+            {"tenant_id": self._tenant_id, "apply": self._apply, "table_name": ProviderModelSetting.__tablename__},
+        )
+
+        seen_business_keys: dict[_ProviderModelSettingBusinessKey, list[str]] = {}
+        processed_groups = 0
+        last_id: str | None = None
+
+        while True:
+            candidates = self._load_provider_model_setting_candidates(last_id)
+            if not candidates:
+                break
+
+            for candidate in candidates:
+                last_id = str(candidate.row.id)
+                business_key = _ProviderModelSettingBusinessKey(
+                    tenant_id=candidate.row.tenant_id,
+                    provider_name=candidate.row.provider_name,
+                    model_name=candidate.row.model_name,
+                    model_type=candidate.canonical_model_type,
+                )
+                if business_key in seen_business_keys:
+                    continue
+
+                seen_business_keys[business_key] = self._process_provider_model_setting_group(candidate, business_key)
+                processed_groups += 1
+
+        self._log_event(
+            "table_completed",
+            "Completed table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": ProviderModelSetting.__tablename__,
+                "processed_groups": processed_groups,
+            },
+        )
+
+    def _load_provider_model_setting_candidates(
+        self, last_id: str | None
+    ) -> list[_RowWithRawModelType[ProviderModelSetting]]:
+        raw_model_type = sa.type_coerce(ProviderModelSetting.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        with _session_factory(self._engine) as session:
+            stmt = (
+                select(ProviderModelSetting, raw_model_type)
+                .where(
+                    ProviderModelSetting.tenant_id == self._tenant_id,
+                    sa.type_coerce(ProviderModelSetting.model_type, sa.String()).in_(self._selected_legacy_values()),
+                )
+                .order_by(ProviderModelSetting.id.asc())
+                .limit(self._batch_size)
+            )
+            if last_id is not None:
+                stmt = stmt.where(ProviderModelSetting.id > last_id)
+            rows = session.execute(stmt).all()
+
+        wrapped_rows: list[_RowWithRawModelType[ProviderModelSetting]] = []
+        for provider_model_setting, raw_value in rows:
+            canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
+            if canonical_model_type is None:
+                continue
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=provider_model_setting,
+                    raw_model_type=str(raw_value),
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _load_provider_model_setting_group(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[ProviderModelSetting],
+        *,
+        lock_rows: bool,
+    ) -> list[_RowWithRawModelType[ProviderModelSetting]]:
+        raw_model_type = sa.type_coerce(ProviderModelSetting.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        stmt = (
+            select(ProviderModelSetting, raw_model_type)
+            .where(
+                ProviderModelSetting.tenant_id == candidate.row.tenant_id,
+                ProviderModelSetting.provider_name == candidate.row.provider_name,
+                ProviderModelSetting.model_name == candidate.row.model_name,
+                sa.type_coerce(ProviderModelSetting.model_type, sa.String()).in_(
+                    self._allowed_values_for_canonical_model_type(candidate.canonical_model_type)
+                ),
+            )
+            .order_by(ProviderModelSetting.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        rows = session.execute(stmt).all()
+        wrapped_rows: list[_RowWithRawModelType[ProviderModelSetting]] = []
+        for provider_model_setting, raw_value in rows:
+            raw_model_type_value = str(raw_value)
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=provider_model_setting,
+                    raw_model_type=raw_model_type_value,
+                    canonical_model_type=_LEGACY_TO_CANONICAL.get(
+                        raw_model_type_value,
+                        candidate.canonical_model_type,
+                    ),
+                )
+            )
+        return wrapped_rows
+
+    def _build_provider_model_setting_group_plan(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[ProviderModelSetting],
+        *,
+        lock_rows: bool,
+    ) -> _ProviderModelSettingGroupPlan:
+        rows = self._load_provider_model_setting_group(session, candidate, lock_rows=lock_rows)
+        group_row_ids = [str(row.row.id) for row in rows]
+        if not self._has_legacy_rows(rows):
+            return _ProviderModelSettingGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
+
+        winner = self._select_winner(rows)
+        return _ProviderModelSettingGroupPlan(
+            group_row_ids=group_row_ids,
+            winner=winner,
+            loser_rows=[row for row in rows if row.row.id != winner.row.id],
+        )
+
+    def _emit_provider_model_setting_group_plan(
+        self,
+        plan: _ProviderModelSettingGroupPlan,
+        *,
+        session: Session,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> None:
+        if plan.winner is None:
+            return
+
+        for loser in plan.loser_rows:
+            self._log_row_deleted(
+                ProviderModelSetting.__tablename__,
+                loser,
+                tx_id=tx_id,
+                business_key=business_key,
+                related_winner_id=str(plan.winner.row.id),
+            )
+            if self._apply:
+                session.execute(sa.delete(ProviderModelSetting).where(ProviderModelSetting.id == str(loser.row.id)))
+
+        if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            self._log_row_updated(
+                ProviderModelSetting.__tablename__,
+                str(plan.winner.row.id),
+                {"model_type": plan.winner.raw_model_type},
+                {"model_type": plan.winner.canonical_model_type.value},
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModelSetting)
+                    .where(ProviderModelSetting.id == str(plan.winner.row.id))
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
+
+        self._log_group_processed(
+            ProviderModelSetting.__tablename__,
+            business_key,
+            plan.group_row_ids,
+            tx_id=tx_id,
+        )
+
+    def _process_provider_model_setting_group(
+        self,
+        candidate: _RowWithRawModelType[ProviderModelSetting],
+        business_key: _ProviderModelSettingBusinessKey,
+    ) -> list[str]:
+        tx_id = self._new_tx_id()
+        business_key_attrs = asdict(business_key)
+        group_row_ids = [str(candidate.row.id)]
+
+        try:
+            with _session_factory(self._engine) as session, session.begin():
+                self._configure_lock_timeout(session)
+                plan = self._build_provider_model_setting_group_plan(session, candidate, lock_rows=True)
+                group_row_ids = plan.group_row_ids or group_row_ids
+                self._emit_provider_model_setting_group_plan(
+                    plan,
+                    session=session,
+                    tx_id=tx_id,
+                    business_key=business_key_attrs,
+                )
+        except OperationalError as exc:
+            if self._is_lock_timeout_error(exc):
+                self._log_lock_timeout(
+                    ProviderModelSetting.__tablename__,
+                    str(candidate.row.id),
+                    tx_id,
+                    business_key_attrs,
+                    exc,
+                )
+                return group_row_ids
+            raise
+        return group_row_ids
+
+    def _migrate_load_balancing_model_configs(self) -> None:
+        self._log_event(
+            "table_started",
+            "Started table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": LoadBalancingModelConfig.__tablename__,
+            },
+        )
+
+        processed_rows = 0
+        last_id: str | None = None
+
+        while True:
+            candidates = self._load_load_balancing_model_config_candidates(last_id)
+            if not candidates:
+                break
+
+            for candidate in candidates:
+                last_id = str(candidate.row.id)
+                processed_rows += 1
+                self._process_load_balancing_model_config_row(candidate)
+
+        self._log_event(
+            "table_completed",
+            "Completed table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": LoadBalancingModelConfig.__tablename__,
+                "processed_rows": processed_rows,
+            },
+        )
+
+    def _load_load_balancing_model_config_candidates(
+        self, last_id: str | None
+    ) -> list[_RowWithRawModelType[LoadBalancingModelConfig]]:
+        raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        with _session_factory(self._engine) as session:
+            stmt = (
+                select(LoadBalancingModelConfig, raw_model_type)
+                .where(
+                    LoadBalancingModelConfig.tenant_id == self._tenant_id,
+                    sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).in_(
+                        self._selected_legacy_values()
+                    ),
+                )
+                .order_by(LoadBalancingModelConfig.id.asc())
+                .limit(self._batch_size)
+            )
+            if last_id is not None:
+                stmt = stmt.where(LoadBalancingModelConfig.id > last_id)
+            rows = session.execute(stmt).all()
+
+        wrapped_rows: list[_RowWithRawModelType[LoadBalancingModelConfig]] = []
+        for load_balancing_model_config, raw_value in rows:
+            canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
+            if canonical_model_type is None:
+                continue
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=load_balancing_model_config,
+                    raw_model_type=str(raw_value),
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _build_load_balancing_model_config_row_plan(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[LoadBalancingModelConfig],
+        *,
+        lock_rows: bool,
+    ) -> _LoadBalancingModelConfigRowPlan | None:
+        raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        stmt = select(LoadBalancingModelConfig, raw_model_type).where(
+            LoadBalancingModelConfig.id == candidate.row.id,
+            LoadBalancingModelConfig.tenant_id == self._tenant_id,
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        row = session.execute(stmt).first()
+        if row is None:
+            return None
+
+        load_balancing_model_config, raw_value = row
+        raw_model_type_value = str(raw_value)
+        canonical_model_type = _LEGACY_TO_CANONICAL.get(raw_model_type_value)
+        if canonical_model_type is None:
+            return None
+
+        business_key = {
+            "tenant_id": load_balancing_model_config.tenant_id,
+            "provider_name": load_balancing_model_config.provider_name,
+            "model_name": load_balancing_model_config.model_name,
+            "name": load_balancing_model_config.name,
+            "model_type": canonical_model_type.value,
+        }
+        return _LoadBalancingModelConfigRowPlan(
+            row_id=str(load_balancing_model_config.id),
+            raw_model_type=raw_model_type_value,
+            canonical_model_type=canonical_model_type,
+            cache_plan=_CacheDeletePlan(
+                tenant_id=self._tenant_id,
+                identity_id=str(load_balancing_model_config.id),
+                cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+                table_name=LoadBalancingModelConfig.__tablename__,
+                row_id=str(load_balancing_model_config.id),
+                tx_id="",
+                business_key=business_key,
+            ),
+        )
+
+    def _emit_load_balancing_model_config_row_plan(
+        self,
+        plan: _LoadBalancingModelConfigRowPlan,
+        *,
+        session: Session,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> None:
+        self._log_row_updated(
+            LoadBalancingModelConfig.__tablename__,
+            plan.row_id,
+            {"model_type": plan.raw_model_type},
+            {"model_type": plan.canonical_model_type.value},
+            tx_id=tx_id,
+            business_key=business_key,
+        )
+        if self._apply:
+            session.execute(
+                sa.update(LoadBalancingModelConfig)
+                .where(LoadBalancingModelConfig.id == plan.row_id)
+                .values(model_type=plan.canonical_model_type.value)
+            )
+
+        self._log_cache_plans(
+            [
+                _CacheDeletePlan(
+                    tenant_id=plan.cache_plan.tenant_id,
+                    identity_id=plan.cache_plan.identity_id,
+                    cache_type=plan.cache_plan.cache_type,
+                    table_name=plan.cache_plan.table_name,
+                    row_id=plan.cache_plan.row_id,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            ],
+            apply=self._apply,
+        )
+
+    def _process_load_balancing_model_config_row(
+        self, candidate: _RowWithRawModelType[LoadBalancingModelConfig]
+    ) -> None:
+        tx_id = self._new_tx_id()
+        business_key = {
+            "tenant_id": candidate.row.tenant_id,
+            "provider_name": candidate.row.provider_name,
+            "model_name": candidate.row.model_name,
+            "name": candidate.row.name,
+            "model_type": candidate.canonical_model_type.value,
+        }
+
+        try:
+            with _session_factory(self._engine) as session, session.begin():
+                self._configure_lock_timeout(session)
+                plan = self._build_load_balancing_model_config_row_plan(session, candidate, lock_rows=True)
+                if plan is None:
+                    return
+                self._emit_load_balancing_model_config_row_plan(
+                    plan,
+                    session=session,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+        except OperationalError as exc:
+            if self._is_lock_timeout_error(exc):
+                self._log_lock_timeout(
+                    LoadBalancingModelConfig.__tablename__,
+                    str(candidate.row.id),
+                    tx_id,
+                    business_key,
+                    exc,
+                )
+                return
+            raise
+
+    def _migrate_provider_model_credentials(self) -> None:
+        self._log_event(
+            "table_started",
+            "Started table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": ProviderModelCredential.__tablename__,
+            },
+        )
+
+        seen_business_keys: dict[_ProviderModelCredentialBusinessKey, list[str]] = {}
+        processed_groups = 0
+        last_id: str | None = None
+
+        while True:
+            candidates = self._load_provider_model_credential_candidates(last_id)
+            if not candidates:
+                break
+
+            for candidate in candidates:
+                last_id = str(candidate.row.id)
+                business_key = _ProviderModelCredentialBusinessKey(
+                    tenant_id=candidate.row.tenant_id,
+                    provider_name=candidate.row.provider_name,
+                    model_name=candidate.row.model_name,
+                    credential_name=candidate.row.credential_name,
+                    model_type=candidate.canonical_model_type,
+                )
+                if business_key in seen_business_keys:
+                    continue
+
+                seen_business_keys[business_key] = self._process_provider_model_credential_group(
+                    candidate,
+                    business_key,
+                )
+                processed_groups += 1
+
+        self._log_event(
+            "table_completed",
+            "Completed table migration.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": ProviderModelCredential.__tablename__,
+                "processed_groups": processed_groups,
+            },
+        )
+
+    def _load_provider_model_credential_candidates(
+        self, last_id: str | None
+    ) -> list[_RowWithRawModelType[ProviderModelCredential]]:
+        raw_model_type = sa.type_coerce(ProviderModelCredential.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        with _session_factory(self._engine) as session:
+            stmt = (
+                select(ProviderModelCredential, raw_model_type)
+                .where(
+                    ProviderModelCredential.tenant_id == self._tenant_id,
+                    sa.type_coerce(ProviderModelCredential.model_type, sa.String()).in_(self._selected_legacy_values()),
+                )
+                .order_by(ProviderModelCredential.id.asc())
+                .limit(self._batch_size)
+            )
+            if last_id is not None:
+                stmt = stmt.where(ProviderModelCredential.id > last_id)
+            rows = session.execute(stmt).all()
+
+        wrapped_rows: list[_RowWithRawModelType[ProviderModelCredential]] = []
+        for provider_model_credential, raw_value in rows:
+            canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
+            if canonical_model_type is None:
+                continue
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=provider_model_credential,
+                    raw_model_type=str(raw_value),
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _load_provider_model_credential_group(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[ProviderModelCredential],
+        *,
+        lock_rows: bool,
+    ) -> list[_RowWithRawModelType[ProviderModelCredential]]:
+        raw_model_type = sa.type_coerce(ProviderModelCredential.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        stmt = (
+            select(ProviderModelCredential, raw_model_type)
+            .where(
+                ProviderModelCredential.tenant_id == candidate.row.tenant_id,
+                ProviderModelCredential.provider_name == candidate.row.provider_name,
+                ProviderModelCredential.model_name == candidate.row.model_name,
+                ProviderModelCredential.credential_name == candidate.row.credential_name,
+                sa.type_coerce(ProviderModelCredential.model_type, sa.String()).in_(
+                    self._allowed_values_for_canonical_model_type(candidate.canonical_model_type)
+                ),
+            )
+            .order_by(ProviderModelCredential.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        rows = session.execute(stmt).all()
+        wrapped_rows: list[_RowWithRawModelType[ProviderModelCredential]] = []
+        for provider_model_credential, raw_value in rows:
+            raw_model_type_value = str(raw_value)
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=provider_model_credential,
+                    raw_model_type=raw_model_type_value,
+                    canonical_model_type=_LEGACY_TO_CANONICAL.get(
+                        raw_model_type_value,
+                        candidate.canonical_model_type,
+                    ),
+                )
+            )
+        return wrapped_rows
+
+    def _build_provider_model_credential_group_plan(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[ProviderModelCredential],
+        *,
+        lock_rows: bool,
+    ) -> _ProviderModelCredentialGroupPlan:
+        rows = self._load_provider_model_credential_group(session, candidate, lock_rows=lock_rows)
+        group_row_ids = [str(row.row.id) for row in rows]
+        if not self._has_legacy_rows(rows):
+            return _ProviderModelCredentialGroupPlan(
+                group_row_ids=group_row_ids,
+                winner=None,
+                loser_rows=[],
+                provider_model_rewrites=[],
+                load_balancing_rewrites=[],
+            )
+
+        winner = self._select_winner(rows)
+        loser_rows = [row for row in rows if row.row.id != winner.row.id]
+        return _ProviderModelCredentialGroupPlan(
+            group_row_ids=group_row_ids,
+            winner=winner,
+            loser_rows=loser_rows,
+            provider_model_rewrites=self._plan_provider_model_reference_rewrites(
+                session,
+                winner,
+                loser_rows,
+                lock_rows=lock_rows,
+            ),
+            load_balancing_rewrites=self._plan_load_balancing_reference_rewrites(
+                session,
+                winner,
+                loser_rows,
+                lock_rows=lock_rows,
+            ),
+        )
+
+    def _emit_provider_model_reference_rewrites(
+        self,
+        session: Session,
+        rewrites: Sequence[_ProviderModelReferenceRewritePlan],
+        *,
+        winner_credential_id: str,
+        loser_credential_ids: Sequence[str],
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> list[_CacheDeletePlan]:
+        cache_plans: list[_CacheDeletePlan] = []
+        for rewrite in rewrites:
+            self._log_row_updated(
+                ProviderModel.__tablename__,
+                rewrite.row_id,
+                {"credential_id": rewrite.old_credential_id},
+                {"credential_id": rewrite.new_credential_id},
+                tx_id=tx_id,
+                business_key=business_key,
+                rewrite_source={
+                    "rewrite_kind": "credential_reference",
+                    "winner_credential_id": winner_credential_id,
+                    "loser_credential_ids": list(loser_credential_ids),
+                },
+            )
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModel)
+                    .where(ProviderModel.id == rewrite.row_id)
+                    .values(credential_id=rewrite.new_credential_id)
+                )
+
+            cache_plans.append(
+                _CacheDeletePlan(
+                    tenant_id=self._tenant_id,
+                    identity_id=rewrite.row_id,
+                    cache_type=ProviderCredentialsCacheType.MODEL,
+                    table_name=ProviderModel.__tablename__,
+                    row_id=rewrite.row_id,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            )
+        return cache_plans
+
+    def _emit_load_balancing_reference_rewrites(
+        self,
+        session: Session,
+        rewrites: Sequence[_LoadBalancingCredentialRewritePlan],
+        *,
+        winner_credential_id: str,
+        loser_credential_ids: Sequence[str],
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> list[_CacheDeletePlan]:
+        cache_plans: list[_CacheDeletePlan] = []
+        for rewrite in rewrites:
+            self._log_row_updated(
+                LoadBalancingModelConfig.__tablename__,
+                rewrite.row_id,
+                {
+                    "credential_id": rewrite.old_credential_id,
+                    "encrypted_config": rewrite.old_encrypted_config,
+                    "name": rewrite.old_name,
+                },
+                {
+                    "credential_id": rewrite.new_credential_id,
+                    "encrypted_config": rewrite.new_encrypted_config,
+                    "name": rewrite.new_name,
+                },
+                tx_id=tx_id,
+                business_key=business_key,
+                rewrite_source={
+                    "rewrite_kind": "credential_reference",
+                    "winner_credential_id": winner_credential_id,
+                    "loser_credential_ids": list(loser_credential_ids),
+                },
+            )
+            if self._apply:
+                session.execute(
+                    sa.update(LoadBalancingModelConfig)
+                    .where(LoadBalancingModelConfig.id == rewrite.row_id)
+                    .values(
+                        credential_id=rewrite.new_credential_id,
+                        name=rewrite.new_name,
+                        encrypted_config=rewrite.new_encrypted_config,
+                    )
+                )
+
+            cache_plans.append(
+                _CacheDeletePlan(
+                    tenant_id=self._tenant_id,
+                    identity_id=rewrite.row_id,
+                    cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+                    table_name=LoadBalancingModelConfig.__tablename__,
+                    row_id=rewrite.row_id,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            )
+        return cache_plans
+
+    def _emit_provider_model_credential_group_plan(
+        self,
+        plan: _ProviderModelCredentialGroupPlan,
+        *,
+        session: Session,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+    ) -> None:
+        if plan.winner is None:
+            return
+
+        loser_credential_ids = [str(row.row.id) for row in plan.loser_rows]
+        winner_credential_id = str(plan.winner.row.id)
+        cache_plans: list[_CacheDeletePlan] = []
+        cache_plans.extend(
+            self._emit_provider_model_reference_rewrites(
+                session,
+                plan.provider_model_rewrites,
+                winner_credential_id=winner_credential_id,
+                loser_credential_ids=loser_credential_ids,
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+        )
+        cache_plans.extend(
+            self._emit_load_balancing_reference_rewrites(
+                session,
+                plan.load_balancing_rewrites,
+                winner_credential_id=winner_credential_id,
+                loser_credential_ids=loser_credential_ids,
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+        )
+
+        for loser in plan.loser_rows:
+            self._log_row_deleted(
+                ProviderModelCredential.__tablename__,
+                loser,
+                tx_id=tx_id,
+                business_key=business_key,
+                related_winner_id=winner_credential_id,
+            )
+            if self._apply:
+                session.execute(
+                    sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == str(loser.row.id))
+                )
+
+        if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            self._log_row_updated(
+                ProviderModelCredential.__tablename__,
+                winner_credential_id,
+                {"model_type": plan.winner.raw_model_type},
+                {"model_type": plan.winner.canonical_model_type.value},
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModelCredential)
+                    .where(ProviderModelCredential.id == winner_credential_id)
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
+
+        self._log_cache_plans(cache_plans, apply=self._apply)
+        self._log_group_processed(
+            ProviderModelCredential.__tablename__,
+            business_key,
+            plan.group_row_ids,
+            tx_id=tx_id,
+        )
+
+    def _process_provider_model_credential_group(
+        self,
+        candidate: _RowWithRawModelType[ProviderModelCredential],
+        business_key: _ProviderModelCredentialBusinessKey,
+    ) -> list[str]:
+        tx_id = self._new_tx_id()
+        business_key_attrs = asdict(business_key)
+        group_row_ids = [str(candidate.row.id)]
+
+        try:
+            with _session_factory(self._engine) as session, session.begin():
+                self._configure_lock_timeout(session)
+                plan = self._build_provider_model_credential_group_plan(session, candidate, lock_rows=True)
+                group_row_ids = plan.group_row_ids or group_row_ids
+                self._emit_provider_model_credential_group_plan(
+                    plan,
+                    session=session,
+                    tx_id=tx_id,
+                    business_key=business_key_attrs,
+                )
+        except OperationalError as exc:
+            if self._is_lock_timeout_error(exc):
+                self._log_lock_timeout(
+                    ProviderModelCredential.__tablename__,
+                    str(candidate.row.id),
+                    tx_id,
+                    business_key_attrs,
+                    exc,
+                )
+                return group_row_ids
+            raise
+
+        return group_row_ids
+
+    def _plan_provider_model_reference_rewrites(
+        self,
+        session: Session,
+        winner: _RowWithRawModelType[ProviderModelCredential],
+        loser_rows: Sequence[_RowWithRawModelType[ProviderModelCredential]],
+        *,
+        lock_rows: bool,
+    ) -> list[_ProviderModelReferenceRewritePlan]:
+        loser_ids = [str(row.row.id) for row in loser_rows]
+        if not loser_ids:
+            return []
+
+        stmt = (
+            select(ProviderModel)
+            .where(
+                ProviderModel.tenant_id == self._tenant_id,
+                ProviderModel.credential_id.in_(loser_ids),
+            )
+            .order_by(ProviderModel.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        rewrite_plans: list[_ProviderModelReferenceRewritePlan] = []
+        provider_models = session.execute(stmt).scalars().all()
+        for provider_model in provider_models:
+            rewrite_plans.append(
+                _ProviderModelReferenceRewritePlan(
+                    row_id=str(provider_model.id),
+                    old_credential_id=str(provider_model.credential_id),
+                    new_credential_id=str(winner.row.id),
+                )
+            )
+        return rewrite_plans
+
+    def _plan_load_balancing_reference_rewrites(
+        self,
+        session: Session,
+        winner: _RowWithRawModelType[ProviderModelCredential],
+        loser_rows: Sequence[_RowWithRawModelType[ProviderModelCredential]],
+        *,
+        lock_rows: bool,
+    ) -> list[_LoadBalancingCredentialRewritePlan]:
+        loser_ids = [str(row.row.id) for row in loser_rows]
+        if not loser_ids:
+            return []
+
+        stmt = (
+            select(LoadBalancingModelConfig)
+            .where(
+                LoadBalancingModelConfig.tenant_id == self._tenant_id,
+                LoadBalancingModelConfig.credential_id.in_(loser_ids),
+            )
+            .order_by(LoadBalancingModelConfig.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        winner_credential = winner.row
+        winner_credential_id = str(winner_credential.id)
+        winner_credential_name = winner_credential.credential_name
+        winner_encrypted_config = winner_credential.encrypted_config
+
+        rewrite_plans: list[_LoadBalancingCredentialRewritePlan] = []
+        load_balancing_model_configs = session.execute(stmt).scalars().all()
+        for load_balancing_model_config in load_balancing_model_configs:
+            rewrite_plans.append(
+                _LoadBalancingCredentialRewritePlan(
+                    row_id=str(load_balancing_model_config.id),
+                    old_credential_id=load_balancing_model_config.credential_id,
+                    old_name=load_balancing_model_config.name,
+                    old_encrypted_config=load_balancing_model_config.encrypted_config,
+                    new_credential_id=winner_credential_id,
+                    new_name=winner_credential_name,
+                    new_encrypted_config=winner_encrypted_config,
+                )
+            )
+        return rewrite_plans
+
+    def _configure_lock_timeout(self, session: Session) -> None:
+        dialect_name = session.get_bind().dialect.name
+        if dialect_name == "postgresql":
+            session.execute(sa.text("SET LOCAL lock_timeout = :timeout"), {"timeout": f"{self._lock_timeout_seconds}s"})
+            return
+        if dialect_name == "mysql":
+            session.execute(
+                sa.text("SET SESSION innodb_lock_wait_timeout = :timeout"),
+                {"timeout": self._lock_timeout_seconds},
+            )
+            session.execute(
+                sa.text("SET SESSION lock_wait_timeout = :timeout"),
+                {"timeout": self._lock_timeout_seconds},
+            )
+
+    def _is_lock_timeout_error(self, exc: OperationalError) -> bool:
+        message = str(exc).lower()
+        return (
+            "lock wait timeout" in message
+            or "lock timeout" in message
+            or "could not obtain lock" in message
+            or "canceling statement due to lock timeout" in message
+        )
+
+    def _log_lock_timeout(
+        self,
+        table_name: str,
+        row_id: str,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+        exc: OperationalError,
+    ) -> None:
+        self._log_event(
+            "lock_timeout_skipped",
+            "Skipped transaction because row lock timed out.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": table_name,
+                "id": row_id,
+                "tx_id": tx_id,
+                "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
+                "error": str(exc),
+            },
+        )
+
+    def _row_to_dict(self, row: TypeBase, *, raw_model_type: str | None = None) -> dict[str, object]:
+        mapper = sa.inspect(row).mapper
+        row_dict = {column.key: row.__dict__[column.key] for column in mapper.column_attrs}
+        if raw_model_type is not None and "model_type" in row_dict:
+            row_dict["model_type"] = raw_model_type
+        return _normalize_log_mapping(row_dict)
+
+    def _log_row_deleted[T: TypeBase](
+        self,
+        table_name: str,
+        row: _RowWithRawModelType[T],
+        *,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+        related_winner_id: str,
+    ) -> None:
+        self._log_event(
+            "row_deleted",
+            "Deleted loser row during canonicalization.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": table_name,
+                "id": self._row_id(row.row),
+                "tx_id": tx_id,
+                "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
+                "merge_winner_id": related_winner_id,
+                "row": self._row_to_dict(row.row, raw_model_type=row.raw_model_type),
+            },
+        )
+
+    def _log_row_updated(
+        self,
+        table_name: str,
+        row_id: str,
+        old_values: dict[str, object],
+        new_values: dict[str, object],
+        *,
+        tx_id: str,
+        business_key: _BusinessKey | Mapping[str, object],
+        rewrite_source: dict[str, object] | None = None,
+    ) -> None:
+        attrs: dict[str, object] = {
+            "tenant_id": self._tenant_id,
+            "apply": self._apply,
+            "table_name": table_name,
+            "id": row_id,
+            "tx_id": tx_id,
+            "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
+            "old_values": _normalize_log_mapping(old_values),
+            "new_values": _normalize_log_mapping(new_values),
+        }
+        if rewrite_source is not None:
+            attrs["rewrite_source"] = rewrite_source
+        self._log_event("row_updated", "Updated row values during canonicalization.", attrs)
+
+    def _log_group_processed(
+        self,
+        table_name: str,
+        business_key: _BusinessKey | Mapping[str, object],
+        group_row_ids: Sequence[str],
+        *,
+        tx_id: str,
+    ) -> None:
+        self._log_event(
+            "group_processed",
+            "Processed business-key group during canonicalization.",
+            {
+                "tenant_id": self._tenant_id,
+                "apply": self._apply,
+                "table_name": table_name,
+                "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
+                "group_row_ids": list(group_row_ids),
+                "tx_id": tx_id,
+            },
+        )
+
+    def _log_cache_plans(self, cache_plans: Iterable[_CacheDeletePlan], *, apply: bool) -> None:
+        for cache_plan in cache_plans:
+            if apply:
+                try:
+                    ProviderCredentialsCache(
+                        tenant_id=cache_plan.tenant_id,
+                        identity_id=cache_plan.identity_id,
+                        cache_type=cache_plan.cache_type,
+                    ).delete()
+                    self._log_event(
+                        "cache_deleted",
+                        "Deleted related cache entry.",
+                        {
+                            "tenant_id": cache_plan.tenant_id,
+                            "apply": apply,
+                            "table_name": cache_plan.table_name,
+                            "id": cache_plan.row_id,
+                            "cache_type": cache_plan.cache_type.value,
+                            "tx_id": cache_plan.tx_id,
+                            "business_key": (
+                                asdict(cache_plan.business_key)
+                                if dataclasses.is_dataclass(cache_plan.business_key)
+                                else cache_plan.business_key
+                            ),
+                        },
+                    )
+                except Exception as exc:
+                    self._log_event(
+                        "cache_delete_failed",
+                        "Failed to delete related cache entry.",
+                        {
+                            "tenant_id": cache_plan.tenant_id,
+                            "apply": apply,
+                            "table_name": cache_plan.table_name,
+                            "id": cache_plan.row_id,
+                            "cache_type": cache_plan.cache_type.value,
+                            "tx_id": cache_plan.tx_id,
+                            "business_key": (
+                                asdict(cache_plan.business_key)
+                                if dataclasses.is_dataclass(cache_plan.business_key)
+                                else cache_plan.business_key
+                            ),
+                            "error": str(exc),
+                        },
+                    )
+            else:
+                self._log_event(
+                    "cache_delete_planned",
+                    "Would delete related cache entry in apply mode.",
+                    {
+                        "tenant_id": cache_plan.tenant_id,
+                        "apply": apply,
+                        "table_name": cache_plan.table_name,
+                        "id": cache_plan.row_id,
+                        "cache_type": cache_plan.cache_type.value,
+                        "tx_id": cache_plan.tx_id,
+                        "business_key": (
+                            asdict(cache_plan.business_key)
+                            if dataclasses.is_dataclass(cache_plan.business_key)
+                            else cache_plan.business_key
+                        ),
+                    },
+                )
+
+    def _log_event(self, event: str, message: str, attrs: dict[str, object]) -> None:
+        record = {
+            "event": event,
+            "message": message,
+            "attrs": _normalize_log_payload(attrs),
+            "ts": naive_utc_now().isoformat(),
+        }
+        print(json.dumps(record, default=_json_default), file=self._output, flush=True)
+
+
+def load_tenant_ids_from_file(path: str) -> list[str]:
+    """
+    Load tenant ids from a plain-text file, one tenant id per line.
+    """
+
+    tenant_ids: list[str] = []
+    seen_tenant_ids: set[str] = set()
+    with open(path, encoding="utf-8") as file:
+        for raw_line in file:
+            tenant_id = raw_line.strip()
+            if not tenant_id or tenant_id in seen_tenant_ids:
+                continue
+            seen_tenant_ids.add(tenant_id)
+            tenant_ids.append(tenant_id)
+    return tenant_ids
