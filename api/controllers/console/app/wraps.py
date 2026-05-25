@@ -66,8 +66,7 @@ def with_session[T, **P, R](
     *,
     write: bool = True,
 ) -> (
-    Callable[Concatenate[T, P], R]
-    | Callable[[Callable[Concatenate[T, Session, P], R]], Callable[Concatenate[T, P], R]]
+    Callable[Concatenate[T, P], R] | Callable[[Callable[Concatenate[T, Session, P], R]], Callable[Concatenate[T, P], R]]
 ):
     """Inject a request-scoped session, using a transaction only for write handlers."""
 
