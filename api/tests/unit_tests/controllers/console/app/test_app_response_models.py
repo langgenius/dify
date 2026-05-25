@@ -7,6 +7,7 @@ from importlib import util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from flask.views import MethodView
@@ -501,3 +502,70 @@ def test_app_detail_api_attaches_permission_keys_from_access_matrix(app, app_mod
 
     assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit", "app.log.access"]
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.log.access"]
+
+
+def test_app_copy_api_attaches_permission_keys(app, app_module):
+    method = app_module.AppCopyApi.post
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-new",
+        name="Copied App",
+        description="Summary",
+        mode_compatible_with_agent="workflow",
+        enable_site=True,
+        enable_api=True,
+        permission_keys=[],
+    )
+
+    import_result = SimpleNamespace(status=app_module.ImportStatus.COMPLETED, app_id="app-new")
+    fake_session = MagicMock()
+    fake_session.__enter__.return_value = fake_session
+    fake_session.__exit__.return_value = None
+    fake_session.scalar.return_value = app_obj
+
+    with app.test_request_context("/apps/app-original/copy", method="POST", json={}):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module,
+                "current_account_with_tenant",
+                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
+            )
+            monkeypatch.setattr(
+                app_module,
+                "AppDslService",
+                lambda *_args, **_kwargs: SimpleNamespace(
+                    export_dsl=lambda **_kwargs: "dsl",
+                    import_app=lambda **_kwargs: import_result,
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+            monkeypatch.setattr(
+                app_module,
+                "Session",
+                lambda *_args, **_kwargs: fake_session,
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "matrix",
+                lambda tenant_id, account_id, app_id: SimpleNamespace(
+                    items=[
+                        SimpleNamespace(
+                            policy=SimpleNamespace(permission_keys=["app.acl.view_layout", "app.acl.edit"])
+                        )
+                    ]
+                ),
+            )
+
+            resp, status = method(app_module.AppCopyApi(), app_model=SimpleNamespace(id="app-original"))
+
+    assert status == 201
+    assert fake_session.scalar.called
+    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
