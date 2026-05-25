@@ -32,3 +32,16 @@ class DeploymentConfig(BaseSettings):
         description="Deployment environment (e.g., 'PRODUCTION', 'DEVELOPMENT'), default to PRODUCTION",
         default="PRODUCTION",
     )
+
+    # Blueprint registration toggles for independent Studio / Console deployment.
+    # Both default to True so existing installations are unchanged.
+
+    ENABLE_CONSOLE_API: bool = Field(
+        description="Register the /console/api blueprint (Explore, billing, datasets, auth, workspace).",
+        default=True,
+    )
+
+    ENABLE_STUDIO_API: bool = Field(
+        description="Register the /studio/api blueprint (app management, workflow editor, agent).",
+        default=True,
+    )

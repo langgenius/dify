@@ -25,14 +25,20 @@ def _apply_cors_once(bp, /, **cors_kwargs):
 def init_app(app: DifyApp):
     # register blueprint routers
 
-    from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp
     from controllers.inner_api import bp as inner_api_bp
     from controllers.mcp import bp as mcp_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
-    from studio_api.controllers import studio_bp
+
+    # Studio API blueprint (app management, workflow editor, agent)
+    if dify_config.ENABLE_STUDIO_API:
+        from studio_api.controllers import studio_bp
+
+    # Console API blueprint (Explore, billing, datasets, auth, workspace)
+    if dify_config.ENABLE_CONSOLE_API:
+        from controllers.console import bp as console_app_bp
 
     _apply_cors_once(
         service_api_bp,
@@ -70,25 +76,27 @@ def init_app(app: DifyApp):
     )
     app.register_blueprint(web_bp)
 
-    _apply_cors_once(
-        console_app_bp,
-        resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
-        supports_credentials=True,
-        allow_headers=list(AUTHENTICATED_HEADERS),
-        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
-        expose_headers=list(EXPOSED_HEADERS),
-    )
-    app.register_blueprint(console_app_bp)
+    if dify_config.ENABLE_CONSOLE_API:
+        _apply_cors_once(
+            console_app_bp,
+            resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+            supports_credentials=True,
+            allow_headers=list(AUTHENTICATED_HEADERS),
+            methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+            expose_headers=list(EXPOSED_HEADERS),
+        )
+        app.register_blueprint(console_app_bp)
 
-    _apply_cors_once(
-        studio_bp,
-        resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
-        supports_credentials=True,
-        allow_headers=list(AUTHENTICATED_HEADERS),
-        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
-        expose_headers=list(EXPOSED_HEADERS),
-    )
-    app.register_blueprint(studio_bp)
+    if dify_config.ENABLE_STUDIO_API:
+        _apply_cors_once(
+            studio_bp,
+            resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+            supports_credentials=True,
+            allow_headers=list(AUTHENTICATED_HEADERS),
+            methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+            expose_headers=list(EXPOSED_HEADERS),
+        )
+        app.register_blueprint(studio_bp)
 
     _apply_cors_once(
         files_bp,
