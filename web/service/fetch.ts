@@ -3,7 +3,7 @@ import type { IOtherOptions } from './base'
 import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
-import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, STUDIO_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -170,6 +170,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     base = MARKETPLACE_API_PREFIX
   else if (isPublicAPI)
     base = PUBLIC_API_PREFIX
+  else if (otherOptions.isStudioAPI)
+    base = STUDIO_API_PREFIX
   else
     base = API_PREFIX
 

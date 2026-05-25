@@ -16,7 +16,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { get, post } from './base'
+import { get, post } from './base-studio'
 
 const NAME_SPACE = 'apps'
 

@@ -9,7 +9,7 @@ import type {
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
-import { get, post } from './base'
+import { get, post } from './base-studio'
 import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
 

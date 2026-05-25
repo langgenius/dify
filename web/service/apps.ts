@@ -2,7 +2,7 @@ import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)
 import type { AppDetailResponse, AppListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, WebhookTriggerResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
-import { del, get, patch, post, put } from './base'
+import { del, get, patch, post, put } from './base-studio'
 
 export const fetchAppList = ({ url, params }: { url: string, params?: Record<string, any> }): Promise<AppListResponse> => {
   return get<AppListResponse>(url, { params })

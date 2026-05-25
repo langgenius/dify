@@ -13,7 +13,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
-import { del, get, post, put } from './base'
+import { del, get, post, put } from './base-studio'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'

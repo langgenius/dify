@@ -117,6 +117,11 @@ const clientSchema = {
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_SITE_ABOUT: z.string().optional(),
   NEXT_PUBLIC_SOCKET_URL: z.string().optional(),
+  /**
+   * Studio API prefix — when set, Studio service calls use this prefix.
+   * Defaults to http://localhost:5001/studio/api
+   */
+  NEXT_PUBLIC_STUDIO_API_PREFIX: z.string().optional(),
   NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: z.email().optional(),
   NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: coercedBoolean.default(false),
   /**
@@ -163,6 +168,7 @@ export const env = createEnv({
     NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
     NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
+    NEXT_PUBLIC_STUDIO_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_STUDIO_API_PREFIX : getRuntimeEnvFromBody('studioApiPrefix'),
     NEXT_PUBLIC_BASE_PATH: isServer ? process.env.NEXT_PUBLIC_BASE_PATH : getRuntimeEnvFromBody('basePath'),
     NEXT_PUBLIC_BATCH_CONCURRENCY: isServer ? process.env.NEXT_PUBLIC_BATCH_CONCURRENCY : getRuntimeEnvFromBody('batchConcurrency'),
     NEXT_PUBLIC_COOKIE_DOMAIN: isServer ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN : getRuntimeEnvFromBody('cookieDomain'),

@@ -32,7 +32,7 @@ import type {
 } from '@/models/pipeline'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { DatasourceType } from '@/models/pipeline'
-import { del, get, patch, post } from './base'
+import { del, get, patch, post } from './base-studio'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'

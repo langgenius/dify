@@ -11,7 +11,7 @@ import type {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { get, post } from './base'
+import { get, post } from './base-studio'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'

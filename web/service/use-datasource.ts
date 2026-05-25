@@ -6,7 +6,7 @@ import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { get } from './base'
+import { get } from './base-studio'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'data-source-auth'

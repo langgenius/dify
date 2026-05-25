@@ -22,7 +22,7 @@ import type {
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
-import { get, post } from './base'
+import { get, post } from './base-studio'
 
 /**
  * True iff `err` is a 401 Response thrown by `service/base.ts`.

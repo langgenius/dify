@@ -10,7 +10,7 @@ import type {
   WorkflowRunDetailResponse,
 } from '@/models/log'
 import type { NodeTracingListResponse } from '@/types/workflow'
-import { get, post } from './base'
+import { get, post } from './base-studio'
 
 // (Chat Application) Message list in one session
 export const fetchChatMessages = ({ url, params }: { url: string, params: ChatMessagesRequest }): Promise<ChatMessagesResponse> => {

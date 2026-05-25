@@ -1,7 +1,7 @@
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
-import { get, post, ssePost } from './base'
+import { get, post, ssePost } from './base-studio'
 
 type BasicAppFirstRes = {
   prompt: string

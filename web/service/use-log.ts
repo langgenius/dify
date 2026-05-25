@@ -9,7 +9,7 @@ import type {
   WorkflowPausedDetailsResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
-import { get } from './base'
+import { get } from './base-studio'
 import { consoleClient } from './client'
 
 const NAME_SPACE = 'log'

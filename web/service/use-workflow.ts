@@ -12,7 +12,7 @@ import type {
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post, put } from './base'
+import { del, get, patch, post, put } from './base-studio'
 import { useInvalid, useReset } from './use-base'
 import { getFlowPrefix } from './utils'
 

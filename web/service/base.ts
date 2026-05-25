@@ -84,6 +84,8 @@ type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse)
 export type IOtherOptions = {
   isPublicAPI?: boolean
   isMarketplaceAPI?: boolean
+  /** If true, uses STUDIO_API_PREFIX instead of API_PREFIX for the base URL */
+  isStudioAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean

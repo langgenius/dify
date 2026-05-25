@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { get, post } from './base'
+import { get, post } from './base-studio'
 
 const NAME_SPACE = 'endpoints'
 

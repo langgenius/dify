@@ -1,6 +1,6 @@
 import type { AnnotationCreateResponse, AnnotationEnableStatus, AnnotationItemBasic, EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
-import { del, get, post } from './base'
+import { del, get, post } from './base-studio'
 
 export const fetchAnnotationConfig = (appId: string) => {
   return get(`apps/${appId}/annotation-setting`)
