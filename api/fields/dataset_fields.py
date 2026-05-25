@@ -200,7 +200,7 @@ class DatasetExternalKnowledgeInfoResponse(ResponseModel):
 
 class DatasetExternalRetrievalModelResponse(ResponseModel):
     top_k: int
-    score_threshold: float
+    score_threshold: float | None = None
     score_threshold_enabled: bool | None = None
 
 
