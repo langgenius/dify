@@ -18,7 +18,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
@@ -64,7 +63,6 @@ const DropDown = ({
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys), [dataset?.permission_keys])
   const canShowOperations = datasetACLCapabilities.canEdit
@@ -155,7 +153,7 @@ const DropDown = ({
       >
         <Menu
           showEdit={datasetACLCapabilities.canEdit}
-          showDelete={!isCurrentWorkspaceDatasetOperator && datasetACLCapabilities.canDelete}
+          showDelete={datasetACLCapabilities.canDelete}
           showExportPipeline={datasetACLCapabilities.canImportExportDSL}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}

@@ -11,7 +11,6 @@ import Operations from '../operations'
 
 type OperationsDropdownProps = {
   dataset: DataSet
-  isCurrentWorkspaceDatasetOperator: boolean
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
@@ -20,7 +19,6 @@ type OperationsDropdownProps = {
 
 const OperationsDropdown = ({
   dataset,
-  isCurrentWorkspaceDatasetOperator,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
@@ -65,7 +63,7 @@ const OperationsDropdown = ({
         >
           <Operations
             showEdit={datasetACLCapabilities.canEdit}
-            showDelete={!isCurrentWorkspaceDatasetOperator && datasetACLCapabilities.canDelete}
+            showDelete={datasetACLCapabilities.canDelete}
             showExportPipeline={dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL}
             showAccessConfig={datasetACLCapabilities.canAccessConfig}
             openRenameModal={openRenameModal}

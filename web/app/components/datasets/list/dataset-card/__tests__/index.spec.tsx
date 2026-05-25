@@ -25,10 +25,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) => selector({ isCurrentWorkspaceDatasetOperator: false }),
-}))
-
 vi.mock('../hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
     modalState: {
@@ -55,6 +51,7 @@ vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
 const renderDatasetCardTags = vi.hoisted(() => vi.fn())
+const renderOperationsDropdown = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   DatasetCardTags: (props: { onClick: (e: React.MouseEvent) => void, canBindOrUnbindTags?: boolean }) => {
@@ -65,7 +62,10 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   },
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: () => <div data-testid="operations-dropdown" />,
+  default: (props: Record<string, unknown>) => {
+    renderOperationsDropdown(props)
+    return <div data-testid="operations-dropdown" />
+  },
 }))
 
 // Factory function for DataSet mock data
@@ -283,6 +283,20 @@ describe('DatasetCard Component', () => {
 
     expect(renderDatasetCardTags).toHaveBeenCalledWith(expect.objectContaining({
       canBindOrUnbindTags: true,
+    }))
+  })
+
+  it('should pass dataset operations without legacy workspace-role props', () => {
+    const dataset = createMockDataset({
+      permission_keys: [DatasetACLPermission.Delete],
+    })
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(renderOperationsDropdown).toHaveBeenCalledWith(expect.objectContaining({
+      dataset,
+    }))
+    expect(renderOperationsDropdown).toHaveBeenCalledWith(expect.not.objectContaining({
+      isCurrentWorkspaceDatasetOperator: expect.any(Boolean),
     }))
   })
 })

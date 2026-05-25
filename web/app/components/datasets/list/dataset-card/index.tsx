@@ -1,7 +1,6 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import { useMemo } from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -27,8 +26,6 @@ const DatasetCard = ({
   onOpenTagManagement = () => {},
 }: DatasetCardProps) => {
   const { push } = useRouter()
-
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -89,7 +86,6 @@ const DatasetCard = ({
         <DatasetCardFooter dataset={dataset} />
         <OperationsDropdown
           dataset={dataset}
-          isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
