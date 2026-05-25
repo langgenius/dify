@@ -2,60 +2,19 @@ import type { CommonResponse } from '@/models/common'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-export type UserProfile = {
-  id: string
-  name: string
-  email: string
-  avatar_url?: string
-}
+// Re-export canonical type definitions from the studio package
+export type {
+  UserProfile,
+  WorkflowCommentDetail,
+  WorkflowCommentDetailReply,
+  WorkflowCommentList,
+} from '@dify/studio-frontend/contracts/workflow-comment'
 
-export type WorkflowCommentList = {
-  id: string
-  position_x: number
-  position_y: number
-  content: string
-  created_by: string
-  created_by_account: UserProfile | null
-  created_at: number
-  updated_at: number
-  resolved: boolean
-  resolved_by?: string | null
-  resolved_by_account?: UserProfile | null
-  resolved_at?: number | null
-  mention_count: number
-  reply_count: number
-  participants: UserProfile[]
-}
-
+// Inline types used only by ORPC contract definitions below
 type WorkflowCommentDetailMention = {
   mentioned_user_id: string
-  mentioned_user_account?: UserProfile | null
+  mentioned_user_account?: import('@dify/studio-frontend/contracts/workflow-comment').UserProfile | null
   reply_id: string | null
-}
-
-export type WorkflowCommentDetailReply = {
-  id: string
-  content: string
-  created_by: string
-  created_by_account?: UserProfile | null
-  created_at: number
-}
-
-export type WorkflowCommentDetail = {
-  id: string
-  position_x: number
-  position_y: number
-  content: string
-  created_by: string
-  created_by_account: UserProfile | null
-  created_at: number
-  updated_at: number
-  resolved: boolean
-  resolved_by?: string | null
-  resolved_by_account?: UserProfile | null
-  resolved_at?: number | null
-  replies: WorkflowCommentDetailReply[]
-  mentions: WorkflowCommentDetailMention[]
 }
 
 type WorkflowCommentCreateRes = {
@@ -114,7 +73,7 @@ const workflowCommentListContract = base
       appId: string
     }
   }>())
-  .output(type<{ data: WorkflowCommentList[] }>())
+  .output(type<{ data: import('@dify/studio-frontend/contracts/workflow-comment').WorkflowCommentList[] }>())
 
 const workflowCommentCreateContract = base
   .route({
@@ -140,7 +99,7 @@ const workflowCommentDetailContract = base
       commentId: string
     }
   }>())
-  .output(type<WorkflowCommentDetail>())
+  .output(type<import('@dify/studio-frontend/contracts/workflow-comment').WorkflowCommentDetail>())
 
 const workflowCommentUpdateContract = base
   .route({
@@ -235,7 +194,7 @@ const workflowCommentMentionUsersContract = base
       appId: string
     }
   }>())
-  .output(type<{ users: UserProfile[] }>())
+  .output(type<{ users: import('@dify/studio-frontend/contracts/workflow-comment').UserProfile[] }>())
 
 export const workflowCommentContracts = {
   list: workflowCommentListContract,

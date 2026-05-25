@@ -25,3 +25,6 @@ export * from './app-sidebar'
 
 // Develop / API access
 export * from './develop'
+
+// Contracts (type definitions for Studio API contracts)
+export * from './contracts'
