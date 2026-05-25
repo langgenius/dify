@@ -104,6 +104,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
     <Switch
       checked={checked}
       disabled={disabled}
+      loading={toggleDeveloperAPI.isPending}
       onCheckedChange={(enabled) => {
         toggleDeveloperAPI.mutate({
           params: { appInstanceId },

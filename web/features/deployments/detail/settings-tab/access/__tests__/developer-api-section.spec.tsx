@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DeveloperApiHeaderActions, DeveloperApiSection } from '../developer-api-section'
+import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch, DeveloperApiSection } from '../developer-api-section'
 
 type QueryOptions = {
   queryKey?: string[]
@@ -19,6 +19,7 @@ type MutationOptions = {
 }
 
 const mockUseQuery = vi.fn<(options: QueryOptions) => QueryResult>()
+let mockUpdateAccessChannelsPending = false
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: (options: MutationOptions) => ({
@@ -26,6 +27,9 @@ vi.mock('@tanstack/react-query', () => ({
       if (options.mutationKey?.[0] === 'create-api-key')
         callbacks?.onSuccess?.({ token: 'app-created-token' })
     }),
+    isPending: options.mutationKey?.[0] === 'update-access-channels'
+      ? mockUpdateAccessChannelsPending
+      : false,
   }),
   useQueries: () => [],
   useQuery: (options: QueryOptions) => mockUseQuery(options),
@@ -80,6 +84,24 @@ function renderWithJotai(node: ReactNode) {
 describe('DeveloperApiSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUpdateAccessChannelsPending = false
+  })
+
+  describe('Header switch', () => {
+    it('should show loading feedback while toggling developer API access', () => {
+      // Arrange
+      mockUpdateAccessChannelsPending = true
+      mockUseQuery.mockReturnValue(queryResult({ data: { accessChannels: { developerApiEnabled: false } } }))
+
+      // Act
+      const { container } = render(<DeveloperApiHeaderSwitch appInstanceId="instance-1" />)
+
+      // Assert
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-busy', 'true')
+      expect(switchElement).toHaveAttribute('data-disabled', '')
+      expect(container.querySelector('.i-ri-loader-2-line')).toBeInTheDocument()
+    })
   })
 
   // Loading should reserve the same shape as the enabled API key list.

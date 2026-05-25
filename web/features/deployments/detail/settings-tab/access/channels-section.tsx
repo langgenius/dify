@@ -29,6 +29,7 @@ function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
     <Switch
       checked={checked}
       disabled={disabled}
+      loading={toggleAccessChannel.isPending}
       onCheckedChange={(enabled) => {
         toggleAccessChannel.mutate({
           params: { appInstanceId },
