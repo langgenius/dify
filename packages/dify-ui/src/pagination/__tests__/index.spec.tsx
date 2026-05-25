@@ -180,7 +180,7 @@ describe('Pagination primitive', () => {
     expect(onPageChange).not.toHaveBeenCalled()
   })
 
-  it('uses Base UI ToggleGroup semantics for page size', async () => {
+  it('uses segmented control semantics for page size', async () => {
     const { screen, onPageSizeChange } = await renderPagination()
 
     await expect.element(screen.getByRole('group', { name: 'Items per page' })).toHaveClass('bg-components-segmented-control-bg-normal')
