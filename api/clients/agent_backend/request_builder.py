@@ -130,7 +130,6 @@ class AgentBackendRunRequestBuilder:
                     metadata=run_input.metadata,
                     config=DifyPluginLayerConfig(
                         tenant_id=run_input.model.tenant_id,
-                        plugin_id=run_input.model.plugin_id,
                         user_id=run_input.model.user_id,
                     ),
                 ),
@@ -140,6 +139,7 @@ class AgentBackendRunRequestBuilder:
                     deps={"plugin": DIFY_PLUGIN_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=DifyPluginLLMLayerConfig(
+                        plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         credentials=run_input.model.credentials,

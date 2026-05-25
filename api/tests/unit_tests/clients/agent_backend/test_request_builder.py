@@ -95,7 +95,9 @@ def test_request_builder_sets_model_and_output_layer_contract_ids():
     layers = {layer.name: layer for layer in request.composition.layers}
 
     assert layers["plugin"].type == DIFY_PLUGIN_LAYER_TYPE_ID
+    assert not hasattr(layers["plugin"].config, "plugin_id")
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].type == DIFY_PLUGIN_LLM_LAYER_TYPE_ID
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID].config.plugin_id == "langgenius/openai"
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].deps == {"plugin": "plugin"}
     assert layers[DIFY_AGENT_OUTPUT_LAYER_ID].type == DIFY_OUTPUT_LAYER_TYPE_ID
 
