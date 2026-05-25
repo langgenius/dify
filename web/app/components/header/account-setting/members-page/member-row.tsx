@@ -16,7 +16,6 @@ type MemberRowProps = {
   }>
   isCurrentUser: boolean
   canManage: boolean
-  operatorRole: string
   canTransferOwnership: boolean
   onOpenDetails: (member: Member) => void
   onOperate: () => void

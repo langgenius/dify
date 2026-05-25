@@ -156,7 +156,6 @@ const MembersPage = () => {
                 roles={account.roles}
                 isCurrentUser={userProfile.email === account.email}
                 canManage={canManageMembers}
-                operatorRole={currentWorkspace.role}
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
                 onOpenDetails={handleOpenDetails}
                 onOperate={refetch}
