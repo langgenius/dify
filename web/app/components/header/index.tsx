@@ -46,7 +46,7 @@ const Header = () => {
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   const canAccessExplorePage = hasPermission(workspacePermissionKeys, 'page.explore.access')
-  const canAccessAppsPage = hasPermission(workspacePermissionKeys, 'page.apps.access') || true // todo: remove true after app page permission ready
+  const canAccessAppsPage = hasPermission(workspacePermissionKeys, 'page.apps.access')
   const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
   const canAccessToolsPage = hasPermission(workspacePermissionKeys, 'page.tool.access')
 
