@@ -124,6 +124,7 @@ catalog:
   '@typescript/native-preview': 7.0.0-dev.20260523.1
   '@vitejs/plugin-react': 6.0.2
   '@vitejs/plugin-rsc': 0.5.26
+  '@vitest/browser': 4.1.7
   '@vitest/coverage-v8': 4.1.7
   abcjs: 6.6.3
   agentation: 3.0.2
