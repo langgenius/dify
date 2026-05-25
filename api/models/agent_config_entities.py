@@ -330,6 +330,21 @@ DEFAULT_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
 )
 
 
+def effective_declared_outputs(
+    declared_outputs: list[DeclaredOutputConfig] | tuple[DeclaredOutputConfig, ...],
+) -> tuple[DeclaredOutputConfig, ...]:
+    """Return the outputs the runtime actually presents.
+
+    Returns ``declared_outputs`` unchanged when non-empty, otherwise the PRD
+    defaults from ``DEFAULT_DECLARED_OUTPUTS``. Shared helper so Composer load
+    responses, runtime request builder, and the Node Output Inspector all use
+    the same fallback (stage 4 §4.1, decision D-3).
+    """
+    if declared_outputs:
+        return tuple(declared_outputs)
+    return DEFAULT_DECLARED_OUTPUTS
+
+
 class WorkflowNodeJobConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

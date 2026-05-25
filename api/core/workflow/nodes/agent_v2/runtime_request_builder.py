@@ -18,12 +18,14 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
-    DEFAULT_DECLARED_OUTPUTS,
     AgentSoulConfig,
     DeclaredArrayItem,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+)
+from models.agent_config_entities import (
+    effective_declared_outputs as _effective_declared_outputs,
 )
 
 from .output_failure_orchestrator import retry_idempotency_key
@@ -270,15 +272,12 @@ class WorkflowAgentRuntimeRequestBuilder:
     def effective_declared_outputs(
         declared_outputs: Sequence[DeclaredOutputConfig],
     ) -> Sequence[DeclaredOutputConfig]:
-        """Return ``declared_outputs`` unchanged, or PRD-defaults when empty.
+        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
 
-        Public so Composer load (stage 4 §10.1) and the Node Output Inspector
-        (§8) can surface the same effective set without re-implementing the
-        fallback logic.
+        Kept as a static method on the builder so existing call sites
+        (``agent_node._run``, tests) don't need to change their import.
         """
-        if declared_outputs:
-            return declared_outputs
-        return DEFAULT_DECLARED_OUTPUTS
+        return _effective_declared_outputs(list(declared_outputs))
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
