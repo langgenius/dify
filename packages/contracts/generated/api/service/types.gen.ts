@@ -258,7 +258,7 @@ export type DatasetExternalKnowledgeInfoResponse = {
 }
 
 export type DatasetExternalRetrievalModelResponse = {
-  score_threshold: number
+  score_threshold?: number | null
   score_threshold_enabled?: boolean | null
   top_k: number
 }
