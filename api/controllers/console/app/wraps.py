@@ -42,7 +42,8 @@ def _load_app_model_with_trial(app_id: str) -> App | None:
     app_model = db.session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
     return app_model
 
-def with_session[T, **P, R](readonly: bool=False):
+
+def with_session[T, **P, R](readonly: bool = False):
     def decorator(view: Callable[Concatenate[T, Session, P], R]):
         @wraps(view)
         def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
@@ -52,8 +53,11 @@ def with_session[T, **P, R](readonly: bool=False):
             else:
                 with session_factory.get_session_maker().begin() as session:
                     return view(self, session, *args, **kwargs)
+
         return wrapper
+
     return decorator
+
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
     """Return the request session inserted by `with_session`, if this handler has been migrated."""
