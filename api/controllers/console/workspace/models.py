@@ -5,7 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import LoadBalancingPayload, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
@@ -37,11 +37,6 @@ class ParserPostDefault(BaseModel):
 class ParserDeleteModels(BaseModel):
     model: str
     model_type: ModelType
-
-
-class LoadBalancingPayload(BaseModel):
-    configs: list[dict[str, Any]] | None = None
-    enabled: bool | None = None
 
 
 class ParserPostModels(BaseModel):
