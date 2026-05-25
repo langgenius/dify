@@ -2,6 +2,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -11,14 +12,21 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
-from services.app_dsl_service import AppDslService, Import
+from services.app_dsl_service import (
+    IMPORT_INFO_REDIS_KEY_PREFIX,
+    AppDslService,
+    Import,
+    PendingData,
+)
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.feature_service import FeatureService
 
 from .. import console_ns
+from .permission_keys import get_app_permission_keys
 
 
 class AppImportPayload(BaseModel):
@@ -50,7 +58,7 @@ class AppImportApi(Resource):
     @edit_permission_required
     def post(self):
         # Check user role first
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # AppDslService performs internal commits for some creation paths, so use a plain
@@ -75,6 +83,18 @@ class AppImportApi(Resource):
                 session.rollback()
             else:
                 session.commit()
+
+        is_created_app = args.app_id is None and result.status in {
+            ImportStatus.COMPLETED,
+            ImportStatus.COMPLETED_WITH_WARNINGS,
+        }
+        if is_created_app and result.app_id and dify_config.RBAC_ENABLED:
+            result.permission_keys = get_app_permission_keys(
+                str(current_tenant_id),
+                current_user.id,
+                result.app_id,
+            )
+
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
@@ -99,7 +119,12 @@ class AppImportConfirmApi(Resource):
     @edit_permission_required
     def post(self, import_id: str):
         # Check user role first
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
+        redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
+        pending_data_raw = redis_client.get(redis_key)
+        pending_data: PendingData | None = None
+        if pending_data_raw:
+            pending_data = PendingData.model_validate_json(pending_data_raw)
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
@@ -111,6 +136,21 @@ class AppImportConfirmApi(Resource):
             else:
                 session.commit()
 
+        is_created_app = bool(
+            pending_data
+            and pending_data.app_id is None
+            and result.status in {
+                ImportStatus.COMPLETED,
+                ImportStatus.COMPLETED_WITH_WARNINGS,
+            }
+        )
+        if is_created_app and result.app_id and dify_config.RBAC_ENABLED:
+            result.permission_keys = get_app_permission_keys(
+                str(current_tenant_id),
+                current_user.id,
+                result.app_id,
+            )
+
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
@@ -119,7 +159,11 @@ class AppImportConfirmApi(Resource):
 
 @console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
 class AppImportCheckDependenciesApi(Resource):
-    @console_ns.response(200, "Dependencies checked", console_ns.models[CheckDependenciesResult.__name__])
+    @console_ns.response(
+        200,
+        "Dependencies checked",
+        console_ns.models[CheckDependenciesResult.__name__],
+    )
     @setup_required
     @login_required
     @get_app_model

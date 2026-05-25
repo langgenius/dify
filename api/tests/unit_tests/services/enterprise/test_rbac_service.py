@@ -489,8 +489,8 @@ class TestMemberRoles:
     def test_batch_get(self, mock_send: MagicMock):
         mock_send.return_value = {
             "acct-2": [
-                {"id": "role-1", "name": "Admin"},
-                {"id": "role-2", "name": "Editor"},
+                {"id": "role-1", "name": "Admin", "type": "workspace"},
+                {"id": "role-2", "name": "Editor", "type": "workspace"},
             ],
             "acct-3": [],
         }
