@@ -11,6 +11,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { load as yamlLoad } from 'js-yaml'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -34,6 +35,12 @@ type BindingSelectOption = {
   label: string
 }
 
+type DslMetadata = {
+  app?: {
+    name?: unknown
+  }
+}
+
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-target-environment']
 const targetBindingSkeletonKeys = ['first-target-binding', 'second-target-binding']
@@ -51,6 +58,18 @@ function encodeUtf8Base64(value: string) {
     chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
 
   return btoa(chunks.join(''))
+}
+
+function dslAppName(content: string) {
+  try {
+    const parsed = yamlLoad(content) as DslMetadata | undefined
+    const name = parsed?.app?.name
+
+    return typeof name === 'string' ? name.trim() : ''
+  }
+  catch {
+    return ''
+  }
 }
 
 function bindingSlotKey(slot: CredentialSlot) {
@@ -1104,6 +1123,7 @@ export function CreateDeploymentGuide() {
   const [selectedApp, setSelectedApp] = useState<App>()
   const [dslFile, setDslFile] = useState<File>()
   const [dslContent, setDslContent] = useState('')
+  const [dslDefaultAppName, setDslDefaultAppName] = useState('')
   const [isReadingDsl, setIsReadingDsl] = useState(false)
   const [dslReadError, setDslReadError] = useState(false)
   const [instanceName, setInstanceName] = useState('')
@@ -1177,7 +1197,7 @@ export function CreateDeploymentGuide() {
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
   const isDeploying = createInitialDeploymentFromSourceApp.isPending || createInitialDeploymentFromDsl.isPending
   const sourceName = method === 'importDsl'
-    ? t('createGuide.dsl.defaultAppName')
+    ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
     : method === 'bindApp'
       ? effectiveSelectedApp?.name ?? ''
       : ''
@@ -1203,6 +1223,7 @@ export function CreateDeploymentGuide() {
     dslReadTokenRef.current = readToken
     setDslFile(file)
     setDslContent('')
+    setDslDefaultAppName('')
     setDslReadError(false)
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
@@ -1219,6 +1240,7 @@ export function CreateDeploymentGuide() {
         if (dslReadTokenRef.current !== readToken)
           return
         setDslContent(content)
+        setDslDefaultAppName(dslAppName(content))
       })
       .catch(() => {
         if (dslReadTokenRef.current !== readToken)

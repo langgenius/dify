@@ -205,6 +205,10 @@ describe('CreateDeploymentGuide', () => {
   describe('DSL import deployment', () => {
     it('should create an initial deployment from the uploaded DSL', async () => {
       // Arrange
+      const dslContent = `app:
+  icon: 🤖
+  name: testchat
+`
       const { container } = render(<CreateDeploymentGuide />)
 
       // Act
@@ -212,7 +216,7 @@ describe('CreateDeploymentGuide', () => {
       fireEvent.change(getFileInput(container), {
         target: {
           files: [
-            new File(['app: 🤖'], 'demo.yml', { type: 'text/yaml' }),
+            new File([dslContent], 'demo.yml', { type: 'text/yaml' }),
           ],
         },
       })
@@ -223,6 +227,8 @@ describe('CreateDeploymentGuide', () => {
       })
 
       fireEvent.click(screen.getByRole('button', { name: /createGuide\.actions\.next/ }))
+      expect(screen.getByRole('textbox', { name: /createGuide\.release\.instanceName/ })).toHaveAttribute('placeholder', 'testchat')
+
       fireEvent.click(screen.getByRole('button', { name: /createGuide\.actions\.next/ }))
 
       await waitFor(() => {
@@ -236,7 +242,7 @@ describe('CreateDeploymentGuide', () => {
 
       // Assert
       await waitFor(() => {
-        const expectedEncodedDsl = Buffer.from('app: 🤖', 'utf8').toString('base64')
+        const expectedEncodedDsl = Buffer.from(dslContent, 'utf8').toString('base64')
         expect(mocks.getDeploymentOptionsFromDslQueryOptions).toHaveBeenCalledWith({
           input: {
             body: {
@@ -249,7 +255,7 @@ describe('CreateDeploymentGuide', () => {
           body: {
             dsl: expectedEncodedDsl,
             environmentId: 'env-1',
-            appInstanceName: 'deployments.createGuide.dsl.defaultAppName',
+            appInstanceName: 'testchat',
             appInstanceDescription: undefined,
             releaseName: 'deployments.createGuide.release.defaultName',
             releaseDescription: undefined,
