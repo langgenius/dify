@@ -59,6 +59,14 @@ server {
       proxy_pass http://api:5001;
       include proxy.conf;
     }
+
+    location /_next/webpack-hmr {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_cache_bypass $http_upgrade;
+    }
     
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}

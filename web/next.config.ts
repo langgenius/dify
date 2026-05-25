@@ -4,6 +4,7 @@ import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
 const isDev = process.env.NODE_ENV === 'development'
+const disableCodeInspector = process.env.DISABLE_CODE_INSPECTOR === 'true'
 const withMDX = createMDX()
 const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
   .map(origin => origin.trim())
@@ -14,8 +15,10 @@ const nextConfig: NextConfig = {
   ...(allowedDevOrigins?.length ? { allowedDevOrigins } : {}),
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
-    rules: codeInspectorPlugin({
-      bundler: 'turbopack',
+    ...(disableCodeInspector ? {} : {
+      rules: codeInspectorPlugin({
+        bundler: 'turbopack',
+      }),
     }),
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
