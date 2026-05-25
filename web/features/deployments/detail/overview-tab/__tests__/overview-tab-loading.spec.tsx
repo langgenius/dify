@@ -84,7 +84,7 @@ function expectCompleteLoadingSkeleton(container: HTMLElement) {
   expect(screen.getByRole('heading', { name: 'deployments.overview.strip.title' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'deployments.overview.accessStatus' })).toBeInTheDocument()
   expect(container.querySelectorAll('[data-slot="deployment-overview-release-hero-skeleton"]')).toHaveLength(1)
-  expect(container.querySelectorAll('[data-slot="deployment-overview-environment-tile-skeleton"]')).toHaveLength(4)
+  expect(container.querySelectorAll('[data-slot="deployment-overview-environment-tile-skeleton"]')).toHaveLength(3)
   expect(container.querySelectorAll('[data-slot="deployment-overview-access-card-skeleton"]')).toHaveLength(3)
 }
 

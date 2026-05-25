@@ -5,10 +5,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { environmentId } from '../../environment'
-import { isUndeployedDeploymentRow } from '../../runtime-status'
+import { hasRuntimeInstanceDeployment } from '../../runtime-status'
 import { SectionState } from '../common'
 import { OVERVIEW_CARD_CLASS_NAME } from './card-styles'
 import { EnvironmentTile } from './environment-tile'
+
+const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 3
 
 type EnvironmentStripProps = {
   appInstanceId: string
@@ -20,7 +22,8 @@ type EnvironmentStripProps = {
 
 export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, isError }: EnvironmentStripProps) {
   const { t } = useTranslation('deployments')
-  const deployedRows = rows.filter(row => !isUndeployedDeploymentRow(row))
+  const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
+  const previewRows = runtimeRows.slice(0, OVERVIEW_RUNTIME_INSTANCE_LIMIT)
 
   return (
     <section className="flex flex-col gap-3">
@@ -32,11 +35,11 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, 
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : rows.length === 0
             ? <SectionState>{t('overview.strip.empty')}</SectionState>
-            : deployedRows.length === 0
+            : runtimeRows.length === 0
               ? <SectionState>{t('overview.strip.emptyDeployed')}</SectionState>
               : (
                   <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3">
-                    {deployedRows.map(row => (
+                    {previewRows.map(row => (
                       <EnvironmentTile
                         key={environmentId(row.environment)}
                         appInstanceId={appInstanceId}
@@ -50,7 +53,7 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, 
   )
 }
 
-const SKELETON_KEYS = ['a', 'b', 'c', 'd']
+const SKELETON_KEYS = ['a', 'b', 'c']
 
 function CardSkeletons() {
   return (
