@@ -1,4 +1,5 @@
 'use client'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppTrigger } from '@/service/use-tools'
 import type { AppSSO } from '@/types/app'
@@ -6,11 +7,9 @@ import type { I18nKeysByPrefix } from '@/types/i18n'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import {
@@ -21,13 +20,14 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { getAppACLCapabilities } from '@/utils/permission'
 
 type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   onToggleResult?: (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => void
 }
 
-const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
+const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: TriggerWithProvider[]) => {
   const { trigger_type, status, provider_name } = trigger
 
   // Status dot styling based on trigger status
@@ -87,7 +87,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const canEditApp = React.useMemo(() => getAppACLCapabilities(appInfo.permission_keys).canEdit, [appInfo.permission_keys])
   const { data: triggersResponse, isLoading } = useAppTriggers(appId)
   const { mutateAsync: updateTriggerStatus } = useUpdateTriggerStatus()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -96,7 +96,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   // Zustand store for trigger status sync
   const { setTriggerStatus, setTriggerStatuses } = useTriggerStatusStore()
 
-  const triggers = triggersResponse?.data || []
+  const triggers = React.useMemo(() => triggersResponse?.data || [], [triggersResponse?.data])
   const triggerCount = triggers.length
 
   // Sync trigger statuses to Zustand store when data loads initially or after API calls
@@ -114,6 +114,9 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   }, [triggers, setTriggerStatuses])
 
   const onToggleTrigger = async (trigger: AppTrigger, enabled: boolean) => {
+    if (!canEditApp)
+      return
+
     try {
       // Immediately update Zustand store for real-time UI sync
       const newStatus = enabled ? 'enabled' : 'disabled'
@@ -158,7 +161,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
           <div className="flex w-full items-center gap-3 self-stretch">
             <div className="flex grow items-center">
               <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-purple-purple-500 p-1 shadow-md">
-                <TriggerAll className="size-4 text-text-primary-on-surface" />
+                <div className="i-custom-vender-workflow-trigger-all size-4 text-text-primary-on-surface" />
               </div>
               <div className="group w-full">
                 <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
@@ -194,7 +197,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                   <Switch
                     checked={trigger.status === 'enabled'}
                     onCheckedChange={enabled => onToggleTrigger(trigger, enabled)}
-                    disabled={!isCurrentWorkspaceEditor}
+                    disabled={!canEditApp}
                   />
                 </div>
               </div>
