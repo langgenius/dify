@@ -1,7 +1,7 @@
 """add oauth_access_tokens table
 
 Revision ID: d4a5e1f3c9b7
-Revises: f8b6b7e9c421
+Revises: 97e2e1a644e8
 Create Date: 2026-05-22 17:00:00.000000
 
 Table stores user-level OAuth bearer tokens minted via the device-flow grant
@@ -29,7 +29,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "d4a5e1f3c9b7"
-down_revision = "f8b6b7e9c421"
+down_revision = "97e2e1a644e8"
 branch_labels = None
 depends_on = None
 
