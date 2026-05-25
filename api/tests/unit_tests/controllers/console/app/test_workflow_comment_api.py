@@ -49,7 +49,7 @@ def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(app_wraps, "_load_app_model", lambda _app_id: app_model)
+    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
     monkeypatch.setattr(workflow_comment_module, "current_user", account)
 
 
