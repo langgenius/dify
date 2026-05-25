@@ -277,12 +277,12 @@ class BearerAuthenticator:
         """
         kind = self._registry.find(token)
         if kind is None:
-            raise InvalidBearerError("unknown token prefix")
+            raise InvalidBearerError("invalid_bearer")
         token_hash = sha256_hex(token)
+        enforce_bearer_rate_limit(token_hash)
         row = kind.resolver.resolve(token_hash)
         if row is None:
-            raise InvalidBearerError("token unknown or revoked")
-        enforce_bearer_rate_limit(token_hash)
+            raise InvalidBearerError("invalid_bearer")
         return AuthContext(
             subject_type=kind.subject_type,
             subject_email=row.subject_email,

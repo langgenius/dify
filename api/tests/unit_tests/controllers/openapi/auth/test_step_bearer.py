@@ -30,7 +30,7 @@ def test_bearer_check_rejects_missing_header():
 
 @patch("controllers.openapi.auth.steps.get_authenticator")
 def test_bearer_check_rejects_unknown_prefix(get_auth):
-    get_auth.return_value.authenticate.side_effect = InvalidBearerError("unknown token prefix")
+    get_auth.return_value.authenticate.side_effect = InvalidBearerError("invalid_bearer")
     app = Flask(__name__)
     with app.test_request_context(), pytest.raises(Unauthorized):
         BearerCheck()(_ctx("xxx_abc"))

@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from functools import wraps
 
 from flask import Blueprint
+from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
 from libs import jws
@@ -107,14 +108,22 @@ def mint_approval_grant(
 
 def verify_approval_grant(keyset: jws.KeySet, token: str) -> ApprovalGrantClaims:
     """Sig + aud + exp only — nonce consumption is the caller's job."""
-    data = jws.verify(keyset, token, expected_aud=jws.AUD_APPROVAL_GRANT)
+    # lazy import: breaks libs → controllers cycle
+    from controllers.openapi._models import ApprovalGrantClaimsPayload
+
+    raw = jws.verify(keyset, token, expected_aud=jws.AUD_APPROVAL_GRANT)
+    try:
+        parsed = ApprovalGrantClaimsPayload.model_validate(raw)
+    except ValidationError as e:
+        raise jws.VerifyError(f"claim shape invalid: {e}") from e
+
     return ApprovalGrantClaims(
-        subject_email=data["subject_email"],
-        subject_issuer=data["subject_issuer"],
-        user_code=data["user_code"],
-        nonce=data["nonce"],
-        csrf_token=data["csrf_token"],
-        expires_at=datetime.fromtimestamp(data["exp"], tz=UTC),
+        subject_email=parsed.subject_email,
+        subject_issuer=parsed.subject_issuer,
+        user_code=parsed.user_code,
+        nonce=parsed.nonce,
+        csrf_token=parsed.csrf_token,
+        expires_at=datetime.fromtimestamp(raw["exp"], tz=UTC),
     )
 
 

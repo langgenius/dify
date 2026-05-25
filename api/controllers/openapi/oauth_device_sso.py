@@ -17,6 +17,7 @@ import secrets
 from dataclasses import dataclass
 
 from flask import jsonify, make_response, redirect, request
+from pydantic import ValidationError
 from werkzeug.exceptions import (
     BadGateway,
     BadRequest,
@@ -26,7 +27,9 @@ from werkzeug.exceptions import (
     Unauthorized,
 )
 
+from configs import dify_config
 from controllers.openapi import bp
+from controllers.openapi._models import ExtSubjectAssertionClaims
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import jws
@@ -72,6 +75,13 @@ STATE_ENVELOPE_TTL_SECONDS = 15 * 60
 _SSO_COMPLETE_PATH = "/openapi/v1/oauth/device/sso-complete"
 
 
+def _trusted_origin() -> str:
+    base = (dify_config.CONSOLE_API_URL or "").rstrip("/")
+    if not base:
+        raise BadGateway("console_api_url_unset")
+    return base
+
+
 @bp.route("/oauth/device/sso-initiate", methods=["GET"])
 @enterprise_only
 @rate_limit(LIMIT_SSO_INITIATE_PER_IP)
@@ -88,6 +98,7 @@ def sso_initiate():
     if state.status is not DeviceFlowStatus.PENDING:
         raise BadRequest("invalid_user_code")
 
+    origin = _trusted_origin()
     keyset = jws.KeySet.from_shared_secret()
     signed_state = jws.sign(
         keyset,
@@ -98,7 +109,7 @@ def sso_initiate():
             "user_code": user_code,
             "nonce": secrets.token_urlsafe(16),
             "return_to": "",
-            "idp_callback_url": f"{request.host_url.rstrip('/')}{_SSO_COMPLETE_PATH}",
+            "idp_callback_url": f"{origin}{_SSO_COMPLETE_PATH}",
         },
         aud=jws.AUD_STATE_ENVELOPE,
         ttl_seconds=STATE_ENVELOPE_TTL_SECONDS,
@@ -130,15 +141,21 @@ def sso_complete():
     keyset = jws.KeySet.from_shared_secret()
 
     try:
-        claims = jws.verify(keyset, blob, expected_aud=jws.AUD_EXT_SUBJECT_ASSERTION)
+        raw_claims = jws.verify(keyset, blob, expected_aud=jws.AUD_EXT_SUBJECT_ASSERTION)
     except jws.VerifyError as e:
         logger.warning("sso-complete: rejected assertion: %s", e)
         raise BadRequest("invalid_sso_assertion") from e
 
-    if not consume_sso_assertion_nonce(redis_client, claims.get("nonce", "")):
+    try:
+        claims = ExtSubjectAssertionClaims.model_validate(raw_claims)
+    except ValidationError as e:
+        logger.warning("sso-complete: claim shape invalid: %s", e)
+        raise BadRequest("invalid_sso_assertion") from e
+
+    if not consume_sso_assertion_nonce(redis_client, claims.nonce):
         raise BadRequest("invalid_sso_assertion")
 
-    user_code = (claims.get("user_code") or "").strip().upper()
+    user_code = claims.user_code.strip().upper()
     store = DeviceFlowRedis(redis_client)
     found = store.load_by_user_code(user_code)
     if found is None:
@@ -147,20 +164,20 @@ def sso_complete():
     if state.status is not DeviceFlowStatus.PENDING:
         raise Conflict("user_code_not_pending")
 
-    if AccountService.has_active_account_with_email(db.session, claims["email"]):
+    if AccountService.has_active_account_with_email(db.session, claims.email):
         _emit_external_rejection_audit(
             state,
-            _RejectedClaims(subject_email=claims["email"], subject_issuer=claims["issuer"]),
+            _RejectedClaims(subject_email=claims.email, subject_issuer=claims.issuer),
             reason="email_belongs_to_dify_account",
         )
         return redirect("/device?sso_error=email_belongs_to_dify_account", code=302)
 
-    iss = request.host_url.rstrip("/")
+    iss = _trusted_origin()
     cookie_value, _ = mint_approval_grant(
         keyset=keyset,
         iss=iss,
-        subject_email=claims["email"],
-        subject_issuer=claims["issuer"],
+        subject_email=claims.email,
+        subject_issuer=claims.issuer,
         user_code=user_code,
     )
 
@@ -211,7 +228,7 @@ def approve_external():
     enforce(LIMIT_APPROVE_EXT_PER_EMAIL, key=f"subject:{claims.subject_email}")
 
     csrf_header = request.headers.get("X-CSRF-Token", "")
-    if not csrf_header or csrf_header != claims.csrf_token:
+    if not csrf_header or not secrets.compare_digest(csrf_header, claims.csrf_token):
         raise Forbidden("csrf_mismatch")
 
     data = request.get_json(silent=True) or {}
