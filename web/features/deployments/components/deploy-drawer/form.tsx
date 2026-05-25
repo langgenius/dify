@@ -1,12 +1,12 @@
 'use client'
 
 import type {
-  CredentialSelectionInput,
   CredentialSlot,
   Environment,
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
+import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -23,6 +23,15 @@ import { releaseCommit, releaseLabel } from '../../release'
 import { releaseDeploymentAction } from '../../release-action'
 import { hasRuntimeInstanceDeployment, isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
+import {
+  RuntimeCredentialBindingsPanel,
+} from '../runtime-credential-bindings'
+import {
+  hasMissingRequiredRuntimeCredentialBinding,
+  runtimeCredentialSlotKey,
+  selectedDeploymentRuntimeCredentials,
+  selectedRuntimeCredentialSelections,
+} from '../runtime-credential-bindings-utils'
 import {
   DeploymentSelect,
   EnvironmentRow,
@@ -46,12 +55,7 @@ type EnvironmentOption = Environment & { id: string }
 
 const DEPLOY_FORM_FIELD_SKELETON_KEYS = ['environment', 'release']
 
-type BindingSelections = Record<string, string>
-
-type BindingSelectOption = {
-  value: string
-  label: string
-}
+type BindingSelections = RuntimeCredentialBindingSelections
 
 type BindingOptionsPanelProps = {
   slots: CredentialSlot[]
@@ -59,60 +63,6 @@ type BindingOptionsPanelProps = {
   isLoading: boolean
   hasError: boolean
   onChange: (slot: string, value: string) => void
-}
-
-function credentialSlotKey(slot: CredentialSlot) {
-  return [slot.providerId ?? '', slot.category ?? ''].join(':')
-}
-
-function bindingCandidateOptions(slot: CredentialSlot): BindingSelectOption[] {
-  return (slot.candidates ?? [])
-    .filter(candidate => candidate.credentialId)
-    .map(candidate => ({
-      value: candidate.credentialId!,
-      label: [
-        candidate.displayName,
-        candidate.providerId,
-      ].filter(Boolean).join(' · ') || candidate.credentialId!,
-    }))
-}
-
-function hasMissingRequiredBinding(_slot: CredentialSlot, selectedValue?: string) {
-  return !selectedValue
-}
-
-function selectedDeploymentCredentials(
-  slots: CredentialSlot[],
-  selections: BindingSelections,
-): CredentialSelectionInput[] {
-  return slots
-    .map((slot): CredentialSelectionInput | undefined => {
-      const slotKey = credentialSlotKey(slot)
-      const selectedValue = selections[slotKey]
-      if (!slotKey || !selectedValue)
-        return undefined
-
-      return {
-        providerId: slot.providerId,
-        category: slot.category,
-        credentialId: selectedValue,
-      }
-    })
-    .filter((binding): binding is CredentialSelectionInput => Boolean(binding))
-}
-
-function selectedBindingSelections(slots: CredentialSlot[], manualBindings: BindingSelections): BindingSelections {
-  const next: BindingSelections = {}
-  for (const slot of slots) {
-    const slotKey = credentialSlotKey(slot)
-    const candidates = bindingCandidateOptions(slot)
-    const existing = manualBindings[slotKey]
-    if (existing && candidates.some(candidate => candidate.value === existing))
-      next[slotKey] = existing
-    else if (candidates.length === 1 && candidates[0])
-      next[slotKey] = candidates[0].value
-  }
-  return next
 }
 
 function BindingOptionsPanel({
@@ -145,83 +95,18 @@ function BindingOptionsPanel({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-divider-subtle bg-background-default-subtle">
-      <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('deployDrawer.runtimeCredentials')}</div>
-          {slots.length > 0 && (
-            <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-quaternary">
-              {slots.length}
-            </span>
-          )}
-        </div>
-        <span className="system-xs-regular text-text-quaternary">{t('deployDrawer.bindingSelectionHint')}</span>
-      </div>
-      {slots.length === 0
-        ? (
-            <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-              {t('deployDrawer.noBindingRequired')}
-            </div>
-          )
-        : (
-            <div className="max-h-[min(360px,34dvh)] overflow-y-auto border-t border-divider-subtle">
-              {slots.map((slot) => {
-                const slotKey = credentialSlotKey(slot)
-                const candidates = bindingCandidateOptions(slot)
-                const selectedValue = selections[slotKey] ?? ''
-                const missing = hasMissingRequiredBinding(slot, selectedValue)
-                const slotName = slot.providerId || slotKey
-                const categoryLabel = slot.category === 'PLUGIN_CATEGORY_MODEL'
-                  ? t('categorySingle.model', { ns: 'plugin' })
-                  : slot.category === 'PLUGIN_CATEGORY_TOOL'
-                    ? t('categorySingle.tool', { ns: 'plugin' })
-                    : undefined
-                return (
-                  <div key={slotKey} className="flex flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
-                    <div className="flex min-w-0 flex-col gap-2.5">
-                      <div className="flex min-w-0 flex-col gap-1.5">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate font-mono system-xs-semibold text-text-primary" title={slotName}>
-                            {slotName}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {categoryLabel && (
-                            <span className="shrink-0 rounded-md bg-util-colors-blue-light-blue-light-50 px-1.5 py-0.5 system-2xs-medium-uppercase text-util-colors-blue-blue-600">
-                              {categoryLabel}
-                            </span>
-                          )}
-                          <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                            {t('deployDrawer.requiredBinding')}
-                          </span>
-                        </div>
-                      </div>
-                      {candidates.length === 0
-                        ? (
-                            <div className="rounded-lg border border-divider-subtle bg-background-default px-2 py-1.5 system-sm-regular text-text-quaternary">
-                              {t('deployDrawer.noCredentialCandidates')}
-                            </div>
-                          )
-                        : (
-                            <DeploymentSelect
-                              value={selectedValue}
-                              onChange={value => onChange(slotKey, value)}
-                              options={candidates}
-                              placeholder={t('deployDrawer.selectCredential')}
-                            />
-                          )}
-                    </div>
-                    {missing && (
-                      <div className="system-xs-regular text-text-destructive">
-                        {t('deployDrawer.missingRequiredBinding')}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-    </div>
+    <RuntimeCredentialBindingsPanel
+      slots={slots}
+      selections={selections}
+      title={t('deployDrawer.runtimeCredentials')}
+      hint={t('deployDrawer.bindingSelectionHint')}
+      requiredLabel={t('deployDrawer.requiredBinding')}
+      noBindingRequiredLabel={t('deployDrawer.noBindingRequired')}
+      noCredentialCandidatesLabel={t('deployDrawer.noCredentialCandidates')}
+      selectCredentialLabel={t('deployDrawer.selectCredential')}
+      missingRequiredLabel={t('deployDrawer.missingRequiredBinding')}
+      onChange={onChange}
+    />
   )
 }
 
@@ -299,13 +184,13 @@ function DeployReadyForm({
     },
     enabled: Boolean(appInstanceId && targetReleaseId),
   }))
-  const bindingSlots = bindingOptions.data?.slots?.filter(slot => credentialSlotKey(slot)) ?? []
+  const bindingSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
-  const selectedBindings = selectedBindingSelections(bindingSlots, manualBindings)
-  const deploymentCredentials = selectedDeploymentCredentials(bindingSlots, selectedBindings)
+  const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
+  const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
   const bindingOptionsLoading = Boolean(targetReleaseId && (bindingOptions.isLoading || bindingOptions.isFetching))
   const bindingOptionsReady = Boolean(targetReleaseId && bindingOptions.data && !bindingOptionsLoading && !bindingOptions.isError)
-  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, selectedBindings[credentialSlotKey(slot)]))
+  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]))
   const isSubmitting = startDeploy.isPending
   const canDeploy = Boolean(
     selectedEnvironmentId

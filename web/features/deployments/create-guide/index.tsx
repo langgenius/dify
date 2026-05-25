@@ -1,10 +1,10 @@
 'use client'
 
 import type {
-  CredentialSelectionInput,
   CredentialSlot,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -21,6 +21,16 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
+import {
+  RuntimeCredentialBindingsPanel,
+} from '../components/runtime-credential-bindings'
+import {
+  hasMissingRequiredRuntimeCredentialBinding,
+  runtimeCredentialCandidateOptions,
+  runtimeCredentialSlotKey,
+  selectedDeploymentRuntimeCredentials,
+  selectedRuntimeCredentialSelections,
+} from '../components/runtime-credential-bindings-utils'
 import { SOURCE_APPS_PAGE_SIZE } from '../data'
 import { environmentBackend, environmentMode, environmentName } from '../environment'
 import { createDeploymentIdempotencyKey } from '../idempotency'
@@ -28,12 +38,7 @@ import { createDeploymentIdempotencyKey } from '../idempotency'
 type GuideMethod = 'bindApp' | 'importDsl'
 type GuideStep = 'method' | 'source' | 'release' | 'target' | 'done'
 type EnvironmentOption = Environment & { id: string }
-type BindingSelections = Record<string, string>
-
-type BindingSelectOption = {
-  value: string
-  label: string
-}
+type BindingSelections = RuntimeCredentialBindingSelections
 
 type DslMetadata = {
   app?: {
@@ -70,60 +75,6 @@ function dslAppName(content: string) {
   catch {
     return ''
   }
-}
-
-function bindingSlotKey(slot: CredentialSlot) {
-  return [slot.providerId ?? '', slot.category ?? ''].join(':')
-}
-
-function bindingCandidateOptions(slot: CredentialSlot): BindingSelectOption[] {
-  return (slot.candidates ?? [])
-    .filter(candidate => candidate.credentialId)
-    .map(candidate => ({
-      value: candidate.credentialId!,
-      label: [
-        candidate.displayName,
-        candidate.providerId,
-      ].filter(Boolean).join(' · ') || candidate.credentialId!,
-    }))
-}
-
-function hasMissingRequiredBinding(_slot: CredentialSlot, selectedValue?: string) {
-  return !selectedValue
-}
-
-function selectedBindingSelections(slots: CredentialSlot[], manualBindings: BindingSelections): BindingSelections {
-  const next: BindingSelections = {}
-  for (const slot of slots) {
-    const slotKey = bindingSlotKey(slot)
-    const candidates = bindingCandidateOptions(slot)
-    const existing = manualBindings[slotKey]
-    if (existing && candidates.some(candidate => candidate.value === existing))
-      next[slotKey] = existing
-    else if (candidates.length === 1 && candidates[0])
-      next[slotKey] = candidates[0].value
-  }
-  return next
-}
-
-function selectedDeploymentCredentials(
-  slots: CredentialSlot[],
-  selections: BindingSelections,
-): CredentialSelectionInput[] {
-  return slots
-    .map((slot): CredentialSelectionInput | undefined => {
-      const slotKey = bindingSlotKey(slot)
-      const selectedValue = selections[slotKey]
-      if (!slotKey || !selectedValue)
-        return undefined
-
-      return {
-        providerId: slot.providerId,
-        category: slot.category,
-        credentialId: selectedValue,
-      }
-    })
-    .filter((binding): binding is CredentialSelectionInput => Boolean(binding))
 }
 
 function sourceAppSearchText(app: App) {
@@ -635,64 +586,6 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
   )
 }
 
-function BindingSlotRow({ slot, selectedValue, onChange }: {
-  slot: CredentialSlot
-  selectedValue: string
-  onChange: (value: string) => void
-}) {
-  const { t } = useTranslation('deployments')
-  const slotKey = bindingSlotKey(slot)
-  const candidates = bindingCandidateOptions(slot)
-  const missing = hasMissingRequiredBinding(slot, selectedValue)
-  const slotName = slot.providerId || slotKey
-
-  return (
-    <div className="flex flex-col gap-2 border-t border-divider-subtle px-3 py-3">
-      <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate system-sm-medium text-text-secondary" title={slotName}>
-              {slotName}
-            </span>
-            <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-              {t('createGuide.target.required')}
-            </span>
-          </div>
-          <span className="font-mono system-xs-regular break-all text-text-quaternary" title={slotKey}>
-            {slotKey}
-          </span>
-        </div>
-        {candidates.length === 0
-          ? (
-              <div className="rounded-lg border border-divider-subtle bg-background-default px-2 py-1.5 system-sm-regular text-text-quaternary">
-                {t('createGuide.target.noCredentialCandidates')}
-              </div>
-            )
-          : (
-              <select
-                aria-label={slotName}
-                value={selectedValue}
-                onChange={event => onChange(event.target.value)}
-                className="h-8 w-full rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2 system-sm-regular text-components-input-text-filled outline-hidden hover:bg-components-input-bg-hover focus:border-components-input-border-active"
-              >
-                <option value="">{t('createGuide.target.selectCredential')}</option>
-                {candidates.map(candidate => (
-                  <option key={candidate.value} value={candidate.value}>
-                    {candidate.label}
-                  </option>
-                ))}
-              </select>
-            )}
-      </div>
-      {missing && (
-        <div className="system-xs-regular text-text-destructive">
-          {t('createGuide.target.missingRequiredBinding')}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function TargetEnvironmentSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -783,34 +676,37 @@ function TargetStep({
                   </div>
                 )}
         </div>
-        <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
-          <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-            <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
-            <span className="system-xs-regular text-text-quaternary">{t('createGuide.target.bindingHint')}</span>
-          </div>
-          {isBindingLoading
-            ? <TargetBindingSkeleton />
-            : isBindingError
-              ? (
-                  <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                    {t('createGuide.target.loadBindingsFailed')}
-                  </div>
-                )
-              : bindingSlots.length === 0
-                ? (
-                    <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                      {t('createGuide.target.noBindingRequired')}
-                    </div>
-                  )
-                : bindingSlots.map(slot => (
-                    <BindingSlotRow
-                      key={bindingSlotKey(slot)}
-                      slot={slot}
-                      selectedValue={bindingSelections[bindingSlotKey(slot)] ?? ''}
-                      onChange={value => onSelectBinding(bindingSlotKey(slot), value)}
-                    />
-                  ))}
-        </div>
+        {isBindingLoading || isBindingError
+          ? (
+              <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
+                <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
+                  <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
+                  <span className="system-xs-regular text-text-quaternary">{t('createGuide.target.bindingHint')}</span>
+                </div>
+                {isBindingLoading
+                  ? <TargetBindingSkeleton />
+                  : (
+                      <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
+                        {t('createGuide.target.loadBindingsFailed')}
+                      </div>
+                    )}
+              </div>
+            )
+          : (
+              <RuntimeCredentialBindingsPanel
+                slots={bindingSlots}
+                selections={bindingSelections}
+                title={t('createGuide.target.bindings')}
+                hint={t('createGuide.target.bindingHint')}
+                requiredLabel={t('createGuide.target.required')}
+                noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
+                noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
+                selectCredentialLabel={t('createGuide.target.selectCredential')}
+                missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
+                onChange={onSelectBinding}
+                className="border-components-option-card-option-border bg-components-option-card-option-bg"
+              />
+            )}
       </div>
     </StepShell>
   )
@@ -887,11 +783,12 @@ function DeploymentSummaryPreview({
                 </div>
               )
             : bindingSlots.map((slot) => {
-                const selectedValue = bindingSelections[bindingSlotKey(slot)] ?? ''
-                const selectedCandidate = bindingCandidateOptions(slot).find(candidate => candidate.value === selectedValue)
+                const slotKey = runtimeCredentialSlotKey(slot)
+                const selectedValue = bindingSelections[slotKey] ?? ''
+                const selectedCandidate = runtimeCredentialCandidateOptions(slot).find(candidate => candidate.value === selectedValue)
                 return (
-                  <div key={bindingSlotKey(slot)} className="grid min-w-0 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 rounded-lg bg-background-default-subtle px-3 py-2">
-                    <span className="truncate system-xs-medium text-text-secondary">{slot.providerId || bindingSlotKey(slot)}</span>
+                  <div key={slotKey} className="grid min-w-0 grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-2 rounded-lg bg-background-default-subtle px-3 py-2">
+                    <span className="truncate system-xs-medium text-text-secondary">{slot.providerId || slotKey}</span>
                     <span className="truncate text-right system-xs-regular text-text-tertiary">{selectedCandidate?.label || '—'}</span>
                   </div>
                 )
@@ -1182,13 +1079,13 @@ export function CreateDeploymentGuide() {
     ? deployableEnvironmentsQuery.data?.data?.filter(hasEnvironmentId) ?? []
     : []
   const bindingSlots = shouldLoadDeploymentTarget
-    ? deploymentOptions?.credentialSlots?.filter(slot => bindingSlotKey(slot)) ?? []
+    ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
   const selectedTargetEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
-  const bindingSelections = selectedBindingSelections(bindingSlots, manualBindingSelections)
-  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredBinding(slot, bindingSelections[bindingSlotKey(slot)]))
+  const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
+  const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
   const isDeploying = createInitialDeploymentFromSourceApp.isPending || createInitialDeploymentFromDsl.isPending
@@ -1309,7 +1206,7 @@ export function CreateDeploymentGuide() {
       return
 
     try {
-      const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredBinding(slot, bindingSelections[bindingSlotKey(slot)]))
+      const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
 
@@ -1323,7 +1220,7 @@ export function CreateDeploymentGuide() {
               appInstanceDescription: instanceDescription.trim() || undefined,
               releaseName: displayedReleaseName.trim(),
               releaseDescription: displayedReleaseDescription.trim() || undefined,
-              credentials: selectedDeploymentCredentials(bindingSlots, bindingSelections),
+              credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
               idempotencyKey,
               expectedDslDigest: deploymentOptions?.dslDigest,
             },
@@ -1337,7 +1234,7 @@ export function CreateDeploymentGuide() {
                 appInstanceDescription: instanceDescription.trim() || undefined,
                 releaseName: displayedReleaseName.trim(),
                 releaseDescription: displayedReleaseDescription.trim() || undefined,
-                credentials: selectedDeploymentCredentials(bindingSlots, bindingSelections),
+                credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
                 idempotencyKey,
                 expectedDslDigest: deploymentOptions?.dslDigest,
               },
