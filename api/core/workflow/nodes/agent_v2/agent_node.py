@@ -7,9 +7,11 @@ from clients.agent_backend import (
     AgentBackendError,
     AgentBackendHTTPError,
     AgentBackendInternalEventType,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
+    AgentBackendRunPausedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
@@ -42,6 +44,17 @@ from .runtime_request_builder import (
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
     from graphon.runtime import GraphRuntimeState
+
+
+# Stage 4 §5+§7: the terminal events that `_consume_event_stream` may return.
+# Stream + started events are filtered out before we yield; transport errors
+# are surfaced as a separate StreamCompletedEvent in the second tuple slot.
+_TerminalAgentBackendEvent = (
+    AgentBackendRunSucceededInternalEvent
+    | AgentBackendRunFailedInternalEvent
+    | AgentBackendRunCancelledInternalEvent
+    | AgentBackendRunPausedInternalEvent
+)
 
 
 class DifyAgentNode(Node[DifyAgentNodeData]):
@@ -289,7 +302,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         run_id: str,
         metadata: dict[str, Any],
     ) -> tuple[
-        AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | object | None,
+        _TerminalAgentBackendEvent | None,
         StreamCompletedEvent | None,
     ]:
         """Consume the SSE stream for one Agent backend run.
@@ -316,7 +329,23 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
                     }
-                    return internal_event, None
+                    # Narrow to the 4 known terminal event types so the caller
+                    # can hand the result to ``build_failure_result`` (which is
+                    # typed against the union). Anything else is a protocol-
+                    # level surprise we surface as a stream error.
+                    if isinstance(
+                        internal_event,
+                        AgentBackendRunSucceededInternalEvent
+                        | AgentBackendRunFailedInternalEvent
+                        | AgentBackendRunCancelledInternalEvent
+                        | AgentBackendRunPausedInternalEvent,
+                    ):
+                        return internal_event, None
+                    return None, self._failure_event(
+                        inputs={}, process_data={}, metadata=metadata,
+                        error=f"Unexpected internal event type {internal_event.type!r}",
+                        error_type="agent_backend_stream_error",
+                    )
         except AgentBackendError as error:
             return None, self._failure_event(
                 inputs={},
