@@ -45,14 +45,16 @@ import {
 } from '../../table'
 
 type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
+type AccessMode = NonNullable<AccessPolicy['mode']>
+type AccessSubjectType = NonNullable<AccessSubject['subjectType']>
 
-const ACCESS_MODE_PUBLIC = 1
-const ACCESS_MODE_PRIVATE = 2
-const ACCESS_MODE_PRIVATE_ALL = 3
-const ACCESS_SUBJECT_TYPE_ACCOUNT = 1
-const ACCESS_SUBJECT_TYPE_GROUP = 2
+const ACCESS_MODE_PUBLIC = 'ACCESS_MODE_PUBLIC' satisfies AccessMode
+const ACCESS_MODE_PRIVATE = 'ACCESS_MODE_PRIVATE' satisfies AccessMode
+const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessMode
+const ACCESS_SUBJECT_TYPE_ACCOUNT = 'ACCESS_SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
+const ACCESS_SUBJECT_TYPE_GROUP = 'ACCESS_SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
 
-function accessModeToPermissionKey(mode?: number): AccessPermissionKind {
+function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissionKind {
   if (mode === ACCESS_MODE_PRIVATE)
     return 'specific'
   if (mode === ACCESS_MODE_PUBLIC)
@@ -60,7 +62,7 @@ function accessModeToPermissionKey(mode?: number): AccessPermissionKind {
   return 'organization'
 }
 
-function permissionKeyToAccessMode(key: AccessPermissionKind) {
+function permissionKeyToAccessMode(key: AccessPermissionKind): AccessMode {
   if (key === 'organization')
     return ACCESS_MODE_PRIVATE_ALL
   if (key === 'specific')
@@ -132,12 +134,12 @@ function PermissionPicker({ value, disabled, onChange }: {
 
 type SelectableAccessSubject = {
   id: string
-  subjectType: number
+  subjectType: AccessSubjectType
   name?: string
   memberCount?: number
 }
 
-function subjectTypeFromSubject(subject: Subject) {
+function subjectTypeFromSubject(subject: Subject): AccessSubjectType {
   if (subject.subjectType === 'group' || subject.groupData)
     return ACCESS_SUBJECT_TYPE_GROUP
   return ACCESS_SUBJECT_TYPE_ACCOUNT

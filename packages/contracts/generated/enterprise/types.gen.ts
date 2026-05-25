@@ -4,6 +4,33 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}` | (string & {})
 }
 
+export type DifyEnterpriseApiEnterpriseEnvironment = {
+  id?: string
+  name?: string
+  description?: string
+  mode?: 'ENVIRONMENT_MODE_UNSPECIFIED' | 'ENVIRONMENT_MODE_SHARED' | 'ENVIRONMENT_MODE_ISOLATED'
+  backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
+  namespace?: string
+  apiServer?: string
+  status?:
+    | 'ENVIRONMENT_STATUS_UNSPECIFIED'
+    | 'ENVIRONMENT_STATUS_ADMISSION'
+    | 'ENVIRONMENT_STATUS_BOOTSTRAPPING'
+    | 'ENVIRONMENT_STATUS_READY'
+    | 'ENVIRONMENT_STATUS_FAILED'
+  statusMessage?: string
+  lastError?: DifyEnterpriseApiEnterpriseEnvironmentError
+  managedBy?: string
+  createdAt?: string
+  updatedAt?: string
+  runtimeEndpoint?: string
+}
+
+export type DifyEnterpriseApiEnterpriseEnvironmentError = {
+  code?: string
+  message?: string
+}
+
 export type AccessChannels = {
   id?: string
   appInstanceId?: string
@@ -18,14 +45,21 @@ export type AccessPolicy = {
   id?: string
   appInstanceId?: string
   environmentId?: string
-  mode?: number
+  mode?:
+    | 'ACCESS_MODE_UNSPECIFIED'
+    | 'ACCESS_MODE_PUBLIC'
+    | 'ACCESS_MODE_PRIVATE'
+    | 'ACCESS_MODE_PRIVATE_ALL'
   subjects?: Array<AccessSubject>
   createdAt?: string
   updatedAt?: string
 }
 
 export type AccessSubject = {
-  subjectType?: number
+  subjectType?:
+    | 'ACCESS_SUBJECT_TYPE_UNSPECIFIED'
+    | 'ACCESS_SUBJECT_TYPE_ACCOUNT'
+    | 'ACCESS_SUBJECT_TYPE_GROUP'
   subjectId?: string
 }
 
@@ -115,37 +149,6 @@ export type CreateAppInstanceReq = {
   description?: string
 }
 
-export type CreateAppRunnerLaunchProfileReply = {
-  environmentId?: string
-  joinToken?: string
-  configYaml?: string
-  runtimeEndpoint?: string
-  sourceCommands?: Array<string>
-  dockerCommands?: Array<string>
-}
-
-export type CreateAppRunnerLaunchProfileReq = {
-  environmentId?: string
-  mode?: number
-  controlEndpoint?: string
-  pluginDaemonBaseUrl?: string
-  runtimeListenAddr?: string
-  debugListenAddr?: string
-}
-
-export type CreateEnvironmentReply = {
-  environment?: Environment
-}
-
-export type CreateEnvironmentReq = {
-  name?: string
-  description?: string
-  mode?: number
-  backend?: number
-  k8s?: K8sEnvironmentConfig
-  external?: ExternalAppRunnerConfig
-}
-
 export type CreateInitialDeploymentFromDslReq = {
   dsl?: string
   environmentId?: string
@@ -202,20 +205,20 @@ export type CreateReleaseReply = {
 export type CredentialCandidate = {
   credentialId?: string
   providerId?: string
-  category?: number
+  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
   displayName?: string
   fromEnterprise?: boolean
 }
 
 export type CredentialSelectionInput = {
   providerId?: string
-  category?: number
+  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
   credentialId?: string
 }
 
 export type CredentialSlot = {
   providerId?: string
-  category?: number
+  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
   candidates?: Array<CredentialCandidate>
 }
 
@@ -224,10 +227,6 @@ export type DeleteApiKeyReply = {
 }
 
 export type DeleteAppInstanceReply = {
-  [key: string]: unknown
-}
-
-export type DeleteEnvironmentReply = {
   [key: string]: unknown
 }
 
@@ -243,7 +242,12 @@ export type DeployReq = {
 
 export type Deployment = {
   id?: string
-  status?: number
+  status?:
+    | 'DEPLOYMENT_STATUS_UNSPECIFIED'
+    | 'DEPLOYMENT_STATUS_DEPLOYING'
+    | 'DEPLOYMENT_STATUS_READY'
+    | 'DEPLOYMENT_STATUS_FAILED'
+    | 'DEPLOYMENT_STATUS_CANCELLED'
   environment?: Environment
   release?: Release
   error?: Error
@@ -286,11 +290,16 @@ export type Environment = {
   id?: string
   name?: string
   description?: string
-  mode?: number
-  backend?: number
+  mode?: 'ENVIRONMENT_MODE_UNSPECIFIED' | 'ENVIRONMENT_MODE_SHARED' | 'ENVIRONMENT_MODE_ISOLATED'
+  backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
   namespace?: string
   apiServer?: string
-  status?: number
+  status?:
+    | 'ENVIRONMENT_STATUS_UNSPECIFIED'
+    | 'ENVIRONMENT_STATUS_ADMISSION'
+    | 'ENVIRONMENT_STATUS_BOOTSTRAPPING'
+    | 'ENVIRONMENT_STATUS_READY'
+    | 'ENVIRONMENT_STATUS_FAILED'
   statusMessage?: string
   lastError?: EnvironmentError
   managedBy?: string
@@ -302,7 +311,14 @@ export type Environment = {
 export type EnvironmentDeployment = {
   appInstanceId?: string
   environment?: Environment
-  status?: number
+  status?:
+    | 'RUNTIME_INSTANCE_STATUS_UNSPECIFIED'
+    | 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED'
+    | 'RUNTIME_INSTANCE_STATUS_DEPLOYING'
+    | 'RUNTIME_INSTANCE_STATUS_READY'
+    | 'RUNTIME_INSTANCE_STATUS_FAILED'
+    | 'RUNTIME_INSTANCE_STATUS_DRIFTED'
+    | 'RUNTIME_INSTANCE_STATUS_INVALID'
   currentRelease?: Release
   desiredRelease?: Release
   currentDeployment?: EnvironmentDeploymentRecord
@@ -312,7 +328,12 @@ export type EnvironmentDeployment = {
 
 export type EnvironmentDeploymentRecord = {
   id?: string
-  status?: number
+  status?:
+    | 'DEPLOYMENT_STATUS_UNSPECIFIED'
+    | 'DEPLOYMENT_STATUS_DEPLOYING'
+    | 'DEPLOYMENT_STATUS_READY'
+    | 'DEPLOYMENT_STATUS_FAILED'
+    | 'DEPLOYMENT_STATUS_CANCELLED'
   createdAt?: string
   finalizedAt?: string
 }
@@ -327,10 +348,6 @@ export type Error = {
   code?: string
   message?: string
   atUnix?: string
-}
-
-export type ExternalAppRunnerConfig = {
-  runtimeEndpoint?: string
 }
 
 export type GetAccessChannelsReply = {
@@ -357,19 +374,8 @@ export type GetDeploymentOptionsReply = {
   options?: DeploymentOptions
 }
 
-export type GetEnvironmentReply = {
-  environment?: Environment
-}
-
 export type GetReleaseReply = {
   release?: Release
-}
-
-export type K8sEnvironmentConfig = {
-  namespace?: string
-  apiServer?: string
-  caBundle?: string
-  bearerToken?: string
 }
 
 export type ListApiKeysReply = {
@@ -392,10 +398,6 @@ export type ListDeploymentsReply = {
 
 export type ListEnvironmentDeploymentsReply = {
   data?: Array<EnvironmentDeployment>
-}
-
-export type ListEnvironmentsReply = {
-  data?: Array<Environment>
 }
 
 export type ListReleaseCredentialCandidatesReply = {
@@ -424,7 +426,11 @@ export type PutAccessPolicyReply = {
 export type PutAccessPolicyReq = {
   appInstanceId?: string
   environmentId?: string
-  mode?: number
+  mode?:
+    | 'ACCESS_MODE_UNSPECIFIED'
+    | 'ACCESS_MODE_PUBLIC'
+    | 'ACCESS_MODE_PRIVATE'
+    | 'ACCESS_MODE_PRIVATE_ALL'
   subjects?: Array<AccessSubject>
 }
 
@@ -433,7 +439,7 @@ export type Release = {
   appInstanceId?: string
   name?: string
   description?: string
-  source?: number
+  source?: 'RELEASE_SOURCE_UNSPECIFIED' | 'RELEASE_SOURCE_SOURCE_APP' | 'RELEASE_SOURCE_UPLOAD'
   sourceAppId?: string
   gateCommitId?: string
   requiredSlots?: Array<RequiredSlot>
@@ -457,9 +463,9 @@ export type ReportRuntimeAssignmentStatusReq = {
 }
 
 export type RequiredSlot = {
-  type?: number
+  type?: 'SLOT_TYPE_UNSPECIFIED' | 'SLOT_TYPE_PLUGIN_CREDENTIAL' | 'SLOT_TYPE_ENV_VAR'
   providerId?: string
-  category?: number
+  category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
   name?: string
 }
 
@@ -525,15 +531,6 @@ export type RuntimeLastError = {
   releaseId?: string
 }
 
-export type TestEnvironmentConnectionReply = {
-  ok?: boolean
-  message?: string
-}
-
-export type TestEnvironmentConnectionReq = {
-  environmentId?: string
-}
-
 export type TokenExchangeReply = {
   accessToken?: string
   expiresAt?: string
@@ -565,16 +562,6 @@ export type UpdateAppInstanceReply = {
 
 export type UpdateAppInstanceReq = {
   appInstanceId?: string
-  name?: string
-  description?: string
-}
-
-export type UpdateEnvironmentReply = {
-  environment?: Environment
-}
-
-export type UpdateEnvironmentReq = {
-  environmentId?: string
   name?: string
   description?: string
 }
@@ -653,7 +640,11 @@ export type BrandingInfo = {
 
 export type CheckPasswordStatusReply = {
   requirePasswordChange?: boolean
-  changeReason?: number
+  changeReason?:
+    | 'PASSWORD_CHANGE_REASON_UNSPECIFIED'
+    | 'PASSWORD_CHANGE_REASON_TEMP'
+    | 'PASSWORD_CHANGE_REASON_EXPIRED'
+    | 'PASSWORD_CHANGE_REASON_POLICY'
   daysToExpire?: number
   message?: string
 }
@@ -662,8 +653,39 @@ export type ClearDefaultWorkspaceReply = {
   [key: string]: unknown
 }
 
+export type CreateAppRunnerLaunchProfileReply = {
+  environmentId?: string
+  joinToken?: string
+  configYaml?: string
+  runtimeEndpoint?: string
+  sourceCommands?: Array<string>
+  dockerCommands?: Array<string>
+}
+
+export type CreateAppRunnerLaunchProfileReq = {
+  environmentId?: string
+  mode?: 'APP_RUNNER_LAUNCH_PROFILE_MODE_UNSPECIFIED' | 'APP_RUNNER_LAUNCH_PROFILE_MODE_DEBUG'
+  controlEndpoint?: string
+  pluginDaemonBaseUrl?: string
+  runtimeListenAddr?: string
+  debugListenAddr?: string
+}
+
 export type CreateBearerTokenResponse = {
   token?: string
+}
+
+export type CreateEnvironmentReply = {
+  environment?: DifyEnterpriseApiEnterpriseEnvironment
+}
+
+export type CreateEnvironmentReq = {
+  name?: string
+  description?: string
+  mode?: 'ENVIRONMENT_MODE_UNSPECIFIED' | 'ENVIRONMENT_MODE_SHARED' | 'ENVIRONMENT_MODE_ISOLATED'
+  backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
+  k8s?: K8sEnvironmentConfig
+  external?: ExternalAppRunnerConfig
 }
 
 export type CreateMemberReply = {
@@ -749,6 +771,10 @@ export type DashboardSsosamlLoginReply = {
   url?: string
 }
 
+export type DeleteEnvironmentReply = {
+  [key: string]: unknown
+}
+
 export type DeleteGroupsRes = {
   message?: string
 }
@@ -770,7 +796,7 @@ export type DeleteWorkspaceReply = {
 }
 
 export type EndpointReply = {
-  mode?: number
+  mode?: 'OTEL_ENDPOINT_MODE_UNIFIED' | 'OTEL_ENDPOINT_MODE_DEDICATED'
   metricsEndpoint?: OtelExporterEndpoint
   tracesEndpoint?: OtelExporterEndpoint
 }
@@ -779,6 +805,10 @@ export type EnterpriseSystemUserSettingReply = {
   ssoEnforcedForSignin?: boolean
   ssoEnforcedForSigninProtocol?: string
   enableEmailPasswordLogin?: boolean
+}
+
+export type ExternalAppRunnerConfig = {
+  runtimeEndpoint?: string
 }
 
 export type GetBearerTokenResponse = {
@@ -794,6 +824,10 @@ export type GetClusterInfoReply = {
 export type GetDefaultWorkspaceReply = {
   workspaceId?: string
   workspace?: Workspace
+}
+
+export type GetEnvironmentReply = {
+  environment?: DifyEnterpriseApiEnterpriseEnvironment
 }
 
 export type GetGroupSubjectsRes = {
@@ -865,7 +899,11 @@ export type GroupAppItem = {
   app_name?: string
   workspace_id?: string
   workspace_name?: string
-  app_status?: number
+  app_status?:
+    | 'APP_STATUS_UNSPECIFIED'
+    | 'APP_STATUS_PUBLISHED'
+    | 'APP_STATUS_UNPUBLISHED'
+    | 'APP_STATUS_DELETED'
   token_usage?: string
   rpm?: string
   concurrency?: string
@@ -981,6 +1019,13 @@ export type JoinWorkspaceReq = {
   role?: string
 }
 
+export type K8sEnvironmentConfig = {
+  namespace?: string
+  apiServer?: string
+  caBundle?: string
+  bearerToken?: string
+}
+
 export type LicenseInfo = {
   uuid?: string
   expiredAt?: string
@@ -996,9 +1041,9 @@ export type LicenseStatus = {
 }
 
 export type LimitConfig = {
-  type?: number
+  type?: 'LIMIT_TYPE_UNSPECIFIED' | 'LIMIT_TYPE_RPM' | 'LIMIT_TYPE_CONCURRENCY' | 'LIMIT_TYPE_TOKEN'
   threshold?: string
-  action?: number
+  action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
   reached?: boolean
 }
 
@@ -1010,6 +1055,10 @@ export type LimitFields = {
 export type ListAccessSubjectsReply = {
   subjects?: Array<Subject>
   pagination?: Pagination
+}
+
+export type ListEnvironmentsReply = {
+  data?: Array<DifyEnterpriseApiEnterpriseEnvironment>
 }
 
 export type ListGroupAppsResponse = {
@@ -1121,7 +1170,7 @@ export type OidcReply = {
 export type OtelExporterEndpoint = {
   endpoint?: string
   compression?: string
-  protocol?: number
+  protocol?: 'HTTP_PROTOBUF' | 'HTTP_JSON' | 'GRPC'
   timeout?: string
   headers?: {
     [key: string]: string
@@ -1139,7 +1188,7 @@ export type OtelExporterStatusReply = {
   bytesPushed?: string
   itemsInQueue?: string
   logs?: string
-  status?: number
+  status?: 'RUNNING' | 'ERROR' | 'STOPPED'
 }
 
 export type PasswordPolicyConfig = {
@@ -1155,7 +1204,11 @@ export type PasswordPolicyConfig = {
 }
 
 export type PasswordStrengthReply = {
-  level?: number
+  level?:
+    | 'PASSWORD_STRENGTH_LEVEL_UNSPECIFIED'
+    | 'PASSWORD_STRENGTH_LEVEL_WEAK'
+    | 'PASSWORD_STRENGTH_LEVEL_MEDIUM'
+    | 'PASSWORD_STRENGTH_LEVEL_STRONG'
 }
 
 export type PasswordStrengthReq = {
@@ -1168,7 +1221,11 @@ export type PluginInstallationPermissionInfo = {
 }
 
 export type PluginInstallationSettingsReply = {
-  pluginInstallationScope?: number
+  pluginInstallationScope?:
+    | 'PLUGIN_INSTALLATION_SCOPE_ALL'
+    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY'
+    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS'
+    | 'PLUGIN_INSTALLATION_SCOPE_NONE'
   restrictToMarketplaceOnly?: boolean
 }
 
@@ -1206,11 +1263,11 @@ export type ResourceGroupDetail = {
   description?: string
   enabled?: boolean
   rpm_limit?: number
-  rpm_action?: number
+  rpm_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
   concurrency_limit?: number
-  concurrency_action?: number
+  concurrency_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
   token_quota?: string
-  token_action?: number
+  token_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
   created_at?: string
   updated_at?: string
 }
@@ -1225,8 +1282,16 @@ export type ResourceGroupItem = {
   token_quota?: string
   token_usage?: string
   app_count?: string
-  rpm_status?: number
-  conc_status?: number
+  rpm_status?:
+    | 'LIMIT_STATUS_UNSPECIFIED'
+    | 'LIMIT_STATUS_NA'
+    | 'LIMIT_STATUS_NORMAL'
+    | 'LIMIT_STATUS_THROTTLED'
+  conc_status?:
+    | 'LIMIT_STATUS_UNSPECIFIED'
+    | 'LIMIT_STATUS_NA'
+    | 'LIMIT_STATUS_NORMAL'
+    | 'LIMIT_STATUS_THROTTLED'
   created_at?: string
   updated_at?: string
 }
@@ -1274,7 +1339,11 @@ export type SearchAppItem = {
   app_name?: string
   workspace_id?: string
   workspace_name?: string
-  app_status?: number
+  app_status?:
+    | 'APP_STATUS_UNSPECIFIED'
+    | 'APP_STATUS_PUBLISHED'
+    | 'APP_STATUS_UNPUBLISHED'
+    | 'APP_STATUS_DELETED'
   icon?: string
   icon_type?: string
   icon_background?: string
@@ -1343,6 +1412,15 @@ export type TestConnectionReply = {
   error?: string
 }
 
+export type TestEnvironmentConnectionReply = {
+  ok?: boolean
+  message?: string
+}
+
+export type TestEnvironmentConnectionReq = {
+  environmentId?: string
+}
+
 export type ToggleEndpointRequest = {
   enabled?: boolean
 }
@@ -1362,6 +1440,16 @@ export type UpdateBrandingInfoReq = {
   loginPageLogo?: string
   workspaceLogo?: string
   favicon?: string
+}
+
+export type UpdateEnvironmentReply = {
+  environment?: DifyEnterpriseApiEnterpriseEnvironment
+}
+
+export type UpdateEnvironmentReq = {
+  environmentId?: string
+  name?: string
+  description?: string
 }
 
 export type UpdateGroupSubjectsReq = {
@@ -1440,7 +1528,11 @@ export type UpdateOfflineLicenseReq = {
 }
 
 export type UpdatePluginInstallationSettingsRequest = {
-  pluginInstallationScope?: number
+  pluginInstallationScope?:
+    | 'PLUGIN_INSTALLATION_SCOPE_ALL'
+    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY'
+    | 'PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS'
+    | 'PLUGIN_INSTALLATION_SCOPE_NONE'
   restrictToMarketplaceOnly?: boolean
 }
 
@@ -1450,11 +1542,11 @@ export type UpdateResourceGroupRequest = {
   description?: string
   enabled?: boolean
   rpm_limit?: number
-  rpm_action?: number
+  rpm_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
   concurrency_limit?: number
-  concurrency_action?: number
+  concurrency_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
   token_quota?: string
-  token_action?: number
+  token_action?: 'LIMIT_ACTION_UNSPECIFIED' | 'LIMIT_ACTION_BLOCK' | 'LIMIT_ACTION_TRACK'
 }
 
 export type UpdateUserReply = {
@@ -1951,117 +2043,6 @@ export type ReleaseServiceGetDeploymentOptionsFromSourceAppResponses = {
 
 export type ReleaseServiceGetDeploymentOptionsFromSourceAppResponse
   = ReleaseServiceGetDeploymentOptionsFromSourceAppResponses[keyof ReleaseServiceGetDeploymentOptionsFromSourceAppResponses]
-
-export type EnvironmentServiceListEnvironmentsData = {
-  body?: never
-  path?: never
-  query?: {
-    environmentId?: string
-    name?: string
-  }
-  url: '/enterprise/app-deploy/environments'
-}
-
-export type EnvironmentServiceListEnvironmentsResponses = {
-  200: ListEnvironmentsReply
-}
-
-export type EnvironmentServiceListEnvironmentsResponse
-  = EnvironmentServiceListEnvironmentsResponses[keyof EnvironmentServiceListEnvironmentsResponses]
-
-export type EnvironmentServiceCreateEnvironmentData = {
-  body: CreateEnvironmentReq
-  path?: never
-  query?: never
-  url: '/enterprise/app-deploy/environments'
-}
-
-export type EnvironmentServiceCreateEnvironmentResponses = {
-  200: CreateEnvironmentReply
-}
-
-export type EnvironmentServiceCreateEnvironmentResponse
-  = EnvironmentServiceCreateEnvironmentResponses[keyof EnvironmentServiceCreateEnvironmentResponses]
-
-export type EnvironmentServiceDeleteEnvironmentData = {
-  body?: never
-  path: {
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/environments/{environmentId}'
-}
-
-export type EnvironmentServiceDeleteEnvironmentResponses = {
-  200: DeleteEnvironmentReply
-}
-
-export type EnvironmentServiceDeleteEnvironmentResponse
-  = EnvironmentServiceDeleteEnvironmentResponses[keyof EnvironmentServiceDeleteEnvironmentResponses]
-
-export type EnvironmentServiceGetEnvironmentData = {
-  body?: never
-  path: {
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/environments/{environmentId}'
-}
-
-export type EnvironmentServiceGetEnvironmentResponses = {
-  200: GetEnvironmentReply
-}
-
-export type EnvironmentServiceGetEnvironmentResponse
-  = EnvironmentServiceGetEnvironmentResponses[keyof EnvironmentServiceGetEnvironmentResponses]
-
-export type EnvironmentServiceUpdateEnvironmentData = {
-  body: UpdateEnvironmentReq
-  path: {
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/environments/{environmentId}'
-}
-
-export type EnvironmentServiceUpdateEnvironmentResponses = {
-  200: UpdateEnvironmentReply
-}
-
-export type EnvironmentServiceUpdateEnvironmentResponse
-  = EnvironmentServiceUpdateEnvironmentResponses[keyof EnvironmentServiceUpdateEnvironmentResponses]
-
-export type EnvironmentServiceCreateAppRunnerLaunchProfileData = {
-  body: CreateAppRunnerLaunchProfileReq
-  path: {
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/environments/{environmentId}/app-runner-launch-profile'
-}
-
-export type EnvironmentServiceCreateAppRunnerLaunchProfileResponses = {
-  200: CreateAppRunnerLaunchProfileReply
-}
-
-export type EnvironmentServiceCreateAppRunnerLaunchProfileResponse
-  = EnvironmentServiceCreateAppRunnerLaunchProfileResponses[keyof EnvironmentServiceCreateAppRunnerLaunchProfileResponses]
-
-export type EnvironmentServiceTestConnectionData = {
-  body: TestEnvironmentConnectionReq
-  path: {
-    environmentId: string
-  }
-  query?: never
-  url: '/enterprise/app-deploy/environments/{environmentId}/test-connection'
-}
-
-export type EnvironmentServiceTestConnectionResponses = {
-  200: TestEnvironmentConnectionReply
-}
-
-export type EnvironmentServiceTestConnectionResponse
-  = EnvironmentServiceTestConnectionResponses[keyof EnvironmentServiceTestConnectionResponses]
 
 export type DeploymentServiceCreateInitialDeploymentFromDslData = {
   body: CreateInitialDeploymentFromDslReq

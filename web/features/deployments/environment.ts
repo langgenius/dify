@@ -1,8 +1,8 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 
-const ENVIRONMENT_MODE_ISOLATED = 2
-const RUNTIME_BACKEND_EXTERNAL = 2
-const ENVIRONMENT_STATUS_READY = 3
+const ENVIRONMENT_MODE_ISOLATED = 'ENVIRONMENT_MODE_ISOLATED' satisfies NonNullable<Environment['mode']>
+const RUNTIME_BACKEND_EXTERNAL = 'RUNTIME_BACKEND_EXTERNAL' satisfies NonNullable<Environment['backend']>
+const ENVIRONMENT_STATUS_READY = 'ENVIRONMENT_STATUS_READY' satisfies NonNullable<Environment['status']>
 
 export function environmentId(environment?: Environment) {
   return environment?.id ?? ''

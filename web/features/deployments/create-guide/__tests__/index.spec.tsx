@@ -160,9 +160,9 @@ function environment(overrides: Partial<Environment> = {}): Environment {
   return {
     id: 'env-1',
     name: 'Production',
-    mode: 2,
-    backend: 1,
-    status: 3,
+    mode: 'ENVIRONMENT_MODE_ISOLATED',
+    backend: 'RUNTIME_BACKEND_K8S',
+    status: 'ENVIRONMENT_STATUS_READY',
     ...overrides,
   }
 }
@@ -170,7 +170,7 @@ function environment(overrides: Partial<Environment> = {}): Environment {
 function credentialSlot(overrides: Partial<CredentialSlot> = {}): CredentialSlot {
   return {
     providerId: 'openai',
-    category: 1,
+    category: 'PLUGIN_CATEGORY_MODEL',
     candidates: [
       {
         credentialId: 'cred-1',
@@ -256,7 +256,7 @@ describe('CreateDeploymentGuide', () => {
             credentials: [
               {
                 providerId: 'openai',
-                category: 1,
+                category: 'PLUGIN_CATEGORY_MODEL',
                 credentialId: 'cred-1',
               },
             ],

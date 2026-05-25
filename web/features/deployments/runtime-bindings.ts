@@ -1,7 +1,7 @@
 import type { RequiredSlot } from '@dify/contracts/enterprise/types.gen'
 
-const SLOT_TYPE_PLUGIN_CREDENTIAL = 1
-const SLOT_TYPE_ENV_VAR = 2
+const SLOT_TYPE_PLUGIN_CREDENTIAL = 'SLOT_TYPE_PLUGIN_CREDENTIAL' satisfies NonNullable<RequiredSlot['type']>
+const SLOT_TYPE_ENV_VAR = 'SLOT_TYPE_ENV_VAR' satisfies NonNullable<RequiredSlot['type']>
 
 export function runtimeBindingSummary(binding?: RequiredSlot) {
   return binding?.name || binding?.providerId || '—'

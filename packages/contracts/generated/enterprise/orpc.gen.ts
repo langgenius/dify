@@ -61,25 +61,8 @@ import {
   zDeploymentServiceUndeployBody,
   zDeploymentServiceUndeployPath,
   zDeploymentServiceUndeployResponse,
-  zEnvironmentServiceCreateAppRunnerLaunchProfileBody,
-  zEnvironmentServiceCreateAppRunnerLaunchProfilePath,
-  zEnvironmentServiceCreateAppRunnerLaunchProfileResponse,
-  zEnvironmentServiceCreateEnvironmentBody,
-  zEnvironmentServiceCreateEnvironmentResponse,
-  zEnvironmentServiceDeleteEnvironmentPath,
-  zEnvironmentServiceDeleteEnvironmentResponse,
-  zEnvironmentServiceGetEnvironmentPath,
-  zEnvironmentServiceGetEnvironmentResponse,
   zEnvironmentServiceListDeployableEnvironmentsQuery,
   zEnvironmentServiceListDeployableEnvironmentsResponse,
-  zEnvironmentServiceListEnvironmentsQuery,
-  zEnvironmentServiceListEnvironmentsResponse,
-  zEnvironmentServiceTestConnectionBody,
-  zEnvironmentServiceTestConnectionPath,
-  zEnvironmentServiceTestConnectionResponse,
-  zEnvironmentServiceUpdateEnvironmentBody,
-  zEnvironmentServiceUpdateEnvironmentPath,
-  zEnvironmentServiceUpdateEnvironmentResponse,
   zReleaseServiceCreateReleaseFromDslBody,
   zReleaseServiceCreateReleaseFromDslResponse,
   zReleaseServiceCreateReleaseFromSourceAppBody,
@@ -530,107 +513,8 @@ export const listDeployableEnvironments = oc
   .input(z.object({ query: zEnvironmentServiceListDeployableEnvironmentsQuery.optional() }))
   .output(zEnvironmentServiceListDeployableEnvironmentsResponse)
 
-export const listEnvironments = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'EnvironmentService_ListEnvironments',
-    path: '/enterprise/app-deploy/environments',
-    tags: ['EnvironmentService'],
-  })
-  .input(z.object({ query: zEnvironmentServiceListEnvironmentsQuery.optional() }))
-  .output(zEnvironmentServiceListEnvironmentsResponse)
-
-export const createEnvironment = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'EnvironmentService_CreateEnvironment',
-    path: '/enterprise/app-deploy/environments',
-    tags: ['EnvironmentService'],
-  })
-  .input(z.object({ body: zEnvironmentServiceCreateEnvironmentBody }))
-  .output(zEnvironmentServiceCreateEnvironmentResponse)
-
-export const deleteEnvironment = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'EnvironmentService_DeleteEnvironment',
-    path: '/enterprise/app-deploy/environments/{environmentId}',
-    tags: ['EnvironmentService'],
-  })
-  .input(z.object({ params: zEnvironmentServiceDeleteEnvironmentPath }))
-  .output(zEnvironmentServiceDeleteEnvironmentResponse)
-
-export const getEnvironment = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'EnvironmentService_GetEnvironment',
-    path: '/enterprise/app-deploy/environments/{environmentId}',
-    tags: ['EnvironmentService'],
-  })
-  .input(z.object({ params: zEnvironmentServiceGetEnvironmentPath }))
-  .output(zEnvironmentServiceGetEnvironmentResponse)
-
-export const updateEnvironment = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'EnvironmentService_UpdateEnvironment',
-    path: '/enterprise/app-deploy/environments/{environmentId}',
-    tags: ['EnvironmentService'],
-  })
-  .input(
-    z.object({
-      body: zEnvironmentServiceUpdateEnvironmentBody,
-      params: zEnvironmentServiceUpdateEnvironmentPath,
-    }),
-  )
-  .output(zEnvironmentServiceUpdateEnvironmentResponse)
-
-export const createAppRunnerLaunchProfile = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'EnvironmentService_CreateAppRunnerLaunchProfile',
-    path: '/enterprise/app-deploy/environments/{environmentId}/app-runner-launch-profile',
-    tags: ['EnvironmentService'],
-  })
-  .input(
-    z.object({
-      body: zEnvironmentServiceCreateAppRunnerLaunchProfileBody,
-      params: zEnvironmentServiceCreateAppRunnerLaunchProfilePath,
-    }),
-  )
-  .output(zEnvironmentServiceCreateAppRunnerLaunchProfileResponse)
-
-export const testConnection = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'EnvironmentService_TestConnection',
-    path: '/enterprise/app-deploy/environments/{environmentId}/test-connection',
-    tags: ['EnvironmentService'],
-  })
-  .input(
-    z.object({
-      body: zEnvironmentServiceTestConnectionBody,
-      params: zEnvironmentServiceTestConnectionPath,
-    }),
-  )
-  .output(zEnvironmentServiceTestConnectionResponse)
-
 export const environmentService = {
   listDeployableEnvironments,
-  listEnvironments,
-  createEnvironment,
-  deleteEnvironment,
-  getEnvironment,
-  updateEnvironment,
-  createAppRunnerLaunchProfile,
-  testConnection,
 }
 
 export const oAuth2Login = oc

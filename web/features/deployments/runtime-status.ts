@@ -4,6 +4,7 @@ type RuntimeInstanceStatusValue = number | string
 type RuntimeInstanceStatusRow = {
   status?: RuntimeInstanceStatusValue
 }
+type RuntimeInstanceStatus = NonNullable<EnvironmentDeployment['status']>
 
 export type DeploymentUiStatus
   = | 'ready'
@@ -16,12 +17,12 @@ export type DeploymentUiStatus
 
 export const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
 // Mirrors appdeploy/v1/common.proto RuntimeInstanceStatus for EnvironmentDeployment.status.
-export const RUNTIME_INSTANCE_STATUS_UNDEPLOYED = 1
-export const RUNTIME_INSTANCE_STATUS_DEPLOYING = 2
-export const RUNTIME_INSTANCE_STATUS_READY = 3
-export const RUNTIME_INSTANCE_STATUS_FAILED = 4
-export const RUNTIME_INSTANCE_STATUS_DRIFTED = 5
-export const RUNTIME_INSTANCE_STATUS_INVALID = 6
+export const RUNTIME_INSTANCE_STATUS_UNDEPLOYED = 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED' satisfies RuntimeInstanceStatus
+export const RUNTIME_INSTANCE_STATUS_DEPLOYING = 'RUNTIME_INSTANCE_STATUS_DEPLOYING' satisfies RuntimeInstanceStatus
+export const RUNTIME_INSTANCE_STATUS_READY = 'RUNTIME_INSTANCE_STATUS_READY' satisfies RuntimeInstanceStatus
+export const RUNTIME_INSTANCE_STATUS_FAILED = 'RUNTIME_INSTANCE_STATUS_FAILED' satisfies RuntimeInstanceStatus
+export const RUNTIME_INSTANCE_STATUS_DRIFTED = 'RUNTIME_INSTANCE_STATUS_DRIFTED' satisfies RuntimeInstanceStatus
+export const RUNTIME_INSTANCE_STATUS_INVALID = 'RUNTIME_INSTANCE_STATUS_INVALID' satisfies RuntimeInstanceStatus
 
 type RuntimeInstanceStatusQueryData = {
   data?: RuntimeInstanceStatusRow[]
@@ -32,9 +33,25 @@ export function isUndeployedDeploymentRow(row?: EnvironmentDeployment) {
     || (!row?.currentRelease?.id && !row?.desiredRelease?.id && !row?.currentDeployment?.id)
 }
 
-function normalizeRuntimeInstanceStatus(status?: RuntimeInstanceStatusValue) {
-  if (typeof status === 'number')
-    return status
+function normalizeRuntimeInstanceStatus(status?: RuntimeInstanceStatusValue): RuntimeInstanceStatus | undefined {
+  if (typeof status === 'number') {
+    switch (status) {
+      case 1:
+        return RUNTIME_INSTANCE_STATUS_UNDEPLOYED
+      case 2:
+        return RUNTIME_INSTANCE_STATUS_DEPLOYING
+      case 3:
+        return RUNTIME_INSTANCE_STATUS_READY
+      case 4:
+        return RUNTIME_INSTANCE_STATUS_FAILED
+      case 5:
+        return RUNTIME_INSTANCE_STATUS_DRIFTED
+      case 6:
+        return RUNTIME_INSTANCE_STATUS_INVALID
+      default:
+        return undefined
+    }
+  }
 
   const normalized = status?.trim().toUpperCase()
   if (!normalized)
@@ -43,27 +60,27 @@ function normalizeRuntimeInstanceStatus(status?: RuntimeInstanceStatusValue) {
   switch (normalized) {
     case '1':
     case 'UNDEPLOYED':
-    case 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED':
+    case RUNTIME_INSTANCE_STATUS_UNDEPLOYED:
       return RUNTIME_INSTANCE_STATUS_UNDEPLOYED
     case '2':
     case 'DEPLOYING':
-    case 'RUNTIME_INSTANCE_STATUS_DEPLOYING':
+    case RUNTIME_INSTANCE_STATUS_DEPLOYING:
       return RUNTIME_INSTANCE_STATUS_DEPLOYING
     case '3':
     case 'READY':
-    case 'RUNTIME_INSTANCE_STATUS_READY':
+    case RUNTIME_INSTANCE_STATUS_READY:
       return RUNTIME_INSTANCE_STATUS_READY
     case '4':
     case 'FAILED':
-    case 'RUNTIME_INSTANCE_STATUS_FAILED':
+    case RUNTIME_INSTANCE_STATUS_FAILED:
       return RUNTIME_INSTANCE_STATUS_FAILED
     case '5':
     case 'DRIFTED':
-    case 'RUNTIME_INSTANCE_STATUS_DRIFTED':
+    case RUNTIME_INSTANCE_STATUS_DRIFTED:
       return RUNTIME_INSTANCE_STATUS_DRIFTED
     case '6':
     case 'INVALID':
-    case 'RUNTIME_INSTANCE_STATUS_INVALID':
+    case RUNTIME_INSTANCE_STATUS_INVALID:
       return RUNTIME_INSTANCE_STATUS_INVALID
     default:
       return undefined
