@@ -29,31 +29,33 @@ export function InstanceDetail({ appInstanceId, children }: {
         <DeploymentSidebar appInstanceId={appInstanceId} />
         <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
           <div className="h-full min-w-0 overflow-y-auto">
-            <div className="flex w-full flex-col gap-y-0.5 px-6 pt-3 pb-2">
-              <div className="flex min-w-0 items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                    <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
-                    {activeTab === 'api' && (
-                      <div className="shrink-0">
-                        <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
-                      </div>
-                    )}
+            <div className="mx-auto flex min-h-full w-full max-w-[1120px] flex-col">
+              <div className="flex w-full flex-col gap-y-0.5 px-6 pt-3 pb-2">
+                <div className="flex min-w-0 items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                      <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
+                      {activeTab === 'api' && (
+                        <div className="shrink-0">
+                          <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                   </div>
-                  <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
+                  {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'instances') && (
+                    <div className="shrink-0 pt-1.5">
+                      {activeTab === 'api'
+                        ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
+                        : activeTab === 'instances'
+                          ? <NewDeploymentButton appInstanceId={appInstanceId} />
+                          : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+                    </div>
+                  )}
                 </div>
-                {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'instances') && (
-                  <div className="shrink-0 pt-1.5">
-                    {activeTab === 'api'
-                      ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
-                      : activeTab === 'instances'
-                        ? <NewDeploymentButton appInstanceId={appInstanceId} />
-                        : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
-                  </div>
-                )}
               </div>
+              {children}
             </div>
-            {children}
           </div>
         </div>
       </div>
