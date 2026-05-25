@@ -60,6 +60,18 @@ def with_session[T, **P, R](
 
     return decorated
 
+def with_readonly_session[T, **P, R](
+    view: Callable[Concatenate[T, Session, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Inject a fresh SQLAlchemy read-only session into one controller request.
+    """
+
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        with session_factory.create_session() as session:
+            return view(self, session, *args, **kwargs)
+
+    return decorated
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
     """Return the request session inserted by `with_session`, if this handler has been migrated."""
