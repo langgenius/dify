@@ -300,6 +300,7 @@ def test_dify_plugin_tools_layer_uses_prepared_tool_definition_and_invokes_daemo
                 assert tool.description == "Search the web."
                 assert tool_def is not None
                 assert tool_def.parameters_json_schema == _prepared_tool_schema()
+                assert tool_def.strict is False
                 assert result == 'found {"count": 1}'
 
     asyncio.run(scenario())

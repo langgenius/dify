@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from pydantic import ValidationError
 
@@ -120,7 +122,6 @@ def test_dify_plugin_tools_layer_config_accepts_prepared_parameters_and_schema()
                     },
                     "required": ["query"],
                 },
-                strict=True,
             )
         ]
     )
@@ -133,7 +134,59 @@ def test_dify_plugin_tools_layer_config_accepts_prepared_parameters_and_schema()
     assert config.tools[0].runtime_parameters == {"settings": {"locale": "en-US", "max_results": 5}}
     assert config.tools[0].parameters[0].name == "query"
     assert config.tools[0].parameters_json_schema["required"] == ["query"]
-    assert config.tools[0].strict is True
+
+
+def test_dify_plugin_tool_parameter_accepts_api_tool_parameter_dump_shape() -> None:
+    parameter = DifyPluginToolParameter.model_validate(
+        {
+            "name": "query",
+            "label": {"en_US": "Query"},
+            "placeholder": None,
+            "human_description": {"en_US": "Visible in UI"},
+            "type": "select",
+            "form": "llm",
+            "required": True,
+            "default": "dify",
+            "llm_description": "Search query",
+            "input_schema": {"type": "string"},
+            "options": [
+                {
+                    "value": "dify",
+                    "label": {"en_US": "Dify"},
+                }
+            ],
+        }
+    )
+
+    assert parameter.name == "query"
+    assert parameter.type is DifyPluginToolParameterType.SELECT
+    assert parameter.form is DifyPluginToolParameterForm.LLM
+    assert parameter.required is True
+    assert parameter.default == "dify"
+    assert parameter.input_schema == {"type": "string"}
+    assert [option.value for option in parameter.options] == ["dify"]
+
+
+def test_dify_plugin_tool_parameter_accepts_api_tool_parameter_attributes() -> None:
+    parameter = DifyPluginToolParameter.model_validate(
+        SimpleNamespace(
+            name="language",
+            label=SimpleNamespace(en_US="Language"),
+            type="string",
+            form="form",
+            required=False,
+            default="en",
+            llm_description=None,
+            input_schema=None,
+            options=[SimpleNamespace(value="en", label=SimpleNamespace(en_US="English"))],
+        )
+    )
+
+    assert parameter.name == "language"
+    assert parameter.type is DifyPluginToolParameterType.STRING
+    assert parameter.form is DifyPluginToolParameterForm.FORM
+    assert parameter.default == "en"
+    assert [option.value for option in parameter.options] == ["en"]
 
 
 def test_dify_plugin_tool_config_rejects_non_json_runtime_parameters() -> None:
@@ -158,6 +211,19 @@ def test_dify_plugin_tool_config_rejects_non_json_schema_values() -> None:
                 "tool_name": "web_search",
                 "credential_type": "api-key",
                 "parameters_json_schema": {"type": object()},
+            }
+        )
+
+
+def test_dify_plugin_tool_config_rejects_strict_flag() -> None:
+    with pytest.raises(ValidationError):
+        _ = DifyPluginToolConfig.model_validate(
+            {
+                "plugin_id": "langgenius/tools",
+                "provider": "search",
+                "tool_name": "web_search",
+                "credential_type": "api-key",
+                "strict": True,
             }
         )
 

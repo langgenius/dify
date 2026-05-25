@@ -32,11 +32,17 @@ DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.plugin.tools"
 
 
 class DifyPluginToolOption(BaseModel):
-    """Selectable tool option value exposed to the model."""
+    """Selectable tool option value exposed to the model.
+
+    The DTO also accepts API-side option dumps and attribute objects. Fields
+    such as ``label`` or ``icon`` are intentionally ignored because Dify Agent
+    only preserves the normalized option ``value`` for tool invocation and
+    model-visible schema generation.
+    """
 
     value: str
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", from_attributes=True)
 
     @field_validator("value", mode="before")
     @classmethod
@@ -78,7 +84,12 @@ class DifyPluginToolParameterForm(StrEnum):
 
 
 class DifyPluginToolParameter(BaseModel):
-    """Prepared tool parameter declaration supplied by the API side."""
+    """Prepared tool parameter declaration supplied by the API side.
+
+    The DTO intentionally accepts both API-side ``ToolParameter`` dumps and
+    attribute objects so callers can adapt existing tool runtime declarations
+    without coupling Dify Agent to API-internal model classes.
+    """
 
     name: str
     type: DifyPluginToolParameterType
@@ -89,7 +100,7 @@ class DifyPluginToolParameter(BaseModel):
     input_schema: dict[str, JsonValue] | None = None
     options: list[DifyPluginToolOption] = Field(default_factory=list)
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", from_attributes=True)
 
 
 class DifyPluginLayerConfig(LayerConfig):
@@ -144,13 +155,16 @@ class DifyPluginToolConfig(LayerConfig):
     parameters_json_schema: dict[str, JsonValue] = Field(
         default_factory=lambda: {"type": "object", "properties": {}, "required": []}
     )
-    strict: bool | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
 class DifyPluginToolsLayerConfig(LayerConfig):
-    """Public config for the Dify plugin tools layer."""
+    """Public config for the Dify plugin tools layer.
+
+    Callers configure the tools layer with this wrapper object and supply one
+    or more prepared ``DifyPluginToolConfig`` entries in ``tools``.
+    """
 
     tools: list[DifyPluginToolConfig] = Field(default_factory=list)
 

@@ -47,7 +47,6 @@ Each tool config has these fields:
 | `runtime_parameters` | `dict[str, JsonValue]` | Hidden/manual values merged into daemon invocation but omitted from the model schema. |
 | `parameters` | `list[DifyPluginToolParameter]` | API-prepared effective parameter declarations used for validation, defaults, and casting. |
 | `parameters_json_schema` | `dict[str, JsonValue]` | API-prepared JSON schema shown to the model. |
-| `strict` | `bool \| None` | Optional Pydantic AI tool strictness flag. |
 
 ## Example: Dify API prepared Wikipedia tool
 
@@ -58,12 +57,25 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginLayerConfig,
     DifyPluginToolConfig,
     DifyPluginToolParameter,
-    DifyPluginToolParameterForm,
-    DifyPluginToolParameterType,
     DifyPluginToolsLayerConfig,
 )
 from dify_agent.protocol import RunComposition, RunLayerSpec
 
+
+# Dify API side: resolve the selected tool into the API-side Tool runtime first,
+# for example with ToolManager.get_agent_tool_runtime(...). Then adapt its
+# effective ToolParameter objects at the protocol boundary. Dify Agent accepts
+# both ToolParameter attribute objects and ToolParameter.model_dump(mode="json")
+# dictionaries, ignoring API-only fields such as label and human_description.
+tool_runtime = ToolManager.get_agent_tool_runtime(...)
+effective_parameters = tool_runtime.get_merged_runtime_parameters()
+prepared_parameters = [
+    DifyPluginToolParameter.model_validate(parameter)
+    # If the API serializes first, use:
+    # DifyPluginToolParameter.model_validate(parameter.model_dump(mode="json"))
+    for parameter in effective_parameters
+]
+parameters_json_schema = tool_runtime.get_llm_parameters_json_schema()
 
 composition = RunComposition(
     layers=[
@@ -88,33 +100,9 @@ composition = RunComposition(
                         credential_type="unauthorized",
                         name="wikipedia_search",
                         description="Search Wikipedia for relevant pages.",
-                        parameters=[
-                            DifyPluginToolParameter(
-                                name="query",
-                                type=DifyPluginToolParameterType.STRING,
-                                form=DifyPluginToolParameterForm.LLM,
-                                required=True,
-                                llm_description="Search query.",
-                            ),
-                            DifyPluginToolParameter(
-                                name="language",
-                                type=DifyPluginToolParameterType.STRING,
-                                form=DifyPluginToolParameterForm.FORM,
-                                required=False,
-                                default="en",
-                            ),
-                        ],
+                        parameters=prepared_parameters,
                         runtime_parameters={"language": "en"},
-                        parameters_json_schema={
-                            "type": "object",
-                            "properties": {
-                                "query": {
-                                    "type": "string",
-                                    "description": "Search query.",
-                                },
-                            },
-                            "required": ["query"],
-                        },
+                        parameters_json_schema=parameters_json_schema,
                     )
                 ]
             ),

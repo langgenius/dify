@@ -40,6 +40,13 @@ from dify_agent.layers.dify_plugin.tool_client import (
 )
 
 
+# Plugin tools intentionally do not expose a per-tool strictness override in the
+# public config. The API supplies already-prepared schemas, but Dify Agent always
+# registers those tools in loose mode so daemon tool invocation stays tolerant of
+# plugin schema differences and older API-prepared payloads.
+PLUGIN_TOOL_STRICT = False
+
+
 class DifyPluginToolsDeps(LayerDeps):
     """Dependencies required by ``DifyPluginToolsLayer``."""
 
@@ -134,7 +141,7 @@ def _build_pydantic_ai_tool(
             name=tool_def.name,
             description=tool_def.description,
             parameters_json_schema=tool_schema,
-            strict=tool_config.strict,
+            strict=PLUGIN_TOOL_STRICT,
             sequential=tool_def.sequential,
             metadata=tool_def.metadata,
             timeout=tool_def.timeout,
@@ -150,7 +157,6 @@ def _build_pydantic_ai_tool(
         name=tool_name,
         description=tool_description,
         prepare=prepare_tool_definition,
-        strict=tool_config.strict,
     )
 
 
