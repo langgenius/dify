@@ -484,6 +484,32 @@ export const zDatasetMetadataBuiltInFieldsResponse = z.object({
 })
 
 /**
+ * PreviewDetail
+ */
+export const zPreviewDetail = z.object({
+  child_chunks: z.array(z.string()).nullish(),
+  content: z.string(),
+  summary: z.string().nullish(),
+})
+
+/**
+ * QAPreviewDetail
+ */
+export const zQaPreviewDetail = z.object({
+  answer: z.string(),
+  question: z.string(),
+})
+
+/**
+ * IndexingEstimate
+ */
+export const zIndexingEstimate = z.object({
+  preview: z.array(zPreviewDetail),
+  qa_preview: z.array(zQaPreviewDetail).nullish(),
+  total_segments: z.int(),
+})
+
+/**
  * DocumentMetadataResponse
  */
 export const zDocumentMetadataResponse = z.object({
@@ -1530,6 +1556,10 @@ export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
  */
 export const zGetDatasetsMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
+export const zGetDatasetsNotionIndexingEstimateQuery = z.object({
+  credential_id: z.string().min(1),
+})
+
 /**
  * Success
  */
@@ -1540,7 +1570,7 @@ export const zPostDatasetsNotionIndexingEstimateBody = zNotionEstimatePayload
 /**
  * Success
  */
-export const zPostDatasetsNotionIndexingEstimateResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsNotionIndexingEstimateResponse = zIndexingEstimate
 
 export const zGetDatasetsProcessRuleQuery = z.object({
   document_id: z.string().optional(),

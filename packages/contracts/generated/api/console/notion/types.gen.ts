@@ -19,13 +19,58 @@ export type NotionEstimatePayload = {
   }
 }
 
+export type IndexingEstimate = {
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  total_segments: number
+}
+
+export type NotionIntegrateInfoListResponse = {
+  notion_info: Array<NotionIntegrateWorkspaceResponse>
+}
+
+export type PreviewDetail = {
+  child_chunks?: Array<string> | null
+  content: string
+  summary?: string | null
+}
+
+export type QaPreviewDetail = {
+  answer: string
+  question: string
+}
+
+export type NotionIntegrateWorkspaceResponse = {
+  pages: Array<NotionIntegratePageResponse>
+  workspace_icon: string | null
+  workspace_id: string | null
+  workspace_name: string | null
+}
+
+export type NotionIntegratePageResponse = {
+  is_bound: boolean
+  page_icon: DataSourceIntegrateIconResponse
+  page_id: string
+  page_name: string
+  parent_id: string | null
+  type: string
+}
+
+export type DataSourceIntegrateIconResponse = {
+  emoji?: string | null
+  type?: string | null
+  url?: string | null
+}
+
 export type GetNotionPagesByPageIdByPageTypePreviewData = {
   body?: never
   path: {
     page_id: string
     page_type: string
   }
-  query?: never
+  query: {
+    credential_id: string
+  }
   url: '/notion/pages/{page_id}/{page_type}/preview'
 }
 
@@ -47,9 +92,7 @@ export type PostNotionPagesByPageIdByPageTypePreviewData = {
 }
 
 export type PostNotionPagesByPageIdByPageTypePreviewResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimate
 }
 
 export type PostNotionPagesByPageIdByPageTypePreviewResponse
@@ -58,14 +101,15 @@ export type PostNotionPagesByPageIdByPageTypePreviewResponse
 export type GetNotionPreImportPagesData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    credential_id: string
+    dataset_id?: string
+  }
   url: '/notion/pre-import/pages'
 }
 
 export type GetNotionPreImportPagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: NotionIntegrateInfoListResponse
 }
 
 export type GetNotionPreImportPagesResponse

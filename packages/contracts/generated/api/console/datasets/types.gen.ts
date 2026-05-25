@@ -211,6 +211,12 @@ export type NotionEstimatePayload = {
   }
 }
 
+export type IndexingEstimate = {
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  total_segments: number
+}
+
 export type RetrievalSettingResponse = {
   retrieval_method: Array<string>
 }
@@ -692,6 +698,17 @@ export type DatasetResponse = {
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
   type: string
+}
+
+export type PreviewDetail = {
+  child_chunks?: Array<string> | null
+  content: string
+  summary?: string | null
+}
+
+export type QaPreviewDetail = {
+  answer: string
+  question: string
 }
 
 export type DocumentWithSegmentsResponse = {
@@ -1390,7 +1407,9 @@ export type GetDatasetsMetadataBuiltInResponse
 export type GetDatasetsNotionIndexingEstimateData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    credential_id: string
+  }
   url: '/datasets/notion-indexing-estimate'
 }
 
@@ -1409,9 +1428,7 @@ export type PostDatasetsNotionIndexingEstimateData = {
 }
 
 export type PostDatasetsNotionIndexingEstimateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: IndexingEstimate
 }
 
 export type PostDatasetsNotionIndexingEstimateResponse

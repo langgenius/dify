@@ -19,9 +19,77 @@ export const zNotionEstimatePayload = z.object({
   process_rule: z.record(z.string(), z.unknown()),
 })
 
+/**
+ * PreviewDetail
+ */
+export const zPreviewDetail = z.object({
+  child_chunks: z.array(z.string()).nullish(),
+  content: z.string(),
+  summary: z.string().nullish(),
+})
+
+/**
+ * QAPreviewDetail
+ */
+export const zQaPreviewDetail = z.object({
+  answer: z.string(),
+  question: z.string(),
+})
+
+/**
+ * IndexingEstimate
+ */
+export const zIndexingEstimate = z.object({
+  preview: z.array(zPreviewDetail),
+  qa_preview: z.array(zQaPreviewDetail).nullish(),
+  total_segments: z.int(),
+})
+
+/**
+ * DataSourceIntegrateIconResponse
+ */
+export const zDataSourceIntegrateIconResponse = z.object({
+  emoji: z.string().nullish(),
+  type: z.string().nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * NotionIntegratePageResponse
+ */
+export const zNotionIntegratePageResponse = z.object({
+  is_bound: z.boolean(),
+  page_icon: zDataSourceIntegrateIconResponse,
+  page_id: z.string(),
+  page_name: z.string(),
+  parent_id: z.string().nullable(),
+  type: z.string(),
+})
+
+/**
+ * NotionIntegrateWorkspaceResponse
+ */
+export const zNotionIntegrateWorkspaceResponse = z.object({
+  pages: z.array(zNotionIntegratePageResponse),
+  workspace_icon: z.string().nullable(),
+  workspace_id: z.string().nullable(),
+  workspace_name: z.string().nullable(),
+})
+
+/**
+ * NotionIntegrateInfoListResponse
+ */
+export const zNotionIntegrateInfoListResponse = z.object({
+  notion_info: z.array(zNotionIntegrateWorkspaceResponse),
+})
+
 export const zGetNotionPagesByPageIdByPageTypePreviewPath = z.object({
   page_id: z.string(),
   page_type: z.string(),
+})
+
+export const zGetNotionPagesByPageIdByPageTypePreviewQuery = z.object({
+  credential_id: z.string().min(1),
 })
 
 /**
@@ -39,9 +107,14 @@ export const zPostNotionPagesByPageIdByPageTypePreviewPath = z.object({
 /**
  * Success
  */
-export const zPostNotionPagesByPageIdByPageTypePreviewResponse = z.record(z.string(), z.unknown())
+export const zPostNotionPagesByPageIdByPageTypePreviewResponse = zIndexingEstimate
+
+export const zGetNotionPreImportPagesQuery = z.object({
+  credential_id: z.string().min(1),
+  dataset_id: z.string().optional(),
+})
 
 /**
  * Success
  */
-export const zGetNotionPreImportPagesResponse = z.record(z.string(), z.unknown())
+export const zGetNotionPreImportPagesResponse = zNotionIntegrateInfoListResponse

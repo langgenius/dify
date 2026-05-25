@@ -5,7 +5,9 @@ import * as z from 'zod'
 
 import {
   zGetNotionPagesByPageIdByPageTypePreviewPath,
+  zGetNotionPagesByPageIdByPageTypePreviewQuery,
   zGetNotionPagesByPageIdByPageTypePreviewResponse,
+  zGetNotionPreImportPagesQuery,
   zGetNotionPreImportPagesResponse,
   zPostNotionPagesByPageIdByPageTypePreviewBody,
   zPostNotionPagesByPageIdByPageTypePreviewPath,
@@ -20,7 +22,12 @@ export const get = oc
     path: '/notion/pages/{page_id}/{page_type}/preview',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetNotionPagesByPageIdByPageTypePreviewPath }))
+  .input(
+    z.object({
+      params: zGetNotionPagesByPageIdByPageTypePreviewPath,
+      query: zGetNotionPagesByPageIdByPageTypePreviewQuery,
+    }),
+  )
   .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
 
 /**
@@ -64,22 +71,15 @@ export const pages = {
   byPageId,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getNotionPreImportPages',
     path: '/notion/pre-import/pages',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetNotionPreImportPagesQuery }))
   .output(zGetNotionPreImportPagesResponse)
 
 export const pages2 = {

@@ -90,6 +90,7 @@ import {
   zGetDatasetsExternalKnowledgeApiQuery,
   zGetDatasetsExternalKnowledgeApiResponse,
   zGetDatasetsMetadataBuiltInResponse,
+  zGetDatasetsNotionIndexingEstimateQuery,
   zGetDatasetsNotionIndexingEstimateResponse,
   zGetDatasetsProcessRuleQuery,
   zGetDatasetsProcessRuleResponse,
@@ -526,6 +527,7 @@ export const get8 = oc
     path: '/datasets/notion-indexing-estimate',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetDatasetsNotionIndexingEstimateQuery }))
   .output(zGetDatasetsNotionIndexingEstimateResponse)
 
 /**
