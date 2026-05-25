@@ -51,17 +51,7 @@ const PublishAsKnowledgePipelineModal = ({
         icon_url: '',
       })
     }
-    setShowAppIconPicker(false)
   }, [])
-  const handleCloseIconPicker = useCallback(() => {
-    setPipelineIcon({
-      icon_type: pipelineIcon.icon_type,
-      icon: pipelineIcon.icon,
-      icon_background: pipelineIcon.icon_background,
-      icon_url: pipelineIcon.icon_url,
-    })
-    setShowAppIconPicker(false)
-  }, [pipelineIcon])
 
   const handleConfirm = () => {
     if (confirmDisabled)
@@ -141,8 +131,12 @@ const PublishAsKnowledgePipelineModal = ({
           </div>
           {showAppIconPicker && (
             <AppIconPicker
+              open={showAppIconPicker}
+              initialEmoji={pipelineIcon.icon_type === 'emoji'
+                ? { icon: pipelineIcon.icon, background: pipelineIcon.icon_background }
+                : undefined}
+              onOpenChange={setShowAppIconPicker}
               onSelect={handleSelectIcon}
-              onClose={handleCloseIconPicker}
             />
           )}
         </DialogContent>

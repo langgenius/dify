@@ -198,15 +198,13 @@ const CreateAppModal = ({
       </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
           initialEmoji={appIcon.type === 'emoji'
             ? { icon: appIcon.icon, background: appIcon.background }
             : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setShowAppIconPicker(false)
           }}
         />
       )}

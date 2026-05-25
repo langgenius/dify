@@ -53,18 +53,6 @@ vi.mock('@/context/i18n', async () => {
   }
 })
 
-// Mock EmojiPicker
-vi.mock('@/app/components/base/emoji-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (icon: string, background: string) => void, onClose: () => void }) => {
-    return (
-      <div data-testid="emoji-picker">
-        <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#FF0000')}>Select Emoji</button>
-        <button data-testid="close-emoji-picker" onClick={onClose}>Close</button>
-      </div>
-    )
-  },
-}))
-
 describe('EditCustomCollectionModal', () => {
   const mockOnHide = vi.fn()
   const mockOnAdd = vi.fn()
