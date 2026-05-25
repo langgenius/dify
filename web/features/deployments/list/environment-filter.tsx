@@ -19,7 +19,6 @@ import {
   ALL_ENVIRONMENTS_FILTER_VALUE,
   envFilterQueryState,
   environmentIdFromFilterValue,
-  NOT_DEPLOYED_FILTER_VALUE,
 } from './query-state'
 
 type EnvironmentFilterOption = {
@@ -59,11 +58,6 @@ export function EnvironmentFilter() {
       icon: <span className="i-ri-apps-2-line size-[14px]" />,
     },
     ...environmentOptions,
-    {
-      value: NOT_DEPLOYED_FILTER_VALUE,
-      text: t('filter.notDeployed'),
-      icon: <span className="i-ri-inbox-line size-[14px]" />,
-    },
   ]
   const selectedEnvironmentId = environmentIdFromFilterValue(envFilter)
   const selectedOption = filterOptions.find(option => option.value === envFilter)

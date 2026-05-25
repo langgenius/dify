@@ -18,7 +18,6 @@ import {
   envFilterQueryState,
   environmentIdFromFilterValue,
   keywordsQueryState,
-  NOT_DEPLOYED_FILTER_VALUE,
 } from './query-state'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
@@ -161,7 +160,6 @@ export function DeploymentsList() {
           pageNumber: Number(pageParam),
           resultsPerPage: SOURCE_APPS_PAGE_SIZE,
           ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
-          ...(envFilter === NOT_DEPLOYED_FILTER_VALUE ? { notDeployed: true } : {}),
           ...(queryKeywords ? { name: queryKeywords } : {}),
         },
       }),
