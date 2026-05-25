@@ -231,17 +231,29 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
         UniqueConstraint(
             "tenant_id",
             "workflow_id",
+            "workflow_version",
             "node_id",
-            name="workflow_agent_node_binding_node_unique",
+            name="workflow_agent_node_binding_node_version_unique",
         ),
         Index("workflow_agent_node_binding_agent_idx", "tenant_id", "agent_id"),
         Index("workflow_agent_node_binding_current_snapshot_idx", "tenant_id", "current_snapshot_id"),
         Index("workflow_agent_node_binding_app_idx", "tenant_id", "app_id"),
+        Index(
+            "workflow_agent_node_binding_workflow_version_idx",
+            "tenant_id",
+            "workflow_id",
+            "workflow_version",
+        ),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # Tracks which workflow version (draft or a published version string) this
+    # binding belongs to. Mirrors ``Workflow.version`` and lets us keep separate
+    # rows for the draft workflow and each published copy under the same
+    # workflow_id, restoring the stage 1 §5.3 unique key.
+    workflow_version: Mapped[str] = mapped_column(String(255), nullable=False)
     node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     binding_type: Mapped[WorkflowAgentBindingType] = mapped_column(
         EnumText(WorkflowAgentBindingType, length=32), nullable=False
