@@ -44,7 +44,7 @@ class TagBindingRemovePayload(BaseModel):
 
 
 class TagListQueryParam(BaseModel):
-    type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
+    type: Literal["knowledge", "app", "snippet", ""] = Field("", description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
 
 
@@ -89,7 +89,10 @@ class TagListApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.doc(
-        params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
+        params={
+            "type": 'Tag type filter. Can be "knowledge", "app", or "snippet".',
+            "keyword": "Search keyword for tag name.",
+        }
     )
     @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
     def get(self):
