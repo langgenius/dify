@@ -13,6 +13,10 @@ import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-feat
  */
 import useDocumentTitle from './use-document-title'
 
+beforeEach(() => {
+  document.head.innerHTML = ''
+})
+
 /**
  * Test behavior when system features are still loading
  * Title should remain empty to prevent flicker
@@ -66,5 +70,31 @@ describe('use specific branding', () => {
       systemFeatures: { branding: { enabled: true, application_title: 'Test' } },
     })
     expect(document.title).toBe('Test')
+  })
+})
+
+describe('favicon management', () => {
+  it('should keep server-rendered icon links when custom branding is applied', () => {
+    document.head.innerHTML = `
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+      <link rel="icon" href="/icon-192x192.png">
+    `
+    const serverAppleIcon = document.head.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')!
+    const serverIcon = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]')!
+
+    renderHookWithSystemFeatures(() => useDocumentTitle('test'), {
+      systemFeatures: {
+        branding: {
+          enabled: true,
+          application_title: 'Test',
+          favicon: '/custom-favicon.ico',
+        },
+      },
+    })
+
+    expect(document.head).toContainElement(serverAppleIcon)
+    expect(document.head).toContainElement(serverIcon)
+    expect(document.head.querySelector('link[data-dify-runtime-favicon="document"]')).toHaveAttribute('href', '/custom-favicon.ico')
+    expect(document.head.querySelector('link[data-dify-runtime-apple-touch-icon="document"]')).toHaveAttribute('href', '/custom-favicon.ico')
   })
 })

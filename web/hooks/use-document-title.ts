@@ -1,9 +1,10 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
-import { useFavicon, useTitle } from 'ahooks'
+import { useTitle } from 'ahooks'
 import { useEffect } from 'react'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { defaultSystemFeatures } from '@/types/feature'
+import { setRuntimeFavicon } from '@/utils/favicon'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
@@ -24,23 +25,10 @@ export default function useDocumentTitle(title: string) {
   }
   useTitle(titleStr)
   useEffect(() => {
-    let apple: HTMLLinkElement | null = null
-    if (systemFeatures.branding.favicon) {
-      document
-        .querySelectorAll(
-          'link[rel=\'icon\'], link[rel=\'shortcut icon\'], link[rel=\'apple-touch-icon\'], link[rel=\'mask-icon\']',
-        )
-        .forEach(n => n.parentNode?.removeChild(n))
-
-      apple = document.createElement('link')
-      apple.rel = 'apple-touch-icon'
-      apple.href = systemFeatures.branding.favicon
-      document.head.appendChild(apple)
-    }
-
-    return () => {
-      apple?.remove()
-    }
-  }, [systemFeatures.branding.favicon])
-  useFavicon(favicon)
+    setRuntimeFavicon('document', favicon, {
+      appleTouchIconHref: systemFeatures.branding.enabled
+        ? systemFeatures.branding.favicon
+        : '',
+    })
+  }, [favicon, systemFeatures.branding.enabled, systemFeatures.branding.favicon])
 }

@@ -1,11 +1,7 @@
 'use client'
 
 import type { NavItem } from '../nav/nav-selector'
-import type { DataSet } from '@/models/datasets'
-import {
-  RiBook2Fill,
-  RiBook2Line,
-} from '@remixicon/react'
+import type { DataSet, IconInfo } from '@/models/datasets'
 import { flatten } from 'es-toolkit/compat'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +9,13 @@ import { useParams, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
 import { basePath } from '@/utils/var'
 import Nav from '../nav'
+
+const DEFAULT_DATASET_ICON_INFO = {
+  icon: '📙',
+  icon_type: 'emoji',
+  icon_background: '#FFF4ED',
+  icon_url: '',
+} satisfies IconInfo
 
 const DatasetNav = () => {
   const { t } = useTranslation()
@@ -33,15 +36,16 @@ const DatasetNav = () => {
   const curNav = useMemo(() => {
     if (!currentDataset)
       return
+    const iconInfo = currentDataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
     return {
       id: currentDataset.id,
       name: currentDataset.name,
-      icon: currentDataset.icon_info.icon,
-      icon_type: currentDataset.icon_info.icon_type,
-      icon_background: currentDataset.icon_info.icon_background,
-      icon_url: currentDataset.icon_info.icon_url,
+      icon: iconInfo.icon,
+      icon_type: iconInfo.icon_type,
+      icon_background: iconInfo.icon_background,
+      icon_url: iconInfo.icon_url,
     } as Omit<NavItem, 'link'>
-  }, [currentDataset?.id, currentDataset?.name, currentDataset?.icon_info])
+  }, [currentDataset])
 
   const getDatasetLink = useCallback((dataset: DataSet) => {
     const isPipelineUnpublished = dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
@@ -56,14 +60,15 @@ const DatasetNav = () => {
   const navigationItems = useMemo(() => {
     return datasetItems.map((dataset) => {
       const link = getDatasetLink(dataset)
+      const iconInfo = dataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
       return {
         id: dataset.id,
         name: dataset.name,
         link,
-        icon: dataset.icon_info.icon,
-        icon_type: dataset.icon_info.icon_type,
-        icon_background: dataset.icon_info.icon_background,
-        icon_url: dataset.icon_info.icon_url,
+        icon: iconInfo.icon,
+        icon_type: iconInfo.icon_type,
+        icon_background: iconInfo.icon_background,
+        icon_url: iconInfo.icon_url,
       }
     }) as NavItem[]
   }, [datasetItems, getDatasetLink])
@@ -84,8 +89,8 @@ const DatasetNav = () => {
   return (
     <Nav
       isApp={false}
-      icon={<RiBook2Line className="size-4" />}
-      activeIcon={<RiBook2Fill className="size-4" />}
+      icon={<span aria-hidden className="i-ri-book-2-line size-4" />}
+      activeIcon={<span aria-hidden className="i-ri-book-2-fill size-4" />}
       text={t('menus.datasets', { ns: 'common' })}
       activeSegment="datasets"
       link="/datasets"

@@ -1,7 +1,8 @@
 import type { AppIconType } from '@/types/app'
-import { useAsyncEffect } from 'ahooks'
+import { useEffect } from 'react'
 import { appDefaultIconBackground } from '@/config'
 import { searchEmoji } from '@/utils/emoji'
+import { clearRuntimeFavicon, setRuntimeFavicon } from '@/utils/favicon'
 
 type UseAppFaviconOptions = {
   enable?: boolean
@@ -9,6 +10,29 @@ type UseAppFaviconOptions = {
   icon?: string
   icon_background?: string | null
   icon_url?: string | null
+}
+
+function escapeSvgText(value: string) {
+  return value.replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    '\'': '&apos;',
+  })[char]!)
+}
+
+async function buildEmojiFavicon(
+  icon?: string,
+  iconBackground?: string | null,
+) {
+  const emoji = icon ? await searchEmoji(icon) : '🤖'
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+    + `<rect width="100%" height="100%" fill="${escapeSvgText(iconBackground || appDefaultIconBackground)}" rx="30" ry="30" />`
+    + `<text x="12.5" y="1em" font-size="75">${escapeSvgText(String(emoji))}</text>`
+    + '</svg>'
+
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
 export function useAppFavicon(options: UseAppFaviconOptions) {
@@ -20,25 +44,33 @@ export function useAppFavicon(options: UseAppFaviconOptions) {
     icon_url,
   } = options
 
-  useAsyncEffect(async () => {
-    if (!enable || (icon_type === 'image' && !icon_url) || (icon_type === 'emoji' && !icon))
-      return
+  useEffect(() => {
+    let cancelled = false
 
-    const isValidImageIcon = icon_type === 'image' && icon_url
+    const syncFavicon = async () => {
+      if (!enable || (icon_type === 'image' && !icon_url) || (icon_type === 'emoji' && !icon)) {
+        clearRuntimeFavicon('app')
+        return
+      }
 
-    const link: HTMLLinkElement = document.querySelector('link[rel*="icon"]') || document.createElement('link')
+      const isValidImageIcon = icon_type === 'image' && icon_url
+      const href = isValidImageIcon
+        ? icon_url
+        : await buildEmojiFavicon(icon, icon_background)
 
-    link.href = isValidImageIcon
-      ? icon_url
-      : 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22>'
-        + `<rect width=%22100%25%22 height=%22100%25%22 fill=%22${encodeURIComponent(icon_background || appDefaultIconBackground)}%22 rx=%2230%22 ry=%2230%22 />`
-        + `<text x=%2212.5%22 y=%221em%22 font-size=%2275%22>${
-          icon ? await searchEmoji(icon) : '🤖'
-        }</text>`
-        + '</svg>'
+      if (cancelled)
+        return
 
-    link.rel = 'shortcut icon'
-    link.type = 'image/svg'
-    document.getElementsByTagName('head')[0]!.appendChild(link)
-  }, [enable, icon, icon_background])
+      setRuntimeFavicon('app', href, {
+        type: isValidImageIcon ? undefined : 'image/svg+xml',
+      })
+    }
+
+    void syncFavicon()
+
+    return () => {
+      cancelled = true
+      clearRuntimeFavicon('app')
+    }
+  }, [enable, icon_type, icon, icon_background, icon_url])
 }

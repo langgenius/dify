@@ -28,8 +28,6 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@remixicon/react', () => ({
-  RiBook2Fill: () => <div data-testid="active-icon" />,
-  RiBook2Line: () => <div data-testid="inactive-icon" />,
   RiArrowDownSLine: () => <div data-testid="arrow-down-icon" />,
   RiArrowRightSLine: () => <div data-testid="arrow-right-icon" />,
   RiAddLine: () => <div data-testid="add-icon" />,
@@ -140,6 +138,32 @@ describe('DatasetNav', () => {
       } as unknown as ReturnType<typeof useDatasetDetail>)
       render(<DatasetNav />)
       expect(screen.getByText('common.menus.datasets')).toBeInTheDocument()
+    })
+
+    it('should render when dataset icon info is missing', () => {
+      const datasetWithoutIcon = {
+        ...mockDataset,
+        icon_info: null,
+      }
+      vi.mocked(useDatasetDetail).mockReturnValue({
+        data: datasetWithoutIcon,
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: {
+          pages: [
+            {
+              data: [datasetWithoutIcon],
+            },
+          ],
+        },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<DatasetNav />)
+
+      expect(screen.getByRole('button', { name: /Test Dataset/i })).toBeInTheDocument()
     })
   })
 
