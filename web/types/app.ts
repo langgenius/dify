@@ -10,91 +10,29 @@ import type {
 } from '@/models/datasets'
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
-export enum Theme {
-  light = 'light',
-  dark = 'dark',
-  system = 'system',
-}
-
-export enum ModelModeType {
-  chat = 'chat',
-  completion = 'completion',
-  unset = '',
-}
-
-export enum RETRIEVE_TYPE {
-  oneWay = 'single',
-  multiWay = 'multiple',
-}
-
-export enum RETRIEVE_METHOD {
-  semantic = 'semantic_search',
-  fullText = 'full_text_search',
-  hybrid = 'hybrid_search',
-  invertedIndex = 'invertedIndex',
-  keywordSearch = 'keyword_search',
-}
-
-/**
- * App modes
- */
-export enum AppModeEnum {
-  COMPLETION = 'completion',
-  WORKFLOW = 'workflow',
-  CHAT = 'chat',
-  ADVANCED_CHAT = 'advanced-chat',
-  AGENT_CHAT = 'agent-chat',
-}
-export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
-
-/**
- * Variable type
- */
-type VariableType = 'string' | 'number' | 'select'
-
-/**
- * Prompt variable parameter
- */
-export type PromptVariable = {
-  /** Variable key */
-  key: string
-  /** Variable name */
-  name: string
-  /** Type */
-  type: VariableType
-  required: boolean
-  /** Enumeration of single-selection drop-down values */
-  options?: string[]
-  max_length?: number
-}
-
-type TextTypeFormItem = {
-  default: string
-  label: string
-  variable: string
-  required: boolean
-  max_length: number
-  hide: boolean
-}
-
-type SelectTypeFormItem = {
-  default: string
-  label: string
-  variable: string
-  required: boolean
-  options: string[]
-  hide: boolean
-}
-/**
- * User Input Form Item
- */
-export type UserInputFormItem = {
-  'text-input': TextTypeFormItem
-} | {
-  select: SelectTypeFormItem
-} | {
-  paragraph: TextTypeFormItem
-}
+// Canonic Studio-level types re-exported from the studio-frontend package
+export {
+  Theme,
+  ModelModeType,
+  RETRIEVE_TYPE,
+  RETRIEVE_METHOD,
+  AppModeEnum,
+  AppModes,
+  AgentStrategy,
+  Resolution,
+  TransferMethod,
+  TtsAutoPlay,
+  ALLOW_FILE_EXTENSIONS,
+  type PromptVariable,
+  type UserInputFormItem,
+  type CompletionParams,
+  type Model,
+  type AppIconType,
+  type AppSSO,
+  type VisionSettings,
+  type ImageFile,
+  type VisionFile,
+} from '@dify/studio-frontend/types/app'
 
 export type AgentTool = {
   provider_id: string
@@ -121,69 +59,6 @@ export type ToolItem = {
     canned_response: string
   }
 } | AgentTool
-
-export enum AgentStrategy {
-  functionCall = 'function_call',
-  react = 'react',
-}
-
-export type CompletionParams = {
-  /** Maximum number of tokens in the answer message returned by Completion */
-  max_tokens: number
-  /**
-   * A number between 0 and 2.
-   * The larger the number, the more random the result;
-   * otherwise, the more deterministic.
-   * When in use, choose either `temperature` or `top_p`.
-   * Default is 1.
-   */
-  temperature: number
-  /**
-   * Represents the proportion of probability mass samples to take,
-   * e.g., 0.1 means taking the top 10% probability mass samples.
-   * The determinism between the samples is basically consistent.
-   * Among these results, the `top_p` probability mass results are taken.
-   * When in use, choose either `temperature` or `top_p`.
-   * Default is 1.
-   */
-  top_p: number
-  /** When enabled, the Completion Text will concatenate the Prompt content together and return it. */
-  echo: boolean
-  /**
-   * Specify up to 4 to automatically stop generating before the text specified in `stop`.
-   * Suitable for use in chat mode.
-   * For example, specify "Q" and "A",
-   * and provide some Q&A examples as context,
-   * and the model will give out in Q&A format and stop generating before Q&A.
-   */
-  stop: string[]
-  /**
-   * A number between -2.0 and 2.0.
-   * The larger the value, the less the model will repeat topics and the more it will provide new topics.
-   */
-  presence_penalty: number
-  /**
-   * A number between -2.0 and 2.0.
-   * A lower setting will make the model appear less cultured,
-   * always repeating expressions.
-   * The difference between `frequency_penalty` and `presence_penalty`
-   * is that `frequency_penalty` penalizes a word based on its frequency in the training data,
-   * while `presence_penalty` penalizes a word based on its occurrence in the input text.
-   */
-  frequency_penalty: number
-}
-/**
- * Model configuration. The backend type.
- */
-export type Model = {
-  /** LLM provider, e.g., OPENAI */
-  provider: string
-  /** Model name, e.g, gpt-3.5.turbo */
-  name: string
-  mode: ModelModeType
-  /** Default Completion call parameters */
-  completion_params: CompletionParams
-}
 
 export type ModelConfig = {
   opening_statement: string
@@ -295,8 +170,6 @@ export type SiteConfig = {
   use_icon_as_answer_icon: boolean
 }
 
-export type AppIconType = 'image' | 'emoji' | 'link'
-
 /**
  * App
  */
@@ -361,56 +234,6 @@ export type App = {
   max_active_requests?: number | null
   /** whether workflow trigger has un-published draft */
   has_draft_trigger?: boolean
-}
-
-export type AppSSO = {
-  enable_sso: boolean
-}
-
-export enum Resolution {
-  low = 'low',
-  high = 'high',
-}
-
-export enum TransferMethod {
-  all = 'all',
-  local_file = 'local_file',
-  remote_url = 'remote_url',
-}
-
-export enum TtsAutoPlay {
-  enabled = 'enabled',
-  disabled = 'disabled',
-}
-
-export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
-
-export type VisionSettings = {
-  enabled: boolean
-  number_limits: number
-  detail: Resolution
-  transfer_methods: TransferMethod[]
-  image_file_size_limit?: number | string
-}
-
-export type ImageFile = {
-  type: TransferMethod
-  _id: string
-  fileId: string
-  file?: File
-  progress: number
-  url: string
-  base64Url?: string
-  deleted?: boolean
-}
-
-export type VisionFile = {
-  id?: string
-  type: string
-  transfer_method: TransferMethod
-  url: string
-  upload_file_id: string
-  belongs_to?: string
 }
 
 export type RetrievalConfig = {
