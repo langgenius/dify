@@ -12,6 +12,7 @@ import pytest
 import sqlalchemy as sa
 from graphon.model_runtime.entities.model_entities import ModelType
 
+from models.enums import CredentialSourceType
 from models.provider import ProviderModel, ProviderModelSetting
 from tests.helpers.legacy_model_type_migration import (
     ALL_TABLE_NAMES,
@@ -226,6 +227,54 @@ def _insert_provider_model_setting(
                 "model_type": model_type,
                 "enabled": enabled,
                 "load_balancing_enabled": load_balancing_enabled,
+                "created_at": created_at,
+                "updated_at": updated_at,
+            },
+        )
+
+
+def _insert_load_balancing_model_config(
+    engine: sa.Engine,
+    *,
+    row_id: str,
+    tenant_id: str,
+    provider_name: str,
+    model_name: str,
+    model_type: str,
+    name: str,
+    encrypted_config: str,
+    credential_id: str,
+    enabled: bool,
+    created_at: datetime,
+    updated_at: datetime,
+) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                """
+                INSERT INTO load_balancing_model_configs
+                    (
+                        id, tenant_id, provider_name, model_name, model_type, name,
+                        encrypted_config, credential_id, credential_source_type, enabled, created_at, updated_at
+                    )
+                VALUES
+                    (
+                        :id, :tenant_id, :provider_name, :model_name, :model_type, :name,
+                        :encrypted_config, :credential_id, :credential_source_type, :enabled, :created_at, :updated_at
+                    )
+                """
+            ),
+            {
+                "id": row_id,
+                "tenant_id": tenant_id,
+                "provider_name": provider_name,
+                "model_name": model_name,
+                "model_type": model_type,
+                "name": name,
+                "encrypted_config": encrypted_config,
+                "credential_id": credential_id,
+                "credential_source_type": CredentialSourceType.CUSTOM_MODEL.value,
+                "enabled": enabled,
                 "created_at": created_at,
                 "updated_at": updated_at,
             },
@@ -703,6 +752,148 @@ def test_provider_model_settings_group_crossing_batches_is_completed_once_with_a
         dirty_fixture.primary.provider_model_setting_id,
         inserted_row_id,
     }
+
+
+def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group_business_key_semantics(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    dirty_fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inserted_row_id = "00000000-0000-0000-0000-00000000dd01"
+    created_at = datetime(2025, 1, 1, 8, 0, 0)
+    updated_at = created_at + timedelta(minutes=15)
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id=inserted_row_id,
+        tenant_id=dirty_fixture.primary.tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type="text-generation",
+        name=dirty_fixture.primary.loser_credential_name,
+        encrypted_config='{"api_key":"second-lb"}',
+        credential_id=dirty_fixture.primary.distinct_credential_id,
+        enabled=True,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    deleted_cache_keys: list[str] = []
+
+    def _record_delete(self) -> None:
+        deleted_cache_keys.append(self.cache_key)
+
+    monkeypatch.setattr(migration_module.ProviderCredentialsCache, "delete", _record_delete)
+
+    tenant_id = dirty_fixture.primary.tenant_id
+    table_name = "load_balancing_model_configs"
+    expected_row_ids = {
+        dirty_fixture.primary.load_balancing_config_id,
+        inserted_row_id,
+    }
+
+    dry_run_output = io.StringIO()
+    migration_module.LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=False,
+        output=dry_run_output,
+        tables=(table_name,),
+        model_types=(ModelType.LLM,),
+        tenant_ids=(tenant_id,),
+    ).migrate()
+
+    dry_run_lines = _parse_json_lines(dry_run_output)
+    dry_run_row_updates = [
+        cast(dict[str, object], line["attrs"])
+        for line in dry_run_lines
+        if line.get("event") == "row_updated"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+    ]
+    assert len(dry_run_row_updates) == 2
+    assert {str(attrs["id"]) for attrs in dry_run_row_updates} == expected_row_ids
+    assert all(attrs.get("old_values") == {"model_type": "text-generation"} for attrs in dry_run_row_updates)
+    assert all(attrs.get("new_values") == {"model_type": ModelType.LLM.value} for attrs in dry_run_row_updates)
+    assert all("rewrite_source" not in attrs for attrs in dry_run_row_updates)
+
+    dry_run_group_processed = [
+        cast(dict[str, object], line["attrs"])
+        for line in dry_run_lines
+        if line.get("event") == "group_processed"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+    ]
+    assert dry_run_group_processed == []
+
+    dry_run_cache_plans = [
+        cast(dict[str, object], line["attrs"])
+        for line in dry_run_lines
+        if line.get("event") == "cache_delete_planned"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+    ]
+    assert len(dry_run_cache_plans) == 2
+    assert {str(attrs["id"]) for attrs in dry_run_cache_plans} == expected_row_ids
+
+    dry_run_business_keys = [
+        _json_key(business_key)
+        for attrs in [*dry_run_row_updates, *dry_run_cache_plans]
+        if isinstance((business_key := attrs.get("business_key")), dict)
+    ]
+    assert len(set(dry_run_business_keys)) == len(dry_run_business_keys)
+
+    apply_output = io.StringIO()
+    migration_module.LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=True,
+        output=apply_output,
+        tables=(table_name,),
+        model_types=(ModelType.LLM,),
+        tenant_ids=(tenant_id,),
+    ).migrate()
+
+    apply_lines = _parse_json_lines(apply_output)
+    apply_row_updates = [
+        cast(dict[str, object], line["attrs"])
+        for line in apply_lines
+        if line.get("event") == "row_updated"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+    ]
+    assert len(apply_row_updates) == 2
+    assert {str(attrs["id"]) for attrs in apply_row_updates} == expected_row_ids
+
+    apply_group_processed = [
+        cast(dict[str, object], line["attrs"])
+        for line in apply_lines
+        if line.get("event") == "group_processed"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+    ]
+    assert apply_group_processed == []
+
+    apply_cache_deletes = [
+        cast(dict[str, object], line["attrs"])
+        for line in apply_lines
+        if line.get("event") == "cache_deleted"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+    ]
+    assert len(apply_cache_deletes) == 2
+    assert {str(attrs["id"]) for attrs in apply_cache_deletes} == expected_row_ids
+    assert len(deleted_cache_keys) == 2
+
+    apply_business_keys = [
+        _json_key(business_key)
+        for attrs in [*apply_row_updates, *apply_cache_deletes]
+        if isinstance((business_key := attrs.get("business_key")), dict)
+    ]
+    assert len(set(apply_business_keys)) == len(apply_business_keys)
+
+    lb_rows = fetch_table_rows(sqlite_engine, table_name, tenant_id=tenant_id)
+    migrated_rows = [row for row in lb_rows if str(row["id"]) in expected_row_ids]
+    assert len(migrated_rows) == 2
+    assert all(row["model_type"] == ModelType.LLM.value for row in migrated_rows)
 
 
 def test_migration_apply_updates_all_five_tables_and_rewrites_credential_references(

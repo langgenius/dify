@@ -4,9 +4,8 @@ import io
 import json
 import sys
 import uuid
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import asdict, dataclass
-import dataclasses
 from datetime import datetime
 from enum import IntEnum, StrEnum
 from typing import Protocol, cast
@@ -94,11 +93,12 @@ class _CacheDeletePlan:
     table_name: str
     row_id: str
     tx_id: str
-    business_key: _BusinessKey | Mapping[str, object]
+    business_key: _BusinessKey
 
 
+@dataclass(frozen=True, slots=True)
 class _BusinessKey:
-    pass
+    """Marker base type for structured migration business keys."""
 
 
 class _HasRowId(Protocol):
@@ -111,6 +111,8 @@ class _HasRowIdAndUpdatedAt(_HasRowId, Protocol):
 
 @dataclass(frozen=True, slots=True)
 class _ProviderModelBusinessKey(_BusinessKey):
+    """unique index: unique_provider_model_name"""
+
     tenant_id: str
     provider_name: str
     model_name: str
@@ -119,12 +121,19 @@ class _ProviderModelBusinessKey(_BusinessKey):
 
 @dataclass(frozen=True, slots=True)
 class _TenantDefaultModelBusinessKey(_BusinessKey):
+    """unique index: unique_tenant_default_model_type"""
+
     tenant_id: str
     model_type: ModelType
 
 
 @dataclass(frozen=True, slots=True)
 class _ProviderModelSettingBusinessKey(_BusinessKey):
+    """Although `ProviderModelSetting` does not have the unique index
+    (tenant_id, provider_name. model_name, model_type). The acutal business logic
+    relies on this uniqueness property heavily.
+    """
+
     tenant_id: str
     provider_name: str
     model_name: str
@@ -133,6 +142,10 @@ class _ProviderModelSettingBusinessKey(_BusinessKey):
 
 @dataclass(frozen=True, slots=True)
 class _ProviderModelCredentialBusinessKey(_BusinessKey):
+    """Although `ProviderModelCredential` does not have the unique index
+    (tenant_id, provider_name. model_name, model_type, credential_name).
+    The acutal business logic implies it."""
+
     tenant_id: str
     provider_name: str
     model_name: str
@@ -186,14 +199,6 @@ class _ProviderModelCredentialGroupPlan:
     loser_rows: list[_RowWithRawModelType[ProviderModelCredential]]
     provider_model_rewrites: list[_ProviderModelReferenceRewritePlan]
     load_balancing_rewrites: list[_LoadBalancingCredentialRewritePlan]
-
-
-@dataclass(frozen=True, slots=True)
-class _LoadBalancingModelConfigRowPlan:
-    row_id: str
-    raw_model_type: str
-    canonical_model_type: ModelType
-    cache_plan: _CacheDeletePlan
 
 
 VALID_TABLE_NAMES: tuple[str, ...] = (
@@ -541,13 +546,15 @@ class Migration:
         *,
         session: Session,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
     ) -> None:
         if plan.winner is None:
             return
 
         cache_plans: list[_CacheDeletePlan] = []
         for loser in plan.loser_rows:
+            if self._apply:
+                session.execute(sa.delete(ProviderModel).where(ProviderModel.id == str(loser.row.id)))
             self._log_row_deleted(
                 ProviderModel.__tablename__,
                 loser,
@@ -555,8 +562,6 @@ class Migration:
                 business_key=business_key,
                 related_winner_id=str(plan.winner.row.id),
             )
-            if self._apply:
-                session.execute(sa.delete(ProviderModel).where(ProviderModel.id == str(loser.row.id)))
             cache_plans.append(
                 _CacheDeletePlan(
                     tenant_id=self._tenant_id,
@@ -570,6 +575,12 @@ class Migration:
             )
 
         if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModel)
+                    .where(ProviderModel.id == str(plan.winner.row.id))
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
             self._log_row_updated(
                 ProviderModel.__tablename__,
                 str(plan.winner.row.id),
@@ -578,12 +589,6 @@ class Migration:
                 tx_id=tx_id,
                 business_key=business_key,
             )
-            if self._apply:
-                session.execute(
-                    sa.update(ProviderModel)
-                    .where(ProviderModel.id == str(plan.winner.row.id))
-                    .values(model_type=plan.winner.canonical_model_type.value)
-                )
             cache_plans.append(
                 _CacheDeletePlan(
                     tenant_id=self._tenant_id,
@@ -698,6 +703,11 @@ class Migration:
         for tenant_default_model, raw_value in rows:
             canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
             if canonical_model_type is None:
+                self._log_event(
+                    event="invalid_model_type",
+                    message=f"invalid model type: {raw_value}",
+                    attrs={"id": tenant_default_model.id, "table_name": tenant_default_model.__tablename__},
+                )
                 continue
             wrapped_rows.append(
                 _RowWithRawModelType(
@@ -770,12 +780,14 @@ class Migration:
         *,
         session: Session,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
     ) -> None:
         if plan.winner is None:
             return
 
         for loser in plan.loser_rows:
+            if self._apply:
+                session.execute(sa.delete(TenantDefaultModel).where(TenantDefaultModel.id == str(loser.row.id)))
             self._log_row_deleted(
                 TenantDefaultModel.__tablename__,
                 loser,
@@ -783,10 +795,13 @@ class Migration:
                 business_key=business_key,
                 related_winner_id=str(plan.winner.row.id),
             )
-            if self._apply:
-                session.execute(sa.delete(TenantDefaultModel).where(TenantDefaultModel.id == str(loser.row.id)))
-
         if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            if self._apply:
+                session.execute(
+                    sa.update(TenantDefaultModel)
+                    .where(TenantDefaultModel.id == str(plan.winner.row.id))
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
             self._log_row_updated(
                 TenantDefaultModel.__tablename__,
                 str(plan.winner.row.id),
@@ -795,12 +810,6 @@ class Migration:
                 tx_id=tx_id,
                 business_key=business_key,
             )
-            if self._apply:
-                session.execute(
-                    sa.update(TenantDefaultModel)
-                    .where(TenantDefaultModel.id == str(plan.winner.row.id))
-                    .values(model_type=plan.winner.canonical_model_type.value)
-                )
 
         self._log_group_processed(
             TenantDefaultModel.__tablename__,
@@ -815,7 +824,6 @@ class Migration:
         business_key: _TenantDefaultModelBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        business_key_attrs = asdict(business_key)
         group_row_ids = [str(candidate.row.id)]
 
         try:
@@ -905,6 +913,11 @@ class Migration:
         for provider_model_setting, raw_value in rows:
             canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
             if canonical_model_type is None:
+                self._log_event(
+                    event="invalid_model_type",
+                    message=f"invalid model type: {raw_value}",
+                    attrs={"id": provider_model_setting.id, "table_name": provider_model_setting.__tablename__},
+                )
                 continue
             wrapped_rows.append(
                 _RowWithRawModelType(
@@ -979,12 +992,14 @@ class Migration:
         *,
         session: Session,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
     ) -> None:
         if plan.winner is None:
             return
 
         for loser in plan.loser_rows:
+            if self._apply:
+                session.execute(sa.delete(ProviderModelSetting).where(ProviderModelSetting.id == str(loser.row.id)))
             self._log_row_deleted(
                 ProviderModelSetting.__tablename__,
                 loser,
@@ -992,10 +1007,14 @@ class Migration:
                 business_key=business_key,
                 related_winner_id=str(plan.winner.row.id),
             )
-            if self._apply:
-                session.execute(sa.delete(ProviderModelSetting).where(ProviderModelSetting.id == str(loser.row.id)))
 
         if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModelSetting)
+                    .where(ProviderModelSetting.id == str(plan.winner.row.id))
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
             self._log_row_updated(
                 ProviderModelSetting.__tablename__,
                 str(plan.winner.row.id),
@@ -1004,12 +1023,6 @@ class Migration:
                 tx_id=tx_id,
                 business_key=business_key,
             )
-            if self._apply:
-                session.execute(
-                    sa.update(ProviderModelSetting)
-                    .where(ProviderModelSetting.id == str(plan.winner.row.id))
-                    .values(model_type=plan.winner.canonical_model_type.value)
-                )
 
         self._log_group_processed(
             ProviderModelSetting.__tablename__,
@@ -1024,7 +1037,6 @@ class Migration:
         business_key: _ProviderModelSettingBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        business_key_attrs = asdict(business_key)
         group_row_ids = [str(candidate.row.id)]
 
         try:
@@ -1036,7 +1048,7 @@ class Migration:
                     plan,
                     session=session,
                     tx_id=tx_id,
-                    business_key=business_key_attrs,
+                    business_key=business_key,
                 )
         except OperationalError as exc:
             if self._is_lock_timeout_error(exc):
@@ -1044,7 +1056,7 @@ class Migration:
                     ProviderModelSetting.__tablename__,
                     str(candidate.row.id),
                     tx_id,
-                    business_key_attrs,
+                    business_key,
                     exc,
                 )
                 return group_row_ids
@@ -1052,6 +1064,13 @@ class Migration:
         return group_row_ids
 
     def _migrate_load_balancing_model_configs(self) -> None:
+        """
+        Migrate load-balancing configs row by row.
+
+        This table only needs model_type canonicalization. Unlike the grouped tables, it
+        must not merge rows by business key; each legacy candidate is reloaded and updated
+        independently so the migration remains a pure per-row rewrite plus cache cleanup.
+        """
         self._log_event(
             "table_started",
             "Started table migration.",
@@ -1110,6 +1129,14 @@ class Migration:
         for load_balancing_model_config, raw_value in rows:
             canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
             if canonical_model_type is None:
+                self._log_event(
+                    event="invalid_model_type",
+                    message=f"invalid model type: {raw_value}",
+                    attrs={
+                        "id": load_balancing_model_config.id,
+                        "table_name": load_balancing_model_config.__tablename__,
+                    },
+                )
                 continue
             wrapped_rows.append(
                 _RowWithRawModelType(
@@ -1120,13 +1147,13 @@ class Migration:
             )
         return wrapped_rows
 
-    def _build_load_balancing_model_config_row_plan(
+    def _reload_load_balancing_model_config_candidate(
         self,
         session: Session,
         candidate: _RowWithRawModelType[LoadBalancingModelConfig],
         *,
         lock_rows: bool,
-    ) -> _LoadBalancingModelConfigRowPlan | None:
+    ) -> _RowWithRawModelType[LoadBalancingModelConfig] | None:
         raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
         stmt = select(LoadBalancingModelConfig, raw_model_type).where(
             LoadBalancingModelConfig.id == candidate.row.id,
@@ -1145,101 +1172,89 @@ class Migration:
         if canonical_model_type is None:
             return None
 
-        business_key = {
-            "tenant_id": load_balancing_model_config.tenant_id,
-            "provider_name": load_balancing_model_config.provider_name,
-            "model_name": load_balancing_model_config.model_name,
-            "name": load_balancing_model_config.name,
-            "model_type": canonical_model_type.value,
-        }
-        return _LoadBalancingModelConfigRowPlan(
-            row_id=str(load_balancing_model_config.id),
+        return _RowWithRawModelType(
+            row=load_balancing_model_config,
             raw_model_type=raw_model_type_value,
             canonical_model_type=canonical_model_type,
-            cache_plan=_CacheDeletePlan(
-                tenant_id=self._tenant_id,
-                identity_id=str(load_balancing_model_config.id),
-                cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
-                table_name=LoadBalancingModelConfig.__tablename__,
-                row_id=str(load_balancing_model_config.id),
-                tx_id="",
-                business_key=business_key,
-            ),
         )
 
-    def _emit_load_balancing_model_config_row_plan(
+    def _log_load_balancing_model_config_cache_cleanup(
         self,
-        plan: _LoadBalancingModelConfigRowPlan,
         *,
-        session: Session,
+        row_id: str,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
     ) -> None:
-        self._log_row_updated(
-            LoadBalancingModelConfig.__tablename__,
-            plan.row_id,
-            {"model_type": plan.raw_model_type},
-            {"model_type": plan.canonical_model_type.value},
-            tx_id=tx_id,
-            business_key=business_key,
-        )
-        if self._apply:
-            session.execute(
-                sa.update(LoadBalancingModelConfig)
-                .where(LoadBalancingModelConfig.id == plan.row_id)
-                .values(model_type=plan.canonical_model_type.value)
+        attrs = {
+            "tenant_id": self._tenant_id,
+            "apply": self._apply,
+            "table_name": LoadBalancingModelConfig.__tablename__,
+            "id": row_id,
+            "cache_type": ProviderCredentialsCacheType.LOAD_BALANCING_MODEL.value,
+            "tx_id": tx_id,
+        }
+        if not self._apply:
+            self._log_event(
+                "cache_delete_planned",
+                "Would delete related cache entry in apply mode.",
+                attrs,
             )
+            return
 
-        self._log_cache_plans(
-            [
-                _CacheDeletePlan(
-                    tenant_id=plan.cache_plan.tenant_id,
-                    identity_id=plan.cache_plan.identity_id,
-                    cache_type=plan.cache_plan.cache_type,
-                    table_name=plan.cache_plan.table_name,
-                    row_id=plan.cache_plan.row_id,
-                    tx_id=tx_id,
-                    business_key=business_key,
-                )
-            ],
-            apply=self._apply,
-        )
+        try:
+            ProviderCredentialsCache(
+                tenant_id=self._tenant_id,
+                identity_id=row_id,
+                cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+            ).delete()
+            self._log_event("cache_deleted", "Deleted related cache entry.", attrs)
+        except Exception as exc:
+            self._log_event(
+                "cache_delete_failed",
+                "Failed to delete related cache entry.",
+                {**attrs, "error": str(exc)},
+            )
 
     def _process_load_balancing_model_config_row(
         self, candidate: _RowWithRawModelType[LoadBalancingModelConfig]
     ) -> None:
         tx_id = self._new_tx_id()
-        business_key = {
-            "tenant_id": candidate.row.tenant_id,
-            "provider_name": candidate.row.provider_name,
-            "model_name": candidate.row.model_name,
-            "name": candidate.row.name,
-            "model_type": candidate.canonical_model_type.value,
-        }
 
         try:
+            processed_row_id: str | None = None
             with _session_factory(self._engine) as session, session.begin():
                 self._configure_lock_timeout(session)
-                plan = self._build_load_balancing_model_config_row_plan(session, candidate, lock_rows=True)
-                if plan is None:
+                current_row = self._reload_load_balancing_model_config_candidate(session, candidate, lock_rows=True)
+                if current_row is None:
                     return
-                self._emit_load_balancing_model_config_row_plan(
-                    plan,
-                    session=session,
+                processed_row_id = str(current_row.row.id)
+
+                self._log_row_updated(
+                    LoadBalancingModelConfig.__tablename__,
+                    processed_row_id,
+                    {"model_type": current_row.raw_model_type},
+                    {"model_type": current_row.canonical_model_type.value},
                     tx_id=tx_id,
-                    business_key=business_key,
                 )
+                if self._apply:
+                    session.execute(
+                        sa.update(LoadBalancingModelConfig)
+                        .where(LoadBalancingModelConfig.id == processed_row_id)
+                        .values(model_type=current_row.canonical_model_type.value)
+                    )
         except OperationalError as exc:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
                     LoadBalancingModelConfig.__tablename__,
                     str(candidate.row.id),
                     tx_id,
-                    business_key,
+                    None,
                     exc,
                 )
                 return
             raise
+
+        if processed_row_id is not None:
+            self._log_load_balancing_model_config_cache_cleanup(row_id=processed_row_id, tx_id=tx_id)
 
     def _migrate_provider_model_credentials(self) -> None:
         self._log_event(
@@ -1312,6 +1327,11 @@ class Migration:
         for provider_model_credential, raw_value in rows:
             canonical_model_type = _LEGACY_TO_CANONICAL.get(str(raw_value))
             if canonical_model_type is None:
+                self._log_event(
+                    event="invalid_model_type",
+                    message=f"invalid model type: {raw_value}",
+                    attrs={"id": provider_model_credential.id, "table_name": provider_model_credential.__tablename__},
+                )
                 continue
             wrapped_rows.append(
                 _RowWithRawModelType(
@@ -1408,10 +1428,16 @@ class Migration:
         winner_credential_id: str,
         loser_credential_ids: Sequence[str],
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
     ) -> list[_CacheDeletePlan]:
         cache_plans: list[_CacheDeletePlan] = []
         for rewrite in rewrites:
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModel)
+                    .where(ProviderModel.id == rewrite.row_id)
+                    .values(credential_id=rewrite.new_credential_id)
+                )
             self._log_row_updated(
                 ProviderModel.__tablename__,
                 rewrite.row_id,
@@ -1425,12 +1451,6 @@ class Migration:
                     "loser_credential_ids": list(loser_credential_ids),
                 },
             )
-            if self._apply:
-                session.execute(
-                    sa.update(ProviderModel)
-                    .where(ProviderModel.id == rewrite.row_id)
-                    .values(credential_id=rewrite.new_credential_id)
-                )
 
             cache_plans.append(
                 _CacheDeletePlan(
@@ -1453,10 +1473,21 @@ class Migration:
         winner_credential_id: str,
         loser_credential_ids: Sequence[str],
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
     ) -> list[_CacheDeletePlan]:
         cache_plans: list[_CacheDeletePlan] = []
         for rewrite in rewrites:
+            if self._apply:
+                session.execute(
+                    sa.update(LoadBalancingModelConfig)
+                    .where(LoadBalancingModelConfig.id == rewrite.row_id)
+                    .values(
+                        credential_id=rewrite.new_credential_id,
+                        name=rewrite.new_name,
+                        encrypted_config=rewrite.new_encrypted_config,
+                    )
+                )
+
             self._log_row_updated(
                 LoadBalancingModelConfig.__tablename__,
                 rewrite.row_id,
@@ -1478,17 +1509,6 @@ class Migration:
                     "loser_credential_ids": list(loser_credential_ids),
                 },
             )
-            if self._apply:
-                session.execute(
-                    sa.update(LoadBalancingModelConfig)
-                    .where(LoadBalancingModelConfig.id == rewrite.row_id)
-                    .values(
-                        credential_id=rewrite.new_credential_id,
-                        name=rewrite.new_name,
-                        encrypted_config=rewrite.new_encrypted_config,
-                    )
-                )
-
             cache_plans.append(
                 _CacheDeletePlan(
                     tenant_id=self._tenant_id,
@@ -1508,7 +1528,7 @@ class Migration:
         *,
         session: Session,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
     ) -> None:
         if plan.winner is None:
             return
@@ -1538,6 +1558,10 @@ class Migration:
         )
 
         for loser in plan.loser_rows:
+            if self._apply:
+                session.execute(
+                    sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == str(loser.row.id))
+                )
             self._log_row_deleted(
                 ProviderModelCredential.__tablename__,
                 loser,
@@ -1545,12 +1569,14 @@ class Migration:
                 business_key=business_key,
                 related_winner_id=winner_credential_id,
             )
-            if self._apply:
-                session.execute(
-                    sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == str(loser.row.id))
-                )
 
         if plan.winner.raw_model_type != plan.winner.canonical_model_type.value:
+            if self._apply:
+                session.execute(
+                    sa.update(ProviderModelCredential)
+                    .where(ProviderModelCredential.id == winner_credential_id)
+                    .values(model_type=plan.winner.canonical_model_type.value)
+                )
             self._log_row_updated(
                 ProviderModelCredential.__tablename__,
                 winner_credential_id,
@@ -1559,12 +1585,6 @@ class Migration:
                 tx_id=tx_id,
                 business_key=business_key,
             )
-            if self._apply:
-                session.execute(
-                    sa.update(ProviderModelCredential)
-                    .where(ProviderModelCredential.id == winner_credential_id)
-                    .values(model_type=plan.winner.canonical_model_type.value)
-                )
 
         self._log_cache_plans(cache_plans, apply=self._apply)
         self._log_group_processed(
@@ -1580,7 +1600,6 @@ class Migration:
         business_key: _ProviderModelCredentialBusinessKey,
     ) -> list[str]:
         tx_id = self._new_tx_id()
-        business_key_attrs = asdict(business_key)
         group_row_ids = [str(candidate.row.id)]
 
         try:
@@ -1592,7 +1611,7 @@ class Migration:
                     plan,
                     session=session,
                     tx_id=tx_id,
-                    business_key=business_key_attrs,
+                    business_key=business_key,
                 )
         except OperationalError as exc:
             if self._is_lock_timeout_error(exc):
@@ -1600,7 +1619,7 @@ class Migration:
                     ProviderModelCredential.__tablename__,
                     str(candidate.row.id),
                     tx_id,
-                    business_key_attrs,
+                    business_key,
                     exc,
                 )
                 return group_row_ids
@@ -1716,22 +1735,23 @@ class Migration:
         table_name: str,
         row_id: str,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey | None,
         exc: OperationalError,
     ) -> None:
-        self._log_event(
-            "lock_timeout_skipped",
-            "Skipped transaction because row lock timed out.",
-            {
-                "tenant_id": self._tenant_id,
-                "apply": self._apply,
-                "table_name": table_name,
-                "id": row_id,
-                "tx_id": tx_id,
-                "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
-                "error": str(exc),
-            },
-        )
+        attrs: dict[str, object] = {
+            "tenant_id": self._tenant_id,
+            "apply": self._apply,
+            "table_name": table_name,
+            "id": row_id,
+            "tx_id": tx_id,
+            "error": str(exc),
+        }
+        if business_key is not None:
+            attrs["business_key"] = self._business_key_to_dict(business_key)
+        self._log_event("lock_timeout_skipped", "Skipped transaction because row lock timed out.", attrs)
+
+    def _business_key_to_dict(self, business_key: _BusinessKey) -> dict[str, object]:
+        return cast(dict[str, object], asdict(business_key))
 
     def _row_to_dict(self, row: TypeBase, *, raw_model_type: str | None = None) -> dict[str, object]:
         mapper = sa.inspect(row).mapper
@@ -1746,7 +1766,7 @@ class Migration:
         row: _RowWithRawModelType[T],
         *,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
         related_winner_id: str,
     ) -> None:
         self._log_event(
@@ -1758,7 +1778,7 @@ class Migration:
                 "table_name": table_name,
                 "id": self._row_id(row.row),
                 "tx_id": tx_id,
-                "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
+                "business_key": self._business_key_to_dict(business_key),
                 "merge_winner_id": related_winner_id,
                 "row": self._row_to_dict(row.row, raw_model_type=row.raw_model_type),
             },
@@ -1772,7 +1792,7 @@ class Migration:
         new_values: dict[str, object],
         *,
         tx_id: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey | None = None,
         rewrite_source: dict[str, object] | None = None,
     ) -> None:
         attrs: dict[str, object] = {
@@ -1781,10 +1801,11 @@ class Migration:
             "table_name": table_name,
             "id": row_id,
             "tx_id": tx_id,
-            "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
             "old_values": _normalize_log_mapping(old_values),
             "new_values": _normalize_log_mapping(new_values),
         }
+        if business_key is not None:
+            attrs["business_key"] = self._business_key_to_dict(business_key)
         if rewrite_source is not None:
             attrs["rewrite_source"] = rewrite_source
         self._log_event("row_updated", "Updated row values during canonicalization.", attrs)
@@ -1792,7 +1813,7 @@ class Migration:
     def _log_group_processed(
         self,
         table_name: str,
-        business_key: _BusinessKey | Mapping[str, object],
+        business_key: _BusinessKey,
         group_row_ids: Sequence[str],
         *,
         tx_id: str,
@@ -1804,7 +1825,7 @@ class Migration:
                 "tenant_id": self._tenant_id,
                 "apply": self._apply,
                 "table_name": table_name,
-                "business_key": asdict(business_key) if dataclasses.is_dataclass(business_key) else business_key,
+                "business_key": self._business_key_to_dict(business_key),
                 "group_row_ids": list(group_row_ids),
                 "tx_id": tx_id,
             },
@@ -1829,11 +1850,7 @@ class Migration:
                             "id": cache_plan.row_id,
                             "cache_type": cache_plan.cache_type.value,
                             "tx_id": cache_plan.tx_id,
-                            "business_key": (
-                                asdict(cache_plan.business_key)
-                                if dataclasses.is_dataclass(cache_plan.business_key)
-                                else cache_plan.business_key
-                            ),
+                            "business_key": self._business_key_to_dict(cache_plan.business_key),
                         },
                     )
                 except Exception as exc:
@@ -1847,11 +1864,7 @@ class Migration:
                             "id": cache_plan.row_id,
                             "cache_type": cache_plan.cache_type.value,
                             "tx_id": cache_plan.tx_id,
-                            "business_key": (
-                                asdict(cache_plan.business_key)
-                                if dataclasses.is_dataclass(cache_plan.business_key)
-                                else cache_plan.business_key
-                            ),
+                            "business_key": self._business_key_to_dict(cache_plan.business_key),
                             "error": str(exc),
                         },
                     )
@@ -1866,11 +1879,7 @@ class Migration:
                         "id": cache_plan.row_id,
                         "cache_type": cache_plan.cache_type.value,
                         "tx_id": cache_plan.tx_id,
-                        "business_key": (
-                            asdict(cache_plan.business_key)
-                            if dataclasses.is_dataclass(cache_plan.business_key)
-                            else cache_plan.business_key
-                        ),
+                        "business_key": self._business_key_to_dict(cache_plan.business_key),
                     },
                 )
 
