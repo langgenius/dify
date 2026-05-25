@@ -190,7 +190,7 @@ class Tool(ABC):
             }:
                 continue
 
-            parameter_schema = (
+            parameter_schema: dict[str, Any] = (
                 {
                     "type": parameter.type.as_normal_type(),
                     "description": parameter.llm_description or "",
