@@ -149,15 +149,13 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             </div>
             {showAppIconPicker && (
               <AppIconPicker
+                open={showAppIconPicker}
+                initialEmoji={appIcon.type === 'emoji'
+                  ? { icon: appIcon.icon, background: appIcon.background }
+                  : undefined}
+                onOpenChange={setShowAppIconPicker}
                 onSelect={(payload) => {
                   setAppIcon(payload)
-                  setShowAppIconPicker(false)
-                }}
-                onClose={() => {
-                  setAppIcon(appDetail.icon_type === 'image'
-                    ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
-                    : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background })
-                  setShowAppIconPicker(false)
                 }}
               />
             )}

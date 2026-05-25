@@ -258,7 +258,7 @@ describe('useFormState', () => {
       expect(result.current.showAppIconPicker).toBe(true)
     })
 
-    it('should select emoji icon and close picker', () => {
+    it('should select emoji icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -273,7 +273,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showAppIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -282,7 +282,7 @@ describe('useFormState', () => {
       })
     })
 
-    it('should select image icon and close picker', () => {
+    it('should select image icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -297,7 +297,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showAppIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'image',
         icon: 'file-123',
@@ -306,7 +306,7 @@ describe('useFormState', () => {
       })
     })
 
-    it('should restore previous icon when picker is closed', () => {
+    it('should close picker through open state setter without changing icon', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -322,15 +322,10 @@ describe('useFormState', () => {
       })
 
       act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
-
-      act(() => {
-        result.current.handleCloseAppIconPicker()
+        result.current.setShowAppIconPicker(false)
       })
 
       expect(result.current.showAppIconPicker).toBe(false)
-      // After close, icon should be restored to the icon before opening
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',

@@ -217,13 +217,10 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         {
           showEmojiPicker && (
             <EmojiPicker
+              open={showEmojiPicker}
+              onOpenChange={setShowEmojiPicker}
               onSelect={(icon, icon_background) => {
                 handleValueChange({ icon, icon_background })
-                setShowEmojiPicker(false)
-              }}
-              onClose={() => {
-                handleValueChange({ icon: '', icon_background: '' })
-                setShowEmojiPicker(false)
               }}
             />
           )
