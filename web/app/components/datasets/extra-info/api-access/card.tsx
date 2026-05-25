@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
@@ -25,12 +24,11 @@ const Card = ({
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
   const datasetACLCapabilities = React.useMemo(
     () => getDatasetACLCapabilities(datasetPermissionKeys),
     [datasetPermissionKeys],
   )
-  const canManageApiAccess = isCurrentWorkspaceManager || datasetACLCapabilities.canEdit
+  const canManageApiAccess = datasetACLCapabilities.canEdit
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
