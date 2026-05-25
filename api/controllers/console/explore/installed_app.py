@@ -8,7 +8,13 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
+from controllers.common.fields import (
+    SimpleMessageResponse,
+    SimpleResultMessageResponse,
+)
+from controllers.common.fields import (
+    Site as SiteResponse,
+)
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
@@ -56,6 +62,13 @@ def _safe_primitive(value: Any) -> Any:
     return None
 
 
+def _get_app_site(value: Any) -> Any | None:
+    site = getattr(value, "site", None)
+    if _safe_primitive(getattr(site, "title", None)) is None:
+        return None
+    return site
+
+
 class InstalledAppInfoResponse(ResponseModel):
     id: str
     name: str | None = None
@@ -83,6 +96,7 @@ class InstalledAppInfoResponse(ResponseModel):
 class InstalledAppResponse(ResponseModel):
     id: str
     app: InstalledAppInfoResponse
+    site: SiteResponse | None = None
     app_owner_tenant_id: str
     is_pinned: bool
     last_used_at: int | None = None
@@ -153,6 +167,7 @@ class InstalledAppsListApi(Resource):
             {
                 "id": installed_app.id,
                 "app": installed_app.app,
+                "site": _get_app_site(installed_app.app),
                 "app_owner_tenant_id": installed_app.app_owner_tenant_id,
                 "is_pinned": installed_app.is_pinned,
                 "last_used_at": installed_app.last_used_at,

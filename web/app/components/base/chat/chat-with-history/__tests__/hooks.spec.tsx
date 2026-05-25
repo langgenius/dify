@@ -989,6 +989,15 @@ describe('useChatWithHistory', () => {
           icon_url: '',
           use_icon_as_answer_icon: false,
         },
+        site: {
+          title: 'Installed Web App',
+          icon_type: 'emoji',
+          icon: '🚀',
+          icon_background: '#D5F5F6',
+          icon_url: '',
+          show_workflow_steps: true,
+          use_icon_as_answer_icon: true,
+        },
       } as unknown as InstalledApp
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
@@ -999,7 +1008,9 @@ describe('useChatWithHistory', () => {
       // Assert
       expect(result!.current.isInstalledApp).toBe(true)
       expect(result!.current.appId).toBe('installed-app-id')
-      expect(result!.current.appData?.site.title).toBe('Installed App')
+      expect(result!.current.appData?.site.title).toBe('Installed Web App')
+      expect(result!.current.appData?.site.icon).toBe('🚀')
+      expect(result!.current.appData?.site.use_icon_as_answer_icon).toBe(true)
     })
   })
 

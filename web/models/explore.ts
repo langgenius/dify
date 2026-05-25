@@ -1,3 +1,4 @@
+import type { SiteInfo } from './share'
 import type { AppIconType, AppModeEnum } from '@/types/app'
 
 type AppBasicInfo = {
@@ -33,6 +34,7 @@ export type App = {
 
 export type InstalledApp = {
   app: AppBasicInfo
+  site?: SiteInfo | null
   id: string
   uninstallable: boolean
   is_pinned: boolean

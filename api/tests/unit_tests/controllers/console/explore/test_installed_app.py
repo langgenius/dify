@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -32,6 +33,7 @@ def installed_app():
     app = MagicMock()
     app.id = "ia1"
     app.app = MagicMock(id="a1")
+    app.app.site = None
     app.app_owner_tenant_id = "t2"
     app.is_pinned = False
     app.last_used_at = datetime(2024, 1, 1)
@@ -75,6 +77,55 @@ class TestInstalledAppsListApi:
         assert "installed_apps" in result
         assert result["installed_apps"][0]["editable"] is True
         assert result["installed_apps"][0]["uninstallable"] is False
+
+    def test_get_installed_apps_includes_site_config(self, app: Flask, current_user, tenant_id, installed_app):
+        api = module.InstalledAppsListApi()
+        method = unwrap(api.get)
+
+        installed_app.app.id = "a1"
+        installed_app.app.name = "App Name"
+        installed_app.app.mode = "chat"
+        installed_app.app.icon_type = "emoji"
+        installed_app.app.icon = "🤖"
+        installed_app.app.icon_background = "#FFFFFF"
+        installed_app.app.use_icon_as_answer_icon = False
+        installed_app.app.site = SimpleNamespace(
+            title="Web App",
+            chat_color_theme=None,
+            chat_color_theme_inverted=False,
+            icon_type="emoji",
+            icon="🚀",
+            icon_background="#D5F5F6",
+            description=None,
+            copyright="",
+            privacy_policy=None,
+            custom_disclaimer="",
+            default_language="en-US",
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=True,
+        )
+
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [installed_app]
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
+            patch.object(module.db, "session", session),
+            patch.object(module.TenantService, "get_user_role", return_value="owner"),
+            patch.object(
+                module.FeatureService,
+                "get_system_features",
+                return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
+            ),
+        ):
+            result = method(api)
+
+        installed_app_result = result["installed_apps"][0]
+        assert installed_app_result["app"]["icon"] == "🤖"
+        assert installed_app_result["app"]["use_icon_as_answer_icon"] is False
+        assert installed_app_result["site"]["icon"] == "🚀"
+        assert installed_app_result["site"]["use_icon_as_answer_icon"] is True
 
     def test_get_installed_apps_with_app_id_filter(self, app: Flask, current_user, tenant_id):
         api = module.InstalledAppsListApi()

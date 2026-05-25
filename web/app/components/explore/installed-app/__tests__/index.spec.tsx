@@ -386,6 +386,41 @@ describe('InstalledApp', () => {
       })
     })
 
+    it('should update app info from site config when installed app includes site', async () => {
+      const installedAppWithSite = {
+        ...mockInstalledApp,
+        site: {
+          title: 'Published Web App',
+          icon_type: 'emoji' as const,
+          icon: '✨',
+          icon_background: '#D5F5F6',
+          icon_url: '',
+          copyright: 'Copyright',
+          show_workflow_steps: false,
+          use_icon_as_answer_icon: true,
+        },
+      }
+      setupMocks([installedAppWithSite])
+
+      render(<InstalledApp id="installed-app-123" />)
+
+      await waitFor(() => {
+        expect(mockUpdateAppInfo).toHaveBeenCalledWith(
+          expect.objectContaining({
+            app_id: 'installed-app-123',
+            site: expect.objectContaining({
+              title: 'Published Web App',
+              icon: '✨',
+              icon_background: '#D5F5F6',
+              copyright: 'Copyright',
+              show_workflow_steps: false,
+              use_icon_as_answer_icon: true,
+            }),
+          }),
+        )
+      })
+    })
+
     it('should update app info to null when installedApp is not found', async () => {
       setupMocks([])
 

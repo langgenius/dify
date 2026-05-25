@@ -82,19 +82,19 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   })
   const appData = useMemo(() => {
     if (isInstalledApp) {
-      const { id, app } = installedAppInfo!
+      const { id, app, site } = installedAppInfo!
       return {
         app_id: id,
         site: {
-          title: app.name,
-          icon_type: app.icon_type,
-          icon: app.icon,
-          icon_background: app.icon_background,
-          icon_url: app.icon_url,
+          title: site?.title ?? app.name,
+          icon_type: site?.icon_type ?? app.icon_type,
+          icon: site?.icon ?? app.icon,
+          icon_background: site?.icon_background ?? app.icon_background,
+          icon_url: site?.icon_url ?? app.icon_url,
           prompt_public: false,
-          copyright: '',
-          show_workflow_steps: true,
-          use_icon_as_answer_icon: app.use_icon_as_answer_icon,
+          copyright: site?.copyright ?? '',
+          show_workflow_steps: site?.show_workflow_steps ?? true,
+          use_icon_as_answer_icon: site?.use_icon_as_answer_icon ?? app.use_icon_as_answer_icon,
         },
         plan: 'basic',
         custom_config: null,
