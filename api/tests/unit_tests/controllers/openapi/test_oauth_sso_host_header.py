@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
 from flask import Flask
@@ -52,7 +53,9 @@ def test_idp_callback_url_uses_console_api_url_not_host_header(ee_feat, cfg, red
 
     args, kwargs = jws_mod.sign.call_args
     signed_payload = args[1] if len(args) > 1 else kwargs["payload"]
-    assert signed_payload["idp_callback_url"].startswith("https://api.dify.example")
+    callback_url = urlparse(signed_payload["idp_callback_url"])
+    assert callback_url.scheme == "https"
+    assert callback_url.hostname == "api.dify.example"
     assert "evil.com" not in signed_payload["idp_callback_url"]
 
 
