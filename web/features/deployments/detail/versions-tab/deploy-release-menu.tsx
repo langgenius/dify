@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
@@ -22,6 +23,7 @@ import { releaseDeploymentAction } from '../../release-action'
 import { deploymentStatus, isUndeployedDeploymentRow } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
+import { exportReleaseDsl } from './release-dsl-export'
 
 type EnvironmentOption = Environment & {
   id: string
@@ -58,7 +60,14 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const [open, setOpen] = useState(false)
+  const [isExportingDsl, setIsExportingDsl] = useState(false)
   const { data: environmentDeployments } = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+    enabled: open,
+  }))
+  const { data: appInstanceData } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: {
       params: { appInstanceId },
     },
@@ -69,10 +78,28 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
     .map(row => row.environment)
     .filter((env): env is EnvironmentOption => Boolean(env?.id))
   const deploymentRows = environmentDeployments?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
-  const targetRelease = releaseRows.find(release => release.id === releaseId)
+  const targetRelease = releaseRows.find((release): release is Release & { id: string } => release.id === releaseId)
+  const appInstanceName = appInstanceData?.appInstance?.name
 
   if (!targetRelease)
     return null
+
+  const handleExportDsl = async () => {
+    if (isExportingDsl)
+      return
+
+    setIsExportingDsl(true)
+    try {
+      await exportReleaseDsl({ release: targetRelease, appInstanceName })
+      setOpen(false)
+    }
+    catch {
+      toast.error(t('versions.exportDslFailed'))
+    }
+    finally {
+      setIsExportingDsl(false)
+    }
+  }
 
   const menuRows: DeployMenuRow[] = environments.map((env) => {
     const envId = env.id
@@ -142,6 +169,21 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows }: {
       </DropdownMenuTrigger>
       {open && (
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">
+          <DropdownMenuItem
+            disabled={isExportingDsl}
+            aria-disabled={isExportingDsl}
+            className={cn(
+              'gap-2 px-3',
+              isExportingDsl && 'cursor-not-allowed opacity-60',
+            )}
+            onClick={handleExportDsl}
+          >
+            <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
+            <span className="system-sm-regular text-text-secondary">
+              {isExportingDsl ? t('versions.exportingDsl') : t('versions.exportDsl')}
+            </span>
+          </DropdownMenuItem>
+          {groupedRows.length > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
           {groupedRows.map((section, sectionIndex) => (
             <div key={section.group}>
               {sectionIndex > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}

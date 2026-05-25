@@ -10,6 +10,21 @@ type OpenApiDocument = JsonObject & {
   paths?: Record<string, unknown>
 }
 
+type OpenApiMediaType = JsonObject & {
+  schema?: unknown
+}
+
+type OpenApiOperation = JsonObject & {
+  operationId?: string
+  responses?: Record<string, OpenApiResponse>
+}
+
+type OpenApiPathItem = Record<string, unknown>
+
+type OpenApiResponse = JsonObject & {
+  content?: Record<string, OpenApiMediaType>
+}
+
 type ContractOperation = {
   id: string
   operationId?: string
@@ -21,8 +36,25 @@ const enterpriseServerDir = process.env.DIFY_ENTERPRISE_SERVER
   ? path.resolve(process.env.DIFY_ENTERPRISE_SERVER)
   : path.resolve(currentDir, '../../../dify-enterprise/server')
 const enterpriseOpenApiPath = path.join(enterpriseServerDir, 'pkg/apis/enterprise/openapi.yaml')
+const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 
 const isConsoleApiPath = (routePath: string) => routePath.startsWith('/console/api/')
+
+const isObject = (value: unknown): value is JsonObject => {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+const asOpenApiOperation = (value: unknown): OpenApiOperation | undefined => {
+  return isObject(value) ? value as OpenApiOperation : undefined
+}
+
+const asOpenApiResponse = (value: unknown): OpenApiResponse | undefined => {
+  return isObject(value) ? value as OpenApiResponse : undefined
+}
+
+const asOpenApiMediaType = (value: unknown): OpenApiMediaType | undefined => {
+  return isObject(value) ? value as OpenApiMediaType : undefined
+}
 
 const stripConsoleApiPrefix = (routePath: string) => {
   if (isConsoleApiPath(routePath))
@@ -59,6 +91,36 @@ const contractPathSegments = (operation: ContractOperation) => {
   return [contractTagSegment(operation.tags?.[0]), ...contractNameSegments(operation)]
 }
 
+const hasSchemaLessResponseContent = (operation: OpenApiOperation) => {
+  if (!isObject(operation.responses))
+    return false
+
+  return Object.values(operation.responses).some((response) => {
+    const openApiResponse = asOpenApiResponse(response)
+    if (!openApiResponse || !isObject(openApiResponse.content))
+      return false
+
+    return Object.values(openApiResponse.content).some((mediaType) => {
+      const openApiMediaType = asOpenApiMediaType(mediaType)
+      return !!openApiMediaType && !('schema' in openApiMediaType)
+    })
+  })
+}
+
+// protoc-gen-openapi emits google.api.HttpBody responses as `*/*: {}`. Skip these
+// raw download operations until the source OpenAPI exposes an explicit schema.
+const stripSchemaLessResponseOperations = (pathItem: OpenApiPathItem) => {
+  return Object.fromEntries(
+    Object.entries(pathItem).filter(([method, operation]) => {
+      if (!operationMethods.has(method.toLowerCase()))
+        return true
+
+      const openApiOperation = asOpenApiOperation(operation)
+      return !openApiOperation || !hasSchemaLessResponseContent(openApiOperation)
+    }),
+  )
+}
+
 const normalizeEnterpriseOpenApi = () => {
   const openApi = yaml.load(fs.readFileSync(enterpriseOpenApiPath, 'utf8'))
 
@@ -71,7 +133,13 @@ const normalizeEnterpriseOpenApi = () => {
   document.paths = Object.fromEntries(
     Object.entries(paths)
       .filter(([routePath]) => isConsoleApiPath(routePath))
-      .map(([routePath, pathItem]) => [stripConsoleApiPrefix(routePath), pathItem]),
+      .map(([routePath, pathItem]) => {
+        if (!isObject(pathItem))
+          return [stripConsoleApiPrefix(routePath), pathItem]
+
+        return [stripConsoleApiPrefix(routePath), stripSchemaLessResponseOperations(pathItem)]
+      })
+      .filter(([, pathItem]) => !isObject(pathItem) || Object.keys(pathItem).length > 0),
   )
 
   return document
