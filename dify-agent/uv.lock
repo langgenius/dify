@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">=3.12"
+requires-python = ">=3.12, <4.0"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
@@ -610,17 +610,17 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "~=0.2.2" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0" },
-    { name = "pydantic", specifier = ">=2.12.5,<3" },
-    { name = "pydantic-ai-slim", specifier = ">=1.85.1" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1" },
-    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0" },
-    { name = "redis", marker = "extra == 'server'", specifier = ">=5" },
-    { name = "typing-extensions", specifier = ">=4.12.2" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.38.0" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.2.2" },
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
+    { name = "pydantic", specifier = ">=2.12.5,<2.13" },
+    { name = "pydantic-ai-slim", specifier = ">=1.85.1,<2.0.0" },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
+    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
+    { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
+    { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
 provides-extras = ["server"]
 
