@@ -94,6 +94,7 @@ export type InstalledAppResponse = {
   id: string
   is_pinned: boolean
   last_used_at?: number | null
+  site?: Site
   uninstallable: boolean
 }
 
@@ -105,6 +106,22 @@ export type InstalledAppInfoResponse = {
   mode?: string | null
   name?: string | null
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type Site = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  privacy_policy?: string | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type GetInstalledAppsData = {

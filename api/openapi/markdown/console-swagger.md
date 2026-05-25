@@ -13072,6 +13072,7 @@ Request payload for bulk downloading documents as a zip archive.
 | id | string |  | Yes |
 | is_pinned | boolean |  | Yes |
 | last_used_at | integer |  | No |
+| site | [Site](#site) |  | No |
 | uninstallable | boolean |  | Yes |
 
 #### InstalledAppUpdatePayload
@@ -14454,28 +14455,19 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_base_url | string |  | No |
 | chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
+| chat_color_theme_inverted | boolean |  | Yes |
 | copyright | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
 | custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
+| default_language | string |  | Yes |
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type |  |  | No |
+| icon_type | string |  | No |
 | privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| show_workflow_steps | boolean |  | Yes |
+| title | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### StatisticTimeRangeQuery
 
