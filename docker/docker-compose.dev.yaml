@@ -14,6 +14,7 @@ services:
       - ../api/models:/app/api/models:ro
       - ../api/services:/app/api/services:ro
       - ../api/controllers:/app/api/controllers:ro
+      - ../api/studio_api:/app/api/studio_api:ro
       - ../api/libs:/app/api/libs:ro
       - ../api/core:/app/api/core:ro
       - ../api/tasks:/app/api/tasks:ro
@@ -30,6 +31,7 @@ services:
       - ../api/models:/app/api/models:ro
       - ../api/services:/app/api/services:ro
       - ../api/controllers:/app/api/controllers:ro
+      - ../api/studio_api:/app/api/studio_api:ro
       - ../api/libs:/app/api/libs:ro
       - ../api/core:/app/api/core:ro
       - ../api/tasks:/app/api/tasks:ro
@@ -46,6 +48,7 @@ services:
       - ../api/models:/app/api/models:ro
       - ../api/services:/app/api/services:ro
       - ../api/controllers:/app/api/controllers:ro
+      - ../api/studio_api:/app/api/studio_api:ro
       - ../api/libs:/app/api/libs:ro
       - ../api/core:/app/api/core:ro
       - ../api/tasks:/app/api/tasks:ro
@@ -71,6 +74,7 @@ services:
       - ./.env
     environment:
       NEXT_PUBLIC_API_PREFIX: http://172.16.12.101/console/api
+      NEXT_PUBLIC_STUDIO_API_PREFIX: http://172.16.12.101/studio/api
       NEXT_PUBLIC_PUBLIC_API_PREFIX: http://172.16.12.101/api
       NEXT_PUBLIC_SOCKET_URL: ws://172.16.12.101
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
@@ -81,6 +85,7 @@ services:
     command: ["pnpm", "--filter", "dify-web", "dev"]
     volumes:
       - ../web:/app/web:rw
+      - ../packages:/app/packages:ro
     ports:
       - "3000:3000"
 
@@ -93,6 +98,7 @@ services:
       - ../api/models:/app/api/models:ro
       - ../api/services:/app/api/services:ro
       - ../api/controllers:/app/api/controllers:ro
+      - ../api/studio_api:/app/api/studio_api:ro
       - ../api/libs:/app/api/libs:ro
       - ../api/core:/app/api/core:ro
       - ../api/tasks:/app/api/tasks:ro

@@ -9,6 +9,11 @@ server {
       include proxy.conf;
     }
 
+    location /studio/api {
+      proxy_pass http://api:5001;
+      include proxy.conf;
+    }
+
     location /api {
       proxy_pass http://api:5001;
       include proxy.conf;
