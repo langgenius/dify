@@ -119,6 +119,25 @@ export const zInstalledAppInfoResponse = z.object({
 })
 
 /**
+ * Site
+ */
+export const zSite = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * InstalledAppResponse
  */
 export const zInstalledAppResponse = z.object({
@@ -128,6 +147,7 @@ export const zInstalledAppResponse = z.object({
   id: z.string(),
   is_pinned: z.boolean(),
   last_used_at: z.int().nullish(),
+  site: zSite.optional(),
   uninstallable: z.boolean(),
 })
 

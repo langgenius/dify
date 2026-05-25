@@ -921,28 +921,19 @@ export type DeletedTool = {
 }
 
 export type Site = {
-  app_base_url?: string | null
   chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  code?: string | null
+  chat_color_theme_inverted: boolean
   copyright?: string | null
-  created_at?: number | null
-  created_by?: string | null
   custom_disclaimer?: string | null
-  customize_domain?: string | null
-  customize_token_strategy?: string | null
-  default_language?: string | null
+  default_language: string
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: unknown
+  icon_type?: string | null
   privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type AdvancedChatWorkflowRunForListResponse = {

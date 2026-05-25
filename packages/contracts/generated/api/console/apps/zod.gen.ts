@@ -705,28 +705,19 @@ export const zDeletedTool = z.object({
  * Site
  */
 export const zSite = z.object({
-  app_base_url: z.string().nullish(),
   chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean().nullish(),
-  code: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
   copyright: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),
-  customize_domain: z.string().nullish(),
-  customize_token_strategy: z.string().nullish(),
-  default_language: z.string().nullish(),
+  default_language: z.string(),
   description: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
-  icon_type: z.unknown().optional(),
+  icon_type: z.string().nullish(),
   privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
