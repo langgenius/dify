@@ -979,7 +979,7 @@ class DocumentDownloadApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def get(self, dataset_id: str, document_id: str) -> dict[str, Any]:
+    def get(self, dataset_id: UUID, document_id: UUID) -> dict[str, Any]:
         # Reuse the shared permission/tenant checks implemented in DocumentResource.
         document = self.get_document(str(dataset_id), str(document_id))
         return {"url": DocumentService.get_document_download_url(document)}
@@ -996,7 +996,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
-    def post(self, dataset_id: str):
+    def post(self, dataset_id: UUID):
         """Stream a ZIP archive containing the requested uploaded documents."""
         # Parse and validate request payload.
         payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
