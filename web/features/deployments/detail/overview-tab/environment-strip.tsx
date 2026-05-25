@@ -1,11 +1,13 @@
 'use client'
 
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { environmentId } from '../../environment'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
 import { SectionState } from '../common'
+import { OVERVIEW_CARD_CLASS_NAME } from './card-styles'
 import { EnvironmentTile } from './environment-tile'
 
 type EnvironmentStripProps = {
@@ -64,30 +66,28 @@ function EnvironmentTileSkeleton() {
   return (
     <article
       data-slot="deployment-overview-environment-tile-skeleton"
-      className="relative flex min-h-30 min-w-0 flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg p-3.5 shadow-xs"
+      className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-h-28 min-w-0 flex-col justify-between gap-4')}
     >
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-text-quaternary opacity-30" />
-
-      <div className="flex min-w-0 items-start justify-between gap-3 pl-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <SkeletonRectangle className="my-0 size-7 shrink-0 animate-pulse rounded-lg" />
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <SkeletonRectangle className="my-0 size-8 shrink-0 animate-pulse rounded-lg" />
           <SkeletonRectangle className="my-0 h-3.5 w-28 animate-pulse" />
         </div>
-        <SkeletonRow className="my-0 h-5 shrink-0 gap-1.5 rounded-md bg-text-quaternary px-1.5 opacity-20">
+        <SkeletonRow className="my-0 h-6 shrink-0 gap-1.5 rounded-md bg-background-section-burn px-2">
           <span className="size-1.5 shrink-0 rounded-full bg-text-quaternary" />
-          <span className="h-2.5 w-8 rounded-xs bg-text-quaternary" />
+          <span className="h-2.5 w-8 rounded-xs bg-text-quaternary opacity-20" />
         </SkeletonRow>
       </div>
 
-      <div className="mt-5 flex min-w-0 items-end justify-between gap-3 pl-1.5">
+      <div className="flex min-w-0 items-end justify-between gap-3">
         <div className="min-w-0">
           <SkeletonRectangle className="my-0 h-2.5 w-20 animate-pulse" />
-          <div className="mt-2 flex min-w-0 items-baseline gap-2">
-            <SkeletonRectangle className="my-0 h-5 w-18 animate-pulse" />
-            <SkeletonRectangle className="my-0 h-5 w-16 animate-pulse rounded-md" />
+          <div className="mt-2 flex min-w-0 items-center gap-2">
+            <SkeletonRectangle className="my-0 h-3.5 w-24 animate-pulse" />
+            <SkeletonRectangle className="my-0 h-5 w-16 animate-pulse rounded" />
           </div>
         </div>
-        <SkeletonRectangle className="my-0 h-7 w-22 shrink-0 animate-pulse rounded-md" />
+        <SkeletonRectangle className="my-0 h-8 w-22 shrink-0 animate-pulse rounded-md" />
       </div>
     </article>
   )

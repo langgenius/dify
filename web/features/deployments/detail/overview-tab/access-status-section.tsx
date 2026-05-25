@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
+import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, OVERVIEW_STATUS_BADGE_CLASS_NAME } from './card-styles'
 
 type AccessStatusSectionProps = {
   appInstanceId: string
@@ -64,22 +65,15 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
             key={item.key}
             href={item.href}
             className={cn(
-              'group flex min-w-0 items-start gap-3 rounded-xl border p-4 transition-colors',
-              item.enabled
-                ? 'border-components-panel-border bg-components-panel-bg hover:bg-components-panel-on-panel-item-bg-hover'
-                : 'border-divider-subtle bg-background-default-subtle hover:bg-state-base-hover',
+              OVERVIEW_INTERACTIVE_CARD_CLASS_NAME,
+              'group flex min-h-18 min-w-0 items-start gap-3',
             )}
           >
             <span
               aria-hidden
-              className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-lg',
-                item.enabled
-                  ? 'bg-util-colors-green-green-50 text-util-colors-green-green-700'
-                  : 'bg-background-section-burn text-text-tertiary',
-              )}
+              className={OVERVIEW_ICON_CLASS_NAME}
             >
-              <span className={cn('size-4.5', item.icon)} />
+              <span className={cn('size-4', item.icon)} />
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="flex min-w-0 items-center justify-between gap-3">
@@ -88,12 +82,19 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
                 </span>
                 <span
                   className={cn(
-                    'inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-xs',
+                    OVERVIEW_STATUS_BADGE_CLASS_NAME,
                     item.enabled
-                      ? 'bg-util-colors-green-green-50 text-util-colors-green-green-700'
-                      : 'bg-background-section-burn text-text-tertiary',
+                      ? 'text-util-colors-green-green-700'
+                      : 'text-text-tertiary',
                   )}
                 >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'size-1.5 shrink-0 rounded-full',
+                      item.enabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
+                    )}
+                  />
                   {item.enabled ? t('overview.enabled') : t('overview.disabled')}
                 </span>
               </span>
@@ -122,13 +123,13 @@ export function AccessStatusSectionSkeleton() {
           <div
             key={key}
             data-slot="deployment-overview-access-card-skeleton"
-            className="flex min-w-0 items-start gap-3 rounded-xl border border-components-panel-border bg-components-panel-bg p-4"
+            className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-h-18 min-w-0 items-start gap-3')}
           >
-            <SkeletonRectangle className="my-0 size-9 shrink-0 animate-pulse rounded-lg" />
+            <SkeletonRectangle className="my-0 size-8 shrink-0 animate-pulse rounded-lg" />
             <span className="flex min-w-0 flex-1 flex-col gap-2">
               <span className="flex min-w-0 items-center justify-between gap-3">
                 <SkeletonRectangle className="my-0 h-3.5 w-20 animate-pulse" />
-                <SkeletonRectangle className="my-0 h-5 w-12 shrink-0 animate-pulse rounded-md" />
+                <SkeletonRectangle className="my-0 h-6 w-14 shrink-0 animate-pulse rounded-md" />
               </span>
               <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
             </span>

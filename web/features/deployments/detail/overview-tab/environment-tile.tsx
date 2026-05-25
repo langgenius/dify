@@ -9,6 +9,7 @@ import { environmentId, environmentName } from '../../environment'
 import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
+import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, OVERVIEW_STATUS_BADGE_CLASS_NAME } from './card-styles'
 import { computeDrift, latestReleaseId } from './overview-drift'
 
 type EnvironmentTileProps = {
@@ -21,10 +22,8 @@ type TileKind = 'empty' | 'latest' | 'behind' | 'older' | 'deploying' | 'failed'
 
 type TileConfig = {
   kind: TileKind
-  accentClass: string
   dotClass: string
-  badgeClass: string
-  iconClass: string
+  statusClass: string
   actionClass: string
   showRelease: boolean
   intent: 'drawer' | 'navigate' | 'disabled'
@@ -66,38 +65,31 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
   return (
     <article
       data-slot="deployment-overview-environment-tile"
-      className="group relative flex min-h-30 min-w-0 flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg p-3.5 shadow-xs transition-colors hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg-hover"
+      className={cn(OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, 'flex min-h-28 min-w-0 flex-col justify-between gap-4')}
     >
-      <span aria-hidden className={cn('absolute inset-y-0 left-0 w-1', config.accentClass)} />
-
-      <div className="flex min-w-0 items-start justify-between gap-3 pl-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span aria-hidden className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg', config.iconClass)}>
-            <span className="i-ri-server-line size-3.5" />
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
+            <span className="i-ri-server-line size-4" />
           </span>
-          <div className="min-w-0 flex-1">
-            <h4 className="truncate system-sm-semibold text-text-primary">
-              {environmentName(row.environment)}
-            </h4>
-          </div>
+          <h4 className="truncate system-sm-medium text-text-primary">
+            {environmentName(row.environment)}
+          </h4>
         </div>
-        <span className={cn('inline-flex h-5 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs', config.badgeClass)}>
-          <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
-          <span>{renderStatus(config.kind, drift, t)}</span>
-        </span>
+        <StatusSignal config={config} drift={drift} t={t} />
       </div>
 
-      <div className="mt-5 flex min-w-0 items-end justify-between gap-3 pl-1.5">
+      <div className="flex min-w-0 items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
+          <div className="system-2xs-medium-uppercase text-text-tertiary">
             {t('deployTab.col.currentRelease')}
           </div>
-          <div className="mt-1 flex min-w-0 items-baseline gap-2">
-            <span className="min-w-0 truncate title-md-semi-bold text-text-primary">
+          <div className="mt-1 flex min-w-0 items-center gap-2">
+            <span className="min-w-0 truncate system-sm-semibold text-text-primary">
               {showRelease ? releaseLabel(release) : '—'}
             </span>
             {showRelease && commit !== '—' && (
-              <span className="shrink-0 rounded-md bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">
+              <span className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">
                 {commit}
               </span>
             )}
@@ -110,7 +102,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
           title={tooltip}
           onClick={handleAction}
           className={cn(
-            'inline-flex h-7 max-w-full min-w-0 items-center justify-center gap-1 rounded-md px-1.5 system-xs-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
+            'inline-flex h-8 max-w-full min-w-0 shrink-0 items-center justify-center rounded-md px-2.5 system-xs-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
             config.actionClass,
             isDisabled && 'cursor-not-allowed opacity-60',
           )}
@@ -119,6 +111,20 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
         </button>
       </div>
     </article>
+  )
+}
+
+function StatusSignal({ className, config, drift, t }: {
+  className?: string
+  config: TileConfig
+  drift: ReturnType<typeof computeDrift>
+  t: ReturnType<typeof useTranslation<'deployments'>>['t']
+}) {
+  return (
+    <span className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass, className)}>
+      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
+      <span>{renderStatus(config.kind, drift, t)}</span>
+    </span>
   )
 }
 
@@ -132,11 +138,9 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (status === 'deploying') {
     return {
       kind: 'deploying',
-      accentClass: 'bg-util-colors-blue-blue-500',
       dotClass: 'bg-util-colors-blue-blue-500 animate-pulse',
-      badgeClass: 'bg-util-colors-blue-blue-50 text-util-colors-blue-blue-700',
-      iconClass: 'bg-util-colors-blue-blue-50 text-util-colors-blue-blue-700',
-      actionClass: 'text-text-secondary hover:bg-state-base-hover',
+      statusClass: 'text-util-colors-blue-blue-700',
+      actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'navigate',
     }
@@ -145,10 +149,8 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (status === 'deploy_failed') {
     return {
       kind: 'failed',
-      accentClass: 'bg-util-colors-red-red-500',
       dotClass: 'bg-util-colors-red-red-500',
-      badgeClass: 'bg-util-colors-red-red-50 text-util-colors-red-red-700',
-      iconClass: 'bg-util-colors-red-red-50 text-util-colors-red-red-700',
+      statusClass: 'text-util-colors-red-red-700',
       actionClass: 'text-primary-600 hover:bg-state-accent-hover',
       showRelease: true,
       intent: 'drawer',
@@ -159,10 +161,8 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (drift.kind === 'undeployed') {
     return {
       kind: 'empty',
-      accentClass: 'bg-text-quaternary',
       dotClass: 'bg-text-quaternary',
-      badgeClass: 'bg-background-section-burn text-text-tertiary',
-      iconClass: 'bg-background-section-burn text-text-tertiary',
+      statusClass: 'text-text-tertiary',
       actionClass: hasAnyRelease
         ? 'text-primary-600 hover:bg-state-accent-hover'
         : 'text-text-tertiary',
@@ -175,11 +175,9 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (drift.kind === 'up-to-date') {
     return {
       kind: 'latest',
-      accentClass: 'bg-util-colors-green-green-500',
       dotClass: 'bg-util-colors-green-green-500',
-      badgeClass: 'bg-util-colors-green-green-50 text-util-colors-green-green-700',
-      iconClass: 'bg-util-colors-green-green-50 text-util-colors-green-green-700',
-      actionClass: 'text-text-secondary hover:bg-state-base-hover',
+      statusClass: 'text-util-colors-green-green-700',
+      actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'drawer',
       releaseId: currentReleaseId,
@@ -189,10 +187,8 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (drift.kind === 'behind') {
     return {
       kind: 'behind',
-      accentClass: 'bg-util-colors-warning-warning-500',
       dotClass: 'bg-util-colors-warning-warning-500',
-      badgeClass: 'bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
-      iconClass: 'bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
+      statusClass: 'text-util-colors-warning-warning-700',
       actionClass: 'text-primary-600 hover:bg-state-accent-hover',
       showRelease: true,
       intent: 'drawer',
@@ -202,10 +198,8 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
 
   return {
     kind: 'older',
-    accentClass: 'bg-text-tertiary',
     dotClass: 'bg-text-tertiary',
-    badgeClass: 'bg-background-section-burn text-text-tertiary',
-    iconClass: 'bg-background-section-burn text-text-tertiary',
+    statusClass: 'text-text-tertiary',
     actionClass: 'text-primary-600 hover:bg-state-accent-hover',
     showRelease: true,
     intent: 'drawer',
