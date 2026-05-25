@@ -417,7 +417,7 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model, message_id: str):
+    def get(self, app_model, message_id: UUID):
         message_id_str = str(message_id)
 
         message = db.session.scalar(

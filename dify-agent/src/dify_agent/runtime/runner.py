@@ -2,19 +2,22 @@
 
 The runner is storage-agnostic: it normalizes the public Dify composition into
 Agenton's graph/config split, enters a fresh ``CompositorRun`` (or resumes one
-from a snapshot), runs pydantic-ai with ``run.user_prompts`` as the user input,
-emits stream events, applies request-level ``on_exit`` signals, and then
-publishes a terminal success or failure event. The Pydantic AI model is resolved
-from the active Agenton layer named by ``DIFY_AGENT_MODEL_LAYER_ID``. An
-optional structured output layer named by ``DIFY_AGENT_OUTPUT_LAYER_ID`` is read
-after entry and resolved into an output contract whose type both exposes the
-output schema to the model and performs runtime JSON Schema validation through
-custom Pydantic hooks. Invalid structured outputs therefore trigger Pydantic
-AI's normal output-validation retry behavior before Dify Agent emits
-``run_succeeded``. Layers still never own the FastAPI lifespan-owned plugin
-daemon HTTP client. Successful terminal events contain both the JSON-safe final
-output and session snapshot; there are no separate output or snapshot events to
-correlate.
+from a snapshot), renders the current Dify system prompts into temporary
+``message_history``, runs pydantic-ai with ``run.user_prompts`` as the current
+user input, emits stream events, applies request-level ``on_exit`` signals, and
+then publishes a terminal success or failure event. The Pydantic AI model is
+resolved from the active Agenton layer named by ``DIFY_AGENT_MODEL_LAYER_ID``.
+An optional history layer contributes stored message history only through
+session state; successful runs append only ``result.new_messages()`` back into
+that layer so current system prompts are not persisted. An optional structured
+output layer named by ``DIFY_AGENT_OUTPUT_LAYER_ID`` is read after entry and
+resolved into an output contract whose type both exposes the output schema to
+the model and performs runtime JSON Schema validation through custom Pydantic
+hooks. Invalid structured outputs therefore trigger Pydantic AI's normal
+output-validation retry behavior before Dify Agent emits ``run_succeeded``.
+Layers still never own the FastAPI lifespan-owned plugin daemon HTTP client.
+Successful terminal events contain both the JSON-safe final output and session
+snapshot; there are no separate output or snapshot events to correlate.
 """
 
 from collections.abc import AsyncIterable
@@ -36,6 +39,12 @@ from dify_agent.runtime.event_sink import (
     emit_run_failed,
     emit_run_started,
     emit_run_succeeded,
+)
+from dify_agent.runtime.history import (
+    append_successful_run_history,
+    build_run_message_history,
+    get_history_layer,
+    validate_history_layer_composition,
 )
 from dify_agent.runtime.layer_exit_signals import apply_layer_exit_signals, validate_layer_exit_signals
 from dify_agent.runtime.output_type import resolve_run_output_contract, validate_output_layer_composition
@@ -100,17 +109,18 @@ class AgentRunRunner:
 
         Known input-shaped Agenton enter-time runtime errors, such as trying to
         resume a ``CLOSED`` snapshot layer, are normalized to
-        ``AgentRunValidationError``. Output-layer graph invariants are validated
-        from the public composition before entering Agenton so misnamed or extra
-        ``dify.output`` layers never silently degrade to text output. Later
-        runtime failures still propagate as execution errors so they become
-        terminal failed runs rather than client validation responses. Structured
-        output uses a resolved contract whose type itself encodes both the
-        model-facing schema and the runtime validation hooks, so invalid model
-        outputs can be corrected before Dify Agent emits success.
+        ``AgentRunValidationError``. Output/history-layer graph invariants are
+        validated from the public composition before entering Agenton so
+        misnamed or extra reserved layers never silently degrade. Later runtime
+        failures still propagate as execution errors so they become terminal
+        failed runs rather than client validation responses. Structured output
+        uses a resolved contract whose type itself encodes both the model-facing
+        schema and the runtime validation hooks, so invalid model outputs can be
+        corrected before Dify Agent emits success.
         """
         try:
             validate_output_layer_composition(self.request.composition)
+            validate_history_layer_composition(self.request.composition)
             graph_config, layer_configs = normalize_composition(self.request.composition)
             compositor = build_pydantic_ai_compositor(graph_config, providers=self.layer_providers)
             validate_layer_exit_signals(compositor, self.request.on_exit)
@@ -132,6 +142,11 @@ class AgentRunRunner:
 
                 try:
                     output_contract = resolve_run_output_contract(run)
+                    history_layer = get_history_layer(run)
+                    message_history = await build_run_message_history(
+                        system_prompts=run.prompts,
+                        stored_history=history_layer.message_history if history_layer is not None else (),
+                    )
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
                     model = llm_layer.get_model(http_client=self.plugin_daemon_http_client)
                 except (KeyError, TypeError, RuntimeError, ValueError) as exc:
@@ -139,12 +154,16 @@ class AgentRunRunner:
 
                 agent = create_agent(
                     model,
-                    system_prompts=run.prompts,
                     tools=run.tools,
                     output_type=output_contract.output_type,
                 )
-                result = await agent.run(normalize_user_input(user_prompts), event_stream_handler=handle_events)
+                result = await agent.run(
+                    normalize_user_input(user_prompts),
+                    message_history=message_history,
+                    event_stream_handler=handle_events,
+                )
                 output = _serialize_agent_output(result.output)
+                append_successful_run_history(history_layer, result.new_messages())
         except RuntimeError as exc:
             if not entered_run and is_agenton_enter_validation_runtime_error(exc):
                 raise AgentRunValidationError(str(exc)) from exc

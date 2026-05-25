@@ -50,21 +50,23 @@ const Header = () => {
   const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
   const canAccessToolsPage = hasPermission(workspacePermissionKeys, 'page.tool.access')
 
+  const logoLabel = isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
   const renderLogo = () => (
-    <h1>
-      <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden px-0.5 -indent-2499.75 whitespace-nowrap">
-        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
-        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-          ? (
-              <img
-                src={systemFeatures.branding.workspace_logo}
-                className="block h-5.5 w-auto object-contain"
-                alt="logo"
-              />
-            )
-          : <DifyLogo />}
-      </Link>
-    </h1>
+    <Link
+      href="/apps"
+      className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-sm px-0.5 hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      aria-label={logoLabel}
+    >
+      {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+        ? (
+            <img
+              src={systemFeatures.branding.workspace_logo}
+              className="block h-[22px] w-auto object-contain"
+              alt=""
+            />
+          )
+        : <DifyLogo alt="" />}
+    </Link>
   )
 
   if (isMobile) {
