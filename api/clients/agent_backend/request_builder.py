@@ -55,10 +55,14 @@ class AgentBackendModelConfig(BaseModel):
 
 
 class AgentBackendOutputConfig(BaseModel):
-    """API-side structured output declaration for the conventional output layer."""
+    """API-side structured output declaration for the conventional output layer.
+
+    The structured-output tool name is fixed to ``final_output`` inside
+    ``dify_agent.layers.output`` so callers only control the JSON Schema plus
+    optional description/strictness metadata.
+    """
 
     json_schema: dict[str, JsonValue]
-    name: str = "final_result"
     description: str | None = None
     strict: bool | None = None
 
@@ -153,7 +157,6 @@ class AgentBackendRunRequestBuilder:
                     metadata=run_input.metadata,
                     config=DifyOutputLayerConfig(
                         json_schema=run_input.output.json_schema,
-                        name=run_input.output.name,
                         description=run_input.output.description,
                         strict=run_input.output.strict,
                     ),

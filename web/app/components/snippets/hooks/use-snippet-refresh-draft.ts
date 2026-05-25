@@ -4,7 +4,7 @@ import type { SnippetWorkflow } from '@/types/snippet'
 import { useCallback } from 'react'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { consoleClient } from '@/service/client'
+import { fetchSnippetDraftWorkflow } from '@/service/use-snippet-workflows'
 import { useSnippetDetailStore } from '../store'
 
 export const useSnippetRefreshDraft = (snippetId: string) => {
@@ -22,9 +22,10 @@ export const useSnippetRefreshDraft = (snippetId: string) => {
       return
 
     setIsSyncingWorkflowDraft(true)
-    consoleClient.snippets.draftWorkflow({
-      params: { snippetId },
-    }).then((response) => {
+    fetchSnippetDraftWorkflow(snippetId).then((response) => {
+      if (!response)
+        return
+
       const inputFields = Array.isArray(response.input_fields)
         ? response.input_fields as SnippetInputField[]
         : []
