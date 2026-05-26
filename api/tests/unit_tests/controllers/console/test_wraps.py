@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
+from werkzeug.exceptions import HTTPException
 
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -164,7 +165,7 @@ class TestEditionChecks:
         # Act & Assert
         with app.test_request_context():
             with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
-                with pytest.raises(Exception) as exc_info:
+                with pytest.raises(HTTPException) as exc_info:
                     cloud_view()
                 assert exc_info.value.code == 404
 
@@ -227,7 +228,7 @@ class TestBillingEnabled:
         with app.test_request_context():
             with patch("controllers.console.wraps.dify_config.BILLING_ENABLED", False):
                 with patch("controllers.console.wraps.FeatureService.get_features") as get_features:
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         billing_view()
 
         assert exc_info.value.code == 403
@@ -280,7 +281,7 @@ class TestBillingResourceLimits:
                 return_value=(MockUser("test_user"), "tenant123"),
             ):
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         add_member()
                     assert exc_info.value.code == 403
                     assert "members has reached the limit" in str(exc_info.value.description)
@@ -305,7 +306,7 @@ class TestBillingResourceLimits:
                 return_value=(MockUser("test_user"), "tenant123"),
             ):
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         upload_document()
                     assert exc_info.value.code == 403
 
@@ -379,7 +380,7 @@ class TestRateLimiting:
                 with patch(
                     "controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit
                 ):
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         knowledge_request()
 
                     # Verify error
