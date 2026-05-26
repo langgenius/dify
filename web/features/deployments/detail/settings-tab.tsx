@@ -12,12 +12,12 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import Textarea from '@/app/components/base/textarea'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { isUndeployedDeploymentRow } from '../runtime-status'
@@ -242,7 +242,7 @@ function SettingsForm({ app }: {
           <Textarea
             id="settings-desc"
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onValueChange={value => setDescription(value)}
             className="min-h-24"
           />
         </div>
