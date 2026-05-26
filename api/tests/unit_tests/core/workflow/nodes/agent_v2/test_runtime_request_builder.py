@@ -1,8 +1,9 @@
 from dataclasses import replace
 
 import pytest
+from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 
-from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID
+from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
@@ -24,6 +25,31 @@ class FakeCredentialsProvider:
         assert provider_name == "openai"
         assert model_name == "gpt-test"
         return {"api_key": "secret-key"}
+
+
+class FakePluginToolsBuilder:
+    def build(self, *, tenant_id, app_id, user_id, tools):
+        assert tenant_id == "tenant-1"
+        assert app_id == "app-1"
+        assert user_id == "user-1"
+        if not tools.dify_tools:
+            return None
+        return DifyPluginToolsLayerConfig(
+            tools=[
+                DifyPluginToolConfig(
+                    plugin_id="langgenius/time",
+                    provider="time",
+                    tool_name="current_time",
+                    credential_type="unauthorized",
+                    name="current_time",
+                    description="Get current time.",
+                    credentials={},
+                    runtime_parameters={},
+                    parameters=[],
+                    parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                )
+            ]
+        )
 
 
 class FakeVariablePool:
@@ -155,8 +181,54 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert dumped["composition"]["layers"][4]["config"]["model_settings"] == {"temperature": 0.2}
-    assert result.metadata["runtime_support"]["reserved_status"]["tools"] == "reserved_not_executed"
-    assert result.metadata["runtime_support"]["unsupported_runtime_warnings"][0]["section"] == "agent_soul.tools"
+    assert result.metadata["runtime_support"]["reserved_status"]["tools.dify_tools"] == "supported_when_config_valid"
+    assert result.metadata["runtime_support"]["reserved_status"]["tools.cli_tools"] == "reserved_not_executed"
+    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
+    assert warnings[0]["section"] == "agent_soul.tools.cli_tools"
+
+
+def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            prompt={"system_prompt": "You are careful."},
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            tools={
+                "dify_tools": [
+                    {
+                        "provider_id": "langgenius/time/time",
+                        "tool_name": "current_time",
+                        "credential_type": "unauthorized",
+                    }
+                ]
+            },
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(
+        credentials_provider=FakeCredentialsProvider(),
+        plugin_tools_builder=FakePluginToolsBuilder(),
+    ).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["type"] == "dify.plugin.tools"
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["config"]["tools"][0]["tool_name"] == "current_time"
+    assert result.metadata["agent_tools"] == {
+        "dify_tool_count": 1,
+        "dify_tool_names": ["current_time"],
+        "cli_tool_count": 0,
+    }
 
 
 def test_requires_agent_soul_model_config():

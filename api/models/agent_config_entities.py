@@ -1,6 +1,6 @@
 import re
 from enum import StrEnum
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -50,8 +50,74 @@ class AgentSoulSkillsFilesConfig(BaseModel):
     skills: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class AgentSoulDifyToolCredentialRef(BaseModel):
+    """Reference to a stored Dify Plugin Tool credential.
+
+    Secret values are resolved only at runtime. The legacy ``credential_id``
+    field is accepted by :class:`AgentSoulDifyToolConfig` and normalized here so
+    old Agent tool payloads can be read while new payloads stay explicit.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: Literal["provider", "tool"] = "tool"
+    id: str | None = Field(default=None, max_length=255)
+    provider: str | None = Field(default=None, max_length=255)
+
+
+class AgentSoulDifyToolConfig(BaseModel):
+    """One Dify Plugin Tool configured on Agent Soul.
+
+    The API backend prepares this persisted product shape into
+    ``DifyPluginToolConfig`` before sending a run request to Agent backend.
+    ``provider_id`` keeps compatibility with existing Agent tool config payloads;
+    new callers should send ``plugin_id`` + ``provider`` when available.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    enabled: bool = True
+    provider_type: str = "builtin"
+    provider_id: str | None = Field(default=None, max_length=255)
+    plugin_id: str | None = Field(default=None, max_length=255)
+    provider: str | None = Field(default=None, max_length=255)
+    tool_name: str = Field(min_length=1, max_length=255)
+    credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
+    credential_ref: AgentSoulDifyToolCredentialRef | None = None
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+    runtime_parameters: dict[str, Any] = Field(default_factory=dict)
+    parameter_overrides: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_payload(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        if normalized.get("provider_id") is None and isinstance(normalized.get("provider_name"), str):
+            normalized["provider_id"] = normalized["provider_name"]
+        if normalized.get("runtime_parameters") is None and isinstance(normalized.get("tool_parameters"), dict):
+            normalized["runtime_parameters"] = normalized["tool_parameters"]
+        if normalized.get("credential_ref") is None and normalized.get("credential_id"):
+            normalized["credential_ref"] = {
+                "type": "tool",
+                "id": normalized.get("credential_id"),
+                "provider": normalized.get("provider_id") or normalized.get("provider"),
+            }
+        return normalized
+
+    @model_validator(mode="after")
+    def _validate_provider_and_credentials(self) -> "AgentSoulDifyToolConfig":
+        if not self.provider_id and not (self.plugin_id and self.provider):
+            raise ValueError("Dify tool requires provider_id or plugin_id + provider")
+        if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
+            raise ValueError("credential_ref.id is required for credentialed Dify tools")
+        return self
+
+
 class AgentSoulToolsConfig(BaseModel):
-    dify_tools: list[dict[str, Any]] = Field(default_factory=list)
+    dify_tools: list[AgentSoulDifyToolConfig] = Field(default_factory=list)
     cli_tools: list[dict[str, Any]] = Field(default_factory=list)
 
 
