@@ -4778,6 +4778,34 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses = {
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse
   = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses]
 
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events'
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsError
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses]
+
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
   body?: never
   path: {
@@ -5093,6 +5121,124 @@ export type PostAppsByAppIdWorkflowsPublishResponses = {
 
 export type PostAppsByAppIdWorkflowsPublishResponse
   = PostAppsByAppIdWorkflowsPublishResponses[keyof PostAppsByAppIdWorkflowsPublishResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs'
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events'
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}'
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewData
+  = {
+    body?: never
+    path: {
+      app_id: string
+      node_id: string
+      output_name: string
+      run_id: string
+    }
+    query?: never
+    url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview'
+  }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors
+  = {
+    404: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
 
 export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
   body?: never

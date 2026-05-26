@@ -251,9 +251,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             created_at=event.start_at,
         )
         self._node_snapshots[event.id] = snapshot
-        _inspector_publish_node_changed(
-            workflow_run_id=execution.id_, node_id=event.node_id, status="running"
-        )
+        _inspector_publish_node_changed(workflow_run_id=execution.id_, node_id=event.node_id, status="running")
 
     def _handle_node_retry(self, event: NodeRunRetryEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
