@@ -18,7 +18,7 @@ from sqlalchemy.exc import OperationalError
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import CredentialSourceType
-from models.provider import ProviderModel, ProviderModelSetting
+from models.provider import ProviderModel
 from tests.helpers.legacy_model_type_migration import (
     ALL_TABLE_NAMES,
     LEGACY_TO_CANONICAL,
@@ -149,9 +149,15 @@ def _insert_provider_model(
             sa.text(
                 """
                 INSERT INTO provider_models
-                    (id, tenant_id, provider_name, model_name, model_type, credential_id, is_valid, created_at, updated_at)
+                    (
+                        id, tenant_id, provider_name, model_name, model_type,
+                        credential_id, is_valid, created_at, updated_at
+                    )
                 VALUES
-                    (:id, :tenant_id, :provider_name, :model_name, :model_type, :credential_id, :is_valid, :created_at, :updated_at)
+                    (
+                        :id, :tenant_id, :provider_name, :model_name, :model_type,
+                        :credential_id, :is_valid, :created_at, :updated_at
+                    )
                 """
             ),
             {
@@ -219,9 +225,17 @@ def _insert_provider_model_setting(
             sa.text(
                 """
                 INSERT INTO provider_model_settings
-                    (id, tenant_id, provider_name, model_name, model_type, enabled, load_balancing_enabled, created_at, updated_at)
+                    (
+                        id, tenant_id, provider_name, model_name, model_type,
+                        enabled, load_balancing_enabled,
+                        created_at, updated_at
+                    )
                 VALUES
-                    (:id, :tenant_id, :provider_name, :model_name, :model_type, :enabled, :load_balancing_enabled, :created_at, :updated_at)
+                    (
+                        :id, :tenant_id, :provider_name, :model_name, :model_type,
+                        :enabled, :load_balancing_enabled,
+                        :created_at, :updated_at
+                    p)
                 """
             ),
             {
@@ -327,7 +341,7 @@ def test_data_migrate_command_defaults_output_to_stdout_stream(
     tenant_id_file = tmp_path / "tenant_ids.txt"
     tenant_id_file.write_text("tenant-alpha\n", encoding="utf-8")
 
-    data_migrate = getattr(command_module, "data_migrate")
+    data_migrate = command_module.data_migrate
     legacy_model_types = cast(object, data_migrate.commands["legacy-model-types"])
 
     legacy_model_types.callback(
@@ -388,7 +402,7 @@ def test_data_migrate_command_opens_output_file_and_closes_stream(
     monkeypatch.setattr(command_module, "db", SimpleNamespace(engine=object()))
     output_path = tmp_path / "migration.jsonl"
 
-    data_migrate = getattr(command_module, "data_migrate")
+    data_migrate = command_module.data_migrate
     legacy_model_types = cast(object, data_migrate.commands["legacy-model-types"])
 
     legacy_model_types.callback(
@@ -461,7 +475,7 @@ def test_data_migrate_command_defaults_concurrency_from_cpu_count_or_falls_back_
         result = CliRunner().invoke(command_module.data_migrate, ["legacy-model-types"])
 
         assert result.exit_code == 0, result.output
-        assert command_module._DEFAULT_CONCURRENCY == expected_concurrency
+        assert expected_concurrency == command_module._DEFAULT_CONCURRENCY
         assert service_calls[0]["concurrency"] == expected_concurrency
         assert service_calls[1] == {"migrated": True}
     finally:
@@ -853,7 +867,6 @@ def test_provider_models_processing_uses_same_plan_locking_and_transaction_entry
 
         def __enter__(self) -> None:
             begin_calls.append(self._phase)
-            return None
 
         def __exit__(self, exc_type, exc, tb) -> bool:
             return False
@@ -952,7 +965,6 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
     class _FakeBeginContext:
         def __enter__(self) -> None:
             action_log.append("begin")
-            return None
 
         def __exit__(self, exc_type, exc, tb) -> bool:
             return False

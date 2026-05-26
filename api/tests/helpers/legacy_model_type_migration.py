@@ -190,11 +190,27 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
             sa.text(
                 """
                 INSERT INTO provider_model_credentials
-                    (id, tenant_id, provider_name, model_name, model_type, credential_name, encrypted_config, created_at, updated_at)
+                    (
+                        id, tenant_id, provider_name, model_name,
+                        model_type, credential_name, encrypted_config,
+                        created_at, updated_at
+                    )
                 VALUES
-                    (:winner_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'llm', :shared_name, :winner_config, :created_at, :winner_updated_at),
-                    (:loser_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation', :shared_name, :loser_config, :created_at, :loser_updated_at),
-                    (:distinct_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation', :distinct_name, :distinct_config, :created_at, :distinct_updated_at)
+                    (
+                        :winner_id, :tenant_id, :provider_name, 'gpt-4o-mini',
+                        'llm', :shared_name, :winner_config,
+                        :created_at, :winner_updated_at
+                    ),
+                    (
+                        :loser_id, :tenant_id, :provider_name, 'gpt-4o-mini',
+                        'text-generation', :shared_name, :loser_config,
+                        :created_at, :loser_updated_at
+                    ),
+                    (
+                        :distinct_id, :tenant_id, :provider_name, 'gpt-4o-mini',
+                        'text-generation', :distinct_name, :distinct_config,
+                        :created_at, :distinct_updated_at
+                    )
                 """
             ),
             {
@@ -218,10 +234,22 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
             sa.text(
                 """
                 INSERT INTO provider_models
-                    (id, tenant_id, provider_name, model_name, model_type, credential_id, is_valid, created_at, updated_at)
+                    (
+                        id, tenant_id, provider_name, model_name,
+                        model_type, credential_id, is_valid,
+                        created_at, updated_at
+                    )
                 VALUES
-                    (:provider_model_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation', :loser_id, :is_valid, :created_at, :updated_at),
-                    (:embedding_provider_model_id, :tenant_id, :provider_name, 'text-embedding-3-large', 'embeddings', NULL, :is_valid, :created_at, :updated_at)
+                    (
+                        :provider_model_id, :tenant_id, :provider_name, 'gpt-4o-mini',
+                        'text-generation', :loser_id, :is_valid,
+                        :created_at, :updated_at
+                    ),
+                    (
+                        :embedding_provider_model_id, :tenant_id, :provider_name, 'text-embedding-3-large',
+                        'embeddings', NULL, :is_valid,
+                        :created_at, :updated_at
+                    )
                 """
             ),
             {
@@ -241,7 +269,10 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
                 INSERT INTO tenant_default_models
                     (id, tenant_id, provider_name, model_name, model_type, created_at, updated_at)
                 VALUES
-                    (:tenant_default_model_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation', :created_at, :updated_at)
+                    (
+                        :tenant_default_model_id, :tenant_id, :provider_name, 'gpt-4o-mini',
+                        'text-generation', :created_at, :updated_at
+                    )
                 """
             ),
             {
@@ -256,10 +287,22 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
             sa.text(
                 """
                 INSERT INTO provider_model_settings
-                    (id, tenant_id, provider_name, model_name, model_type, enabled, load_balancing_enabled, created_at, updated_at)
+                    (
+                        id, tenant_id, provider_name, model_name,
+                        model_type, enabled, load_balancing_enabled,
+                        created_at, updated_at
+                    )
                 VALUES
-                    (:provider_model_setting_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation', :enabled, :load_balancing_enabled, :created_at, :updated_at),
-                    (:embedding_setting_id, :tenant_id, :provider_name, 'text-embedding-3-large', 'embeddings', :enabled, :embedding_load_balancing_enabled, :created_at, :updated_at)
+                    (
+                        :provider_model_setting_id, :tenant_id, :provider_name, 'gpt-4o-mini',
+                        'text-generation', :enabled, :load_balancing_enabled,
+                        :created_at, :updated_at
+                    ),
+                    (
+                        :embedding_setting_id, :tenant_id, :provider_name, 'text-embedding-3-large',
+                        'embeddings', :enabled, :embedding_load_balancing_enabled,
+                        :created_at, :updated_at
+                    )
                 """
             ),
             {
@@ -279,13 +322,15 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
                 """
                 INSERT INTO load_balancing_model_configs
                     (
-                        id, tenant_id, provider_name, model_name, model_type, name,
-                        encrypted_config, credential_id, credential_source_type, enabled, created_at, updated_at
+                        id, tenant_id, provider_name, model_name, model_type,
+                        name, encrypted_config, credential_id, credential_source_type,
+                        enabled, created_at, updated_at
                     )
                 VALUES
                     (
-                        :load_balancing_config_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation', :lb_name,
-                        :loser_config, :loser_id, :credential_source_type, :enabled, :created_at, :updated_at
+                        :load_balancing_config_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation',
+                        :lb_name, :loser_config, :loser_id, :credential_source_type,
+                        :enabled, :created_at, :updated_at
                     )
                 """
             ),
