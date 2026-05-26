@@ -81,7 +81,7 @@ class AppSiteApi(WebApiResource):
         if app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
-        can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
+        can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
 
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
 
@@ -119,6 +119,6 @@ def serialize_site(site: Site) -> dict[str, Any]:
 
 
 def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict[str, Any]:
-    can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
+    can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
     app_site_info = AppSiteInfo(app_model.tenant, app_model, site, end_user_id, can_replace_logo)
     return cast(dict[str, Any], marshal(app_site_info, AppSiteApi.app_fields))

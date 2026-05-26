@@ -78,7 +78,7 @@ register_response_schema_models(console_ns, SimpleResultDataResponse, Verificati
 def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
     if role != TenantAccountRole.DATASET_OPERATOR:
         return True
-    return FeatureService.get_features(tenant_id=tenant_id).dataset_operator_enabled
+    return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
 
 
 def _serialize_member_roles(current_role: str | None, member_roles: list[enterprise_rbac_service.MemberRoleSummary]) -> list[dict[str, str]]:
@@ -127,7 +127,7 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
     if new_member_count <= 0:
         return
 
-    features = FeatureService.get_features(tenant_id=tenant_id)
+    features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
 
     if dify_config.ENTERPRISE_ENABLED:
         workspace_members = features.workspace_members
