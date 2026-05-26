@@ -192,6 +192,9 @@ class BillingService:
             params["exclude_vector_space"] = "true"
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
+        if exclude_vector_space and billing_info.get("vector_space") is None:
+            # Unset proto message fields can be serialized as null; the light billing contract treats it as absent.
+            billing_info.pop("vector_space", None)
         return _billing_info_adapter.validate_python(billing_info)
 
     @classmethod

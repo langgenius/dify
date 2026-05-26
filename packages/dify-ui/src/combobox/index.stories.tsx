@@ -177,11 +177,11 @@ const defaultDataSource = dataSourceOptions[0]!
 const defaultPopupDataSource = dataSourceOptions[1]!
 const readOnlyDataSource = dataSourceOptions[2]!
 const defaultTool = toolGroups[0]!.items[0]!
-const defaultReviewers = [reviewerOptions[0]!, reviewerOptions[1]!, reviewerOptions[2]!, reviewerOptions[3]!]
+const defaultReviewers = [reviewerOptions[0]!, reviewerOptions[1]!]
 const defaultTag = tagOptions[2]!
 
-const renderOptionItem = (option: Option, index?: number) => (
-  <ComboboxItem key={option.value} value={option} index={index} disabled={option.disabled} className="h-auto min-h-8 py-1.5">
+const renderOptionItem = (option: Option) => (
+  <ComboboxItem key={option.value} value={option} disabled={option.disabled} className="h-auto min-h-8 py-1.5">
     <ComboboxItemText className="flex items-center gap-2 px-0">
       {option.icon && <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />}
       <span className="min-w-0 flex-1">
@@ -193,9 +193,23 @@ const renderOptionItem = (option: Option, index?: number) => (
   </ComboboxItem>
 )
 
-const renderSimpleOptionItem = (option: Option, index?: number) => (
-  <ComboboxItem key={option.value} value={option} index={index}>
+const renderSimpleOptionItem = (option: Option) => (
+  <ComboboxItem key={option.value} value={option}>
     <ComboboxItemText>{option.label}</ComboboxItemText>
+    <ComboboxItemIndicator />
+  </ComboboxItem>
+)
+
+// Only virtualized items receive an explicit index; ordinary lists must let Base UI register items by DOM order for keyboard navigation.
+const renderVirtualizedOptionItem = (option: Option, index: number) => (
+  <ComboboxItem key={option.value} value={option} index={index} disabled={option.disabled} className="h-auto min-h-8 py-1.5">
+    <ComboboxItemText className="flex items-center gap-2 px-0">
+      {option.icon && <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-text-secondary system-sm-medium">{option.label}</span>
+        {option.meta && <span className="block truncate text-text-tertiary system-xs-regular">{option.meta}</span>}
+      </span>
+    </ComboboxItemText>
     <ComboboxItemIndicator />
   </ComboboxItem>
 )
@@ -282,7 +296,7 @@ const VirtualizedModelList = ({
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              {renderOptionItem(option, virtualItem.index)}
+              {renderVirtualizedOptionItem(option, virtualItem.index)}
             </div>
           )
         })}
@@ -314,7 +328,6 @@ const VirtualizedLongListDemo = () => {
         value={value}
         onValueChange={setValue}
         virtualized
-        autoHighlight
         onItemHighlighted={(item, details) => {
           scrollHighlightedVirtualItem(item, details, virtualizerRef.current)
         }}
@@ -364,7 +377,6 @@ const AsyncDirectoryDemo = () => {
         onValueChange={setValue}
         inputValue={inputValue}
         onInputValueChange={setInputValue}
-        autoHighlight
       >
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
           <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
@@ -380,6 +392,70 @@ const AsyncDirectoryDemo = () => {
           <ComboboxEmpty>No owner matches this query</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
+    </FieldRoot>
+  )
+}
+
+const AsyncReviewerDemo = () => {
+  const [inputValue, setInputValue] = useState('ma')
+  const [value, setValue] = useState<Option[]>([reviewerOptions[1]!])
+  const [items, setItems] = useState(reviewerOptions.slice(0, 3))
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    const timeout = window.setTimeout(() => {
+      const query = inputValue.trim().toLowerCase()
+      const matches = query
+        ? reviewerOptions.filter(option => `${option.label} ${option.meta}`.toLowerCase().includes(query))
+        : reviewerOptions
+
+      setItems(matches)
+      setLoading(false)
+    }, 450)
+
+    return () => window.clearTimeout(timeout)
+  }, [inputValue])
+
+  const selectedItems = value.filter(selected => !items.some(item => item.value === selected.value))
+
+  return (
+    <FieldRoot name="asyncReviewers" className={fieldWidth}>
+      <FieldLabel>Async reviewers</FieldLabel>
+      <Combobox
+        items={[...selectedItems, ...items]}
+        multiple
+        value={value}
+        onValueChange={setValue}
+        inputValue={inputValue}
+        onInputValueChange={setInputValue}
+      >
+        <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
+          <ComboboxChips>
+            <ComboboxValue>
+              {(selectedValue: Option[]) => (
+                <>
+                  {selectedValue.map(item => (
+                    <ComboboxChip key={item.value} aria-label={item.label}>
+                      <span className="max-w-32 truncate">{item.label}</span>
+                      <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
+                    </ComboboxChip>
+                  ))}
+                  <ComboboxInput placeholder={selectedValue.length ? '' : 'Search reviewers…'} className="min-w-24 px-1 py-0.5" />
+                </>
+              )}
+            </ComboboxValue>
+          </ComboboxChips>
+        </ComboboxInputGroup>
+        <ComboboxContent popupClassName="w-[420px]">
+          <ComboboxStatus className="border-b border-divider-subtle">
+            {loading ? 'Loading reviewer matches…' : `${items.length} selectable reviewers`}
+          </ComboboxStatus>
+          <ComboboxList>{renderOptionItem}</ComboboxList>
+          <ComboboxEmpty>No reviewer matches this query</ComboboxEmpty>
+        </ComboboxContent>
+      </Combobox>
+      <FieldDescription>Selected reviewers stay available while async matches change.</FieldDescription>
     </FieldRoot>
   )
 }
@@ -403,9 +479,9 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   render: () => (
-    <div className={fieldWidth}>
-      <Combobox items={dataSourceOptions} defaultValue={defaultDataSource} autoHighlight>
-        <ComboboxLabel>Connect source</ComboboxLabel>
+    <FieldRoot name="dataSource" className={fieldWidth}>
+      <FieldLabel>Connect source</FieldLabel>
+      <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
           <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
           <ComboboxInput placeholder="Search data sources…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
@@ -416,7 +492,7 @@ export const Default: Story = {
           <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
-    </div>
+    </FieldRoot>
   ),
 }
 
@@ -424,7 +500,7 @@ export const FormField: Story = {
   render: () => (
     <FieldRoot name="sourceConnector" className={fieldWidth}>
       <FieldLabel>Connect source</FieldLabel>
-      <Combobox items={dataSourceOptions} defaultValue={defaultDataSource} autoHighlight>
+      <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
           <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
           <ComboboxInput placeholder="Search data sources…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
@@ -443,7 +519,7 @@ export const FormField: Story = {
 export const CompactTriggerWithPopupSearch: Story = {
   render: () => (
     <div className={fieldWidth}>
-      <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource} autoHighlight>
+      <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource}>
         <ComboboxLabel>Data source</ComboboxLabel>
         <ComboboxTrigger aria-label="Data source">
           <ComboboxValue placeholder="Choose source" />
@@ -461,22 +537,28 @@ export const AsyncSearchSingle: Story = {
   render: () => <AsyncDirectoryDemo />,
 }
 
+export const AsyncSearchMultiple: Story = {
+  render: () => <AsyncReviewerDemo />,
+}
+
 export const Sizes: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
       {(['small', 'medium', 'large'] as const).map(size => (
-        <Combobox key={size} items={sizeOptions} defaultValue={defaultProvider} autoHighlight>
-          <ComboboxLabel>{`${size[0]!.toUpperCase()}${size.slice(1)}`}</ComboboxLabel>
-          <ComboboxInputGroup size={size} className="px-2">
-            <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
-            <ComboboxInput size={size} placeholder="Search providers…" className="px-1" />
-            <ComboboxClear size={size} className="mr-0.5" />
-            <ComboboxInputTrigger size={size} className="mr-0" />
-          </ComboboxInputGroup>
-          <ComboboxContent>
-            <ComboboxList>{renderOptionItem}</ComboboxList>
-          </ComboboxContent>
-        </Combobox>
+        <FieldRoot key={size} name={`provider-${size}`}>
+          <FieldLabel>{`${size[0]!.toUpperCase()}${size.slice(1)}`}</FieldLabel>
+          <Combobox items={sizeOptions} defaultValue={defaultProvider}>
+            <ComboboxInputGroup size={size} className="px-2">
+              <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
+              <ComboboxInput size={size} placeholder="Search providers…" className="px-1" />
+              <ComboboxClear size={size} className="mr-0.5" />
+              <ComboboxInputTrigger size={size} className="mr-0" />
+            </ComboboxInputGroup>
+            <ComboboxContent>
+              <ComboboxList>{renderOptionItem}</ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+        </FieldRoot>
       ))}
     </div>
   ),
@@ -485,7 +567,7 @@ export const Sizes: Story = {
 export const Grouped: Story = {
   render: () => (
     <div className={fieldWidth}>
-      <Combobox items={toolGroups} defaultValue={defaultTool} autoHighlight>
+      <Combobox items={toolGroups} defaultValue={defaultTool}>
         <ComboboxLabel>Workflow tool</ComboboxLabel>
         <ComboboxTrigger aria-label="Workflow tool">
           <ComboboxValue placeholder="Select tool" />
@@ -505,8 +587,8 @@ const MultipleChipsDemo = () => {
   return (
     <FieldRoot name="reviewers" className={fieldWidth}>
       <FieldLabel>Reviewers</FieldLabel>
-      <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue} autoHighlight>
-        <ComboboxInputGroup className="h-auto min-h-8 items-start py-1 pr-1">
+      <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue}>
+        <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
           <ComboboxChips>
             <ComboboxValue>
               {(selectedValue: Option[]) => (
@@ -522,8 +604,6 @@ const MultipleChipsDemo = () => {
               )}
             </ComboboxValue>
           </ComboboxChips>
-          <ComboboxClear className="mt-0.5 mr-0.5" />
-          <ComboboxInputTrigger className="mt-0.5 mr-0" />
         </ComboboxInputGroup>
         <ComboboxContent>
           <ComboboxList>{renderOptionItem}</ComboboxList>
@@ -546,7 +626,7 @@ export const EmptyAndStatus: Story = {
   render: () => (
     <FieldRoot name="connector" className={fieldWidth}>
       <FieldLabel>Connector</FieldLabel>
-      <Combobox items={emptyOptions} defaultInputValue="salesforce" autoHighlight>
+      <Combobox items={emptyOptions} defaultInputValue="salesforce">
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
           <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
           <ComboboxInput placeholder="Search connectors…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
@@ -567,8 +647,8 @@ export const DisabledAndReadOnly: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
       <FieldRoot name="disabledProvider" disabled>
-        <FieldLabel>Disabled provider</FieldLabel>
         <Combobox items={providerOptions} defaultValue={disabledProvider} disabled>
+          <ComboboxLabel>Disabled provider</ComboboxLabel>
           <ComboboxTrigger aria-label="Disabled model provider">
             <ComboboxValue />
           </ComboboxTrigger>
