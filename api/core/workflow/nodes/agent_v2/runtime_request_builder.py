@@ -4,7 +4,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
-from dify_agent.protocol import CreateRunRequest, ExecutionContext
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol import CreateRunRequest
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -105,16 +106,20 @@ class WorkflowAgentRuntimeRequestBuilder:
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    tenant_id=context.dify_context.tenant_id,
                     plugin_id=agent_soul.model.plugin_id,
                     model_provider=agent_soul.model.model_provider,
                     model=agent_soul.model.model,
-                    user_id=context.dify_context.user_id,
                     credentials=self._normalize_credentials(credentials),
                     model_settings=cast(dict[str, Any], agent_soul.model.model_settings),
                 ),
-                execution_context=ExecutionContext(
+                # The execution-context layer is now the only public protocol
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
+                # be forwarded here because downstream plugin-daemon provider and
+                # tool clients read it from this layer rather than from any
+                # parallel top-level request field.
+                execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
+                    user_id=context.dify_context.user_id,
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
