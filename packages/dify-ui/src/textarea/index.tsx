@@ -50,9 +50,11 @@ type UncontrolledTextareaProps = {
   onValueChange?: TextareaOnValueChange
 }
 
-type NativeTextareaProps = Omit<
-  ComponentPropsWithRef<'textarea'>,
-  'children' | 'className' | 'defaultValue' | 'onChange' | 'size' | 'value'
+type TextareaNativeProps = ComponentPropsWithRef<'textarea'>
+type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
+type TextareaElementProps = Omit<
+  TextareaNativeProps,
+  'children' | 'className' | 'cols' | 'defaultValue' | 'onChange' | 'rows' | 'size' | 'value' | 'wrap'
 >
 
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
@@ -63,7 +65,8 @@ type FieldControlTextareaProps = Omit<
 >
 
 export type TextareaProps
-  = NativeTextareaProps
+  = TextareaElementProps
+    & TextareaOnlyProps
     & TextareaControlProps
     & TextareaVariantProps
     & {
