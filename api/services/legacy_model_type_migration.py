@@ -229,12 +229,20 @@ class _LoadBalancingCredentialRewritePlan:
 
 
 @dataclass(frozen=True, slots=True)
+class _LoadBalancingCredentialDeletePlan:
+    row_id: str
+    old_credential_id: str | None
+    winner_credential_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class _ProviderModelCredentialGroupPlan:
     group_row_ids: list[str]
     winner: _RowWithRawModelType[ProviderModelCredential] | None
     loser_rows: list[_RowWithRawModelType[ProviderModelCredential]]
     provider_model_rewrites: list[_ProviderModelReferenceRewritePlan]
     load_balancing_rewrites: list[_LoadBalancingCredentialRewritePlan]
+    load_balancing_deletions: list[_LoadBalancingCredentialDeletePlan]
 
 
 VALID_TABLE_NAMES: tuple[str, ...] = (
@@ -1526,10 +1534,17 @@ class Migration:
                 loser_rows=[],
                 provider_model_rewrites=[],
                 load_balancing_rewrites=[],
+                load_balancing_deletions=[],
             )
 
         winner = self._select_winner(rows)
         loser_rows = [row for row in rows if row.row.id != winner.row.id]
+        load_balancing_rewrites, load_balancing_deletions = self._plan_load_balancing_reference_rewrites(
+            session,
+            winner,
+            loser_rows,
+            lock_rows=lock_rows,
+        )
         return _ProviderModelCredentialGroupPlan(
             group_row_ids=group_row_ids,
             winner=winner,
@@ -1540,12 +1555,8 @@ class Migration:
                 loser_rows,
                 lock_rows=lock_rows,
             ),
-            load_balancing_rewrites=self._plan_load_balancing_reference_rewrites(
-                session,
-                winner,
-                loser_rows,
-                lock_rows=lock_rows,
-            ),
+            load_balancing_rewrites=load_balancing_rewrites,
+            load_balancing_deletions=load_balancing_deletions,
         )
 
     def _emit_provider_model_reference_rewrites(
@@ -1650,6 +1661,52 @@ class Migration:
             )
         return cache_plans
 
+    def _emit_load_balancing_reference_deletions(
+        self,
+        session: Session,
+        deletions: Sequence[_LoadBalancingCredentialDeletePlan],
+        *,
+        winner_credential_id: str,
+        loser_credential_ids: Sequence[str],
+        tx_id: str,
+        business_key: _BusinessKey,
+    ) -> list[_CacheDeletePlan]:
+        cache_plans: list[_CacheDeletePlan] = []
+        for deletion in deletions:
+            if self._apply:
+                session.execute(
+                    sa.delete(LoadBalancingModelConfig).where(
+                        LoadBalancingModelConfig.id == deletion.row_id
+                    )
+                )
+            self._log_event(
+                "row_deleted",
+                "Deleted duplicate load_balancing_model_config row (credential reference dedup).",
+                {
+                    "table_name": LoadBalancingModelConfig.__tablename__,
+                    "id": deletion.row_id,
+                    "old_credential_id": deletion.old_credential_id,
+                    "winner_credential_id": winner_credential_id,
+                    "apply": self._apply,
+                    "tx_id": tx_id,
+                    "business_key": business_key,
+                    "rewrite_kind": "credential_reference_dedup",
+                    "loser_credential_ids": list(loser_credential_ids),
+                },
+            )
+            cache_plans.append(
+                _CacheDeletePlan(
+                    tenant_id=self._tenant_id,
+                    identity_id=deletion.row_id,
+                    cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+                    table_name=LoadBalancingModelConfig.__tablename__,
+                    row_id=deletion.row_id,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            )
+        return cache_plans
+
     def _emit_provider_model_credential_group_plan(
         self,
         plan: _ProviderModelCredentialGroupPlan,
@@ -1678,6 +1735,16 @@ class Migration:
             self._emit_load_balancing_reference_rewrites(
                 session,
                 plan.load_balancing_rewrites,
+                winner_credential_id=winner_credential_id,
+                loser_credential_ids=loser_credential_ids,
+                tx_id=tx_id,
+                business_key=business_key,
+            )
+        )
+        cache_plans.extend(
+            self._emit_load_balancing_reference_deletions(
+                session,
+                plan.load_balancing_deletions,
                 winner_credential_id=winner_credential_id,
                 loser_credential_ids=loser_credential_ids,
                 tx_id=tx_id,
@@ -1797,12 +1864,16 @@ class Migration:
         loser_rows: Sequence[_RowWithRawModelType[ProviderModelCredential]],
         *,
         lock_rows: bool,
-    ) -> list[_LoadBalancingCredentialRewritePlan]:
+    ) -> tuple[list[_LoadBalancingCredentialRewritePlan], list[_LoadBalancingCredentialDeletePlan]]:
         loser_ids = [str(row.row.id) for row in loser_rows]
         if not loser_ids:
-            return []
+            return [], []
 
-        stmt = (
+        winner_credential_id = str(winner.row.id)
+        winner_credential_name = winner.row.credential_name
+        winner_encrypted_config = winner.row.encrypted_config
+
+        stmt_loser = (
             select(LoadBalancingModelConfig)
             .where(
                 LoadBalancingModelConfig.tenant_id == self._tenant_id,
@@ -1811,28 +1882,52 @@ class Migration:
             .order_by(LoadBalancingModelConfig.id.asc())
         )
         if lock_rows:
-            stmt = stmt.with_for_update()
+            stmt_loser = stmt_loser.with_for_update()
+        loser_lb_rows = session.execute(stmt_loser).scalars().all()
 
-        winner_credential = winner.row
-        winner_credential_id = str(winner_credential.id)
-        winner_credential_name = winner_credential.credential_name
-        winner_encrypted_config = winner_credential.encrypted_config
+        if not loser_lb_rows:
+            return [], []
+
+        stmt_winner = select(LoadBalancingModelConfig).where(
+            LoadBalancingModelConfig.tenant_id == self._tenant_id,
+            LoadBalancingModelConfig.credential_id == winner_credential_id,
+        )
+        if lock_rows:
+            stmt_winner = stmt_winner.with_for_update()
+        winner_lb_rows = session.execute(stmt_winner).scalars().all()
+
+        winner_keys: set[tuple[str, str, str]] = {
+            (str(r.provider_name), str(r.model_name), str(r.model_type))
+            for r in winner_lb_rows
+        }
 
         rewrite_plans: list[_LoadBalancingCredentialRewritePlan] = []
-        load_balancing_model_configs = session.execute(stmt).scalars().all()
-        for load_balancing_model_config in load_balancing_model_configs:
-            rewrite_plans.append(
-                _LoadBalancingCredentialRewritePlan(
-                    row_id=str(load_balancing_model_config.id),
-                    old_credential_id=load_balancing_model_config.credential_id,
-                    old_name=load_balancing_model_config.name,
-                    old_encrypted_config=load_balancing_model_config.encrypted_config,
-                    new_credential_id=winner_credential_id,
-                    new_name=winner_credential_name,
-                    new_encrypted_config=winner_encrypted_config,
+        delete_plans: list[_LoadBalancingCredentialDeletePlan] = []
+
+        for lb_row in loser_lb_rows:
+            key = (str(lb_row.provider_name), str(lb_row.model_name), str(lb_row.model_type))
+            if key in winner_keys:
+                delete_plans.append(
+                    _LoadBalancingCredentialDeletePlan(
+                        row_id=str(lb_row.id),
+                        old_credential_id=lb_row.credential_id,
+                        winner_credential_id=winner_credential_id,
+                    )
                 )
-            )
-        return rewrite_plans
+            else:
+                rewrite_plans.append(
+                    _LoadBalancingCredentialRewritePlan(
+                        row_id=str(lb_row.id),
+                        old_credential_id=lb_row.credential_id,
+                        old_name=lb_row.name,
+                        old_encrypted_config=lb_row.encrypted_config,
+                        new_credential_id=winner_credential_id,
+                        new_name=winner_credential_name,
+                        new_encrypted_config=winner_encrypted_config,
+                    )
+                )
+
+        return rewrite_plans, delete_plans
 
     def _configure_lock_timeout(self, session: Session) -> None:
         dialect_name = session.get_bind().dialect.name
