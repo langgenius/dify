@@ -1,8 +1,8 @@
-import type { ConfigFile } from './schema'
 import type { YamlStore } from '../store/store'
-import { ConfigFileSchema, CURRENT_SCHEMA_VERSION } from './schema'
+import type { ConfigFile } from './schema'
 import { newError } from '../errors/base'
 import { ErrorCode } from '../errors/codes'
+import { ConfigFileSchema, CURRENT_SCHEMA_VERSION } from './schema'
 
 export type LoadResult
   = | { found: false }

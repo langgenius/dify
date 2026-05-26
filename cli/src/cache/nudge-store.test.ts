@@ -1,8 +1,14 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import yaml from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { loadNudgeStore, nudgeStorePath, WARN_INTERVAL_MS } from './nudge-store.js'
+import { CACHE_NUDGE, cachePath } from '../store/manager.js'
+import { loadNudgeStore, WARN_INTERVAL_MS } from './nudge-store.js'
+
+function nudgeStorePath(dir: string): string {
+  return cachePath(dir, CACHE_NUDGE)
+}
 
 const HOST = 'https://cloud.dify.ai'
 
@@ -51,20 +57,12 @@ describe('NudgeStore', () => {
     expect(store.canWarn(HOST)).toBe(true)
   })
 
-  it('ignores file with mismatched schema', async () => {
-    const path = nudgeStorePath(dir)
-    await writeCacheFile(path, JSON.stringify({ schema: 99, warned: { [HOST]: '2026-05-19T12:00:00.000Z' } }))
-    const store = await loadNudgeStore({ configDir: dir })
-    expect(store.canWarn(HOST)).toBe(true)
-  })
-
-  it('writes ISO timestamps under schema:1/warned on disk', async () => {
+  it('writes ISO timestamps under warned/<host> on disk', async () => {
     const t = new Date('2026-05-19T12:00:00.000Z')
     const store = await loadNudgeStore({ configDir: dir, now: () => t })
     await store.markWarned(HOST)
     const raw = await readFile(nudgeStorePath(dir), 'utf8')
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    expect(parsed.schema).toBe(1)
+    const parsed = yaml.load(raw) as Record<string, unknown>
     expect((parsed.warned as Record<string, string>)[HOST]).toBe(t.toISOString())
   })
 

@@ -53,22 +53,38 @@ abstract class FileBasedStore implements Store {
    * lock and load the file into memory
    */
   load(): void {
+    fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
     lockfile.lockSync(`${this.file_path}.lock`)
     this.raw_content = fs.readFileSync(this.file_path, 'utf8')
   }
 
+  // Locks, loads (treating a missing file as empty), runs `body`,
+  // and always releases via `release` so callers cannot deadlock.
+  private withLock<R>(body: () => R, release: () => void): R {
+    try {
+      this.load()
+    }
+    catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.unlock()
+        throw err
+      }
+      this.raw_content = ''
+    }
+    try {
+      return body()
+    }
+    finally {
+      release()
+    }
+  }
+
   get<T>(key: Key<T>): T {
-    this.load()
-    return this.doGet(key)
+    return this.withLock(() => this.doGet(key), () => this.unlock())
   }
 
   set<T>(key: Key<T>, value: T) {
-    try {
-      this.doSet(key, value)
-    }
-    finally {
-      this.flush()
-    }
+    this.withLock(() => this.doSet(key, value), () => this.flush())
   }
 
   abstract doGet<T>(key: Key<T>): T
@@ -124,8 +140,12 @@ export class YamlStore extends FileBasedStore {
   setTyped<T>(data: T): void {
     fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
     lockfile.lockSync(`${this.file_path}.lock`)
-    this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
-    this.flush()
+    try {
+      this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
+    }
+    finally {
+      this.flush()
+    }
   }
 
   doSet<T>(key: Key<T>, value: T): void {

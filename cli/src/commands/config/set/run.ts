@@ -1,8 +1,8 @@
 import type { ConfigFile } from '../../../config/schema.js'
 import type { YamlStore } from '../../../store/store.js'
+import { loadConfig } from '../../../config/config-loader.js'
 import { setKey } from '../../../config/keys.js'
 import { emptyConfig } from '../../../config/schema.js'
-import { loadConfig } from '../../../config/config-loader.js'
 import { saveConfig } from '../../../store/config-writer.js'
 
 export type RunConfigSetOptions = {

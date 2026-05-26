@@ -2,11 +2,11 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { FILE_NAME } from './schema'
 import { isBaseError } from '../errors/base'
 import { ErrorCode } from '../errors/codes'
-import { loadConfig } from './config-loader'
 import { YamlStore } from '../store/store'
+import { loadConfig } from './config-loader'
+import { FILE_NAME } from './schema'
 
 function makeStore(dir: string): YamlStore {
   return new YamlStore(join(dir, FILE_NAME))

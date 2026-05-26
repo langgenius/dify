@@ -2,9 +2,15 @@ import type { AppMeta } from '../types/app-meta.js'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import yaml from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { CACHE_APP_INFO, cachePath } from '../store/manager.js'
 import { FieldInfo, FieldParameters } from '../types/app-meta.js'
-import { APP_INFO_TTL_MS, cachePath, loadAppInfoCache } from './app-info.js'
+import { APP_INFO_TTL_MS, loadAppInfoCache } from './app-info.js'
+
+function appInfoPath(dir: string): string {
+  return cachePath(dir, CACHE_APP_INFO)
+}
 
 function metaInfoOnly(): AppMeta {
   return {
@@ -77,7 +83,7 @@ describe('app-info disk cache', () => {
     const c = await loadAppInfoCache({ configDir: dir })
     await c.set('h', 'app-1', metaInfoOnly())
     const { stat } = await import('node:fs/promises')
-    const s = await stat(cachePath(dir))
+    const s = await stat(appInfoPath(dir))
     if (process.platform !== 'win32')
       expect(s.mode & 0o777).toBe(0o600)
   })
@@ -90,7 +96,7 @@ describe('app-info disk cache', () => {
   it('corrupt cache file is treated as empty', async () => {
     const { mkdir, writeFile } = await import('node:fs/promises')
     await mkdir(join(dir, 'cache'), { recursive: true })
-    await writeFile(cachePath(dir), '{not json', 'utf8')
+    await writeFile(appInfoPath(dir), ': : not valid yaml', 'utf8')
     const c = await loadAppInfoCache({ configDir: dir })
     expect(c.get('h', 'app-1')).toBeUndefined()
   })
@@ -104,8 +110,8 @@ describe('app-info disk cache', () => {
       parameters: { opening_statement: 'hi' },
     }
     await c.set('h', 'app-1', slim)
-    const raw = await readFile(cachePath(dir), 'utf8')
-    const parsed = JSON.parse(raw) as { entries: Record<string, unknown> }
+    const raw = await readFile(appInfoPath(dir), 'utf8')
+    const parsed = yaml.load(raw) as { entries: Record<string, unknown> }
     expect(Object.keys(parsed.entries)).toHaveLength(1)
   })
 })

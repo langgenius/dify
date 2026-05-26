@@ -3,6 +3,7 @@ import { FILE_NAME } from '../config/schema'
 import { resolveConfigDir } from './dir'
 import { YamlStore } from './store'
 
+export const CACHE_DIR = 'cache'
 export const CACHE_APP_INFO = 'app-info'
 export const CACHE_NUDGE = 'nudge'
 
@@ -14,8 +15,8 @@ function resolveConfigurationPath(): string {
   return join(resolveConfigDir(), FILE_NAME)
 }
 
-function resolveCachePath(): string {
-  return join(resolveConfigDir(), 'cache')
+export function cachePath(configDir: string, name: string): string {
+  return join(configDir, CACHE_DIR, `${name}.yml`)
 }
 
 export function getConfigurationStore(): YamlStore {
@@ -23,5 +24,5 @@ export function getConfigurationStore(): YamlStore {
 }
 
 export function getCache(cacheName: string): YamlStore {
-  return getStore(join(resolveCachePath(), `${cacheName}.yml`))
+  return getStore(cachePath(resolveConfigDir(), cacheName))
 }

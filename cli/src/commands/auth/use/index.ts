@@ -1,7 +1,7 @@
 import { loadHosts } from '../../../auth/hosts.js'
-import { resolveConfigDir } from '../../../store/dir.js'
 import { Args } from '../../../framework/flags.js'
 import { realStreams } from '../../../io/streams.js'
+import { resolveConfigDir } from '../../../store/dir.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runUse } from './use.js'
 
