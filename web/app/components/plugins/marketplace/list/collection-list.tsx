@@ -5,7 +5,7 @@ import type { SearchParamsFromCollection } from '../types'
 import type { BaseCollection } from './collection-constants'
 import type { Locale } from '@/i18n-config/language'
 import { useLocale, useTranslation } from '#i18n'
-import { RiArrowRightSLine } from '@remixicon/react'
+import { RiArrowRightSLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { renderI18nObject } from '@/i18n-config'
 import { getLanguage } from '@/i18n-config/language'
@@ -82,6 +82,8 @@ export function CollectionHeader<TCollection extends BaseCollection>({
   const lang = getLanguage(locale)
   const label = renderI18nObject(collection.label, lang)
   const description = renderI18nObject(collection.description, lang)
+  // Plugin marketplace uses `partners`, Template marketplace uses `Partner Template`.
+  const isPartnersCollection = collection.name === 'partners' || collection.name === 'Partner Template'
 
   return (
     <div className="mb-2 flex items-end justify-between">
@@ -89,8 +91,22 @@ export function CollectionHeader<TCollection extends BaseCollection>({
         <div className="text-text-primary title-xl-semi-bold">
           {label}
         </div>
-        <div className="text-text-tertiary system-xs-regular">
-          {description}
+        <div className="text-text-tertiary system-xs-regular flex items-center gap-x-2">
+          <span>{description}</span>
+          {isPartnersCollection && (
+            <>
+              <span className="text-divider-regular">|</span>
+              <a
+                href="https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-x-0.5 text-text-accent hover:underline"
+              >
+                <span>Become a Partner</span>
+                <RiArrowRightUpLine className="h-3.5 w-3.5" />
+              </a>
+            </>
+          )}
         </div>
       </div>
       {showViewMore && viewMore}
