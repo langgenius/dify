@@ -60,6 +60,48 @@ def _service() -> NodeOutputInspectorService:
     return NodeOutputInspectorService()
 
 
+def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
+    """Resource-body shared by draft + published snapshot endpoints.
+
+    Pulled out so the 6 REST routes don't duplicate the same 6-line try/except
+    + ``model_dump`` ritual — the routes shrink to one-liners and the actual
+    behaviour lives here, where unit tests can hit it without spinning up
+    Flask request context.
+    """
+    try:
+        snapshot = _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id))
+    except NodeOutputInspectorError as error:
+        raise _InspectorNotFound(error) from error
+    return snapshot.model_dump(mode="json")
+
+
+def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
+    """Resource-body shared by draft + published node-detail endpoints."""
+    try:
+        view = _service().node_detail(
+            app_model=app_model,
+            workflow_run_id=str(run_id),
+            node_id=node_id,
+        )
+    except NodeOutputInspectorError as error:
+        raise _InspectorNotFound(error) from error
+    return view.model_dump(mode="json")
+
+
+def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_name: str) -> dict:
+    """Resource-body shared by draft + published output-preview endpoints."""
+    try:
+        preview = _service().output_preview(
+            app_model=app_model,
+            workflow_run_id=str(run_id),
+            node_id=node_id,
+            output_name=output_name,
+        )
+    except NodeOutputInspectorError as error:
+        raise _InspectorNotFound(error) from error
+    return preview.model_dump(mode="json")
+
+
 class _InspectorNotFound(BaseHTTPException):
     """404 that preserves the inspector's specific error code.
 
@@ -88,14 +130,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
-        try:
-            snapshot = _service().snapshot_workflow_run(
-                app_model=app_model,
-                workflow_run_id=str(run_id),
-            )
-        except NodeOutputInspectorError as error:
-            raise _InspectorNotFound(error) from error
-        return snapshot.model_dump(mode="json")
+        return _serve_snapshot(app_model, run_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs/<string:node_id>")
@@ -117,15 +152,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
-        try:
-            view = _service().node_detail(
-                app_model=app_model,
-                workflow_run_id=str(run_id),
-                node_id=node_id,
-            )
-        except NodeOutputInspectorError as error:
-            raise _InspectorNotFound(error) from error
-        return view.model_dump(mode="json")
+        return _serve_node_detail(app_model, run_id, node_id)
 
 
 @console_ns.route(
@@ -150,16 +177,7 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
-        try:
-            preview = _service().output_preview(
-                app_model=app_model,
-                workflow_run_id=str(run_id),
-                node_id=node_id,
-                output_name=output_name,
-            )
-        except NodeOutputInspectorError as error:
-            raise _InspectorNotFound(error) from error
-        return preview.model_dump(mode="json")
+        return _serve_output_preview(app_model, run_id, node_id, output_name)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -207,7 +225,9 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
 
     # If the run already finished by the time the client connected, emit
     # the terminal envelope synchronously and close — no point subscribing.
-    if snapshot.workflow_run_status.value in {"succeeded", "failed", "stopped", "partial_succeeded"}:
+    # The enum value for partial success is the hyphenated ``partial-succeeded``
+    # (graphon.enums.WorkflowExecutionStatus), not ``partial_succeeded``.
+    if snapshot.workflow_run_status.value in {"succeeded", "failed", "stopped", "partial-succeeded"}:
         event_id += 1
         yield _sse_envelope(
             "workflow_run_completed",
@@ -229,8 +249,16 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
             )
             return
 
-        # Heartbeat sentinel (no real message arrived this tick).
-        if message.node_id is None and message.status is None:
+        # Heartbeat sentinel — ``inspector_events.subscribe`` synthesizes a
+        # ``node_changed`` message with both fields ``None`` on every redis
+        # timeout. Real ``workflow_completed`` messages keep their kind even
+        # when status couldn't be resolved (publisher race), so checking kind
+        # first makes the heartbeat branch safe.
+        if (
+            message.kind == "node_changed"
+            and message.node_id is None
+            and message.status is None
+        ):
             ticks_since_heartbeat += 1
             if ticks_since_heartbeat >= _HEARTBEAT_EVERY_TICKS:
                 yield ":keepalive\n\n"
@@ -320,14 +348,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
-        try:
-            snapshot = _service().snapshot_workflow_run(
-                app_model=app_model,
-                workflow_run_id=str(run_id),
-            )
-        except NodeOutputInspectorError as error:
-            raise _InspectorNotFound(error) from error
-        return snapshot.model_dump(mode="json")
+        return _serve_snapshot(app_model, run_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs/<string:node_id>")
@@ -349,15 +370,7 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
-        try:
-            view = _service().node_detail(
-                app_model=app_model,
-                workflow_run_id=str(run_id),
-                node_id=node_id,
-            )
-        except NodeOutputInspectorError as error:
-            raise _InspectorNotFound(error) from error
-        return view.model_dump(mode="json")
+        return _serve_node_detail(app_model, run_id, node_id)
 
 
 @console_ns.route(
@@ -383,16 +396,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
-        try:
-            preview = _service().output_preview(
-                app_model=app_model,
-                workflow_run_id=str(run_id),
-                node_id=node_id,
-                output_name=output_name,
-            )
-        except NodeOutputInspectorError as error:
-            raise _InspectorNotFound(error) from error
-        return preview.model_dump(mode="json")
+        return _serve_output_preview(app_model, run_id, node_id, output_name)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs/events")

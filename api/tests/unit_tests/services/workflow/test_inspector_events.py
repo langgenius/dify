@@ -55,6 +55,20 @@ def test_inspector_message_from_json_returns_none_for_invalid_json():
     assert InspectorMessage.from_json("{not json") is None
 
 
+def test_inspector_message_from_json_rejects_non_dict_payload():
+    """Defensive: a JSON array or scalar is not an InspectorMessage."""
+    assert InspectorMessage.from_json("[1, 2, 3]") is None
+    assert InspectorMessage.from_json('"plain string"') is None
+
+
+def test_inspector_message_from_json_rejects_non_string_status():
+    """Status field, if present, must be a string."""
+    blob = json.dumps(
+        {"kind": "workflow_completed", "workflow_run_id": "r1", "status": 42}
+    )
+    assert InspectorMessage.from_json(blob) is None
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Publisher
 # ──────────────────────────────────────────────────────────────────────────────
@@ -169,3 +183,42 @@ def test_subscribe_unsubscribes_on_teardown():
         gen.close()
     fake_pubsub.unsubscribe.assert_called_once_with("dify:inspector:workflow_run:run-1")
     fake_pubsub.close.assert_called_once()
+
+
+def test_subscribe_swallows_teardown_errors():
+    """``unsubscribe`` / ``close`` failures must not propagate out of the
+    generator — they're best-effort cleanup."""
+    fake_pubsub = MagicMock()
+    fake_pubsub.get_message.return_value = None
+    fake_pubsub.unsubscribe.side_effect = RuntimeError("redis offline")
+    fake_pubsub.close.side_effect = RuntimeError("close failed")
+    fake_redis = MagicMock()
+    fake_redis.pubsub.return_value = fake_pubsub
+    with patch.object(inspector_events, "redis_client", fake_redis):
+        gen = inspector_events.subscribe("run-1", timeout_seconds=0.0)
+        next(gen)
+        # The teardown path runs in ``finally``; closing the generator
+        # exercises it. No exception should escape.
+        gen.close()
+
+
+def test_subscribe_skips_non_string_data_payloads():
+    """``raw["data"]`` can be ``None`` / int / bytes — only str is decodable
+    and the rest are silently skipped."""
+    fake_pubsub = MagicMock()
+    msgs: list[dict[str, Any] | None] = [
+        {"data": None},  # missing payload
+        {"data": 12345},  # int payload (shouldn't happen, defensive)
+        {"data": json.dumps(
+            {"kind": "node_changed", "workflow_run_id": "run-1", "node_id": "agent-1", "status": "running"}
+        )},
+    ]
+    it = iter(msgs)
+    fake_pubsub.get_message.side_effect = lambda **_kw: next(it, None)
+    fake_redis = MagicMock()
+    fake_redis.pubsub.return_value = fake_pubsub
+    with patch.object(inspector_events, "redis_client", fake_redis):
+        gen = inspector_events.subscribe("run-1", timeout_seconds=0.0)
+        msg = next(gen)
+    assert msg.kind == "node_changed"
+    assert msg.node_id == "agent-1"
