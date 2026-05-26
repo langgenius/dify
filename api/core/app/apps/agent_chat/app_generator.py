@@ -167,7 +167,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,

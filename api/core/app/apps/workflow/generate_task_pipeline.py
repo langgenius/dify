@@ -731,6 +731,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         match invoke_from:
             case InvokeFrom.SERVICE_API:
                 created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.OPENAPI:
+                created_from = WorkflowAppLogCreatedFrom.OPENAPI
             case InvokeFrom.EXPLORE:
                 created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
             case InvokeFrom.WEB_APP:
