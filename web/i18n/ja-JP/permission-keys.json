@@ -37,6 +37,7 @@
   "page.datasets.access": "Datasets ページにアクセス",
   "page.explore.access": "Explore ページにアクセス",
   "page.tool.access": "Tool ページにアクセス",
+  "plugin.debug": "プラグインをデバッグ",
   "plugin.install": "プラグインのインストールと更新",
   "plugin.manage": "プラグインを管理",
   "tool.manage": "ツールを管理",

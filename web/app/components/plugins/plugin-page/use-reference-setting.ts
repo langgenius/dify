@@ -6,27 +6,12 @@ import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
-import { PermissionType } from '../types'
-
-const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
-  if (!permission)
-    return false
-
-  if (permission === PermissionType.noOne)
-    return false
-
-  if (permission === PermissionType.everyone)
-    return true
-
-  return isAdmin
-}
 
 const useReferenceSetting = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, langGeniusVersionInfo, workspacePermissionKeys } = useAppContext()
+  const { langGeniusVersionInfo, workspacePermissionKeys } = useAppContext()
   const { data } = useReferenceSettings()
 
-  const { permission: permissions } = data || {}
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
     onSuccess: () => {
@@ -34,13 +19,13 @@ const useReferenceSetting = () => {
       toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
-  const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
 
   const canInstallPluginByPermissionKey = hasPermission(workspacePermissionKeys, 'plugin.install')
   const canUpdatePlugin = hasPermission(workspacePermissionKeys, ['plugin.install', 'plugin.manage'])
   const canViewInstalledPlugins = canUpdatePlugin
   const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const canUninstall = canManagePlugin
+  const canDebugger = hasPermission(workspacePermissionKeys, 'plugin.debug')
   const canSetPermissions = hasPermission(workspacePermissionKeys, 'plugin.install')
   const canSetAutoUpdate = hasPermission(workspacePermissionKeys, 'plugin.install')
   const canSetPreferences = canSetPermissions || canSetAutoUpdate
@@ -49,11 +34,11 @@ const useReferenceSetting = () => {
     referenceSetting: data,
     setReferenceSettings: updateReferenceSetting,
     canViewInstalledPlugins,
-    canInstall: canInstallPluginByPermissionKey && hasPluginPermission(permissions?.install_permission, isAdmin),
+    canInstall: canInstallPluginByPermissionKey,
     canUpdate: canUpdatePlugin,
     canManagePlugin,
     canUninstall,
-    canDebugger: hasPluginPermission(permissions?.debug_permission, isAdmin),
+    canDebugger,
     canSetPermissions,
     canSetAutoUpdate,
     canSetPreferences,

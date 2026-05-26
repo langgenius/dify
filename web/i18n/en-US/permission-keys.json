@@ -37,6 +37,7 @@
   "page.datasets.access": "Access Datasets page",
   "page.explore.access": "Access Explore page",
   "page.tool.access": "Access Tool page",
+  "plugin.debug": "Debug plugins",
   "plugin.install": "Install and update plugins",
   "plugin.manage": "Manage plugins",
   "tool.manage": "Manage tools",

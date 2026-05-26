@@ -2,22 +2,7 @@ import type { Member } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { DatasetPermission } from '@/models/datasets'
-import { LicenseStatus } from '@/types/feature'
 import PermissionSelector from '../index'
-
-const mockConfig = vi.hoisted(() => ({
-  IS_CLOUD_EDITION: false,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.IS_CLOUD_EDITION
-    },
-  }
-})
 
 // Mock app-context
 vi.mock('@/context/app-context', () => ({
@@ -48,7 +33,6 @@ describe('PermissionSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.IS_CLOUD_EDITION = false
   })
 
   describe('Rendering', () => {
@@ -424,23 +408,10 @@ describe('PermissionSelector', () => {
       expect(triggerElement)!.toBeInTheDocument()
     })
 
-    it('should show access config hint and remain closed in SaaS', () => {
-      mockConfig.IS_CLOUD_EDITION = true
-      renderWithSystemFeatures(<PermissionSelector {...defaultProps} />)
-
-      const trigger = screen.getByText(/form\.permissionsAccessConfig/)
-      fireEvent.click(trigger)
-
-      expect(screen.getByText(/form\.permissionsAccessConfig/))!.toBeInTheDocument()
-      expect(screen.queryByText(/form\.permissionsOnlyMe/))!.not.toBeInTheDocument()
-    })
-
-    it('should show access config hint and remain closed in enterprise edition', () => {
+    it('should show access config hint and remain closed when RBAC is enabled', () => {
       renderWithSystemFeatures(<PermissionSelector {...defaultProps} />, {
         systemFeatures: {
-          license: {
-            status: LicenseStatus.ACTIVE,
-          },
+          rbac_enabled: true,
         },
       })
 

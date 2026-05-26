@@ -11,11 +11,9 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetPermission } from '@/models/datasets'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { LicenseStatus } from '@/types/feature'
 import MemberItem from './member-item'
 import Item from './permission-item'
 
@@ -91,9 +89,8 @@ const PermissionSelector = ({
   const isAllTeamMembers = permission === DatasetPermission.allTeamMembers
   const isPartialMembers = permission === DatasetPermission.partialMembers
   const selectedMemberNames = selectedMembers.map(member => member.name).join(', ')
-  const isEnterpriseEdition = systemFeatures.license.status !== LicenseStatus.NONE
-  const isEditionDisabled = IS_CLOUD_EDITION || isEnterpriseEdition
-  const isDisabled = disabled || isEditionDisabled
+  const isDisabledByRBAC = systemFeatures.rbac_enabled
+  const isDisabled = disabled || isDisabledByRBAC
 
   return (
     <Popover
@@ -108,7 +105,7 @@ const PermissionSelector = ({
         <PopoverTrigger
           render={(
             <div className={cn('group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt', isDisabled && 'cursor-not-allowed! bg-components-input-bg-disabled! hover:bg-components-input-bg-disabled!')}>
-              {isEditionDisabled && (
+              {isDisabledByRBAC && (
                 <>
                   <div className="flex size-6 shrink-0 items-center justify-center">
                     <span className="i-ri-lock-2-line size-4 text-text-tertiary" />
@@ -119,7 +116,7 @@ const PermissionSelector = ({
                 </>
               )}
               {
-                !isEditionDisabled && isOnlyMe && (
+                !isDisabledByRBAC && isOnlyMe && (
                   <>
                     <div className="flex size-6 shrink-0 items-center justify-center">
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
@@ -131,7 +128,7 @@ const PermissionSelector = ({
                 )
               }
               {
-                !isEditionDisabled && isAllTeamMembers && (
+                !isDisabledByRBAC && isAllTeamMembers && (
                   <>
                     <div className="flex size-6 shrink-0 items-center justify-center">
                       <span className="i-ri-group-2-line size-4 text-text-secondary" />
@@ -143,7 +140,7 @@ const PermissionSelector = ({
                 )
               }
               {
-                !isEditionDisabled && isPartialMembers && (
+                !isDisabledByRBAC && isPartialMembers && (
                   <>
                     <div className="relative flex size-6 shrink-0 items-center justify-center">
                       {

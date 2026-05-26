@@ -35,18 +35,19 @@ const PluginSettingModal: FC<Props> = ({
   const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
   const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
-  })
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isPermissionDisabledByRBAC = systemFeatures.rbac_enabled
+  const permissionDisabledTip = t(`${i18nPrefix}.configurePermissionsInSettings`, { ns: 'plugin' })
   const handlePrivilegeChange = useCallback((key: string) => {
     return (value: PermissionType) => {
+      if (isPermissionDisabledByRBAC)
+        return
       setTempPrivilege({
         ...tempPrivilege,
         [key]: value,
       })
     }
-  }, [tempPrivilege])
+  }, [isPermissionDisabledByRBAC, tempPrivilege])
 
   const handleSave = useCallback(async () => {
     await onSave({
@@ -78,7 +79,10 @@ const PluginSettingModal: FC<Props> = ({
                 { title: t(`${i18nPrefix}.whoCanDebug`, { ns: 'plugin' }), key: 'debug_permission', value: tempPrivilege?.debug_permission || PermissionType.noOne },
               ].map(({ title, key, value }) => (
                 <div key={key} className="flex flex-col items-start gap-1 self-stretch">
-                  <Label label={title} />
+                  <Label
+                    label={title}
+                    tooltip={isPermissionDisabledByRBAC ? permissionDisabledTip : undefined}
+                  />
                   <div className="flex w-full items-start justify-between gap-2">
                     {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(option => (
                       <OptionCard
@@ -86,6 +90,7 @@ const PluginSettingModal: FC<Props> = ({
                         title={t(`${i18nPrefix}.${option}`, { ns: 'plugin' })}
                         onSelect={() => handlePrivilegeChange(key)(option)}
                         selected={value === option}
+                        disabled={isPermissionDisabledByRBAC}
                         className="flex-1"
                       />
                     ))}
@@ -95,7 +100,7 @@ const PluginSettingModal: FC<Props> = ({
             </div>
           )}
           {
-            enable_marketplace && canSetAutoUpdate && (
+            systemFeatures.enable_marketplace && canSetAutoUpdate && (
               <AutoUpdateSetting payload={tempAutoUpdateConfig} onChange={setTempAutoUpdateConfig} />
             )
           }

@@ -9,7 +9,10 @@ import { PermissionType } from '@/app/components/plugins/types'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '../auto-update-setting/types'
 import ReferenceSettingModal from '../index'
 
-const mockSystemFeatures = { enable_marketplace: true }
+const mockSystemFeatures = {
+  enable_marketplace: true,
+  rbac_enabled: false,
+}
 
 const render = (ui: ReactElement) =>
   renderWithSystemFeatures(ui, { systemFeatures: mockSystemFeatures })
@@ -37,19 +40,26 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
 
 // Mock OptionCard component
 vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({ title, onSelect, selected, className }: {
+  default: ({ title, onSelect, selected, className, disabled, tooltip }: {
     title: string
     onSelect: () => void
     selected: boolean
     className?: string
+    disabled?: boolean
+    tooltip?: string
   }) => (
     <button
       data-testid={`option-card-${title.toLowerCase().replace(/\s+/g, '-')}`}
-      onClick={onSelect}
+      onClick={() => {
+        if (!disabled)
+          onSelect()
+      }}
       aria-pressed={selected}
+      disabled={disabled}
       className={className}
     >
       {title}
+      {tooltip && <span>{tooltip}</span>}
     </button>
   ),
 }))
@@ -124,6 +134,7 @@ describe('reference-setting-modal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSystemFeatures.enable_marketplace = true
+    mockSystemFeatures.rbac_enabled = false
   })
 
   // Label component tests moved to label.spec.tsx
@@ -259,6 +270,16 @@ describe('reference-setting-modal', () => {
         // Assert
         expect(screen.getByTestId('modal-close'))!.toBeInTheDocument()
       })
+
+      it('should disable permission controls with settings permissions tooltip beside titles when RBAC is enabled', () => {
+        mockSystemFeatures.rbac_enabled = true
+
+        render(<ReferenceSettingModal {...defaultProps} />)
+
+        expect(screen.getAllByLabelText('plugin.privilege.configurePermissionsInSettings')).toHaveLength(2)
+        expect(screen.queryByText('plugin.privilege.configurePermissionsInSettings')).not.toBeInTheDocument()
+        expect(screen.getAllByTestId(/option-card/).every(option => option.hasAttribute('disabled'))).toBe(true)
+      })
     })
 
     describe('State Management', () => {
@@ -294,6 +315,16 @@ describe('reference-setting-modal', () => {
         // Assert - the option should now be selected
         // Assert - the option should now be selected
         expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
+      })
+
+      it('should not update permission when RBAC disables permission controls', () => {
+        mockSystemFeatures.rbac_enabled = true
+        render(<ReferenceSettingModal {...defaultProps} />)
+
+        const noOneOptions = screen.getAllByTestId('option-card-plugin.privilege.noone')
+        fireEvent.click(noOneOptions[0]!)
+
+        expect(noOneOptions[0])!.toHaveAttribute('aria-pressed', 'false')
       })
 
       it('should initialize with payload auto_upgrade values', () => {

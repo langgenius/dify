@@ -37,6 +37,7 @@
   "page.datasets.access": "訪問 Datasets 頁面",
   "page.explore.access": "訪問 Explore 頁面",
   "page.tool.access": "訪問 Tool 頁面",
+  "plugin.debug": "調試插件",
   "plugin.install": "安裝與更新插件",
   "plugin.manage": "管理插件",
   "tool.manage": "管理工具",
