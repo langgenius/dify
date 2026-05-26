@@ -20,7 +20,7 @@ export type BrowserEnv = {
 export function realEnv(): BrowserEnv {
   return {
     getEnv: k => process.env[k],
-    platform,
+    platform: platform(),
     isOutTTY: Boolean(process.stdout.isTTY),
     isErrTTY: Boolean(process.stderr.isTTY),
   }

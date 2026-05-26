@@ -39,10 +39,10 @@ export function pid(): number {
   return Number(process.pid)
 }
 
-export interface Platform {
-  id(): NodeJS.Platform
-  configDir(): string
-  cacheDir(): string
+export type Platform = {
+  id: () => NodeJS.Platform
+  configDir: () => string
+  cacheDir: () => string
 }
 
 export const SUBDIR = 'difyctl'
