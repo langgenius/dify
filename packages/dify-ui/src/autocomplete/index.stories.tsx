@@ -161,11 +161,35 @@ const getSuggestionLabel = (item: Suggestion) => item.label
 
 const SuggestionItem = ({
   item,
+  dense,
+}: {
+  item: Suggestion
+  dense?: boolean
+}) => (
+  <AutocompleteItem value={item}>
+    {item.icon && <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />}
+    <div className="flex min-w-0 grow flex-col">
+      <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
+      {!dense && item.description && (
+        <span className="truncate system-xs-regular text-text-tertiary">{item.description}</span>
+      )}
+    </div>
+    {item.meta && (
+      <span className="shrink-0 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
+        {item.meta}
+      </span>
+    )}
+  </AutocompleteItem>
+)
+
+// Only virtualized items receive an explicit index; ordinary lists must let Base UI register items by DOM order for keyboard navigation.
+const VirtualizedSuggestionItem = ({
+  item,
   index,
   dense,
 }: {
   item: Suggestion
-  index?: number
+  index: number
   dense?: boolean
 }) => (
   <AutocompleteItem value={item} index={index}>
@@ -186,12 +210,10 @@ const SuggestionItem = ({
 
 const TagSuggestionItem = ({
   item,
-  index,
 }: {
   item: Suggestion
-  index?: number
 }) => (
-  <AutocompleteItem value={item} index={index}>
+  <AutocompleteItem value={item}>
     <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
     {item.description && <span className="ml-auto max-w-36 truncate system-xs-regular text-text-tertiary">{item.description}</span>}
   </AutocompleteItem>
@@ -215,8 +237,8 @@ const BasicTagAutocomplete = ({
     </AutocompleteInputGroup>
     <AutocompleteContent>
       <AutocompleteList>
-        {(item: Suggestion, index: number) => (
-          <TagSuggestionItem key={item.value} item={item} index={index} />
+        {(item: Suggestion) => (
+          <TagSuggestionItem key={item.value} item={item} />
         )}
       </AutocompleteList>
       <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
@@ -327,8 +349,8 @@ const AsyncSearchDemo = () => {
             {loading ? 'Loading suggestions…' : `${items.length} remote suggestions`}
           </AutocompleteStatus>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No remote suggestion. Keep the typed query.</AutocompleteEmpty>
@@ -384,7 +406,7 @@ const VirtualizedSuggestionList = ({
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <SuggestionItem item={item} index={virtualItem.index} />
+              <VirtualizedSuggestionItem item={item} index={virtualItem.index} />
             </div>
           )
         })}
@@ -455,8 +477,8 @@ const FuzzyMatchingDemo = () => {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <AutocompleteItem key={item.value} value={item} index={index}>
+            {(item: Suggestion) => (
+              <AutocompleteItem key={item.value} value={item}>
                 {item.icon && <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />}
                 <div className="min-w-0 grow">
                   <AutocompleteItemText className="block px-0">
@@ -528,8 +550,8 @@ export const InlineAutocomplete: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} dense />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} dense />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
@@ -586,8 +608,8 @@ export const LimitResults: Story = {
             <LimitedStatus total={workflowSuggestions.length} />
           </AutocompleteStatus>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
@@ -674,8 +696,8 @@ export const Empty: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <TagSuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <TagSuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No tag suggestion. The custom text remains valid.</AutocompleteEmpty>
@@ -696,8 +718,8 @@ export const DisabledAndReadOnly: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <TagSuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <TagSuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
         </AutocompleteContent>
@@ -710,8 +732,8 @@ export const DisabledAndReadOnly: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
         </AutocompleteContent>
