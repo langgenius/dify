@@ -58,7 +58,9 @@ external_sso_pipeline = AuthPipeline(
     ],
 )
 
-auth_router = PipelineRouter({
-    TokenType.OAUTH_ACCOUNT:      PipelineRoute(account_pipeline),
-    TokenType.OAUTH_EXTERNAL_SSO: PipelineRoute(external_sso_pipeline, required_edition=frozenset({Edition.EE})),
-})
+auth_router = PipelineRouter(
+    {
+        TokenType.OAUTH_ACCOUNT: PipelineRoute(account_pipeline),
+        TokenType.OAUTH_EXTERNAL_SSO: PipelineRoute(external_sso_pipeline, required_edition=frozenset({Edition.EE})),
+    }
+)

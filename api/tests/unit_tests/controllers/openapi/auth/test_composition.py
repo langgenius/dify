@@ -39,6 +39,7 @@ def test_account_pipeline_has_unconditional_load_account():
 
 def test_external_sso_pipeline_first_prepare_is_build_external_identity():
     from controllers.openapi.auth.prepare import build_external_identity
+
     assert external_sso_pipeline._prepare[0] is build_external_identity
 
 
@@ -68,6 +69,7 @@ def test_external_sso_route_has_ee_required_edition():
     route = auth_router._routes[TokenType.OAUTH_EXTERNAL_SSO]
     assert isinstance(route, PipelineRoute)
     from controllers.openapi.auth.data import Edition
+
     assert route.required_edition == frozenset({Edition.EE})
 
 

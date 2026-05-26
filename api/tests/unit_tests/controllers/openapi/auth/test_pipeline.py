@@ -48,15 +48,18 @@ def _fake_identity():
 
 # --- PipelineRouter.guard ---
 
+
 def test_guard_passes_auth_data_to_view(app):
     router = _make_router()
     received = {}
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
-        with patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth, \
-             patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()), \
-             patch("controllers.openapi.auth.pipeline.reset_auth_ctx"):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx"),
+        ):
             mock_auth.return_value.authenticate.return_value = _fake_identity()
 
             @router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
@@ -86,10 +89,12 @@ def test_guard_token_type_gate_returns_403(app):
     router = _make_router()
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
-        with patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth, \
-             patch("controllers.openapi.auth.pipeline.emit_wrong_surface"), \
-             patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.emit_wrong_surface"),
+            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+        ):
             identity = _fake_identity()
             identity.token_type = TokenType.OAUTH_EXTERNAL_SSO
             mock_auth.return_value.authenticate.return_value = identity
@@ -106,9 +111,11 @@ def test_guard_unregistered_token_type_returns_403(app):
     router = _make_router(token_type=TokenType.OAUTH_ACCOUNT)
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
-        with patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth, \
-             patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+        ):
             identity = _fake_identity()
             identity.token_type = TokenType.OAUTH_EXTERNAL_SSO
             mock_auth.return_value.authenticate.return_value = identity
@@ -147,10 +154,12 @@ def test_guard_runs_prepare_steps_in_order(app):
     router = _make_router(prepare=[p1, p2])
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
-        with patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth, \
-             patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()), \
-             patch("controllers.openapi.auth.pipeline.reset_auth_ctx"):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx"),
+        ):
             mock_auth.return_value.authenticate.return_value = _fake_identity()
 
             @router.guard(scope=Scope.FULL)
@@ -167,10 +176,12 @@ def test_guard_resets_auth_ctx_on_exception(app):
     reset_called = []
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
-        with patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth, \
-             patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.reset_auth_ctx", side_effect=lambda t: reset_called.append(t)):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx", side_effect=lambda t: reset_called.append(t)),
+        ):
             mock_auth.return_value.authenticate.return_value = _fake_identity()
 
             @router.guard(scope=Scope.FULL)
@@ -189,9 +200,11 @@ def test_router_rejects_token_type_on_wrong_edition(app):
     router = PipelineRouter({TokenType.OAUTH_EXTERNAL_SSO: route})
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
-        with patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"), \
-             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth, \
-             patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+        ):
             identity = _make_identity(token_type=TokenType.OAUTH_EXTERNAL_SSO)
             mock_auth.return_value.authenticate.return_value = identity
 

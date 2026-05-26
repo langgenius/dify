@@ -64,6 +64,7 @@ def test_load_tenant_writes_tenant():
 
 def test_load_tenant_raises_forbidden_when_archived():
     from models.account import TenantStatus
+
     app = MagicMock()
     app.tenant_id = uuid.uuid4()
     tenant = MagicMock()
@@ -129,6 +130,7 @@ def test_resolve_external_user_raises_unauthorized_when_context_missing():
 
 def test_load_app_access_mode_writes_mode():
     from services.enterprise.enterprise_service import WebAppAccessMode
+
     app = MagicMock()
     app.id = "app-1"
     settings = MagicMock()
@@ -162,6 +164,7 @@ def test_load_app_access_mode_no_op_when_app_missing():
 
 def test_build_external_identity_constructs_from_builder_keys():
     from controllers.openapi.auth.data import ExternalIdentity
+
     builder = {"_subject_email": "u@sso.com", "_subject_issuer": "idp"}
     build_external_identity(builder)
     assert isinstance(builder["external_identity"], ExternalIdentity)
