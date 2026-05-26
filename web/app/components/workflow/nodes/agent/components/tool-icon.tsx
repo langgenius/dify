@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 
@@ -50,7 +50,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       return 'not-authorized'
     return undefined
   }, [currentProvider, isDataReady])
-  const indicator = status === 'not-installed' ? 'red' : status === 'not-authorized' ? 'yellow' : undefined
+  const indicator = status === 'not-installed' ? 'error' : status === 'not-authorized' ? 'warning' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
   const { t } = useTranslation()
   const tooltip = useMemo(() => {
@@ -96,7 +96,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         {iconContent}
       </div>
-      {indicator && <Indicator color={indicator} className="absolute -top-px -right-px" />}
+      {indicator && <StatusDot status={indicator} className="absolute -top-px -right-px" />}
     </div>
   )
 

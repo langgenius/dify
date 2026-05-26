@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import { omit } from 'es-toolkit/object'
@@ -8,7 +9,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
@@ -98,6 +98,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   })
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const handleQueryParamsChange = useCallback((next: QueryParam) => {
     setCurrPage(0)
@@ -130,11 +131,22 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
-                current={currPage}
-                onChange={handlePageChange}
-                total={total}
-                limit={limit}
-                onLimitChange={setLimit}
+                page={currPage + 1}
+                totalPages={totalPages}
+                onPageChange={page => handlePageChange(page - 1)}
+                labels={{
+                  previous: t('pagination.previous', { ns: 'common' }),
+                  next: t('pagination.next', { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                }}
+                pageSize={{
+                  value: limit,
+                  options: [10, 25, 50],
+                  onValueChange: setLimit,
+                  label: t('pagination.perPage', { ns: 'common' }),
+                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                }}
               />
             )
           : null}

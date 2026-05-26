@@ -189,7 +189,7 @@ class WorkflowRunExportApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def get(self, app_model: App, run_id: str):
+    def get(self, app_model: App, run_id: UUID):
         tenant_id = str(app_model.tenant_id)
         app_id = str(app_model.id)
         run_id_str = str(run_id)

@@ -1,10 +1,10 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
@@ -44,9 +44,9 @@ const Card = ({
         <div className="p-2">
           <div className="mb-1.5 flex justify-between">
             <div className="flex items-center gap-1">
-              <Indicator
+              <StatusDot
                 className="shrink-0"
-                color={apiEnabled ? 'green' : 'yellow'}
+                status={apiEnabled ? 'success' : 'warning'}
               />
               <div
                 className={cn(

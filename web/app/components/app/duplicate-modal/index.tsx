@@ -109,15 +109,13 @@ const DuplicateAppModal = ({
       </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(icon_type === 'image'
-              ? { type: 'image', url: icon_url!, fileId: icon }
-              : { type: 'emoji', icon, background: icon_background! })
-            setShowAppIconPicker(false)
           }}
         />
       )}
