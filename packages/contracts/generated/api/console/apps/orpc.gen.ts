@@ -167,6 +167,14 @@ import {
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse,
   zGetAppsByAppIdWorkflowsDraftPath,
   zGetAppsByAppIdWorkflowsDraftResponse,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath,
+  zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse,
   zGetAppsByAppIdWorkflowsDraftSystemVariablesPath,
   zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse,
   zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath,
@@ -175,6 +183,14 @@ import {
   zGetAppsByAppIdWorkflowsDraftVariablesQuery,
   zGetAppsByAppIdWorkflowsDraftVariablesResponse,
   zGetAppsByAppIdWorkflowsPath,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath,
+  zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse,
   zGetAppsByAppIdWorkflowsPublishPath,
   zGetAppsByAppIdWorkflowsPublishResponse,
   zGetAppsByAppIdWorkflowsQuery,
@@ -3787,13 +3803,132 @@ export const run10 = {
 }
 
 /**
- * Get system variables for workflow
+ * Server-Sent Events stream of inspector deltas for a draft workflow run.
  *
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
  */
 export const get59 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Server-Sent Events stream of inspector deltas for a draft workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEvents',
+    path: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath }))
+  .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse)
+
+export const events = {
+  get: get59,
+}
+
+/**
+ * Full value for one declared output, including signed download URL for files.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get60 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Full value for one declared output, including signed download URL for files.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreview',
+    path: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath,
+    }),
+  )
+  .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse)
+
+export const preview3 = {
+  get: get60,
+}
+
+export const byOutputName = {
+  preview: preview3,
+}
+
+/**
+ * One node's declared outputs for a draft workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get61 = oc
+  .route({
+    deprecated: true,
+    description:
+      'One node\'s declared outputs for a draft workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeId',
+    path: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath }))
+  .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse)
+
+export const byNodeId8 = {
+  get: get61,
+  byOutputName,
+}
+
+/**
+ * Snapshot of every node's declared outputs for a draft workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get62 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Snapshot of every node\'s declared outputs for a draft workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputs',
+    path: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath }))
+  .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse)
+
+export const nodeOutputs = {
+  get: get62,
+  events,
+  byNodeId: byNodeId8,
+}
+
+export const byRunId2 = {
+  nodeOutputs,
+}
+
+export const runs = {
+  byRunId: byRunId2,
+}
+
+/**
+ * Get system variables for workflow
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get63 = oc
   .route({
     deprecated: true,
     description:
@@ -3808,7 +3943,7 @@ export const get59 = oc
   .output(zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
-  get: get59,
+  get: get63,
 }
 
 /**
@@ -3930,7 +4065,7 @@ export const delete9 = oc
  *
  * @deprecated
  */
-export const get60 = oc
+export const get64 = oc
   .route({
     deprecated: true,
     description:
@@ -3972,7 +4107,7 @@ export const patch2 = oc
 
 export const byVariableId = {
   delete: delete9,
-  get: get60,
+  get: get64,
   patch: patch2,
   reset,
 }
@@ -4002,7 +4137,7 @@ export const delete10 = oc
  *
  * @deprecated
  */
-export const get61 = oc
+export const get65 = oc
   .route({
     deprecated: true,
     description:
@@ -4024,7 +4159,7 @@ export const get61 = oc
 
 export const variables2 = {
   delete: delete10,
-  get: get61,
+  get: get65,
   byVariableId,
 }
 
@@ -4037,7 +4172,7 @@ export const variables2 = {
  *
  * @deprecated
  */
-export const get62 = oc
+export const get66 = oc
   .route({
     deprecated: true,
     description:
@@ -4082,7 +4217,7 @@ export const post55 = oc
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
 
 export const draft2 = {
-  get: get62,
+  get: get66,
   post: post55,
   conversationVariables: conversationVariables2,
   environmentVariables,
@@ -4092,6 +4227,7 @@ export const draft2 = {
   loop: loop2,
   nodes: nodes7,
   run: run10,
+  runs,
   systemVariables,
   trigger: trigger2,
   variables: variables2,
@@ -4106,7 +4242,7 @@ export const draft2 = {
  *
  * @deprecated
  */
-export const get63 = oc
+export const get67 = oc
   .route({
     deprecated: true,
     description:
@@ -4149,8 +4285,135 @@ export const post56 = oc
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
 
 export const publish = {
-  get: get63,
+  get: get67,
   post: post56,
+}
+
+/**
+ * Server-Sent Events stream of inspector deltas for a published workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get68 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Server-Sent Events stream of inspector deltas for a published workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEvents',
+    path: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath }))
+  .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse)
+
+export const events2 = {
+  get: get68,
+}
+
+/**
+ * Full value for one declared output of a published run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get69 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Full value for one declared output of a published run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId:
+      'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreview',
+    path: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params:
+        zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath,
+    }),
+  )
+  .output(
+    zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse,
+  )
+
+export const preview4 = {
+  get: get69,
+}
+
+export const byOutputName2 = {
+  preview: preview4,
+}
+
+/**
+ * One node's declared outputs for a published workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get70 = oc
+  .route({
+    deprecated: true,
+    description:
+      'One node\'s declared outputs for a published workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeId',
+    path: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath }))
+  .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse)
+
+export const byNodeId9 = {
+  get: get70,
+  byOutputName: byOutputName2,
+}
+
+/**
+ * Snapshot of every node's declared outputs for a published workflow run.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get71 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Snapshot of every node\'s declared outputs for a published workflow run.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputs',
+    path: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath }))
+  .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse)
+
+export const nodeOutputs2 = {
+  get: get71,
+  events: events2,
+  byNodeId: byNodeId9,
+}
+
+export const byRunId3 = {
+  nodeOutputs: nodeOutputs2,
+}
+
+export const runs2 = {
+  byRunId: byRunId3,
+}
+
+export const published = {
+  runs: runs2,
 }
 
 /**
@@ -4160,7 +4423,7 @@ export const publish = {
  *
  * @deprecated
  */
-export const get64 = oc
+export const get72 = oc
   .route({
     deprecated: true,
     description:
@@ -4181,7 +4444,7 @@ export const get64 = oc
   .output(zGetAppsByAppIdWorkflowsTriggersWebhookResponse)
 
 export const webhook = {
-  get: get64,
+  get: get72,
 }
 
 export const triggers2 = {
@@ -4279,7 +4542,7 @@ export const byWorkflowId = {
  *
  * @deprecated
  */
-export const get65 = oc
+export const get73 = oc
   .route({
     deprecated: true,
     description:
@@ -4300,10 +4563,11 @@ export const get65 = oc
   .output(zGetAppsByAppIdWorkflowsResponse)
 
 export const workflows3 = {
-  get: get65,
+  get: get73,
   defaultWorkflowBlockConfigs,
   draft: draft2,
   publish,
+  published,
   triggers: triggers2,
   byWorkflowId,
 }
@@ -4336,7 +4600,7 @@ export const delete12 = oc
  *
  * @deprecated
  */
-export const get66 = oc
+export const get74 = oc
   .route({
     deprecated: true,
     description:
@@ -4377,7 +4641,7 @@ export const put7 = oc
 
 export const byAppId2 = {
   delete: delete12,
-  get: get66,
+  get: get74,
   put: put7,
   advancedChat,
   agentComposer,
@@ -4446,7 +4710,7 @@ export const byApiKeyId = {
  *
  * Get all API keys for an app
  */
-export const get67 = oc
+export const get75 = oc
   .route({
     description: 'Get all API keys for an app',
     inputStructure: 'detailed',
@@ -4479,7 +4743,7 @@ export const post58 = oc
   .output(zPostAppsByResourceIdApiKeysResponse)
 
 export const apiKeys = {
-  get: get67,
+  get: get75,
   post: post58,
   byApiKeyId,
 }
@@ -4495,7 +4759,7 @@ export const byResourceId = {
  *
  * @deprecated
  */
-export const get68 = oc
+export const get76 = oc
   .route({
     deprecated: true,
     description:
@@ -4510,7 +4774,7 @@ export const get68 = oc
   .output(zGetAppsByServerIdServerRefreshResponse)
 
 export const refresh = {
-  get: get68,
+  get: get76,
 }
 
 export const server2 = {
@@ -4526,7 +4790,7 @@ export const byServerId = {
  *
  * Get list of applications with pagination and filtering
  */
-export const get69 = oc
+export const get77 = oc
   .route({
     description: 'Get list of applications with pagination and filtering',
     inputStructure: 'detailed',
@@ -4565,7 +4829,7 @@ export const post59 = oc
   .output(zPostAppsResponse)
 
 export const apps = {
-  get: get69,
+  get: get77,
   post: post59,
   imports,
   workflows,

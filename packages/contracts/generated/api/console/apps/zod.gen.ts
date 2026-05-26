@@ -3834,6 +3834,60 @@ export const zPostAppsByAppIdWorkflowsDraftRunPath = z.object({
  */
 export const zPostAppsByAppIdWorkflowsDraftRunResponse = z.record(z.string(), z.unknown())
 
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    output_name: z.string(),
+    run_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = z.record(z.string(), z.unknown())
+
 export const zGetAppsByAppIdWorkflowsDraftSystemVariablesPath = z.object({
   app_id: z.string(),
 })
@@ -3953,6 +4007,60 @@ export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
  * Success
  */
 export const zPostAppsByAppIdWorkflowsPublishResponse = z.record(z.string(), z.unknown())
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    output_name: z.string(),
+    run_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdWorkflowsTriggersWebhookPath = z.object({
   app_id: z.string(),
