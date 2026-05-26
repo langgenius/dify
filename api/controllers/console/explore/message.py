@@ -1,5 +1,6 @@
 import logging
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, TypeAdapter
@@ -95,18 +96,18 @@ class MessageListApi(InstalledAppResource):
 class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
-    def post(self, installed_app, message_id):
+    def post(self, installed_app, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(console_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id,
+                message_id=message_id_str,
                 user=current_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
@@ -123,13 +124,13 @@ class MessageFeedbackApi(InstalledAppResource):
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__])
-    def get(self, installed_app, message_id):
+    def get(self, installed_app, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         args = MoreLikeThisQuery.model_validate(request.args.to_dict())
 
@@ -139,7 +140,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
-                message_id=message_id,
+                message_id=message_id_str,
                 invoke_from=InvokeFrom.EXPLORE,
                 streaming=streaming,
             )
@@ -169,18 +170,18 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
-    def get(self, installed_app, message_id):
+    def get(self, installed_app, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
+                app_model=app_model, user=current_user, message_id=message_id_str, invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

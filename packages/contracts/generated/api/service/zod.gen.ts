@@ -217,17 +217,17 @@ export const zDatasetDocMetadataResponse = z.object({
  * DatasetExternalKnowledgeInfoResponse
  */
 export const zDatasetExternalKnowledgeInfoResponse = z.object({
-  external_knowledge_api_endpoint: z.string(),
-  external_knowledge_api_id: z.string(),
-  external_knowledge_api_name: z.string(),
-  external_knowledge_id: z.string(),
+  external_knowledge_api_endpoint: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish(),
+  external_knowledge_api_name: z.string().nullish(),
+  external_knowledge_id: z.string().nullish(),
 })
 
 /**
  * DatasetExternalRetrievalModelResponse
  */
 export const zDatasetExternalRetrievalModelResponse = z.object({
-  score_threshold: z.number(),
+  score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean().nullish(),
   top_k: z.int(),
 })
@@ -236,9 +236,9 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
  * DatasetIconInfoResponse
  */
 export const zDatasetIconInfoResponse = z.object({
-  icon: z.string().nullable(),
+  icon: z.string().nullish(),
   icon_background: z.string().nullish(),
-  icon_type: z.string().nullable(),
+  icon_type: z.string().nullish(),
   icon_url: z.string().nullish(),
 })
 
@@ -246,7 +246,7 @@ export const zDatasetIconInfoResponse = z.object({
  * DatasetKeywordSettingResponse
  */
 export const zDatasetKeywordSettingResponse = z.object({
-  keyword_weight: z.number(),
+  keyword_weight: z.number().nullish(),
 })
 
 /**
@@ -345,18 +345,18 @@ export const zDatasetTagResponse = z.object({
  * DatasetVectorSettingResponse
  */
 export const zDatasetVectorSettingResponse = z.object({
-  embedding_model_name: z.string(),
-  embedding_provider_name: z.string(),
-  vector_weight: z.number(),
+  embedding_model_name: z.string().nullish(),
+  embedding_provider_name: z.string().nullish(),
+  vector_weight: z.number().nullish(),
 })
 
 /**
  * DatasetWeightedScoreResponse
  */
 export const zDatasetWeightedScoreResponse = z.object({
-  keyword_setting: zDatasetKeywordSettingResponse,
-  vector_setting: zDatasetVectorSettingResponse,
-  weight_type: z.string().nullable(),
+  keyword_setting: zDatasetKeywordSettingResponse.optional(),
+  vector_setting: zDatasetVectorSettingResponse.optional(),
+  weight_type: z.string().nullish(),
 })
 
 /**
@@ -365,7 +365,7 @@ export const zDatasetWeightedScoreResponse = z.object({
 export const zDatasetRetrievalModelResponse = z.object({
   reranking_enable: z.boolean(),
   reranking_mode: z.string().nullish(),
-  reranking_model: zDatasetRerankingModelResponse,
+  reranking_model: zDatasetRerankingModelResponse.optional(),
   score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean(),
   search_method: z.string(),
@@ -392,9 +392,9 @@ export const zDatasetDetailResponse = z.object({
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse,
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse,
-  icon_info: zDatasetIconInfoResponse,
+  icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
@@ -405,7 +405,7 @@ export const zDatasetDetailResponse = z.object({
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
   runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse,
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
   tags: z.array(zDatasetTagResponse),
   total_available_documents: z.int(),
   total_documents: z.int(),
@@ -433,9 +433,9 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse,
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse,
-  icon_info: zDatasetIconInfoResponse,
+  icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
@@ -447,7 +447,7 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
   runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse,
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
   tags: z.array(zDatasetTagResponse),
   total_available_documents: z.int(),
   total_documents: z.int(),

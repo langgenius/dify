@@ -5,6 +5,7 @@ import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
@@ -16,7 +17,6 @@ import ActionButton from '@/app/components/base/action-button'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
@@ -49,6 +49,7 @@ const Annotation: FC<Props> = (props) => {
   const [limit, setLimit] = useState(APP_PAGE_LIMIT)
   const [list, setList] = useState<AnnotationItem[]>([])
   const [total, setTotal] = useState(0)
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   const [isLoading, setIsLoading] = useState(false)
   const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
@@ -217,11 +218,22 @@ const Annotation: FC<Props> = (props) => {
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
-                current={currPage}
-                onChange={setCurrPage}
-                total={total}
-                limit={limit}
-                onLimitChange={setLimit}
+                page={currPage + 1}
+                totalPages={totalPages}
+                onPageChange={page => setCurrPage(page - 1)}
+                labels={{
+                  previous: t('pagination.previous', { ns: 'common' }),
+                  next: t('pagination.next', { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                }}
+                pageSize={{
+                  value: limit,
+                  options: [10, 25, 50],
+                  onValueChange: setLimit,
+                  label: t('pagination.perPage', { ns: 'common' }),
+                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                }}
               />
             )
           : null}

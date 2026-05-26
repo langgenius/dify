@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 
 import flask_restx
 from flask_restx import Resource
@@ -155,7 +156,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
-    def get(self, resource_id):  # type: ignore
+    def get(self, resource_id: UUID):
         """Get all API keys for an app"""
         return super().get(resource_id)
 
@@ -164,7 +165,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):  # type: ignore
+    def post(self, resource_id: UUID):
         """Create a new API key for an app"""
         return super().post(resource_id)
 
@@ -180,9 +181,9 @@ class AppApiKeyResource(BaseApiKeyResource):
     @console_ns.doc(description="Delete an API key for an app")
     @console_ns.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
     @console_ns.response(204, "API key deleted successfully")
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: UUID, api_key_id: UUID):
         """Delete an API key for an app"""
-        return super().delete(resource_id, api_key_id)
+        return super().delete(str(resource_id), str(api_key_id))
 
     resource_type = ApiTokenType.APP
     resource_model = App
@@ -195,7 +196,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
-    def get(self, resource_id):  # type: ignore
+    def get(self, resource_id: UUID):
         """Get all API keys for a dataset"""
         return super().get(resource_id)
 
@@ -204,7 +205,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):  # type: ignore
+    def post(self, resource_id: UUID):
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
@@ -220,9 +221,9 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     @console_ns.doc(description="Delete an API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
     @console_ns.response(204, "API key deleted successfully")
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: UUID, api_key_id: UUID):
         """Delete an API key for a dataset"""
-        return super().delete(resource_id, api_key_id)
+        return super().delete(str(resource_id), str(api_key_id))
 
     resource_type = ApiTokenType.DATASET
     resource_model = Dataset

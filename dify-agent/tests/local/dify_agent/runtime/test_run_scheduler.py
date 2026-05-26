@@ -7,9 +7,10 @@ import pytest
 
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import ExitIntent, LifecycleState
+from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
     LayerExitSignals,
@@ -191,7 +192,6 @@ def test_create_run_rejects_invalid_output_schema_before_persisting() -> None:
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_summary",
                             "json_schema": _recursive_output_schema(),
                         }
                     )
@@ -212,7 +212,6 @@ def test_create_run_rejects_remote_ref_output_schema_before_persisting() -> None
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_summary",
                             "json_schema": {
                                 "type": "object",
                                 "properties": {
@@ -238,10 +237,35 @@ def test_create_run_rejects_non_object_output_schema_before_persisting() -> None
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_actions",
                             "json_schema": {
                                 "type": "array",
                                 "items": {"type": "string"},
+                            },
+                        }
+                    )
+                )
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_public_output_tool_name_override_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+
+            with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+                await scheduler.create_run(
+                    _request(
+                        output_config={
+                            "name": "incident_summary",
+                            "json_schema": {
+                                "type": "object",
+                                "properties": {"title": {"type": "string"}},
+                                "required": ["title"],
+                                "additionalProperties": False,
                             },
                         }
                     )
@@ -262,7 +286,6 @@ def test_create_run_rejects_non_defs_local_ref_in_direct_object_schema_before_pe
                 await scheduler.create_run(
                     _request(
                         output_config={
-                            "name": "incident_summary",
                             "json_schema": {
                                 "type": "object",
                                 "properties": {
@@ -421,6 +444,78 @@ def test_validate_run_request_rejects_misnamed_output_layer_before_provider_chec
         )
 
         with pytest.raises(RunRequestValidationError, match="must use reserved layer name 'output'"):
+            await validate_run_request(request, layer_providers=())
+
+    asyncio.run(scenario())
+
+
+def test_validate_run_request_accepts_reserved_history_layer() -> None:
+    async def scenario() -> None:
+        request = CreateRunRequest(
+            composition=RunComposition(
+                layers=[
+                    RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                    RunLayerSpec(name=DIFY_AGENT_HISTORY_LAYER_ID, type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID),
+                ]
+            )
+        )
+
+        await validate_run_request(request)
+
+    asyncio.run(scenario())
+
+
+def test_validate_run_request_rejects_misnamed_history_layer_before_provider_checks() -> None:
+    async def scenario() -> None:
+        request = CreateRunRequest(
+            composition=RunComposition(
+                layers=[
+                    RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                    RunLayerSpec(name="chat-history", type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID),
+                ]
+            )
+        )
+
+        with pytest.raises(RunRequestValidationError, match="must use reserved layer name 'history'"):
+            await validate_run_request(request, layer_providers=())
+
+    asyncio.run(scenario())
+
+
+def test_validate_run_request_rejects_multiple_history_layers_before_provider_checks() -> None:
+    async def scenario() -> None:
+        request = CreateRunRequest(
+            composition=RunComposition(
+                layers=[
+                    RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                    RunLayerSpec(name=DIFY_AGENT_HISTORY_LAYER_ID, type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID),
+                    RunLayerSpec(name="secondary-history", type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID),
+                ]
+            )
+        )
+
+        with pytest.raises(RunRequestValidationError, match="Only one 'pydantic_ai.history' layer is supported"):
+            await validate_run_request(request, layer_providers=())
+
+    asyncio.run(scenario())
+
+
+def test_validate_run_request_rejects_history_layer_dependencies_before_provider_checks() -> None:
+    async def scenario() -> None:
+        request = CreateRunRequest(
+            composition=RunComposition(
+                layers=[
+                    RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                    RunLayerSpec(
+                        name=DIFY_AGENT_HISTORY_LAYER_ID,
+                        type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID,
+                        deps={"prompt": "prompt"},
+                    ),
+                ]
+            )
+        )
+
+        with pytest.raises(RunRequestValidationError, match="does not support dependencies"):
             await validate_run_request(request, layer_providers=())
 
     asyncio.run(scenario())

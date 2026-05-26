@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -152,7 +153,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, id):
+    def get(self, id: UUID):
         api_based_extension_id = str(id)
         _, tenant_id = current_account_with_tenant()
 
@@ -168,7 +169,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, id):
+    def post(self, id: UUID):
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
 
@@ -196,7 +197,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, id):
+    def delete(self, id: UUID):
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
 

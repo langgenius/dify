@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
@@ -42,7 +43,7 @@ class DatasetMetadataCreateApi(Resource):
     @enterprise_license_required
     @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
-    def post(self, dataset_id):
+    def post(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
@@ -62,7 +63,7 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.response(
         200, "Metadata retrieved successfully", console_ns.models[DatasetMetadataListResponse.__name__]
     )
-    def get(self, dataset_id):
+    def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -79,7 +80,7 @@ class DatasetMetadataApi(Resource):
     @enterprise_license_required
     @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
-    def patch(self, dataset_id, metadata_id):
+    def patch(self, dataset_id: UUID, metadata_id: UUID):
         current_user, _ = current_account_with_tenant()
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
@@ -99,7 +100,7 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.response(204, "Metadata deleted successfully")
-    def delete(self, dataset_id, metadata_id):
+    def delete(self, dataset_id: UUID, metadata_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -136,7 +137,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.response(204, "Action completed successfully")
-    def post(self, dataset_id, action: Literal["enable", "disable"]):
+    def post(self, dataset_id: UUID, action: Literal["enable", "disable"]):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -164,7 +165,7 @@ class DocumentMetadataEditApi(Resource):
         204,
         "Documents metadata updated successfully",
     )
-    def post(self, dataset_id):
+    def post(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

@@ -159,6 +159,7 @@ def initialize_extensions(app: DifyApp):
         ext_logstore,
         ext_mail,
         ext_migrate,
+        ext_oauth_bearer,
         ext_orjson,
         ext_otel,
         ext_proxy_fix,
@@ -203,6 +204,7 @@ def initialize_extensions(app: DifyApp):
         ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
+        ext_oauth_bearer,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

@@ -17,7 +17,8 @@ public ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each
 ``type`` has a typed ``data`` model so OpenAPI, Redis replay, and clients parse
 the same payload contract. Model/provider selection is part of the submitted
 composition, not a top-level run field; the runtime reads the model layer named
-by ``DIFY_AGENT_MODEL_LAYER_ID`` and the optional structured output layer named
+by ``DIFY_AGENT_MODEL_LAYER_ID``, the optional history layer named by
+``DIFY_AGENT_HISTORY_LAYER_ID``, and the optional structured output layer named
 by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
@@ -42,6 +43,7 @@ from agenton.layers import ExitIntent
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
+DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
 RunStatus = Literal["running", "paused", "succeeded", "failed", "cancelled"]
 RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
@@ -131,8 +133,10 @@ class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
     Model/provider configuration must be supplied through the composition layer
-    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Structured output may be supplied
-    through the optional composition layer named by
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Optional persisted conversation
+    history may be supplied through the composition layer named by
+    ``DIFY_AGENT_HISTORY_LAYER_ID``. Structured output may be supplied through
+    the optional composition layer named by
     ``DIFY_AGENT_OUTPUT_LAYER_ID``. ``on_exit`` defaults every active layer to
     suspend so callers receive a resumable success snapshot unless they
     explicitly request delete for one or more layers. Session snapshots do not
@@ -348,6 +352,7 @@ __all__ = [
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",

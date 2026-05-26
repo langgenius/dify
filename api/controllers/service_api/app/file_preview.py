@@ -1,5 +1,6 @@
 import logging
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
@@ -50,20 +51,20 @@ class FilePreviewApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser, file_id: str):
+    def get(self, app_model: App, end_user: EndUser, file_id: UUID):
         """
         Preview/Download a file that was uploaded via Service API.
 
         Provides secure file preview/download functionality.
         Files can only be accessed if they belong to messages within the requesting app's context.
         """
-        file_id = str(file_id)
+        file_id_str = str(file_id)
 
         # Parse query parameters
         args = FilePreviewQuery.model_validate(request.args.to_dict())
 
         # Validate file ownership and get file objects
-        _, upload_file = self._validate_file_ownership(file_id, app_model.id)
+        _, upload_file = self._validate_file_ownership(file_id_str, app_model.id)
 
         # Get file content generator
         try:

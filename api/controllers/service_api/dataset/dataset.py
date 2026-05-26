@@ -1,4 +1,5 @@
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
@@ -336,7 +337,7 @@ class DatasetApi(DatasetApiResource):
         "Dataset retrieved successfully",
         service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
     )
-    def get(self, _, dataset_id):
+    def get(self, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -403,7 +404,7 @@ class DatasetApi(DatasetApiResource):
         service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, _, dataset_id):
+    def patch(self, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -479,7 +480,7 @@ class DatasetApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, _, dataset_id):
+    def delete(self, _, dataset_id: UUID):
         """
         Deletes a dataset given its ID.
 
@@ -534,7 +535,7 @@ class DocumentStatusApi(DatasetApiResource):
             400: "Bad request - invalid action",
         }
     )
-    def patch(self, tenant_id, dataset_id, action: Literal["enable", "disable", "archive", "un_archive"]):
+    def patch(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
 

@@ -14,6 +14,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
+from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import decrypt_system_params
 from core.trigger.entities.api_entities import (
     TriggerProviderApiEntity,
@@ -37,7 +38,6 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
