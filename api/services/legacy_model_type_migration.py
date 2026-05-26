@@ -11,6 +11,14 @@ rewriting credential references in provider models and load-balancing configs be
 removing loser credential rows. `load_balancing_model_configs` stays mostly row-level,
 but it first deduplicates `name="__inherit__"` rows by business key before it
 canonicalizes the remaining legacy rows independently with row-level cache cleanup.
+
+Tenant scheduling has two modes. When callers provide an explicit tenant list, the
+service preserves the original tenant-scoped execution model and runs all selected tables
+for each tenant. When callers omit `tenant_ids`, the service discovers tenant
+ids per table and then runs only that table for the discovered tenants. Most
+tables keep the active `model_types` filter in the discovery query, while
+`load_balancing_model_configs` deliberately uses a whole-table tenant scan so
+that query stays easy to understand.
 """
 
 from __future__ import annotations
@@ -21,7 +29,7 @@ import sys
 import threading
 import traceback
 import uuid
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -36,7 +44,7 @@ from sqlalchemy.sql import select
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
-from models import LoadBalancingModelConfig, ProviderModel, ProviderModelSetting, Tenant, TenantDefaultModel
+from models import LoadBalancingModelConfig, ProviderModel, ProviderModelSetting, TenantDefaultModel
 from models.base import TypeBase
 from models.provider import ProviderModelCredential
 
@@ -291,6 +299,21 @@ _LOCK_TIMEOUT_FALLBACK_MESSAGES: tuple[str, ...] = (
 _RAW_MODEL_TYPE_COLUMN = "_raw_model_type"
 
 
+def _selected_legacy_values(model_types: Sequence[ModelType]) -> list[str]:
+    legacy_values: list[str] = []
+    for model_type in model_types:
+        legacy_values.extend(_CANONICAL_TO_LEGACY[model_type])
+    return legacy_values
+
+
+def _selected_model_type_values(model_types: Sequence[ModelType]) -> list[str]:
+    model_type_values: list[str] = []
+    for model_type in model_types:
+        model_type_values.append(model_type.value)
+        model_type_values.extend(_CANONICAL_TO_LEGACY[model_type])
+    return list(dict.fromkeys(model_type_values))
+
+
 def _session_factory(engine: sa.Engine) -> Session:
     return Session(bind=engine, expire_on_commit=False)
 
@@ -363,6 +386,12 @@ class LegacyModelTypeMigrationService:
     `provider_model_credentials` is selected, that migration also rewrites references in
     `provider_models` and `load_balancing_model_configs`. Tenant migrations can run in a
     thread pool; JSONL output remains line-safe through a shared synchronized writer.
+
+    If `tenant_ids` is omitted, tenant discovery becomes table-scoped: each selected ORM
+    model loads its own tenant ids, then only that table is dispatched for those tenants.
+    Most tables keep the active model-type filter in discovery, while
+    `load_balancing_model_configs` intentionally uses the whole table so the tenant query
+    stays simple. This still avoids merging tenant ids across unrelated tables.
     """
 
     _engine: sa.Engine
@@ -426,22 +455,51 @@ class LegacyModelTypeMigrationService:
         return tuple(ordered_models)
 
     def migrate(self) -> None:
-        tenant_ids = tuple(self._iter_tenant_ids())
+        output = _ThreadSafeLineWriter(self._output)
+        if self._tenant_ids is not None:
+            self._migrate_explicit_tenants(output)
+            return
+
+        self._migrate_tables_with_discovered_tenants(output)
+
+    def _migrate_explicit_tenants(self, output: io.TextIOBase) -> None:
+        tenant_ids = self._tenant_ids
         if not tenant_ids:
             return
 
-        output = _ThreadSafeLineWriter(self._output)
+        self._run_migrations_for_tenants(tenant_ids, self._orm_models, output)
+
+    def _migrate_tables_with_discovered_tenants(self, output: io.TextIOBase) -> None:
+        for orm_model in self._orm_models:
+            tenant_ids = self._load_tenant_ids_for_model(orm_model)
+            if not tenant_ids:
+                continue
+            self._run_migrations_for_tenants(tenant_ids, (orm_model,), output)
+
+    def _run_migrations_for_tenants(
+        self,
+        tenant_ids: Sequence[str],
+        orm_models: Sequence[ORMModel],
+        output: io.TextIOBase,
+    ) -> None:
         if self._concurrency == 1 or len(tenant_ids) == 1:
             for tenant_id in tenant_ids:
-                self._run_tenant_migration(tenant_id, output)
+                self._run_tenant_migration(tenant_id, orm_models, output)
             return
 
         with ThreadPoolExecutor(max_workers=min(self._concurrency, len(tenant_ids))) as executor:
-            futures = [executor.submit(self._run_tenant_migration, tenant_id, output) for tenant_id in tenant_ids]
+            futures = [
+                executor.submit(self._run_tenant_migration, tenant_id, orm_models, output) for tenant_id in tenant_ids
+            ]
             for future in as_completed(futures):
                 future.result()
 
-    def _run_tenant_migration(self, tenant_id: str, output: io.TextIOBase) -> None:
+    def _run_tenant_migration(
+        self,
+        tenant_id: str,
+        orm_models: Sequence[ORMModel],
+        output: io.TextIOBase,
+    ) -> None:
         """
         Execute one tenant migration with the shared, line-synchronized output stream.
         """
@@ -452,18 +510,88 @@ class LegacyModelTypeMigrationService:
             apply=self._apply,
             output=output,
             model_types=self._model_types,
-            orm_models=self._orm_models,
+            orm_models=orm_models,
         ).run()
 
-    def _iter_tenant_ids(self) -> Iterator[str]:
-        if self._tenant_ids is not None:
-            yield from self._tenant_ids
-            return
+    def _load_tenant_ids_for_model(self, orm_model: ORMModel) -> tuple[str, ...]:
+        """
+        Discover only the tenants that have candidate rows for the current table.
 
+        In automatic tenant mode we keep discovery table-scoped so large shared tenant
+        populations do not force empty work for unrelated tables. Most table queries
+        still apply the active `model_types` filter before scheduling migrations, while
+        `load_balancing_model_configs` intentionally trades a wider tenant set for a
+        simpler discovery query.
+        """
+
+        legacy_model_type_values = _selected_legacy_values(self._model_types)
         with _session_factory(self._engine) as session:
-            tenant_ids = session.execute(select(Tenant.id).order_by(Tenant.id.asc())).scalars().all()
+            if orm_model is ProviderModel:
+                tenant_ids = (
+                    session.execute(
+                        select(ProviderModel.tenant_id)
+                        .where(sa.type_coerce(ProviderModel.model_type, sa.String()).in_(legacy_model_type_values))
+                        .distinct()
+                        .order_by(ProviderModel.tenant_id.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+            elif orm_model is TenantDefaultModel:
+                tenant_ids = (
+                    session.execute(
+                        select(TenantDefaultModel.tenant_id)
+                        .where(sa.type_coerce(TenantDefaultModel.model_type, sa.String()).in_(legacy_model_type_values))
+                        .distinct()
+                        .order_by(TenantDefaultModel.tenant_id.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+            elif orm_model is ProviderModelSetting:
+                tenant_ids = (
+                    session.execute(
+                        select(ProviderModelSetting.tenant_id)
+                        .where(
+                            sa.type_coerce(ProviderModelSetting.model_type, sa.String()).in_(legacy_model_type_values)
+                        )
+                        .distinct()
+                        .order_by(ProviderModelSetting.tenant_id.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+            elif orm_model is LoadBalancingModelConfig:
+                # Deliberately discover tenants from the whole table so the query stays
+                # easier to understand than the legacy/canonical mixed-row filter.
+                tenant_ids = (
+                    session.execute(
+                        select(LoadBalancingModelConfig.tenant_id)
+                        .distinct()
+                        .order_by(LoadBalancingModelConfig.tenant_id.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+            elif orm_model is ProviderModelCredential:
+                tenant_ids = (
+                    session.execute(
+                        select(ProviderModelCredential.tenant_id)
+                        .where(
+                            sa.type_coerce(ProviderModelCredential.model_type, sa.String()).in_(
+                                legacy_model_type_values
+                            )
+                        )
+                        .distinct()
+                        .order_by(ProviderModelCredential.tenant_id.asc())
+                    )
+                    .scalars()
+                    .all()
+                )
+            else:
+                raise ValueError(f"unsupported orm model: {orm_model}")
 
-        yield from tenant_ids
+        return tuple(tenant_ids)
 
 
 class Migration:
@@ -532,17 +660,10 @@ class Migration:
         )
 
     def _selected_legacy_values(self) -> list[str]:
-        legacy_values: list[str] = []
-        for model_type in self._model_types:
-            legacy_values.extend(_CANONICAL_TO_LEGACY[model_type])
-        return legacy_values
+        return _selected_legacy_values(self._model_types)
 
     def _selected_model_type_values(self) -> list[str]:
-        model_type_values: list[str] = []
-        for model_type in self._model_types:
-            model_type_values.append(model_type.value)
-            model_type_values.extend(_CANONICAL_TO_LEGACY[model_type])
-        return list(dict.fromkeys(model_type_values))
+        return _selected_model_type_values(self._model_types)
 
     def _allowed_values_for_canonical_model_type(self, canonical_model_type: ModelType) -> tuple[str, ...]:
         return (*_CANONICAL_TO_LEGACY[canonical_model_type], canonical_model_type.value)

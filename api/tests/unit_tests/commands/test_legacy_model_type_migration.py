@@ -17,6 +17,7 @@ from click.testing import CliRunner
 from sqlalchemy.exc import OperationalError
 
 from graphon.model_runtime.entities.model_entities import ModelType
+from models.account import Tenant
 from models.enums import CredentialSourceType
 from models.provider import ProviderModel
 from tests.helpers.legacy_model_type_migration import (
@@ -24,6 +25,7 @@ from tests.helpers.legacy_model_type_migration import (
     LEGACY_TO_CANONICAL,
     assert_tenant_rows_use_only_canonical_model_types,
     count_rows,
+    create_minimal_legacy_model_type_schema,
     fetch_table_rows,
     seed_legacy_model_type_dirty_data,
     snapshot_legacy_model_type_state,
@@ -193,6 +195,18 @@ def _insert_provider_model(
                 "created_at": created_at,
                 "updated_at": updated_at,
             },
+        )
+
+
+def _insert_tenant(engine: sa.Engine, *, tenant_id: str) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            Tenant.__table__.insert().values(
+                id=tenant_id,
+                name=f"Tenant {tenant_id}",
+                plan="basic",
+                status="normal",
+            )
         )
 
 
@@ -509,7 +523,7 @@ def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reve
     migration_module,
     sqlite_engine: sa.Engine,
 ) -> None:
-    seen_runs: list[dict[str, object]] = []
+    seen_runs: list[tuple[str, tuple[str, ...], tuple[ModelType, ...]]] = []
 
     class FakeMigration:
         def __init__(
@@ -522,18 +536,12 @@ def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reve
             model_types: tuple[ModelType, ...],
             orm_models: tuple[type[object], ...],
         ) -> None:
-            seen_runs.append(
-                {
-                    "tenant_id": tenant_id,
-                    "engine": engine,
-                    "apply": apply,
-                    "model_types": model_types,
-                    "table_names": tuple(model.__table__.name for model in orm_models),
-                }
-            )
+            assert engine is sqlite_engine
+            assert apply is False
+            seen_runs.append((tenant_id, tuple(model.__table__.name for model in orm_models), model_types))
 
         def run(self) -> None:
-            seen_runs.append({"run": True})
+            return None
 
     monkeypatch = pytest.MonkeyPatch()
     try:
@@ -542,7 +550,7 @@ def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reve
             engine=sqlite_engine,
             apply=False,
             concurrency=1,
-            tables=("provider_models",),
+            tables=("provider_models", "tenant_default_models"),
             model_types=(ModelType.LLM,),
             tenant_ids=("tenant-alpha", "tenant-beta"),
         )
@@ -551,11 +559,267 @@ def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reve
     finally:
         monkeypatch.undo()
 
-    init_calls = [call for call in seen_runs if "tenant_id" in call]
-    assert [call["tenant_id"] for call in init_calls] == ["tenant-alpha", "tenant-beta"]
-    for call in init_calls:
-        assert tuple(cast(tuple[str, ...], call["table_names"])) == ("provider_models",)
-        assert call["model_types"] == (ModelType.LLM,)
+    assert seen_runs == [
+        ("tenant-alpha", ("provider_models", "tenant_default_models"), (ModelType.LLM,)),
+        ("tenant-beta", ("provider_models", "tenant_default_models"), (ModelType.LLM,)),
+    ]
+
+
+def test_service_migrate_without_tenant_ids_discovers_tenants_per_selected_table_without_querying_tenants(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    create_minimal_legacy_model_type_schema(sqlite_engine)
+    provider_tenant_id = "00000000-0000-0000-0000-000000000111"
+    default_tenant_id = "00000000-0000-0000-0000-000000000222"
+    empty_tenant_id = "00000000-0000-0000-0000-000000000333"
+    for tenant_id in (provider_tenant_id, default_tenant_id, empty_tenant_id):
+        _insert_tenant(sqlite_engine, tenant_id=tenant_id)
+
+    created_at = datetime(2025, 1, 1, 12, 0, 0)
+    updated_at = created_at + timedelta(minutes=1)
+    _insert_provider_model(
+        sqlite_engine,
+        row_id="10000000-0000-0000-0000-000000000111",
+        tenant_id=provider_tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type="text-generation",
+        credential_id=None,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+    _insert_tenant_default_model(
+        sqlite_engine,
+        row_id="20000000-0000-0000-0000-000000000222",
+        tenant_id=default_tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type="text-generation",
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    seen_runs: list[tuple[str, tuple[str, ...], tuple[ModelType, ...]]] = []
+    executed_sql: list[str] = []
+
+    class FakeMigration:
+        def __init__(
+            self,
+            *,
+            tenant_id: str,
+            engine: sa.Engine,
+            apply: bool,
+            output: io.TextIOBase,
+            model_types: tuple[ModelType, ...],
+            orm_models: tuple[type[object], ...],
+        ) -> None:
+            assert engine is sqlite_engine
+            assert apply is False
+            seen_runs.append((tenant_id, tuple(model.__table__.name for model in orm_models), model_types))
+
+        def run(self) -> None:
+            return None
+
+    def _record_sql(
+        conn: sa.engine.Connection,
+        cursor: object,
+        statement: str,
+        parameters: object,
+        context: object,
+        executemany: bool,
+    ) -> None:
+        del conn, cursor, parameters, context, executemany
+        executed_sql.append(statement)
+
+    sa.event.listen(sqlite_engine, "before_cursor_execute", _record_sql)
+    try:
+        monkeypatch.setattr(migration_module, "Migration", FakeMigration)
+        service = migration_module.LegacyModelTypeMigrationService(
+            engine=sqlite_engine,
+            apply=False,
+            tables=("provider_models", "tenant_default_models"),
+            model_types=(ModelType.LLM,),
+        )
+
+        service.migrate()
+    finally:
+        sa.event.remove(sqlite_engine, "before_cursor_execute", _record_sql)
+
+    assert seen_runs == [
+        (provider_tenant_id, ("provider_models",), (ModelType.LLM,)),
+        (default_tenant_id, ("tenant_default_models",), (ModelType.LLM,)),
+    ]
+    normalized_statements = [" ".join(statement.lower().split()) for statement in executed_sql]
+    discovery_statements = [statement for statement in normalized_statements if statement.startswith("select")]
+    table_names = ("provider_models", "tenant_default_models")
+    table_discovery_statements = [
+        statement
+        for statement in discovery_statements
+        if any(f" from {table_name} " in f" {statement} " for table_name in table_names)
+    ]
+
+    assert [statement for statement in discovery_statements if " from tenants " in f" {statement} "] == []
+    assert [statement for statement in discovery_statements if " union " in f" {statement} "] == []
+    assert [
+        next(table_name for table_name in table_names if f" from {table_name} " in f" {statement} ")
+        for statement in table_discovery_statements
+    ] == list(table_names)
+
+
+def test_service_migrate_without_tenant_ids_filters_provider_model_tenants_by_selected_model_types(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    create_minimal_legacy_model_type_schema(sqlite_engine)
+    llm_tenant_id = "00000000-0000-0000-0000-000000000411"
+    embedding_tenant_id = "00000000-0000-0000-0000-000000000422"
+    empty_tenant_id = "00000000-0000-0000-0000-000000000433"
+    for tenant_id in (llm_tenant_id, embedding_tenant_id, empty_tenant_id):
+        _insert_tenant(sqlite_engine, tenant_id=tenant_id)
+
+    created_at = datetime(2025, 1, 2, 12, 0, 0)
+    updated_at = created_at + timedelta(minutes=1)
+    _insert_provider_model(
+        sqlite_engine,
+        row_id="30000000-0000-0000-0000-000000000411",
+        tenant_id=llm_tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type="text-generation",
+        credential_id=None,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+    _insert_provider_model(
+        sqlite_engine,
+        row_id="30000000-0000-0000-0000-000000000422",
+        tenant_id=embedding_tenant_id,
+        provider_name="openai",
+        model_name="text-embedding-3-large",
+        model_type="embeddings",
+        credential_id=None,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    seen_runs: list[tuple[str, tuple[str, ...], tuple[ModelType, ...]]] = []
+
+    class FakeMigration:
+        def __init__(
+            self,
+            *,
+            tenant_id: str,
+            engine: sa.Engine,
+            apply: bool,
+            output: io.TextIOBase,
+            model_types: tuple[ModelType, ...],
+            orm_models: tuple[type[object], ...],
+        ) -> None:
+            assert engine is sqlite_engine
+            assert apply is False
+            seen_runs.append((tenant_id, tuple(model.__table__.name for model in orm_models), model_types))
+
+        def run(self) -> None:
+            return None
+
+    monkeypatch.setattr(migration_module, "Migration", FakeMigration)
+    service = migration_module.LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=False,
+        tables=("provider_models",),
+        model_types=(ModelType.LLM,),
+    )
+
+    service.migrate()
+
+    assert seen_runs == [
+        (llm_tenant_id, ("provider_models",), (ModelType.LLM,)),
+    ]
+
+
+def test_service_migrate_without_tenant_ids_discovers_all_load_balancing_tenants_for_simpler_table_scoped_query(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    create_minimal_legacy_model_type_schema(sqlite_engine)
+    inherit_llm_tenant_id = "00000000-0000-0000-0000-000000000511"
+    inherit_embedding_tenant_id = "00000000-0000-0000-0000-000000000522"
+    empty_tenant_id = "00000000-0000-0000-0000-000000000533"
+    for tenant_id in (inherit_llm_tenant_id, inherit_embedding_tenant_id, empty_tenant_id):
+        _insert_tenant(sqlite_engine, tenant_id=tenant_id)
+
+    created_at = datetime(2025, 1, 3, 12, 0, 0)
+    updated_at = created_at + timedelta(minutes=1)
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id="40000000-0000-0000-0000-000000000511",
+        tenant_id=inherit_llm_tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM.value,
+        name="__inherit__",
+        encrypted_config=json.dumps({"api_key": "inherit-llm"}),
+        credential_id="50000000-0000-0000-0000-000000000511",
+        enabled=True,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id="40000000-0000-0000-0000-000000000522",
+        tenant_id=inherit_embedding_tenant_id,
+        provider_name="openai",
+        model_name="text-embedding-3-large",
+        model_type=ModelType.TEXT_EMBEDDING.value,
+        name="__inherit__",
+        encrypted_config=json.dumps({"api_key": "inherit-embedding"}),
+        credential_id="50000000-0000-0000-0000-000000000522",
+        enabled=True,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    seen_runs: list[tuple[str, tuple[str, ...], tuple[ModelType, ...]]] = []
+
+    class FakeMigration:
+        def __init__(
+            self,
+            *,
+            tenant_id: str,
+            engine: sa.Engine,
+            apply: bool,
+            output: io.TextIOBase,
+            model_types: tuple[ModelType, ...],
+            orm_models: tuple[type[object], ...],
+        ) -> None:
+            assert engine is sqlite_engine
+            assert apply is False
+            seen_runs.append((tenant_id, tuple(model.__table__.name for model in orm_models), model_types))
+
+        def run(self) -> None:
+            return None
+
+    monkeypatch.setattr(migration_module, "Migration", FakeMigration)
+    # Load-balancing tenant discovery is a deliberate exception: it scans the
+    # whole table so the discovery query stays easy to understand, even when
+    # the scheduled tenant set is wider than the selected model types.
+    service = migration_module.LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=False,
+        tables=("load_balancing_model_configs",),
+        model_types=(ModelType.LLM,),
+    )
+
+    service.migrate()
+
+    assert seen_runs == [
+        (inherit_llm_tenant_id, ("load_balancing_model_configs",), (ModelType.LLM,)),
+        (inherit_embedding_tenant_id, ("load_balancing_model_configs",), (ModelType.LLM,)),
+    ]
 
 
 def test_service_migrate_with_concurrency_greater_than_one_runs_tenants_in_parallel_without_changing_migration_scope(
