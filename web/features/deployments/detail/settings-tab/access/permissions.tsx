@@ -273,41 +273,39 @@ function SubjectPicker({
       onInputValueChange={handleInputValueChange}
       onValueChange={handleValueChange}
     >
-      <ComboboxInputGroup className="h-auto min-h-8 w-full max-w-full overflow-hidden py-1 pr-1">
-        <ComboboxValue>
-          {(selectedValue: SelectableAccessSubject[]) => (
-            <>
-              {selectedValue.length > 0 && (
-                <ComboboxChips className="flex-nowrap overflow-hidden">
-                  {selectedValue.map(subject => (
-                    <ComboboxChip
-                      key={subjectKey(subject)}
-                      className="shrink-0 rounded-full border border-divider-subtle bg-components-badge-white-to-dark"
+      <ComboboxInputGroup className="h-auto min-h-8 w-full max-w-full items-start overflow-hidden py-1 pr-1">
+        <ComboboxChips>
+          <ComboboxValue>
+            {(selectedValue: SelectableAccessSubject[]) => (
+              <>
+                {selectedValue.map(subject => (
+                  <ComboboxChip
+                    key={subjectKey(subject)}
+                    className="shrink-0 cursor-default rounded-full border border-divider-subtle bg-components-badge-white-to-dark select-none"
+                  >
+                    <SubjectIcon subject={subject} />
+                    <span className="max-w-32 truncate">{getSubjectLabel(subject)}</span>
+                    {subject.subjectType === SUBJECT_TYPE_GROUP && subject.memberCount != null && (
+                      <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
+                    )}
+                    <ComboboxChipRemove
+                      disabled={disabled || selectedSubjects.length <= 1}
+                      aria-label={t('operation.remove', { ns: 'common' })}
                     >
-                      <SubjectIcon subject={subject} />
-                      <span className="max-w-32 truncate">{getSubjectLabel(subject)}</span>
-                      {subject.subjectType === SUBJECT_TYPE_GROUP && subject.memberCount != null && (
-                        <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
-                      )}
-                      <ComboboxChipRemove
-                        disabled={disabled || selectedSubjects.length <= 1}
-                        aria-label={t('operation.remove', { ns: 'common' })}
-                      >
-                        <span className="i-ri-close-circle-fill size-3.5" aria-hidden="true" />
-                      </ComboboxChipRemove>
-                    </ComboboxChip>
-                  ))}
-                </ComboboxChips>
-              )}
-              <ComboboxInput
-                aria-label={t('access.members.pickPlaceholder')}
-                placeholder={selectedValue.length ? '' : t('access.members.pickPlaceholder')}
-                className={cn('px-2 py-0 system-sm-medium', selectedValue.length ? 'min-w-16' : 'min-w-0')}
-              />
-            </>
-          )}
-        </ComboboxValue>
-        <ComboboxInputTrigger />
+                      <span className="i-ri-close-circle-fill size-3.5" aria-hidden="true" />
+                    </ComboboxChipRemove>
+                  </ComboboxChip>
+                ))}
+                <ComboboxInput
+                  aria-label={t('access.members.pickPlaceholder')}
+                  placeholder={selectedValue.length ? '' : t('access.members.pickPlaceholder')}
+                  className={cn('px-1 py-0.5 system-sm-medium', selectedValue.length ? 'min-w-16' : 'min-w-0')}
+                />
+              </>
+            )}
+          </ComboboxValue>
+        </ComboboxChips>
+        <ComboboxInputTrigger className="mt-0.5" />
       </ComboboxInputGroup>
       <ComboboxContent popupClassName="w-(--anchor-width) min-w-90 p-0">
         {subjectsQuery.isLoading
