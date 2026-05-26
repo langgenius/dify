@@ -165,8 +165,8 @@ const Item = ({
         showSwitchAwayHint
           ? (
             <Tooltip popupContent={t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}>
-              <div className="ml-2 shrink-0 cursor-help system-xs-regular text-text-tertiary">
-                {t('auth.onlyAtCreationHint', { ns: 'plugin' })}
+              <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
+                <RiInformationLine className="h-4 w-4" />
               </div>
             </Tooltip>
           )
