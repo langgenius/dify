@@ -255,11 +255,43 @@ class TestBillingResourceLimits:
         with patch(
             "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
         ):
-            with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
+            with patch(
+                "controllers.console.wraps.FeatureService.get_features", return_value=mock_features
+            ) as get_features:
                 result = add_member()
 
         # Assert
         assert result == "member_added"
+        get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    def test_should_load_vector_space_from_dedicated_quota_api(self):
+        """Test vector-space limit checks avoid loading the full feature payload."""
+        # Arrange
+        mock_vector_space = MagicMock()
+        mock_vector_space.limit = 10
+        mock_vector_space.size = 5
+
+        @cloud_edition_billing_resource_check("vector_space")
+        def add_segment():
+            return "segment_added"
+
+        # Act
+        with patch(
+            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
+        ):
+            with (
+                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True),
+                patch(
+                    "controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space
+                ) as get_vector_space,
+                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
+            ):
+                result = add_segment()
+
+        # Assert
+        assert result == "segment_added"
+        get_vector_space.assert_called_once_with("tenant123")
+        get_features.assert_not_called()
 
     def test_should_reject_when_over_resource_limit(self):
         """Test that requests are rejected when over resource limits"""
