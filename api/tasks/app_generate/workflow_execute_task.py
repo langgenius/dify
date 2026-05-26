@@ -162,12 +162,18 @@ class _AppRunner:
         user = self._resolve_user()
 
         with self._setup_flask_context(user):
-            response = self._run_app(
-                app=app,
-                workflow=workflow,
-                user=user,
-                pause_state_config=pause_config,
-            )
+            try:
+                response = self._run_app(
+                    app=app,
+                    workflow=workflow,
+                    user=user,
+                    pause_state_config=pause_config,
+                )
+            except Exception as exc:
+                if exec_params.streaming:
+                    _publish_error_event(exc, exec_params.workflow_run_id, exec_params.app_mode)
+                raise
+
             if not exec_params.streaming:
                 return response
 
@@ -236,6 +242,12 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
         return user
 
     return session.get(EndUser, workflow_run.created_by)
+
+
+def _publish_error_event(exc: Exception, workflow_run_id: str, app_mode: AppMode) -> None:
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
+    payload = json.dumps({"event": "error", "message": str(exc), "status": 500})
+    topic.publish(payload.encode())
 
 
 def _publish_streaming_response(
