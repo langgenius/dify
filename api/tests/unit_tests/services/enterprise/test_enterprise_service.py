@@ -188,6 +188,31 @@ class TestWebAppAuth:
 
         req.send_request.assert_called_once_with("DELETE", "/webapp/clean", params={"appId": "a1"})
 
+    def test_list_externally_accessible_apps_minimal_call(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": [], "total": 0, "hasMore": False}
+            result = EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=1, limit=10)
+
+        assert result == {"data": [], "total": 0, "hasMore": False}
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 1, "limit": 10},
+            timeout=5.0,
+        )
+
+    def test_list_externally_accessible_apps_with_filters(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": [], "total": 0, "hasMore": False}
+            EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=2, limit=5, mode="workflow", name="alpha")
+
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 2, "limit": 5, "mode": "workflow", "name": "alpha"},
+            timeout=5.0,
+        )
+
 
 class TestJoinDefaultWorkspace:
     def test_join_default_workspace_success(self):

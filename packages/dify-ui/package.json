@@ -176,6 +176,7 @@
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
     "playwright": "catalog:",

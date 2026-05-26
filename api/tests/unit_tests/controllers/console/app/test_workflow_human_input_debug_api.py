@@ -44,7 +44,7 @@ def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app
     monkeypatch.delenv("INIT_PASSWORD", raising=False)
 
     # Avoid hitting the database when resolving the app model
-    monkeypatch.setattr(app_wraps, "_load_app_model", lambda _app_id: app_model)
+    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
 
 
 @dataclass

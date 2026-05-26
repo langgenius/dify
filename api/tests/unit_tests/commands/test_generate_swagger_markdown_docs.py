@@ -56,6 +56,7 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
         "console-swagger.md",
         "web-swagger.md",
         "service-swagger.md",
+        "openapi-swagger.md",
     ]
     assert not stale_combined_doc.exists()
     assert not list(swagger_dir.glob("*.json"))

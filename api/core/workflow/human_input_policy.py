@@ -11,13 +11,15 @@ from models.human_input import RecipientType
 class HumanInputSurface(StrEnum):
     SERVICE_API = "service_api"
     CONSOLE = "console"
+    OPENAPI = "openapi"
 
 
-# Service API is intentionally narrower than other surfaces: app-token callers
+# SERVICE_API and OPENAPI are intentionally narrower than CONSOLE: token callers
 # should only be able to act on end-user web forms, not internal console flows.
 _ALLOWED_RECIPIENT_TYPES_BY_SURFACE: dict[HumanInputSurface, frozenset[RecipientType]] = {
     HumanInputSurface.SERVICE_API: frozenset({RecipientType.STANDALONE_WEB_APP}),
     HumanInputSurface.CONSOLE: frozenset({RecipientType.CONSOLE, RecipientType.BACKSTAGE}),
+    HumanInputSurface.OPENAPI: frozenset({RecipientType.STANDALONE_WEB_APP}),
 }
 
 # A single HITL form can have multiple recipient records; this shared priority
