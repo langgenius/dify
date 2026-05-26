@@ -123,6 +123,37 @@ def _tenant(tenant_id: str = "ws-1") -> SimpleNamespace:
     )
 
 
+def _tenant_service(**overrides) -> SimpleNamespace:
+    """TenantService double for the workspaces module.
+
+    Read getters (`get_tenant_by_id`, `find_workspace_for_account`) delegate
+    to the session they're handed, so tests keep driving entity loads through
+    ``mock_db.session.get`` / ``.execute`` and their existing side_effect
+    ordering — the SQL those methods run is covered in test_account_service.py.
+    Domain mutators default to no-op Mocks; override per test as needed.
+    """
+    methods: dict = {
+        "switch_tenant": Mock(),
+        "get_tenant_members": Mock(return_value=[]),
+        "remove_member_from_tenant": Mock(),
+        "update_member_role": Mock(),
+        "get_tenant_by_id": lambda session, tenant_id: session.get(None, tenant_id),
+        "find_workspace_for_account": lambda session, account_id, workspace_id: session.execute(None).first(),
+    }
+    methods.update(overrides)
+    return SimpleNamespace(**methods)
+
+
+def _account_service(**overrides) -> SimpleNamespace:
+    """AccountService double; ``get_account_by_id`` delegates to the injected
+    session (see :func:`_tenant_service`)."""
+    methods: dict = {
+        "get_account_by_id": lambda session, account_id: session.get(None, account_id),
+    }
+    methods.update(overrides)
+    return SimpleNamespace(**methods)
+
+
 # ---------------------------------------------------------------------------
 # Route registration
 # ---------------------------------------------------------------------------
@@ -219,12 +250,7 @@ def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline,
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=switch_mock,
-            get_tenant_members=Mock(return_value=[]),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(switch_tenant=switch_mock),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -251,12 +277,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pip
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(side_effect=AccountNotLinkTenantError("…")),
-            get_tenant_members=Mock(),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(switch_tenant=Mock(side_effect=AccountNotLinkTenantError("…"))),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -291,12 +312,7 @@ def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch)
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(return_value=[member]),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(get_tenant_members=Mock(return_value=[member])),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -338,12 +354,7 @@ def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypa
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(return_value=members),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(get_tenant_members=Mock(return_value=members)),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -399,7 +410,7 @@ def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "AccountService",
-        SimpleNamespace(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
+        _account_service(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -569,7 +580,7 @@ def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypa
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "AccountService",
-        SimpleNamespace(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
+        _account_service(get_account_by_email_with_case_fallback=Mock(return_value=invited)),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
     monkeypatch.setattr(
@@ -633,12 +644,7 @@ def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch):
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(),
-            remove_member_from_tenant=remove_mock,
-            update_member_role=Mock(),
-        ),
+        _tenant_service(remove_member_from_tenant=remove_mock),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -681,12 +687,7 @@ def test_delete_member_exception_mapping(app, bypass_pipeline, monkeypatch, exc,
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(),
-            remove_member_from_tenant=Mock(side_effect=exc),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(remove_member_from_tenant=Mock(side_effect=exc)),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -750,12 +751,7 @@ def test_update_role_happy_path(app, bypass_pipeline, monkeypatch):
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(),
-            remove_member_from_tenant=Mock(),
-            update_member_role=update_mock,
-        ),
+        _tenant_service(update_member_role=update_mock),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -802,12 +798,7 @@ def test_update_role_exception_mapping(app, bypass_pipeline, monkeypatch, exc, e
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(side_effect=exc),
-        ),
+        _tenant_service(update_member_role=Mock(side_effect=exc)),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -846,12 +837,7 @@ def test_non_member_caller_gets_404_on_switch(app, bypass_pipeline, monkeypatch)
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=switch_mock,
-            get_tenant_members=Mock(),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(switch_tenant=switch_mock),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
     monkeypatch.setattr(sys.modules["controllers.openapi.auth.role_gate"], "db", mock_db)
@@ -888,12 +874,7 @@ def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatc
     monkeypatch.setattr(
         sys.modules["controllers.openapi.workspaces"],
         "TenantService",
-        SimpleNamespace(
-            switch_tenant=Mock(),
-            get_tenant_members=Mock(return_value=[]),
-            remove_member_from_tenant=Mock(),
-            update_member_role=Mock(),
-        ),
+        _tenant_service(),
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 

@@ -18,7 +18,6 @@ from urllib import parse
 from flask import jsonify, make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
@@ -85,7 +84,7 @@ def _member_response(account: Account) -> MemberResponse:
 
 
 def _load_tenant(workspace_id: str) -> Tenant:
-    tenant = db.session.get(Tenant, workspace_id)
+    tenant = TenantService.get_tenant_by_id(db.session, workspace_id)
     if tenant is None or tenant.status != TenantStatus.NORMAL:
         raise NotFound("workspace not found")
     return tenant
@@ -93,7 +92,7 @@ def _load_tenant(workspace_id: str) -> Tenant:
 
 def _load_account(account_id: object) -> Account:
     """Load the caller's Account. Missing == auth wiring bug, not user error."""
-    account = db.session.get(Account, str(account_id)) if account_id else None
+    account = AccountService.get_account_by_id(db.session, str(account_id)) if account_id else None
     if account is None:
         raise RuntimeError("authenticated account_id has no Account row")
     return account
@@ -200,14 +199,7 @@ class WorkspaceSwitchApi(Resource):
             # the row was just removed — treat as not-found.
             raise NotFound("workspace not found")
 
-        row = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-            .where(
-                Tenant.id == workspace_id,
-                TenantAccountJoin.account_id == str(ctx.account_id),
-            )
-        ).first()
+        row = TenantService.find_workspace_for_account(db.session, str(ctx.account_id), workspace_id)
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
@@ -312,7 +304,7 @@ class WorkspaceMemberApi(Resource):
         ctx = get_auth_ctx()
         operator = _load_account(ctx.account_id)
         tenant = _load_tenant(workspace_id)
-        member = db.session.get(Account, member_id)
+        member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
             raise NotFound("member not found")
 
@@ -346,7 +338,7 @@ class WorkspaceMemberRoleApi(Resource):
         ctx = get_auth_ctx()
         operator = _load_account(ctx.account_id)
         tenant = _load_tenant(workspace_id)
-        member = db.session.get(Account, member_id)
+        member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
             raise NotFound("member not found")
 
