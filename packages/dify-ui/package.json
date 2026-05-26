@@ -129,6 +129,10 @@
       "types": "./src/tabs/index.tsx",
       "import": "./src/tabs/index.tsx"
     },
+    "./textarea": {
+      "types": "./src/textarea/index.tsx",
+      "import": "./src/textarea/index.tsx"
+    },
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"
@@ -172,6 +176,7 @@
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
     "playwright": "catalog:",
