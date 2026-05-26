@@ -42,6 +42,7 @@ export function Section({
   tone = 'default',
   showDivider = true,
 }: SectionProps) {
+  const hasAction = Boolean(action)
   const titleClassName = cn(
     'system-sm-semibold',
     tone === 'destructive'
@@ -70,7 +71,7 @@ export function Section({
             )}
           </div>
           <div className="min-w-0 grow">
-            {action
+            {hasAction
               ? (
                   <div className="flex min-w-0 items-start gap-3">
                     <div className="min-w-0 grow">
@@ -95,7 +96,7 @@ export function Section({
           <div className={titleClassName}>
             {title}
           </div>
-          {action && (
+          {hasAction && (
             <div className="shrink-0">
               {action}
             </div>
