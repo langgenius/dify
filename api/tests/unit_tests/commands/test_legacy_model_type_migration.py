@@ -235,7 +235,7 @@ def _insert_provider_model_setting(
                         :id, :tenant_id, :provider_name, :model_name, :model_type,
                         :enabled, :load_balancing_enabled,
                         :created_at, :updated_at
-                    p)
+                    )
                 """
             ),
             {
