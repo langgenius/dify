@@ -232,7 +232,9 @@ function AccessSubjectCombobox({
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const debouncedKeyword = useDebounce(keyword, { wait: ACCESS_SUBJECT_SEARCH_DEBOUNCE })
+  const trimmedKeyword = keyword.trim()
   const searchKeyword = debouncedKeyword.trim()
+  const isSearchDebouncing = trimmedKeyword !== searchKeyword
   const isInteractionDisabled = Boolean(disabled || loading)
   const subjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
     input: {
@@ -244,13 +246,17 @@ function AccessSubjectCombobox({
     },
     enabled: open && !isInteractionDisabled,
   }))
-  const subjects = subjectsQuery.data?.subjects
-    ?.map(normalizeSubject)
-    .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
+  const subjects = isSearchDebouncing
+    ? []
+    : subjectsQuery.data?.subjects
+      ?.map(normalizeSubject)
+      .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
   const selectedItems = selectedSubjects.filter(selectedSubject =>
     !subjects.some(subject => isSameSubject(subject, selectedSubject)),
   )
-  const items = [...selectedItems, ...subjects]
+  const items = [...subjects, ...selectedItems]
+  const isResultLoading = subjectsQuery.isLoading || isSearchDebouncing
+  const shouldShowEmpty = !isResultLoading && !subjectsQuery.isError && subjects.length === 0
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && isInteractionDisabled)
@@ -267,8 +273,6 @@ function AccessSubjectCombobox({
 
   const handleValueChange = (nextSubjects: SelectableAccessSubject[]) => {
     if (isInteractionDisabled)
-      return
-    if (nextSubjects.length === 0)
       return
 
     setKeyword('')
@@ -307,7 +311,7 @@ function AccessSubjectCombobox({
                       <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
                     )}
                     <ComboboxChipRemove
-                      disabled={isInteractionDisabled || selectedSubjects.length <= 1}
+                      disabled={isInteractionDisabled}
                       aria-label={t('operation.remove', { ns: 'common' })}
                     >
                       <span className="i-ri-close-circle-fill size-3.5" aria-hidden="true" />
@@ -340,11 +344,11 @@ function AccessSubjectCombobox({
       <ComboboxContent
         popupClassName="max-w-none p-0 aria-disabled:pointer-events-none"
         popupProps={{
-          'aria-busy': subjectsQuery.isFetching || undefined,
+          'aria-busy': subjectsQuery.isFetching || isSearchDebouncing || undefined,
           'aria-disabled': isInteractionDisabled || undefined,
         }}
       >
-        {subjectsQuery.isLoading
+        {isResultLoading
           ? (
               <ComboboxStatus className="flex flex-col gap-2 px-3 py-3">
                 {SUBJECT_PICKER_SKELETON_KEYS.map(key => (
@@ -381,9 +385,19 @@ function AccessSubjectCombobox({
                     </ComboboxItem>
                   ))}
                 </ComboboxList>
-                <ComboboxEmpty className="px-3 py-5 text-center system-xs-regular">
-                  {t('access.members.empty')}
-                </ComboboxEmpty>
+                {shouldShowEmpty && (
+                  selectedItems.length > 0
+                    ? (
+                        <ComboboxStatus className="px-3 py-5 text-center system-xs-regular">
+                          {t('access.members.empty')}
+                        </ComboboxStatus>
+                      )
+                    : (
+                        <ComboboxEmpty className="px-3 py-5 text-center system-xs-regular">
+                          {t('access.members.empty')}
+                        </ComboboxEmpty>
+                      )
+                )}
               </>
             )}
       </ComboboxContent>
@@ -492,8 +506,6 @@ export function EnvironmentPermissionRow({
   }
 
   const handleSubjectsChange = (nextSubjects: SelectableAccessSubject[]) => {
-    if (nextSubjects.length === 0)
-      return
     setDraft({
       fingerprint: policyFingerprint,
       kind: 'specific',
