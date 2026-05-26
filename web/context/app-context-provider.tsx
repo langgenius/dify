@@ -23,6 +23,7 @@ import {
   useLangGeniusVersion,
   userProfileQueryOptions,
 } from '@/service/use-common'
+import { setCurrentWorkspaceId } from '@/service/workspace-id-header'
 
 type AppContextProviderProps = {
   children: ReactNode
@@ -115,6 +116,10 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }
   }, [currentWorkspace?.id])
   // #endregion Zendesk conversation fields
+
+  useEffect(() => {
+    setCurrentWorkspaceId(currentWorkspace.id)
+  }, [currentWorkspace.id])
 
   useEffect(() => {
     // Report user and workspace info to Amplitude when loaded

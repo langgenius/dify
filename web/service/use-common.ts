@@ -22,6 +22,7 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
+import { setCurrentWorkspaceId } from './workspace-id-header'
 
 /**
  * True iff `err` is a 401 Response thrown by `service/base.ts`.
@@ -125,7 +126,11 @@ export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: b
 export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
-    queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
+    queryFn: async () => {
+      const currentWorkspace = await post<ICurrentWorkspace>('/workspaces/current')
+      setCurrentWorkspaceId(currentWorkspace.id)
+      return currentWorkspace
+    },
   })
 }
 
