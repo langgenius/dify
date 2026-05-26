@@ -1,7 +1,7 @@
 import io
 import os
 import sys
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import cast
 
@@ -145,8 +145,9 @@ def legacy_model_types(
     )
     tenant_ids = load_tenant_ids_from_file(tenant_id_file) if tenant_id_file else None
 
+    output_context: AbstractContextManager[io.TextIOBase]
     if output is None:
-        output_context = nullcontext(sys.stdout)
+        output_context = nullcontext(cast(io.TextIOBase, sys.stdout))
     else:
         try:
             output_context = output.open("w", encoding="utf-8")
