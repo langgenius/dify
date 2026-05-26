@@ -2,11 +2,11 @@ import type {
   Node,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import type {
   VarGroupItem,
   VariableAssignerNodeType,
-} from '@/app/components/workflow/nodes/variable-assigner/types'
+} from '../../nodes/variable-assigner/types'
 import { uniqBy } from 'es-toolkit/compat'
 
 import { produce } from 'immer'
@@ -20,8 +20,8 @@ import {
   useNodeDataUpdate,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks/index'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
+} from '../../hooks/index'
+import { useWorkflowStore } from '../../store/index'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()

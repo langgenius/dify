@@ -1,10 +1,10 @@
-import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { DefaultValueForm } from '../../../../nodes/_base/components/error-handle/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { VarType } from '@/app/components/workflow/types'
+import CodeEditor from '../../../../nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '../../../../nodes/code/types'
+import { VarType } from '../../../../types'
 
 type DefaultValueProps = {
   forms: DefaultValueForm[]

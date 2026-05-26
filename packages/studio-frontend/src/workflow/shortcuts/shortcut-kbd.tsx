@@ -1,8 +1,8 @@
 import type { FormatDisplayOptions, RegisterableHotkey } from '@tanstack/react-hotkeys'
-import type { WorkflowShortcutId } from '@/app/components/workflow/shortcuts/definitions'
+import type { WorkflowShortcutId } from '../shortcuts/definitions'
 import { cn } from '@langgenius/dify-ui/cn'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { getWorkflowShortcutDisplayHotkey } from '@/app/components/workflow/shortcuts/definitions'
+import { getWorkflowShortcutDisplayHotkey } from '../shortcuts/definitions'
 
 type ShortcutKbdProps = {
   shortcut?: WorkflowShortcutId

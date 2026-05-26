@@ -1,4 +1,4 @@
-import type { NavIcon } from '@/app/components/app-sidebar/nav-link/index'
+import type { NavIcon } from './nav-link/index'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -20,8 +20,8 @@ import AppIcon from '@/app/components/base/app-icon/index'
 import Divider from '@/app/components/base/divider/index'
 import Effect from '@/app/components/base/effect/index'
 import ExtraInfo from '@/app/components/datasets/extra-info/index'
-import Dropdown from '@/app/components/app-sidebar/dataset-info/dropdown'
-import NavLink from '@/app/components/app-sidebar/nav-link/index'
+import Dropdown from './dataset-info/dropdown'
+import NavLink from './nav-link/index'
 
 type DatasetSidebarDropdownProps = {
   navigation: Array<{

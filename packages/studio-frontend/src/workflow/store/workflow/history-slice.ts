@@ -1,9 +1,9 @@
 import type { StateCreator } from 'zustand'
-import type { WorkflowHistoryEventT } from '@/app/components/workflow/hooks/use-workflow-history'
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { WorkflowHistoryEventT } from '../../hooks/use-workflow-history'
+import type { Edge, Node } from '../../types'
 import type {
   HistoryWorkflowData,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import type {
   VersionHistory,
 } from '@/types/workflow'

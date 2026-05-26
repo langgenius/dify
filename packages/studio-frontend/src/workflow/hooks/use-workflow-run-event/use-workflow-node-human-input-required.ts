@@ -4,8 +4,8 @@ import { useCallback } from 'react'
 import {
   useStoreApi,
 } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowStore } from '../../store'
+import { NodeRunningStatus } from '../../types'
 
 export const useWorkflowNodeHumanInputRequired = () => {
   const store = useStoreApi()

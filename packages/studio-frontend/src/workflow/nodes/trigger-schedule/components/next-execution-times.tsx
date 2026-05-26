@@ -1,7 +1,7 @@
-import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { ScheduleTriggerNodeType } from '../../../nodes/trigger-schedule/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { getFormattedExecutionTimes } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
+import { getFormattedExecutionTimes } from '../../../nodes/trigger-schedule/utils/execution-time-calculator'
 
 type NextExecutionTimesProps = {
   data: ScheduleTriggerNodeType

@@ -1,7 +1,7 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type {
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill } from '@remixicon/react'
 import {
@@ -11,10 +11,10 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import BlockSelector from '@/app/components/workflow/block-selector'
+import BlockSelector from '../block-selector'
 import {
   BlockEnum,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { FlowType } from '@/types/common'
 import {
   useAvailableBlocks,
@@ -22,14 +22,14 @@ import {
   useNodesMetaData,
   useNodesReadOnly,
   usePanelInteractions,
-} from '@/app/components/workflow/hooks/index'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
+} from '../hooks/index'
+import { useHooksStore } from '../hooks-store/index'
+import { useWorkflowStore } from '../store/index'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
-} from '@/app/components/workflow/utils/index'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
+} from '../utils/index'
+import TipPopup from '../operator/tip-popup'
 
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode

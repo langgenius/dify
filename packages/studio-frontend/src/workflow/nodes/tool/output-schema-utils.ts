@@ -1,6 +1,6 @@
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import { VarType } from '@/app/components/workflow/types'
-import { getMatchedSchemaType } from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
+import { VarType } from '../../types'
+import { getMatchedSchemaType } from '../../nodes/_base/components/variable/use-match-schema-type'
 
 /**
  * Workflow-as-tool and some internal APIs store Dify VarType strings (e.g. `array[string]`)

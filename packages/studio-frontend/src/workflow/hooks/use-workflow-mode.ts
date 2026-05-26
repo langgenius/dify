@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useStore } from '@/app/components/workflow/store/index'
+import { useStore } from '../store/index'
 
 export const useWorkflowMode = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)

@@ -1,8 +1,8 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { DocExtractorNodeType } from '@/app/components/workflow/nodes/document-extractor/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
+import type { NodeDefault } from '../../types'
+import type { DocExtractorNodeType } from '../../nodes/document-extractor/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
 
 const i18nPrefix = 'errorMsg'
 

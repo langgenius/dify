@@ -1,4 +1,4 @@
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../../types'
 
 // Constants for better maintainability and reusability
 const BASIC_TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.object, VarType.file] as const

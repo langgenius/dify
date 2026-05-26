@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore } from '../store'
 import useTheme from '@/hooks/use-theme'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {

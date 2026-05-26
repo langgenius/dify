@@ -1,9 +1,9 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { NodeDefault } from '../../types'
+import type { CodeNodeType } from '../../nodes/code/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+import { CodeLanguage } from '../../nodes/code/types'
 
 const i18nPrefix = 'errorMsg'
 

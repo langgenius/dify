@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
-import CSVDownloader from '@/app/components/app/annotation/batch-add-annotation-modal/csv-downloader'
-import CSVUploader from '@/app/components/app/annotation/batch-add-annotation-modal/csv-uploader'
+import CSVDownloader from '../../annotation/batch-add-annotation-modal/csv-downloader'
+import CSVUploader from '../../annotation/batch-add-annotation-modal/csv-uploader'
 
 export enum ProcessStatus {
   WAITING = 'waiting',

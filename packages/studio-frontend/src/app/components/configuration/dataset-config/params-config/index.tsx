@@ -17,7 +17,7 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import ConfigContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
+import ConfigContent from '../../../configuration/dataset-config/params-config/config-content'
 
 type ParamsConfigProps = {
   disabled?: boolean

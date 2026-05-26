@@ -1,4 +1,4 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../types'
 
 export const NoteTheme = {
   blue: 'blue',

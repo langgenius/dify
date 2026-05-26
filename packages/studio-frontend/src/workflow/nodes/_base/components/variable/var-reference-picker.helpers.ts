@@ -1,10 +1,10 @@
 'use client'
 
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { VarType as VarKindType } from '../../../../nodes/tool/types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CommonNodeType, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
-import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
-import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import type { CommonNodeType, Node, NodeOutPutVar, ValueSelector } from '../../../../types'
+import { VAR_SHOW_NAME_MAP } from '../../../../constants'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '../../../../nodes/_base/components/variable/utils'
 
 type DynamicSchemaParams = {
   dynamicOptions: FormOption[] | null

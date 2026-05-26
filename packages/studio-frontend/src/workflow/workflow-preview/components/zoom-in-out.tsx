@@ -16,8 +16,8 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+import TipPopup from '../../operator/tip-popup'
+import { ShortcutKbd } from '../../shortcuts/shortcut-kbd'
 
 const ZoomType = {
   zoomToFit: 'zoomToFit',

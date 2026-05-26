@@ -8,10 +8,10 @@ import {
   getBezierPath,
   Position,
 } from 'reactflow'
-import CustomEdgeLinearGradientRender from '@/app/components/workflow/custom-edge-linear-gradient-render'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { getEdgeColor } from '@/app/components/workflow/utils'
+import CustomEdgeLinearGradientRender from '../../custom-edge-linear-gradient-render'
+import { ErrorHandleTypeEnum } from '../../nodes/_base/components/error-handle/types'
+import { NodeRunningStatus } from '../../types'
+import { getEdgeColor } from '../../utils'
 
 const CustomEdge = ({
   id,

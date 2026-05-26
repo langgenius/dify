@@ -1,17 +1,17 @@
 import type { FC } from 'react'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../types'
+import { EVENT_WORKFLOW_STOP } from '../variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import useCurrentVars from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useStore } from '@/app/components/workflow/store/index'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import { useStore } from '../store/index'
 
 const VariableInspectTrigger: FC = () => {
   const { t } = useTranslation()

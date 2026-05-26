@@ -1,4 +1,4 @@
-import type { Recipient as RecipientItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { Recipient as RecipientItem } from '../../../../../nodes/human-input/types'
 import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -8,8 +8,8 @@ import {
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import EmailItem from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-item'
-import MemberList from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list'
+import EmailItem from '../../../../../nodes/human-input/components/delivery-method/recipient/email-item'
+import MemberList from '../../../../../nodes/human-input/components/delivery-method/recipient/member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 

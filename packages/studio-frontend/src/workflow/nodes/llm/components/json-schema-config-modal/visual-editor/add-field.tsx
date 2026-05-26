@@ -3,8 +3,8 @@ import { RiAddCircleFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMittContext } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
-import { useVisualEditorStore } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/store'
+import { useMittContext } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import { useVisualEditorStore } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/store'
 
 const AddField = () => {
   const { t } = useTranslation()

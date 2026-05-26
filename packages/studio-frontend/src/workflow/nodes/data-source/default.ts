@@ -1,14 +1,14 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { getMatchedSchemaType } from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
+import type { NodeDefault } from '../../types'
+import type { DataSourceNodeType } from '../../nodes/data-source/types'
+import { VarType as VarKindType } from '../../nodes/tool/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+import { getMatchedSchemaType } from '../../nodes/_base/components/variable/use-match-schema-type'
 import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
-} from '@/app/components/workflow/nodes/data-source/constants'
-import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
+} from '../../nodes/data-source/constants'
+import { DataSourceClassification } from '../../nodes/data-source/types'
 
 const i18nPrefix = 'errorMsg'
 

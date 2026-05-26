@@ -1,5 +1,5 @@
-import type { Operation } from '@/app/components/app-sidebar/app-info/app-operations'
-import type { AppInfoModalType } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
+import type { Operation } from '../app-info/app-operations'
+import type { AppInfoModalType } from '../app-info/use-app-info-actions'
 import type { App, AppSSO } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -16,9 +16,9 @@ import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import { AppModeEnum } from '@/types/app'
 import AppIcon from '@/app/components/base/app-icon/index'
-import { AppInfoDetailDrawer } from '@/app/components/app-sidebar/app-info/app-info-detail-drawer'
-import { getAppModeLabel } from '@/app/components/app-sidebar/app-info/app-mode-labels'
-import AppOperations from '@/app/components/app-sidebar/app-info/app-operations'
+import { AppInfoDetailDrawer } from '../app-info/app-info-detail-drawer'
+import { getAppModeLabel } from '../app-info/app-mode-labels'
+import AppOperations from '../app-info/app-operations'
 
 type AppInfoDetailPanelProps = {
   appDetail: App & Partial<AppSSO>

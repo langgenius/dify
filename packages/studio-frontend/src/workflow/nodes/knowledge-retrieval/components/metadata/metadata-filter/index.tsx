@@ -1,4 +1,4 @@
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataShape } from '../../../../../nodes/knowledge-retrieval/types'
 import { noop } from 'es-toolkit/function'
 import {
   useCallback,
@@ -7,10 +7,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
-import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import MetadataTrigger from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-trigger'
-import MetadataFilterSelector from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/metadata-filter-selector'
+import Collapse from '../../../../../nodes/_base/components/collapse'
+import { MetadataFilteringModeEnum } from '../../../../../nodes/knowledge-retrieval/types'
+import MetadataTrigger from '../../../../../nodes/knowledge-retrieval/components/metadata/metadata-trigger'
+import MetadataFilterSelector from '../../../../../nodes/knowledge-retrieval/components/metadata/metadata-filter/metadata-filter-selector'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum

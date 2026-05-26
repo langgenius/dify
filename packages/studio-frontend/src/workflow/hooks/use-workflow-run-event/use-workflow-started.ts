@@ -2,8 +2,8 @@ import type { WorkflowStartedResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowStore } from '../../store'
+import { WorkflowRunningStatus } from '../../types'
 
 export const useWorkflowStarted = () => {
   const store = useStoreApi()

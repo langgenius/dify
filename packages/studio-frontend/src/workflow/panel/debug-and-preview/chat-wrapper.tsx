@@ -1,5 +1,5 @@
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { ChatWrapperRefType } from '@/app/components/workflow/panel/debug-and-preview/index'
+import type { StartNodeType } from '../../nodes/start/types'
+import type { ChatWrapperRefType } from '../../panel/debug-and-preview/index'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
@@ -8,7 +8,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { EVENT_WORKFLOW_STOP } from '../../variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   fetchSuggestedQuestions,
@@ -17,12 +17,12 @@ import {
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import ConversationVariableModal from '@/app/components/workflow/panel/debug-and-preview/conversation-variable-modal'
-import Empty from '@/app/components/workflow/panel/debug-and-preview/empty'
-import { useChat } from '@/app/components/workflow/panel/debug-and-preview/hooks'
-import UserInput from '@/app/components/workflow/panel/debug-and-preview/user-input'
+} from '../../store/index'
+import { BlockEnum, WorkflowRunningStatus } from '../../types'
+import ConversationVariableModal from '../../panel/debug-and-preview/conversation-variable-modal'
+import Empty from '../../panel/debug-and-preview/empty'
+import { useChat } from '../../panel/debug-and-preview/hooks'
+import UserInput from '../../panel/debug-and-preview/user-input'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean

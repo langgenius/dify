@@ -1,27 +1,27 @@
-import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
-import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { DocExtractorNodeType } from '@/app/components/workflow/nodes/document-extractor/types'
-import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
-import type { HttpNodeType } from '@/app/components/workflow/nodes/http/types'
-import type { IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
-import type { LLMNodeType, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
-import type { ParameterExtractorNodeType } from '@/app/components/workflow/nodes/parameter-extractor/types'
-import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
-import type { TemplateTransformNodeType } from '@/app/components/workflow/nodes/template-transform/types'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
-import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
-import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { AgentNodeType } from '../../../../nodes/agent/types'
+import type { AnswerNodeType } from '../../../../nodes/answer/types'
+import type { CodeNodeType } from '../../../../nodes/code/types'
+import type { DocExtractorNodeType } from '../../../../nodes/document-extractor/types'
+import type { EndNodeType } from '../../../../nodes/end/types'
+import type { HttpNodeType } from '../../../../nodes/http/types'
+import type { IfElseNodeType } from '../../../../nodes/if-else/types'
+import type { IterationNodeType } from '../../../../nodes/iteration/types'
+import type { KnowledgeRetrievalNodeType } from '../../../../nodes/knowledge-retrieval/types'
+import type { ListFilterNodeType } from '../../../../nodes/list-operator/types'
+import type { LLMNodeType, StructuredOutput } from '../../../../nodes/llm/types'
+import type { LoopNodeType } from '../../../../nodes/loop/types'
+import type { ParameterExtractorNodeType } from '../../../../nodes/parameter-extractor/types'
+import type { QuestionClassifierNodeType } from '../../../../nodes/question-classifier/types'
+import type { TemplateTransformNodeType } from '../../../../nodes/template-transform/types'
+import type { ToolNodeType } from '../../../../nodes/tool/types'
+import type { DataSourceNodeType } from '../../../../nodes/data-source/types'
+import type { HumanInputNodeType } from '../../../../nodes/human-input/types'
+import type { CaseItem, Condition } from '../../../../nodes/if-else/types'
+import type { Field as StructField } from '../../../../nodes/llm/types'
+import type { StartNodeType } from '../../../../nodes/start/types'
+import type { PluginTriggerNodeType } from '../../../../nodes/trigger-plugin/types'
+import type { WebhookTriggerNodeType } from '../../../../nodes/trigger-webhook/types'
+import type { VariableAssignerNodeType } from '../../../../nodes/variable-assigner/types'
 import type {
   ConversationVariable,
   EnvironmentVariable,
@@ -31,7 +31,7 @@ import type {
   ToolWithProvider,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import { uniq } from 'es-toolkit/array'
@@ -50,25 +50,25 @@ import {
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
-} from '@/app/components/workflow/constants'
-import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
-import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
-import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
+} from '../../../../constants'
+import DataSourceNodeDefault from '../../../../nodes/data-source/default'
+import HumanInputNodeDefault from '../../../../nodes/human-input/default'
+import { DeliveryMethodType } from '../../../../nodes/human-input/types'
+import ToolNodeDefault from '../../../../nodes/tool/default'
+import PluginTriggerNodeDefault from '../../../../nodes/trigger-plugin/default'
 import {
   BlockEnum,
   InputVarType,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { VAR_REGEX } from '@/config'
 import { AppModeEnum } from '@/types/app'
-import { OUTPUT_FILE_SUB_VARIABLES } from '@/app/components/workflow/nodes/constants'
+import { OUTPUT_FILE_SUB_VARIABLES } from '../../../../nodes/constants'
 import {
 
   Type,
-} from '@/app/components/workflow/nodes/llm/types'
-import { VarType as ToolVarType } from '@/app/components/workflow/nodes/tool/types'
+} from '../../../../nodes/llm/types'
+import { VarType as ToolVarType } from '../../../../nodes/tool/types'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'

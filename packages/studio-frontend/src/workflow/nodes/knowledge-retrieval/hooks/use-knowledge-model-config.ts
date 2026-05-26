@@ -2,8 +2,8 @@ import type { MutableRefObject } from 'react'
 import type {
   KnowledgeRetrievalNodeType,
   MultipleRetrievalConfig,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { ModelConfig } from '@/app/components/workflow/types'
+} from '../../../nodes/knowledge-retrieval/types'
+import type { ModelConfig } from '../../../types'
 import type { DataSet } from '@/models/datasets'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
@@ -16,7 +16,7 @@ import {
   AppModeEnum,
   RETRIEVE_TYPE,
 } from '@/types/app'
-import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { getMultipleRetrievalConfig } from '../../../nodes/knowledge-retrieval/utils'
 
 type ModelIdentity = {
   provider?: string

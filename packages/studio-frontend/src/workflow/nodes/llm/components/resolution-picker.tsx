@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import OptionCard from '../../../nodes/_base/components/option-card'
 import { Resolution } from '@/types/app'
 
 const i18nPrefix = 'nodes.llm'

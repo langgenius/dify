@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import type { DeliveryMethod, EmailConfig, FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod, EmailConfig, FormInputItem } from '../../../../nodes/human-input/types'
 import type {
   Node,
   NodeOutPutVar,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -21,9 +21,9 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 import Badge from '@/app/components/base/badge/index'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import EmailConfigureModal from '@/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal'
-import TestEmailSender from '@/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender'
+import { DeliveryMethodType } from '../../../../nodes/human-input/types'
+import EmailConfigureModal from '../../../../nodes/human-input/components/delivery-method/email-configure-modal'
+import TestEmailSender from '../../../../nodes/human-input/components/delivery-method/test-email-sender'
 
 const i18nPrefix = 'nodes.humanInput'
 

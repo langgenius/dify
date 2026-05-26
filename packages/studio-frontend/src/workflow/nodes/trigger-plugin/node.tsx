@@ -1,13 +1,13 @@
 import type { FC } from 'react'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { PluginTriggerNodeType } from '../../nodes/trigger-plugin/types'
+import type { NodeProps } from '../../types'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import useConfig from '@/app/components/workflow/nodes/trigger-plugin/use-config'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
+import { InstallPluginButton } from '../../nodes/_base/components/install-plugin-button'
+import useConfig from '../../nodes/trigger-plugin/use-config'
 
 const formatConfigValue = (rawValue: any): string => {
   if (rawValue === null || rawValue === undefined)

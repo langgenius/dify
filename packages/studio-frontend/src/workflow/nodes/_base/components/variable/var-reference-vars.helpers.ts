@@ -1,8 +1,8 @@
-import type { Field, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
+import type { Field, StructuredOutput } from '../../../../nodes/llm/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '../../../../types'
+import { VAR_SHOW_NAME_MAP } from '../../../../constants'
 import { checkKeys } from '@/utils/var'
-import { isSpecialVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSpecialVar } from '../../../../nodes/_base/components/variable/utils'
 
 export const getVariableDisplayName = (
   variable: string,

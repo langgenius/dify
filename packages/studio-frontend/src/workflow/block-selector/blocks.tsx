@@ -1,5 +1,5 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { NodeDefault } from '../types'
+import type { BlockClassificationEnum } from '../block-selector/types'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -15,10 +15,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { BLOCK_CLASSIFICATIONS } from '@/app/components/workflow/block-selector/constants'
-import { useBlocks } from '@/app/components/workflow/block-selector/hooks'
+import BlockIcon from '../block-icon'
+import { BlockEnum } from '../types'
+import { BLOCK_CLASSIFICATIONS } from '../block-selector/constants'
+import { useBlocks } from '../block-selector/hooks'
 
 type BlocksProps = {
   searchText: string

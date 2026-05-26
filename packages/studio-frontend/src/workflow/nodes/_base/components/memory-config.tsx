@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Memory } from '@/app/components/workflow/types'
+import type { Memory } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -9,8 +9,8 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { MemoryRole } from '@/app/components/workflow/types'
+import Field from '../../../nodes/_base/components/field'
+import { MemoryRole } from '../../../types'
 
 const i18nPrefix = 'nodes.common.memory'
 const WINDOW_SIZE_MIN = 1

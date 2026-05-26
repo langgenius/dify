@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from './types'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,12 +16,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from '@/app/components/workflow/hooks/index'
-import { useSelectionInteractions } from '@/app/components/workflow/hooks/use-selection-interactions'
-import { useWorkflowHistory, WorkflowHistoryEvent } from '@/app/components/workflow/hooks/use-workflow-history'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store/index'
+import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
+import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks/index'
+import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
+import { useStore, useWorkflowStore } from './store/index'
 
 const AlignType = {
   Bottom: 'bottom',

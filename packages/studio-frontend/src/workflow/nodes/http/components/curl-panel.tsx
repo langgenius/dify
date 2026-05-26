@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { HttpNodeType } from '@/app/components/workflow/nodes/http/types'
+import type { HttpNodeType } from '../../../nodes/http/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -8,8 +8,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from '@/app/components/base/textarea'
-import { useNodesInteractions } from '@/app/components/workflow/hooks'
-import { parseCurl } from '@/app/components/workflow/nodes/http/components/curl-parser'
+import { useNodesInteractions } from '../../../hooks'
+import { parseCurl } from '../../../nodes/http/components/curl-parser'
 
 type Props = {
   nodeId: string

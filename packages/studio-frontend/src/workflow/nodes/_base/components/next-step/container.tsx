@@ -1,10 +1,10 @@
 import type {
   CommonNodeType,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import Add from '@/app/components/workflow/nodes/_base/components/next-step/add'
-import Item from '@/app/components/workflow/nodes/_base/components/next-step/item'
+import Add from '../../../../nodes/_base/components/next-step/add'
+import Item from '../../../../nodes/_base/components/next-step/item'
 
 type ContainerProps = {
   nodeId: string

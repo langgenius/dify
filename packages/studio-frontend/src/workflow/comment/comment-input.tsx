@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { MentionInput } from '@/app/components/workflow/comment/mention-input'
+import { MentionInput } from '../comment/mention-input'
 
 type CommentInputProps = {
   position: { x: number, y: number }

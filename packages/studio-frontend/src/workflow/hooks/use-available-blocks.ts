@@ -2,8 +2,8 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { useNodesMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
+import { BlockEnum } from '../types'
+import { useNodesMetaData } from '../hooks/use-nodes-meta-data'
 
 const availableBlocksFilter = (nodeType: BlockEnum, inContainer?: boolean) => {
   if (inContainer && (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.Loop || nodeType === BlockEnum.End || nodeType === BlockEnum.DataSource || nodeType === BlockEnum.KnowledgeBase || nodeType === BlockEnum.HumanInput))

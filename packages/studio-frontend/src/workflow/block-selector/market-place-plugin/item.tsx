@@ -9,7 +9,7 @@ import InstallFromMarketplace from '@/app/components/plugins/install-plugin/inst
 import { useLocale } from '@/context/i18n'
 
 import { formatNumber } from '@/utils/format'
-import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
+import Action from '../../block-selector/market-place-plugin/action'
 
 enum ActionType {
   install = 'install',

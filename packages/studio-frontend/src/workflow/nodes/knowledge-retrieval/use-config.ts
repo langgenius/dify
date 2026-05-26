@@ -1,5 +1,5 @@
-import type { ValueSelector } from '@/app/components/workflow/types'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ValueSelector } from '../../types'
+import type { KnowledgeRetrievalNodeType } from '../../nodes/knowledge-retrieval/types'
 import { produce } from 'immer'
 import {
   useEffect,
@@ -7,18 +7,18 @@ import {
 } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
-} from '@/app/components/workflow/hooks/index'
-import { BlockEnum } from '@/app/components/workflow/types'
-import useKnowledgeDatasetSelection from '@/app/components/workflow/nodes/knowledge-retrieval/hooks/use-knowledge-dataset-selection'
-import useKnowledgeInputManager from '@/app/components/workflow/nodes/knowledge-retrieval/hooks/use-knowledge-input-manager'
-import useKnowledgeMetadataConfig from '@/app/components/workflow/nodes/knowledge-retrieval/hooks/use-knowledge-metadata-config'
-import useKnowledgeModelConfig from '@/app/components/workflow/nodes/knowledge-retrieval/hooks/use-knowledge-model-config'
+} from '../../hooks/index'
+import { BlockEnum } from '../../types'
+import useKnowledgeDatasetSelection from '../../nodes/knowledge-retrieval/hooks/use-knowledge-dataset-selection'
+import useKnowledgeInputManager from '../../nodes/knowledge-retrieval/hooks/use-knowledge-input-manager'
+import useKnowledgeMetadataConfig from '../../nodes/knowledge-retrieval/hooks/use-knowledge-metadata-config'
+import useKnowledgeModelConfig from '../../nodes/knowledge-retrieval/hooks/use-knowledge-model-config'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

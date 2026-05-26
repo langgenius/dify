@@ -1,4 +1,4 @@
-import type { GlobalVariable } from '@/app/components/workflow/types'
+import type { GlobalVariable } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { capitalize } from 'es-toolkit/string'
 

@@ -1,5 +1,5 @@
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { CommonNodeType, InputVar, Node } from '@/app/components/workflow/types'
+import type { StartNodeType } from './nodes/start/types'
+import type { CommonNodeType, InputVar, Node } from './types'
 import type { PromptVariable } from '@/models/debug'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import {
@@ -9,15 +9,15 @@ import {
 import { useNodes } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { webSocketClient } from './collaboration/core/websocket-manager'
 import { updateFeatures } from '@/service/workflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks/index'
-import useConfig from '@/app/components/workflow/nodes/start/use-config'
-import { useStore } from '@/app/components/workflow/store/index'
-import { InputVarType } from '@/app/components/workflow/types'
+} from './hooks/index'
+import useConfig from './nodes/start/use-config'
+import { useStore } from './store/index'
+import { InputVarType } from './types'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)

@@ -2,7 +2,7 @@ import type {
   FC,
   ReactElement,
 } from 'react'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodeProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   cloneElement,
@@ -12,45 +12,45 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
-import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
-import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
-import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
-import { useStore } from '@/app/components/workflow/store'
+import BlockIcon from '../../block-icon'
+import { ToolTypeEnum } from '../../block-selector/types'
+import { useCollaboration } from '../../collaboration/hooks/use-collaboration'
+import { useNodesReadOnly, useToolIcon } from '../../hooks'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
+import { useNodeIterationInteractions } from '../../nodes/iteration/use-interactions'
+import { useNodeLoopInteractions } from '../../nodes/loop/use-interactions'
+import CopyID from '../../nodes/tool/components/copy-id'
+import { useStore } from '../../store'
 import {
   BlockEnum,
   ControlMode,
   NodeRunningStatus,
-} from '@/app/components/workflow/types'
-import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
+} from '../../types'
+import { hasErrorHandleNode, hasRetryNode } from '../../utils'
 import { useAppContext } from '@/context/app-context'
-import AddVariablePopupWithPosition from '@/app/components/workflow/nodes/_base/components/add-variable-popup-with-position'
-import EntryNodeContainer, { StartNodeTypeEnum } from '@/app/components/workflow/nodes/_base/components/entry-node-container'
-import ErrorHandleOnNode from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-node'
-import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
+import AddVariablePopupWithPosition from '../../nodes/_base/components/add-variable-popup-with-position'
+import EntryNodeContainer, { StartNodeTypeEnum } from '../../nodes/_base/components/entry-node-container'
+import ErrorHandleOnNode from '../../nodes/_base/components/error-handle/error-handle-on-node'
+import NodeControl from '../../nodes/_base/components/node-control'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
-} from '@/app/components/workflow/nodes/_base/components/node-handle'
-import NodeResizer from '@/app/components/workflow/nodes/_base/components/node-resizer'
-import RetryOnNode from '@/app/components/workflow/nodes/_base/components/retry/retry-on-node'
+} from '../../nodes/_base/components/node-handle'
+import NodeResizer from '../../nodes/_base/components/node-resizer'
+import RetryOnNode from '../../nodes/_base/components/retry/retry-on-node'
 import {
   NodeBody,
   NodeDescription,
   NodeHeaderMeta,
-} from '@/app/components/workflow/nodes/_base/node-sections'
+} from '../../nodes/_base/node-sections'
 import {
   getLoopIndexTextKey,
   getNodeStatusBorders,
   isContainerNode,
   isEntryWorkflowNode,
-} from '@/app/components/workflow/nodes/_base/node.helpers'
-import useNodeResizeObserver from '@/app/components/workflow/nodes/_base/use-node-resize-observer'
+} from '../../nodes/_base/node.helpers'
+import useNodeResizeObserver from '../../nodes/_base/use-node-resize-observer'
 
 type NodeChildProps = {
   id: string

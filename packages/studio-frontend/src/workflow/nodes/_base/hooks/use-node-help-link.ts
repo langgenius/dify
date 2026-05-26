@@ -1,6 +1,6 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { BlockEnum } from '../../../types'
 import { useMemo } from 'react'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { useNodesMetaData } from '../../../hooks'
 
 export const useNodeHelpLink = (nodeType: BlockEnum) => {
   const availableNodesMetaData = useNodesMetaData()

@@ -1,6 +1,6 @@
 import {
   NodeRunningStatus,
-} from '@/app/components/workflow/types'
+} from '../types'
 
 export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch?: boolean) => {
   if (nodeRunningStatus === NodeRunningStatus.Succeeded)

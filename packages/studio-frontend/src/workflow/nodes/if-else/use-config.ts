@@ -1,6 +1,6 @@
 import type {
   Var,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import type {
   CaseItem,
   HandleAddCondition,
@@ -11,7 +11,7 @@ import type {
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
   IfElseNodeType,
-} from '@/app/components/workflow/nodes/if-else/types'
+} from '../../nodes/if-else/types'
 import {
   useCallback,
   useMemo,
@@ -21,9 +21,9 @@ import { useUpdateNodeInternals } from 'reactflow'
 import {
   useEdgesInteractions,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+} from '../../hooks'
+import useAvailableVarList from '../../nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import {
   addCase,
   addCondition,
@@ -39,8 +39,8 @@ import {
   toggleSubVariableConditionLogicalOperator,
   updateCondition,
   updateSubVariableCondition,
-} from '@/app/components/workflow/nodes/if-else/use-config.helpers'
-import useIsVarFileAttribute from '@/app/components/workflow/nodes/if-else/use-is-var-file-attribute'
+} from '../../nodes/if-else/use-config.helpers'
+import useIsVarFileAttribute from '../../nodes/if-else/use-is-var-file-attribute'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()

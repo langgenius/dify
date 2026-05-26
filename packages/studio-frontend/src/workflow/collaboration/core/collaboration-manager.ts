@@ -6,7 +6,7 @@ import type {
   CommonNodeType,
   Edge,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import type {
   CollaborationState,
   CollaborationUpdate,
@@ -16,13 +16,13 @@ import type {
   OnlineUser,
   RestoreCompleteData,
   RestoreIntentData,
-} from '@/app/components/workflow/collaboration/types/collaboration'
+} from '../../collaboration/types/collaboration'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
-import { CRDTProvider } from '@/app/components/workflow/collaboration/core/crdt-provider'
-import { EventEmitter } from '@/app/components/workflow/collaboration/core/event-emitter'
-import { emitWithAuthGuard, webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { CRDTProvider } from '../../collaboration/core/crdt-provider'
+import { EventEmitter } from '../../collaboration/core/event-emitter'
+import { emitWithAuthGuard, webSocketClient } from '../../collaboration/core/websocket-manager'
 
 type NodePanelPresenceEventData = {
   nodeId: string

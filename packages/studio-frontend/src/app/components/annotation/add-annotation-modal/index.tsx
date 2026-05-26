@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AnnotationItemBasic } from '@/app/components/app/annotation/type'
+import type { AnnotationItemBasic } from '../../annotation/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
@@ -19,7 +19,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
-import EditItem, { EditItemType } from '@/app/components/app/annotation/add-annotation-modal/edit-item/index'
+import EditItem, { EditItemType } from '../../annotation/add-annotation-modal/edit-item/index'
 
 type Props = {
   isShow: boolean

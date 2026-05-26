@@ -2,16 +2,16 @@ import type {
   BlockEnum,
   ChildNodeTypeCount,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useNodesMetaData } from '../../hooks'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
-} from '@/app/components/workflow/utils/index'
+} from '../../utils/index'
 import {
   buildIterationChildCopy,
   getIterationChildren,
@@ -19,7 +19,7 @@ import {
   getIterationContainerResize,
   getNextChildNodeTypeCount,
   getRestrictedIterationPosition,
-} from '@/app/components/workflow/nodes/iteration/use-interactions.helpers'
+} from '../../nodes/iteration/use-interactions.helpers'
 
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()

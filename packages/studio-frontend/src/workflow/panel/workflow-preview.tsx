@@ -13,18 +13,18 @@ import Loading from '@/app/components/base/loading'
 import { submitHumanInputForm } from '@/service/workflow'
 import {
   useWorkflowInteractions,
-} from '@/app/components/workflow/hooks/index'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
-import ResultText from '@/app/components/workflow/run/result-text'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
-import { useStore } from '@/app/components/workflow/store/index'
+} from '../hooks/index'
+import ResultPanel from '../run/result-panel'
+import ResultText from '../run/result-text'
+import TracingPanel from '../run/tracing-panel'
+import { useStore } from '../store/index'
 import {
   WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
-import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
-import HumanInputFilledFormList from '@/app/components/workflow/panel/human-input-filled-form-list'
-import HumanInputFormList from '@/app/components/workflow/panel/human-input-form-list'
-import InputsPanel from '@/app/components/workflow/panel/inputs-panel'
+} from '../types'
+import { formatWorkflowRunIdentifier } from '../utils/index'
+import HumanInputFilledFormList from '../panel/human-input-filled-form-list'
+import HumanInputFormList from '../panel/human-input-form-list'
+import InputsPanel from '../panel/inputs-panel'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()

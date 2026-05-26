@@ -1,8 +1,8 @@
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '../block-selector/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
+import type { Node, ToolWithProvider } from '../types'
 import { useCallback, useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import useTheme from '@/hooks/use-theme'
@@ -14,8 +14,8 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useStore, useWorkflowStore } from '../store/index'
+import { BlockEnum } from '../types'
 
 const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType => data.type === BlockEnum.TriggerPlugin
 

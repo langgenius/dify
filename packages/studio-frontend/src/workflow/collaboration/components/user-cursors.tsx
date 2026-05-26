@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { CursorPosition, OnlineUser } from '../../collaboration/types/collaboration'
 import { useViewport } from 'reactflow'
-import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { getUserColor } from '../../collaboration/utils/user-color'
 
 type UserCursorsProps = {
   cursors: Record<string, CursorPosition>

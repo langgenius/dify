@@ -2,7 +2,7 @@ import type {
   ValueSelector,
   Var,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { useClickAway } from 'ahooks'
 import {
   memo,
@@ -15,11 +15,11 @@ import {
   useNodeDataUpdate,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks/index'
-import { useStore } from '@/app/components/workflow/store/index'
-import { useVariableAssigner } from '@/app/components/workflow/nodes/variable-assigner/hooks'
-import { filterVar } from '@/app/components/workflow/nodes/variable-assigner/utils'
-import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
+} from '../../../hooks/index'
+import { useStore } from '../../../store/index'
+import { useVariableAssigner } from '../../../nodes/variable-assigner/hooks'
+import { filterVar } from '../../../nodes/variable-assigner/utils'
+import AddVariablePopup from '../../../nodes/_base/components/add-variable-popup'
 
 type AddVariablePopupWithPositionProps = {
   nodeId: string

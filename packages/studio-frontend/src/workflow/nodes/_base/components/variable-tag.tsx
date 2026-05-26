@@ -3,16 +3,16 @@ import type {
   Node,
   ValueSelector,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
-import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '../../../nodes/_base/components/variable/utils'
 import {
   VariableLabelInSelect,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
+} from '../../../nodes/_base/components/variable/variable-label'
+import { BlockEnum } from '../../../types'
+import { isExceptionVariable } from '../../../utils'
 
 type VariableTagProps = {
   valueSelector: ValueSelector

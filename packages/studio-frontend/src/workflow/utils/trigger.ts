@@ -1,5 +1,5 @@
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { TriggerWithProvider } from '../block-selector/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 
 type TriggerCheckParams = {
   triggerInputsSchema: Array<{

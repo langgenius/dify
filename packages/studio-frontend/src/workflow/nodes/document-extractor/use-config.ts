@@ -1,5 +1,5 @@
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import type { DocExtractorNodeType } from '@/app/components/workflow/nodes/document-extractor/types'
+import type { ValueSelector, Var } from '../../types'
+import type { DocExtractorNodeType } from '../../nodes/document-extractor/types'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -8,9 +8,9 @@ import {
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { VarType } from '@/app/components/workflow/types'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
 
 const useConfig = (id: string, payload: DocExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

@@ -1,13 +1,13 @@
-import type { DeliveryMethod, HumanInputNodeType, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod, HumanInputNodeType, UserAction } from '../../../nodes/human-input/types'
 import { produce } from 'immer'
 import { useState } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
 import {
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useFormContent from '@/app/components/workflow/nodes/human-input/hooks/use-form-content'
+} from '../../../hooks'
+import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
+import useNodeCrud from '../../../nodes/_base/hooks/use-node-crud'
+import useFormContent from '../../../nodes/human-input/hooks/use-form-content'
 
 const useConfig = (id: string, payload: HumanInputNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()

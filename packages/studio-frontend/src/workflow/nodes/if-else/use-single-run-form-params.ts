@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
-import type { CaseItem, Condition, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { CaseItem, Condition, IfElseNodeType } from '../../nodes/if-else/types'
+import type { InputVar, ValueSelector, Variable } from '../../types'
 import { useCallback } from 'react'
 
 type Params = {

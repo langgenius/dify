@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { KnowledgeRetrievalNodeType } from '../../../nodes/knowledge-retrieval/types'
+import type { ValueSelector } from '../../../types'
 import { produce } from 'immer'
 import {
   useCallback,

@@ -1,5 +1,5 @@
-import type { BlockEnum, CommonNodeType } from '@/app/components/workflow/types'
-import type { TriggerDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { BlockEnum, CommonNodeType } from '../types'
+import type { TriggerDefaultValue } from '../block-selector/types'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -13,11 +13,11 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum as BlockEnumValues } from '@/app/components/workflow/types'
-// import { useNodeMetaData } from '@/app/components/workflow/hooks/index'
-import { START_BLOCKS } from '@/app/components/workflow/block-selector/constants'
+import useNodes from '../store/workflow/use-nodes'
+import BlockIcon from '../block-icon'
+import { BlockEnum as BlockEnumValues } from '../types'
+// import { useNodeMetaData } from '../hooks/index'
+import { START_BLOCKS } from '../block-selector/constants'
 
 type StartBlocksProps = {
   searchText: string

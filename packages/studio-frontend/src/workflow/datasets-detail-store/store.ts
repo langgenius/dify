@@ -2,7 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import { produce } from 'immer'
 import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
-import { DatasetsDetailContext } from '@/app/components/workflow/datasets-detail-store/provider'
+import { DatasetsDetailContext } from '../datasets-detail-store/provider'
 
 type DatasetsDetailStore = {
   datasetsDetail: Record<string, DataSet>

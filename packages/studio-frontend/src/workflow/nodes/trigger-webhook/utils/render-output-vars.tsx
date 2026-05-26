@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Variable } from '@/app/components/workflow/types'
+import type { Variable } from '../../../types'
 import * as React from 'react'
 
 type OutputVariablesContentProps = {

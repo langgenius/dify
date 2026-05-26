@@ -1,4 +1,4 @@
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { StartNodeType } from '../nodes/start/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
@@ -12,18 +12,18 @@ import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
 import { TransferMethod } from '@/app/components/base/text-generation/types'
-import { useWorkflowRun } from '@/app/components/workflow/hooks/index'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
-import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import { useWorkflowRun } from '../hooks/index'
+import { useHooksStore } from '../hooks-store/index'
+import FormItem from '../nodes/_base/components/before-run-form/form-item'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
+} from '../store/index'
 import {
   BlockEnum,
   InputVarType,
   WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
+} from '../types'
 
 type Props = {
   onRun: () => void

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
+import type { Recipient } from '../../../../../nodes/human-input/types'
 import type { Member } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -13,7 +13,7 @@ import {
 } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import MemberList from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list'
+import MemberList from '../../../../../nodes/human-input/components/delivery-method/recipient/member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 

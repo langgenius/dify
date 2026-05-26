@@ -1,6 +1,6 @@
 import type {
   Node,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { isEqual } from 'es-toolkit/predicate'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,13 +9,13 @@ import {
   getOutgoers,
   useStore,
 } from 'reactflow'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { hasErrorHandleNode } from '@/app/components/workflow/utils'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { useToolIcon } from '@/app/components/workflow/hooks/index'
-import { BlockEnum } from '@/app/components/workflow/types'
-import Container from '@/app/components/workflow/nodes/_base/components/next-step/container'
-import Line from '@/app/components/workflow/nodes/_base/components/next-step/line'
+import { ErrorHandleTypeEnum } from '../../../../nodes/_base/components/error-handle/types'
+import { hasErrorHandleNode } from '../../../../utils'
+import BlockIcon from '../../../../block-icon'
+import { useToolIcon } from '../../../../hooks/index'
+import { BlockEnum } from '../../../../types'
+import Container from '../../../../nodes/_base/components/next-step/container'
+import Line from '../../../../nodes/_base/components/next-step/line'
 
 type NextStepProps = {
   selectedNode: Node

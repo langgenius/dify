@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
-export { default as FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse/field-collapse'
+export { default as FieldCollapse } from '../../../../nodes/_base/components/collapse/field-collapse'
 
 type CollapseProps = {
   disabled?: boolean

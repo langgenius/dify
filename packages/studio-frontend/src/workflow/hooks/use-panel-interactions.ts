@@ -2,8 +2,8 @@ import type { MouseEvent } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { readWorkflowClipboard } from '@/app/components/workflow/utils/index'
+import { useWorkflowStore } from '../store/index'
+import { readWorkflowClipboard } from '../utils/index'
 
 export const usePanelInteractions = () => {
   const workflowStore = useWorkflowStore()

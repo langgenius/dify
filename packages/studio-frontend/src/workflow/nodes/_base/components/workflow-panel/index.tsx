@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Tooltip,
@@ -38,9 +38,9 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import BlockIcon from '../../../../block-icon'
+import { collaborationManager } from '../../../../collaboration/core/collaboration-manager'
+import { useCollaboration } from '../../../../collaboration/hooks/use-collaboration'
 import {
   useAvailableBlocks,
   useNodeDataUpdate,
@@ -50,34 +50,34 @@ import {
   useToolIcon,
   useWorkflowHistory,
   WorkflowHistoryEvent,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+} from '../../../../hooks'
+import { useHooksStore } from '../../../../hooks-store'
+import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
+import { NodeActionsDropdown } from '../../../../node-actions-menu'
+import Split from '../../../../nodes/_base/components/split'
+import { useLogs } from '../../../../run/hooks'
+import SpecialResultPanel from '../../../../run/special-result-panel'
+import { useStore } from '../../../../store'
+import { BlockEnum, NodeRunningStatus } from '../../../../types'
 import {
   canRunBySingle,
   hasErrorHandleNode,
   hasRetryNode,
   isSupportCustomRunForm,
-} from '@/app/components/workflow/utils'
+} from '../../../../utils'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
-import { useResizePanel } from '@/app/components/workflow/nodes/_base/hooks/use-resize-panel'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form/index'
-import PanelWrap from '@/app/components/workflow/nodes/_base/components/before-run-form/panel-wrap'
-import ErrorHandleOnPanel from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-on-panel'
-import HelpLink from '@/app/components/workflow/nodes/_base/components/help-link'
-import NextStep from '@/app/components/workflow/nodes/_base/components/next-step/index'
-import RetryOnPanel from '@/app/components/workflow/nodes/_base/components/retry/retry-on-panel'
-import { DescriptionInput, TitleInput } from '@/app/components/workflow/nodes/_base/components/title-description-input'
+import { useResizePanel } from '../../../../nodes/_base/hooks/use-resize-panel'
+import BeforeRunForm from '../../../../nodes/_base/components/before-run-form/index'
+import PanelWrap from '../../../../nodes/_base/components/before-run-form/panel-wrap'
+import ErrorHandleOnPanel from '../../../../nodes/_base/components/error-handle/error-handle-on-panel'
+import HelpLink from '../../../../nodes/_base/components/help-link'
+import NextStep from '../../../../nodes/_base/components/next-step/index'
+import RetryOnPanel from '../../../../nodes/_base/components/retry/retry-on-panel'
+import { DescriptionInput, TitleInput } from '../../../../nodes/_base/components/title-description-input'
 import {
   clampNodePanelWidth,
   getCompressedNodePanelWidth,
@@ -86,11 +86,11 @@ import {
   getCurrentTriggerPlugin,
   getCustomRunForm,
   getMaxNodePanelWidth,
-} from '@/app/components/workflow/nodes/_base/components/workflow-panel/helpers'
-import LastRun from '@/app/components/workflow/nodes/_base/components/workflow-panel/last-run/index'
-import useLastRun from '@/app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run'
-import Tab, { TabType } from '@/app/components/workflow/nodes/_base/components/workflow-panel/tab'
-import { TriggerSubscription } from '@/app/components/workflow/nodes/_base/components/workflow-panel/trigger-subscription'
+} from '../../../../nodes/_base/components/workflow-panel/helpers'
+import LastRun from '../../../../nodes/_base/components/workflow-panel/last-run/index'
+import useLastRun from '../../../../nodes/_base/components/workflow-panel/last-run/use-last-run'
+import Tab, { TabType } from '../../../../nodes/_base/components/workflow-panel/tab'
+import { TriggerSubscription } from '../../../../nodes/_base/components/workflow-panel/trigger-subscription'
 
 type BasePanelProps = {
   children: ReactNode

@@ -1,4 +1,4 @@
-import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Variable, VisionSetting } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Variable, VisionSetting } from '../../types'
 
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { IterationNodeType } from '../../nodes/iteration/types'
+import type { NodeProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
@@ -14,9 +14,9 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import { IterationStartNodeDumb } from '@/app/components/workflow/nodes/iteration-start/index'
-import AddBlock from '@/app/components/workflow/nodes/iteration/add-block'
-import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
+import { IterationStartNodeDumb } from '../../nodes/iteration-start/index'
+import AddBlock from '../../nodes/iteration/add-block'
+import { useNodeIterationInteractions } from '../../nodes/iteration/use-interactions'
 
 const i18nPrefix = 'nodes.iteration'
 

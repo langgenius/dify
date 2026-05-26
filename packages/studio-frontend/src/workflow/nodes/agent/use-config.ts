@@ -1,6 +1,6 @@
-import type { Memory, Var } from '@/app/components/workflow/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
-import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
+import type { Memory, Var } from '../../types'
+import type { ToolVarInputs } from '../../nodes/tool/types'
+import type { AgentNodeType } from '../../nodes/agent/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -8,14 +8,14 @@ import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/compo
 import {
   useIsChatMode,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+} from '../../hooks'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useStrategyProviderDetail } from '@/service/use-strategy'
-import { VarType as VarKindType } from '@/app/components/workflow/types'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useVarList from '@/app/components/workflow/nodes/_base/hooks/use-var-list'
-import { VarType } from '@/app/components/workflow/nodes/tool/types'
+import { VarType as VarKindType } from '../../types'
+import useAvailableVarList from '../../nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import useVarList from '../../nodes/_base/hooks/use-var-list'
+import { VarType } from '../../nodes/tool/types'
 
 type StrategyStatus = {
   plugin: {

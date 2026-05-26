@@ -4,12 +4,12 @@ import type {
   CursorPosition,
   NodePanelPresenceMap,
   OnlineUser,
-} from '@/app/components/workflow/collaboration/types/collaboration'
+} from '../../collaboration/types/collaboration'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { CursorService } from '@/app/components/workflow/collaboration/services/cursor-service'
+import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import { CursorService } from '../../collaboration/services/cursor-service'
 
 type CollaborationViewState = {
   isConnected: boolean

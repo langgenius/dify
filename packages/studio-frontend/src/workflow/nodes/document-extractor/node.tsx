@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import type { DocExtractorNodeType } from '@/app/components/workflow/nodes/document-extractor/types'
-import type { Node, NodeProps } from '@/app/components/workflow/types'
+import type { DocExtractorNodeType } from '../../nodes/document-extractor/types'
+import type { Node, NodeProps } from '../../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '../../nodes/_base/components/variable/utils'
 import {
   VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../../nodes/_base/components/variable/variable-label'
+import { BlockEnum } from '../../types'
 
 const i18nPrefix = 'nodes.docExtractor'
 

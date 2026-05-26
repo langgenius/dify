@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import type { Field as FieldType } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { Field as FieldType } from '../../../../../../nodes/llm/types'
+import type { ValueSelector } from '../../../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { getFieldType } from '@/app/components/workflow/nodes/llm/utils'
-import TreeIndentLine from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/tree-indent-line'
+import { Type } from '../../../../../../nodes/llm/types'
+import { getFieldType } from '../../../../../../nodes/llm/utils'
+import TreeIndentLine from '../../../../../../nodes/_base/components/variable/object-child-tree-panel/tree-indent-line'
 
 const MAX_DEPTH = 10
 

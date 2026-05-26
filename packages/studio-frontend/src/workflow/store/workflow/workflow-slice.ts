@@ -4,7 +4,7 @@ import type {
   Node,
   TriggerNodeType,
   WorkflowRunningData,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import type { FileUploadConfigResponse } from '@/models/common'
 
 type PreviewRunningData = WorkflowRunningData & {

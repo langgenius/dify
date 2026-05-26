@@ -1,9 +1,9 @@
 import type { ValidationError } from 'jsonschema'
-import type { ArrayItems, Field } from '@/app/components/workflow/nodes/llm/types'
+import type { ArrayItems, Field } from '../../nodes/llm/types'
 import * as z from 'zod'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
-import { extractPluginId } from '@/app/components/workflow/utils/plugin'
-import { ArrayType, Type } from '@/app/components/workflow/nodes/llm/types'
+import { extractPluginId } from '../../utils/plugin'
+import { ArrayType, Type } from '../../nodes/llm/types'
 
 export enum LLMModelIssueCode {
   providerRequired = 'provider-required',

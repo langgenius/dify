@@ -1,7 +1,7 @@
 import type {
   HybridSearchModeOption,
   Option,
-} from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type'
+} from '../../../../nodes/knowledge-base/components/retrieval-setting/type'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -13,7 +13,7 @@ import {
   HybridSearchModeEnum,
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
+} from '../../../../nodes/knowledge-base/types'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const { t } = useTranslation()

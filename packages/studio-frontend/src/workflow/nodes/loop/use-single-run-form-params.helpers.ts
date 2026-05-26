@@ -1,8 +1,8 @@
-import type { InputVar, Node, ValueSelector, Variable } from '@/app/components/workflow/types'
-import type { CaseItem, Condition, LoopVariable } from '@/app/components/workflow/nodes/loop/types'
-import { ValueType } from '@/app/components/workflow/types'
+import type { InputVar, Node, ValueSelector, Variable } from '../../types'
+import type { CaseItem, Condition, LoopVariable } from '../../nodes/loop/types'
+import { ValueType } from '../../types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../../nodes/_base/components/variable/utils'
 
 export function getVarSelectorsFromCase(caseItem: CaseItem): ValueSelector[] {
   const vars: ValueSelector[] = []

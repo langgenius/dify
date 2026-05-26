@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import type { GeneratorType } from '../../../configuration/config/automatic/types'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'

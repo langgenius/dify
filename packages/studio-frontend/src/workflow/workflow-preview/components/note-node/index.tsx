@@ -1,16 +1,16 @@
 import type { NodeProps } from 'reactflow'
-import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
+import type { NoteNodeType } from '../../../note-node/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
+import { THEME_MAP } from '../../../note-node/constants'
 import {
   NoteEditor,
   NoteEditorContextProvider,
-} from '@/app/components/workflow/note-node/note-editor'
+} from '../../../note-node/note-editor'
 
 const NoteNode = ({
   data,

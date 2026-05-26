@@ -1,10 +1,10 @@
 import type { TemporalState } from 'zundo'
 import type {
   WorkflowHistoryState,
-} from '@/app/components/workflow/store/workflow/history-slice'
-import type { Edge, Node } from '@/app/components/workflow/types'
+} from './store/workflow/history-slice'
+import type { Edge, Node } from './types'
 import { use, useMemo } from 'react'
-import { WorkflowContext } from '@/app/components/workflow/context'
+import { WorkflowContext } from './context'
 
 type WorkflowHistoryTemporalSnapshot = {
   workflowHistory: WorkflowHistoryState

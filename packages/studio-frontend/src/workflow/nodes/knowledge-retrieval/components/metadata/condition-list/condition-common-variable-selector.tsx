@@ -1,4 +1,4 @@
-import type { VarType } from '@/app/components/workflow/types'
+import type { VarType } from '../../../../../types'
 import {
   Popover,
   PopoverContent,

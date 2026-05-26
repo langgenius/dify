@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot } from '../../../../../nodes/llm/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,11 +16,11 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
-import { useMittContext } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
-import { useVisualEditorStore } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/store'
-import { SchemaGeneratorDark, SchemaGeneratorLight } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/assets/index'
-import GeneratedResult from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result'
-import PromptEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/prompt-editor'
+import { useMittContext } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import { useVisualEditorStore } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/store'
+import { SchemaGeneratorDark, SchemaGeneratorLight } from '../../../../../nodes/llm/components/json-schema-config-modal/json-schema-generator/assets/index'
+import GeneratedResult from '../../../../../nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result'
+import PromptEditor from '../../../../../nodes/llm/components/json-schema-config-modal/json-schema-generator/prompt-editor'
 
 type JsonSchemaGeneratorProps = {
   onApply: (schema: SchemaRoot) => void

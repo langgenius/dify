@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { DebugWithMultipleModelContextType } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context'
-import { DebugWithMultipleModelContext } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context'
+import type { DebugWithMultipleModelContextType } from '../../../configuration/debug/debug-with-multiple-model/context'
+import { DebugWithMultipleModelContext } from '../../../configuration/debug/debug-with-multiple-model/context'
 
 type DebugWithMultipleModelContextProviderProps = {
   children: ReactNode

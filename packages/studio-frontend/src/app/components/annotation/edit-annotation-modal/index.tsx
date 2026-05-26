@@ -27,7 +27,7 @@ import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import { addAnnotation, editAnnotation } from '@/service/annotation'
-import EditItem, { EditItemType } from '@/app/components/app/annotation/edit-annotation-modal/edit-item/index'
+import EditItem, { EditItemType } from '../../annotation/edit-annotation-modal/edit-item/index'
 
 type Props = {
   isShow: boolean

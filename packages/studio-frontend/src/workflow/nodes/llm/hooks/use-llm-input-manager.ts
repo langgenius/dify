@@ -1,8 +1,8 @@
-import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { LLMNodeType } from '../../../nodes/llm/types'
 import type {
   PromptItem,
   RolePrefix,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { produce } from 'immer'
 import {
   useCallback,

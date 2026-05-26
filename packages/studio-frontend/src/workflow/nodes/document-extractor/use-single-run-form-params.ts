@@ -1,9 +1,9 @@
 import type { RefObject } from 'react'
-import type { DocExtractorNodeType } from '@/app/components/workflow/nodes/document-extractor/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { DocExtractorNodeType } from '../../nodes/document-extractor/types'
+import type { InputVar, Variable } from '../../types'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType } from '../../types'
 
 const i18nPrefix = 'nodes.docExtractor'
 

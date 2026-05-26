@@ -1,4 +1,4 @@
-import type { MultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MultipleRetrievalConfig } from '../../nodes/knowledge-retrieval/types'
 import type {
   DataSet,
   SelectedDatasetsMode,

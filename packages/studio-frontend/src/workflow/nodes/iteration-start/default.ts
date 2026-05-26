@@ -1,7 +1,7 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { IterationStartNodeType } from '@/app/components/workflow/nodes/iteration-start/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
+import type { NodeDefault } from '../../types'
+import type { IterationStartNodeType } from '../../nodes/iteration-start/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
 
 const metaData = genNodeMetaData({
   sort: -1,

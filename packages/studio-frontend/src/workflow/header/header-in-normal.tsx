@@ -1,5 +1,5 @@
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { RunAndHistoryProps } from '@/app/components/workflow/header/run-and-history'
+import type { StartNodeType } from '../nodes/start/types'
+import type { RunAndHistoryProps } from '../header/run-and-history'
 import {
   useCallback,
 } from 'react'
@@ -10,18 +10,18 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
   useWorkflowRun,
-} from '@/app/components/workflow/hooks/index'
+} from '../hooks/index'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import EditingTitle from '@/app/components/workflow/header/editing-title'
-import EnvButton from '@/app/components/workflow/header/env-button'
-import GlobalVariableButton from '@/app/components/workflow/header/global-variable-button'
-import OnlineUsers from '@/app/components/workflow/header/online-users'
-import RunAndHistory from '@/app/components/workflow/header/run-and-history'
-import ScrollToSelectedNodeButton from '@/app/components/workflow/header/scroll-to-selected-node-button'
-import VersionHistoryButton from '@/app/components/workflow/header/version-history-button'
+} from '../store/index'
+import EditingTitle from '../header/editing-title'
+import EnvButton from '../header/env-button'
+import GlobalVariableButton from '../header/global-variable-button'
+import OnlineUsers from '../header/online-users'
+import RunAndHistory from '../header/run-and-history'
+import ScrollToSelectedNodeButton from '../header/scroll-to-selected-node-button'
+import VersionHistoryButton from '../header/version-history-button'
 
 export type HeaderInNormalProps = {
   components?: {

@@ -1,4 +1,4 @@
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { StartNodeType } from '../../nodes/start/types'
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -16,15 +16,15 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useStore } from '@/app/components/workflow/store'
+import { useEdgesInteractionsWithoutSync } from '../../hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '../../hooks/use-nodes-interactions-without-sync'
+import { useStore } from '../../store'
 import {
   useWorkflowInteractions,
-} from '@/app/components/workflow/hooks/index'
-import { useResizePanel } from '@/app/components/workflow/nodes/_base/hooks/use-resize-panel'
-import { BlockEnum } from '@/app/components/workflow/types'
-import ChatWrapper from '@/app/components/workflow/panel/debug-and-preview/chat-wrapper'
+} from '../../hooks/index'
+import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
+import { BlockEnum } from '../../types'
+import ChatWrapper from '../../panel/debug-and-preview/chat-wrapper'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void

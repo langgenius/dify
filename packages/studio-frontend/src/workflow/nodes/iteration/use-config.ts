@@ -1,6 +1,6 @@
-import type { ErrorHandleMode, ValueSelector, Var } from '@/app/components/workflow/types'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
+import type { IterationNodeType } from '../../nodes/iteration/types'
+import type { VarType as VarKindType } from '../../nodes/tool/types'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback } from 'react'
@@ -14,12 +14,12 @@ import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
-} from '@/app/components/workflow/hooks/index'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useStore } from '@/app/components/workflow/store/index'
-import { VarType } from '@/app/components/workflow/types'
-import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+} from '../../hooks/index'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useStore } from '../../store/index'
+import { VarType } from '../../types'
+import { toNodeOutputVars } from '../../nodes/_base/components/variable/utils'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 
 type SelectOption = {
   value: string | number

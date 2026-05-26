@@ -22,7 +22,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal/index'
+import SettingsModal from '../../../configuration/dataset-config/settings-modal/index'
 
 type ItemProps = {
   className?: string

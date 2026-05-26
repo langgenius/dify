@@ -1,7 +1,7 @@
-import type { AnyObj } from '@/app/components/workflow/nodes/_base/components/variable/match-schema-type'
+import type { AnyObj } from '../../../../nodes/_base/components/variable/match-schema-type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import { useSchemaTypeDefinitions } from '@/service/use-common'
-import matchTheSchemaType from '@/app/components/workflow/nodes/_base/components/variable/match-schema-type'
+import matchTheSchemaType from '../../../../nodes/_base/components/variable/match-schema-type'
 
 export const getMatchedSchemaType = (obj: AnyObj, schemaTypeDefinitions?: SchemaTypeDefinition[]): string => {
   if (!schemaTypeDefinitions || obj === undefined || obj === null)

@@ -5,8 +5,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import InputCopy from '@/app/components/develop/secret-key/input-copy'
-import s from '@/app/components/develop/secret-key/style.module.css'
+import InputCopy from '../secret-key/input-copy'
+import s from '../secret-key/style.module.css'
 
 type ISecretKeyGenerateModalProps = {
   isShow: boolean

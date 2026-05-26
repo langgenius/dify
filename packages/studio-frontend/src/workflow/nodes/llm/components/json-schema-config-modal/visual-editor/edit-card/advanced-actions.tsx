@@ -2,8 +2,8 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
+import { ShortcutKbd } from '../../../../../../shortcuts/shortcut-kbd'
+import { useWorkflowShortcut } from '../../../../../../shortcuts/use-workflow-hotkeys'
 
 type AdvancedActionsProps = {
   isConfirmDisabled: boolean

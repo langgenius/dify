@@ -1,9 +1,9 @@
-import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import type { ResourceVarInputs } from '../../nodes/_base/types'
 import type { Collection, CollectionType } from '@/app/components/tools/types'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../../types'
 
 // Use base types directly
-export { VarKindType as VarType } from '@/app/components/workflow/nodes/_base/types'
+export { VarKindType as VarType } from '../../nodes/_base/types'
 export type ToolVarInputs = ResourceVarInputs
 
 export type ToolNodeType = CommonNodeType & {

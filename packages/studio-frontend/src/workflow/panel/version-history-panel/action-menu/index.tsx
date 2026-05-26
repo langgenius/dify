@@ -8,9 +8,9 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import { VersionHistoryContextMenuOptions } from '@/app/components/workflow/types'
-import ActionMenuItem from '@/app/components/workflow/panel/version-history-panel/action-menu/action-menu-item'
-import useActionMenu from '@/app/components/workflow/panel/version-history-panel/action-menu/use-action-menu'
+import { VersionHistoryContextMenuOptions } from '../../../types'
+import ActionMenuItem from '../../../panel/version-history-panel/action-menu/action-menu-item'
+import useActionMenu from '../../../panel/version-history-panel/action-menu/use-action-menu'
 
 export type ActionMenuProps = {
   isShowDelete: boolean

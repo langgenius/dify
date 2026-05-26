@@ -2,7 +2,7 @@ import type { WorkflowFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '../../store'
 
 export const useWorkflowFinished = () => {
   const workflowStore = useWorkflowStore()

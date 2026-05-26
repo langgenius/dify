@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import type { FormInputItemDefault } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItemDefault } from '../../../nodes/human-input/types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g

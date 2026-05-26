@@ -1,11 +1,11 @@
-import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod } from '../nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import ContentWrapper from '@/app/components/base/chat/chat/answer/human-input-content/content-wrapper'
 import { UnsubmittedHumanInputContent } from '@/app/components/base/chat/chat/answer/human-input-content/unsubmitted'
-import { CUSTOM_NODE } from '@/app/components/workflow/constants'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { CUSTOM_NODE } from '../constants'
+import { DeliveryMethodType } from '../nodes/human-input/types'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]

@@ -7,7 +7,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 import { useModalContext as actualUseModalContext } from '@/context/modal-context'
 
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
-import APIKeyInfoPanel from '@/app/components/app/overview/apikey-info-panel/index'
+import APIKeyInfoPanel from '../../overview/apikey-info-panel/index'
 
 // Mock the modules before importing the functions
 vi.mock('@/context/provider-context', () => ({

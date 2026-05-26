@@ -1,6 +1,6 @@
 import type {
   CommonNodeType,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -9,13 +9,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockIcon from '@/app/components/workflow/block-icon'
+import BlockIcon from '../../../../block-icon'
 import {
   useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
-} from '@/app/components/workflow/hooks'
-import Operator from '@/app/components/workflow/nodes/_base/components/next-step/operator'
+} from '../../../../hooks'
+import Operator from '../../../../nodes/_base/components/next-step/operator'
 
 type ItemProps = {
   nodeId: string

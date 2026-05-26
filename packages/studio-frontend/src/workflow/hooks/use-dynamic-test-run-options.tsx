@@ -1,15 +1,15 @@
-import type { TestRunOptions, TriggerOption } from '@/app/components/workflow/header/test-run-menu'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { TestRunOptions, TriggerOption } from '../header/test-run-menu'
+import type { CommonNodeType } from '../types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import useNodes from '../store/workflow/use-nodes'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
-import { useStore } from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
+import BlockIcon from '../block-icon'
+import { TriggerType } from '../header/test-run-menu'
+import { useStore } from '../store/index'
+import { BlockEnum } from '../types'
+import { getWorkflowEntryNode } from '../utils/workflow-entry'
 
 export const useDynamicTestRunOptions = (): TestRunOptions => {
   const { t } = useTranslation()

@@ -1,11 +1,11 @@
 'use client'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { EnvironmentVariable } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
+import VariableModal from '../../panel/env-panel/variable-modal'
 
 type Props = {
   open: boolean

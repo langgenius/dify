@@ -1,9 +1,9 @@
-import type { CommonNodeType, Node } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node } from './types'
 import { load as yamlLoad } from 'js-yaml'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
-import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { BlockEnum, SupportUploadFileTypes } from './types'
 
 type ParsedDSL = {
   workflow?: {

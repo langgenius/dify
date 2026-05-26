@@ -1,14 +1,14 @@
 import type {
   Connection,
 } from 'reactflow'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
 import type {
   BlockEnum,
   Edge,
   Node,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { uniqBy } from 'es-toolkit/compat'
 import {
   useCallback,
@@ -18,30 +18,30 @@ import {
   getOutgoers,
 } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { AppModeEnum } from '@/types/app'
 import { useNodesMetaData } from '.'
 import {
   SUPPORT_OUTPUT_VARS_NODE,
-} from '@/app/components/workflow/constants'
-import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+} from '../constants'
+import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
+} from '../store/index'
 import {
   WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
+} from '../types'
 import {
   getWorkflowEntryNode,
   isWorkflowEntryNode,
-} from '@/app/components/workflow/utils/workflow-entry'
+} from '../utils/workflow-entry'
 
-import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
+import { useAvailableBlocks } from '../hooks/use-available-blocks'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)

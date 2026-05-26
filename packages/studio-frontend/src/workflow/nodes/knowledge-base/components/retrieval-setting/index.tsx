@@ -3,17 +3,17 @@ import type {
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
   WeightedScore,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { RerankingModelSelectorProps } from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/reranking-model-selector'
-import type { TopKAndScoreThresholdProps } from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold'
+} from '../../../../nodes/knowledge-base/types'
+import type { RerankingModelSelectorProps } from '../../../../nodes/knowledge-base/components/retrieval-setting/reranking-model-selector'
+import type { TopKAndScoreThresholdProps } from '../../../../nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import { Field } from '../../../../nodes/_base/components/layout'
 import { useDocLink } from '@/context/i18n'
-import { useRetrievalSetting } from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/hooks'
-import SearchMethodOption from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/search-method-option'
+import { useRetrievalSetting } from '../../../../nodes/knowledge-base/components/retrieval-setting/hooks'
+import SearchMethodOption from '../../../../nodes/knowledge-base/components/retrieval-setting/search-method-option'
 
 type RetrievalSettingProps = {
   indexMethod?: IndexMethodEnum

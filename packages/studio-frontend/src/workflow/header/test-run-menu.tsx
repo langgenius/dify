@@ -1,8 +1,8 @@
-import type { ShortcutMapping } from '@/app/components/workflow/header/test-run-menu-helpers'
+import type { ShortcutMapping } from '../header/test-run-menu-helpers'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { forwardRef, isValidElement, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { OptionRow, SingleOptionTrigger, useShortcutMenu } from '@/app/components/workflow/header/test-run-menu-helpers'
+import { OptionRow, SingleOptionTrigger, useShortcutMenu } from '../header/test-run-menu-helpers'
 
 export enum TriggerType {
   UserInput = 'user_input',

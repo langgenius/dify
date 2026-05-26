@@ -1,7 +1,7 @@
-import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
+import type { ChecklistItem } from '../../hooks/use-checklist'
 import type {
   CommonEdgeType,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -20,13 +20,13 @@ import { useTranslation } from 'react-i18next'
 import {
   useEdges,
 } from 'reactflow'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import useNodes from '../../store/workflow/use-nodes'
 import {
   useChecklist,
   useNodesInteractions,
-} from '@/app/components/workflow/hooks/index'
-import { ChecklistNodeGroup } from '@/app/components/workflow/header/checklist/node-group'
-import { ChecklistPluginGroup } from '@/app/components/workflow/header/checklist/plugin-group'
+} from '../../hooks/index'
+import { ChecklistNodeGroup } from '../../header/checklist/node-group'
+import { ChecklistPluginGroup } from '../../header/checklist/plugin-group'
 
 type WorkflowChecklistProps = {
   disabled: boolean

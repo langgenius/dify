@@ -1,5 +1,5 @@
-import type { HttpNodeType } from '@/app/components/workflow/nodes/http/types'
-import { BodyPayloadValueType, BodyType, Method } from '@/app/components/workflow/nodes/http/types'
+import type { HttpNodeType } from '../../../nodes/http/types'
+import { BodyPayloadValueType, BodyType, Method } from '../../../nodes/http/types'
 
 const METHOD_ARG_FLAGS = new Set(['-X', '--request'])
 const HEADER_ARG_FLAGS = new Set(['-H', '--header'])

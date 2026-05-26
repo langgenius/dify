@@ -1,18 +1,18 @@
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
+import type { InputVar, ValueSelector, Variable } from '../../types'
+import type { LoopNodeType } from '../../nodes/loop/types'
 import type { NodeTracing } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
-import { ValueType } from '@/app/components/workflow/types'
-import { useIsNodeInLoop, useWorkflow } from '@/app/components/workflow/hooks/index'
+import formatTracing from '../../run/utils/format-log'
+import { ValueType } from '../../types'
+import { useIsNodeInLoop, useWorkflow } from '../../hooks/index'
 import {
   buildUsedOutVars,
   createInputVarValues,
   dedupeInputVars,
   getDependentVarsFromLoopPayload,
   getVarSelectorsFromCondition,
-} from '@/app/components/workflow/nodes/loop/use-single-run-form-params.helpers'
+} from '../../nodes/loop/use-single-run-form-params.helpers'
 
 type Params = {
   id: string

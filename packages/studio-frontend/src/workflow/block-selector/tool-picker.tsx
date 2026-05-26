@@ -2,9 +2,9 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
-import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolDefaultValue, ToolValue } from '../block-selector/types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
-import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
+import type { BlockEnum, OnSelectBlock } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -19,7 +19,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
-import AllTools from '@/app/components/workflow/block-selector/all-tools'
+import AllTools from '../block-selector/all-tools'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   createCustomCollection,

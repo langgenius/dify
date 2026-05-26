@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand'
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
-} from '@/app/components/workflow/help-line/types'
+} from '../../help-line/types'
 
 export type HelpLineSliceShape = {
   helpLineHorizontal?: HelpLineHorizontalPosition

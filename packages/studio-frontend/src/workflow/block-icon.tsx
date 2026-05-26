@@ -29,7 +29,7 @@ import {
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import { API_PREFIX } from '@/config'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from './types'
 
 type BlockIconProps = {
   type: BlockEnum

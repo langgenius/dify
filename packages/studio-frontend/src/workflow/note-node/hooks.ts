@@ -1,8 +1,8 @@
 import type { EditorState } from 'lexical'
-import type { NoteTheme } from '@/app/components/workflow/note-node/types'
+import type { NoteTheme } from '../note-node/types'
 import { useCallback } from 'react'
-import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '@/app/components/workflow/hooks/index'
-import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from '@/app/components/workflow/note-node/constants'
+import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '../hooks/index'
+import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from '../note-node/constants'
 
 export const useNote = (id: string) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()

@@ -1,7 +1,7 @@
 import type {
   DebugWithSingleOrMultipleModelConfigs,
   ModelAndParameter,
-} from '@/app/components/app/configuration/debug/types'
+} from '../../configuration/debug/types'
 import type {
   ChatConfig,
   ChatItem,
@@ -20,7 +20,7 @@ import {
   AgentStrategy,
 } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import { ORCHESTRATE_CHANGED } from '@/app/components/app/configuration/debug/types'
+import { ORCHESTRATE_CHANGED } from '../../configuration/debug/types'
 
 export const useDebugWithSingleOrMultipleModel = (appId: string) => {
   const localeDebugWithSingleOrMultipleModelConfigs = localStorage.getItem('app-debug-with-single-or-multiple-models')

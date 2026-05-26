@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { Strategy } from '@/app/components/workflow/nodes/_base/components/agent-strategy'
+import type { ToolWithProvider } from '../../../types'
+import type { Strategy } from '../../../nodes/_base/components/agent-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
-import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type { ListProps, ListRef } from '../../../block-selector/market-place-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -23,15 +23,15 @@ import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-ico
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList from '../../../block-selector/market-place-plugin/list'
 import Link from '@/next/link'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useStrategyProviders } from '@/service/use-strategy'
-import Tools from '@/app/components/workflow/block-selector/tools'
-import ViewTypeSelect, { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
-import { useStrategyInfo } from '@/app/components/workflow/nodes/agent/use-config'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
+import Tools from '../../../block-selector/tools'
+import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
+import { useStrategyInfo } from '../../../nodes/agent/use-config'
+import { InstallPluginButton } from '../../../nodes/_base/components/install-plugin-button'
+import { SwitchPluginVersion } from '../../../nodes/_base/components/switch-plugin-version'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 

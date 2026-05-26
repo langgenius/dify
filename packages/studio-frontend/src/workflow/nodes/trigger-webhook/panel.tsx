@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { HttpMethod, WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { HttpMethod, WebhookTriggerNodeType } from '../../nodes/trigger-webhook/types'
+import type { NodePanelProps } from '../../types'
 import {
   NumberField,
   NumberFieldControls,
@@ -17,15 +17,15 @@ import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputWithCopy from '@/app/components/base/input-with-copy'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
+import Field from '../../nodes/_base/components/field'
+import OutputVars from '../../nodes/_base/components/output-vars'
+import Split from '../../nodes/_base/components/split'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
-import HeaderTable from '@/app/components/workflow/nodes/trigger-webhook/components/header-table'
-import ParagraphInput from '@/app/components/workflow/nodes/trigger-webhook/components/paragraph-input'
-import ParameterTable from '@/app/components/workflow/nodes/trigger-webhook/components/parameter-table'
-import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from '@/app/components/workflow/nodes/trigger-webhook/use-config'
-import { OutputVariablesContent } from '@/app/components/workflow/nodes/trigger-webhook/utils/render-output-vars'
+import HeaderTable from '../../nodes/trigger-webhook/components/header-table'
+import ParagraphInput from '../../nodes/trigger-webhook/components/paragraph-input'
+import ParameterTable from '../../nodes/trigger-webhook/components/parameter-table'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from '../../nodes/trigger-webhook/use-config'
+import { OutputVariablesContent } from '../../nodes/trigger-webhook/utils/render-output-vars'
 
 const i18nPrefix = 'nodes.triggerWebhook'
 

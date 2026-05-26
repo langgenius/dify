@@ -1,10 +1,10 @@
-import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store'
-import type { Node } from '@/app/components/workflow/types'
+import type { AvailableNodesMetaData } from '../hooks-store'
+import type { Node } from '../types'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useHooksStore } from '../hooks-store'
+import { useStore } from '../store'
+import { BlockEnum } from '../types'
 import { useGetLanguage } from '@/context/i18n'
 import {
   useAllBuiltInTools,

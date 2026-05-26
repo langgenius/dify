@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { VariableAssignerNodeType } from '../../nodes/variable-assigner/types'
+import type { InputVar, ValueSelector, Variable } from '../../types'
 import { useCallback } from 'react'
 
 type Params = {

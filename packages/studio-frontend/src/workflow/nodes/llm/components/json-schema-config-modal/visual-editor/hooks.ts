@@ -1,14 +1,14 @@
 import type { VisualEditorProps } from '.'
-import type { Field } from '@/app/components/workflow/nodes/llm/types'
-import type { EditData } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/index'
+import type { Field } from '../../../../../nodes/llm/types'
+import type { EditData } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/index'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
-import { ArrayType, Type } from '@/app/components/workflow/nodes/llm/types'
-import { findPropertyWithPath } from '@/app/components/workflow/nodes/llm/utils'
-import { useMittContext } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
-import { useVisualEditorStore } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/store'
+import { ArrayType, Type } from '../../../../../nodes/llm/types'
+import { findPropertyWithPath } from '../../../../../nodes/llm/utils'
+import { useMittContext } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import { useVisualEditorStore } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/store'
 
 type ChangeEventParams = {
   path: string[]

@@ -1,5 +1,5 @@
 'use client'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { EnvironmentVariable } from './types'
 import {
   AlertDialog,
   AlertDialogActions,

@@ -1,4 +1,4 @@
-import type { Node, ValueSelector } from '@/app/components/workflow/types'
+import type { Node, ValueSelector } from '../../../types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,8 +11,8 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { VarBlockIcon } from '../../../block-icon'
+import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '../../../nodes/_base/components/variable/utils'
 
 type NodeVariableItemProps = {
   node: Node

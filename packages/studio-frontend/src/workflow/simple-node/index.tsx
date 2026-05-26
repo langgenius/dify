@@ -3,7 +3,7 @@ import type {
 } from 'react'
 import type {
   NodeProps,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAlertFill,
@@ -15,17 +15,17 @@ import {
   memo,
   useMemo,
 } from 'react'
-import BlockIcon from '@/app/components/workflow/block-icon'
+import BlockIcon from '../block-icon'
 import {
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
+} from '../hooks'
+import NodeControl from '../nodes/_base/components/node-control'
 import {
   NodeTargetHandle,
-} from '@/app/components/workflow/nodes/_base/components/node-handle'
+} from '../nodes/_base/components/node-handle'
 import {
   NodeRunningStatus,
-} from '@/app/components/workflow/types'
+} from '../types'
 
 type SimpleNodeProps = NodeProps
 

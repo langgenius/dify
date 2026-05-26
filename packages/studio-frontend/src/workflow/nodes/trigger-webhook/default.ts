@@ -1,9 +1,9 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils/index'
-import { isValidParameterType } from '@/app/components/workflow/nodes/trigger-webhook/utils/parameter-type-utils'
-import { createWebhookRawVariable } from '@/app/components/workflow/nodes/trigger-webhook/utils/raw-variable'
+import type { NodeDefault } from '../../types'
+import type { WebhookTriggerNodeType } from '../../nodes/trigger-webhook/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils/index'
+import { isValidParameterType } from '../../nodes/trigger-webhook/utils/parameter-type-utils'
+import { createWebhookRawVariable } from '../../nodes/trigger-webhook/utils/raw-variable'
 
 const metaData = genNodeMetaData({
   sort: 3,

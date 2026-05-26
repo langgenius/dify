@@ -1,7 +1,7 @@
 'use client'
 import type {
   ConversationVariable,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiCloseLine } from '@remixicon/react'
@@ -16,10 +16,10 @@ import {
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { useStore } from '@/app/components/workflow/store'
+import CodeEditor from '../../nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '../../nodes/code/types'
+import { ChatVarType } from '../../panel/chat-variable-panel/type'
+import { useStore } from '../../store'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 

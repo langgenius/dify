@@ -1,13 +1,13 @@
 'use client'
-import type { AnnotationItem } from '@/app/components/app/annotation/type'
+import type { AnnotationItem } from '../annotation/type'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
-import BatchAction from '@/app/components/app/annotation/batch-action'
-import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove-annotation-confirm-modal/index'
+import BatchAction from '../annotation/batch-action'
+import RemoveAnnotationConfirmModal from '../annotation/remove-annotation-confirm-modal/index'
 
 type Props = {
   list: AnnotationItem[]

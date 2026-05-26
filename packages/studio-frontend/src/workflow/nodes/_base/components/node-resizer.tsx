@@ -1,12 +1,12 @@
 import type { OnResize } from 'reactflow'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
 } from 'react'
 import { NodeResizeControl } from 'reactflow'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/index'
+import { useNodesInteractions } from '../../../hooks/index'
 
 const Icon = () => {
   return (

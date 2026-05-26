@@ -1,7 +1,7 @@
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowStore } from '../../store'
+import { WorkflowRunningStatus } from '../../types'
 
 export const useWorkflowFailed = () => {
   const workflowStore = useWorkflowStore()

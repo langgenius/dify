@@ -1,16 +1,16 @@
 import type {
   Node,
   NodeOutPutVar,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
-import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder'
+import { useStore } from '../../../../store'
+import { BlockEnum } from '../../../../types'
+import Placeholder from '../../../../nodes/tool/components/mixed-variable-text-input/placeholder'
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean

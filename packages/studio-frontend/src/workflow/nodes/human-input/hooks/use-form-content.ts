@@ -1,8 +1,8 @@
-import type { FormInputItem, HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, HumanInputNodeType } from '../../../nodes/human-input/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useWorkflow } from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useWorkflow } from '../../../hooks'
+import useNodeCrud from '../../../nodes/_base/hooks/use-node-crud'
 
 const useFormContent = (id: string, payload: HumanInputNodeType) => {
   const [editorKey, setEditorKey] = useState(0)

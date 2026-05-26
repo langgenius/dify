@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { ModelAndParameter } from '../../../configuration/debug/types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
@@ -26,11 +26,11 @@ import { canFindTool } from '@/utils'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
-} from '@/app/components/app/configuration/debug/hooks'
+} from '../../../configuration/debug/hooks'
 import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
-} from '@/app/components/app/configuration/debug/types'
+} from '../../../configuration/debug/types'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter

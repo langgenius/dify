@@ -7,8 +7,8 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '@/app/components/workflow/block-selector'
-import { useReplaceDataSourceNode } from '@/app/components/workflow/nodes/data-source-empty/hooks'
+import BlockSelector from '../../block-selector'
+import { useReplaceDataSourceNode } from '../../nodes/data-source-empty/hooks'
 
 const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
   const { t } = useTranslation()

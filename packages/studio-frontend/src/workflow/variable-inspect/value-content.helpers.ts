@@ -4,11 +4,11 @@ import {
   checkJsonSchemaDepth,
   getValidationErrorMessage,
   validateSchemaAgainstDraft7,
-} from '@/app/components/workflow/nodes/llm/utils'
+} from '../nodes/llm/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { VarInInspectType } from '@/types/workflow'
-import { CHUNK_SCHEMA_TYPES } from '@/app/components/workflow/variable-inspect/types'
-import { validateJSONSchema } from '@/app/components/workflow/variable-inspect/utils'
+import { CHUNK_SCHEMA_TYPES } from '../variable-inspect/types'
+import { validateJSONSchema } from '../variable-inspect/utils'
 
 type UploadedFileLike = {
   upload_file_id?: string

@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot } from '../../../../../nodes/llm/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '@/app/components/workflow/nodes/llm/utils'
-import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
-import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
+import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../../../nodes/llm/utils'
+import CodeEditor from '../../../../../nodes/llm/components/json-schema-config-modal/code-editor'
+import ErrorMessage from '../../../../../nodes/llm/components/json-schema-config-modal/error-message'
 
 type GeneratedResultProps = {
   schema: SchemaRoot

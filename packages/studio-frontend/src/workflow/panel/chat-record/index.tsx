@@ -13,13 +13,13 @@ import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import { fetchConversationMessages } from '@/service/debug'
-import { useWorkflowRun } from '@/app/components/workflow/hooks/index'
+import { useWorkflowRun } from '../../hooks/index'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
-import UserInput from '@/app/components/workflow/panel/chat-record/user-input'
+} from '../../store/index'
+import { formatWorkflowRunIdentifier } from '../../utils/index'
+import UserInput from '../../panel/chat-record/user-input'
 
 function getFormattedChatList(messages: any[]) {
   const res: ChatItem[] = []

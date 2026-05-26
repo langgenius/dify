@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows/index'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import TracingPanel from '../run/tracing-panel'
 
 const i18nPrefix = 'singleRun'
 

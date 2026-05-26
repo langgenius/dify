@@ -1,6 +1,6 @@
 import type {
   EnvironmentVariable,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import {
@@ -9,13 +9,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
-import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
-import { useStore } from '@/app/components/workflow/store'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import RemoveEffectVarConfirm from '../../nodes/_base/components/remove-effect-var-confirm'
+import { findUsedVarNodes, updateNodeVars } from '../../nodes/_base/components/variable/utils'
+import EnvItem from '../../panel/env-panel/env-item'
+import VariableTrigger from '../../panel/env-panel/variable-trigger'
+import { useStore } from '../../store'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 
@@ -54,7 +54,7 @@ const useEnvPanelActions = ({
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(async () => {
     try {
-      const { webSocketClient } = await import('@/app/components/workflow/collaboration/core/websocket-manager')
+      const { webSocketClient } = await import('../../collaboration/core/websocket-manager')
       const socket = webSocketClient.getSocket(appId)
       if (socket) {
         socket.emit('collaboration_event', {

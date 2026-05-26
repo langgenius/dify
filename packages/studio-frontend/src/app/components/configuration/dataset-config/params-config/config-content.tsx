@@ -25,7 +25,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
+import WeightedScore from '../../../configuration/dataset-config/params-config/weighted-score'
 
 type Props = {
   datasetConfigs: DatasetConfigs

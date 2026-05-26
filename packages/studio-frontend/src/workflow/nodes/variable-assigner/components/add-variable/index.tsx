@@ -1,9 +1,9 @@
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { VariableAssignerNodeType } from '../../../../nodes/variable-assigner/types'
 import type {
   NodeOutPutVar,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
@@ -12,8 +12,8 @@ import {
   useState,
 } from 'react'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
-import { useVariableAssigner } from '@/app/components/workflow/nodes/variable-assigner/hooks'
+import AddVariablePopup from '../../../../nodes/_base/components/add-variable-popup'
+import { useVariableAssigner } from '../../../../nodes/variable-assigner/hooks'
 
 type AddVariableProps = {
   variableAssignerNodeId: string

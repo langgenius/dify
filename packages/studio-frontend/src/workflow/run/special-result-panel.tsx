@@ -5,10 +5,10 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
-import { AgentResultPanel } from '@/app/components/workflow/run/agent-log/index'
-import { IterationResultPanel } from '@/app/components/workflow/run/iteration-log/index'
-import { LoopResultPanel } from '@/app/components/workflow/run/loop-log/index'
-import { RetryResultPanel } from '@/app/components/workflow/run/retry-log/index'
+import { AgentResultPanel } from '../run/agent-log/index'
+import { IterationResultPanel } from '../run/iteration-log/index'
+import { LoopResultPanel } from '../run/loop-log/index'
+import { RetryResultPanel } from '../run/retry-log/index'
 
 export type SpecialResultPanelProps = {
   showRetryDetail?: boolean

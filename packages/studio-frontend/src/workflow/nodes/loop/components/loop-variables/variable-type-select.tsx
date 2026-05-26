@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../../../types'
 
 type VariableTypeSelectProps = {
   value?: string

@@ -1,13 +1,13 @@
 import type { FC } from 'react'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { ToolNodeType } from '../../nodes/tool/types'
+import type { NodeProps } from '../../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import { isToolAuthorizationRequired } from '@/app/components/workflow/nodes/tool/auth'
-import useCurrentToolCollection from '@/app/components/workflow/nodes/tool/hooks/use-current-tool-collection'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
+import { InstallPluginButton } from '../../nodes/_base/components/install-plugin-button'
+import { isToolAuthorizationRequired } from '../../nodes/tool/auth'
+import useCurrentToolCollection from '../../nodes/tool/hooks/use-current-tool-collection'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
   data,

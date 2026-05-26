@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
+import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../overview/app-card-utils'
 import {
   Select,
   SelectContent,

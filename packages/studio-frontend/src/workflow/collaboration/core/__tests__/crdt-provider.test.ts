@@ -1,6 +1,6 @@
 import type { LoroDoc } from 'loro-crdt/base64'
 import type { Socket } from 'socket.io-client'
-import { CRDTProvider } from '@/app/components/workflow/collaboration/core/crdt-provider'
+import { CRDTProvider } from '../../../collaboration/core/crdt-provider'
 
 type FakeDocEvent = {
   by: string

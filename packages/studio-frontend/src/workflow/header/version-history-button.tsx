@@ -10,8 +10,8 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
+import { useWorkflowShortcut } from '../shortcuts/use-workflow-hotkeys'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown

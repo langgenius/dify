@@ -1,4 +1,4 @@
-import type { VarType as NumberVarType } from '@/app/components/workflow/nodes/tool/types'
+import type { VarType as NumberVarType } from '../../../../nodes/tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
@@ -7,13 +7,13 @@ import type {
   HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
-} from '@/app/components/workflow/nodes/if-else/types'
+} from '../../../../nodes/if-else/types'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
@@ -25,29 +25,29 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
-import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useIsChatMode } from '../../../../hooks/use-workflow'
+import { getVarType } from '../../../../nodes/_base/components/variable/utils'
+import BoolValue from '../../../../panel/chat-variable-panel/components/bool-value'
+import { useWorkflowStore } from '../../../../store'
 
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../../../types'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import useMatchSchemaType from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
-import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
+import useMatchSchemaType from '../../../../nodes/_base/components/variable/use-match-schema-type'
+import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../../nodes/constants'
 import {
   ComparisonOperator,
-} from '@/app/components/workflow/nodes/if-else/types'
-import { comparisonOperatorNotRequireValue, getOperators } from '@/app/components/workflow/nodes/if-else/utils'
-import ConditionNumberInput from '@/app/components/workflow/nodes/if-else/components/condition-number-input'
-import ConditionWrap from '@/app/components/workflow/nodes/if-else/components/condition-wrap'
-import ConditionInput from '@/app/components/workflow/nodes/if-else/components/condition-list/condition-input'
-import ConditionOperator from '@/app/components/workflow/nodes/if-else/components/condition-list/condition-operator'
-import ConditionVarSelector from '@/app/components/workflow/nodes/if-else/components/condition-list/condition-var-selector'
+} from '../../../../nodes/if-else/types'
+import { comparisonOperatorNotRequireValue, getOperators } from '../../../../nodes/if-else/utils'
+import ConditionNumberInput from '../../../../nodes/if-else/components/condition-number-input'
+import ConditionWrap from '../../../../nodes/if-else/components/condition-wrap'
+import ConditionInput from '../../../../nodes/if-else/components/condition-list/condition-input'
+import ConditionOperator from '../../../../nodes/if-else/components/condition-list/condition-operator'
+import ConditionVarSelector from '../../../../nodes/if-else/components/condition-list/condition-var-selector'
 
 const optionNameI18NPrefix = 'nodes.ifElse.optionName' as const
 

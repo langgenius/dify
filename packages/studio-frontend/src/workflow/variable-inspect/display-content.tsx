@@ -1,4 +1,4 @@
-import type { VarType } from '@/app/components/workflow/types'
+import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,9 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import Textarea from '@/app/components/base/textarea'
 import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
-import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
+import SchemaEditor from '../nodes/llm/components/json-schema-config-modal/schema-editor'
 import { ChunkingMode } from '@/models/datasets'
-import { PreviewType, ViewMode } from '@/app/components/workflow/variable-inspect/types'
+import { PreviewType, ViewMode } from '../variable-inspect/types'
 
 type DisplayContentProps = {
   previewType: PreviewType

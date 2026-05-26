@@ -1,10 +1,10 @@
 import type {
   ReactElement,
 } from 'react'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type { IterationNodeType } from '../../../nodes/iteration/types'
 import type {
   NodeProps,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
@@ -12,16 +12,16 @@ import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockIcon from '@/app/components/workflow/block-icon'
+import BlockIcon from '../../../block-icon'
 import {
   BlockEnum,
-} from '@/app/components/workflow/types'
-import { hasErrorHandleNode } from '@/app/components/workflow/utils'
-import ErrorHandleOnNode from '@/app/components/workflow/workflow-preview/components/error-handle-on-node'
+} from '../../../types'
+import { hasErrorHandleNode } from '../../../utils'
+import ErrorHandleOnNode from '../../../workflow-preview/components/error-handle-on-node'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
-} from '@/app/components/workflow/workflow-preview/components/node-handle'
+} from '../../../workflow-preview/components/node-handle'
 
 type NodeChildElement = ReactElement<Partial<NodeProps>>
 

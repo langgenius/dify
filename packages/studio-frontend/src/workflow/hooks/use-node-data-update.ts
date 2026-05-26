@@ -1,9 +1,9 @@
-import type { SyncCallback } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import type { SyncCallback } from '../hooks/use-nodes-sync-draft'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 type NodeDataUpdatePayload = {
   id: string

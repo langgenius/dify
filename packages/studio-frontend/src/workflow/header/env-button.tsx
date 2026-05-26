@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore } from '../store'
 import useTheme from '@/hooks/use-theme'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {

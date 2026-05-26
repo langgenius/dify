@@ -1,8 +1,8 @@
 import type {
   NodeOutPutVar,
   ValueSelector,
-} from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
+} from '../types'
+import { InputVarType } from '../types'
 
 export const findVariableWhenOnLLMVision = (valueSelector: ValueSelector, availableVars: NodeOutPutVar[]) => {
   const currentVariableNode = availableVars.find((availableVar) => {

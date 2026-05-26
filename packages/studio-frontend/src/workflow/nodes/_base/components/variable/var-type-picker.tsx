@@ -10,7 +10,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../../../types'
 
 type Props = {
   className?: string

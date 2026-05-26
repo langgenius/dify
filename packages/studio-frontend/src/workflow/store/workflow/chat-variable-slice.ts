@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable } from '../../types'
 
 export type ChatVariableSliceShape = {
   showChatVariablePanel: boolean

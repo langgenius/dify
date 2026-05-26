@@ -1,4 +1,4 @@
-import type { VarType as NumberVarType } from '@/app/components/workflow/nodes/tool/types'
+import type { VarType as NumberVarType } from '../../nodes/tool/types'
 import type {
   BlockEnum,
   CommonNodeType,
@@ -7,7 +7,7 @@ import type {
   ValueType,
   Var,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../types'
 
 export enum LogicalOperator {
   and = 'and',

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import type { WriteMode } from '@/app/components/workflow/nodes/assigner/types'
-import type { Item } from '@/app/components/workflow/nodes/assigner/utils'
-import type { VarType } from '@/app/components/workflow/types'
+import type { WriteMode } from '../../../nodes/assigner/types'
+import type { Item } from '../../../nodes/assigner/utils'
+import type { VarType } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getOperationItems, isOperationItem } from '@/app/components/workflow/nodes/assigner/utils'
+import { getOperationItems, isOperationItem } from '../../../nodes/assigner/utils'
 
 type OperationSelectorProps = {
   value: string | number

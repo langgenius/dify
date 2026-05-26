@@ -1,5 +1,5 @@
 'use client'
-import type { TocItem } from '@/app/components/develop/hooks/use-doc-toc'
+import type { TocItem } from './hooks/use-doc-toc'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 

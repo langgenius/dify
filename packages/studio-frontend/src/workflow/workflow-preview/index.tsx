@@ -8,7 +8,7 @@ import type {
 import type {
   Edge,
   Node,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   useCallback,
@@ -26,22 +26,22 @@ import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
-} from '@/app/components/workflow/constants'
-import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
-import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
+} from '../constants'
+import CustomConnectionLine from '../custom-connection-line'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import { CUSTOM_SIMPLE_NODE } from '../simple-node/constants'
 import {
   initialEdges,
   initialNodes,
-} from '@/app/components/workflow/utils/workflow-init'
-import CustomEdge from '@/app/components/workflow/workflow-preview/components/custom-edge'
-import CustomNode from '@/app/components/workflow/workflow-preview/components/nodes/index'
-import IterationStartNode from '@/app/components/workflow/workflow-preview/components/nodes/iteration-start/index'
-import LoopStartNode from '@/app/components/workflow/workflow-preview/components/nodes/loop-start/index'
-import CustomNoteNode from '@/app/components/workflow/workflow-preview/components/note-node/index'
-import ZoomInOut from '@/app/components/workflow/workflow-preview/components/zoom-in-out'
+} from '../utils/workflow-init'
+import CustomEdge from '../workflow-preview/components/custom-edge'
+import CustomNode from '../workflow-preview/components/nodes/index'
+import IterationStartNode from '../workflow-preview/components/nodes/iteration-start/index'
+import LoopStartNode from '../workflow-preview/components/nodes/loop-start/index'
+import CustomNoteNode from '../workflow-preview/components/note-node/index'
+import ZoomInOut from '../workflow-preview/components/zoom-in-out'
 import 'reactflow/dist/style.css'
 import '../style.css'
 

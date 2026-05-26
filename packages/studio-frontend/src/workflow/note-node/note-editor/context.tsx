@@ -14,8 +14,8 @@ import {
   useEffect,
   useRef,
 } from 'react'
-import { createNoteEditorStore } from '@/app/components/workflow/note-node/note-editor/store'
-import theme from '@/app/components/workflow/note-node/note-editor/theme/index'
+import { createNoteEditorStore } from '../../note-node/note-editor/store'
+import theme from '../../note-node/note-editor/theme/index'
 
 const NoteEditorContentSynchronizer = ({ value }: { value?: string }) => {
   const [editor] = useLexicalComposerContext()

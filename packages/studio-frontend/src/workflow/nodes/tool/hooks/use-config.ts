@@ -1,5 +1,5 @@
-import type { ToolNodeType, ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { ToolNodeType, ToolVarInputs } from '../../../nodes/tool/types'
+import type { InputVar } from '../../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
@@ -14,16 +14,16 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import {
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+} from '../../../hooks'
+import useNodeCrud from '../../../nodes/_base/hooks/use-node-crud'
+import { useWorkflowStore } from '../../../store'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import {
   useInvalidToolsByType,
 } from '@/service/use-tools'
-import { isToolAuthorizationRequired } from '@/app/components/workflow/nodes/tool/auth'
-import { normalizeJsonSchemaType } from '@/app/components/workflow/nodes/tool/output-schema-utils'
-import useCurrentToolCollection from '@/app/components/workflow/nodes/tool/hooks/use-current-tool-collection'
+import { isToolAuthorizationRequired } from '../../../nodes/tool/auth'
+import { normalizeJsonSchemaType } from '../../../nodes/tool/output-schema-utils'
+import useCurrentToolCollection from '../../../nodes/tool/hooks/use-current-tool-collection'
 
 const formatDisplayType = (output: Record<string, unknown>): string => {
   const normalizedType = normalizeJsonSchemaType(output) || 'Unknown'

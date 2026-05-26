@@ -1,4 +1,4 @@
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataShape } from '../../../../nodes/knowledge-retrieval/types'
 import type { MetadataInDoc } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -14,7 +14,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import MetadataIcon from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-icon'
+import MetadataIcon from '../../../../nodes/knowledge-retrieval/components/metadata/metadata-icon'
 
 const AddCondition = ({
   metadataList,

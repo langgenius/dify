@@ -1,9 +1,9 @@
-import type { ObjectValueItem, ToastPayload } from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal.helpers'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ObjectValueItem, ToastPayload } from '../../../panel/chat-variable-panel/components/variable-modal.helpers'
+import type { ConversationVariable } from '../../../types'
 import { useMemo, useState } from 'react'
 import { v4 as uuid4 } from 'uuid'
-import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { DEFAULT_OBJECT_VALUE } from '../../../panel/chat-variable-panel/components/object-value-item'
+import { ChatVarType } from '../../../panel/chat-variable-panel/type'
 import {
   buildObjectValueItems,
   formatChatVariableValue,
@@ -13,7 +13,7 @@ import {
   getTypeChangeState,
   parseEditorContent,
   validateVariableName,
-} from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal.helpers'
+} from '../../../panel/chat-variable-panel/components/variable-modal.helpers'
 
 type UseVariableModalStateOptions = {
   chatVar?: ConversationVariable

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Tooltip,
@@ -11,13 +11,13 @@ import { useTranslation } from 'react-i18next'
 import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { NodeActionsDropdown } from '../../../node-actions-menu'
+import { useWorkflowStore } from '../../../store'
 import {
   useNodesInteractions,
-} from '@/app/components/workflow/hooks/index'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { canRunBySingle } from '@/app/components/workflow/utils/index'
+} from '../../../hooks/index'
+import { NodeRunningStatus } from '../../../types'
+import { canRunBySingle } from '../../../utils/index'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'> & {
   pluginInstallLocked?: boolean

@@ -3,7 +3,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../../../../types'
 import {
   Popover,
   PopoverContent,
@@ -12,9 +12,9 @@ import {
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import { VarType } from '@/app/components/workflow/types'
+import VariableTag from '../../../../../nodes/_base/components/variable-tag'
+import VarReferenceVars from '../../../../../nodes/_base/components/variable/var-reference-vars'
+import { VarType } from '../../../../../types'
 
 type ConditionVariableSelectorProps = {
   valueSelector?: ValueSelector

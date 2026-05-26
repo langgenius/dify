@@ -1,4 +1,4 @@
-import type { Recipient as RecipientItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { Recipient as RecipientItem } from '../../../../../nodes/human-input/types'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'

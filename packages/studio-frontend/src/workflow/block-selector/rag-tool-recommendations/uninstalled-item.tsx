@@ -5,8 +5,8 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useLocale } from '@/context/i18n'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
+import BlockIcon from '../../block-icon'
+import { BlockEnum } from '../../types'
 
 type UninstalledItemProps = {
   payload: Plugin

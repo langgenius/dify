@@ -1,12 +1,12 @@
 import type { ReactElement } from 'react'
-import type { WorkflowShortcutId } from '@/app/components/workflow/shortcuts/definitions'
+import type { WorkflowShortcutId } from '../shortcuts/definitions'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 type TipPopupProps = {
   title: string

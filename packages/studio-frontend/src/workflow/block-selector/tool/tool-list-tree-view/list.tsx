@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { BlockEnum, ToolWithProvider } from '@/app/components/workflow/types'
-import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolActionPreviewCardHandle } from '@/app/components/workflow/block-selector/tool/action-item'
+import type { BlockEnum, ToolWithProvider } from '../../../types'
+import type { ToolDefaultValue, ToolValue } from '../../../block-selector/types'
+import type { ToolActionPreviewCardHandle } from '../../../block-selector/tool/action-item'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '@/app/components/workflow/block-selector/index-bar'
-import Item from '@/app/components/workflow/block-selector/tool/tool-list-tree-view/item'
+import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../../block-selector/index-bar'
+import Item from '../../../block-selector/tool/tool-list-tree-view/item'
 
 type Props = {
   payload: Record<string, ToolWithProvider[]>

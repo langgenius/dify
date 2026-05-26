@@ -1,8 +1,8 @@
-import type { VariableIconProps } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
+import type { VariableIconProps } from '../../../../../nodes/_base/components/variable/variable-label/base/variable-icon'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import VariableIcon from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
-import { useVarColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/hooks'
+import VariableIcon from '../../../../../nodes/_base/components/variable/variable-label/base/variable-icon'
+import { useVarColor } from '../../../../../nodes/_base/components/variable/variable-label/hooks'
 
 type VariableIconWithColorProps = {
   isExceptionVariable?: boolean

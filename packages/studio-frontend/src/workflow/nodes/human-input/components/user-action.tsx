@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { UserAction } from '../../../nodes/human-input/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
@@ -8,7 +8,7 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import ButtonStyleDropdown from '@/app/components/workflow/nodes/human-input/components/button-style-dropdown'
+import ButtonStyleDropdown from '../../../nodes/human-input/components/button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
 const ACTION_ID_MAX_LENGTH = 20

@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '../../types'
 
 export type ToolSliceShape = {
   toolPublished: boolean

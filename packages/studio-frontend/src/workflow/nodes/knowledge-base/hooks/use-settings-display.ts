@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import {
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
+} from '../../../nodes/knowledge-base/types'
 
 export const useSettingsDisplay = () => {
   const { t } = useTranslation()

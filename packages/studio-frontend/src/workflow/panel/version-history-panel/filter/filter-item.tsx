@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { WorkflowVersionFilterOptions } from '@/app/components/workflow/types'
+import type { WorkflowVersionFilterOptions } from '../../../types'
 import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 

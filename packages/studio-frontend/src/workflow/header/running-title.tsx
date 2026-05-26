@@ -1,9 +1,9 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
-import { useIsChatMode } from '@/app/components/workflow/hooks/index'
-import { useStore } from '@/app/components/workflow/store/index'
-import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
+import { useIsChatMode } from '../hooks/index'
+import { useStore } from '../store/index'
+import { formatWorkflowRunIdentifier } from '../utils/index'
 
 const RunningTitle = () => {
   const { t } = useTranslation()

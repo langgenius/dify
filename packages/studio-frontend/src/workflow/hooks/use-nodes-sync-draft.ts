@@ -1,8 +1,8 @@
-import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store/index'
+import type { SyncDraftCallback } from '../hooks-store/index'
 import { useCallback } from 'react'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useStore } from '@/app/components/workflow/store/index'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useHooksStore } from '../hooks-store'
+import { useStore } from '../store/index'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 export type SyncCallback = SyncDraftCallback
 

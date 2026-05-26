@@ -1,20 +1,20 @@
-import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { DefaultValueForm } from '../../../../nodes/_base/components/error-handle/types'
 import type {
   CommonNodeType,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Collapse from '@/app/components/workflow/nodes/_base/components/collapse/index'
-import DefaultValue from '@/app/components/workflow/nodes/_base/components/error-handle/default-value'
-import ErrorHandleTypeSelector from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector'
-import FailBranchCard from '@/app/components/workflow/nodes/_base/components/error-handle/fail-branch-card'
+import Collapse from '../../../../nodes/_base/components/collapse/index'
+import DefaultValue from '../../../../nodes/_base/components/error-handle/default-value'
+import ErrorHandleTypeSelector from '../../../../nodes/_base/components/error-handle/error-handle-type-selector'
+import FailBranchCard from '../../../../nodes/_base/components/error-handle/fail-branch-card'
 import {
   useDefaultValue,
   useErrorHandle,
-} from '@/app/components/workflow/nodes/_base/components/error-handle/hooks'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+} from '../../../../nodes/_base/components/error-handle/hooks'
+import { ErrorHandleTypeEnum } from '../../../../nodes/_base/components/error-handle/types'
 
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
 const ErrorHandle = ({

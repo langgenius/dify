@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useReactFlow } from 'reactflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useWorkflowReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useWorkflowReadOnly } from '../hooks/use-workflow'
 
 export const useWorkflowZoom = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

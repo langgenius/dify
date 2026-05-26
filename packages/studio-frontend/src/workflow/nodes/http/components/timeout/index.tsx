@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import type { Timeout as TimeoutPayloadType } from '@/app/components/workflow/nodes/http/types'
+import type { Timeout as TimeoutPayloadType } from '../../../../nodes/http/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { FieldCollapse } from '../../../../nodes/_base/components/collapse'
+import { useStore } from '../../../../store'
+import { BlockEnum } from '../../../../types'
 
 type Props = {
   readonly: boolean

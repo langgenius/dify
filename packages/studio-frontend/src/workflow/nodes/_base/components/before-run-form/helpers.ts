@@ -1,7 +1,7 @@
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import type { Props as FormProps } from '../../../../nodes/_base/components/before-run-form/form'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType } from '../../../../types'
 import { TransferMethod } from '@/types/app'
 
 export function formatValue(value: unknown, type: InputVarType) {

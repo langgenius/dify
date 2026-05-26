@@ -1,13 +1,13 @@
 import type { Draft } from 'immer'
 import type { MutableRefObject } from 'react'
-import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { LLMNodeType } from '../../../nodes/llm/types'
 import type {
   Memory,
   PromptItem,
   ValueSelector,
   Var,
   Variable,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { produce } from 'immer'
 import {
   useCallback,
@@ -21,7 +21,7 @@ import {
 import {
   EditionType,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 
 type Params = {
   inputs: LLMNodeType

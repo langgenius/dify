@@ -1,11 +1,11 @@
-import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import type { Node, ToolWithProvider } from '../types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useNodesInteractionsWithoutSync } from '../hooks/use-nodes-interactions-without-sync'
+import { useStore, useWorkflowStore } from '../store'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -14,8 +14,8 @@ import {
 } from '@/service/use-tools'
 import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
-import useMatchSchemaType from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
-import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
 
 type Params = {
   flowType: FlowType

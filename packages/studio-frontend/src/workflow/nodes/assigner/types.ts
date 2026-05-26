@@ -1,4 +1,4 @@
-import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector } from '../../types'
 
 export enum WriteMode {
   overwrite = 'over-write',

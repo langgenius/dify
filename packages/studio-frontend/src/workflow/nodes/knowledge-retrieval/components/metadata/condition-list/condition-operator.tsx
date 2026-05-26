@@ -1,7 +1,7 @@
 import type {
   ComparisonOperator,
   MetadataFilteringVariableType,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+} from '../../../../../nodes/knowledge-retrieval/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 import {
   getOperators,
   isComparisonOperatorNeedTranslate,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
+} from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/utils'
 
 const i18nPrefix = 'nodes.ifElse'
 

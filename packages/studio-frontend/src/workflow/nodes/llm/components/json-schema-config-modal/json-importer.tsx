@@ -7,11 +7,11 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { checkJsonDepth } from '@/app/components/workflow/nodes/llm/utils'
-import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
-import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
-import { useMittContext } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
-import { useVisualEditorStore } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/store'
+import { checkJsonDepth } from '../../../../nodes/llm/utils'
+import CodeEditor from '../../../../nodes/llm/components/json-schema-config-modal/code-editor'
+import ErrorMessage from '../../../../nodes/llm/components/json-schema-config-modal/error-message'
+import { useMittContext } from '../../../../nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import { useVisualEditorStore } from '../../../../nodes/llm/components/json-schema-config-modal/visual-editor/store'
 
 type JsonImporterProps = {
   onSubmit: (schema: any) => void

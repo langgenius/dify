@@ -1,5 +1,5 @@
-import type { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
-import type { CommonNodeType, ValueSelector, VarType } from '@/app/components/workflow/types'
+import type { ComparisonOperator } from '../../nodes/if-else/types'
+import type { CommonNodeType, ValueSelector, VarType } from '../../types'
 
 export enum OrderBy {
   ASC = 'asc',

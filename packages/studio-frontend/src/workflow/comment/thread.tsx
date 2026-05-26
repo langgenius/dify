@@ -16,12 +16,12 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { getUserColor } from '../collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
-import { useStore } from '@/app/components/workflow/store/index'
-import { MentionInput } from '@/app/components/workflow/comment/mention-input'
+import { useStore } from '../store/index'
+import { MentionInput } from '../comment/mention-input'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail

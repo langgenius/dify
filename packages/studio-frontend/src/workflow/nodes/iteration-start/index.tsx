@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiHome5Fill } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeSourceHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
+import { NodeSourceHandle } from '../../nodes/_base/components/node-handle'
 
 const IterationStartNode = ({ id, data }: NodeProps) => {
   const { t } = useTranslation()

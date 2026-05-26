@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocLink } from '@/context/i18n'
-import Line from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/instruction/line'
+import Line from '../../../../../nodes/knowledge-base/components/chunk-structure/instruction/line'
 
 type InstructionProps = {
   className?: string

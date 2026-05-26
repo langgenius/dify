@@ -1,11 +1,11 @@
-import type { NodeSelectorProps } from '@/app/components/workflow/block-selector/main'
+import type { NodeSelectorProps } from '../block-selector/main'
 import {
   useMemo,
 } from 'react'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { useStore } from '@/app/components/workflow/store/index'
-import NodeSelector from '@/app/components/workflow/block-selector/main'
+import { useHooksStore } from '../hooks-store/store'
+import { BlockEnum } from '../types'
+import { useStore } from '../store/index'
+import NodeSelector from '../block-selector/main'
 
 const NodeSelectorWrapper = (props: NodeSelectorProps) => {
   const availableNodesMetaData = useHooksStore(s => s.availableNodesMetaData)

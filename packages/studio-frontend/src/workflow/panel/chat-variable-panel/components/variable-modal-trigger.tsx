@@ -1,11 +1,11 @@
 'use client'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
+import VariableModal from '../../../panel/chat-variable-panel/components/variable-modal'
 
 type Props = {
   open: boolean

@@ -2,7 +2,7 @@ import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import AgentLogNavMore from '@/app/components/workflow/run/agent-log/agent-log-nav-more'
+import AgentLogNavMore from '../../run/agent-log/agent-log-nav-more'
 
 type AgentLogNavProps = {
   agentOrToolLogItemStack: AgentLogItemWithChildren[]

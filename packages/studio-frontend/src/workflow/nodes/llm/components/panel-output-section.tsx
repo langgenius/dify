@@ -1,13 +1,13 @@
 import type { FC } from 'react'
-import type { LLMNodeType, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { LLMNodeType, StructuredOutput } from '../../../nodes/llm/types'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { StructureOutput } from '@/app/components/workflow/nodes/llm/components/structure-output'
+import OutputVars, { VarItem } from '../../../nodes/_base/components/output-vars'
+import Split from '../../../nodes/_base/components/split'
+import { StructureOutput } from '../../../nodes/llm/components/structure-output'
 
 type Props = {
   readOnly: boolean

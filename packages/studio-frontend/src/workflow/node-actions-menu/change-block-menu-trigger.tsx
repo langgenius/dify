@@ -2,19 +2,19 @@ import type {
   CommonNodeType,
   Node,
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { intersection } from 'es-toolkit/array'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '@/app/components/workflow/block-selector'
+import BlockSelector from '../block-selector'
 import {
   useAvailableBlocks,
   useIsChatMode,
   useNodesInteractions,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
+} from '../hooks'
+import { useHooksStore } from '../hooks-store'
+import useNodes from '../store/workflow/use-nodes'
+import { BlockEnum, isTriggerNode } from '../types'
 import { FlowType } from '@/types/common'
 
 type ChangeBlockMenuTriggerProps = {

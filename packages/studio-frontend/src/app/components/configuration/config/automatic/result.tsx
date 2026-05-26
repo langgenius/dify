@@ -8,11 +8,11 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
-import PromptRes from '@/app/components/app/configuration/config/automatic/prompt-res'
-import PromptResInWorkflow from '@/app/components/app/configuration/config/automatic/prompt-res-in-workflow'
-import PromptToast from '@/app/components/app/configuration/config/automatic/prompt-toast'
-import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
+import PromptRes from '../../../configuration/config/automatic/prompt-res'
+import PromptResInWorkflow from '../../../configuration/config/automatic/prompt-res-in-workflow'
+import PromptToast from '../../../configuration/config/automatic/prompt-toast'
+import { GeneratorType } from '../../../configuration/config/automatic/types'
+import VersionSelector from '../../../configuration/config/automatic/version-selector'
 
 type Props = {
   isBasicMode?: boolean

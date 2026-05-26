@@ -1,22 +1,22 @@
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
-import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
-import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type { QuestionClassifierNodeType, Topic } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { HumanInputNodeType } from '../nodes/human-input/types'
+import type { CaseItem, IfElseNodeType } from '../nodes/if-else/types'
+import type { QuestionClassifierNodeType, Topic } from '../nodes/question-classifier/types'
 import type {
   Edge,
   Node,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cloneDeep } from 'es-toolkit/object'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
-} from '@/app/components/workflow/constants'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+} from '../constants'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import {
   BlockEnum,
-} from '@/app/components/workflow/types'
+} from '../types'
 
 let elk: import('elkjs/lib/elk-api').ELK | undefined
 

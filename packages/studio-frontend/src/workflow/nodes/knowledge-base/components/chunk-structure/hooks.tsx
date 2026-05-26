@@ -1,4 +1,4 @@
-import type { Option } from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/type'
+import type { Option } from '../../../../nodes/knowledge-base/components/chunk-structure/type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import {
@@ -6,7 +6,7 @@ import {
   ParentChildChunk,
   QuestionAndAnswer,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import { ChunkStructureEnum } from '@/app/components/workflow/nodes/knowledge-base/types'
+import { ChunkStructureEnum } from '../../../../nodes/knowledge-base/types'
 
 export const useChunkStructure = () => {
   const { t } = useTranslation()

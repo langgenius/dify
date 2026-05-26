@@ -3,7 +3,7 @@ import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/ty
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore as useAppStore } from '../../../store'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -21,7 +21,7 @@ import { canFindTool } from '@/utils'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
-} from '@/app/components/app/configuration/debug/hooks'
+} from '../../../configuration/debug/hooks'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean

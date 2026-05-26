@@ -1,4 +1,4 @@
-import type { KeyValue } from '@/app/components/workflow/nodes/http/types'
+import type { KeyValue } from '../../../nodes/http/types'
 import { useBoolean } from 'ahooks'
 import { uniqueId } from 'es-toolkit/compat'
 import { useCallback, useEffect, useState } from 'react'

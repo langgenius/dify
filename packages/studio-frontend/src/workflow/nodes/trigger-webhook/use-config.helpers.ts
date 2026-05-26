@@ -1,9 +1,9 @@
-import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { Variable } from '@/app/components/workflow/types'
+import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from '../../nodes/trigger-webhook/types'
+import type { Variable } from '../../types'
 import { produce } from 'immer'
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../types'
 import { checkKeys, hasDuplicateStr } from '@/utils/var'
-import { WEBHOOK_RAW_VARIABLE_NAME } from '@/app/components/workflow/nodes/trigger-webhook/utils/raw-variable'
+import { WEBHOOK_RAW_VARIABLE_NAME } from '../../nodes/trigger-webhook/utils/raw-variable'
 
 type VariableSyncSource = 'param' | 'header' | 'body'
 

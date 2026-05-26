@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { StartNodeType } from '../../nodes/start/types'
+import type { NodeProps } from '../../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
+import InputVarTypeIcon from '../../nodes/_base/components/input-var-type-icon'
 
 const i18nPrefix = 'nodes.start'
 

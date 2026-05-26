@@ -3,24 +3,24 @@ import type {
   UseHotkeyDefinition,
   UseHotkeyOptions,
 } from '@tanstack/react-hotkeys'
-import type { WorkflowHotkeyMeta, WorkflowShortcutDefinition, WorkflowShortcutId } from '@/app/components/workflow/shortcuts/definitions'
+import type { WorkflowHotkeyMeta, WorkflowShortcutDefinition, WorkflowShortcutId } from '../shortcuts/definitions'
 import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useWorkflowCanvasMaximize } from '@/app/components/workflow/hooks/use-workflow-canvas-maximize'
-import { useWorkflowOrganize } from '@/app/components/workflow/hooks/use-workflow-organize'
-import { useWorkflowMoveMode } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
-import { useStore } from '@/app/components/workflow/store/workflow/index'
-import { isEventTargetInputArea } from '@/app/components/workflow/utils/index'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
+import { useEdgesInteractions } from '../hooks/use-edges-interactions'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useWorkflowCanvasMaximize } from '../hooks/use-workflow-canvas-maximize'
+import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
+import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
+import { useStore } from '../store/workflow/index'
+import { isEventTargetInputArea } from '../utils/index'
 import {
   subscribeWorkflowCommand,
   WorkflowCommand,
-} from '@/app/components/workflow/shortcuts/commands'
-import { WORKFLOW_SHORTCUTS } from '@/app/components/workflow/shortcuts/definitions'
+} from '../shortcuts/commands'
+import { WORKFLOW_SHORTCUTS } from '../shortcuts/definitions'
 
 const workflowHotkeyOptions = {
   ignoreInputs: true,

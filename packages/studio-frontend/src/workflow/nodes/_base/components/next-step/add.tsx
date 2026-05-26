@@ -1,7 +1,7 @@
 import type {
   CommonNodeType,
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -12,12 +12,12 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '@/app/components/workflow/block-selector'
+import BlockSelector from '../../../../block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+} from '../../../../hooks'
 
 type AddProps = {
   nodeId: string

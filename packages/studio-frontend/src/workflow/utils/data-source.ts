@@ -1,8 +1,8 @@
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type {
   InputVar,
   ToolWithProvider,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 

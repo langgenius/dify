@@ -1,4 +1,4 @@
-import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'
+import type { ModelConfig, VisionSetting } from '../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
@@ -6,7 +6,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { Resolution } from '@/types/app'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useIsChatMode } from '../hooks/use-workflow'
 
 type Payload = {
   enabled: boolean

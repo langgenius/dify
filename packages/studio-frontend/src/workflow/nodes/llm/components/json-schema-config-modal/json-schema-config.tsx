@@ -1,4 +1,4 @@
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot } from '../../../../nodes/llm/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -7,21 +7,21 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { Type } from '../../../../nodes/llm/types'
 import {
   checkJsonSchemaDepth,
   getValidationErrorMessage,
   jsonToSchema,
   preValidateSchema,
   validateSchemaAgainstDraft7,
-} from '@/app/components/workflow/nodes/llm/utils'
-import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
-import JsonImporter from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-importer'
-import JsonSchemaGenerator from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index'
-import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
-import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/index'
-import { MittProvider, useMittContext, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
-import { useVisualEditorStore } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/store'
+} from '../../../../nodes/llm/utils'
+import ErrorMessage from '../../../../nodes/llm/components/json-schema-config-modal/error-message'
+import JsonImporter from '../../../../nodes/llm/components/json-schema-config-modal/json-importer'
+import JsonSchemaGenerator from '../../../../nodes/llm/components/json-schema-config-modal/json-schema-generator/index'
+import SchemaEditor from '../../../../nodes/llm/components/json-schema-config-modal/schema-editor'
+import VisualEditor from '../../../../nodes/llm/components/json-schema-config-modal/visual-editor/index'
+import { MittProvider, useMittContext, VisualEditorContextProvider } from '../../../../nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import { useVisualEditorStore } from '../../../../nodes/llm/components/json-schema-config-modal/visual-editor/store'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot

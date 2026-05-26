@@ -1,4 +1,4 @@
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'

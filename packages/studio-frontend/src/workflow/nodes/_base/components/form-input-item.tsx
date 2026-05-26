@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import type { ResourceVarInputs } from '../../../nodes/_base/types'
 import type { CredentialFormSchema, FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '../../../block-selector/types'
+import type { ToolWithProvider, ValueSelector, Var } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useState } from 'react'
@@ -14,14 +14,14 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import { VarType } from '@/app/components/workflow/types'
+import VarReferencePicker from '../../../nodes/_base/components/variable/var-reference-picker'
+import useAvailableVarList from '../../../nodes/_base/hooks/use-available-var-list'
+import MixedVariableTextInput from '../../../nodes/tool/components/mixed-variable-text-input'
+import { VarType } from '../../../types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
+import { VarKindType } from '../../../nodes/_base/types'
+import FormInputBoolean from '../../../nodes/_base/components/form-input-boolean'
 import {
   filterVisibleOptions,
   getCheckboxListOptions,
@@ -34,12 +34,12 @@ import {
   getVarKindType,
   mapSelectItems,
   normalizeVariableSelectorValue,
-} from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
+} from '../../../nodes/_base/components/form-input-item.helpers'
 import {
   JsonEditorField,
   MultiSelectField,
-} from '@/app/components/workflow/nodes/_base/components/form-input-item.sections'
-import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
+} from '../../../nodes/_base/components/form-input-item.sections'
+import FormInputTypeSwitch from '../../../nodes/_base/components/form-input-type-switch'
 
 type Props = {
   readOnly: boolean

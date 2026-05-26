@@ -1,5 +1,5 @@
-import type { LLMDefaultConfig } from '@/app/components/workflow/nodes/llm/hooks/use-llm-input-manager'
-import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { LLMDefaultConfig } from '../../nodes/llm/hooks/use-llm-input-manager'
+import type { LLMNodeType } from '../../nodes/llm/types'
 import { produce } from 'immer'
 import {
   useCallback,
@@ -10,19 +10,19 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import {
   useIsChatMode,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks/index'
-import useConfigVision from '@/app/components/workflow/hooks/use-config-vision'
-import { useStore } from '@/app/components/workflow/store/index'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import useLLMInputManager from '@/app/components/workflow/nodes/llm/hooks/use-llm-input-manager'
-import useLLMPromptConfig from '@/app/components/workflow/nodes/llm/hooks/use-llm-prompt-config'
-import useLLMStructuredOutputConfig from '@/app/components/workflow/nodes/llm/hooks/use-llm-structured-output-config'
+} from '../../hooks/index'
+import useConfigVision from '../../hooks/use-config-vision'
+import { useStore } from '../../store/index'
+import useAvailableVarList from '../../nodes/_base/hooks/use-available-var-list'
+import useLLMInputManager from '../../nodes/llm/hooks/use-llm-input-manager'
+import useLLMPromptConfig from '../../nodes/llm/hooks/use-llm-prompt-config'
+import useLLMStructuredOutputConfig from '../../nodes/llm/hooks/use-llm-structured-output-config'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

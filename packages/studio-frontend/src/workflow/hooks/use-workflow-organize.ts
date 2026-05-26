@@ -1,20 +1,20 @@
 import { useCallback } from 'react'
 import { useReactFlow } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
+import { useWorkflowStore } from '../store/index'
 import {
   getLayoutByELK,
   getLayoutForChildNodes,
-} from '@/app/components/workflow/utils/elk-layout'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflowHistory, WorkflowHistoryEvent } from '@/app/components/workflow/hooks/use-workflow-history'
+} from '../utils/elk-layout'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import { useWorkflowHistory, WorkflowHistoryEvent } from '../hooks/use-workflow-history'
 import {
   applyContainerSizeChanges,
   applyLayoutToNodes,
   getContainerSizeChanges,
   getLayoutContainerNodes,
-} from '@/app/components/workflow/hooks/use-workflow-organize.helpers'
+} from '../hooks/use-workflow-organize.helpers'
 
 export const useWorkflowOrganize = () => {
   const workflowStore = useWorkflowStore()

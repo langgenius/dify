@@ -1,4 +1,4 @@
-import { useStore } from '@/app/components/workflow/store/index'
+import { useStore } from './store/index'
 
 const SyncingDataModal = () => {
   const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)

@@ -1,4 +1,4 @@
-import type { NodeActionsMenuProps } from '@/app/components/workflow/node-actions-menu/types'
+import type { NodeActionsMenuProps } from '../node-actions-menu/types'
 import {
   ContextMenuGroup,
   ContextMenuItem,
@@ -6,14 +6,14 @@ import {
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
 import { useTranslation } from 'react-i18next'
-import { ChangeBlockMenuTrigger } from '@/app/components/workflow/node-actions-menu/change-block-menu-trigger'
+import { ChangeBlockMenuTrigger } from '../node-actions-menu/change-block-menu-trigger'
 import {
   NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,
   NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME,
   NodeActionsMenuAbout,
   NodeActionsMenuItemContent,
-} from '@/app/components/workflow/node-actions-menu/shared'
-import { useNodeActionsMenuModel } from '@/app/components/workflow/node-actions-menu/use-node-actions-menu-model'
+} from '../node-actions-menu/shared'
+import { useNodeActionsMenuModel } from '../node-actions-menu/use-node-actions-menu-model'
 
 export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
   const { t } = useTranslation()

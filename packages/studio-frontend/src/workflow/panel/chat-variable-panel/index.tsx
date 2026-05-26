@@ -1,6 +1,6 @@
 import type {
   ConversationVariable,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import {
@@ -12,17 +12,17 @@ import { useTranslation } from 'react-i18next'
 
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
-import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import BlockIcon from '../../block-icon'
+import { webSocketClient } from '../../collaboration/core/websocket-manager'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import RemoveEffectVarConfirm from '../../nodes/_base/components/remove-effect-var-confirm'
+import { findUsedVarNodes, updateNodeVars } from '../../nodes/_base/components/variable/utils'
+import VariableItem from '../../panel/chat-variable-panel/components/variable-item'
+import VariableModalTrigger from '../../panel/chat-variable-panel/components/variable-modal-trigger'
+import { useStore } from '../../store'
+import { BlockEnum } from '../../types'
 import { updateConversationVariables } from '@/service/workflow'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()

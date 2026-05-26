@@ -1,11 +1,11 @@
-import type { NodeDefault, Var } from '@/app/components/workflow/types'
-import type { Field, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { NodeDefault, Var } from '../../types'
+import type { Field, StructuredOutput } from '../../nodes/llm/types'
+import type { PluginTriggerNodeType } from '../../nodes/trigger-plugin/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils/index'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { BlockEnum, VarType } from '../../types'
+import { genNodeMetaData } from '../../utils/index'
+import { VarKindType } from '../../nodes/_base/types'
+import { Type } from '../../nodes/llm/types'
 
 const normalizeJsonSchemaType = (schema: any): string | undefined => {
   if (!schema)

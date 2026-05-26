@@ -1,12 +1,12 @@
 import type { NodeTracing } from '@/types/workflow'
 import { cloneDeep } from 'es-toolkit/object'
-import { BlockEnum } from '@/app/components/workflow/types'
-import formatAgentNode from '@/app/components/workflow/run/utils/format-log/agent/index'
-import formatHumanInputNode from '@/app/components/workflow/run/utils/format-log/human-input/index'
-import { addChildrenToIterationNode } from '@/app/components/workflow/run/utils/format-log/iteration/index'
-import { addChildrenToLoopNode } from '@/app/components/workflow/run/utils/format-log/loop/index'
-import formatParallelNode from '@/app/components/workflow/run/utils/format-log/parallel/index'
-import formatRetryNode from '@/app/components/workflow/run/utils/format-log/retry/index'
+import { BlockEnum } from '../../../types'
+import formatAgentNode from '../../../run/utils/format-log/agent/index'
+import formatHumanInputNode from '../../../run/utils/format-log/human-input/index'
+import { addChildrenToIterationNode } from '../../../run/utils/format-log/iteration/index'
+import { addChildrenToLoopNode } from '../../../run/utils/format-log/loop/index'
+import formatParallelNode from '../../../run/utils/format-log/parallel/index'
+import formatRetryNode from '../../../run/utils/format-log/retry/index'
 
 const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
   const clonedList = cloneDeep(list)

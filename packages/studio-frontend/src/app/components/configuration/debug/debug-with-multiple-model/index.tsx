@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { DebugWithMultipleModelContextType } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context'
+import type { DebugWithMultipleModelContextType } from '../../../configuration/debug/debug-with-multiple-model/context'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import {
@@ -7,16 +7,16 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore as useAppStore } from '../../../store'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { AppModeEnum } from '@/types/app'
-import { APP_CHAT_WITH_MULTIPLE_MODEL } from '@/app/components/app/configuration/debug/types'
-import { useDebugWithMultipleModelContext } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context'
-import { DebugWithMultipleModelContextProvider } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context-provider'
-import DebugItem from '@/app/components/app/configuration/debug/debug-with-multiple-model/debug-item'
+import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../../configuration/debug/types'
+import { useDebugWithMultipleModelContext } from '../../../configuration/debug/debug-with-multiple-model/context'
+import { DebugWithMultipleModelContextProvider } from '../../../configuration/debug/debug-with-multiple-model/context-provider'
+import DebugItem from '../../../configuration/debug/debug-with-multiple-model/debug-item'
 
 const DebugWithMultipleModel = () => {
   const {

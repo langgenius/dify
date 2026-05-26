@@ -1,10 +1,10 @@
-import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from '../../nodes/trigger-webhook/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useNodesReadOnly, useWorkflow } from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import { fetchWebhookUrl } from '@/service/apps'
 import {
   updateContentType,
@@ -12,7 +12,7 @@ import {
   updateSimpleField,
   updateSourceFields,
   updateWebhookUrls,
-} from '@/app/components/workflow/nodes/trigger-webhook/use-config.helpers'
+} from '../../nodes/trigger-webhook/use-config.helpers'
 
 export const DEFAULT_STATUS_CODE = 200
 export const MAX_STATUS_CODE = 399

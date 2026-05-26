@@ -1,4 +1,4 @@
-import type { RerankingModel } from '@/app/components/workflow/nodes/knowledge-base/types'
+import type { RerankingModel } from '../../../../nodes/knowledge-base/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   memo,

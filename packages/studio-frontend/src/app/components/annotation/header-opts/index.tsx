@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AnnotationItemBasic } from '@/app/components/app/annotation/type'
+import type { AnnotationItemBasic } from '../../annotation/type'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -22,9 +22,9 @@ import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 import { downloadBlob } from '@/utils/download'
-import AddAnnotationModal from '@/app/components/app/annotation/add-annotation-modal/index'
-import BatchAddModal from '@/app/components/app/annotation/batch-add-annotation-modal/index'
-import ClearAllAnnotationsConfirmModal from '@/app/components/app/annotation/clear-all-annotations-confirm-modal/index'
+import AddAnnotationModal from '../../annotation/add-annotation-modal/index'
+import BatchAddModal from '../../annotation/batch-add-annotation-modal/index'
+import ClearAllAnnotationsConfirmModal from '../../annotation/clear-all-annotations-confirm-modal/index'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']

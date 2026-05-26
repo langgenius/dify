@@ -1,4 +1,4 @@
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataShape } from '../../../../nodes/knowledge-retrieval/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
@@ -11,7 +11,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import MetadataPanel from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-panel'
+import MetadataPanel from '../../../../nodes/knowledge-retrieval/components/metadata/metadata-panel'
 
 const MetadataTrigger = ({
   metadataFilteringConditions,

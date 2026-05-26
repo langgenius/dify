@@ -1,15 +1,15 @@
 import type { FC } from 'react'
-import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
+import type { VersionHistoryPanelProps } from '../panel/version-history-panel'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useRef } from 'react'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import dynamic from '@/next/dynamic'
-import { Panel as NodePanel } from '@/app/components/workflow/nodes/index'
-import { useStore } from '@/app/components/workflow/store/index'
-import EnvPanel from '@/app/components/workflow/panel/env-panel/index'
+import { Panel as NodePanel } from '../nodes/index'
+import { useStore } from '../store/index'
+import EnvPanel from '../panel/env-panel/index'
 
-const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {
+const VersionHistoryPanel = dynamic(() => import('../panel/version-history-panel'), {
   ssr: false,
 })
 

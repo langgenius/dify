@@ -2,9 +2,9 @@
 import type {
   RefObject,
 } from 'react'
-import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
-import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { BlockEnum, OnSelectBlock } from '../types'
+import type { ListRef } from '../block-selector/market-place-plugin/list'
+import type { TriggerDefaultValue, TriggerWithProvider } from '../block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
@@ -26,12 +26,12 @@ import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/
 import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { BlockEnum as BlockEnumValue } from '@/app/components/workflow/types'
-import { ENTRY_NODE_TYPES } from '@/app/components/workflow/block-selector/constants'
-import FeaturedTriggers from '@/app/components/workflow/block-selector/featured-triggers'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import StartBlocks from '@/app/components/workflow/block-selector/start-blocks'
-import TriggerPluginList from '@/app/components/workflow/block-selector/trigger-plugin/list'
+import { BlockEnum as BlockEnumValue } from '../types'
+import { ENTRY_NODE_TYPES } from '../block-selector/constants'
+import FeaturedTriggers from '../block-selector/featured-triggers'
+import PluginList from '../block-selector/market-place-plugin/list'
+import StartBlocks from '../block-selector/start-blocks'
+import TriggerPluginList from '../block-selector/trigger-plugin/list'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 

@@ -1,23 +1,23 @@
 import type {
   CodeNodeType,
   OutputVar,
-} from '@/app/components/workflow/nodes/code/types'
+} from '../../../nodes/code/types'
 import type {
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import {
   useWorkflow,
-} from '@/app/components/workflow/hooks'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+} from '../../../hooks'
+import { ErrorHandleTypeEnum } from '../../../nodes/_base/components/error-handle/types'
+import { getDefaultValue } from '../../../nodes/_base/components/error-handle/utils'
 import {
   BlockEnum,
   VarType,
-} from '@/app/components/workflow/types'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+} from '../../../types'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 
 type Params<T> = {
   id: string

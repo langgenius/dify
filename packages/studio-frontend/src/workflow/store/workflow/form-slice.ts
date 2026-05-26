@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type {
   RunFile,
-} from '@/app/components/workflow/types'
+} from '../../types'
 
 export type FormSliceShape = {
   inputs: Record<string, string | number | boolean>

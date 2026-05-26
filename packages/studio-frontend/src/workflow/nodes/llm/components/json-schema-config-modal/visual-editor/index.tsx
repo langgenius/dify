@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot } from '../../../../../nodes/llm/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSchemaNodeOperations } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks'
-import SchemaNode from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/schema-node'
+import { useSchemaNodeOperations } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/hooks'
+import SchemaNode from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/schema-node'
 
 export type VisualEditorProps = {
   className?: string

@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '../../../../types'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import VarReferencePicker from '../../../../nodes/_base/components/variable/var-reference-picker'
+import { VarType as VarKindType } from '../../../../nodes/tool/types'
+import ListNoDataPlaceholder from '../../../../nodes/_base/components/list-no-data-placeholder'
+import RemoveButton from '../../../../nodes/_base/components/remove-button'
 
 type Props = {
   readonly: boolean

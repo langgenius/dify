@@ -1,7 +1,7 @@
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type { IterationNodeType } from '../../nodes/iteration/types'
 import type {
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
@@ -11,15 +11,15 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '@/app/components/workflow/block-selector'
+import BlockSelector from '../../block-selector'
 import {
   BlockEnum,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks/index'
+} from '../../hooks/index'
 
 type AddBlockProps = {
   iterationNodeId: string

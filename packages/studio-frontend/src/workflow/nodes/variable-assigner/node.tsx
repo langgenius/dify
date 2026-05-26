@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { VariableAssignerNodeType } from '../../nodes/variable-assigner/types'
 import {
   memo,
   useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import NodeGroupItem from '@/app/components/workflow/nodes/variable-assigner/components/node-group-item'
+import NodeGroupItem from '../../nodes/variable-assigner/components/node-group-item'
 
 const i18nPrefix = 'nodes.variableAssigner'
 

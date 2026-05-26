@@ -1,8 +1,8 @@
 'use client'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import ApiServer from '@/app/components/develop/ApiServer'
-import Doc from '@/app/components/develop/doc'
+import ApiServer from './ApiServer'
+import Doc from './doc'
 
 type IDevelopMainProps = {
   appId: string

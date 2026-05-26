@@ -1,6 +1,6 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { UserAction } from '../../../nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'

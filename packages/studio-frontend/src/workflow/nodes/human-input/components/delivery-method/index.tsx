@@ -1,16 +1,16 @@
-import type { DeliveryMethod, DeliveryMethodType, FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod, DeliveryMethodType, FormInputItem } from '../../../../nodes/human-input/types'
 import type {
   Node,
   NodeOutPutVar,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
-import MethodItem from '@/app/components/workflow/nodes/human-input/components/delivery-method/method-item'
-import MethodSelector from '@/app/components/workflow/nodes/human-input/components/delivery-method/method-selector'
-import { UpgradeModal } from '@/app/components/workflow/nodes/human-input/components/delivery-method/upgrade-modal'
+import { useNodesSyncDraft } from '../../../../hooks'
+import MethodItem from '../../../../nodes/human-input/components/delivery-method/method-item'
+import MethodSelector from '../../../../nodes/human-input/components/delivery-method/method-selector'
+import { UpgradeModal } from '../../../../nodes/human-input/components/delivery-method/upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 

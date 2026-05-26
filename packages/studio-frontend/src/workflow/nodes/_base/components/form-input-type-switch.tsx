@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { VarType } from '@/app/components/workflow/nodes/tool/types'
+import { VarType } from '../../../nodes/tool/types'
 
 type Props = {
   value: VarType

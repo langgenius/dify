@@ -1,6 +1,6 @@
-import type { AssignerNodeOperation, AssignerNodeType } from '@/app/components/workflow/nodes/assigner/types'
+import type { AssignerNodeOperation, AssignerNodeType } from '../../nodes/assigner/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { AssignerNodeInputType, WriteMode } from '@/app/components/workflow/nodes/assigner/types'
+import { AssignerNodeInputType, WriteMode } from '../../nodes/assigner/types'
 
 export type OperationName = I18nKeysByPrefix<'workflow', 'nodes.assigner.operations.'>
 

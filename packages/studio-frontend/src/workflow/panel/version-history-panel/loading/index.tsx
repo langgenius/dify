@@ -1,4 +1,4 @@
-import Item from '@/app/components/workflow/panel/version-history-panel/loading/item'
+import Item from '../../../panel/version-history-panel/loading/item'
 
 const itemConfig = Array.from({ length: 8 }).map((_, index) => {
   return {

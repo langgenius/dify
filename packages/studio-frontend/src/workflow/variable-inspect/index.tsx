@@ -5,9 +5,9 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useResizePanel } from '@/app/components/workflow/nodes/_base/hooks/use-resize-panel'
-import { useStore } from '@/app/components/workflow/store/index'
-import Panel from '@/app/components/workflow/variable-inspect/panel'
+import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
+import { useStore } from '../store/index'
+import Panel from '../variable-inspect/panel'
 
 const VariableInspectPanel: FC = () => {
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)

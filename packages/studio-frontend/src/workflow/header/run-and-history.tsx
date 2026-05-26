@@ -1,4 +1,4 @@
-import type { ViewHistoryProps } from '@/app/components/workflow/header/view-history'
+import type { ViewHistoryProps } from '../header/view-history'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiPlayLargeLine,
@@ -8,10 +8,10 @@ import { useTranslation } from 'react-i18next'
 import {
   useNodesReadOnly,
   useWorkflowStartRun,
-} from '@/app/components/workflow/hooks/index'
-import Checklist from '@/app/components/workflow/header/checklist/index'
-import RunMode from '@/app/components/workflow/header/run-mode'
-import ViewHistory from '@/app/components/workflow/header/view-history'
+} from '../hooks/index'
+import Checklist from '../header/checklist/index'
+import RunMode from '../header/run-mode'
+import ViewHistory from '../header/view-history'
 
 const PreviewMode = memo(() => {
   const { t } = useTranslation()

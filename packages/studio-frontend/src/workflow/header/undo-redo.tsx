@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
+import ViewWorkflowHistory from '../header/view-workflow-history'
+import { useNodesReadOnly } from '../hooks'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 import Divider from '@/app/components/base/divider/index'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
+import TipPopup from '../operator/tip-popup'
 
 type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {

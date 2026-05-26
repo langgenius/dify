@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { EnvironmentVariable } from '../../types'
 
 export type EnvVariableSliceShape = {
   showEnvPanel: boolean

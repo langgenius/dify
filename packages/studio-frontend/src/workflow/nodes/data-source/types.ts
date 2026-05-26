@@ -1,10 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
-import type { CommonNodeType, Node } from '@/app/components/workflow/types'
+import type { ResourceVarInputs } from '../../nodes/_base/types'
+import type { CommonNodeType, Node } from '../../types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 
-export { VarKindType as VarType } from '@/app/components/workflow/nodes/_base/types'
+export { VarKindType as VarType } from '../../nodes/_base/types'
 
 export enum DataSourceClassification {
   localFile = 'local_file',

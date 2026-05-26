@@ -2,12 +2,12 @@ import type { LoroMap } from 'loro-crdt/base64'
 import type {
   NodePanelPresenceMap,
   NodePanelPresenceUser,
-} from '@/app/components/workflow/collaboration/types/collaboration'
-import type { CommonNodeType, Edge, Node } from '@/app/components/workflow/types'
+} from '../../../collaboration/types/collaboration'
+import type { CommonNodeType, Edge, Node } from '../../../types'
 import { LoroDoc } from 'loro-crdt/base64'
 import { Position } from 'reactflow'
-import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { CollaborationManager } from '../../../collaboration/core/collaboration-manager'
+import { BlockEnum } from '../../../types'
 
 const NODE_ID = '1760342909316'
 

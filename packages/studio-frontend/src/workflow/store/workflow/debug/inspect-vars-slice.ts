@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector } from '../../../types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { produce } from 'immer'
 

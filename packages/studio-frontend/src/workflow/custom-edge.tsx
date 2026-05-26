@@ -2,7 +2,7 @@ import type { EdgeProps } from 'reactflow'
 import type {
   Edge,
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { intersection } from 'es-toolkit/array'
 import {
@@ -17,16 +17,16 @@ import {
   getBezierPath,
   Position,
 } from 'reactflow'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import BlockSelector from '@/app/components/workflow/block-selector/index'
-import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from '@/app/components/workflow/constants'
-import CustomEdgeLinearGradientRender from '@/app/components/workflow/custom-edge-linear-gradient-render'
+import { ErrorHandleTypeEnum } from './nodes/_base/components/error-handle/types'
+import BlockSelector from './block-selector/index'
+import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
+import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import {
   useAvailableBlocks,
   useNodesInteractions,
-} from '@/app/components/workflow/hooks/index'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { getEdgeColor } from '@/app/components/workflow/utils/index'
+} from './hooks/index'
+import { NodeRunningStatus } from './types'
+import { getEdgeColor } from './utils/index'
 
 const CustomEdge = ({
   id,

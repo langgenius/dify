@@ -1,5 +1,5 @@
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import type { Condition, Limit, ListFilterNodeType, OrderBy } from '@/app/components/workflow/nodes/list-operator/types'
+import type { ValueSelector, Var } from '../../types'
+import type { Condition, Limit, ListFilterNodeType, OrderBy } from '../../nodes/list-operator/types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import {
@@ -7,8 +7,8 @@ import {
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import {
   canFilterVariable,
   getItemVarType,
@@ -23,7 +23,7 @@ import {
   updateOrderByEnabled,
   updateOrderByKey,
   updateOrderByType,
-} from '@/app/components/workflow/nodes/list-operator/use-config.helpers'
+} from '../../nodes/list-operator/use-config.helpers'
 
 const useConfig = (id: string, payload: ListFilterNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

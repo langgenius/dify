@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { DataSourceNodeType } from '../../nodes/data-source/types'
+import type { NodePanelProps } from '../../types'
 import {
   memo,
   useMemo,
@@ -8,22 +8,22 @@ import {
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '../../hooks'
 import {
   BoxGroupField,
-} from '@/app/components/workflow/nodes/_base/components/layout'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { useStore } from '@/app/components/workflow/store'
-import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
-import useMatchSchemaType, { getMatchedSchemaType } from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
-import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form/index'
+} from '../../nodes/_base/components/layout'
+import OutputVars, { VarItem } from '../../nodes/_base/components/output-vars'
+import StructureOutputItem from '../../nodes/_base/components/variable/object-child-tree-panel/show'
+import { useStore } from '../../store'
+import { wrapStructuredVarItem } from '../../utils/tool'
+import useMatchSchemaType, { getMatchedSchemaType } from '../../nodes/_base/components/variable/use-match-schema-type'
+import ToolForm from '../../nodes/tool/components/tool-form/index'
 import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
-} from '@/app/components/workflow/nodes/data-source/constants'
-import { useConfig } from '@/app/components/workflow/nodes/data-source/hooks/use-config'
-import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
+} from '../../nodes/data-source/constants'
+import { useConfig } from '../../nodes/data-source/hooks/use-config'
+import { DataSourceClassification } from '../../nodes/data-source/types'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()

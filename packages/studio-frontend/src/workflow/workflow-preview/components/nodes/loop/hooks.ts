@@ -1,12 +1,12 @@
 import type {
   Node,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import {
   LOOP_PADDING,
-} from '@/app/components/workflow/constants'
+} from '../../../../constants'
 
 export const useNodeLoopInteractions = () => {
   const store = useStoreApi()

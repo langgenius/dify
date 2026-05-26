@@ -1,9 +1,9 @@
-import type { ValueSelector, Var, VarType } from '@/app/components/workflow/types'
-import type { Condition, Limit, ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
+import type { ValueSelector, Var, VarType } from '../../types'
+import type { Condition, Limit, ListFilterNodeType } from '../../nodes/list-operator/types'
 import { produce } from 'immer'
-import { VarType as WorkflowVarType } from '@/app/components/workflow/types'
-import { getOperators } from '@/app/components/workflow/nodes/if-else/utils'
-import { OrderBy } from '@/app/components/workflow/nodes/list-operator/types'
+import { VarType as WorkflowVarType } from '../../types'
+import { getOperators } from '../../nodes/if-else/utils'
+import { OrderBy } from '../../nodes/list-operator/types'
 
 export const getItemVarType = (varType?: VarType) => {
   switch (varType) {

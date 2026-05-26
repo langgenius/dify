@@ -1,5 +1,5 @@
-import { VarType } from '@/app/components/workflow/types'
-import { ComparisonOperator } from '@/app/components/workflow/nodes/loop/types'
+import { VarType } from '../../types'
+import { ComparisonOperator } from '../../nodes/loop/types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)

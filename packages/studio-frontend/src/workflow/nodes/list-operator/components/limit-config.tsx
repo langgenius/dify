@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { Limit } from '@/app/components/workflow/nodes/list-operator/types'
+import type { Limit } from '../../../nodes/list-operator/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import InputNumberWithSlider from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
+import Field from '../../../nodes/_base/components/field'
+import InputNumberWithSlider from '../../../nodes/_base/components/input-number-with-slider'
 
 const i18nPrefix = 'nodes.listFilter'
 const LIMIT_SIZE_MIN = 1

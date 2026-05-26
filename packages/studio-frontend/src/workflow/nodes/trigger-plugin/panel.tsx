@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { PluginTriggerNodeType } from '../../nodes/trigger-plugin/types'
+import type { NodePanelProps } from '../../types'
 import * as React from 'react'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import TriggerForm from '@/app/components/workflow/nodes/trigger-plugin/components/trigger-form/index'
-import useConfig from '@/app/components/workflow/nodes/trigger-plugin/use-config'
+import OutputVars, { VarItem } from '../../nodes/_base/components/output-vars'
+import Split from '../../nodes/_base/components/split'
+import StructureOutputItem from '../../nodes/_base/components/variable/object-child-tree-panel/show'
+import { BlockEnum } from '../../types'
+import { Type } from '../../nodes/llm/types'
+import TriggerForm from '../../nodes/trigger-plugin/components/trigger-form/index'
+import useConfig from '../../nodes/trigger-plugin/use-config'
 
 const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   id,

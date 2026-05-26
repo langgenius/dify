@@ -5,7 +5,7 @@ import type {
   Node,
   NodeOutPutVar,
   Variable,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -28,16 +28,16 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
-import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
-import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
-import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowVariableType } from '../../../../hooks'
+import CodeEditor from '../../../../nodes/_base/components/editor/code-editor/editor-support-vars'
+import ToggleExpandBtn from '../../../../nodes/_base/components/toggle-expand-btn'
+import useToggleExpend from '../../../../nodes/_base/hooks/use-toggle-expend'
+import { useStore } from '../../../../store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { BlockEnum, EditionType } from '@/app/components/workflow/types'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import PromptGeneratorBtn from '@/app/components/workflow/nodes/llm/components/prompt-generator-btn'
-import Wrap from '@/app/components/workflow/nodes/_base/components/editor/wrap'
+import { BlockEnum, EditionType } from '../../../../types'
+import { CodeLanguage } from '../../../../nodes/code/types'
+import PromptGeneratorBtn from '../../../../nodes/llm/components/prompt-generator-btn'
+import Wrap from '../../../../nodes/_base/components/editor/wrap'
 
 type Props = {
   className?: string

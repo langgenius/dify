@@ -1,15 +1,15 @@
 import type {
   BlockEnum,
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import BlockSelector from '@/app/components/workflow/block-selector/index'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/index'
+import BlockSelector from '../../block-selector/index'
+import { useNodesInteractions } from '../../hooks/index'
 
 type InsertBlockProps = {
   startNodeId: string

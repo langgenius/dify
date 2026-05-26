@@ -11,7 +11,7 @@ import {
   RiCheckLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { MetadataFilteringModeEnum } from '../../../../../nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {
   value?: MetadataFilteringModeEnum

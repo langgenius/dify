@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
+import type { IInputTypeIconProps } from '../../../configuration/config-var/input-type-icon'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,7 +11,7 @@ import {
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
+import IconTypeIcon from '../../../configuration/config-var/input-type-icon'
 
 type Option = { name: string, value: string, type: string }
 export type Props = {

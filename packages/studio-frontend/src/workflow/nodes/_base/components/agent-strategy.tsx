@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { Node } from 'reactflow'
-import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { NodeOutPutVar } from '../../../types'
+import type { ToolVarInputs } from '../../../nodes/tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
 import {
@@ -27,10 +27,10 @@ import { useDocLink } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { AgentStrategySelector } from '@/app/components/workflow/nodes/_base/components/agent-strategy-selector'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import { useWorkflowStore } from '../../../store/index'
+import { AgentStrategySelector } from '../../../nodes/_base/components/agent-strategy-selector'
+import Field from '../../../nodes/_base/components/field'
+import Editor from '../../../nodes/_base/components/prompt/editor'
 
 export type Strategy = {
   agent_strategy_provider_name: string

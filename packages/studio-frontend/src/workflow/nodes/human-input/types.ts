@@ -2,7 +2,7 @@ import type {
   CommonNodeType,
   InputVarType,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../../types'
 
 export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]

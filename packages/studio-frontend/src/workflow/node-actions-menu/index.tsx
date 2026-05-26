@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -7,8 +7,8 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeActionsDropdownContent } from '@/app/components/workflow/node-actions-menu/dropdown-content'
-import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from '@/app/components/workflow/node-actions-menu/shared'
+import { NodeActionsDropdownContent } from '../node-actions-menu/dropdown-content'
+import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from '../node-actions-menu/shared'
 
 type NodeActionsDropdownProps = {
   id: string

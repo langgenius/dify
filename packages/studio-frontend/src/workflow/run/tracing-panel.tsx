@@ -8,11 +8,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import formatNodeList from '@/app/components/workflow/run/utils/format-log'
-import { getHoveredParallelId } from '@/app/components/workflow/run/get-hovered-parallel-id'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import NodePanel from '@/app/components/workflow/run/node'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
+import formatNodeList from '../run/utils/format-log'
+import { getHoveredParallelId } from '../run/get-hovered-parallel-id'
+import { useLogs } from '../run/hooks'
+import NodePanel from '../run/node'
+import SpecialResultPanel from '../run/special-result-panel'
 
 type TracingPanelProps = {
   list: NodeTracing[]

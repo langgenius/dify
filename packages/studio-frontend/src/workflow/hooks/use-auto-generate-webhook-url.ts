@@ -1,9 +1,9 @@
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from '../types'
 import { fetchWebhookUrl } from '@/service/apps'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 
 export const useAutoGenerateWebhookUrl = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()

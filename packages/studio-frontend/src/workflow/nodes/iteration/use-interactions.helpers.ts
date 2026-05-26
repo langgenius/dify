@@ -2,11 +2,11 @@ import type {
   BlockEnum,
   ChildNodeTypeCount,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import {
   ITERATION_PADDING,
-} from '@/app/components/workflow/constants'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+} from '../../constants'
+import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
 
 type ContainerBounds = {
   rightNode?: Node

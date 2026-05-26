@@ -1,7 +1,7 @@
 import type {
   BlockEnum,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { hasErrorHandleNode } from '.'
 
 export const variableTransformer = (v: ValueSelector | string) => {

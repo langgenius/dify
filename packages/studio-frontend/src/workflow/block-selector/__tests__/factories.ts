@@ -1,4 +1,4 @@
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '../../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Tool } from '@/app/components/tools/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'

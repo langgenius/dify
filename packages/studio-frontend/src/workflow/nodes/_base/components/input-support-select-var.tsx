@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type {
   Node,
   NodeOutPutVar,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
@@ -13,8 +13,8 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useStore } from '../../../store'
+import { BlockEnum } from '../../../types'
 
 type Props = {
   instanceId?: string

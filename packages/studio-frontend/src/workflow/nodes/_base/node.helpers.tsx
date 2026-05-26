@@ -1,5 +1,5 @@
-import type { NodeProps } from '@/app/components/workflow/types'
-import { BlockEnum, isTriggerNode, NodeRunningStatus } from '@/app/components/workflow/types'
+import type { NodeProps } from '../../types'
+import { BlockEnum, isTriggerNode, NodeRunningStatus } from '../../types'
 
 export const getNodeStatusBorders = (
   runningStatus: NodeRunningStatus | undefined,

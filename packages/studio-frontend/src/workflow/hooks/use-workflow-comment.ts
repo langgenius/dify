@@ -2,13 +2,13 @@ import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useAppContext } from '@/context/app-context'
 import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useStore } from '@/app/components/workflow/store/index'
-import { ControlMode } from '@/app/components/workflow/types'
+import { useStore } from '../store/index'
+import { ControlMode } from '../types'
 
 const EMPTY_USERS: UserProfile[] = []
 

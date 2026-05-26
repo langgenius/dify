@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
-import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { QuestionClassifierNodeType } from '../../nodes/question-classifier/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,9 +9,9 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { NodeSourceHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
-import ReadonlyInputWithSelectVar from '@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var'
-import { getDisplayClassLabel } from '@/app/components/workflow/nodes/question-classifier/components/class-label-utils'
+import { NodeSourceHandle } from '../../nodes/_base/components/node-handle'
+import ReadonlyInputWithSelectVar from '../../nodes/_base/components/readonly-input-with-select-var'
+import { getDisplayClassLabel } from '../../nodes/question-classifier/components/class-label-utils'
 
 const MAX_CLASS_TEXT_LENGTH = 50
 

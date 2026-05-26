@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { TriggerWithProvider } from '../../../../block-selector/types'
+import type { PluginTriggerVarInputs } from '../../../../nodes/trigger-plugin/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBracesLine,
@@ -13,7 +13,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
-import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
+import FormInputItem from '../../../../nodes/_base/components/form-input-item'
 
 type Props = {
   readOnly: boolean

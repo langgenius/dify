@@ -1,5 +1,5 @@
-import type { Var } from '@/app/components/workflow/types'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import type { Var } from './types'
+import { BlockEnum, VarType } from './types'
 
 export const MAX_ITERATION_PARALLEL_NUM = 10
 export const MIN_ITERATION_PARALLEL_NUM = 1

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { LLMNodeType } from '../../nodes/llm/types'
+import type { NodeProps } from '../../types'
 import * as React from 'react'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,

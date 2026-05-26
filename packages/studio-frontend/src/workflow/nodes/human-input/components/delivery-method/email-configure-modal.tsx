@@ -1,8 +1,8 @@
-import type { EmailConfig } from '@/app/components/workflow/nodes/human-input/types'
+import type { EmailConfig } from '../../../../nodes/human-input/types'
 import type {
   Node,
   NodeOutPutVar,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -12,8 +12,8 @@ import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import MailBodyInput from '@/app/components/workflow/nodes/human-input/components/delivery-method/mail-body-input'
-import Recipient from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/index'
+import MailBodyInput from '../../../../nodes/human-input/components/delivery-method/mail-body-input'
+import Recipient from '../../../../nodes/human-input/components/delivery-method/recipient/index'
 
 const i18nPrefix = 'nodes.humanInput'
 

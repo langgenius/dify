@@ -8,7 +8,7 @@ import { RiFontSize } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { useFontSize } from '@/app/components/workflow/note-node/note-editor/toolbar/hooks'
+import { useFontSize } from '../../../note-node/note-editor/toolbar/hooks'
 
 const FontSizeSelector = () => {
   const { t } = useTranslation()

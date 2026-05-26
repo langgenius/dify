@@ -1,4 +1,4 @@
-import type { WorkflowRunningData } from '@/app/components/workflow/types'
+import type { WorkflowRunningData } from '../../../types'
 import type {
   IterationFinishedResponse,
   IterationNextResponse,
@@ -9,9 +9,9 @@ import type {
   WorkflowStartedResponse,
 } from '@/types/workflow'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
-import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../../__tests__/workflow-test-env'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../../../types'
 
 type NodeRuntimeState = {
   _waitingRun?: boolean

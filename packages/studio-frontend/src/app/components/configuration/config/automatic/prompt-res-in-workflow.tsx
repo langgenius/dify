@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import PromptRes from '@/app/components/app/configuration/config/automatic/prompt-res'
+import PromptRes from '../../../configuration/config/automatic/prompt-res'
 
 type Props = {
   value: string

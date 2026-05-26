@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { ParameterExtractorNodeType } from '@/app/components/workflow/nodes/parameter-extractor/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { ParameterExtractorNodeType } from '../../nodes/parameter-extractor/types'
+import type { NodeProps } from '../../types'
 import * as React from 'react'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,

@@ -1,4 +1,4 @@
-import type { CustomRunFormProps, DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { CustomRunFormProps, DataSourceNodeType } from '../../../nodes/data-source/types'
 import type { NodeRunResult } from '@/types/workflow'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -10,8 +10,8 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
-import { useNodeDataUpdate, useNodesSyncDraft } from '@/app/components/workflow/hooks/index'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useNodeDataUpdate, useNodesSyncDraft } from '../../../hooks/index'
+import { NodeRunningStatus } from '../../../types'
 
 const useBeforeRunForm = ({
   nodeId,

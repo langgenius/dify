@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { ModelAndParameter } from '../../../configuration/debug/types'
 import type {
   OnSend,
   TextGenerationConfig,
@@ -7,7 +7,7 @@ import type {
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
 import { memo } from 'react'
-import TextGeneration from '@/app/components/app/text-generate/item'
+import TextGeneration from '../../../text-generate/item'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useTextGeneration } from '@/app/components/base/text-generation/hooks'
@@ -17,7 +17,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { AppSourceType } from '@/service/share'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import { APP_CHAT_WITH_MULTIPLE_MODEL } from '@/app/components/app/configuration/debug/types'
+import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../../configuration/debug/types'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter

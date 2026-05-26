@@ -30,9 +30,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
-import ModelInfo from '@/app/components/app/log/model-info'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import TextGeneration from '@/app/components/app/text-generate/item'
+import ModelInfo from '../log/model-info'
+import { useStore as useAppStore } from '../store'
+import TextGeneration from '../text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
@@ -61,8 +61,8 @@ import {
   isNearTopLoadMore,
   mergePaginatedChatItems,
   mergeUniqueChatItems,
-} from '@/app/components/app/log/list-utils'
-import VarPanel from '@/app/components/app/log/var-panel'
+} from '../log/list-utils'
+import VarPanel from '../log/var-panel'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail

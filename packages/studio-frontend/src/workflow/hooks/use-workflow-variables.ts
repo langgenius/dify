@@ -1,23 +1,23 @@
-import type { Type } from '@/app/components/workflow/nodes/llm/types'
+import type { Type } from '../nodes/llm/types'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getVarType, toNodeAvailableVars } from '../nodes/_base/components/variable/utils'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import useMatchSchemaType from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+import { useWorkflowStore } from '../store/index'
+import { useIsChatMode } from '../hooks/use-workflow'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()

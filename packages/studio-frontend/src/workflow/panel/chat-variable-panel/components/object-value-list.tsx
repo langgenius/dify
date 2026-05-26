@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ObjectValueItem from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
+import ObjectValueItem from '../../../panel/chat-variable-panel/components/object-value-item'
 
 type Props = {
   list: any[]

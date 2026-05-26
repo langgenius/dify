@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ToolVarInputs } from '../../../../nodes/tool/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import ToolFormItem from '@/app/components/workflow/nodes/tool/components/tool-form/item'
+import type { ToolWithProvider } from '../../../../types'
+import ToolFormItem from '../../../../nodes/tool/components/tool-form/item'
 
 type Props = {
   readOnly: boolean

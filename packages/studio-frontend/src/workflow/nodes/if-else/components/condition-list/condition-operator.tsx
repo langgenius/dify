@@ -1,5 +1,5 @@
-import type { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
-import type { VarType } from '@/app/components/workflow/types'
+import type { ComparisonOperator } from '../../../../nodes/if-else/types'
+import type { VarType } from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -14,7 +14,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getOperators, isComparisonOperatorNeedTranslate } from '@/app/components/workflow/nodes/if-else/utils'
+import { getOperators, isComparisonOperatorNeedTranslate } from '../../../../nodes/if-else/utils'
 
 const i18nPrefix = 'nodes.ifElse'
 

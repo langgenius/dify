@@ -1,12 +1,12 @@
-import type { ChunkStructureEnum } from '@/app/components/workflow/nodes/knowledge-base/types'
+import type { ChunkStructureEnum } from '../../../../nodes/knowledge-base/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import OptionCard from '@/app/components/workflow/nodes/knowledge-base/components/option-card'
-import { useChunkStructure } from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/hooks'
-import Instruction from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/instruction/index'
-import Selector from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/selector'
+import { Field } from '../../../../nodes/_base/components/layout'
+import OptionCard from '../../../../nodes/knowledge-base/components/option-card'
+import { useChunkStructure } from '../../../../nodes/knowledge-base/components/chunk-structure/hooks'
+import Instruction from '../../../../nodes/knowledge-base/components/chunk-structure/instruction/index'
+import Selector from '../../../../nodes/knowledge-base/components/chunk-structure/selector'
 
 type ChunkStructureProps = {
   chunkStructure?: ChunkStructureEnum

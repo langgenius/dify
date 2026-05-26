@@ -1,7 +1,7 @@
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
+import type { CommonNodeType } from '../types'
 import { useCallback, useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
@@ -16,13 +16,13 @@ import {
   useAllTriggerPlugins,
   useInvalidateAllTriggerPlugins,
 } from '@/service/use-triggers'
-import { useStore } from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useStore } from '../store/index'
+import { BlockEnum } from '../types'
 import {
   matchDataSource,
   matchToolInCollection,
   matchTriggerProvider,
-} from '@/app/components/workflow/utils/plugin-install-check'
+} from '../utils/plugin-install-check'
 
 type InstallationState = {
   isChecking: boolean

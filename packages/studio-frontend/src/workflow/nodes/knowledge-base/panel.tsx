@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { NodePanelProps, Var } from '@/app/components/workflow/types'
+import type { KnowledgeBaseNodeType } from '../../nodes/knowledge-base/types'
+import type { NodePanelProps, Var } from '../../types'
 import { useQuery } from '@tanstack/react-query'
 import {
   memo,
@@ -12,30 +12,30 @@ import SummaryIndexSetting from '@/app/components/datasets/settings/summary-inde
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '../../hooks'
 import {
   BoxGroup,
   BoxGroupField,
   Group,
-} from '@/app/components/workflow/nodes/_base/components/layout'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+} from '../../nodes/_base/components/layout'
+import VarReferencePicker from '../../nodes/_base/components/variable/var-reference-picker'
 import { IS_CE_EDITION } from '@/config'
 import { consoleQuery } from '@/service/client'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import ChunkStructure from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/index'
-import EmbeddingModel from '@/app/components/workflow/nodes/knowledge-base/components/embedding-model'
-import IndexMethod from '@/app/components/workflow/nodes/knowledge-base/components/index-method'
-import RetrievalSetting from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/index'
-import { useConfig } from '@/app/components/workflow/nodes/knowledge-base/hooks/use-config'
-import { useEmbeddingModelStatus } from '@/app/components/workflow/nodes/knowledge-base/hooks/use-embedding-model-status'
+import Split from '../../nodes/_base/components/split'
+import ChunkStructure from '../../nodes/knowledge-base/components/chunk-structure/index'
+import EmbeddingModel from '../../nodes/knowledge-base/components/embedding-model'
+import IndexMethod from '../../nodes/knowledge-base/components/index-method'
+import RetrievalSetting from '../../nodes/knowledge-base/components/retrieval-setting/index'
+import { useConfig } from '../../nodes/knowledge-base/hooks/use-config'
+import { useEmbeddingModelStatus } from '../../nodes/knowledge-base/hooks/use-embedding-model-status'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
+} from '../../nodes/knowledge-base/types'
 import {
   getKnowledgeBaseValidationIssue,
   KnowledgeBaseValidationIssueCode,
-} from '@/app/components/workflow/nodes/knowledge-base/utils'
+} from '../../nodes/knowledge-base/utils'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,

@@ -2,15 +2,15 @@ import type { MouseEvent } from 'react'
 import type {
   OnSelectionChangeFunc,
 } from 'reactflow'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../types'
 import { produce } from 'immer'
 import {
   useCallback,
 } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowStore } from '../store/index'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 export const useSelectionInteractions = () => {
   const store = useStoreApi()

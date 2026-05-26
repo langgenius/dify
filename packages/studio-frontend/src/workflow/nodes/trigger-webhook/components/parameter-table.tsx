@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { WebhookParameter } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { ColumnConfig, GenericTableRow } from '@/app/components/workflow/nodes/trigger-webhook/components/generic-table'
+import type { WebhookParameter } from '../../../nodes/trigger-webhook/types'
+import type { ColumnConfig, GenericTableRow } from '../../../nodes/trigger-webhook/components/generic-table'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { VarType } from '@/app/components/workflow/types'
-import { createParameterTypeOptions, normalizeParameterType } from '@/app/components/workflow/nodes/trigger-webhook/utils/parameter-type-utils'
-import GenericTable from '@/app/components/workflow/nodes/trigger-webhook/components/generic-table'
+import { VarType } from '../../../types'
+import { createParameterTypeOptions, normalizeParameterType } from '../../../nodes/trigger-webhook/utils/parameter-type-utils'
+import GenericTable from '../../../nodes/trigger-webhook/components/generic-table'
 
 type ParameterTableProps = {
   title: string

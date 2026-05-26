@@ -1,5 +1,5 @@
-import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
+import type { Node } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 
 /**
  * Get the workflow entry node

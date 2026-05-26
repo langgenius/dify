@@ -1,11 +1,11 @@
-import type { ColorPickerProps } from '@/app/components/workflow/note-node/note-editor/toolbar/color-picker'
-import type { OperatorProps } from '@/app/components/workflow/note-node/note-editor/toolbar/operator'
+import type { ColorPickerProps } from '../../../note-node/note-editor/toolbar/color-picker'
+import type { OperatorProps } from '../../../note-node/note-editor/toolbar/operator'
 import { memo } from 'react'
-import ColorPicker from '@/app/components/workflow/note-node/note-editor/toolbar/color-picker'
-import Command from '@/app/components/workflow/note-node/note-editor/toolbar/command'
-import Divider from '@/app/components/workflow/note-node/note-editor/toolbar/divider'
-import FontSizeSelector from '@/app/components/workflow/note-node/note-editor/toolbar/font-size-selector'
-import Operator from '@/app/components/workflow/note-node/note-editor/toolbar/operator'
+import ColorPicker from '../../../note-node/note-editor/toolbar/color-picker'
+import Command from '../../../note-node/note-editor/toolbar/command'
+import Divider from '../../../note-node/note-editor/toolbar/divider'
+import FontSizeSelector from '../../../note-node/note-editor/toolbar/font-size-selector'
+import Operator from '../../../note-node/note-editor/toolbar/operator'
 
 type ToolbarProps = ColorPickerProps & OperatorProps
 const Toolbar = ({

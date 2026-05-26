@@ -1,4 +1,4 @@
-import type { RecipientData, Recipient as RecipientItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { RecipientData, Recipient as RecipientItem } from '../../../../../nodes/human-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
@@ -7,8 +7,8 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
-import EmailInput from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input'
-import MemberSelector from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-selector'
+import EmailInput from '../../../../../nodes/human-input/components/delivery-method/recipient/email-input'
+import MemberSelector from '../../../../../nodes/human-input/components/delivery-method/recipient/member-selector'
 
 const i18nPrefix = 'nodes.humanInput'
 

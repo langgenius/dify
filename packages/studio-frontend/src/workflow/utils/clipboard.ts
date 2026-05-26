@@ -1,4 +1,4 @@
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { Edge, Node } from '../types'
 
 const WORKFLOW_CLIPBOARD_KIND = 'dify-workflow-clipboard'
 

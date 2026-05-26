@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AnnotationItem, HitHistoryItem } from '@/app/components/app/annotation/type'
+import type { AnnotationItem, HitHistoryItem } from '../../annotation/type'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -30,8 +30,8 @@ import TabSlider from '@/app/components/base/tab-slider-plain'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
-import EditItem, { EditItemType } from '@/app/components/app/annotation/edit-annotation-modal/edit-item/index'
-import HitHistoryNoData from '@/app/components/app/annotation/view-annotation-modal/hit-history-no-data'
+import EditItem, { EditItemType } from '../../annotation/edit-annotation-modal/edit-item/index'
+import HitHistoryNoData from '../../annotation/view-annotation-modal/hit-history-no-data'
 
 type Props = {
   appId: string

@@ -1,11 +1,11 @@
-import type { Node, NodeOutPutVar, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var, VarType } from '../../../../types'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import VariableTag from '../../../../nodes/_base/components/variable-tag'
+import VarReferenceVars from '../../../../nodes/_base/components/variable/var-reference-vars'
 
 type ConditionVarSelectorProps = {
   open: boolean

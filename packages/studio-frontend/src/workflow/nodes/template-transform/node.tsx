@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { TemplateTransformNodeType } from '@/app/components/workflow/nodes/template-transform/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { TemplateTransformNodeType } from '../../nodes/template-transform/types'
+import type { NodeProps } from '../../types'
 import * as React from 'react'
 
 const Node: FC<NodeProps<TemplateTransformNodeType>> = () => {

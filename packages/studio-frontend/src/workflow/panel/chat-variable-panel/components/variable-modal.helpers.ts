@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
-import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ChatVarType } from '../../../panel/chat-variable-panel/type'
+import type { ConversationVariable } from '../../../types'
 import { checkKeys } from '@/utils/var'
-import { ChatVarType as ChatVarTypeEnum } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { ChatVarType as ChatVarTypeEnum } from '../../../panel/chat-variable-panel/type'
 import {
   arrayBoolPlaceholder,
   arrayNumberPlaceholder,
   arrayObjectPlaceholder,
   arrayStringPlaceholder,
   objectPlaceholder,
-} from '@/app/components/workflow/panel/chat-variable-panel/utils'
-import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
+} from '../../../panel/chat-variable-panel/utils'
+import { DEFAULT_OBJECT_VALUE } from '../../../panel/chat-variable-panel/components/object-value-item'
 
 export type ObjectValueItem = {
   key: string

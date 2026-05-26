@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { ReasoningModeType } from '@/app/components/workflow/nodes/parameter-extractor/types'
+import Field from '../../../nodes/_base/components/field'
+import OptionCard from '../../../nodes/_base/components/option-card'
+import { ReasoningModeType } from '../../../nodes/parameter-extractor/types'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 

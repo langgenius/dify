@@ -1,8 +1,8 @@
-import type { ActionMenuProps } from '@/app/components/workflow/panel/version-history-panel/action-menu/index'
+import type { ActionMenuProps } from '../../../panel/version-history-panel/action-menu/index'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
-import { VersionHistoryContextMenuOptions } from '@/app/components/workflow/types'
+import { useStore } from '../../../store'
+import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
   const {

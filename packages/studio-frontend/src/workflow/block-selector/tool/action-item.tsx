@@ -1,7 +1,7 @@
 'use client'
 import type { ComponentProps, FC } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolWithProvider } from '../../types'
+import type { ToolDefaultValue } from '../../block-selector/types'
 import type { Tool } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
@@ -13,8 +13,8 @@ import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
+import BlockIcon from '../../block-icon'
+import { BlockEnum } from '../../types'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   if (!icon)

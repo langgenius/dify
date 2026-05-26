@@ -1,9 +1,9 @@
 import type {
   LoopVariable,
   LoopVariablesComponentShape,
-} from '@/app/components/workflow/nodes/loop/types'
-import Empty from '@/app/components/workflow/nodes/loop/components/loop-variables/empty'
-import Item from '@/app/components/workflow/nodes/loop/components/loop-variables/item'
+} from '../../../../nodes/loop/types'
+import Empty from '../../../../nodes/loop/components/loop-variables/empty'
+import Item from '../../../../nodes/loop/components/loop-variables/item'
 
 type LoopVariableProps = {
   variables?: LoopVariable[]

@@ -1,14 +1,14 @@
 'use client'
 import type { ComponentProps, FC } from 'react'
-import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { TriggerDefaultValue, TriggerWithProvider } from '../../block-selector/types'
 import type { Event } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
+import BlockIcon from '../../block-icon'
+import { BlockEnum } from '../../types'
 
 type Props = {
   provider: TriggerWithProvider

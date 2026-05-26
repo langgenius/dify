@@ -2,8 +2,8 @@ import type {
   Node,
   ValueSelector,
   VarType,
-} from '@/app/components/workflow/types'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+} from '../../../types'
+import type { VariableAssignerNodeType } from '../../../nodes/variable-assigner/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
@@ -11,19 +11,19 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '../../../nodes/_base/components/variable/utils'
 import {
   VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import { useStore } from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../../../nodes/_base/components/variable/variable-label'
+import { isExceptionVariable } from '../../../utils'
+import { useStore } from '../../../store/index'
+import { BlockEnum } from '../../../types'
 import {
   useGetAvailableVars,
   useVariableAssigner,
-} from '@/app/components/workflow/nodes/variable-assigner/hooks'
-import { filterVar } from '@/app/components/workflow/nodes/variable-assigner/utils'
-import AddVariable from '@/app/components/workflow/nodes/variable-assigner/components/add-variable/index'
+} from '../../../nodes/variable-assigner/hooks'
+import { filterVar } from '../../../nodes/variable-assigner/utils'
+import AddVariable from '../../../nodes/variable-assigner/components/add-variable/index'
 
 const i18nPrefix = 'nodes.variableAssigner'
 type GroupItem = {

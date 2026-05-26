@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type { LLMNodeType } from '../../../nodes/llm/types'
+import type { Memory, Node, NodeOutPutVar } from '../../../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memory-config'
-import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import MemoryConfig from '../../../nodes/_base/components/memory-config'
+import Editor from '../../../nodes/_base/components/prompt/editor'
 
 type Props = {
   readOnly: boolean

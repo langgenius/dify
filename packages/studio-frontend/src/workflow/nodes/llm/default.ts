@@ -1,10 +1,10 @@
-import type { NodeDefault, PromptItem } from '@/app/components/workflow/types'
-import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-// import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
+import type { NodeDefault, PromptItem } from '../../types'
+import type { LLMNodeType } from '../../nodes/llm/types'
+import { genNodeMetaData } from '../../utils'
+// import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
 import { AppModeEnum } from '@/types/app'
-import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
-import { getLLMModelIssue, LLMModelIssueCode } from '@/app/components/workflow/nodes/llm/utils'
+import { BlockEnum, EditionType, PromptRole } from '../../types'
+import { getLLMModelIssue, LLMModelIssueCode } from '../../nodes/llm/utils'
 
 const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",

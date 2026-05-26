@@ -13,7 +13,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore as useAppStore } from '../../store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
@@ -21,15 +21,15 @@ import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
-import GenerationActionGroups from '@/app/components/app/text-generate/item/action-groups'
+import GenerationActionGroups from '../../text-generate/item/action-groups'
 import {
   buildPromptLogItem,
   getDefaultGenerationTab,
   getGenerationTaskLabel,
   MAX_GENERATION_DEPTH,
   shouldShowWorkflowResultTabs,
-} from '@/app/components/app/text-generate/item/utils'
-import WorkflowBody from '@/app/components/app/text-generate/item/workflow-body'
+} from '../../text-generate/item/utils'
+import WorkflowBody from '../../text-generate/item/workflow-body'
 
 type IGenerationItemProps = {
   isWorkflow?: boolean

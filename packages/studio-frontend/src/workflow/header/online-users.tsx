@@ -1,5 +1,5 @@
 'use client'
-import type { OnlineUser } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,9 +14,9 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
-import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { useStore } from '@/app/components/workflow/store/index'
+import { useCollaboration } from '../collaboration/hooks/use-collaboration'
+import { getUserColor } from '../collaboration/utils/user-color'
+import { useStore } from '../store/index'
 
 const useAvatarUrls = (users: OnlineUser[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})

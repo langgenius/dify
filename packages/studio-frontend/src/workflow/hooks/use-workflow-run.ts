@@ -1,4 +1,4 @@
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useHooksStore } from '../hooks-store'
 
 export const useWorkflowRun = () => {
   const handleBackupDraft = useHooksStore(s => s.handleBackupDraft)

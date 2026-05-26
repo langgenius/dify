@@ -15,8 +15,8 @@ import {
 } from 'react'
 // import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
-import FormatDetectorPlugin from '@/app/components/workflow/note-node/note-editor/plugins/format-detector-plugin/index'
-import LinkEditorPlugin from '@/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/index'
+import FormatDetectorPlugin from '../../note-node/note-editor/plugins/format-detector-plugin/index'
+import LinkEditorPlugin from '../../note-node/note-editor/plugins/link-editor-plugin/index'
 
 type EditorProps = {
   placeholder?: string

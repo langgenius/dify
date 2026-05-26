@@ -1,11 +1,11 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
+import type { NodeDefault } from '../../types'
+import type { KnowledgeBaseNodeType } from '../../nodes/knowledge-base/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
 import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
-} from '@/app/components/workflow/nodes/knowledge-base/utils'
+} from '../../nodes/knowledge-base/utils'
 
 const metaData = genNodeMetaData({
   sort: 3.1,

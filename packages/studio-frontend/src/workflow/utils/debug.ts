@@ -1,6 +1,6 @@
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../types'
 
 type OutputToVarInInspectParams = {
   nodeId: string

@@ -13,16 +13,16 @@ import { FlowType } from '@/types/common'
 import {
   useWorkflowRefreshDraft,
   useWorkflowRun,
-} from '@/app/components/workflow/hooks/index'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
+} from '../hooks/index'
+import { useHooksStore } from '../hooks-store/index'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
+} from '../store/index'
 import {
   WorkflowVersion,
-} from '@/app/components/workflow/types'
-import RestoringTitle from '@/app/components/workflow/header/restoring-title'
+} from '../types'
+import RestoringTitle from '../header/restoring-title'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void

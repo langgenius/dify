@@ -1,6 +1,6 @@
 import type { AgentLogItem, AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { cloneDeep } from 'es-toolkit/object'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from '../../../../types'
 
 const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
 

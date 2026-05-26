@@ -1,13 +1,13 @@
-import type { Var } from '@/app/components/workflow/types'
-import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
+import type { Var } from '../../types'
+import type { AnswerNodeType } from '../../nodes/answer/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { VarType } from '@/app/components/workflow/types'
-import useVarList from '@/app/components/workflow/nodes/_base/hooks/use-var-list'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
+import useVarList from '../../nodes/_base/hooks/use-var-list'
 
 const useConfig = (id: string, payload: AnswerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

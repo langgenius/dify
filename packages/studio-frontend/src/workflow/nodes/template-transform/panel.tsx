@@ -1,18 +1,18 @@
 import type { FC } from 'react'
-import type { TemplateTransformNodeType } from '@/app/components/workflow/nodes/template-transform/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { TemplateTransformNodeType } from '../../nodes/template-transform/types'
+import type { NodePanelProps } from '../../types'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import useConfig from '@/app/components/workflow/nodes/template-transform/use-config'
+import CodeEditor from '../../nodes/_base/components/editor/code-editor/editor-support-vars'
+import Field from '../../nodes/_base/components/field'
+import OutputVars, { VarItem } from '../../nodes/_base/components/output-vars'
+import Split from '../../nodes/_base/components/split'
+import VarList from '../../nodes/_base/components/variable/var-list'
+import { CodeLanguage } from '../../nodes/code/types'
+import useConfig from '../../nodes/template-transform/use-config'
 
 const i18nPrefix = 'nodes.templateTransform'
 

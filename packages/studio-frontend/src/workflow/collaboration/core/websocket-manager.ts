@@ -1,5 +1,5 @@
 import type { Socket } from 'socket.io-client'
-import type { DebugInfo, WebSocketConfig } from '@/app/components/workflow/collaboration/types/websocket'
+import type { DebugInfo, WebSocketConfig } from '../../collaboration/types/websocket'
 import { io } from 'socket.io-client'
 import { SOCKET_URL } from '@/config'
 

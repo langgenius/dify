@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { CreateAppDialogShell } from '@/app/components/app/create-app-dialog-shell'
-import AppList from '@/app/components/app/create-app-dialog/app-list/index'
+import { CreateAppDialogShell } from '../create-app-dialog-shell'
+import AppList from '../create-app-dialog/app-list/index'
 
 type CreateAppDialogProps = {
   show: boolean

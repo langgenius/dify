@@ -12,7 +12,7 @@ import type {
   NodeDefault,
   OnSelectBlock,
   ToolWithProvider,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -32,11 +32,11 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import Input from '@/app/components/base/input'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
-import { useTabs } from '@/app/components/workflow/block-selector/hooks'
-import Tabs from '@/app/components/workflow/block-selector/tabs'
-import { TabsEnum } from '@/app/components/workflow/block-selector/types'
+import useNodes from '../store/workflow/use-nodes'
+import { BlockEnum, isTriggerNode } from '../types'
+import { useTabs } from '../block-selector/hooks'
+import Tabs from '../block-selector/tabs'
+import { TabsEnum } from '../block-selector/types'
 
 export type NodeSelectorProps = {
   open?: boolean

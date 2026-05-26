@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { Field } from '@/app/components/workflow/nodes/llm/types'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { StructuredOutput } from '../../../../nodes/llm/types'
+import type { Field } from '../../../../nodes/llm/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -15,18 +15,18 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
-import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { VarType } from '@/app/components/workflow/types'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import ManageInputField from '@/app/components/workflow/nodes/_base/components/variable/manage-input-field'
-import { varTypeToStructType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import PickerStructurePanel from '../../../../nodes/_base/components/variable/object-child-tree-panel/picker'
+import { VariableIconWithColor } from '../../../../nodes/_base/components/variable/variable-label'
+import { VarType } from '../../../../types'
+import { Type } from '../../../../nodes/llm/types'
+import ManageInputField from '../../../../nodes/_base/components/variable/manage-input-field'
+import { varTypeToStructType } from '../../../../nodes/_base/components/variable/utils'
 import {
   filterReferenceVars,
   getValueSelector,
   getVariableCategory,
   getVariableDisplayName,
-} from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars.helpers'
+} from '../../../../nodes/_base/components/variable/var-reference-vars.helpers'
 
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
 export const VAR_REFERENCE_CHILD_POPUP_CLASS_NAME = 'var-reference-vars-child-popup'

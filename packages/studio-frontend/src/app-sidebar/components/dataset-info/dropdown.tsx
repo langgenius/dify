@@ -28,7 +28,7 @@ import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import ActionButton from '@/app/components/base/action-button/index'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal/index'
-import Menu from '@/app/components/app-sidebar/dataset-info/menu'
+import Menu from '../dataset-info/menu'
 
 type DropDownProps = {
   expand: boolean

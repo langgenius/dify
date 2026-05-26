@@ -26,7 +26,7 @@ import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
-import { RetrievalChangeTip, RetrievalSection } from '@/app/components/app/configuration/dataset-config/settings-modal/retrieval-section'
+import { RetrievalChangeTip, RetrievalSection } from '../../../configuration/dataset-config/settings-modal/retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet

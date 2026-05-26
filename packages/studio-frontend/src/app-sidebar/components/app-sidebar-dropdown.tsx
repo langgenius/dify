@@ -1,5 +1,5 @@
-import type { AppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
-import type { NavIcon } from '@/app/components/app-sidebar/nav-link/index'
+import type { AppInfoActions } from './app-info/use-app-info-actions'
+import type { NavIcon } from './nav-link/index'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -17,9 +17,9 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import AppIcon from '@/app/components/base/app-icon/index'
 import Divider from '@/app/components/base/divider/index'
-import AppInfo from '@/app/components/app-sidebar/app-info/index'
-import { getAppModeLabel } from '@/app/components/app-sidebar/app-info/app-mode-labels'
-import NavLink from '@/app/components/app-sidebar/nav-link/index'
+import AppInfo from './app-info/index'
+import { getAppModeLabel } from './app-info/app-mode-labels'
+import NavLink from './nav-link/index'
 
 type Props = {
   navigation: Array<{

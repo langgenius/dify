@@ -5,7 +5,7 @@ import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { memo, useEffect, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useStore } from '@/app/components/workflow/store/index'
+import { useStore } from '../store/index'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentList

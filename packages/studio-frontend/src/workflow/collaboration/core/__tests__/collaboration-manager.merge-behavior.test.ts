@@ -1,8 +1,8 @@
 import type { LoroMap } from 'loro-crdt/base64'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../../../types'
 import { LoroDoc } from 'loro-crdt/base64'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { BlockEnum } from '../../../types'
+import { CollaborationManager } from '../../../collaboration/core/collaboration-manager'
 
 const NODE_ID = 'node-1'
 const LLM_NODE_ID = 'llm-node'

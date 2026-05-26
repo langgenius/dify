@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { Node } from '@/app/components/workflow/types'
+import type { PluginDefaultValue } from '../../../block-selector/types'
+import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
@@ -13,21 +13,21 @@ import {
   Handle,
   Position,
 } from 'reactflow'
-import BlockSelector from '@/app/components/workflow/block-selector/index'
+import BlockSelector from '../../../block-selector/index'
 import {
   useAvailableBlocks,
   useIsChatMode,
   useNodesInteractions,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks/index'
+} from '../../../hooks/index'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
+} from '../../../store/index'
 import {
   BlockEnum,
   NodeRunningStatus,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 
 type NodeHandleProps = {
   handleId: string

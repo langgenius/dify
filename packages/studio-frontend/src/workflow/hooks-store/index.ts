@@ -1,2 +1,2 @@
-export * from '@/app/components/workflow/hooks-store/provider'
-export * from '@/app/components/workflow/hooks-store/store'
+export * from '../hooks-store/provider'
+export * from '../hooks-store/store'

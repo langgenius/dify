@@ -11,7 +11,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import { IS_CLOUD_EDITION } from '@/config'
 import AppListContext from '@/context/app-list-context'
-import { AppTypeIcon, AppTypeLabel } from '@/app/components/app/type-selector/index'
+import { AppTypeIcon, AppTypeLabel } from '../../type-selector/index'
 
 type AppCardProps = {
   app: App

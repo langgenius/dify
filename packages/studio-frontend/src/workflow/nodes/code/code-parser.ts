@@ -1,6 +1,6 @@
-import type { OutputVar } from '@/app/components/workflow/nodes/code/types'
-import { VarType } from '@/app/components/workflow/types'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { OutputVar } from '../../nodes/code/types'
+import { VarType } from '../../types'
+import { CodeLanguage } from '../../nodes/code/types'
 
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   if (language === CodeLanguage.json)

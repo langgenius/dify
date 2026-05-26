@@ -4,7 +4,7 @@ import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import type {
   DataSet,
   MetadataInDoc,

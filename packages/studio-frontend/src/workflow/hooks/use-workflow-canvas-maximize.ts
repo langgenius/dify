@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useStore } from '@/app/components/workflow/store/index'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useStore } from '../store/index'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 export const useWorkflowCanvasMaximize = () => {
   const { eventEmitter } = useEventEmitterContextContext()

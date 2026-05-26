@@ -1,8 +1,8 @@
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataShape } from '../../../../../nodes/knowledge-retrieval/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiLoopLeftLine } from '@remixicon/react'
-import { LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import ConditionItem from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item'
+import { LogicalOperator } from '../../../../../nodes/knowledge-retrieval/types'
+import ConditionItem from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-item'
 
 type ConditionListProps = {
   disabled?: boolean

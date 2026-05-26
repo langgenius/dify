@@ -1,10 +1,10 @@
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
-} from '@/app/components/workflow/help-line/types'
+} from '../help-line/types'
 import { memo } from 'react'
 import { useViewport } from 'reactflow'
-import { useStore } from '@/app/components/workflow/store/index'
+import { useStore } from '../store/index'
 
 const HelpLineHorizontal = memo(({
   top,

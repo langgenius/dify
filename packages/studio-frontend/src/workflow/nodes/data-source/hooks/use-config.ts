@@ -1,14 +1,14 @@
 import type {
   DataSourceNodeType,
   ToolVarInputs,
-} from '@/app/components/workflow/nodes/data-source/types'
+} from '../../../nodes/data-source/types'
 import {
   useCallback,
   useEffect,
   useMemo,
 } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { useNodeDataUpdate } from '../../../hooks'
 
 export const useConfig = (id: string, dataSourceList?: any[]) => {
   const store = useStoreApi()

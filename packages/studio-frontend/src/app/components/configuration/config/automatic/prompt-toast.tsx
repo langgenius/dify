@@ -4,7 +4,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import s from '@/app/components/app/configuration/config/automatic/style.module.css'
+import s from '../../../configuration/config/automatic/style.module.css'
 
 type Props = {
   message: string

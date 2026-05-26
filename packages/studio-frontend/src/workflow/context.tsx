@@ -1,12 +1,12 @@
 import type { StateCreator } from 'zustand'
-import type { SliceFromInjection } from '@/app/components/workflow/store/workflow/index'
+import type { SliceFromInjection } from './store/workflow/index'
 import {
   createContext,
   useRef,
 } from 'react'
 import {
   createWorkflowStore,
-} from '@/app/components/workflow/store/workflow/index'
+} from './store/workflow/index'
 
 type WorkflowStore = ReturnType<typeof createWorkflowStore>
 export const WorkflowContext = createContext<WorkflowStore | null>(null)

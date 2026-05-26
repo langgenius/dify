@@ -8,8 +8,8 @@ import {
   memo,
   useState,
 } from 'react'
-import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
-import { NoteTheme } from '@/app/components/workflow/note-node/types'
+import { THEME_MAP } from '../../../note-node/constants'
+import { NoteTheme } from '../../../note-node/types'
 
 const COLOR_LIST = [
   {

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import type { KeyValue } from '@/app/components/workflow/nodes/http/types'
+import type { KeyValue } from '../../../../../nodes/http/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import KeyValueItem from '@/app/components/workflow/nodes/http/components/key-value/key-value-edit/item'
+import KeyValueItem from '../../../../../nodes/http/components/key-value/key-value-edit/item'
 
 const i18nPrefix = 'nodes.http'
 

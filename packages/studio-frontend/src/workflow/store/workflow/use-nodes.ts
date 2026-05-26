@@ -1,6 +1,6 @@
 import {
   useStore,
-} from '@/app/components/workflow/store'
+} from '../../store'
 
 const useWorkflowNodes = () => useStore(s => s.nodes)
 

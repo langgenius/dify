@@ -4,7 +4,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon/index'
-import { getAppModeLabel } from '@/app/components/app-sidebar/app-info/app-mode-labels'
+import { getAppModeLabel } from '../app-info/app-mode-labels'
 
 type AppInfoTriggerProps = {
   appDetail: App & Partial<AppSSO>

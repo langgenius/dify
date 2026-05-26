@@ -2,7 +2,7 @@
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
-import type { ChartRow } from '@/app/components/app/overview/app-chart-utils'
+import type { ChartRow } from '../overview/app-chart-utils'
 import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,7 +30,7 @@ import {
   getDefaultChartData,
   getSummaryValue,
   getTokenSummary,
-} from '@/app/components/app/overview/app-chart-utils'
+} from '../overview/app-chart-utils'
 
 export type PeriodParams = {
   name: string

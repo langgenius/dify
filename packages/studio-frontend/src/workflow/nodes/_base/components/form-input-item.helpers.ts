@@ -1,15 +1,15 @@
 'use client'
 
-import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import type { ResourceVarInputs } from '../../../nodes/_base/types'
 import type {
   CredentialFormSchema,
   FormOption,
   TypeWithI18N,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '../../../types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType } from '@/app/components/workflow/types'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { VarType } from '../../../types'
+import { VarKindType } from '../../../nodes/_base/types'
 
 type FormInputSchema = CredentialFormSchema & Partial<{
   _type: FormTypeEnum

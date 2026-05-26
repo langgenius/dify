@@ -1,9 +1,9 @@
 import {
   memo,
 } from 'react'
-import { useStore } from '@/app/components/workflow/note-node/note-editor/store'
-import LinkEditorComponent from '@/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component'
-import { useOpenLink } from '@/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/hooks'
+import { useStore } from '../../../../note-node/note-editor/store'
+import LinkEditorComponent from '../../../../note-node/note-editor/plugins/link-editor-plugin/component'
+import { useOpenLink } from '../../../../note-node/note-editor/plugins/link-editor-plugin/hooks'
 
 type LinkEditorPluginProps = {
   containerElement: HTMLDivElement | null

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
@@ -9,9 +9,9 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { ChangeType } from '@/app/components/workflow/types'
+import { ChangeType } from '../../../types'
 import { hasDuplicateStr } from '@/utils/var'
-import VarItem from '@/app/components/workflow/nodes/start/components/var-item'
+import VarItem from '../../../nodes/start/components/var-item'
 
 type Props = {
   readonly: boolean

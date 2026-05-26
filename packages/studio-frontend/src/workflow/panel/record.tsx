@@ -1,10 +1,10 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { memo, useCallback } from 'react'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/index'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
-import Run from '@/app/components/workflow/run/index'
-import { useStore } from '@/app/components/workflow/store/index'
-import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
+import { useWorkflowUpdate } from '../hooks/index'
+import { useHooksStore } from '../hooks-store/index'
+import Run from '../run/index'
+import { useStore } from '../store/index'
+import { formatWorkflowRunIdentifier } from '../utils/index'
 
 const Record = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)

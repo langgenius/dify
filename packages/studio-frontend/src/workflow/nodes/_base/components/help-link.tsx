@@ -1,8 +1,8 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { BlockEnum } from '../../../types'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodeHelpLink } from '@/app/components/workflow/nodes/_base/hooks/use-node-help-link'
+import { useNodeHelpLink } from '../../../nodes/_base/hooks/use-node-help-link'
 
 type HelpLinkProps = {
   nodeType: BlockEnum

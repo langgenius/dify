@@ -7,7 +7,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
-import Item from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-item'
+import Item from '../../../nodes/knowledge-retrieval/components/dataset-item'
 
 type Props = {
   list: DataSet[]

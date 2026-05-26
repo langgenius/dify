@@ -1,4 +1,4 @@
-import type { WorkflowHistoryState } from '@/app/components/workflow/store/workflow/history-slice'
+import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -20,13 +20,13 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider/index'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   useNodesReadOnly,
   useWorkflowHistory,
-} from '@/app/components/workflow/hooks/index'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
+} from '../hooks/index'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import TipPopup from '../operator/tip-popup'
 
 type ChangeHistoryEntry = {
   label: string

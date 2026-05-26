@@ -1,4 +1,4 @@
-import type { ScheduleFrequency } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { ScheduleFrequency } from '../../../nodes/trigger-schedule/types'
 import {
   Select,
   SelectContent,

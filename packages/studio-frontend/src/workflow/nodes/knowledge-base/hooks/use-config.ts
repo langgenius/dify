@@ -2,14 +2,14 @@ import type {
   KnowledgeBaseNodeType,
   RerankingModel,
   SummaryIndexSetting,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+} from '../../../nodes/knowledge-base/types'
+import type { ValueSelector } from '../../../types'
 import { produce } from 'immer'
 import {
   useCallback,
 } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { useNodeDataUpdate } from '../../../hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum } from '@/models/datasets'
 import {
   ChunkStructureEnum,
@@ -17,8 +17,8 @@ import {
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
   WeightedScoreEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
-import { isHighQualitySearchMethod } from '@/app/components/workflow/nodes/knowledge-base/utils'
+} from '../../../nodes/knowledge-base/types'
+import { isHighQualitySearchMethod } from '../../../nodes/knowledge-base/utils'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()

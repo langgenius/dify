@@ -33,8 +33,8 @@ import {
 } from '@/service/datasets'
 import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
 import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
-import SecretKeyGenerateModal from '@/app/components/develop/secret-key/secret-key-generate'
-import s from '@/app/components/develop/secret-key/style.module.css'
+import SecretKeyGenerateModal from '../secret-key/secret-key-generate'
+import s from '../secret-key/style.module.css'
 
 type ISecretKeyModalProps = {
   isShow: boolean

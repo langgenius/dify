@@ -1,12 +1,12 @@
 import { produce } from 'immer'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useHooksStore } from '../hooks-store'
 import {
   useConversationVarValues,
   useSysVarValues,
 } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
-import { useStore } from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useStore } from '../store/index'
+import { BlockEnum } from '../types'
 
 const varsAppendStartNodeKeys = ['query', 'files']
 const useInspectVarsCrud = () => {

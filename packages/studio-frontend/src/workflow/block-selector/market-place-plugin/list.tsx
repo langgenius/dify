@@ -8,8 +8,8 @@ import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { getMarketplaceUrl } from '@/utils/var'
-import useStickyScroll, { ScrollPosition } from '@/app/components/workflow/block-selector/use-sticky-scroll'
-import Item from '@/app/components/workflow/block-selector/market-place-plugin/item'
+import useStickyScroll, { ScrollPosition } from '../../block-selector/use-sticky-scroll'
+import Item from '../../block-selector/market-place-plugin/item'
 
 export type ListProps = {
   wrapElemRef: React.RefObject<HTMLElement | null>

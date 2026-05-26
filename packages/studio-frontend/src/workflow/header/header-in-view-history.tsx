@@ -1,4 +1,4 @@
-import type { ViewHistoryProps } from '@/app/components/workflow/header/view-history'
+import type { ViewHistoryProps } from '../header/view-history'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   useCallback,
@@ -8,12 +8,12 @@ import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arr
 import Divider from '@/app/components/base/divider/index'
 import {
   useWorkflowRun,
-} from '@/app/components/workflow/hooks/index'
+} from '../hooks/index'
 import {
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import RunningTitle from '@/app/components/workflow/header/running-title'
-import ViewHistory from '@/app/components/workflow/header/view-history'
+} from '../store/index'
+import RunningTitle from '../header/running-title'
+import ViewHistory from '../header/view-history'
 
 export type HeaderInHistoryProps = {
   viewHistoryProps?: ViewHistoryProps

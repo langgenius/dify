@@ -6,7 +6,7 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useAppContext } from '@/context/app-context'
-import CommentPreview from '@/app/components/workflow/comment/comment-preview'
+import CommentPreview from '../comment/comment-preview'
 
 type CommentIconProps = {
   comment: WorkflowCommentList

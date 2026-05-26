@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Base from '@/app/components/workflow/nodes/_base/components/editor/base'
+import Base from '../../../../nodes/_base/components/editor/base'
 
 type Props = {
   value: string

@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { useVarName } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/hooks'
+import { useVarName } from '../../../../../../nodes/_base/components/variable/variable-label/hooks'
 
 type VariableNameProps = {
   variables: string[]

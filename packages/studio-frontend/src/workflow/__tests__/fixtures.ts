@@ -1,8 +1,8 @@
-import type { CommonEdgeType, CommonNodeType, Edge, Node, WorkflowRunningData } from '@/app/components/workflow/types'
+import type { CommonEdgeType, CommonNodeType, Edge, Node, WorkflowRunningData } from '../types'
 import type { NodeTracing } from '@/types/workflow'
 import { Position } from 'reactflow'
-import { CUSTOM_NODE } from '@/app/components/workflow/constants'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { CUSTOM_NODE } from '../constants'
+import { BlockEnum, NodeRunningStatus } from '../types'
 
 let nodeIdCounter = 0
 let edgeIdCounter = 0

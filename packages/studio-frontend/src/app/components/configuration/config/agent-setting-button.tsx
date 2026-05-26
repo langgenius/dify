@@ -6,7 +6,7 @@ import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AgentSetting from '@/app/components/app/configuration/config/agent/agent-setting/index'
+import AgentSetting from '../../configuration/config/agent/agent-setting/index'
 
 type Props = {
   isFunctionCall: boolean

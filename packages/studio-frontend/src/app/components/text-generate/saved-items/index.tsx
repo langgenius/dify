@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import NoData from '@/app/components/app/text-generate/saved-items/no-data/index'
+import NoData from '../../text-generate/saved-items/no-data/index'
 
 export type ISavedItemsProps = {
   className?: string

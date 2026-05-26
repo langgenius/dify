@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import type { Props } from '@/app/components/app/configuration/dataset-config/context-var/var-picker'
+import type { Props } from '../../../configuration/dataset-config/context-var/var-picker'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import { Infotip } from '@/app/components/base/infotip'
-import VarPicker from '@/app/components/app/configuration/dataset-config/context-var/var-picker'
+import VarPicker from '../../../configuration/dataset-config/context-var/var-picker'
 
 const ContextVar: FC<Props> = (props) => {
   const { t } = useTranslation()

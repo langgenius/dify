@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { StructuredOutput } from '../../../../../../nodes/llm/types'
+import type { ValueSelector } from '../../../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useRef } from 'react'
-import Field from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker/field'
+import Field from '../../../../../../nodes/_base/components/variable/object-child-tree-panel/picker/field'
 
 type Props = {
   className?: string

@@ -1,11 +1,11 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateNodeInternals } from 'reactflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { NodeSourceHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { NodeRunningStatus } from '../../../../types'
+import { NodeSourceHandle } from '../../../../nodes/_base/components/node-handle'
+import { ErrorHandleTypeEnum } from '../../../../nodes/_base/components/error-handle/types'
 
 type ErrorHandleOnNodeProps = Pick<Node, 'id' | 'data'>
 const ErrorHandleOnNode = ({

@@ -1,4 +1,4 @@
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from '../../../../types'
 
 export const agentNodeData = (() => {
   const node = {

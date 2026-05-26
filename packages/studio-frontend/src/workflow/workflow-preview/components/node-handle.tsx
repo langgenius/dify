@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
@@ -9,7 +9,7 @@ import {
 } from 'reactflow'
 import {
   BlockEnum,
-} from '@/app/components/workflow/types'
+} from '../../types'
 
 type NodeHandleProps = {
   handleId: string

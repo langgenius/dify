@@ -1,7 +1,7 @@
 'use client'
 import type { ComponentProps } from 'react'
-import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type AppPublisher from '../../app-publisher/features-wrapper'
+import type { ModelAndParameter } from '../../configuration/debug/types'
 import type { Features as FeaturesData, OnFeaturesChange } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -31,9 +31,9 @@ import { useShallow } from 'zustand/react/shallow'
 import {
   useDebugWithSingleOrMultipleModel,
   useFormattingChangedDispatcher,
-} from '@/app/components/app/configuration/debug/hooks'
-import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
-import { useStore as useAppStore } from '@/app/components/app/store'
+} from '../../configuration/debug/hooks'
+import useAdvancedPromptConfig from '../../configuration/hooks/use-advanced-prompt-config'
+import { useStore as useAppStore } from '../../store'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -55,13 +55,13 @@ import { basePath } from '@/utils/var'
 import {
   buildConfigurationFeaturesData,
   getConfigurationPublishingState,
-} from '@/app/components/app/configuration/utils'
+} from '../../configuration/utils'
 import {
   createDatasetSelectHandler,
   createModelChangeHandler,
   createPublishHandler,
   loadConfigurationState,
-} from '@/app/components/app/configuration/hooks/use-configuration-utils'
+} from '../../configuration/hooks/use-configuration-utils'
 
 type PublishConfig = {
   modelConfig: ModelConfig

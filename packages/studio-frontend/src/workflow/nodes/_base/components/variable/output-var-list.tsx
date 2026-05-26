@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { OutputVar } from '@/app/components/workflow/nodes/code/types'
-import type { VarType } from '@/app/components/workflow/types'
+import type { OutputVar } from '../../../../nodes/code/types'
+import type { VarType } from '../../../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
@@ -10,8 +10,8 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
-import VarTypePicker from '@/app/components/workflow/nodes/_base/components/variable/var-type-picker'
+import RemoveButton from '../../../../nodes/_base/components/remove-button'
+import VarTypePicker from '../../../../nodes/_base/components/variable/var-type-picker'
 
 type Props = {
   readonly: boolean

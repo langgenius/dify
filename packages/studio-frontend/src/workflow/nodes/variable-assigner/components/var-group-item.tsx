@@ -1,7 +1,7 @@
 'use client'
 import type { ChangeEvent, FC } from 'react'
-import type { VarGroupItem as VarGroupItemType } from '@/app/components/workflow/nodes/variable-assigner/types'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { VarGroupItem as VarGroupItemType } from '../../../nodes/variable-assigner/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '../../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiDeleteBinLine,
@@ -12,12 +12,12 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { VarType } from '@/app/components/workflow/types'
+import Field from '../../../nodes/_base/components/field'
+import { VarType as VarKindType } from '../../../nodes/tool/types'
+import { VarType } from '../../../types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import VarList from '@/app/components/workflow/nodes/variable-assigner/components/var-list/index'
+import VarReferencePicker from '../../../nodes/_base/components/variable/var-reference-picker'
+import VarList from '../../../nodes/variable-assigner/components/var-list/index'
 
 const i18nPrefix = 'nodes.variableAssigner'
 

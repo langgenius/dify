@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../types'
 
 export type NodeActionsMenuProps = {
   id: string

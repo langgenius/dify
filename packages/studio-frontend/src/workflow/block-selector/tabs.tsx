@@ -4,7 +4,7 @@ import type {
   NodeDefault,
   OnSelectBlock,
   ToolWithProvider,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -14,12 +14,12 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import AllStartBlocks from '@/app/components/workflow/block-selector/all-start-blocks'
-import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import Blocks from '@/app/components/workflow/block-selector/blocks'
-import DataSources from '@/app/components/workflow/block-selector/data-sources'
-import { TabsEnum } from '@/app/components/workflow/block-selector/types'
+import { useWorkflowStore } from '../store/index'
+import AllStartBlocks from '../block-selector/all-start-blocks'
+import AllTools from '../block-selector/all-tools'
+import Blocks from '../block-selector/blocks'
+import DataSources from '../block-selector/data-sources'
+import { TabsEnum } from '../block-selector/types'
 
 type TabsProps = {
   activeTab: TabsEnum

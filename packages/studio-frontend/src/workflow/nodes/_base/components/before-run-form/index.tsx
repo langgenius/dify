@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import type { Props as FormProps } from '../../../../nodes/_base/components/before-run-form/form'
 import type { Emoji } from '@/app/components/tools/types'
-import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { NodeRunningStatus } from '@/app/components/workflow/types'
+import type { SpecialResultPanelProps } from '../../../../run/special-result-panel'
+import type { NodeRunningStatus } from '../../../../types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -11,18 +11,18 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
-import { BlockEnum } from '@/app/components/workflow/types'
-import Form from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import Split from '../../../../nodes/_base/components/split'
+import SingleRunForm from '../../../../nodes/human-input/components/single-run-form'
+import { BlockEnum } from '../../../../types'
+import Form from '../../../../nodes/_base/components/before-run-form/form'
 import {
   buildSubmitData,
   getFormErrorMessage,
   isFilesLoaded,
   shouldAutoRunBeforeRunForm,
   shouldAutoShowGeneratedForm,
-} from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
-import PanelWrap from '@/app/components/workflow/nodes/_base/components/before-run-form/panel-wrap'
+} from '../../../../nodes/_base/components/before-run-form/helpers'
+import PanelWrap from '../../../../nodes/_base/components/before-run-form/panel-wrap'
 
 const i18nPrefix = 'singleRun'
 

@@ -5,9 +5,9 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { DEFAULT_ITER_TIMES } from '@/app/components/workflow/constants'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { DEFAULT_ITER_TIMES } from '../../constants'
+import { useWorkflowStore } from '../../store'
+import { NodeRunningStatus } from '../../types'
 
 export const useWorkflowNodeIterationStarted = () => {
   const store = useStoreApi()

@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Divider from '@/app/components/base/divider/index'
-import MenuItem from '@/app/components/app-sidebar/dataset-info/menu-item'
+import MenuItem from '../dataset-info/menu-item'
 
 type MenuProps = {
   showDelete: boolean

@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiSettings2Line } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ParamConfigContent from '@/app/components/app/configuration/config-vision/param-config-content'
+import ParamConfigContent from '../../configuration/config-vision/param-config-content'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()

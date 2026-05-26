@@ -1,2 +1,2 @@
-export * from '@/app/components/workflow/store/trigger-status'
-export * from '@/app/components/workflow/store/workflow/index'
+export * from '../store/trigger-status'
+export * from '../store/workflow/index'

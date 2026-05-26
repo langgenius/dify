@@ -1,12 +1,12 @@
 import type {
   BlockEnum,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import {
   LOOP_CHILDREN_Z_INDEX,
   LOOP_PADDING,
-} from '@/app/components/workflow/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+} from '../../constants'
+import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 
 type ContainerBounds = {
   rightNode?: Node

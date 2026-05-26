@@ -21,7 +21,7 @@ import {
   formatExternalDataTool,
   getProviderDefaultConfig,
   getValidationError,
-} from '@/app/components/app/configuration/tools/external-data-tool-modal-utils'
+} from '../../configuration/tools/external-data-tool-modal-utils'
 
 type ExternalDataToolModalProps = {
   data: ExternalDataTool

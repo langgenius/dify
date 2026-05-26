@@ -1,13 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
-import type { TriggerOption } from '@/app/components/workflow/header/test-run-menu'
+import type { TriggerOption } from '../header/test-run-menu'
 import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import {
   cloneElement,
   isValidElement,
   useEffect,
 } from 'react'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
   option: TriggerOption

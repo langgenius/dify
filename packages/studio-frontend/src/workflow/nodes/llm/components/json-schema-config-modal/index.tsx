@@ -1,6 +1,6 @@
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot } from '../../../../nodes/llm/types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { JsonSchemaConfig } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-config'
+import { JsonSchemaConfig } from '../../../../nodes/llm/components/json-schema-config-modal/json-schema-config'
 
 type JsonSchemaConfigModalProps = {
   isShow: boolean

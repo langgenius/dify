@@ -5,11 +5,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BLOCKS } from '@/app/components/workflow/block-selector/constants'
+import { BLOCKS } from '../block-selector/constants'
 import {
   TabsEnum,
   ToolTypeEnum,
-} from '@/app/components/workflow/block-selector/types'
+} from '../block-selector/types'
 
 export const useBlocks = () => {
   const { t } = useTranslation()

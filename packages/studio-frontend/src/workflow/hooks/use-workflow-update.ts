@@ -1,12 +1,12 @@
-import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
+import type { WorkflowDataUpdater } from '../types'
 import { useCallback } from 'react'
 import { useReactFlow } from 'reactflow'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
+import { WORKFLOW_DATA_UPDATE } from '../constants'
 import {
   initialEdges,
   initialNodes,
-} from '@/app/components/workflow/utils/index'
+} from '../utils/index'
 
 export const useWorkflowUpdate = () => {
   const reactflow = useReactFlow()

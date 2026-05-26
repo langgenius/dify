@@ -1,20 +1,20 @@
-import type { PluginTriggerNodeType, PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { PluginTriggerNodeType, PluginTriggerVarInputs } from '../../nodes/trigger-plugin/types'
 import type { Event } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '../../block-selector/types'
+import type { InputVar } from '../../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
 import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useNodesReadOnly } from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import {
   useAllTriggerPlugins,
   useTriggerSubscriptions,
 } from '@/service/use-triggers'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { VarKindType } from '../../nodes/_base/types'
 
 const normalizeEventParameters = (
   params: PluginTriggerVarInputs | Record<string, unknown> | null | undefined,

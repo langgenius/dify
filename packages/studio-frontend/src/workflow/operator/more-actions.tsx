@@ -20,10 +20,10 @@ import { getNodesBounds, useReactFlow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore } from '../store'
 import { downloadUrl } from '@/utils/download'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/index'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
+import { useNodesReadOnly } from '../hooks/index'
+import TipPopup from '../operator/tip-popup'
 
 const MoreActions: FC = () => {
   const { t } = useTranslation()

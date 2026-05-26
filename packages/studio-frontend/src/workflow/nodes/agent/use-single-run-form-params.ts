@@ -1,13 +1,13 @@
 import type { RefObject } from 'react'
-import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { AgentNodeType } from '../../nodes/agent/types'
+import type { Props as FormProps } from '../../nodes/_base/components/before-run-form/form'
+import type { InputVar, Variable } from '../../types'
 import type { NodeTracing } from '@/types/workflow'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useStrategyInfo } from '@/app/components/workflow/nodes/agent/use-config'
+import formatTracing from '../../run/utils/format-log'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import { useStrategyInfo } from '../../nodes/agent/use-config'
 
 type Params = {
   id: string

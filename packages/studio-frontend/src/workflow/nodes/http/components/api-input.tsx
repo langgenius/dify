@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { Var } from '@/app/components/workflow/types'
+import type { Var } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import { VarType } from '@/app/components/workflow/types'
-import Selector from '@/app/components/workflow/nodes/_base/components/selector'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { Method } from '@/app/components/workflow/nodes/http/types'
+import Input from '../../../nodes/_base/components/input-support-select-var'
+import { VarType } from '../../../types'
+import Selector from '../../../nodes/_base/components/selector'
+import useAvailableVarList from '../../../nodes/_base/hooks/use-available-var-list'
+import { Method } from '../../../nodes/http/types'
 
 const MethodOptions = [
   { label: 'GET', value: Method.get },

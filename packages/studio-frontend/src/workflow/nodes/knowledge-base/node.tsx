@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { KnowledgeBaseNodeType } from '../../nodes/knowledge-base/types'
+import type { NodeProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -17,16 +17,16 @@ import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/client'
-import { useEmbeddingModelStatus } from '@/app/components/workflow/nodes/knowledge-base/hooks/use-embedding-model-status'
-import { useSettingsDisplay } from '@/app/components/workflow/nodes/knowledge-base/hooks/use-settings-display'
+import { useEmbeddingModelStatus } from '../../nodes/knowledge-base/hooks/use-embedding-model-status'
+import { useSettingsDisplay } from '../../nodes/knowledge-base/hooks/use-settings-display'
 import {
   IndexMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
+} from '../../nodes/knowledge-base/types'
 import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
   KnowledgeBaseValidationIssueCode,
-} from '@/app/components/workflow/nodes/knowledge-base/utils'
+} from '../../nodes/knowledge-base/utils'
 
 type SettingRowProps = {
   label: string

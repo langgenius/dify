@@ -2,8 +2,8 @@ import type { IterationFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { DEFAULT_ITER_TIMES } from '@/app/components/workflow/constants'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { DEFAULT_ITER_TIMES } from '../../constants'
+import { useWorkflowStore } from '../../store'
 
 export const useWorkflowNodeIterationFinished = () => {
   const store = useStoreApi()

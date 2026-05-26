@@ -1,7 +1,7 @@
-import type { DefaultValueForm } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { DefaultValueForm } from '../../../../nodes/_base/components/error-handle/types'
 import type {
   CommonNodeType,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import {
   useCallback,
   useMemo,
@@ -10,9 +10,9 @@ import {
 import {
   useEdgesInteractions,
   useNodeDataUpdate,
-} from '@/app/components/workflow/hooks'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+} from '../../../../hooks'
+import { ErrorHandleTypeEnum } from '../../../../nodes/_base/components/error-handle/types'
+import { getDefaultValue } from '../../../../nodes/_base/components/error-handle/utils'
 
 export const useDefaultValue = (
   id: string,

@@ -1,4 +1,4 @@
-import type { CommonNodeType, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, Variable } from '../../types'
 
 export type EndNodeType = CommonNodeType & {
   outputs: Variable[]

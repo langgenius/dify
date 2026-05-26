@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, ReactElement } from 'react'
-import type { SelectItem } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
+import type { SelectItem } from '../../../nodes/_base/components/form-input-item.helpers'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   SelectItem as DifySelectItem,
@@ -12,8 +12,8 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiLoader4Line } from '@remixicon/react'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import CodeEditor from '../../../nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '../../../nodes/code/types'
 
 type MultiSelectFieldProps = {
   disabled: boolean

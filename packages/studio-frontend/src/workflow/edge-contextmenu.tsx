@@ -9,9 +9,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import { useEdgesInteractions, usePanelInteractions } from '@/app/components/workflow/hooks/index'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useStore } from '@/app/components/workflow/store/index'
+import { useEdgesInteractions, usePanelInteractions } from './hooks/index'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
+import { useStore } from './store/index'
 
 const EdgeContextmenu = () => {
   const { t } = useTranslation()

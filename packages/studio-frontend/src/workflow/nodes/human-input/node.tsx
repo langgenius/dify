@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { HumanInputNodeType } from '../../nodes/human-input/types'
+import type { NodeProps } from '../../types'
 import {
   RiMailSendFill,
   RiRobot2Fill,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeSourceHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { NodeSourceHandle } from '../../nodes/_base/components/node-handle'
+import { DeliveryMethodType } from '../../nodes/human-input/types'
 
 const i18nPrefix = 'nodes.humanInput'
 

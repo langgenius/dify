@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { CodeLanguage } from '../../../nodes/code/types'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
@@ -10,7 +10,7 @@ import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/con
 import { ActionButton } from '@/app/components/base/action-button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
+import { useHooksStore } from '../../../hooks-store/index'
 
 type Props = {
   nodeId: string

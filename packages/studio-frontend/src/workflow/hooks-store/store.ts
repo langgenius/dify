@@ -5,7 +5,7 @@ import type {
   NodeDefault,
   ToolWithProvider,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../types'
 import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
@@ -16,7 +16,7 @@ import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
-import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
+import { HooksStoreContext } from '../hooks-store/provider'
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]

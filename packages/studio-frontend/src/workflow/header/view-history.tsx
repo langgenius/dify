@@ -19,7 +19,7 @@ import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store'
+} from '../store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
 import {
@@ -27,9 +27,9 @@ import {
   useNodesInteractions,
   useWorkflowInteractions,
   useWorkflowRun,
-} from '@/app/components/workflow/hooks/index'
-import { ControlMode, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
+} from '../hooks/index'
+import { ControlMode, WorkflowRunningStatus } from '../types'
+import { formatWorkflowRunIdentifier } from '../utils/index'
 
 export type ViewHistoryProps = {
   withText?: boolean

@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import type {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
+} from '../../../../nodes/knowledge-base/types'
 
 export type Option = {
   id: RetrievalSearchMethodEnum

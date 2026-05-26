@@ -1,7 +1,7 @@
 import type {
   CommonNodeType,
   OnSelectBlock,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -13,11 +13,11 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '@/app/components/workflow/block-selector'
+import BlockSelector from '../../../../block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
-} from '@/app/components/workflow/hooks'
+} from '../../../../hooks'
 
 type ChangeItemProps = {
   data: CommonNodeType

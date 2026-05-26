@@ -9,7 +9,7 @@ import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '@/context/access-control-store'
 import { Infotip } from '@/app/components/base/infotip/index'
 import Loading from '@/app/components/base/loading/index'
-import AddMemberOrGroupDialog from '@/app/components/app/app-access-control/add-member-or-group-pop'
+import AddMemberOrGroupDialog from '../app-access-control/add-member-or-group-pop'
 
 export default function SpecificGroupsOrMembers() {
   const currentMenu = useAccessControlStore(s => s.currentMenu)

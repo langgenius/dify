@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
-import StatusContainer from '@/app/components/workflow/run/status-container'
+import StatusContainer from '../run/status-container'
 import { useDocLink } from '@/context/i18n'
 import { useWorkflowPausedDetails } from '@/service/use-log'
 

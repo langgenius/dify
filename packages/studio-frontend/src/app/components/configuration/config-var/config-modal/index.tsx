@@ -1,6 +1,6 @@
 'use client'
 import type { ChangeEvent, FC } from 'react'
-import type { Item as SelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
+import type { Item as SelectItem } from '../../../configuration/config-var/config-modal/type-select'
 import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -8,12 +8,12 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore as useAppStore } from '../../../store'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
 import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import ModalFoot from '@/app/components/app/configuration/config-var/modal-foot'
-import ConfigModalFormFields from '@/app/components/app/configuration/config-var/config-modal/form-fields'
+import ModalFoot from '../../../configuration/config-var/modal-foot'
+import ConfigModalFormFields from '../../../configuration/config-var/config-modal/form-fields'
 import {
   buildSelectOptions,
   createPayloadForType,
@@ -23,7 +23,7 @@ import {
   normalizeSelectDefaultValue,
   updatePayloadField,
   validateConfigModalPayload,
-} from '@/app/components/app/configuration/config-var/config-modal/utils'
+} from '../../../configuration/config-var/config-modal/utils'
 
 type IConfigModalProps = {
   isCreate?: boolean

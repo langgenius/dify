@@ -1,7 +1,7 @@
 import type { VarInInspectType } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { useVarIcon } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/hooks'
+import { useVarIcon } from '../../../../../../nodes/_base/components/variable/variable-label/hooks'
 
 export type VariableIconProps = {
   className?: string

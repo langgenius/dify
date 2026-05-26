@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
+import type { ResultPanelProps } from '../../../../../run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useHooksStore } from '../../../../../hooks-store'
+import ResultPanel from '../../../../../run/result-panel'
+import { NodeRunningStatus } from '../../../../../types'
 import { useLastRun } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
-import NoData from '@/app/components/workflow/nodes/_base/components/workflow-panel/last-run/no-data'
+import NoData from '../../../../../nodes/_base/components/workflow-panel/last-run/no-data'
 
 type Props = {
   appId: string

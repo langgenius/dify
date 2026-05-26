@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { Var } from '@/app/components/workflow/types'
+import type { Var } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { VarType } from '@/app/components/workflow/types'
+import Input from '../../../nodes/_base/components/input-support-select-var'
+import useAvailableVarList from '../../../nodes/_base/hooks/use-available-var-list'
+import { VarType } from '../../../types'
 
 type Props = {
   nodeId: string

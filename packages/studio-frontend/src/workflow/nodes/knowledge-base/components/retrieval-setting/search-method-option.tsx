@@ -1,12 +1,12 @@
 import type {
   WeightedScore,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { RerankingModelSelectorProps } from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/reranking-model-selector'
-import type { TopKAndScoreThresholdProps } from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold'
+} from '../../../../nodes/knowledge-base/types'
+import type { RerankingModelSelectorProps } from '../../../../nodes/knowledge-base/components/retrieval-setting/reranking-model-selector'
+import type { TopKAndScoreThresholdProps } from '../../../../nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold'
 import type {
   HybridSearchModeOption,
   Option,
-} from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type'
+} from '../../../../nodes/knowledge-base/components/retrieval-setting/type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import {
@@ -22,10 +22,10 @@ import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
-import OptionCard from '@/app/components/workflow/nodes/knowledge-base/components/option-card'
-import RerankingModelSelector from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/reranking-model-selector'
-import TopKAndScoreThreshold from '@/app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold'
+} from '../../../../nodes/knowledge-base/types'
+import OptionCard from '../../../../nodes/knowledge-base/components/option-card'
+import RerankingModelSelector from '../../../../nodes/knowledge-base/components/retrieval-setting/reranking-model-selector'
+import TopKAndScoreThreshold from '../../../../nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold'
 
 type SearchMethodOptionProps = {
   readonly?: boolean

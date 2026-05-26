@@ -8,8 +8,8 @@ import { useTranslation } from 'react-i18next'
 import HumanInputFilledFormList from '@/app/components/base/chat/chat/answer/human-input-filled-form-list'
 import HumanInputFormList from '@/app/components/base/chat/chat/answer/human-input-form-list'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
-import ResultTab from '@/app/components/app/text-generate/item/result-tab'
-import { getGenerationTaskLabel } from '@/app/components/app/text-generate/item/utils'
+import ResultTab from '../../text-generate/item/result-tab'
+import { getGenerationTaskLabel } from '../../text-generate/item/utils'
 
 type WorkflowBodyProps = {
   content: unknown

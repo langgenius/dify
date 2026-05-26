@@ -1,13 +1,13 @@
 'use client'
-import type { BlockEnum } from '@/app/components/workflow/types'
-import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { TriggerPluginActionPreviewPayload } from '@/app/components/workflow/block-selector/trigger-plugin/action-item'
+import type { BlockEnum } from '../../types'
+import type { TriggerDefaultValue, TriggerWithProvider } from '../../block-selector/types'
+import type { TriggerPluginActionPreviewPayload } from '../../block-selector/trigger-plugin/action-item'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
 import { memo, useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { TriggerPluginActionPreviewCard } from '@/app/components/workflow/block-selector/trigger-plugin/action-item'
-import TriggerPluginItem from '@/app/components/workflow/block-selector/trigger-plugin/item'
+import { TriggerPluginActionPreviewCard } from '../../block-selector/trigger-plugin/action-item'
+import TriggerPluginItem from '../../block-selector/trigger-plugin/item'
 
 type TriggerPluginListProps = {
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void

@@ -1,14 +1,14 @@
-import type { VariablePayload } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/types'
+import type { VariablePayload } from '../../../../../../nodes/_base/components/variable/variable-label/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
 import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { useVarColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/hooks'
-import VariableIcon from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
-import VariableName from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-name'
-import VariableNodeLabel from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-node-label'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../../../../../nodes/_base/components/variable/utils'
+import { useVarColor } from '../../../../../../nodes/_base/components/variable/variable-label/hooks'
+import VariableIcon from '../../../../../../nodes/_base/components/variable/variable-label/base/variable-icon'
+import VariableName from '../../../../../../nodes/_base/components/variable/variable-label/base/variable-name'
+import VariableNodeLabel from '../../../../../../nodes/_base/components/variable/variable-label/base/variable-node-label'
 
 const VariableLabel = ({
   nodeType,

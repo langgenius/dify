@@ -1,6 +1,6 @@
 'use client'
 
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { ModelAndParameter } from '../../../configuration/debug/types'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 

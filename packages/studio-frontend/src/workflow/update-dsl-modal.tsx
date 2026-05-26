@@ -18,7 +18,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { usePluginDependencies } from './plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   DSLImportMode,
@@ -29,18 +29,18 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
+import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   getImportNotificationPayload,
   isImportCompleted,
   normalizeWorkflowFeatures,
   validateDSLContent,
-} from '@/app/components/workflow/update-dsl-modal.helpers'
+} from './update-dsl-modal.helpers'
 import {
   initialEdges,
   initialNodes,
-} from '@/app/components/workflow/utils/index'
+} from './utils/index'
 
 type UpdateDSLModalProps = {
   onCancel: () => void

@@ -1,4 +1,4 @@
-import type { ErrorHandleMode, Var } from '@/app/components/workflow/types'
+import type { ErrorHandleMode, Var } from '../../types'
 import type {
   HandleAddCondition,
   HandleAddSubVariableCondition,
@@ -8,13 +8,13 @@ import type {
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
   LoopNodeType,
-} from '@/app/components/workflow/nodes/loop/types'
+} from '../../nodes/loop/types'
 import {
   useCallback,
   useEffect,
   useRef,
 } from 'react'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore } from '../../store'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -25,9 +25,9 @@ import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
-} from '@/app/components/workflow/hooks/index'
-import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+} from '../../hooks/index'
+import { toNodeOutputVars } from '../../nodes/_base/components/variable/utils'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import {
   addBreakCondition,
   addLoopVariable,
@@ -43,8 +43,8 @@ import {
   updateLoopCount,
   updateLoopVariable,
   updateSubVariableCondition,
-} from '@/app/components/workflow/nodes/loop/use-config.helpers'
-import useIsVarFileAttribute from '@/app/components/workflow/nodes/loop/use-is-var-file-attribute'
+} from '../../nodes/loop/use-config.helpers'
+import useIsVarFileAttribute from '../../nodes/loop/use-is-var-file-attribute'
 
 const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

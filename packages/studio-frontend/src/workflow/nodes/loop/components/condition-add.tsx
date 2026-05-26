@@ -1,9 +1,9 @@
-import type { HandleAddCondition } from '@/app/components/workflow/nodes/loop/types'
+import type { HandleAddCondition } from '../../../nodes/loop/types'
 import type {
   NodeOutPutVar,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import VarReferenceVars from '../../../nodes/_base/components/variable/var-reference-vars'
 
 type ConditionAddProps = {
   className?: string

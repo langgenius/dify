@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-import s from '@/app/components/app/configuration/base/var-highlight/style.module.css'
+import s from '../../../configuration/base/var-highlight/style.module.css'
 
 type IVarHighlightProps = {
   name: string

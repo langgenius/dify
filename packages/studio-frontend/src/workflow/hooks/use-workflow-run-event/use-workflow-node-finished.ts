@@ -2,12 +2,12 @@ import type { NodeFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { ErrorHandleTypeEnum } from '../../nodes/_base/components/error-handle/types'
+import { useWorkflowStore } from '../../store'
 import {
   BlockEnum,
   NodeRunningStatus,
-} from '@/app/components/workflow/types'
+} from '../../types'
 
 export const useWorkflowNodeFinished = () => {
   const store = useStoreApi()

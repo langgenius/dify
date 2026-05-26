@@ -29,19 +29,19 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import {
   CUSTOM_NODE,
-} from '@/app/components/workflow/constants'
+} from '../../constants'
 import { sseGet } from '@/service/base'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '@/app/components/workflow/constants'
+import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import {
   useSetWorkflowVarsWithValue,
   useWorkflowRun,
-} from '@/app/components/workflow/hooks/index'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+} from '../../hooks/index'
+import { useHooksStore } from '../../hooks-store/index'
+import { useWorkflowStore } from '../../store/index'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {

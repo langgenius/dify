@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import { Field } from '../../../nodes/_base/components/layout'
 
 type EmbeddingModelProps = {
   embeddingModel?: string

@@ -1,4 +1,4 @@
-import type { CommonNodeType, ValueSelector, VarType } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector, VarType } from '../../types'
 
 export type VarGroupItem = {
   output_type: VarType

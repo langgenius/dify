@@ -1,16 +1,16 @@
-import type { ConditionValueMethodProps } from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method'
+import type { ConditionValueMethodProps } from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../../../../../types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { VarType } from '@/app/components/workflow/types'
-import ConditionCommonVariableSelector from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector'
-import ConditionValueMethod from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method'
-import ConditionVariableSelector from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-variable-selector'
+import { VarType } from '../../../../../types'
+import ConditionCommonVariableSelector from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-common-variable-selector'
+import ConditionValueMethod from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-value-method'
+import ConditionVariableSelector from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-variable-selector'
 
 type ConditionStringProps = {
   value?: string

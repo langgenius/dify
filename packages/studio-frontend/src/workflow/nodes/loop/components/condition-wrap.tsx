@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
-import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '@/app/components/workflow/nodes/loop/types'
+import type { Node, NodeOutPutVar, Var } from '../../../types'
+import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../../../nodes/loop/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
@@ -11,11 +11,11 @@ import {
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { VarType } from '@/app/components/workflow/types'
-import { useGetAvailableVars } from '@/app/components/workflow/nodes/variable-assigner/hooks'
-import { SUB_VARIABLES } from '@/app/components/workflow/nodes/loop/default'
-import ConditionAdd from '@/app/components/workflow/nodes/loop/components/condition-add'
-import ConditionList from '@/app/components/workflow/nodes/loop/components/condition-list/index'
+import { VarType } from '../../../types'
+import { useGetAvailableVars } from '../../../nodes/variable-assigner/hooks'
+import { SUB_VARIABLES } from '../../../nodes/loop/default'
+import ConditionAdd from '../../../nodes/loop/components/condition-add'
+import ConditionList from '../../../nodes/loop/components/condition-list/index'
 
 type Props = {
   isSubVariable?: boolean

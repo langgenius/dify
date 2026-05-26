@@ -12,7 +12,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+import { ShortcutKbd } from '../../../shortcuts/shortcut-kbd'
 
 export type OperatorProps = {
   onCopy: () => void

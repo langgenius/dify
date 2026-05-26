@@ -1,10 +1,10 @@
-import type { EmailConfig, FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { EmailConfig, FormInputItem } from '../../../../nodes/human-input/types'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -15,19 +15,19 @@ import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import FormItem from '../../../../nodes/_base/components/before-run-form/form-item'
 import {
   getNodeInfoById,
   isConversationVar,
   isENV,
   isSystemVar,
-} from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
+} from '../../../../nodes/_base/components/variable/utils'
+import { InputVarType, VarType } from '../../../../types'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
-import { isOutput } from '@/app/components/workflow/nodes/human-input/utils'
-import EmailInput from '@/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input'
+import { isOutput } from '../../../../nodes/human-input/utils'
+import EmailInput from '../../../../nodes/human-input/components/delivery-method/recipient/email-input'
 
 const i18nPrefix = 'nodes.humanInput'
 

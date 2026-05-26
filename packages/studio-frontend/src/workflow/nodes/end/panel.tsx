@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { EndNodeType } from '../../nodes/end/types'
+import type { NodePanelProps } from '../../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
-import useConfig from '@/app/components/workflow/nodes/end/use-config'
+import Field from '../../nodes/_base/components/field'
+import VarList from '../../nodes/_base/components/variable/var-list'
+import useConfig from '../../nodes/end/use-config'
 
 const i18nPrefix = 'nodes.end'
 

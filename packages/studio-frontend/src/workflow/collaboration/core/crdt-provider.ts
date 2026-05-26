@@ -2,7 +2,7 @@
 
 import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
-import { emitWithAuthGuard } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { emitWithAuthGuard } from '../../collaboration/core/websocket-manager'
 
 export class CRDTProvider {
   private doc: LoroDoc

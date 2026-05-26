@@ -1,10 +1,10 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils/index'
-import { getDefaultScheduleConfig } from '@/app/components/workflow/nodes/trigger-schedule/constants'
-import { isValidCronExpression } from '@/app/components/workflow/nodes/trigger-schedule/utils/cron-parser'
-import { getNextExecutionTimes } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
+import type { NodeDefault } from '../../types'
+import type { ScheduleTriggerNodeType } from '../../nodes/trigger-schedule/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils/index'
+import { getDefaultScheduleConfig } from '../../nodes/trigger-schedule/constants'
+import { isValidCronExpression } from '../../nodes/trigger-schedule/utils/cron-parser'
+import { getNextExecutionTimes } from '../../nodes/trigger-schedule/utils/execution-time-calculator'
 
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/

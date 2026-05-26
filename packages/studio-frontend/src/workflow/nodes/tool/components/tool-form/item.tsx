@@ -1,9 +1,9 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ToolVarInputs } from '../../../../nodes/tool/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '../../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBracesLine,
@@ -13,7 +13,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
-import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
+import FormInputItem from '../../../../nodes/_base/components/form-input-item'
 
 const URL_REGEX = /(https?:\/\/\S+)/g
 

@@ -1,16 +1,16 @@
 import type { FC } from 'react'
-import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
-import type { NodeProps, Variable } from '@/app/components/workflow/types'
+import type { EndNodeType } from '../../nodes/end/types'
+import type { NodeProps, Variable } from '../../types'
 import * as React from 'react'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
+} from '../../hooks'
 import {
   VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../../nodes/_base/components/variable/variable-label'
+import { BlockEnum } from '../../types'
 
 const Node: FC<NodeProps<EndNodeType>> = ({
   id,

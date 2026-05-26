@@ -4,7 +4,7 @@ import type {
   HandleUpdateCondition,
   MetadataFilteringCondition,
   MetadataShape,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+} from '../../../../../nodes/knowledge-retrieval/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
@@ -14,17 +14,17 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import MetadataIcon from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-icon'
-import ConditionDate from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-date'
-import ConditionNumber from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-number'
-import ConditionOperator from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-operator'
-import ConditionString from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-string'
+import { MetadataFilteringVariableType } from '../../../../../nodes/knowledge-retrieval/types'
+import MetadataIcon from '../../../../../nodes/knowledge-retrieval/components/metadata/metadata-icon'
+import ConditionDate from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-date'
+import ConditionNumber from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-number'
+import ConditionOperator from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-operator'
+import ConditionString from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/condition-string'
 import {
   COMMON_VARIABLE_REGEX,
   comparisonOperatorNotRequireValue,
   VARIABLE_REGEX,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
+} from '../../../../../nodes/knowledge-retrieval/components/metadata/condition-list/utils'
 
 type ConditionItemProps = {
   className?: string

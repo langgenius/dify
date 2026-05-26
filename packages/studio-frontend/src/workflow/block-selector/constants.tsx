@@ -1,6 +1,6 @@
-import type { Block } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { Block } from '../types'
+import { BlockEnum } from '../types'
+import { BlockClassificationEnum } from '../block-selector/types'
 
 export const BLOCK_CLASSIFICATIONS = [
   BlockClassificationEnum.Default,

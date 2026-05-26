@@ -1,4 +1,4 @@
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../../../types'
 
 export const HTTP_BODY_VARIABLE_TYPES: VarType[] = [
   VarType.string,

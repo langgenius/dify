@@ -4,15 +4,15 @@ import type { FC } from 'react'
 import type {
   Viewport,
 } from 'reactflow'
-import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types/collaboration'
-import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/index'
-import type { WorkflowSliceShape } from '@/app/components/workflow/store/workflow/workflow-slice'
+import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
+import type { Shape as HooksStoreShape } from './hooks-store/index'
+import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type {
   ConversationVariable,
   Edge,
   EnvironmentVariable,
   Node,
-} from '@/app/components/workflow/types'
+} from './types'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
@@ -60,25 +60,25 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { fetchAllInspectVars } from '@/service/workflow'
-import CandidateNode from '@/app/components/workflow/candidate-node'
-import UserCursors from '@/app/components/workflow/collaboration/components/user-cursors'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import CommentManager from '@/app/components/workflow/comment-manager'
-import { CommentIcon } from '@/app/components/workflow/comment/comment-icon'
-import { CommentInput } from '@/app/components/workflow/comment/comment-input'
-import { CommentCursor } from '@/app/components/workflow/comment/cursor'
-import { CommentThread } from '@/app/components/workflow/comment/thread'
+import CandidateNode from './candidate-node'
+import UserCursors from './collaboration/components/user-cursors'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
+import CommentManager from './comment-manager'
+import { CommentIcon } from './comment/comment-icon'
+import { CommentInput } from './comment/comment-input'
+import { CommentCursor } from './comment/cursor'
+import { CommentThread } from './comment/thread'
 import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
-} from '@/app/components/workflow/constants'
-import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
-import CustomEdge from '@/app/components/workflow/custom-edge'
-import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
-import EdgeContextmenu from '@/app/components/workflow/edge-contextmenu'
-import HelpLine from '@/app/components/workflow/help-line/index'
+} from './constants'
+import CustomConnectionLine from './custom-connection-line'
+import CustomEdge from './custom-edge'
+import DatasetsDetailProvider from './datasets-detail-store/provider'
+import EdgeContextmenu from './edge-contextmenu'
+import HelpLine from './help-line/index'
 import {
   useEdgesInteractions,
   useNodesInteractions,
@@ -90,38 +90,38 @@ import {
   useWorkflow,
   useWorkflowReadOnly,
   useWorkflowRefreshDraft,
-} from '@/app/components/workflow/hooks/index'
-import { HooksStoreContextProvider, useHooksStore } from '@/app/components/workflow/hooks-store/index'
-import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
-import { useWorkflowSearch } from '@/app/components/workflow/hooks/use-workflow-search'
-import { NodeContextmenu } from '@/app/components/workflow/node-contextmenu'
-import CustomNode from '@/app/components/workflow/nodes/index'
-import useMatchSchemaType from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
-import CustomDataSourceEmptyNode from '@/app/components/workflow/nodes/data-source-empty/index'
-import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from '@/app/components/workflow/nodes/data-source-empty/constants'
-import CustomIterationStartNode from '@/app/components/workflow/nodes/iteration-start/index'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import CustomLoopStartNode from '@/app/components/workflow/nodes/loop-start/index'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import CustomNoteNode from '@/app/components/workflow/note-node/index'
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
-import Operator from '@/app/components/workflow/operator/index'
-import Control from '@/app/components/workflow/operator/control'
-import PanelContextmenu from '@/app/components/workflow/panel-contextmenu'
-import SelectionContextmenu from '@/app/components/workflow/selection-contextmenu'
-import { useWorkflowHotkeys } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
-import CustomSimpleNode from '@/app/components/workflow/simple-node/index'
-import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
+} from './hooks/index'
+import { HooksStoreContextProvider, useHooksStore } from './hooks-store/index'
+import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowSearch } from './hooks/use-workflow-search'
+import { NodeContextmenu } from './node-contextmenu'
+import CustomNode from './nodes/index'
+import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
+import CustomDataSourceEmptyNode from './nodes/data-source-empty/index'
+import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
+import CustomIterationStartNode from './nodes/iteration-start/index'
+import { CUSTOM_ITERATION_START_NODE } from './nodes/iteration-start/constants'
+import CustomLoopStartNode from './nodes/loop-start/index'
+import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
+import CustomNoteNode from './note-node/index'
+import { CUSTOM_NOTE_NODE } from './note-node/constants'
+import Operator from './operator/index'
+import Control from './operator/control'
+import PanelContextmenu from './panel-contextmenu'
+import SelectionContextmenu from './selection-contextmenu'
+import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
+import CustomSimpleNode from './simple-node/index'
+import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/workflow/index'
-import SyncingDataModal from '@/app/components/workflow/syncing-data-modal'
+} from './store/workflow/index'
+import SyncingDataModal from './syncing-data-modal'
 import {
   ControlMode,
   WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
-import { setupScrollToNodeListener } from '@/app/components/workflow/utils/node-navigation'
+} from './types'
+import { setupScrollToNodeListener } from './utils/node-navigation'
 import 'reactflow/dist/style.css'
 import './style.css'
 

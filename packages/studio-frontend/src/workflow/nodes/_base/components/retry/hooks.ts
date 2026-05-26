@@ -1,10 +1,10 @@
-import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { WorkflowRetryConfig } from '../../../../nodes/_base/components/retry/types'
 import {
   useCallback,
 } from 'react'
 import {
   useNodeDataUpdate,
-} from '@/app/components/workflow/hooks'
+} from '../../../../hooks'
 
 export const useRetryConfig = (
   id: string,

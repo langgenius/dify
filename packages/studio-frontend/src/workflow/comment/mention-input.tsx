@@ -23,7 +23,7 @@ import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
 import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store/index'
+import { useStore, useWorkflowStore } from '../store/index'
 
 type MentionInputProps = {
   value: string

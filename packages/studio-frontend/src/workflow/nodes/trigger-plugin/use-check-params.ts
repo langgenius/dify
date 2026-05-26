@@ -1,6 +1,6 @@
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { PluginTriggerNodeType } from '../../nodes/trigger-plugin/types'
 import { useCallback } from 'react'
-import { getTriggerCheckParams } from '@/app/components/workflow/utils/trigger'
+import { getTriggerCheckParams } from '../../utils/trigger'
 import { useGetLanguage } from '@/context/i18n'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 

@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react'
-import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
+import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../../overview/app-card-utils'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -23,9 +23,9 @@ import {
   getEmbeddedIframeSnippet,
   getEmbeddedScriptSnippet,
   isWorkflowLaunchInputSupported,
-} from '@/app/components/app/overview/app-card-utils'
-import WorkflowHiddenInputFields from '@/app/components/app/overview/workflow-hidden-input-fields'
-import style from '@/app/components/app/overview/embedded/style.module.css'
+} from '../../overview/app-card-utils'
+import WorkflowHiddenInputFields from '../../overview/workflow-hidden-input-fields'
+import style from '../../overview/embedded/style.module.css'
 
 type Props = {
   siteInfo?: SiteInfo

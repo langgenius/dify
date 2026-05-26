@@ -1,5 +1,5 @@
-import type { Var } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
+import type { Var } from '../../types'
+import { VarType } from '../../types'
 
 export const filterVar = (varType: VarType) => {
   return (v: Var) => {

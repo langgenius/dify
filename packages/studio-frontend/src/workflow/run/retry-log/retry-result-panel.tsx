@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import TracingPanel from '../../run/tracing-panel'
 
 type Props = {
   list: NodeTracing[]

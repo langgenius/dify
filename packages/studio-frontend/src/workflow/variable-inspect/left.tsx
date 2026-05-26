@@ -1,4 +1,4 @@
-import type { currentVarType } from '@/app/components/workflow/variable-inspect/panel'
+import type { currentVarType } from '../variable-inspect/panel'
 
 import type { VarInInspect } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
@@ -6,10 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 // import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { VarInInspectType } from '@/types/workflow'
-import useCurrentVars from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import { useStore } from '@/app/components/workflow/store/index'
-import Group from '@/app/components/workflow/variable-inspect/group'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useStore } from '../store/index'
+import Group from '../variable-inspect/group'
 
 type Props = {
   currentNodeVar?: currentVarType

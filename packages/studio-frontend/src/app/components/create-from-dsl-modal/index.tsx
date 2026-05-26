@@ -26,7 +26,7 @@ import {
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import Uploader from '../create-from-dsl-modal/uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean

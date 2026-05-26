@@ -1,7 +1,7 @@
 import type {
   Edge,
   Node,
-} from '@/app/components/workflow/types'
+} from '../types'
 import {
   uniqBy,
 } from 'es-toolkit/compat'
@@ -11,7 +11,7 @@ import {
 import { v4 as uuid4 } from 'uuid'
 import {
   BlockEnum,
-} from '@/app/components/workflow/types'
+} from '../types'
 
 export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import type { Param, ParamType } from '@/app/components/workflow/nodes/parameter-extractor/types'
+import type { Param, ParamType } from '../../../../nodes/parameter-extractor/types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type {
   PluginDefaultValue,
   ToolDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
-import type { BlockEnum } from '@/app/components/workflow/types'
+} from '../../../../block-selector/types'
+import type { BlockEnum } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
@@ -21,7 +21,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
-import BlockSelector from '@/app/components/workflow/block-selector/index'
+import BlockSelector from '../../../../block-selector/index'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 

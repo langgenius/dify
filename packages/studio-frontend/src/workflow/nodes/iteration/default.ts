@@ -1,8 +1,8 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
+import type { NodeDefault } from '../../types'
+import type { IterationNodeType } from '../../nodes/iteration/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { genNodeMetaData } from '../../utils'
+import { BlockEnum, ErrorHandleMode } from '../../types'
 
 const i18nPrefix = ''
 

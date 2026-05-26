@@ -1,7 +1,7 @@
 import {
   ComparisonOperator,
   MetadataFilteringVariableType,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+} from '../../../../../nodes/knowledge-retrieval/types'
 
 const notTranslateKey = [
   ComparisonOperator.equal,

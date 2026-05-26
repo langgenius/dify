@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { LoopNodeType } from '../../nodes/loop/types'
+import type { NodeProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
@@ -11,10 +11,10 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import { LoopStartNodeDumb } from '@/app/components/workflow/nodes/loop-start/index'
-import AddBlock from '@/app/components/workflow/nodes/loop/add-block'
+import { LoopStartNodeDumb } from '../../nodes/loop-start/index'
+import AddBlock from '../../nodes/loop/add-block'
 
-import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
+import { useNodeLoopInteractions } from '../../nodes/loop/use-interactions'
 
 const Node: FC<NodeProps<LoopNodeType>> = ({
   id,

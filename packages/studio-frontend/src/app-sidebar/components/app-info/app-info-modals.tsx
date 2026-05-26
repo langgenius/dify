@@ -1,4 +1,4 @@
-import type { AppInfoModalType } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
+import type { AppInfoModalType } from '../app-info/use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'

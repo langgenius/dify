@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
@@ -14,7 +14,7 @@ import ConfigVarModal from '@/app/components/app/configuration/config-var/config
 import Badge from '@/app/components/base/badge'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
-import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
+import InputVarTypeIcon from '../../../nodes/_base/components/input-var-type-icon'
 
 type Props = {
   className?: string

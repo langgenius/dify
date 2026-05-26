@@ -1,5 +1,5 @@
-import { BoxGroupField } from '@/app/components/workflow/nodes/_base/components/layout'
-import Add from '@/app/components/workflow/nodes/_base/components/input-field/add'
+import { BoxGroupField } from '../../../../nodes/_base/components/layout'
+import Add from '../../../../nodes/_base/components/input-field/add'
 
 const InputField = () => {
   return (

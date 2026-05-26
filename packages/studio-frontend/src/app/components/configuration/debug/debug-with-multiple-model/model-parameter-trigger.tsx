@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { ModelAndParameter } from '../../../configuration/debug/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
@@ -15,7 +15,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { useCredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
-import { useDebugWithMultipleModelContext } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context'
+import { useDebugWithMultipleModelContext } from '../../../configuration/debug/debug-with-multiple-model/context'
 
 type ModelParameterTriggerProps = {
   modelAndParameter: ModelAndParameter

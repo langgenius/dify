@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarHighlight from '@/app/components/app/configuration/base/var-highlight/index'
+import VarHighlight from '../../../configuration/base/var-highlight/index'
 
 type IConfirmAddVarProps = {
   varNameArr: string[]

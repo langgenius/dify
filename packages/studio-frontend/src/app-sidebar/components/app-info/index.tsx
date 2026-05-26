@@ -1,10 +1,10 @@
-import type { AppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
+import type { AppInfoActions } from '../app-info/use-app-info-actions'
 import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
-import AppInfoDetailPanel from '@/app/components/app-sidebar/app-info/app-info-detail-panel'
-import AppInfoModals from '@/app/components/app-sidebar/app-info/app-info-modals'
-import AppInfoTrigger from '@/app/components/app-sidebar/app-info/app-info-trigger'
-import { useAppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
+import AppInfoDetailPanel from '../app-info/app-info-detail-panel'
+import AppInfoModals from '../app-info/app-info-modals'
+import AppInfoTrigger from '../app-info/app-info-trigger'
+import { useAppInfoActions } from '../app-info/use-app-info-actions'
 
 type IAppInfoProps = {
   expand: boolean

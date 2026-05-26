@@ -6,19 +6,19 @@ import type {
   HandleUpdateCondition,
   KnowledgeRetrievalNodeType,
   MetadataFilteringModeEnum,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { Var } from '@/app/components/workflow/types'
+} from '../../../nodes/knowledge-retrieval/types'
+import type { Var } from '../../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { v4 as uuid4 } from 'uuid'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { VarType } from '@/app/components/workflow/types'
+import useAvailableVarList from '../../../nodes/_base/hooks/use-available-var-list'
+import { VarType } from '../../../types'
 import { AppModeEnum } from '@/types/app'
 import {
   ComparisonOperator,
   LogicalOperator,
   MetadataFilteringVariableType,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+} from '../../../nodes/knowledge-retrieval/types'
 
 type Params = {
   id: string

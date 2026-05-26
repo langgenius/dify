@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { ModelAndParameter } from '../configuration/debug/types'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import {

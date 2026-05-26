@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import type { ToolVarInputs } from '../../../nodes/tool/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
-import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ToolWithProvider, ValueSelector, Var } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -14,11 +14,11 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { VarType } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import Input from '../../../nodes/_base/components/input-support-select-var'
+import VarReferencePicker from '../../../nodes/_base/components/variable/var-reference-picker'
+import useAvailableVarList from '../../../nodes/_base/hooks/use-available-var-list'
+import { VarType } from '../../../types'
+import { VarType as VarKindType } from '../../../nodes/tool/types'
 
 type Props = {
   readOnly: boolean

@@ -1,13 +1,13 @@
-import type { Branch, Var } from '@/app/components/workflow/types'
-import type { CaseItem, Condition, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
+import type { Branch, Var } from '../../types'
+import type { CaseItem, Condition, IfElseNodeType } from '../../nodes/if-else/types'
 import { produce } from 'immer'
 import { v4 as uuid4 } from 'uuid'
-import { VarType } from '@/app/components/workflow/types'
-import { LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
+import { VarType } from '../../types'
+import { LogicalOperator } from '../../nodes/if-else/types'
 import {
   branchNameCorrect,
   getOperators,
-} from '@/app/components/workflow/nodes/if-else/utils'
+} from '../../nodes/if-else/utils'
 
 export const filterAllVars = () => true
 

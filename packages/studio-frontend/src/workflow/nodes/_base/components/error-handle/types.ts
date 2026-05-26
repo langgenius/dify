@@ -1,4 +1,4 @@
-import type { VarType } from '@/app/components/workflow/types'
+import type { VarType } from '../../../../types'
 
 export enum ErrorHandleTypeEnum {
   none = 'none',

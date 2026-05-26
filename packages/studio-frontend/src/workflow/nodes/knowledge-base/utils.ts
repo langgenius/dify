@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
+import type { KnowledgeBaseNodeType } from '../../nodes/knowledge-base/types'
 import {
   IndexingType,
 } from '@/app/components/datasets/create/step-two'
@@ -8,7 +8,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   RetrievalSearchMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
+} from '../../nodes/knowledge-base/types'
 
 export const isHighQualitySearchMethod = (searchMethod: RetrievalSearchMethodEnum) => {
   return searchMethod === RetrievalSearchMethodEnum.semantic

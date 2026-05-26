@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import s from '@/app/components/app/configuration/ctrl-btn-group/style.module.css'
+import s from '../../configuration/ctrl-btn-group/style.module.css'
 
 type IContrlBtnGroupProps = {
   onSave: () => void

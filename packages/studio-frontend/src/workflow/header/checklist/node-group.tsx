@@ -1,10 +1,10 @@
-import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { ChecklistItem } from '../../hooks/use-checklist'
+import type { BlockEnum } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { ItemIndicator } from '@/app/components/workflow/header/checklist/item-indicator'
+import BlockIcon from '../../block-icon'
+import { ItemIndicator } from '../../header/checklist/item-indicator'
 
 type ChecklistSubItem = {
   key: string

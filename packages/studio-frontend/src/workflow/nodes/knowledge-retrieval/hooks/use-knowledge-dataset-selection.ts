@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { KnowledgeRetrievalNodeType } from '../../../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
 import {
   produce,
@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { fetchDatasets } from '@/service/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../../../nodes/knowledge-retrieval/utils'
 
 type ModelIdentity = {
   provider?: string

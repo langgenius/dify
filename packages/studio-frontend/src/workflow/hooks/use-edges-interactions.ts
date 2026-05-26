@@ -5,8 +5,8 @@ import type {
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useWorkflowStore } from '../store/index'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import {
   applyConnectedHandleNodeData,
   buildContextMenuEdges,
@@ -14,10 +14,10 @@ import {
   clearNodeSelectionState,
   updateEdgeHoverState,
   updateEdgeSelectionState,
-} from '@/app/components/workflow/hooks/use-edges-interactions.helpers'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflowHistory, WorkflowHistoryEvent } from '@/app/components/workflow/hooks/use-workflow-history'
+} from '../hooks/use-edges-interactions.helpers'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import { useWorkflowHistory, WorkflowHistoryEvent } from '../hooks/use-workflow-history'
 
 export const useEdgesInteractions = () => {
   const store = useStoreApi()

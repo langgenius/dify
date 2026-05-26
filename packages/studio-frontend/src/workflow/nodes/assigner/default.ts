@@ -1,9 +1,9 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { AssignerNodeType } from '@/app/components/workflow/nodes/assigner/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { WriteMode } from '@/app/components/workflow/nodes/assigner/types'
+import type { NodeDefault } from '../../types'
+import type { AssignerNodeType } from '../../nodes/assigner/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+import { WriteMode } from '../../nodes/assigner/types'
 
 const i18nPrefix = 'errorMsg'
 

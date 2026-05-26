@@ -19,15 +19,15 @@ import {
   useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
-} from '@/app/components/workflow/hooks/index'
-import { useStore } from '@/app/components/workflow/store/index'
+} from '../hooks/index'
+import { useStore } from '../store/index'
 import {
   ControlMode,
-} from '@/app/components/workflow/types'
-import AddBlock from '@/app/components/workflow/operator/add-block'
-import { useOperator } from '@/app/components/workflow/operator/hooks'
-import MoreActions from '@/app/components/workflow/operator/more-actions'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
+} from '../types'
+import AddBlock from '../operator/add-block'
+import { useOperator } from '../operator/hooks'
+import MoreActions from '../operator/more-actions'
+import TipPopup from '../operator/tip-popup'
 
 const Control = () => {
   const { t } = useTranslation()

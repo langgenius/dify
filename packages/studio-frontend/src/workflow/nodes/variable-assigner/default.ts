@@ -1,9 +1,9 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { VarType } from '@/app/components/workflow/types'
+import type { NodeDefault } from '../../types'
+import type { VariableAssignerNodeType } from '../../nodes/variable-assigner/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+import { VarType } from '../../types'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Transform,

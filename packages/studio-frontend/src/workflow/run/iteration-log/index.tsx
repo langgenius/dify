@@ -1,2 +1,2 @@
-export { default as IterationLogTrigger } from '@/app/components/workflow/run/iteration-log/iteration-log-trigger'
-export { default as IterationResultPanel } from '@/app/components/workflow/run/iteration-log/iteration-result-panel'
+export { default as IterationLogTrigger } from '../../run/iteration-log/iteration-log-trigger'
+export { default as IterationResultPanel } from '../../run/iteration-log/iteration-result-panel'

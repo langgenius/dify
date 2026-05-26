@@ -1,4 +1,4 @@
-import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector } from '../../types'
 
 export type DocExtractorNodeType = CommonNodeType & {
   variable_selector: ValueSelector

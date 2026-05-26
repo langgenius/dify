@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { scrollToWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
+import { scrollToWorkflowNode } from '../utils/node-navigation'
 
 const ScrollToSelectedNodeButton: FC = () => {
   const { t } = useTranslation()

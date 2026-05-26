@@ -1,6 +1,6 @@
-import type { VariablePayload } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/types'
+import type { VariablePayload } from '../../../../../nodes/_base/components/variable/variable-label/types'
 import { memo } from 'react'
-import VariableLabel from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-label'
+import VariableLabel from '../../../../../nodes/_base/components/variable/variable-label/base/variable-label'
 
 const VariableLabelInSelect = (variablePayload: VariablePayload) => {
   return (

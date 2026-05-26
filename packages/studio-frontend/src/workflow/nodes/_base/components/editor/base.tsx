@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { CodeLanguage } from '../../../../nodes/code/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -14,10 +14,10 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import CodeGeneratorButton from '@/app/components/workflow/nodes/_base/components/code-generator-button'
-import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
-import Wrap from '@/app/components/workflow/nodes/_base/components/editor/wrap'
+import useToggleExpend from '../../../../nodes/_base/hooks/use-toggle-expend'
+import CodeGeneratorButton from '../../../../nodes/_base/components/code-generator-button'
+import ToggleExpandBtn from '../../../../nodes/_base/components/toggle-expand-btn'
+import Wrap from '../../../../nodes/_base/components/editor/wrap'
 
 type Props = {
   nodeId?: string

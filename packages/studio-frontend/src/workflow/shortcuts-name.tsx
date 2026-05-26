@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils/index'
+import { getKeyboardKeyNameBySystem } from './utils/index'
 
 type ShortcutsNameProps = {
   keys: string[]

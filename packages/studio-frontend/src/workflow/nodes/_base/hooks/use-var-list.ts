@@ -1,4 +1,4 @@
-import type { Variable } from '@/app/components/workflow/types'
+import type { Variable } from '../../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 

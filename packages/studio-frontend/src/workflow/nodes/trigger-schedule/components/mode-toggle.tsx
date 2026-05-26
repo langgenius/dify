@@ -1,4 +1,4 @@
-import type { ScheduleMode } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { ScheduleMode } from '../../../nodes/trigger-schedule/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Asterisk, CalendarCheckLine } from '@/app/components/base/icons/src/vender/workflow'

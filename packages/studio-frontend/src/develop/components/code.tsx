@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react'
 import { writeTextToClipboard } from '@/utils/clipboard'
-import { Tag } from '@/app/components/develop/tag'
+import { Tag } from './tag'
 
 type IChildrenProps = {
   children: React.ReactNode

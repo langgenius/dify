@@ -20,9 +20,9 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useNodesSyncDraft,
   useWorkflowReadOnly,
-} from '@/app/components/workflow/hooks/index'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
+} from '../hooks/index'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
+import TipPopup from '../operator/tip-popup'
 
 const ZoomType = {
   zoomToFit: 'zoomToFit',

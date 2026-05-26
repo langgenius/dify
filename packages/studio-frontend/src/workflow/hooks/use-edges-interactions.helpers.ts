@@ -1,7 +1,7 @@
 import type { Edge, EdgeChange } from 'reactflow'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../types'
 import { produce } from 'immer'
-import { getNodesConnectedSourceOrTargetHandleIdsMap } from '@/app/components/workflow/utils/index'
+import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils/index'
 
 export const applyConnectedHandleNodeData = (
   nodes: Node[],

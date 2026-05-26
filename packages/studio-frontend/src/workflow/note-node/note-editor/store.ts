@@ -3,7 +3,7 @@ import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
-import NoteEditorContext from '@/app/components/workflow/note-node/note-editor/context'
+import NoteEditorContext from '../../note-node/note-editor/context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null

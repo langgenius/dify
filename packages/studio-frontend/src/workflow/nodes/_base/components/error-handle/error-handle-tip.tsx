@@ -1,7 +1,7 @@
 import { RiAlertFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { ErrorHandleTypeEnum } from '../../../../nodes/_base/components/error-handle/types'
 
 type ErrorHandleTipProps = {
   type?: ErrorHandleTypeEnum

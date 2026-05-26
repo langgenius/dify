@@ -1,5 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from '../../../../types'
 
 /**
  * Format human-input nodes to ensure only the latest status is kept for each node.

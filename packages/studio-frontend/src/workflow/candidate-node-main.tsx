@@ -3,7 +3,7 @@ import type {
 } from 'react'
 import type {
   Node,
-} from '@/app/components/workflow/types'
+} from './types'
 import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
 import {
@@ -13,18 +13,18 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { CUSTOM_NODE } from '@/app/components/workflow/constants'
-import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from '@/app/components/workflow/hooks/index'
-import CustomNode from '@/app/components/workflow/nodes/index'
-import CustomNoteNode from '@/app/components/workflow/note-node/index'
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
+import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
+import { CUSTOM_NODE } from './constants'
+import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from './hooks/index'
+import CustomNode from './nodes/index'
+import CustomNoteNode from './note-node/index'
+import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { getIterationStartNode, getLoopStartNode } from '@/app/components/workflow/utils/index'
+} from './store/index'
+import { BlockEnum } from './types'
+import { getIterationStartNode, getLoopStartNode } from './utils/index'
 
 type Props = {
   candidateNode: Node

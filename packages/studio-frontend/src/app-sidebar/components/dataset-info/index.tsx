@@ -10,7 +10,7 @@ import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
 import AppIcon from '@/app/components/base/app-icon/index'
 import Effect from '@/app/components/base/effect/index'
-import Dropdown from '@/app/components/app-sidebar/dataset-info/dropdown'
+import Dropdown from '../dataset-info/dropdown'
 
 type DatasetInfoProps = {
   expand: boolean

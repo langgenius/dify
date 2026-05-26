@@ -1,4 +1,4 @@
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { DataSourceItem } from '../block-selector/types'
 import type { Tool } from '@/app/components/tools/types'
 
 export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {

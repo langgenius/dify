@@ -7,8 +7,8 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
-import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
+import RemoveButton from '../../../nodes/_base/components/remove-button'
+import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
 
 type Props = {
   className?: string

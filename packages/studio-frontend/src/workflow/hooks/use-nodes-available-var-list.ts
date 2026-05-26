@@ -1,11 +1,11 @@
-import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '../types'
 import { useCallback } from 'react'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../hooks'
+import { BlockEnum } from '../types'
 
 type Params = {
   onlyLeafNodeVar?: boolean

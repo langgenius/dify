@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
+import type { IInputTypeIconProps } from '../../configuration/config-var/input-type-icon'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
@@ -12,7 +12,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
-import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
+import IconTypeIcon from '../../configuration/config-var/input-type-icon'
 
 type ItemProps = {
   className?: string

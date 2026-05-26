@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { UploadFileSetting } from '@/app/components/workflow/types'
+import type { UploadFileSetting } from '../../../types'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -10,10 +10,10 @@ import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useFileUploadConfig } from '@/service/use-common'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import FileTypeItem from '@/app/components/workflow/nodes/_base/components/file-type-item'
-import InputNumberWithSlider from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { SupportUploadFileTypes } from '../../../types'
+import FileTypeItem from '../../../nodes/_base/components/file-type-item'
+import InputNumberWithSlider from '../../../nodes/_base/components/input-number-with-slider'
+import OptionCard from '../../../nodes/_base/components/option-card'
 
 type Props = {
   payload: UploadFileSetting

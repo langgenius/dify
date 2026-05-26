@@ -1,6 +1,6 @@
-import type { Branch } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
-import { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
+import type { Branch } from '../../types'
+import { VarType } from '../../types'
+import { ComparisonOperator } from '../../nodes/if-else/types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)

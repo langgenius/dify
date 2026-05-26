@@ -1,9 +1,9 @@
 import type {
   OnSelectBlock,
   ToolWithProvider,
-} from '@/app/components/workflow/types'
-import type { DataSourceDefaultValue, ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+} from '../types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from '../block-selector/types'
+import type { ListRef } from '../block-selector/market-place-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import {
@@ -12,15 +12,15 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList from '../block-selector/market-place-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '@/app/components/workflow/block-selector/constants'
-import Tools from '@/app/components/workflow/block-selector/tools'
-import { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
+import { BlockEnum } from '../types'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '../block-selector/constants'
+import Tools from '../block-selector/tools'
+import { ViewType } from '../block-selector/view-type-select'
 
 type AllToolsProps = {
   className?: string

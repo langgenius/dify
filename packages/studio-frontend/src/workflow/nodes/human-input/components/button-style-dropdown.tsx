@@ -12,7 +12,7 @@ import {
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { UserActionButtonType } from '../../../nodes/human-input/types'
 
 const i18nPrefix = 'nodes.humanInput'
 

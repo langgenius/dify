@@ -5,8 +5,8 @@ import type {
   OverviewOperationKey,
   WorkflowHiddenStartVariable,
   WorkflowLaunchInputValue,
-} from '@/app/components/app/overview/app-card-utils'
-import type { ConfigParams } from '@/app/components/app/overview/settings/index'
+} from '../overview/app-card-utils'
+import type { ConfigParams } from '../overview/settings/index'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import {
@@ -37,12 +37,12 @@ import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
-import AccessControl from '@/app/components/app/app-access-control/index'
-import CustomizeModal from '@/app/components/app/overview/customize/index'
-import EmbeddedModal from '@/app/components/app/overview/embedded/index'
-import SettingsModal from '@/app/components/app/overview/settings/index'
-import style from '@/app/components/app/overview/style.module.css'
-import WorkflowHiddenInputFields from '@/app/components/app/overview/workflow-hidden-input-fields'
+import AccessControl from '../app-access-control/index'
+import CustomizeModal from '../overview/customize/index'
+import EmbeddedModal from '../overview/embedded/index'
+import SettingsModal from '../overview/settings/index'
+import style from '../overview/style.module.css'
+import WorkflowHiddenInputFields from '../overview/workflow-hidden-input-fields'
 
 type AppInfo = AppDetailResponse & Partial<AppSSO>
 

@@ -1,13 +1,13 @@
-import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { ChecklistItem } from '../../hooks/use-checklist'
+import type { BlockEnum } from '../../types'
 import type { Dependency } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
-import { ItemIndicator } from '@/app/components/workflow/header/checklist/item-indicator'
+import BlockIcon from '../../block-icon'
+import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
+import { ItemIndicator } from '../../header/checklist/item-indicator'
 
 function getVersionFromMarketplaceIdentifier(identifier: string): string | undefined {
   const withoutHash = identifier.split('@')[0]

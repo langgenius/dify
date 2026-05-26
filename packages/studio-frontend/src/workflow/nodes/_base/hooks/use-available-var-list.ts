@@ -1,13 +1,13 @@
-import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '../../../types'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/data-source/utils'
-import useNodeInfo from '@/app/components/workflow/nodes/_base/hooks/use-node-info'
+} from '../../../hooks'
+import { useStore as useWorkflowStore } from '../../../store'
+import { BlockEnum } from '../../../types'
+import { inputVarTypeToVarType } from '../../../nodes/data-source/utils'
+import useNodeInfo from '../../../nodes/_base/hooks/use-node-info'
 
 type Params = {
   onlyLeafNodeVar?: boolean

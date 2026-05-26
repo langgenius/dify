@@ -1,4 +1,4 @@
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector } from '../../types'
 
 // Generic variable types for all resource forms
 export enum VarKindType {

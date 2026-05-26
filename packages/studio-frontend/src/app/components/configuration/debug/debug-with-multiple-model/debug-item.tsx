@@ -1,5 +1,5 @@
 import type { CSSProperties, FC } from 'react'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { ModelAndParameter } from '../../../configuration/debug/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,10 +14,10 @@ import { ModelStatusEnum } from '@/app/components/header/account-setting/model-p
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
-import ChatItem from '@/app/components/app/configuration/debug/debug-with-multiple-model/chat-item'
-import { useDebugWithMultipleModelContext } from '@/app/components/app/configuration/debug/debug-with-multiple-model/context'
-import ModelParameterTrigger from '@/app/components/app/configuration/debug/debug-with-multiple-model/model-parameter-trigger'
-import TextGenerationItem from '@/app/components/app/configuration/debug/debug-with-multiple-model/text-generation-item'
+import ChatItem from '../../../configuration/debug/debug-with-multiple-model/chat-item'
+import { useDebugWithMultipleModelContext } from '../../../configuration/debug/debug-with-multiple-model/context'
+import ModelParameterTrigger from '../../../configuration/debug/debug-with-multiple-model/model-parameter-trigger'
+import TextGenerationItem from '../../../configuration/debug/debug-with-multiple-model/text-generation-item'
 
 type DebugItemProps = {
   modelAndParameter: ModelAndParameter

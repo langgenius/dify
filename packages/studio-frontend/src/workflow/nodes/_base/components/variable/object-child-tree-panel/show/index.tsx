@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { StructuredOutput } from '../../../../../../nodes/llm/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field'
+import Field from '../../../../../../nodes/_base/components/variable/object-child-tree-panel/show/field'
 
 type Props = {
   payload: StructuredOutput

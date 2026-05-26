@@ -5,7 +5,7 @@ import {
   useRef,
 } from 'react'
 import { useMitt } from '@/hooks/use-mitt'
-import { createVisualEditorStore } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/store'
+import { createVisualEditorStore } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/store'
 
 type VisualEditorStore = ReturnType<typeof createVisualEditorStore>
 

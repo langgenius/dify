@@ -1,7 +1,7 @@
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { Edge, Node } from '../types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 const sanitizeNodeForBroadcast = (node: Node): Node => {
   if (!node.data)

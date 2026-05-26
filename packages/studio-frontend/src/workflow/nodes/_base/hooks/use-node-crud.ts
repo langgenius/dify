@@ -1,6 +1,6 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../../../types'
 import { useCallback, useEffect, useRef } from 'react'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { useNodeDataUpdate } from '../../../hooks'
 
 const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()

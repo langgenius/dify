@@ -7,11 +7,11 @@ import type {
   OnConnectStart,
   ResizeParamsWithDirection,
 } from 'reactflow'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
-import type { Edge, Node, OnNodeAdd } from '@/app/components/workflow/types'
+import type { PluginDefaultValue } from '../block-selector/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
+import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
+import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -24,7 +24,7 @@ import {
   useReactFlow,
 } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -34,15 +34,15 @@ import {
   NODE_WIDTH_X_OFFSET,
   X_OFFSET,
   Y_OFFSET,
-} from '@/app/components/workflow/constants'
-import { getNodeUsedVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
-import { useWorkflowStore } from '@/app/components/workflow/store/index'
-import { BlockEnum, ControlMode, isTriggerNode } from '@/app/components/workflow/types'
+} from '../constants'
+import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import { useWorkflowStore } from '../store/index'
+import { BlockEnum, ControlMode, isTriggerNode } from '../types'
 
 import {
   generateNewNode,
@@ -57,23 +57,23 @@ import {
   readWorkflowClipboard,
   sanitizeClipboardValueByDefault,
   writeWorkflowClipboard,
-} from '@/app/components/workflow/utils/index'
-import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
-import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useHelpline } from '@/app/components/workflow/hooks/use-helpline'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodesMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+} from '../utils/index'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { useAutoGenerateWebhookUrl } from '../hooks/use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { useHelpline } from '../hooks/use-helpline'
+import useInspectVarsCrud from '../hooks/use-inspect-vars-crud'
+import { useNodesMetaData } from '../hooks/use-nodes-meta-data'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import {
   useNodesReadOnly,
   useWorkflow,
   useWorkflowReadOnly,
-} from '@/app/components/workflow/hooks/use-workflow'
+} from '../hooks/use-workflow'
 import {
   useWorkflowHistory,
   WorkflowHistoryEvent,
-} from '@/app/components/workflow/hooks/use-workflow-history'
+} from '../hooks/use-workflow-history'
 
 // Entry node deletion restriction has been removed to allow empty workflows
 

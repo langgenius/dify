@@ -1,5 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from '../../../../types'
 
 function findLastIndex<T>(list: T[], predicate: (item: T) => boolean): number {
   for (let index = list.length - 1; index >= 0; index--) {

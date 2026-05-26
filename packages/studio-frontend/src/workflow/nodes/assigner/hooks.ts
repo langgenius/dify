@@ -1,7 +1,7 @@
 import type {
   Node,
   Var,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { useNodes } from 'reactflow'
@@ -9,8 +9,8 @@ import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks/index'
-import { AssignerNodeInputType, WriteMode } from '@/app/components/workflow/nodes/assigner/types'
+} from '../../hooks/index'
+import { AssignerNodeInputType, WriteMode } from '../../nodes/assigner/types'
 
 export const useGetAvailableVars = () => {
   const nodes: Node[] = useNodes()

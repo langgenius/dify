@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import RemoveButton from '../../../nodes/_base/components/remove-button'
 
 type Props = {
   isString: boolean

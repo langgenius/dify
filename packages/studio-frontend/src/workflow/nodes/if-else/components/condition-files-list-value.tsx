@@ -1,21 +1,21 @@
-import type { ValueSelector } from '@/app/components/workflow/types'
-import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
+import type { ValueSelector } from '../../../types'
+import type { Condition } from '../../../nodes/if-else/types'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '../../../nodes/_base/components/variable/utils'
 import {
   VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
-import { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
+} from '../../../nodes/_base/components/variable/variable-label'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../../nodes/constants'
+import { ComparisonOperator } from '../../../nodes/if-else/types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
   isEmptyRelatedOperator,
-} from '@/app/components/workflow/nodes/if-else/utils'
+} from '../../../nodes/if-else/utils'
 
 type ConditionValueProps = {
   condition: Condition

@@ -1,22 +1,22 @@
 import type {
   BlockEnum,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useNodesMetaData } from '../../hooks'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
-} from '@/app/components/workflow/utils/index'
+} from '../../utils/index'
 import {
   buildLoopChildCopy,
   getContainerBounds,
   getContainerResize,
   getLoopChildren,
   getRestrictedLoopPosition,
-} from '@/app/components/workflow/nodes/loop/use-interactions.helpers'
+} from '../../nodes/loop/use-interactions.helpers'
 
 export const useNodeLoopInteractions = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()

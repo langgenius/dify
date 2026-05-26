@@ -1,15 +1,15 @@
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { StartNodeType } from '../../nodes/start/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
 } from 'react'
 import { useNodes } from 'reactflow'
-import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import FormItem from '../../nodes/_base/components/before-run-form/form-item'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../../store/index'
+import { BlockEnum } from '../../types'
 
 const UserInput = () => {
   const workflowStore = useWorkflowStore()

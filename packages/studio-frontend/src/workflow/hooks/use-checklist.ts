@@ -1,9 +1,9 @@
-import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { AgentNodeType } from '../nodes/agent/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -11,7 +11,7 @@ import type {
   ModelConfig,
   Node,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../types'
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
@@ -30,7 +30,7 @@ import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import useNodes from '../store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -47,29 +47,29 @@ import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { AppModeEnum } from '@/types/app'
 import {
   CUSTOM_NODE,
-} from '@/app/components/workflow/constants'
-import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
+} from '../constants'
+import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import {
   useGetToolIcon,
   useNodesMetaData,
-} from '@/app/components/workflow/hooks/index'
-import { getNodeUsedVars, isSpecialVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { IndexMethodEnum } from '@/app/components/workflow/nodes/knowledge-base/types'
-import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '@/app/components/workflow/nodes/llm/utils'
+} from '../hooks/index'
+import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import { IndexMethodEnum } from '../nodes/knowledge-base/types'
+import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
 import {
   useStore,
   useWorkflowStore,
-} from '@/app/components/workflow/store/index'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../store/index'
+import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
   getToolCheckParams,
   getValidTreeNodes,
-} from '@/app/components/workflow/utils/index'
-import { extractPluginId } from '@/app/components/workflow/utils/plugin'
-import { isNodePluginMissing } from '@/app/components/workflow/utils/plugin-install-check'
-import { getTriggerCheckParams } from '@/app/components/workflow/utils/trigger'
-import useNodesAvailableVarList, { useGetNodesAvailableVarList } from '@/app/components/workflow/hooks/use-nodes-available-var-list'
+} from '../utils/index'
+import { extractPluginId } from '../utils/plugin'
+import { isNodePluginMissing } from '../utils/plugin-install-check'
+import { getTriggerCheckParams } from '../utils/trigger'
+import useNodesAvailableVarList, { useGetNodesAvailableVarList } from '../hooks/use-nodes-available-var-list'
 
 export type ChecklistItem = {
   id: string

@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
-import { getCopyContent, MAX_GENERATION_DEPTH } from '@/app/components/app/text-generate/item/utils'
+import { getCopyContent, MAX_GENERATION_DEPTH } from '../../text-generate/item/utils'
 
 type GenerationActionGroupsProps = {
   appSourceType: AppSourceType

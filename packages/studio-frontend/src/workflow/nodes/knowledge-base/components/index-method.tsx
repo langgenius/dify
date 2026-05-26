@@ -11,12 +11,12 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import { Field } from '../../../nodes/_base/components/layout'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
-} from '@/app/components/workflow/nodes/knowledge-base/types'
-import OptionCard from '@/app/components/workflow/nodes/knowledge-base/components/option-card'
+} from '../../../nodes/knowledge-base/types'
+import OptionCard from '../../../nodes/knowledge-base/components/option-card'
 
 type IndexMethodProps = {
   chunkStructure: ChunkStructureEnum

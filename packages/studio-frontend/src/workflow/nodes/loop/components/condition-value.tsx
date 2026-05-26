@@ -3,16 +3,16 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '../../../nodes/_base/components/variable/utils'
 import {
   VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { ComparisonOperator } from '@/app/components/workflow/nodes/loop/types'
+} from '../../../nodes/_base/components/variable/variable-label'
+import { ComparisonOperator } from '../../../nodes/loop/types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
-} from '@/app/components/workflow/nodes/loop/utils'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/loop/default'
+} from '../../../nodes/loop/utils'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../../nodes/loop/default'
 
 type ConditionValueProps = {
   variableSelector: string[]

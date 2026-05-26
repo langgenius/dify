@@ -1,6 +1,6 @@
-import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import type { ResourceVarInputs } from '../../nodes/_base/types'
 import type { CollectionType } from '@/app/components/tools/types'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../../types'
 
 export type PluginTriggerNodeType = CommonNodeType & {
   provider_id: string

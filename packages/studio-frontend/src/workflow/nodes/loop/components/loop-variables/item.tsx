@@ -1,18 +1,18 @@
 import type {
   LoopVariable,
   LoopVariablesComponentShape,
-} from '@/app/components/workflow/nodes/loop/types'
+} from '../../../../nodes/loop/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
-import { ValueType, VarType } from '@/app/components/workflow/types'
+import { ValueType, VarType } from '../../../../types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import FormItem from '@/app/components/workflow/nodes/loop/components/loop-variables/form-item'
-import InputModeSelect from '@/app/components/workflow/nodes/loop/components/loop-variables/input-mode-selec'
-import VariableTypeSelect from '@/app/components/workflow/nodes/loop/components/loop-variables/variable-type-select'
+import FormItem from '../../../../nodes/loop/components/loop-variables/form-item'
+import InputModeSelect from '../../../../nodes/loop/components/loop-variables/input-mode-selec'
+import VariableTypeSelect from '../../../../nodes/loop/components/loop-variables/variable-type-select'
 
 type ItemProps = {
   item: LoopVariable

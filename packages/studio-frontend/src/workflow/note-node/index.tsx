@@ -1,5 +1,5 @@
 import type { NodeProps } from 'reactflow'
-import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
+import type { NoteNodeType } from '../note-node/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useClickAway } from 'ahooks'
 import {
@@ -10,16 +10,16 @@ import { useTranslation } from 'react-i18next'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
-} from '@/app/components/workflow/hooks/index'
-import NodeResizer from '@/app/components/workflow/nodes/_base/components/node-resizer'
-import { useStore } from '@/app/components/workflow/store/workflow/index'
-import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
-import { useNote } from '@/app/components/workflow/note-node/hooks'
+} from '../hooks/index'
+import NodeResizer from '../nodes/_base/components/node-resizer'
+import { useStore } from '../store/workflow/index'
+import { THEME_MAP } from '../note-node/constants'
+import { useNote } from '../note-node/hooks'
 import {
   NoteEditor,
   NoteEditorContextProvider,
   NoteEditorToolbar,
-} from '@/app/components/workflow/note-node/note-editor/index'
+} from '../note-node/note-editor/index'
 
 const Icon = () => {
   return (

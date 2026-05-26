@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import type { ReactFlowInstance } from 'reactflow'
-import type { CursorPosition } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { CursorPosition } from '../../collaboration/types/collaboration'
 
 const CURSOR_MIN_MOVE_DISTANCE = 10
 const CURSOR_THROTTLE_MS = 300

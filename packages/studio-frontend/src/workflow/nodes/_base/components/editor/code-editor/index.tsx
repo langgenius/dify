@@ -8,11 +8,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { CodeLanguage } from '../../../../../nodes/code/types'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
-import Base from '@/app/components/workflow/nodes/_base/components/editor/base'
+import Base from '../../../../../nodes/_base/components/editor/base'
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482

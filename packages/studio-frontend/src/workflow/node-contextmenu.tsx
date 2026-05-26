@@ -1,14 +1,14 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from './types'
 import {
   ContextMenu,
   ContextMenuContent,
 } from '@langgenius/dify-ui/context-menu'
 import { useMemo } from 'react'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { usePanelInteractions } from '@/app/components/workflow/hooks/index'
-import { NodeActionsContextMenuContent } from '@/app/components/workflow/node-actions-menu/context-menu-content'
-import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from '@/app/components/workflow/node-actions-menu/shared'
-import { useStore } from '@/app/components/workflow/store/index'
+import useNodes from './store/workflow/use-nodes'
+import { usePanelInteractions } from './hooks/index'
+import { NodeActionsContextMenuContent } from './node-actions-menu/context-menu-content'
+import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from './node-actions-menu/shared'
+import { useStore } from './store/index'
 
 export function NodeContextmenu() {
   const nodes = useNodes()

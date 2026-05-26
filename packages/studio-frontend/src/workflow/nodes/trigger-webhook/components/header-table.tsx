@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { WebhookHeader } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { ColumnConfig, GenericTableRow } from '@/app/components/workflow/nodes/trigger-webhook/components/generic-table'
+import type { WebhookHeader } from '../../../nodes/trigger-webhook/types'
+import type { ColumnConfig, GenericTableRow } from '../../../nodes/trigger-webhook/components/generic-table'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import GenericTable from '@/app/components/workflow/nodes/trigger-webhook/components/generic-table'
+import GenericTable from '../../../nodes/trigger-webhook/components/generic-table'
 
 type HeaderTableProps = {
   readonly?: boolean

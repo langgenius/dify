@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { IfElseNodeType } from '../../nodes/if-else/types'
+import type { NodePanelProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAddLine,
@@ -9,9 +9,9 @@ import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import ConditionWrap from '@/app/components/workflow/nodes/if-else/components/condition-wrap'
-import useConfig from '@/app/components/workflow/nodes/if-else/use-config'
+import Field from '../../nodes/_base/components/field'
+import ConditionWrap from '../../nodes/if-else/components/condition-wrap'
+import useConfig from '../../nodes/if-else/use-config'
 
 const i18nPrefix = 'nodes.ifElse'
 

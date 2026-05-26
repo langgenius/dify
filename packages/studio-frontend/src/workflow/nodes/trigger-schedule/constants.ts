@@ -1,4 +1,4 @@
-import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { ScheduleTriggerNodeType } from '../../nodes/trigger-schedule/types'
 
 export const getDefaultScheduleConfig = (): Partial<ScheduleTriggerNodeType> => ({
   mode: 'visual',

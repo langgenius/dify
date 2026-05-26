@@ -1,21 +1,21 @@
 import type { FC } from 'react'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { KnowledgeRetrievalNodeType } from '../../nodes/knowledge-retrieval/types'
+import type { NodePanelProps } from '../../types'
 import { intersectionBy } from 'es-toolkit/compat'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
-import DatasetList from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-list'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/index'
-import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
-import useConfig from '@/app/components/workflow/nodes/knowledge-retrieval/use-config'
+import Field from '../../nodes/_base/components/field'
+import OutputVars, { VarItem } from '../../nodes/_base/components/output-vars'
+import Split from '../../nodes/_base/components/split'
+import VarReferencePicker from '../../nodes/_base/components/variable/var-reference-picker'
+import AddKnowledge from '../../nodes/knowledge-retrieval/components/add-dataset'
+import DatasetList from '../../nodes/knowledge-retrieval/components/dataset-list'
+import MetadataFilter from '../../nodes/knowledge-retrieval/components/metadata/metadata-filter/index'
+import RetrievalConfig from '../../nodes/knowledge-retrieval/components/retrieval-config'
+import useConfig from '../../nodes/knowledge-retrieval/use-config'
 
 const i18nPrefix = 'nodes.knowledgeRetrieval'
 

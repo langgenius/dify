@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import LargeDataAlert from '@/app/components/workflow/variable-inspect/large-data-alert'
-import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
+import LargeDataAlert from '../../../../variable-inspect/large-data-alert'
+import CodeEditor from '../../../../nodes/llm/components/json-schema-config-modal/code-editor'
 
 type SchemaEditorProps = {
   schema: string

@@ -1,8 +1,8 @@
-import type { Condition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '@/app/components/workflow/nodes/loop/types'
+import type { Condition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../../../../nodes/loop/types'
 import type {
   Node,
   NodeOutPutVar,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiLoopLeftLine } from '@remixicon/react'
 import { useCallback, useMemo } from 'react'
@@ -10,8 +10,8 @@ import {
 
   LogicalOperator,
 
-} from '@/app/components/workflow/nodes/loop/types'
-import ConditionItem from '@/app/components/workflow/nodes/loop/components/condition-list/condition-item'
+} from '../../../../nodes/loop/types'
+import ConditionItem from '../../../../nodes/loop/components/condition-list/condition-item'
 
 type ConditionListProps = {
   isSubVariable?: boolean

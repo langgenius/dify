@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Param } from '@/app/components/workflow/nodes/parameter-extractor/types'
+import type { Param } from '../../../../nodes/parameter-extractor/types'
 import {
   RiDeleteBinLine,
   RiEditLine,

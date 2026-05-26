@@ -1,7 +1,7 @@
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot } from '../../../../../nodes/llm/types'
 import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
-import { VisualEditorContext } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import { VisualEditorContext } from '../../../../../nodes/llm/components/json-schema-config-modal/visual-editor/context'
 
 type VisualEditorStore = {
   hoveringProperty: string | null

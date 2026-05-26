@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -8,17 +8,17 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { EVENT_WORKFLOW_STOP } from '../variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
-import useCurrentVars from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import useMatchSchemaType from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
-import { useStore } from '@/app/components/workflow/store/index'
-import Empty from '@/app/components/workflow/variable-inspect/empty'
-import Left from '@/app/components/workflow/variable-inspect/left'
-import Listening from '@/app/components/workflow/variable-inspect/listening'
-import Right from '@/app/components/workflow/variable-inspect/right'
+import { useStore } from '../store/index'
+import Empty from '../variable-inspect/empty'
+import Left from '../variable-inspect/left'
+import Listening from '../variable-inspect/listening'
+import Right from '../variable-inspect/right'
 
 export type currentVarType = {
   nodeId: string

@@ -5,8 +5,8 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowStore } from '../../store'
+import { NodeRunningStatus } from '../../types'
 
 export const useWorkflowNodeLoopStarted = () => {
   const store = useStoreApi()

@@ -1,8 +1,8 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { RiAlertFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import AgentLogItem from '@/app/components/workflow/run/agent-log/agent-log-item'
-import AgentLogNav from '@/app/components/workflow/run/agent-log/agent-log-nav'
+import AgentLogItem from '../../run/agent-log/agent-log-item'
+import AgentLogNav from '../../run/agent-log/agent-log-nav'
 
 type AgentResultPanelProps = {
   agentOrToolLogItemStack: AgentLogItemWithChildren[]

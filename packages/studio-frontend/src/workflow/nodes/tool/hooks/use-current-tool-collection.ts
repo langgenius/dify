@@ -1,5 +1,5 @@
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolNodeType } from '../../../nodes/tool/types'
+import type { ToolWithProvider } from '../../../types'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import {

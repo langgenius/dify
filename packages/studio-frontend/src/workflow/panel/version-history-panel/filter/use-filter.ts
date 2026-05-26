@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { WorkflowVersionFilterOptions } from '@/app/components/workflow/types'
+import { WorkflowVersionFilterOptions } from '../../../types'
 
 export const useFilterOptions = () => {
   const { t } = useTranslation()

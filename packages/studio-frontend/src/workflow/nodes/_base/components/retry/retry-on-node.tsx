@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAlertFill,
@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { NodeRunningStatus } from '../../../../types'
 
 type RetryOnNodeProps = Pick<Node, 'id' | 'data'>
 const RetryOnNode = ({

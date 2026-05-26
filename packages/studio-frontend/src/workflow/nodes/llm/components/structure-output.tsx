@@ -1,12 +1,12 @@
 'use client'
-import type { SchemaRoot, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { SchemaRoot, StructuredOutput } from '../../../nodes/llm/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { JsonSchemaConfigModal } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/index'
+import ShowPanel from '../../../nodes/_base/components/variable/object-child-tree-panel/show'
+import { Type } from '../../../nodes/llm/types'
+import { JsonSchemaConfigModal } from '../../../nodes/llm/components/json-schema-config-modal/index'
 
 type Props = {
   className?: string

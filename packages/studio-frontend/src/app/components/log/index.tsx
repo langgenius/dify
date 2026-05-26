@@ -13,9 +13,9 @@ import { APP_PAGE_LIMIT } from '@/config'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
-import EmptyElement from '@/app/components/app/log/empty-element'
-import Filter, { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
-import List from '@/app/components/app/log/list'
+import EmptyElement from '../log/empty-element'
+import Filter, { TIME_PERIOD_MAPPING } from '../log/filter'
+import List from '../log/list'
 
 type ILogsProps = {
   appDetail: App

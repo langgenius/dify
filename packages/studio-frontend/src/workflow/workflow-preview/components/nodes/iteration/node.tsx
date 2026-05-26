@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { IterationNodeType } from '../../../../nodes/iteration/types'
+import type { NodeProps } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,

@@ -1,6 +1,6 @@
 import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
-import formatParallelNode from '@/app/components/workflow/run/utils/format-log/parallel/index'
+import { BlockEnum } from '../../../../types'
+import formatParallelNode from '../../../../run/utils/format-log/parallel/index'
 
 export function addChildrenToLoopNode(loopNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const detailsByKey = new Map<string, NodeTracing[]>()

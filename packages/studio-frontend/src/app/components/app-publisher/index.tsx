@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
-import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
+import type { ModelAndParameter } from '../configuration/debug/types'
+import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../overview/app-card-utils'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
@@ -19,15 +19,15 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
+import { WorkflowLaunchDialog } from '../overview/app-card-sections'
 import {
   buildWorkflowLaunchUrl,
   createWorkflowLaunchInitialValues,
   isWorkflowLaunchInputSupported,
 
-} from '@/app/components/app/overview/app-card-utils'
-import EmbeddedModal from '@/app/components/app/overview/embedded'
-import { useStore as useAppStore } from '@/app/components/app/store'
+} from '../overview/app-card-utils'
+import EmbeddedModal from '../overview/embedded'
+import { useStore as useAppStore } from '../store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
@@ -47,18 +47,18 @@ import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils/index'
-import AccessControl from '@/app/components/app/app-access-control/index'
+import AccessControl from '../app-access-control/index'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
   PublisherSummarySection,
-} from '@/app/components/app/app-publisher/sections'
-import SuggestedAction from '@/app/components/app/app-publisher/suggested-action'
+} from '../app-publisher/sections'
+import SuggestedAction from '../app-publisher/suggested-action'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
   isPublisherAccessConfigured,
-} from '@/app/components/app/app-publisher/utils'
+} from '../app-publisher/utils'
 
 export type AppPublisherProps = {
   disabled?: boolean

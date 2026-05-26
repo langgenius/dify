@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { SUB_VARIABLES } from '@/app/components/workflow/nodes/constants'
+import { SUB_VARIABLES } from '../../../nodes/constants'
 
 type Props = {
   value: string

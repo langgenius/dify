@@ -1,8 +1,8 @@
-import type { NodeDefault, Var } from '@/app/components/workflow/types'
-import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
+import type { NodeDefault, Var } from '../../types'
+import type { HumanInputNodeType } from '../../nodes/human-input/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockEnum, VarType } from '../../types'
+import { genNodeMetaData } from '../../utils'
 
 const i18nPrefix = 'nodes.humanInput.errorMsg'
 

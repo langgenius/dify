@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import type { ChunkStructureEnum } from '@/app/components/workflow/nodes/knowledge-base/types'
-import type { Option } from '@/app/components/workflow/nodes/knowledge-base/components/chunk-structure/type'
+import type { ChunkStructureEnum } from '../../../../nodes/knowledge-base/types'
+import type { Option } from '../../../../nodes/knowledge-base/components/chunk-structure/type'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import OptionCard from '@/app/components/workflow/nodes/knowledge-base/components/option-card'
+import OptionCard from '../../../../nodes/knowledge-base/components/option-card'
 
 type SelectorProps = {
   options: Option[]

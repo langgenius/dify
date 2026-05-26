@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem } from '../../../nodes/human-input/types'
 import * as React from 'react'
 import InputField from '@/app/components/base/prompt-editor/plugins/hitl-input-block/input-field'
 

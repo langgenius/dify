@@ -1,4 +1,4 @@
-import type { Shape } from '@/app/components/workflow/hooks-store/store'
+import type { Shape } from '../hooks-store/store'
 import {
   createContext,
   useEffect,
@@ -7,7 +7,7 @@ import {
 import { useStore } from 'reactflow'
 import {
   createHooksStore,
-} from '@/app/components/workflow/hooks-store/store'
+} from '../hooks-store/store'
 
 type HooksStore = ReturnType<typeof createHooksStore>
 export const HooksStoreContext = createContext<HooksStore | null | undefined>(null)

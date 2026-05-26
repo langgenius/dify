@@ -1,10 +1,10 @@
-import type { ErrorHandleMode, Var } from '@/app/components/workflow/types'
-import type { Condition, LoopNodeType, LoopVariable } from '@/app/components/workflow/nodes/loop/types'
+import type { ErrorHandleMode, Var } from '../../types'
+import type { Condition, LoopNodeType, LoopVariable } from '../../nodes/loop/types'
 import { produce } from 'immer'
 import { v4 as uuid4 } from 'uuid'
-import { ValueType, VarType } from '@/app/components/workflow/types'
-import { LogicalOperator } from '@/app/components/workflow/nodes/loop/types'
-import { getOperators } from '@/app/components/workflow/nodes/loop/utils'
+import { ValueType, VarType } from '../../types'
+import { LogicalOperator } from '../../nodes/loop/types'
+import { getOperators } from '../../nodes/loop/utils'
 
 export const canUseAsLoopInput = (variable: Var) => {
   return [

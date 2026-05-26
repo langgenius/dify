@@ -1,6 +1,6 @@
 'use client'
-import type { WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
-import type { ConfigParams } from '@/app/components/app/overview/settings/index'
+import type { WorkflowLaunchInputValue } from '../overview/app-card-utils'
+import type { ConfigParams } from '../overview/settings/index'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -10,7 +10,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore as useAppStore } from '../store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
@@ -30,7 +30,7 @@ import {
   AppCardUrlSection,
   createAppCardOperations,
   WorkflowLaunchDialog,
-} from '@/app/components/app/overview/app-card-sections'
+} from '../overview/app-card-sections'
 import {
   buildWorkflowLaunchUrl,
   createWorkflowLaunchInitialValues,
@@ -39,7 +39,7 @@ import {
   getAppHiddenLaunchVariables,
   isAppAccessConfigured,
   isWorkflowLaunchInputSupported,
-} from '@/app/components/app/overview/app-card-utils'
+} from '../overview/app-card-utils'
 
 export type IAppCardProps = {
   className?: string

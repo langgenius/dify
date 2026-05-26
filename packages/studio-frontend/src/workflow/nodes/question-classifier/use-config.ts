@@ -1,22 +1,22 @@
-import type { Memory, ValueSelector, Var } from '@/app/components/workflow/types'
-import type { QuestionClassifierNodeType, Topic } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { Memory, ValueSelector, Var } from '../../types'
+import type { QuestionClassifierNodeType, Topic } from '../../nodes/question-classifier/types'
 import { produce } from 'immer'
 import { startTransition, useCallback, useEffect, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
-} from '@/app/components/workflow/hooks/index'
-import useConfigVision from '@/app/components/workflow/hooks/use-config-vision'
-import { useStore } from '@/app/components/workflow/store/index'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+} from '../../hooks/index'
+import useConfigVision from '../../hooks/use-config-vision'
+import { useStore } from '../../store/index'
+import { BlockEnum, VarType } from '../../types'
+import useAvailableVarList from '../../nodes/_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()

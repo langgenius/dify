@@ -1,10 +1,10 @@
 import type { RefObject } from 'react'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { StartNodeType } from '../../nodes/start/types'
+import type { Props as FormProps } from '../../nodes/_base/components/before-run-form/form'
+import type { InputVar, ValueSelector, Variable } from '../../types'
 import { useTranslation } from 'react-i18next'
-import { InputVarType } from '@/app/components/workflow/types'
-import { useIsChatMode } from '@/app/components/workflow/hooks/index'
+import { InputVarType } from '../../types'
+import { useIsChatMode } from '../../hooks/index'
 
 type Params = {
   id: string

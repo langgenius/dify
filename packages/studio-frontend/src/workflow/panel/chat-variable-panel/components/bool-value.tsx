@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import OptionCard from '../../../nodes/_base/components/option-card'
 
 type Props = {
   value: boolean

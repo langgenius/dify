@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
+import type { DeliveryMethod } from '../../../../nodes/human-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -20,12 +20,12 @@ import { v4 as uuid4 } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
-import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
+import useWorkflowNodes from '../../../../store/workflow/use-nodes'
+import { isTriggerWorkflow } from '../../../../utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
 import { DIFY_SUPPORT_EMAIL } from '@/config/links'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { DeliveryMethodType } from '../../../../nodes/human-input/types'
 
 const i18nPrefix = 'nodes.humanInput'
 

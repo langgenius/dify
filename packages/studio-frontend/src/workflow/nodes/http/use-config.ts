@@ -1,18 +1,18 @@
-import type { Var } from '@/app/components/workflow/types'
-import type { Authorization, Body, HttpNodeType, Method, Timeout } from '@/app/components/workflow/nodes/http/types'
+import type { Var } from '../../types'
+import type { Authorization, Body, HttpNodeType, Method, Timeout } from '../../nodes/http/types'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
 import {
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useStore } from '@/app/components/workflow/store/index'
-import { VarType } from '@/app/components/workflow/types'
-import useVarList from '@/app/components/workflow/nodes/_base/hooks/use-var-list'
-import useKeyValueList from '@/app/components/workflow/nodes/http/hooks/use-key-value-list'
-import { BodyType } from '@/app/components/workflow/nodes/http/types'
-import { transformToBodyPayload } from '@/app/components/workflow/nodes/http/utils'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import { useStore } from '../../store/index'
+import { VarType } from '../../types'
+import useVarList from '../../nodes/_base/hooks/use-var-list'
+import useKeyValueList from '../../nodes/http/hooks/use-key-value-list'
+import { BodyType } from '../../nodes/http/types'
+import { transformToBodyPayload } from '../../nodes/http/utils'
 
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

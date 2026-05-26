@@ -61,20 +61,20 @@
  * ```
  */
 import type { RenderHookOptions, RenderHookResult, RenderOptions, RenderResult } from '@testing-library/react'
-import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
-import type { Shape } from '@/app/components/workflow/store/workflow/index'
-import type { WorkflowHistoryState } from '@/app/components/workflow/store/workflow/history-slice'
-import type { Edge, Node, WorkflowRunningData } from '@/app/components/workflow/types'
+import type { Shape as HooksStoreShape } from '../hooks-store/store'
+import type { Shape } from '../store/workflow/index'
+import type { WorkflowHistoryState } from '../store/workflow/history-slice'
+import type { Edge, Node, WorkflowRunningData } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { WorkflowContext } from '@/app/components/workflow/context'
-import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
-import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow/index'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { WorkflowContext } from '../context'
+import { HooksStoreContext } from '../hooks-store/provider'
+import { createHooksStore } from '../hooks-store/store'
+import { createWorkflowStore } from '../store/workflow/index'
+import { WorkflowRunningStatus } from '../types'
 
 // Re-exports are in a separate non-JSX file to avoid react-refresh warnings.
 // Import directly from the individual modules:

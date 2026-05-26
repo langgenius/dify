@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import type { HoverPopup } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker.trigger'
+import type { HoverPopup } from '../../../../nodes/_base/components/variable/var-reference-picker.trigger'
 import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '../../../../block-selector/types'
+import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -25,16 +25,16 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import {
   useIsChatMode,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-// import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
+} from '../../../../hooks'
+// import type { BaseResource, BaseResourceProvider } from '../../../../nodes/_base/types'
+import { VarType as VarKindType } from '../../../../nodes/tool/types'
+import { useStore as useWorkflowStore } from '../../../../store'
+import { BlockEnum } from '../../../../types'
+import { isExceptionVariable } from '../../../../utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { removeFileVars, varTypeToStructType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
+import useAvailableVarList from '../../../../nodes/_base/hooks/use-available-var-list'
+import { removeFileVars, varTypeToStructType } from '../../../../nodes/_base/components/variable/utils'
+import VarFullPathPanel from '../../../../nodes/_base/components/variable/var-full-path-panel'
 import {
   getDynamicSelectSchema,
   getHasValue,
@@ -49,9 +49,9 @@ import {
   getVarKindOptions,
   getWidthAllocations,
   isShowAPartSelector,
-} from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker.helpers'
-import VarReferencePickerTrigger from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker.trigger'
-import VarReferencePopup from '@/app/components/workflow/nodes/_base/components/variable/var-reference-popup'
+} from '../../../../nodes/_base/components/variable/var-reference-picker.helpers'
+import VarReferencePickerTrigger from '../../../../nodes/_base/components/variable/var-reference-picker.trigger'
+import VarReferencePopup from '../../../../nodes/_base/components/variable/var-reference-popup'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 

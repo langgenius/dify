@@ -1,4 +1,4 @@
-import type { Item as SelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
+import type { Item as SelectItem } from '../../../configuration/config-var/config-modal/type-select'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'

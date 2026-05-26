@@ -1,12 +1,12 @@
-import type { VersionHistoryContextMenuOptions } from '@/app/components/workflow/types'
+import type { VersionHistoryContextMenuOptions } from '../../types'
 import type { VersionHistory } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { WorkflowVersion } from '@/app/components/workflow/types'
-import ActionMenu from '@/app/components/workflow/panel/version-history-panel/action-menu/index'
+import { WorkflowVersion } from '../../types'
+import ActionMenu from '../../panel/version-history-panel/action-menu/index'
 
 type VersionHistoryItemProps = {
   item: VersionHistory

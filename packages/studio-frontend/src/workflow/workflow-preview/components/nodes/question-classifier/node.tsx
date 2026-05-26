@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
-import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { QuestionClassifierNodeType } from '../../../../nodes/question-classifier/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import InfoPanel from '@/app/components/workflow/nodes/_base/components/info-panel'
-import { getDisplayClassLabel } from '@/app/components/workflow/nodes/question-classifier/components/class-label-utils'
-import { NodeSourceHandle } from '@/app/components/workflow/workflow-preview/components/node-handle'
+import InfoPanel from '../../../../nodes/_base/components/info-panel'
+import { getDisplayClassLabel } from '../../../../nodes/question-classifier/components/class-label-utils'
+import { NodeSourceHandle } from '../../../../workflow-preview/components/node-handle'
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { t } = useTranslation()

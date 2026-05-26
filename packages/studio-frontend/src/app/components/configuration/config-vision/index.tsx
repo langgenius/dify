@@ -17,7 +17,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 // import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import ConfigContext from '@/context/debug-configuration'
 import { Resolution } from '@/types/app'
-import ParamConfig from '@/app/components/app/configuration/config-vision/param-config'
+import ParamConfig from '../../configuration/config-vision/param-config'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()

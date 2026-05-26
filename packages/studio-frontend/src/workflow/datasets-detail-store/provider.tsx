@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { CommonNodeType, Node } from '@/app/components/workflow/types'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { CommonNodeType, Node } from '../types'
 import { createContext, useCallback, useEffect, useRef } from 'react'
 import { fetchDatasets } from '@/service/datasets'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { createDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
+import { BlockEnum } from '../types'
+import { createDatasetsDetailStore } from '../datasets-detail-store/store'
 
 type DatasetsDetailStoreApi = ReturnType<typeof createDatasetsDetailStore>
 

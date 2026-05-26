@@ -1,4 +1,4 @@
-import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting } from '../../types'
 
 export enum ParamType {
   string = 'string',

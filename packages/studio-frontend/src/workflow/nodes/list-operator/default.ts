@@ -1,10 +1,10 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { comparisonOperatorNotRequireValue } from '@/app/components/workflow/nodes/if-else/utils'
-import { OrderBy } from '@/app/components/workflow/nodes/list-operator/types'
+import type { NodeDefault } from '../../types'
+import type { ListFilterNodeType } from '../../nodes/list-operator/types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { genNodeMetaData } from '../../utils'
+import { BlockEnum, VarType } from '../../types'
+import { comparisonOperatorNotRequireValue } from '../../nodes/if-else/utils'
+import { OrderBy } from '../../nodes/list-operator/types'
 
 const i18nPrefix = 'errorMsg'
 

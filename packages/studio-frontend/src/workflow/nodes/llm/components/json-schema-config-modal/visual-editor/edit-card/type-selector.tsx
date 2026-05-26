@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { ArrayType, Type } from '@/app/components/workflow/nodes/llm/types'
+import type { ArrayType, Type } from '../../../../../../nodes/llm/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,

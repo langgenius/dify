@@ -12,9 +12,9 @@ import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useAccessControlStore from '@/context/access-control-store'
-import AccessControlDialog from '@/app/components/app/app-access-control/access-control-dialog'
-import AccessControlItem from '@/app/components/app/app-access-control/access-control-item'
-import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from '@/app/components/app/app-access-control/specific-groups-or-members'
+import AccessControlDialog from '../app-access-control/access-control-dialog'
+import AccessControlItem from '../app-access-control/access-control-item'
+import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from '../app-access-control/specific-groups-or-members'
 
 type AccessControlProps = {
   app: App

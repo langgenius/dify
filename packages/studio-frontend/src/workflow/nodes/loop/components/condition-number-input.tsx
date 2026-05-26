@@ -1,7 +1,7 @@
 import type {
   NodeOutPutVar,
   ValueSelector,
-} from '@/app/components/workflow/types'
+} from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -26,11 +26,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import { VarType } from '@/app/components/workflow/types'
-import { variableTransformer } from '@/app/components/workflow/utils'
-import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
-import { VarType as NumberVarType } from '@/app/components/workflow/nodes/tool/types'
+import VarReferenceVars from '../../../nodes/_base/components/variable/var-reference-vars'
+import { VarType } from '../../../types'
+import { variableTransformer } from '../../../utils'
+import VariableTag from '../../../nodes/_base/components/variable-tag'
+import { VarType as NumberVarType } from '../../../nodes/tool/types'
 
 const options = [
   NumberVarType.variable,

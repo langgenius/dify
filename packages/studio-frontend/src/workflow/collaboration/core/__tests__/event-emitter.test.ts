@@ -1,4 +1,4 @@
-import { EventEmitter } from '@/app/components/workflow/collaboration/core/event-emitter'
+import { EventEmitter } from '../../../collaboration/core/event-emitter'
 
 describe('EventEmitter', () => {
   it('registers and invokes handlers via on/emit', () => {

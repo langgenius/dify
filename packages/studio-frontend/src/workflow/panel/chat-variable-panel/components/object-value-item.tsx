@@ -6,8 +6,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import VariableTypeSelector from '../../../panel/chat-variable-panel/components/variable-type-select'
+import { ChatVarType } from '../../../panel/chat-variable-panel/type'
 
 type Props = {
   index: number

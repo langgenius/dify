@@ -1,7 +1,7 @@
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { NodeRunningStatus } from '../types'
 
 export const useNodesInteractionsWithoutSync = () => {
   const store = useStoreApi()

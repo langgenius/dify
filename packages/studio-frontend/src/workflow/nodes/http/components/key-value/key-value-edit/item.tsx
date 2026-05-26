@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { KeyValue } from '@/app/components/workflow/nodes/http/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { KeyValue } from '../../../../../nodes/http/types'
+import type { ValueSelector, Var } from '../../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
@@ -16,9 +16,9 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { VarType } from '@/app/components/workflow/types'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import InputItem from '@/app/components/workflow/nodes/http/components/key-value/key-value-edit/input-item'
+import { VarType } from '../../../../../types'
+import VarReferencePicker from '../../../../../nodes/_base/components/variable/var-reference-picker'
+import InputItem from '../../../../../nodes/http/components/key-value/key-value-edit/input-item'
 // import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.http'

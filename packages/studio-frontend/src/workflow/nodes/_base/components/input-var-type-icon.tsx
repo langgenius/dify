@@ -11,7 +11,7 @@ import {
   RiTextSnippet,
 } from '@remixicon/react'
 import * as React from 'react'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType } from '../../../types'
 
 type Props = {
   className?: string

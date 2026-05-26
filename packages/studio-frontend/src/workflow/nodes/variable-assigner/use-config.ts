@@ -1,15 +1,15 @@
-import type { ValueSelector } from '@/app/components/workflow/types'
-import type { VarGroupItem, VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { ValueSelector } from '../../types'
+import type { VarGroupItem, VariableAssignerNodeType } from '../../nodes/variable-assigner/types'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import {
   useNodesReadOnly,
   useWorkflow,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
-import { useGetAvailableVars } from '@/app/components/workflow/nodes/variable-assigner/hooks'
+import { useGetAvailableVars } from '../../nodes/variable-assigner/hooks'
 import {
   addGroup,
   filterVarByType,
@@ -18,7 +18,7 @@ import {
   toggleGroupEnabled,
   updateNestedVarGroupItem,
   updateRootVarGroupItem,
-} from '@/app/components/workflow/nodes/variable-assigner/use-config.helpers'
+} from '../../nodes/variable-assigner/use-config.helpers'
 
 const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const {

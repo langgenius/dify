@@ -4,7 +4,7 @@ import type {
   ErrorHandleMode,
   ValueSelector,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../types'
 
 export type IterationNodeType = CommonNodeType & {
   startNodeType?: BlockEnum

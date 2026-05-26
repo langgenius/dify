@@ -1,7 +1,7 @@
 'use client'
 import type { Dispatch, SetStateAction } from 'react'
-import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
-import type { OnSelectBlock } from '@/app/components/workflow/types'
+import type { ViewType } from '../../block-selector/view-type-select'
+import type { OnSelectBlock } from '../../types'
 import { RiMoreLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -13,7 +13,7 @@ import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
 import { isServer } from '@/utils/client'
 import { getMarketplaceUrl } from '@/utils/var'
-import List from '@/app/components/workflow/block-selector/rag-tool-recommendations/list'
+import List from '../../block-selector/rag-tool-recommendations/list'
 
 type RAGToolRecommendationsProps = {
   viewType: ViewType

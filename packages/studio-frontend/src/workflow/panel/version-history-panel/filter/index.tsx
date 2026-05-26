@@ -9,10 +9,10 @@ import { RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import Divider from '@/app/components/base/divider'
-import { WorkflowVersionFilterOptions } from '@/app/components/workflow/types'
-import FilterItem from '@/app/components/workflow/panel/version-history-panel/filter/filter-item'
-import FilterSwitch from '@/app/components/workflow/panel/version-history-panel/filter/filter-switch'
-import { useFilterOptions } from '@/app/components/workflow/panel/version-history-panel/filter/use-filter'
+import { WorkflowVersionFilterOptions } from '../../../types'
+import FilterItem from '../../../panel/version-history-panel/filter/filter-item'
+import FilterSwitch from '../../../panel/version-history-panel/filter/filter-switch'
+import { useFilterOptions } from '../../../panel/version-history-panel/filter/use-filter'
 
 type FilterProps = {
   filterValue: WorkflowVersionFilterOptions

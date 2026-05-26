@@ -32,12 +32,12 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
 import { hasEditPermissionForDataset } from '@/utils/permission'
-import FeaturePanel from '@/app/components/app/configuration/base/feature-panel/index'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn/index'
-import { useFormattingChangedDispatcher } from '@/app/components/app/configuration/debug/hooks'
-import CardItem from '@/app/components/app/configuration/dataset-config/card-item/index'
-import ContextVar from '@/app/components/app/configuration/dataset-config/context-var/index'
-import ParamsConfig from '@/app/components/app/configuration/dataset-config/params-config/index'
+import FeaturePanel from '../../configuration/base/feature-panel/index'
+import OperationBtn from '../../configuration/base/operation-btn/index'
+import { useFormattingChangedDispatcher } from '../../configuration/debug/hooks'
+import CardItem from '../../configuration/dataset-config/card-item/index'
+import ContextVar from '../../configuration/dataset-config/context-var/index'
+import ParamsConfig from '../../configuration/dataset-config/params-config/index'
 
 type Props = {
   readonly?: boolean

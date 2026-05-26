@@ -11,8 +11,8 @@ import {
   useCallback,
   useEffect,
 } from 'react'
-import { useNoteEditorStore } from '@/app/components/workflow/note-node/note-editor/store'
-import { getSelectedNode } from '@/app/components/workflow/note-node/note-editor/utils'
+import { useNoteEditorStore } from '../../../../note-node/note-editor/store'
+import { getSelectedNode } from '../../../../note-node/note-editor/utils'
 
 export const useFormatDetector = () => {
   const [editor] = useLexicalComposerContext()

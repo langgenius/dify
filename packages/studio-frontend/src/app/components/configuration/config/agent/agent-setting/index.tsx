@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
-import ItemPanel from '@/app/components/app/configuration/config/agent/agent-setting/item-panel'
+import ItemPanel from '../../../../configuration/config/agent/agent-setting/item-panel'
 
 type Props = {
   isChatModel: boolean

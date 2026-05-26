@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { Node } from '../types'
 import { useCallback, useMemo } from 'react'
 import { useEdges } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
@@ -8,9 +8,9 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
-} from '@/app/components/workflow/hooks'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { canRunBySingle } from '@/app/components/workflow/utils'
+} from '../hooks'
+import { BlockEnum } from '../types'
+import { canRunBySingle } from '../utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 

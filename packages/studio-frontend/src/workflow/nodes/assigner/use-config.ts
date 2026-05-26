@@ -1,5 +1,5 @@
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import type { AssignerNodeOperation, AssignerNodeType } from '@/app/components/workflow/nodes/assigner/types'
+import type { ValueSelector, Var } from '../../types'
+import type { AssignerNodeOperation, AssignerNodeType } from '../../nodes/assigner/types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import {
@@ -7,10 +7,10 @@ import {
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useGetAvailableVars } from '@/app/components/workflow/nodes/assigner/hooks'
-import { WriteMode, writeModeTypesNum } from '@/app/components/workflow/nodes/assigner/types'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
+import { useGetAvailableVars } from '../../nodes/assigner/hooks'
+import { WriteMode, writeModeTypesNum } from '../../nodes/assigner/types'
 import {
   canAssignToVar,
   canAssignVar,
@@ -18,8 +18,8 @@ import {
   filterVarByType,
   normalizeAssignedVarType,
   updateOperationItems,
-} from '@/app/components/workflow/nodes/assigner/use-config.helpers'
-import { convertV1ToV2 } from '@/app/components/workflow/nodes/assigner/utils'
+} from '../../nodes/assigner/use-config.helpers'
+import { convertV1ToV2 } from '../../nodes/assigner/utils'
 
 const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   const payload = useMemo(() => convertV1ToV2(rawPayload), [rawPayload])

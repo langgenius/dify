@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import type { ValueSelector, Var, Variable } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
@@ -12,10 +12,10 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import Input from '@/app/components/base/input'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarType as VarKindType } from '../../../../nodes/tool/types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import RemoveButton from '../../../../nodes/_base/components/remove-button'
+import VarReferencePicker from '../../../../nodes/_base/components/variable/var-reference-picker'
 
 type Props = {
   nodeId: string

@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { DataSourceNodeType } from '../../nodes/data-source/types'
+import type { NodeProps } from '../../types'
 import { memo } from 'react'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
+import { InstallPluginButton } from '../../nodes/_base/components/install-plugin-button'
 
 const Node: FC<NodeProps<DataSourceNodeType>> = ({
   data,

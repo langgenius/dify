@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useCheckPipelineDependencies } from '@/service/use-pipeline'
 import { useMutationCheckDependencies } from '@/service/use-plugins'
-import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
+import { useStore as usePluginDependenciesStore } from '../plugin-dependency/store'
 
 export const usePluginDependencies = () => {
   const { mutateAsync: checkWorkflowDependencies } = useMutationCheckDependencies()

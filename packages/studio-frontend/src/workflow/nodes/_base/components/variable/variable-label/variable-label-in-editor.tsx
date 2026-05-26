@@ -1,8 +1,8 @@
-import type { VariablePayload } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/types'
+import type { VariablePayload } from '../../../../../nodes/_base/components/variable/variable-label/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import VariableLabel from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-label'
-import { useVarBgColorInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/hooks'
+import VariableLabel from '../../../../../nodes/_base/components/variable/variable-label/base/variable-label'
+import { useVarBgColorInEditor } from '../../../../../nodes/_base/components/variable/variable-label/hooks'
 
 type VariableLabelInEditorProps = {
   isSelected?: boolean

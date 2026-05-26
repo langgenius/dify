@@ -4,10 +4,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
   VariableLabelInText,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { useWorkflow } from '@/app/components/workflow/hooks/index'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { getNodeInfoById, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+} from '../../../nodes/_base/components/variable/variable-label'
+import { useWorkflow } from '../../../hooks/index'
+import { BlockEnum } from '../../../types'
+import { getNodeInfoById, isSystemVar } from '../../../nodes/_base/components/variable/utils'
 
 type Props = {
   nodeId: string

@@ -1,12 +1,12 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store/index'
-import { ControlMode } from '@/app/components/workflow/types'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useSelectionInteractions } from '@/app/components/workflow/hooks/use-selection-interactions'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useStore, useWorkflowStore } from '../store/index'
+import { ControlMode } from '../types'
+import { useEdgesInteractionsWithoutSync } from '../hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '../hooks/use-nodes-interactions-without-sync'
+import { useSelectionInteractions } from '../hooks/use-selection-interactions'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()

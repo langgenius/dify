@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
-import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
-import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
-import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '../../../../block-selector/types'
+import type { CustomRunFormProps } from '../../../../nodes/data-source/types'
+import type { Node, ToolWithProvider } from '../../../../types'
+import DataSourceBeforeRunForm from '../../../../nodes/data-source/before-run-form'
+import { DataSourceClassification } from '../../../../nodes/data-source/types'
+import { BlockEnum } from '../../../../types'
 import { canFindTool } from '@/utils'
 
 const MIN_NODE_PANEL_WIDTH = 400

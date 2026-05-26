@@ -1,12 +1,12 @@
-import type { IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
-import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import type { IfElseNodeType } from '../nodes/if-else/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
+import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
+import type { ToolNodeType } from '../nodes/tool/types'
 import type {
   Edge,
   Node,
-} from '@/app/components/workflow/types'
+} from '../types'
 import { cloneDeep } from 'es-toolkit/object'
 import {
   getConnectedEdges,
@@ -24,14 +24,14 @@ import {
   LOOP_CHILDREN_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
-} from '@/app/components/workflow/constants'
-import { branchNameCorrect } from '@/app/components/workflow/nodes/if-else/utils'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+} from '../constants'
+import { branchNameCorrect } from '../nodes/if-else/utils'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import {
   BlockEnum,
   ErrorHandleMode,
-} from '@/app/components/workflow/types'
+} from '../types'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'

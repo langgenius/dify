@@ -1,12 +1,12 @@
 'use client'
 import type { FC, RefObject } from 'react'
-import type { BlockEnum, ToolWithProvider } from '@/app/components/workflow/types'
-import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolActionPreviewCardHandle } from '@/app/components/workflow/block-selector/tool/action-item'
+import type { BlockEnum, ToolWithProvider } from '../../../types'
+import type { ToolDefaultValue, ToolValue } from '../../../block-selector/types'
+import type { ToolActionPreviewCardHandle } from '../../../block-selector/tool/action-item'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
-import Tool from '@/app/components/workflow/block-selector/tool/tool'
+import { ViewType } from '../../../block-selector/view-type-select'
+import Tool from '../../../block-selector/tool/tool'
 
 type Props = {
   payload: ToolWithProvider[]

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
+import type { CustomRunFormProps } from '../../nodes/data-source/types'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -13,8 +13,8 @@ import DataSourceProvider from '@/app/components/datasets/documents/create-from-
 import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
 import { useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks'
 import { DatasourceType } from '@/models/pipeline'
-import PanelWrap from '@/app/components/workflow/nodes/_base/components/before-run-form/panel-wrap'
-import useBeforeRunForm from '@/app/components/workflow/nodes/data-source/hooks/use-before-run-form'
+import PanelWrap from '../../nodes/_base/components/before-run-form/panel-wrap'
+import useBeforeRunForm from '../../nodes/data-source/hooks/use-before-run-form'
 
 const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
   const {

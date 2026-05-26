@@ -1,20 +1,20 @@
-import type { Var, Variable } from '@/app/components/workflow/types'
-import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
+import type { Var, Variable } from '../../types'
+import type { CodeNodeType, OutputVar } from '../../nodes/code/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
 import {
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+} from '../../hooks'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import {
   fetchNodeDefault,
   fetchPipelineNodeDefault,
 } from '@/service/workflow'
-import { useStore } from '@/app/components/workflow/store/index'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import useOutputVarList from '@/app/components/workflow/nodes/_base/hooks/use-output-var-list'
-import useVarList from '@/app/components/workflow/nodes/_base/hooks/use-var-list'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { useStore } from '../../store/index'
+import { BlockEnum, VarType } from '../../types'
+import useOutputVarList from '../../nodes/_base/hooks/use-output-var-list'
+import useVarList from '../../nodes/_base/hooks/use-var-list'
+import { CodeLanguage } from '../../nodes/code/types'
 
 const useConfig = (id: string, payload: CodeNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

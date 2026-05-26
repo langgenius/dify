@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { CodeDependency } from '@/app/components/workflow/nodes/code/types'
+import type { CodeDependency } from '../../nodes/code/types'
 import {
   Popover,
   PopoverContent,

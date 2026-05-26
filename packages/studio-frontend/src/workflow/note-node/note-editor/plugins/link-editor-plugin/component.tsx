@@ -22,8 +22,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/note-node/note-editor/store'
-import { useLink } from '@/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/hooks'
+import { useStore } from '../../../../note-node/note-editor/store'
+import { useLink } from '../../../../note-node/note-editor/plugins/link-editor-plugin/hooks'
 
 type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null

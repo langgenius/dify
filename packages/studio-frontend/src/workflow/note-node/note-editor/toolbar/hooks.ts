@@ -24,8 +24,8 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useNoteEditorStore } from '@/app/components/workflow/note-node/note-editor/store'
-import { getSelectedNode } from '@/app/components/workflow/note-node/note-editor/utils'
+import { useNoteEditorStore } from '../../../note-node/note-editor/store'
+import { getSelectedNode } from '../../../note-node/note-editor/utils'
 
 const DEFAULT_FONT_SIZE = '12px'
 

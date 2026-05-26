@@ -1,8 +1,8 @@
-import type { Var } from '@/app/components/workflow/types'
-import type { VarGroupItem, VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { Var } from '../../types'
+import type { VarGroupItem, VariableAssignerNodeType } from '../../nodes/variable-assigner/types'
 import { produce } from 'immer'
 import { v4 as uuid4 } from 'uuid'
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../types'
 
 export const filterVarByType = (varType: VarType) => {
   return (variable: Var) => {

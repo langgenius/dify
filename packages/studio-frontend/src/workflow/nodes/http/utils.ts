@@ -1,5 +1,5 @@
-import type { BodyPayload } from '@/app/components/workflow/nodes/http/types'
-import { BodyPayloadValueType } from '@/app/components/workflow/nodes/http/types'
+import type { BodyPayload } from '../../nodes/http/types'
+import { BodyPayloadValueType } from '../../nodes/http/types'
 
 export const transformToBodyPayload = (old: string, hasKey: boolean): BodyPayload => {
   if (!hasKey) {

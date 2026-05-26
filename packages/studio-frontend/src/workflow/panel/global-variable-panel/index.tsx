@@ -1,4 +1,4 @@
-import type { GlobalVariable } from '@/app/components/workflow/types'
+import type { GlobalVariable } from '../../types'
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
@@ -7,10 +7,10 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useStore } from '@/app/components/workflow/store'
-import { isInWorkflowPage } from '@/app/components/workflow/constants'
-import { useIsChatMode } from '@/app/components/workflow/hooks/index'
-import Item from '@/app/components/workflow/panel/global-variable-panel/item'
+import { useStore } from '../../store'
+import { isInWorkflowPage } from '../../constants'
+import { useIsChatMode } from '../../hooks/index'
+import Item from '../../panel/global-variable-panel/item'
 
 const Panel = () => {
   const { t } = useTranslation()

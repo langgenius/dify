@@ -1,4 +1,4 @@
-import { NoteTheme } from '@/app/components/workflow/note-node/types'
+import { NoteTheme } from '../note-node/types'
 
 export const CUSTOM_NOTE_NODE = 'custom-note'
 export const NOTE_SHOW_AUTHOR_STORAGE_KEY = 'workflow-note-show-author'

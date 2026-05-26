@@ -5,8 +5,8 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/note-node/note-editor/store'
-import { useCommand } from '@/app/components/workflow/note-node/note-editor/toolbar/hooks'
+import { useStore } from '../../../note-node/note-editor/store'
+import { useCommand } from '../../../note-node/note-editor/toolbar/hooks'
 
 type CommandProps = {
   type: 'bold' | 'italic' | 'strikethrough' | 'link' | 'bullet'

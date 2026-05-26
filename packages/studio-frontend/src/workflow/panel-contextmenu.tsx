@@ -19,11 +19,11 @@ import {
   usePanelInteractions,
   useWorkflowMoveMode,
   useWorkflowStartRun,
-} from '@/app/components/workflow/hooks/index'
-import AddBlock from '@/app/components/workflow/operator/add-block'
-import { useOperator } from '@/app/components/workflow/operator/hooks'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useStore } from '@/app/components/workflow/store/index'
+} from './hooks/index'
+import AddBlock from './operator/add-block'
+import { useOperator } from './operator/hooks'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
+import { useStore } from './store/index'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()

@@ -1,5 +1,5 @@
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import useConfig from '@/app/components/workflow/nodes/tool/hooks/use-config'
+import type { ToolNodeType } from '../../../nodes/tool/types'
+import useConfig from '../../../nodes/tool/hooks/use-config'
 
 type Params = {
   id: string

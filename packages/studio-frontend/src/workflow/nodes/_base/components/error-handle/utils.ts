@@ -1,9 +1,9 @@
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CodeNodeType } from '../../../../nodes/code/types'
+import type { CommonNodeType } from '../../../../types'
 import {
   BlockEnum,
   VarType,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 
 const getDefaultValueByType = (type: VarType) => {
   if (type === VarType.string)

@@ -16,7 +16,7 @@ import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 import Radio from '@/app/components/base/radio/ui'
-import AgentSetting from '@/app/components/app/configuration/config/agent/agent-setting/index'
+import AgentSetting from '../../../configuration/config/agent/agent-setting/index'
 
 type Props = {
   value: string

@@ -1,4 +1,4 @@
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { EnvironmentVariable } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '../../store'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 type ModalPropsType = {

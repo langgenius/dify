@@ -15,7 +15,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
+import { ADD_EXTERNAL_DATA_TOOL } from '../../configuration/config-var'
 import {
   Copy,
   CopyCheck,
@@ -28,10 +28,10 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
 import { AppModeEnum } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
-import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var/index'
-import MessageTypeSelector from '@/app/components/app/configuration/config-prompt/message-type-selector'
-import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
-import s from '@/app/components/app/configuration/config-prompt/style.module.css'
+import ConfirmAddVar from '../../configuration/config-prompt/confirm-add-var/index'
+import MessageTypeSelector from '../../configuration/config-prompt/message-type-selector'
+import PromptEditorHeightResizeWrap from '../../configuration/config-prompt/prompt-editor-height-resize-wrap'
+import s from '../../configuration/config-prompt/style.module.css'
 
 type Props = {
   type: PromptRole

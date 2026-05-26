@@ -1,3 +1,3 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType } from '../types'
 
 export type SimpleNodeType = CommonNodeType

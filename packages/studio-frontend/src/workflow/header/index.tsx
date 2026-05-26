@@ -1,13 +1,13 @@
-import type { HeaderInNormalProps } from '@/app/components/workflow/header/header-in-normal'
-import type { HeaderInRestoringProps } from '@/app/components/workflow/header/header-in-restoring'
-import type { HeaderInHistoryProps } from '@/app/components/workflow/header/header-in-view-history'
+import type { HeaderInNormalProps } from '../header/header-in-normal'
+import type { HeaderInRestoringProps } from '../header/header-in-restoring'
+import type { HeaderInHistoryProps } from '../header/header-in-view-history'
 import dynamic from '@/next/dynamic'
 import { usePathname } from '@/next/navigation'
 import {
   useWorkflowMode,
-} from '@/app/components/workflow/hooks/index'
-import { useStore } from '@/app/components/workflow/store/index'
-import HeaderInNormal from '@/app/components/workflow/header/header-in-normal'
+} from '../hooks/index'
+import { useStore } from '../store/index'
+import HeaderInNormal from '../header/header-in-normal'
 
 const HeaderInHistory = dynamic(() => import('./header-in-view-history'), {
   ssr: false,

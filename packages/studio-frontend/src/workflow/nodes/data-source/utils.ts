@@ -1,4 +1,4 @@
-import { VarType } from '@/app/components/workflow/types'
+import { VarType } from '../../types'
 import { PipelineInputVarType } from '@/models/pipeline'
 
 export const inputVarTypeToVarType = (type: PipelineInputVarType): VarType => {

@@ -2,10 +2,10 @@ import {
   memo,
 } from 'react'
 
-import CandidateNodeMain from '@/app/components/workflow/candidate-node-main'
+import CandidateNodeMain from './candidate-node-main'
 import {
   useStore,
-} from '@/app/components/workflow/store/index'
+} from './store/index'
 
 const CandidateNode = () => {
   const candidateNode = useStore(s => s.candidateNode)

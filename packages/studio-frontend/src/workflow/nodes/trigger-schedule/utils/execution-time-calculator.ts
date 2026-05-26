@@ -1,6 +1,6 @@
-import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { ScheduleTriggerNodeType } from '../../../nodes/trigger-schedule/types'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import { isValidCronExpression, parseCronExpression } from '@/app/components/workflow/nodes/trigger-schedule/utils/cron-parser'
+import { isValidCronExpression, parseCronExpression } from '../../../nodes/trigger-schedule/utils/cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'
 

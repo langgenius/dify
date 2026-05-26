@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { RiKey2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import SecretKeyModal from '../secret-key/secret-key-modal'
 
 type ISecretKeyButtonProps = {
   className?: string

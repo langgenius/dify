@@ -27,7 +27,7 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '@/app/components/base/app-icon-picker/index'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import { CreateAppDialogShell } from '@/app/components/app/create-app-dialog-shell'
+import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
   onSuccess: () => void

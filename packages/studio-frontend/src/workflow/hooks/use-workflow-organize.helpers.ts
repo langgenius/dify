@@ -1,12 +1,12 @@
-import type { Node } from '@/app/components/workflow/types'
-import type { LayoutResult } from '@/app/components/workflow/utils/elk-layout'
+import type { Node } from '../types'
+import type { LayoutResult } from '../utils/elk-layout'
 import { produce } from 'immer'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
-} from '@/app/components/workflow/constants'
-import { BlockEnum } from '@/app/components/workflow/types'
+} from '../constants'
+import { BlockEnum } from '../types'
 
 type ContainerSizeChange = {
   width: number

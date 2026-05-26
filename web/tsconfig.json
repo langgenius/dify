@@ -47,6 +47,10 @@
       ],
       "@dify/studio-frontend/services/*": [
         "../packages/studio-frontend/src/services/*"
+      ],
+      "@/service/*": [
+        "../packages/studio-frontend/src/services/*",
+        "./service/*"
       ]
     },
     "resolveJsonModule": true,

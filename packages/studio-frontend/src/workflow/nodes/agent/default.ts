@@ -1,10 +1,10 @@
-import type { NodeDefault } from '@/app/components/workflow/types'
-import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
+import type { NodeDefault } from '../../types'
+import type { AgentNodeType } from '../../nodes/agent/types'
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderI18nObject } from '@/i18n-config'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { genNodeMetaData } from '@/app/components/workflow/utils/index'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils/index'
 
 const metaData = genNodeMetaData({
   sort: 3,

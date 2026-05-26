@@ -4,21 +4,21 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import { useStore } from '@/app/components/workflow/store'
-import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
+import { useStore } from '../store'
+import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import {
   BoolArraySection,
   ErrorMessages,
   FileEditorSection,
   JsonEditorSection,
   TextEditorSection,
-} from '@/app/components/workflow/variable-inspect/value-content-sections'
+} from '../variable-inspect/value-content-sections'
 import {
   formatInspectFileValue,
   getValueEditorState,
   isFileValueUploaded,
   validateInspectJsonValue,
-} from '@/app/components/workflow/variable-inspect/value-content.helpers'
+} from '../variable-inspect/value-content.helpers'
 
 type Props = {
   currentVar: VarInInspect

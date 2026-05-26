@@ -1,6 +1,6 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { BlockEnum } from '../types'
 import type { UseDifyNodesPath } from '@/types/doc-paths'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassificationEnum } from '../block-selector/types'
 
 type GenNodeMetaDataParams = {
   classification?: BlockClassificationEnum

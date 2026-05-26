@@ -4,7 +4,7 @@ import type {
   Edge,
   EnvironmentVariable,
   Node,
-} from '@/app/components/workflow/types'
+} from '../../types'
 import { debounce } from 'es-toolkit/compat'
 
 type DebouncedFunc = {

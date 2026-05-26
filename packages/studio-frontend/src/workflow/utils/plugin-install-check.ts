@@ -1,11 +1,11 @@
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { CommonNodeType, ToolWithProvider } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '../block-selector/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
+import type { CommonNodeType, ToolWithProvider } from '../types'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum } from '../types'
 
 const PLUGIN_DEPENDENT_TYPES: BlockEnum[] = [
   BlockEnum.Tool,

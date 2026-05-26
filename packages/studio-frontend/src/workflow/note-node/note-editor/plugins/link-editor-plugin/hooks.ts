@@ -6,8 +6,8 @@ import { escape } from 'es-toolkit/string'
 import { CLICK_COMMAND, COMMAND_PRIORITY_LOW } from 'lexical'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNoteEditorStore } from '@/app/components/workflow/note-node/note-editor/store'
-import { urlRegExp } from '@/app/components/workflow/note-node/note-editor/utils'
+import { useNoteEditorStore } from '../../../../note-node/note-editor/store'
+import { urlRegExp } from '../../../../note-node/note-editor/utils'
 
 const getClickedLinkElement = (target: EventTarget | null) => {
   return target instanceof HTMLElement

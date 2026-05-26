@@ -1,4 +1,4 @@
-import type { WorkflowHistoryEventMeta } from '@/app/components/workflow/store/workflow/history-slice'
+import type { WorkflowHistoryEventMeta } from '../store/workflow/history-slice'
 import { debounce } from 'es-toolkit/compat'
 import {
   useCallback,
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import {
   useStoreApi,
 } from 'reactflow'
-import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 /**
  * All supported Events that create a new history state.

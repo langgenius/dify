@@ -1,9 +1,9 @@
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import type { AssignerNodeOperation, AssignerNodeType } from '@/app/components/workflow/nodes/assigner/types'
+import type { ValueSelector, Var } from '../../types'
+import type { AssignerNodeOperation, AssignerNodeType } from '../../nodes/assigner/types'
 import { produce } from 'immer'
-import { VarType } from '@/app/components/workflow/types'
-import { WriteMode } from '@/app/components/workflow/nodes/assigner/types'
-import { normalizeOperationItems } from '@/app/components/workflow/nodes/assigner/utils'
+import { VarType } from '../../types'
+import { WriteMode } from '../../nodes/assigner/types'
+import { normalizeOperationItems } from '../../nodes/assigner/utils'
 
 export const filterVarByType = (varType: VarType) => {
   return (variable: Var) => {

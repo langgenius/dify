@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import type { KeyValue } from '@/app/components/workflow/nodes/http/types'
+import type { KeyValue } from '../../../../nodes/http/types'
 import * as React from 'react'
-import KeyValueEdit from '@/app/components/workflow/nodes/http/components/key-value/key-value-edit/index'
+import KeyValueEdit from '../../../../nodes/http/components/key-value/key-value-edit/index'
 
 type Props = {
   readonly: boolean

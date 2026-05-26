@@ -1,5 +1,5 @@
 import type { FC, RefObject } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { pinyin } from 'pinyin-pro'
 import { CollectionType } from '@/app/components/tools/types'

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { QueryParam } from '@/app/components/app/log/index'
+import type { QueryParam } from '../log/index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'

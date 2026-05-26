@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react'
-import type { LLMNodeType, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { LLMNodeType, StructuredOutput } from '../../../nodes/llm/types'
 import { produce } from 'immer'
 import {
   useCallback,

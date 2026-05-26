@@ -20,7 +20,7 @@ import {
 } from '@/utils'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
-import { withCollectionIconBasePath } from '@/app/components/app/configuration/utils'
+import { withCollectionIconBasePath } from '../../configuration/utils'
 
 type BackendAgentTool = ModelConfig['agentConfig']['tools'][number] & {
   dataset?: {

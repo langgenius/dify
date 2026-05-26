@@ -1,4 +1,4 @@
-import type { currentVarType } from '@/app/components/workflow/variable-inspect/panel'
+import type { currentVarType } from '../variable-inspect/panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -13,10 +13,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // import { Button } from '@langgenius/dify-ui/button'
 import ActionButton from '@/app/components/base/action-button'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import BlockIcon from '../block-icon'
+import { VariableIconWithColor } from '../nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
-import { useToolIcon } from '@/app/components/workflow/hooks/index'
+import { useToolIcon } from '../hooks/index'
 
 type Props = {
   nodeData?: NodeWithVar

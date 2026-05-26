@@ -1,23 +1,23 @@
-import type { Memory, MoreInfo, ValueSelector, Var } from '@/app/components/workflow/types'
-import type { Param, ParameterExtractorNodeType, ReasoningModeType } from '@/app/components/workflow/nodes/parameter-extractor/types'
+import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
+import type { Param, ParameterExtractorNodeType, ReasoningModeType } from '../../nodes/parameter-extractor/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useAvailableVarList from '../../nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '../../nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
-} from '@/app/components/workflow/hooks/index'
-import useConfigVision from '@/app/components/workflow/hooks/use-config-vision'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useStore } from '@/app/components/workflow/store/index'
-import { ChangeType, VarType } from '@/app/components/workflow/types'
+} from '../../hooks/index'
+import useConfigVision from '../../hooks/use-config-vision'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useStore } from '../../store/index'
+import { ChangeType, VarType } from '../../types'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const {

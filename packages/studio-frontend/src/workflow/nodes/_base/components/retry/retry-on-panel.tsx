@@ -1,13 +1,13 @@
 import type {
   Node,
-} from '@/app/components/workflow/types'
+} from '../../../../types'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { useRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
-import s from '@/app/components/workflow/nodes/_base/components/retry/style.module.css'
+import Split from '../../../../nodes/_base/components/split'
+import { useRetryConfig } from '../../../../nodes/_base/components/retry/hooks'
+import s from '../../../../nodes/_base/components/retry/style.module.css'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({

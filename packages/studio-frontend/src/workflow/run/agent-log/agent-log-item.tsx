@@ -10,11 +10,11 @@ import {
   useState,
 } from 'react'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import NodeStatusIcon from '@/app/components/workflow/nodes/_base/components/node-status-icon'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import BlockIcon from '../../block-icon'
+import CodeEditor from '../../nodes/_base/components/editor/code-editor'
+import NodeStatusIcon from '../../nodes/_base/components/node-status-icon'
+import { CodeLanguage } from '../../nodes/code/types'
+import { BlockEnum } from '../../types'
 
 type AgentLogItemProps = {
   item: AgentLogItemWithChildren

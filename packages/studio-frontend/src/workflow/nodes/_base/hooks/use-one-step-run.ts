@@ -1,4 +1,4 @@
-import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '../../../types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -17,33 +17,33 @@ import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
-} from '@/app/components/workflow/hooks'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import Assigner from '@/app/components/workflow/nodes/assigner/default'
-import CodeDefault from '@/app/components/workflow/nodes/code/default'
-import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
-import HTTPDefault from '@/app/components/workflow/nodes/http/default'
-import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
-import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
-import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
-import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
-import LLMDefault from '@/app/components/workflow/nodes/llm/default'
-import LoopDefault from '@/app/components/workflow/nodes/loop/default'
-import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
-import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-classifier/default'
-import TemplateTransformDefault from '@/app/components/workflow/nodes/template-transform/default'
-import ToolDefault from '@/app/components/workflow/nodes/tool/default'
-import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+} from '../../../hooks'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
+import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVars } from '../../../nodes/_base/components/variable/utils'
+import Assigner from '../../../nodes/assigner/default'
+import CodeDefault from '../../../nodes/code/default'
+import DocumentExtractorDefault from '../../../nodes/document-extractor/default'
+import HTTPDefault from '../../../nodes/http/default'
+import HumanInputDefault from '../../../nodes/human-input/default'
+import IfElseDefault from '../../../nodes/if-else/default'
+import IterationDefault from '../../../nodes/iteration/default'
+import KnowledgeRetrievalDefault from '../../../nodes/knowledge-retrieval/default'
+import LLMDefault from '../../../nodes/llm/default'
+import LoopDefault from '../../../nodes/loop/default'
+import ParameterExtractorDefault from '../../../nodes/parameter-extractor/default'
+import QuestionClassifyDefault from '../../../nodes/question-classifier/default'
+import TemplateTransformDefault from '../../../nodes/template-transform/default'
+import ToolDefault from '../../../nodes/tool/default'
+import VariableAssigner from '../../../nodes/variable-assigner/default'
+import { useStore, useWorkflowStore } from '../../../store'
 import {
   BlockEnum,
   InputVarType,
   NodeRunningStatus,
   VarType,
   WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+} from '../../../types'
+import { EVENT_WORKFLOW_STOP } from '../../../variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
 import {
@@ -54,7 +54,7 @@ import {
 } from '@/service/use-tools'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
-import useMatchSchemaType from '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type'
+import useMatchSchemaType from '../../../nodes/_base/components/variable/use-match-schema-type'
 
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
