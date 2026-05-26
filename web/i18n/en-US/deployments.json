@@ -1,7 +1,9 @@
 {
   "access.api.backendTitle": "Backend service API",
+  "access.api.copyCurlExample": "Copy cURL example",
   "access.api.createKey": "Generate API token",
   "access.api.createKeyTitle": "Generate new API token",
+  "access.api.curlExampleTitle": "cURL example",
   "access.api.description": "Access this instance over HTTP. Each API token is scoped to one environment.",
   "access.api.developerTitle": "Developer API",
   "access.api.disabled": "API access is turned off for this instance.",

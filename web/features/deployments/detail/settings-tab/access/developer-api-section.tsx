@@ -5,12 +5,15 @@ import type {
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { atom, useAtom, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { useClipboard } from '@/hooks/use-clipboard'
 import { consoleQuery } from '@/service/client'
 import { SectionState } from '../../common'
 import {
@@ -35,6 +38,17 @@ type CreatedApiToken = {
 const createdApiTokenAtom = atom<CreatedApiToken | undefined>(undefined)
 
 const DEVELOPER_API_KEY_SKELETON_KEYS = ['primary-key', 'secondary-key']
+
+function buildCurlExample(apiUrl: string, token: string) {
+  return `curl -X POST '${apiUrl}' \\
+--header 'Authorization: Bearer ${token}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+  "inputs": {},
+  "response_mode": "streaming",
+  "user": "abc-123"
+}'`
+}
 
 function deploymentEnvironment(row: { environment?: Environment }): Environment | undefined {
   return row.environment?.id ? row.environment : undefined
@@ -166,8 +180,43 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
   )
 }
 
-function CreatedApiTokenDialog({ token, onDismiss }: {
+function CurlExample({ apiUrl, token }: {
+  apiUrl: string
   token: string
+}) {
+  const { t } = useTranslation('deployments')
+  const curlExample = buildCurlExample(apiUrl, token)
+  const { copied, copy } = useClipboard({
+    onCopyError: () => {
+      toast.error(t('access.copyFailed'))
+    },
+  })
+
+  return (
+    <div className="min-w-0 overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-normal">
+      <div className="flex h-8 items-center justify-between gap-2 border-b border-divider-subtle pr-1.5 pl-3">
+        <div className="min-w-0 truncate system-xs-semibold-uppercase text-text-secondary">
+          {t('access.api.curlExampleTitle')}
+        </div>
+        <button
+          type="button"
+          onClick={() => copy(curlExample)}
+          aria-label={t('access.api.copyCurlExample')}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+        >
+          <span className={cn(copied ? 'i-ri-check-line' : 'i-ri-file-copy-line', 'size-3.5')} />
+        </button>
+      </div>
+      <pre className="max-h-40 overflow-auto whitespace-pre py-3 px-3 font-mono system-xs-regular text-text-secondary">
+        <code>{curlExample}</code>
+      </pre>
+    </div>
+  )
+}
+
+function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
+  token: string
+  apiUrl?: string
   onDismiss: () => void
 }) {
   const { t } = useTranslation('deployments')
@@ -190,6 +239,12 @@ function CreatedApiTokenDialog({ token, onDismiss }: {
             label={t('access.api.newTokenLabel')}
             value={token}
           />
+          {apiUrl && (
+            <CurlExample
+              apiUrl={apiUrl}
+              token={token}
+            />
+          )}
         </div>
 
         <div className="flex justify-end border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
@@ -205,7 +260,22 @@ function CreatedApiTokenDialog({ token, onDismiss }: {
 function DeveloperApiSkeleton() {
   return (
     <div className="flex flex-col gap-4" data-slot="deployment-developer-api-skeleton">
+      <ApiUrlSkeleton />
       <ApiKeyTableSkeleton />
+    </div>
+  )
+}
+
+function ApiUrlSkeleton() {
+  return (
+    <div
+      className="flex h-8 items-center gap-1 rounded-lg border border-components-input-border-active bg-components-input-bg-normal pr-1 pl-1.5"
+      data-slot="deployment-developer-api-url-skeleton"
+    >
+      <SkeletonRectangle className="my-0 h-5 w-16 shrink-0 animate-pulse rounded-md" />
+      <SkeletonRectangle className="my-0 h-4 min-w-0 flex-1 animate-pulse" />
+      <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
+      <SkeletonRectangle className="my-0 size-6 shrink-0 animate-pulse rounded-md" />
     </div>
   )
 }
@@ -333,6 +403,7 @@ export function DeveloperApiSection({
                   {visibleCreatedApiToken && (
                     <CreatedApiTokenDialog
                       token={visibleCreatedApiToken}
+                      apiUrl={apiUrl}
                       onDismiss={() => setCreatedApiToken(undefined)}
                     />
                   )}

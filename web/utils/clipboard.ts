@@ -1,6 +1,13 @@
 export async function writeTextToClipboard(text: string): Promise<void> {
-  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText)
-    return navigator.clipboard.writeText(text)
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+    catch {
+      // Fall through to the legacy path when browsers deny Clipboard API access.
+    }
+  }
 
   return fallbackCopyTextToClipboard(text)
 }

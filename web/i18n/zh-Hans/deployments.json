@@ -1,7 +1,9 @@
 {
   "access.api.backendTitle": "后端服务 API",
+  "access.api.copyCurlExample": "复制 cURL 示例",
   "access.api.createKey": "生成 API 令牌",
   "access.api.createKeyTitle": "生成新 API 令牌",
+  "access.api.curlExampleTitle": "cURL 示例",
   "access.api.description": "通过 HTTP 调用该实例。每个 API 令牌仅在一个环境中生效。",
   "access.api.developerTitle": "开发者 API",
   "access.api.disabled": "该实例的 API 接入已关闭。",
