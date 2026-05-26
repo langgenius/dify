@@ -128,10 +128,10 @@ def _parse(record: str) -> tuple[str, dict | None]:
     data: dict | None = None
     for line in record.rstrip("\n").split("\n"):
         if line.startswith("event: "):
-            event = line[len("event: "):]
+            event = line[len("event: ") :]
         elif line.startswith("data: "):
             try:
-                data = json.loads(line[len("data: "):])
+                data = json.loads(line[len("data: ") :])
             except json.JSONDecodeError:
                 data = None
     assert event is not None
@@ -273,9 +273,7 @@ def test_stream_hard_timeout_force_closes_without_terminal(
     assert events == ["snapshot"]  # only snapshot, then forced close
 
 
-def test_stream_skips_messages_with_missing_node_id(
-    patch_service, patch_subscribe, app_model, run_id
-):
+def test_stream_skips_messages_with_missing_node_id(patch_service, patch_subscribe, app_model, run_id):
     """Defensive: malformed node_changed without node_id is silently dropped."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
     patch_subscribe(
@@ -289,15 +287,11 @@ def test_stream_skips_messages_with_missing_node_id(
     assert patch_service.node_detail.call_count == 0
 
 
-def test_stream_skips_node_detail_404_without_breaking_stream(
-    patch_service, patch_subscribe, app_model, run_id
-):
+def test_stream_skips_node_detail_404_without_breaking_stream(patch_service, patch_subscribe, app_model, run_id):
     """When node_detail 404s mid-stream (node still being persisted), the
     generator just drops that delta and keeps streaming."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
-    patch_service.node_detail.side_effect = NodeOutputInspectorError(
-        "node_not_in_workflow_run", "transient"
-    )
+    patch_service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "transient")
     patch_subscribe(
         [
             InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="running"),
@@ -331,9 +325,7 @@ def test_stream_emits_error_event_on_node_detail_unexpected_exception(
     assert "failed" in err_data["message"]
 
 
-def test_stream_workflow_completed_status_falls_back_to_unknown(
-    patch_service, patch_subscribe, app_model, run_id
-):
+def test_stream_workflow_completed_status_falls_back_to_unknown(patch_service, patch_subscribe, app_model, run_id):
     """If the pub/sub message arrives with status=None (publish race), the SSE
     payload still carries ``workflow_run_status`` with the ``unknown``
     sentinel so the frontend never sees a missing field."""
@@ -390,17 +382,13 @@ def test_serve_snapshot_happy_path(patch_service, app_model, run_id):
     result = ctrl._serve_snapshot(app_model, run_id)
     assert isinstance(result, dict)
     assert result["workflow_run_id"] == "00000000-0000-0000-0000-0000000000aa"
-    patch_service.snapshot_workflow_run.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id)
-    )
+    patch_service.snapshot_workflow_run.assert_called_once_with(app_model=app_model, workflow_run_id=str(run_id))
 
 
 def test_serve_snapshot_translates_inspector_error_to_404(patch_service, app_model, run_id):
     """``NodeOutputInspectorError`` becomes the controller's 404 wrapper with
     the specific ``error_code`` preserved."""
-    patch_service.snapshot_workflow_run.side_effect = NodeOutputInspectorError(
-        "workflow_run_not_found", "no such run"
-    )
+    patch_service.snapshot_workflow_run.side_effect = NodeOutputInspectorError("workflow_run_not_found", "no such run")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
         ctrl._serve_snapshot(app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
@@ -416,9 +404,7 @@ def test_serve_node_detail_happy_path(patch_service, app_model, run_id):
 
 
 def test_serve_node_detail_translates_inspector_error(patch_service, app_model, run_id):
-    patch_service.node_detail.side_effect = NodeOutputInspectorError(
-        "node_not_in_workflow_run", "missing"
-    )
+    patch_service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "missing")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
         ctrl._serve_node_detail(app_model, run_id, "ghost")
     assert exc.value.error_code == "node_not_in_workflow_run"
@@ -449,9 +435,7 @@ def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
 
 
 def test_serve_output_preview_translates_inspector_error(patch_service, app_model, run_id):
-    patch_service.output_preview.side_effect = NodeOutputInspectorError(
-        "node_output_not_declared", "no such output"
-    )
+    patch_service.output_preview.side_effect = NodeOutputInspectorError("node_output_not_declared", "no such output")
     with pytest.raises(ctrl._InspectorNotFound) as exc:
         ctrl._serve_output_preview(app_model, run_id, "agent-1", "phantom")
     assert exc.value.error_code == "node_output_not_declared"

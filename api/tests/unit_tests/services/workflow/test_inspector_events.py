@@ -63,9 +63,7 @@ def test_inspector_message_from_json_rejects_non_dict_payload():
 
 def test_inspector_message_from_json_rejects_non_string_status():
     """Status field, if present, must be a string."""
-    blob = json.dumps(
-        {"kind": "workflow_completed", "workflow_run_id": "r1", "status": 42}
-    )
+    blob = json.dumps({"kind": "workflow_completed", "workflow_run_id": "r1", "status": 42})
     assert InspectorMessage.from_json(blob) is None
 
 
@@ -209,9 +207,11 @@ def test_subscribe_skips_non_string_data_payloads():
     msgs: list[dict[str, Any] | None] = [
         {"data": None},  # missing payload
         {"data": 12345},  # int payload (shouldn't happen, defensive)
-        {"data": json.dumps(
-            {"kind": "node_changed", "workflow_run_id": "run-1", "node_id": "agent-1", "status": "running"}
-        )},
+        {
+            "data": json.dumps(
+                {"kind": "node_changed", "workflow_run_id": "run-1", "node_id": "agent-1", "status": "running"}
+            )
+        },
     ]
     it = iter(msgs)
     fake_pubsub.get_message.side_effect = lambda **_kw: next(it, None)

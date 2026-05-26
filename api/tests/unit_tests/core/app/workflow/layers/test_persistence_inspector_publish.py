@@ -56,9 +56,7 @@ def layer() -> WorkflowPersistenceLayer:
     instance._node_snapshots = {}
     instance._node_sequence = 0
     # `graph_runtime_state` is a layer-base property; stub it.
-    instance._graph_runtime_state = MagicMock(
-        total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0
-    )
+    instance._graph_runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
     return instance
 
 
@@ -98,9 +96,7 @@ def test_graph_run_succeeded_publishes_workflow_completed(layer, capture_publish
 def test_graph_run_partial_succeeded_publishes_workflow_completed(layer, capture_publishes):
     layer._workflow_execution.status = MagicMock(value="partial-succeeded")
     layer._handle_graph_run_partial_succeeded(_graph_event(outputs={}, exceptions_count=1))
-    assert capture_publishes["workflow"] == [
-        {"workflow_run_id": "run-1", "status": "partial-succeeded"}
-    ]
+    assert capture_publishes["workflow"] == [{"workflow_run_id": "run-1", "status": "partial-succeeded"}]
 
 
 def test_graph_run_failed_publishes_workflow_completed(layer, capture_publishes):
@@ -168,9 +164,7 @@ def test_node_succeeded_publishes_succeeded(layer, capture_publishes, monkeypatc
     monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
     event = MagicMock(id="exec-1", node_run_result=MagicMock(), finished_at=datetime.now())
     layer._handle_node_succeeded(event)
-    assert capture_publishes["node"] == [
-        {"workflow_run_id": "run-1", "node_id": "agent-1", "status": "succeeded"}
-    ]
+    assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "succeeded"}]
 
 
 def test_node_failed_publishes_failed(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
@@ -178,9 +172,7 @@ def test_node_failed_publishes_failed(layer, capture_publishes, monkeypatch: pyt
     monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
     event = MagicMock(id="exec-1", node_run_result=MagicMock(), error="bad", finished_at=datetime.now())
     layer._handle_node_failed(event)
-    assert capture_publishes["node"] == [
-        {"workflow_run_id": "run-1", "node_id": "agent-1", "status": "failed"}
-    ]
+    assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "failed"}]
 
 
 def test_node_exception_publishes_exception(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):
@@ -188,9 +180,7 @@ def test_node_exception_publishes_exception(layer, capture_publishes, monkeypatc
     monkeypatch.setattr(layer, "_update_node_execution", lambda *a, **kw: None)
     event = MagicMock(id="exec-1", node_run_result=MagicMock(), error="oom", finished_at=datetime.now())
     layer._handle_node_exception(event)
-    assert capture_publishes["node"] == [
-        {"workflow_run_id": "run-1", "node_id": "agent-1", "status": "exception"}
-    ]
+    assert capture_publishes["node"] == [{"workflow_run_id": "run-1", "node_id": "agent-1", "status": "exception"}]
 
 
 def test_node_pause_requested_does_not_publish(layer, capture_publishes, monkeypatch: pytest.MonkeyPatch):

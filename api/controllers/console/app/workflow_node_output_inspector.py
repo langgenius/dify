@@ -254,11 +254,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
         # timeout. Real ``workflow_completed`` messages keep their kind even
         # when status couldn't be resolved (publisher race), so checking kind
         # first makes the heartbeat branch safe.
-        if (
-            message.kind == "node_changed"
-            and message.node_id is None
-            and message.status is None
-        ):
+        if message.kind == "node_changed" and message.node_id is None and message.status is None:
             ticks_since_heartbeat += 1
             if ticks_since_heartbeat >= _HEARTBEAT_EVERY_TICKS:
                 yield ":keepalive\n\n"
