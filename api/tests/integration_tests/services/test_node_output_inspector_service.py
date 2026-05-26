@@ -186,9 +186,7 @@ def seeded_run(
         yield fake_app_model, workflow_run, [agent_execution, tool_execution]
     finally:
         with session_factory.create_session() as session:
-            session.execute(
-                delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
-            )
+            session.execute(delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids)))
             session.execute(delete(WorkflowRun).where(WorkflowRun.id == run_id))
             session.commit()
 
@@ -230,9 +228,7 @@ def test_snapshot_returns_agent_v2_declared_outputs_with_status_ready(seeded_run
     """Happy path: agent v2 node + tool node both render, statuses come from
     real ``WorkflowRun`` + ``WorkflowNodeExecutionModel`` rows."""
     app_model, workflow_run, _ = seeded_run
-    service = NodeOutputInspectorService(
-        binding_resolver=_stub_resolver([{"name": "text", "type": "string"}])
-    )
+    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "string"}]))
     snapshot = service.snapshot_workflow_run(
         app_model=app_model,
         workflow_run_id=workflow_run.id,
@@ -274,9 +270,7 @@ def test_snapshot_404s_for_cross_tenant_access(seeded_run):
     assert exc.value.code == "workflow_run_not_found"
 
 
-def test_snapshot_404s_for_published_run_per_decision_d1(
-    flask_req_ctx, fake_app_model
-):
+def test_snapshot_404s_for_published_run_per_decision_d1(flask_req_ctx, fake_app_model):
     """Decision D-1: published / app-run Inspector deferred to stage 4.1."""
     workflow_run = _make_workflow_run(
         app_id=fake_app_model.id,
@@ -300,15 +294,11 @@ def test_snapshot_404s_for_published_run_per_decision_d1(
             session.commit()
 
 
-def test_snapshot_surfaces_type_check_failure_from_metadata(
-    flask_req_ctx, fake_app_model
-):
+def test_snapshot_surfaces_type_check_failure_from_metadata(flask_req_ctx, fake_app_model):
     """Per-output ``TYPE_CHECK_FAILED`` derived from the metadata blob the
     Stage 4 §5 stack records on the execution row."""
     graph = {"nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2"}}]}
-    workflow_run = _make_workflow_run(
-        app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph
-    )
+    workflow_run = _make_workflow_run(app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph)
     execution = _make_execution(
         app_id=fake_app_model.id,
         tenant_id=fake_app_model.tenant_id,
@@ -337,9 +327,7 @@ def test_snapshot_surfaces_type_check_failure_from_metadata(
         run_id, execution_id = workflow_run.id, execution.id
 
     try:
-        service = NodeOutputInspectorService(
-            binding_resolver=_stub_resolver([{"name": "summary", "type": "string"}])
-        )
+        service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "summary", "type": "string"}]))
         snapshot = service.snapshot_workflow_run(app_model=fake_app_model, workflow_run_id=run_id)
         output = snapshot.node_outputs[0].outputs[0]
         assert output.status == NodeOutputStatus.TYPE_CHECK_FAILED
@@ -353,15 +341,11 @@ def test_snapshot_surfaces_type_check_failure_from_metadata(
             session.commit()
 
 
-def test_snapshot_surfaces_output_check_failure_from_metadata(
-    flask_req_ctx, fake_app_model
-):
+def test_snapshot_surfaces_output_check_failure_from_metadata(flask_req_ctx, fake_app_model):
     """When ``output_type_check.passed`` but ``output_check.passed=False``, the
     output is flagged ``OUTPUT_CHECK_FAILED``."""
     graph = {"nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2"}}]}
-    workflow_run = _make_workflow_run(
-        app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph
-    )
+    workflow_run = _make_workflow_run(app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph)
     execution = _make_execution(
         app_id=fake_app_model.id,
         tenant_id=fake_app_model.tenant_id,
@@ -384,18 +368,14 @@ def test_snapshot_surfaces_output_check_failure_from_metadata(
         run_id, execution_id = workflow_run.id, execution.id
 
     try:
-        service = NodeOutputInspectorService(
-            binding_resolver=_stub_resolver([{"name": "report", "type": "file"}])
-        )
+        service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "report", "type": "file"}]))
         # Stub signed-URL so we don't depend on the workflow file runtime being
         # bound (it isn't, in this minimal flask_req_ctx).
         with patch(
             "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
             return_value="https://signed.example/report",
         ):
-            snapshot = service.snapshot_workflow_run(
-                app_model=fake_app_model, workflow_run_id=run_id
-            )
+            snapshot = service.snapshot_workflow_run(app_model=fake_app_model, workflow_run_id=run_id)
         output = snapshot.node_outputs[0].outputs[0]
         assert output.status == NodeOutputStatus.OUTPUT_CHECK_FAILED
         assert output.output_check is not None
@@ -410,9 +390,7 @@ def test_snapshot_surfaces_output_check_failure_from_metadata(
 
 def test_node_detail_serves_one_node(seeded_run):
     app_model, workflow_run, _ = seeded_run
-    service = NodeOutputInspectorService(
-        binding_resolver=_stub_resolver([{"name": "text", "type": "string"}])
-    )
+    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "string"}]))
     view = service.node_detail(
         app_model=app_model,
         workflow_run_id=workflow_run.id,
@@ -435,14 +413,10 @@ def test_output_preview_for_file_renders_signed_url(seeded_run, fake_app_model):
             select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == agent_execution.id)
         )
         assert row is not None
-        row.outputs = json.dumps(
-            {"text": {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}}
-        )
+        row.outputs = json.dumps({"text": {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}})
         session.commit()
 
-    service = NodeOutputInspectorService(
-        binding_resolver=_stub_resolver([{"name": "text", "type": "file"}])
-    )
+    service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "file"}]))
     with patch(
         "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
         return_value="https://signed.example/x.pdf",
@@ -459,16 +433,12 @@ def test_output_preview_for_file_renders_signed_url(seeded_run, fake_app_model):
     assert preview.value["filename"] == "x.pdf"
 
 
-def test_keeps_latest_execution_per_node_by_index(
-    flask_req_ctx, fake_app_model
-):
+def test_keeps_latest_execution_per_node_by_index(flask_req_ctx, fake_app_model):
     """Multiple executions for the same node_id → service keeps the highest
     ``index`` (matches the agent_v2 retry pattern that re-emits node
     executions)."""
     graph = {"nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2"}}]}
-    workflow_run = _make_workflow_run(
-        app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph
-    )
+    workflow_run = _make_workflow_run(app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph)
     older = _make_execution(
         app_id=fake_app_model.id,
         tenant_id=fake_app_model.tenant_id,
@@ -495,9 +465,7 @@ def test_keeps_latest_execution_per_node_by_index(
         run_id, ex_ids = workflow_run.id, [older.id, newer.id]
 
     try:
-        service = NodeOutputInspectorService(
-            binding_resolver=_stub_resolver([{"name": "text", "type": "string"}])
-        )
+        service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "text", "type": "string"}]))
         snapshot = service.snapshot_workflow_run(app_model=fake_app_model, workflow_run_id=run_id)
         assert snapshot.node_outputs[0].outputs[0].value_preview == "second attempt"
     finally:
