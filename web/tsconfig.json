@@ -44,6 +44,9 @@
       ],
       "@dify/studio-frontend/components/*": [
         "../packages/studio-frontend/src/components/*"
+      ],
+      "@dify/studio-frontend/services/*": [
+        "../packages/studio-frontend/src/services/*"
       ]
     },
     "resolveJsonModule": true,

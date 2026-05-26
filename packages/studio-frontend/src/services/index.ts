@@ -1,3 +1,16 @@
-// Studio services module - Phase 1 placeholder
-// Services to be migrated from web/service/apps.ts, web/service/workflow.ts, etc.
-export {}
+// Studio-dedicated service functions and React Query hooks.
+// Canonical implementations live here; web/service/* are re-export barrels.
+export * from './apps'
+export * from './workflow'
+export * from './debug'
+export * from './annotation'
+export * from './log'
+export * from './use-apps'
+export * from './use-workflow'
+export * from './use-log'
+export * from './use-tools'
+export * from './use-common'
+export * from './use-datasource'
+export * from './use-endpoints'
+export * from './use-triggers'
+export * from './use-pipeline'
