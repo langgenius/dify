@@ -19,6 +19,7 @@ import io
 import json
 import sys
 import threading
+import traceback
 import uuid
 from collections.abc import Iterable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -93,6 +94,10 @@ def _normalize_log_payload(value: object) -> object:
             return referenced_table_name
 
     return f"<{type(value).__module__}.{type(value).__qualname__}>"
+
+
+def _format_exception_stacktrace(exc: BaseException) -> str:
+    return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
 
 
 @dataclass(frozen=True, slots=True)
@@ -1584,10 +1589,11 @@ class Migration:
             ).delete()
             self._log_event("cache_deleted", "Deleted related cache entry.", attrs)
         except Exception as exc:
-            self._log_event(
+            self._log_exception_event(
                 "cache_delete_failed",
                 "Failed to delete related cache entry.",
-                {**attrs, "error": str(exc)},
+                attrs,
+                exc,
             )
 
     def _process_load_balancing_model_config_row(
@@ -2150,11 +2156,15 @@ class Migration:
             "table_name": table_name,
             "id": row_id,
             "tx_id": tx_id,
-            "error": str(exc),
         }
         if business_key is not None:
             attrs["business_key"] = self._business_key_to_dict(business_key)
-        self._log_event("lock_timeout_skipped", "Skipped transaction because row lock timed out.", attrs)
+        self._log_exception_event(
+            "lock_timeout_skipped",
+            "Skipped transaction because row lock timed out.",
+            attrs,
+            exc,
+        )
 
     def _business_key_to_dict(self, business_key: _BusinessKey) -> dict[str, object]:
         return cast(dict[str, object], asdict(business_key))
@@ -2260,7 +2270,7 @@ class Migration:
                         },
                     )
                 except Exception as exc:
-                    self._log_event(
+                    self._log_exception_event(
                         "cache_delete_failed",
                         "Failed to delete related cache entry.",
                         {
@@ -2271,8 +2281,8 @@ class Migration:
                             "cache_type": cache_plan.cache_type.value,
                             "tx_id": cache_plan.tx_id,
                             "business_key": self._business_key_to_dict(cache_plan.business_key),
-                            "error": str(exc),
                         },
+                        exc,
                     )
             else:
                 self._log_event(
@@ -2288,6 +2298,23 @@ class Migration:
                         "business_key": self._business_key_to_dict(cache_plan.business_key),
                     },
                 )
+
+    def _log_exception_event(
+        self,
+        event: str,
+        message: str,
+        attrs: dict[str, object],
+        exc: BaseException,
+    ) -> None:
+        self._log_event(
+            event,
+            message,
+            {
+                **attrs,
+                "error": str(exc),
+                "stacktrace": _format_exception_stacktrace(exc),
+            },
+        )
 
     def _log_event(self, event: str, message: str, attrs: dict[str, object]) -> None:
         record = {

@@ -964,6 +964,71 @@ def test_is_lock_timeout_error_prefers_structured_backend_codes(
     assert migration._is_lock_timeout_error(exc) is expected
 
 
+def test_process_load_balancing_model_config_row_logs_stacktrace_for_lock_timeout(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = io.StringIO()
+    migration = migration_module.Migration(
+        tenant_id="tenant-1",
+        engine=sqlite_engine,
+        apply=True,
+        output=output,
+        model_types=(ModelType.LLM,),
+        orm_models=(migration_module.LoadBalancingModelConfig,),
+    )
+    candidate = migration_module._RowWithRawModelType(
+        row=SimpleNamespace(id="lb-row-1"),
+        raw_model_type="text-generation",
+        canonical_model_type=ModelType.LLM,
+    )
+    lock_timeout_exc = OperationalError("SELECT 1", {}, SimpleNamespace(pgcode="55P03"))
+
+    class _FakeBeginContext:
+        def __enter__(self) -> None:
+            return None
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class _FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        def begin(self) -> _FakeBeginContext:
+            return _FakeBeginContext()
+
+    def _fake_session_factory(engine: sa.Engine) -> _FakeSession:
+        return _FakeSession()
+
+    def _fake_reload(self, session, original_candidate, *, lock_rows: bool):
+        raise lock_timeout_exc
+
+    monkeypatch.setattr(migration_module, "_session_factory", _fake_session_factory)
+    monkeypatch.setattr(migration_module.Migration, "_configure_lock_timeout", lambda self, session: None)
+    monkeypatch.setattr(
+        migration_module.Migration,
+        "_reload_load_balancing_model_config_candidate",
+        _fake_reload,
+    )
+
+    migration._process_load_balancing_model_config_row(candidate)
+
+    lines = _parse_json_lines(output)
+    assert len(lines) == 1
+    assert lines[0]["event"] == "lock_timeout_skipped"
+    attrs = cast(dict[str, object], lines[0]["attrs"])
+    assert attrs["table_name"] == "load_balancing_model_configs"
+    assert attrs["id"] == "lb-row-1"
+    assert attrs["error"] == str(lock_timeout_exc)
+    assert isinstance(attrs["stacktrace"], str)
+    assert "OperationalError" in attrs["stacktrace"]
+
+
 def test_process_load_balancing_model_config_row_logs_update_after_sql_execution(
     migration_module,
     sqlite_engine: sa.Engine,
@@ -1044,6 +1109,41 @@ def test_process_load_balancing_model_config_row_logs_update_after_sql_execution
         "log_row_updated",
         "cache_cleanup",
     ]
+
+
+def test_load_balancing_model_config_cache_delete_failure_logs_stacktrace(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    dirty_fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise_delete_failure(self) -> None:
+        raise RuntimeError("cache delete boom")
+
+    monkeypatch.setattr(migration_module.ProviderCredentialsCache, "delete", _raise_delete_failure)
+
+    output = io.StringIO()
+    migration_module.LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=True,
+        output=output,
+        tables=("load_balancing_model_configs",),
+        model_types=(ModelType.LLM,),
+        tenant_ids=(dirty_fixture.primary.tenant_id,),
+    ).migrate()
+
+    failed_events = [
+        cast(dict[str, object], line["attrs"])
+        for line in _parse_json_lines(output)
+        if line.get("event") == "cache_delete_failed"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == "load_balancing_model_configs"
+    ]
+
+    assert len(failed_events) == 1
+    assert failed_events[0]["error"] == "cache delete boom"
+    assert isinstance(failed_events[0]["stacktrace"], str)
+    assert "RuntimeError: cache delete boom" in cast(str, failed_events[0]["stacktrace"])
 
 
 def test_group_completed_logs_exist_for_all_grouped_tables_and_use_canonical_model_type(
