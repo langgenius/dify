@@ -173,7 +173,7 @@ describe('Select wrappers', () => {
       })
 
       await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-readonly')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-transparent')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-components-input-bg-normal')
     })
 
     it('should hide arrow icon via CSS when Root is readOnly', async () => {
