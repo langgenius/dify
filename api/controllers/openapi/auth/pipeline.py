@@ -143,8 +143,10 @@ class PipelineRouter:
         if edition is not None and current_edition() not in edition:
             raise NotFound()
 
+        license_checked = False
         if edition is not None and Edition.EE in edition:
             _check_license()
+            license_checked = True
 
         token = extract_bearer(request)
         if not token:
@@ -168,7 +170,7 @@ class PipelineRouter:
         if route.required_edition is not None:
             if current_edition() not in route.required_edition:
                 raise Forbidden("external_sso_requires_ee")
-            if Edition.EE in route.required_edition:
+            if not license_checked and Edition.EE in route.required_edition:
                 _check_license()
 
         return route.pipeline._run(identity, args, kwargs, view, scope=scope)
