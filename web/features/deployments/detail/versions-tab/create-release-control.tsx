@@ -280,33 +280,37 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     </ToggleGroup>
                   </div>
 
-                  {releaseSourceMode === 'sourceApp'
-                    ? (
-                        <SourceAppPicker
-                          value={selectedSourceApp}
-                          onChange={setSourceApp}
-                          ariaLabel={t('versions.sourceAppOption')}
-                        />
-                      )
-                    : (
-                        <div className="flex flex-col gap-2">
-                          <Uploader
-                            file={dslFile}
-                            updateFile={handleDslFileChange}
-                            className="mt-0"
-                          />
-                          {isReadingDsl && (
-                            <div className="system-xs-regular text-text-tertiary">
-                              {t('versions.dslReading')}
-                            </div>
-                          )}
-                          {dslReadError && (
-                            <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
-                              {t('versions.dslReadFailed')}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                  <div className="min-h-12">
+                    {releaseSourceMode === 'sourceApp'
+                      ? (
+                          <div className="flex min-h-12 items-center">
+                            <SourceAppPicker
+                              value={selectedSourceApp}
+                              onChange={setSourceApp}
+                              ariaLabel={t('versions.sourceAppOption')}
+                            />
+                          </div>
+                        )
+                      : (
+                          <div className="flex min-h-12 flex-col gap-2">
+                            <Uploader
+                              file={dslFile}
+                              updateFile={handleDslFileChange}
+                              className="mt-0"
+                            />
+                            {isReadingDsl && (
+                              <div className="system-xs-regular text-text-tertiary">
+                                {t('versions.dslReading')}
+                              </div>
+                            )}
+                            {dslReadError && (
+                              <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
+                                {t('versions.dslReadFailed')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
