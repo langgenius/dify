@@ -657,9 +657,7 @@ class NodeOutputInspectorService:
                 node_id=node_id,
             )
             if agent_decl is not None:
-                return [
-                    _ResolvedDeclaration(name=o.name, declared_type=o.type, inferred=False) for o in agent_decl
-                ]
+                return [_ResolvedDeclaration(name=o.name, declared_type=o.type, inferred=False) for o in agent_decl]
 
         # Non-agent (or agent-binding-missing) fall back to inferring from the
         # produced payload so the Inspector still has something to show.
@@ -694,9 +692,7 @@ class NodeOutputInspectorService:
         return list(WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs)))
 
     @staticmethod
-    def _infer_outputs_from_payload(
-        *, execution: WorkflowNodeExecutionModel | None
-    ) -> list[_ResolvedDeclaration]:
+    def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:
         if execution is None:
             return []
         outputs = _decode_json_blob(execution.outputs)

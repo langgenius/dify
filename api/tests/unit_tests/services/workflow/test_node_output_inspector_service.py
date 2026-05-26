@@ -91,9 +91,7 @@ def _agent_v2_node(*, node_id: str = "agent-node-1", title: str = "My Agent") ->
     }
 
 
-def _non_agent_node(
-    *, node_id: str = "tool-node-1", node_type: str = "tool", title: str = "Slack"
-) -> dict[str, Any]:
+def _non_agent_node(*, node_id: str = "tool-node-1", node_type: str = "tool", title: str = "Slack") -> dict[str, Any]:
     return {
         "id": node_id,
         "data": {"type": node_type, "title": title},
@@ -139,9 +137,7 @@ def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
 
 
 def _make_service(declared_outputs: list[DeclaredOutputConfig] | None = None) -> NodeOutputInspectorService:
-    return NodeOutputInspectorService(
-        binding_resolver=_stub_binding_resolver(declared_outputs=declared_outputs or [])
-    )
+    return NodeOutputInspectorService(binding_resolver=_stub_binding_resolver(declared_outputs=declared_outputs or []))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -262,9 +258,7 @@ def test_snapshot_marks_type_check_failure():
         execution_metadata={
             "output_type_check": {
                 "passed": False,
-                "results": [
-                    {"name": "text", "type": "string", "status": "type_check_failed", "reason": "wrong shape"}
-                ],
+                "results": [{"name": "text", "type": "string", "status": "type_check_failed", "reason": "wrong shape"}],
             }
         },
     )

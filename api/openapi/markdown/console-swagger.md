@@ -3447,6 +3447,69 @@ Run draft workflow
 | 200 | Draft workflow run started successfully |
 | 403 | Permission denied |
 
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
+
+#### GET
+##### Description
+
+Snapshot of every node's declared outputs for a draft workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run not found or not a draft run |
+
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
+
+#### GET
+##### Description
+
+One node's declared outputs for a draft workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | path | Node ID inside the workflow graph | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run / node not found |
+
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
+
+#### GET
+##### Description
+
+Full value for one declared output, including signed download URL for files.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | path | Node ID inside the workflow graph | Yes | string |
+| output_name | path | Declared output name as exposed by Composer | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run / node / output not found |
+
 ### /apps/{app_id}/workflows/draft/system-variables
 
 #### GET
