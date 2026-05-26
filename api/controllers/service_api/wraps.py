@@ -156,6 +156,7 @@ def cloud_edition_billing_resource_check[**P, R](
                     raise Forbidden("The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space":
                     vector_space = features.vector_space
+                    assert vector_space is not None
                     if 0 < vector_space.limit <= vector_space.size:
                         raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:

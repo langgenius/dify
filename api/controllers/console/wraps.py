@@ -111,6 +111,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                     abort(403, "The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space":
                     vector_space = features.vector_space
+                    assert vector_space is not None
                     if 0 < vector_space.limit <= vector_space.size:
                         abort(
                             403,
