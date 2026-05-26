@@ -378,6 +378,12 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @account_initialization_required
     def get(self, provider):
         user, tenant_id = current_account_with_tenant()
+        # Optional list of credential IDs to include even if visibility would hide them
+        # (used when a workflow/agent node still references another member's only_me credential).
+        include_credential_ids = (
+            request.args.getlist("include_credential_ids")
+            or [s for s in (request.args.get("include_credential_ids") or "").split(",") if s]
+        )
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
@@ -385,6 +391,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
                 provider_name=provider,
                 user_id=user.id,
                 is_admin=user.is_admin_or_owner,
+                include_credential_ids=include_credential_ids or None,
             )
         )
 
@@ -955,6 +962,10 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @account_initialization_required
     def get(self, provider):
         user, tenant_id = current_account_with_tenant()
+        include_credential_ids = (
+            request.args.getlist("include_credential_ids")
+            or [s for s in (request.args.get("include_credential_ids") or "").split(",") if s]
+        )
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
@@ -962,6 +973,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
                 provider=provider,
                 user_id=user.id,
                 is_admin=user.is_admin_or_owner,
+                include_credential_ids=include_credential_ids or None,
             )
         )
 

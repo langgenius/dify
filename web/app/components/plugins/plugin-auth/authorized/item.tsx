@@ -6,6 +6,7 @@ import {
   RiDeleteBinLine,
   RiEditLine,
   RiEqualizer2Line,
+  RiInformationLine,
 } from '@remixicon/react'
 import {
   memo,
@@ -61,12 +62,16 @@ const Item = ({
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
   const userProfile = useAppContextWithSelector(state => state.userProfile)
-  // The selected credential, if configured by another member, may not be
-  // re-selectable after switching away. Surface a warning on that row only.
+  // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
+  // only_me credential, returned only because the current node still references it.
+  // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
+  // that don't yet emit the flag.
   const isSelected = showSelectedIcon && selectedCredentialId === credential.id
   const isConfiguredByOther
     = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
-  const showSwitchAwayHint = isSelected && isConfiguredByOther
+  const isBorrowed
+    = !!credential.from_other_member || (isSelected && isConfiguredByOther && isPersonal)
+  const showSwitchAwayHint = isBorrowed
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
   }, [disableRename, disableEdit, disableDelete, disableSetDefault])
@@ -190,7 +195,7 @@ const Item = ({
         showAction && !renaming && (
           <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
-              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && (
+              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && !isBorrowed && (
                 <Button
                   size="small"
                   disabled={disabled}
@@ -204,7 +209,7 @@ const Item = ({
               )
             }
             {
-              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && (
+              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
                 <Tooltip popupContent={t('operation.rename', { ns: 'common' })}>
                   <ActionButton
                     disabled={disabled}
@@ -220,7 +225,7 @@ const Item = ({
               )
             }
             {
-              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && (
+              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
                 <Tooltip popupContent={t('operation.edit', { ns: 'common' })}>
                   <ActionButton
                     disabled={disabled}
@@ -242,7 +247,7 @@ const Item = ({
               )
             }
             {
-              !disableDelete && !credential.from_enterprise && (
+              !disableDelete && !credential.from_enterprise && !isBorrowed && (
                 <Tooltip popupContent={t('operation.delete', { ns: 'common' })}>
                   <ActionButton
                     className="hover:bg-transparent"

@@ -138,6 +138,15 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default_factory=list,
         description="List of user IDs allowed when visibility is partial_members",
     )
+    from_other_member: bool = Field(
+        default=False,
+        description=(
+            "True when this credential is being returned only because a workflow/agent node still "
+            "references it but it would normally be hidden from this user by the visibility filter "
+            "(another member's only_me credential). The frontend renders it as 'borrowed' — "
+            "selectable until the node switches away, but not editable/deletable."
+        ),
+    )
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):

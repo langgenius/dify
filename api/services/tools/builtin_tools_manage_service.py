@@ -380,22 +380,30 @@ class BuiltinToolManageService:
         provider_name: str,
         user_id: str = "",
         is_admin: bool = False,
+        include_credential_ids: list[str] | None = None,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
-        get builtin tool provider credentials, filtered by visibility
+        get builtin tool provider credentials, filtered by visibility.
+
+        ``include_credential_ids`` lets callers request specific credential IDs that should be
+        returned even if the visibility filter would normally hide them (e.g. an only_me credential
+        owned by another member which the current workflow/agent node still references). Those
+        rows are marked with ``from_other_member=True`` so the UI can render them as
+        borrowed-from-teammate (selectable but not editable).
         """
         from models.credential_permission import CredentialType as CredPermType
         from services.credential_permission_service import CredentialPermissionService
 
         with db.session.no_autoflush:
-            query = (
-                select(BuiltinToolProvider)
-                .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
-                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+            base_filter = (
+                BuiltinToolProvider.tenant_id == tenant_id,
+                BuiltinToolProvider.provider == provider_name,
             )
+            order = (BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+            visible_query = select(BuiltinToolProvider).where(*base_filter).order_by(*order)
             if user_id:
-                query = CredentialPermissionService.apply_visibility_filter(
-                    query,
+                visible_query = CredentialPermissionService.apply_visibility_filter(
+                    visible_query,
                     model_id_column=BuiltinToolProvider.id,
                     model_user_id_column=BuiltinToolProvider.user_id,
                     model_visibility_column=BuiltinToolProvider.visibility,
@@ -403,14 +411,31 @@ class BuiltinToolManageService:
                     user_id=user_id,
                     is_admin=is_admin,
                 )
-            providers = db.session.scalars(query).all()
+            visible_providers = list(db.session.scalars(visible_query).all())
 
-            if len(providers) == 0:
+            # Fetch any explicitly-included IDs that the visibility filter excluded.
+            borrowed_ids: set[str] = set()
+            borrowed_providers: list[BuiltinToolProvider] = []
+            if include_credential_ids:
+                visible_id_set = {p.id for p in visible_providers}
+                wanted_ids = [cid for cid in include_credential_ids if cid and cid not in visible_id_set]
+                if wanted_ids:
+                    borrowed_query = (
+                        select(BuiltinToolProvider)
+                        .where(*base_filter, BuiltinToolProvider.id.in_(wanted_ids))
+                        .order_by(*order)
+                    )
+                    borrowed_providers = list(db.session.scalars(borrowed_query).all())
+                    borrowed_ids = {p.id for p in borrowed_providers}
+
+            providers = visible_providers + borrowed_providers
+            if not providers:
                 return []
 
-            default_provider = providers[0]
-            default_provider.is_default = True
-            provider_controller = ToolManager.get_builtin_provider(default_provider.provider, tenant_id)
+            # Only the first visible row should be flagged is_default in the response.
+            if visible_providers:
+                visible_providers[0].is_default = True
+            provider_controller = ToolManager.get_builtin_provider(providers[0].provider, tenant_id)
 
             credentials: list[ToolProviderCredentialApiEntity] = []
             for provider in providers:
@@ -423,9 +448,6 @@ class BuiltinToolManageService:
                     credentials=dict(decrypt_credential),
                 )
                 # Attach visibility, creator, and partial member list to the response entity
-                from models.credential_permission import CredentialType as CredPermType
-                from services.credential_permission_service import CredentialPermissionService
-
                 vis = getattr(provider, "visibility", "all_team_members")
                 vis_str = vis.value if hasattr(vis, "value") else str(vis)
                 credential_entity.visibility = vis_str
@@ -436,12 +458,18 @@ class BuiltinToolManageService:
                             provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
                         )
                     )
+                if provider.id in borrowed_ids:
+                    credential_entity.from_other_member = True
                 credentials.append(credential_entity)
             return credentials
 
     @staticmethod
     def get_builtin_tool_provider_credential_info(
-        tenant_id: str, provider: str, user_id: str = "", is_admin: bool = False
+        tenant_id: str,
+        provider: str,
+        user_id: str = "",
+        is_admin: bool = False,
+        include_credential_ids: list[str] | None = None,
     ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
@@ -449,7 +477,11 @@ class BuiltinToolManageService:
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
         supported_credential_types = provider_controller.get_supported_credential_types()
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
-            tenant_id, provider, user_id=user_id, is_admin=is_admin
+            tenant_id,
+            provider,
+            user_id=user_id,
+            is_admin=is_admin,
+            include_credential_ids=include_credential_ids,
         )
         credential_info = ToolProviderCredentialInfoApiEntity(
             supported_credential_types=supported_credential_types,
