@@ -229,8 +229,9 @@ class TestBillingResourceLimits:
             "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
         ):
             with (
-                patch("controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space)
-                as get_vector_space,
+                patch(
+                    "controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space
+                ) as get_vector_space,
                 patch("controllers.console.wraps.FeatureService.get_features") as get_features,
             ):
                 result = add_segment()
