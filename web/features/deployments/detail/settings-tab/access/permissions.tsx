@@ -53,6 +53,7 @@ const ACCESS_MODE_PRIVATE = 'ACCESS_MODE_PRIVATE' satisfies AccessMode
 const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessMode
 const SUBJECT_TYPE_ACCOUNT = 'SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
 const SUBJECT_TYPE_GROUP = 'SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
+const ACCESS_SUBJECT_LABEL_PAGE_SIZE = 100
 
 function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissionKind {
   if (mode === ACCESS_MODE_PRIVATE)
@@ -183,15 +184,19 @@ function policySubjects(subjects: SelectableAccessSubject[]): AccessSubject[] {
   }))
 }
 
-function selectedSubjectsFromPolicy(policy?: AccessPolicy) {
+function selectedSubjectsFromPolicy(policy?: AccessPolicy, labelSubjects: SelectableAccessSubject[] = []) {
   return policy?.subjects
     ?.map((subject): SelectableAccessSubject | undefined => {
       if (!subject.subjectId || !subject.subjectType)
         return undefined
+      const matchedSubject = labelSubjects.find(labelSubject =>
+        labelSubject.id === subject.subjectId && labelSubject.subjectType === subject.subjectType,
+      )
       return {
         id: subject.subjectId,
         subjectType: subject.subjectType,
-        name: subject.subjectId,
+        name: matchedSubject?.name,
+        memberCount: matchedSubject?.memberCount,
       }
     })
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
@@ -372,6 +377,18 @@ export function EnvironmentPermissionRow({
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
   const policy = accessPolicyQuery.data?.policy ?? summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
+  const accessSubjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
+    input: {
+      query: {
+        pageNumber: 1,
+        resultsPerPage: ACCESS_SUBJECT_LABEL_PAGE_SIZE,
+      },
+    },
+    enabled: policyKind === 'specific',
+  }))
+  const accessSubjects = accessSubjectsQuery.data?.subjects
+    ?.map(normalizeSubject)
+    .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
   const policySubjectFingerprint = policy?.subjects
     ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? ''}`)
     .join(',')
@@ -379,14 +396,18 @@ export function EnvironmentPermissionRow({
     policy?.mode ?? '',
     policySubjectFingerprint ?? '',
   ].join(':')
-  const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy) : []
   const [draft, setDraft] = useState<{
     fingerprint?: string
     kind?: AccessPermissionKind
     subjects?: SelectableAccessSubject[]
   }>({})
+  const subjectLabelCandidates = [
+    ...(draft.subjects ?? []),
+    ...accessSubjects,
+  ]
   const hasDraft = draft.fingerprint === policyFingerprint
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
+  const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy, subjectLabelCandidates) : []
   const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
   const isSaving = setEnvironmentAccessPolicy.isPending
   const controlsDisabled = isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError
@@ -411,9 +432,6 @@ export function EnvironmentPermissionRow({
         },
       },
       {
-        onSuccess: () => {
-          setDraft({})
-        },
         onError: () => {
           toast.error(t('access.permission.updateFailed'))
         },
