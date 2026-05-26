@@ -81,11 +81,13 @@ function useDeveloperApiResources(appInstanceId: string) {
     })),
   })
   const apiKeys: ApiKey[] = apiKeyQueries.flatMap(query => query.data?.data ?? [])
+  const apiUrl = apiKeyQueries.find(query => query.data?.apiUrl)?.data?.apiUrl
   const apiKeysLoading = apiKeyQueries.some(query => query.isLoading)
   const apiKeysError = apiKeyQueries.some(query => query.isError)
 
   return {
     apiEnabled,
+    apiUrl,
     environments,
     apiKeys,
     isLoading: accessChannelsLoading || environmentDeploymentsQuery.isLoading || (apiEnabled && apiKeysLoading),
@@ -289,12 +291,12 @@ export function DeveloperApiSection({
   const [createdApiToken, setCreatedApiToken] = useAtom(createdApiTokenAtom)
   const {
     apiEnabled,
+    apiUrl,
     apiKeys,
     environments,
     isLoading,
     isError,
   } = useDeveloperApiResources(appInstanceId)
-  const apiUrl = environments.find(environment => environment.runtimeEndpoint)?.runtimeEndpoint
   const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined

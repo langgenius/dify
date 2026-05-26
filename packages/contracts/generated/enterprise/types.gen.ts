@@ -377,6 +377,7 @@ export type GetReleaseReply = {
 
 export type ListApiKeysReply = {
   data?: Array<ApiKey>
+  apiUrl?: string
 }
 
 export type ListAppInstancesReply = {

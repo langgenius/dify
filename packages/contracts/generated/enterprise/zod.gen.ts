@@ -354,6 +354,7 @@ export const zGetDeploymentOptionsReply = z.object({
 
 export const zListApiKeysReply = z.object({
   data: z.array(zApiKey).optional(),
+  apiUrl: z.string().optional(),
 })
 
 export const zListDeployableEnvironmentsReply = z.object({
