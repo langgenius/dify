@@ -787,7 +787,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         isPublicAPI = false,
         silent,
       } = otherOptionsForBaseFetch
-      if (isPublicAPI && code === 'unauthorized') {
+      if (isPublicAPI && code === 'unauthorized' && IS_CE_EDITION) {
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
