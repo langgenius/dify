@@ -308,8 +308,8 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
       : undefined,
     access?.developerApiEnabled
       ? {
-          key: 'tokens',
-          href: getInstanceTabHref(appInstanceId, 'tokens'),
+          key: 'api-tokens',
+          href: getInstanceTabHref(appInstanceId, 'api-tokens'),
           label: t('card.access.api'),
           icon: 'i-ri-code-s-slash-line',
         }
