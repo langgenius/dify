@@ -62,9 +62,7 @@ def require_workspace_role(*allowed_roles: TenantAccountRole) -> Callable[[F], F
             if not workspace_id:
                 raise RuntimeError("require_workspace_role expects a 'workspace_id' route parameter")
 
-            role = TenantService.get_account_role_in_tenant(
-                db.session, str(ctx.account_id), str(workspace_id)
-            )
+            role = TenantService.get_account_role_in_tenant(db.session, str(ctx.account_id), str(workspace_id))
 
             if role is None:
                 raise NotFound("workspace not found")
