@@ -3,6 +3,17 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, StrictStr, ValidationError
+
+
+class ParentTraceContext(BaseModel):
+    """Typed parent trace context propagated from an outer workflow tool node."""
+
+    parent_workflow_run_id: StrictStr
+    parent_node_execution_id: StrictStr | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
 
 def is_valid_trace_id(trace_id: str) -> bool:
     """
@@ -59,6 +70,30 @@ def extract_external_trace_id_from_args(args: Mapping[str, Any]):
     if trace_id:
         return {"external_trace_id": trace_id}
     return {}
+
+
+def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str, ParentTraceContext]:
+    """
+    Extract 'parent_trace_context' from args.
+
+    Returns a dict suitable for use in extras when both parent identifiers exist.
+    Returns an empty dict if the context is missing or incomplete.
+    """
+    parent_trace_context = args.get("parent_trace_context")
+    if isinstance(parent_trace_context, ParentTraceContext):
+        context = parent_trace_context
+    elif isinstance(parent_trace_context, Mapping):
+        try:
+            context = ParentTraceContext.model_validate(parent_trace_context)
+        except ValidationError:
+            return {}
+    else:
+        return {}
+
+    if context.parent_node_execution_id is None:
+        return {}
+
+    return {"parent_trace_context": context}
 
 
 def get_trace_id_from_otel_context() -> str | None:

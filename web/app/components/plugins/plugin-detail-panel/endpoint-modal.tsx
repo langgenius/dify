@@ -99,7 +99,7 @@ const EndpointModal: FC<Props> = ({
                 <div className="flex items-center justify-between">
                   <div className="system-xl-semibold text-text-primary">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
                   <ActionButton onClick={onCancel}>
-                    <RiCloseLine className="h-4 w-4" />
+                    <RiCloseLine className="size-4" />
                   </ActionButton>
                 </div>
                 <div className="mt-0.5 system-xs-regular text-text-tertiary">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
@@ -126,7 +126,7 @@ const EndpointModal: FC<Props> = ({
                             className="inline-flex items-center body-xs-regular text-text-accent-secondary"
                           >
                             {t('howToGet', { ns: 'tools' })}
-                            <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                            <RiArrowRightUpLine className="ml-1 size-3" />
                           </a>
                         )
                       : null}

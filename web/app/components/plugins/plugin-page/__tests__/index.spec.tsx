@@ -465,7 +465,7 @@ describe('PluginPage Component', () => {
     it('should open settings modal when settings button is clicked', async () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
-      fireEvent.click(screen.getByTestId('plugin-settings-button'))
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.privilege\.title/i }))
 
       await waitFor(() => {
         expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
@@ -476,7 +476,7 @@ describe('PluginPage Component', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       // Open modal
-      fireEvent.click(screen.getByTestId('plugin-settings-button'))
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.privilege\.title/i }))
 
       await waitFor(() => {
         expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()

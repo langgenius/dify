@@ -99,7 +99,7 @@ const ConfigCredential: FC<Props> = ({
                   </DrawerTitle>
                   <DrawerCloseButton
                     aria-label={t('operation.close', { ns: 'common' })}
-                    className="h-6 w-6 rounded-md"
+                    className="size-6 rounded-md"
                   />
                 </div>
                 <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">
@@ -130,7 +130,7 @@ const ConfigCredential: FC<Props> = ({
                                   className="inline-flex items-center text-xs text-text-accent"
                                 >
                                   {t('howToGet', { ns: 'tools' })}
-                                  <LinkExternal02 className="ml-1 h-3 w-3" />
+                                  <LinkExternal02 className="ml-1 size-3" />
                                 </a>
                               )
                             : null}

@@ -14,6 +14,7 @@ from controllers.console.tag.tags import (
     TagUpdateDeleteApi,
 )
 from models.enums import TagType
+from services.tag_service import UpdateTagPayload
 
 
 def unwrap(func):
@@ -100,7 +101,7 @@ class TestTagListApi:
         assert status == 200
         assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
-    def test_post_success(self, app, admin_user, tag, payload_patch):
+    def test_post_success(self, app: Flask, admin_user, tag, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
 
@@ -143,11 +144,11 @@ class TestTagListApi:
 
 
 class TestTagUpdateDeleteApi:
-    def test_patch_success(self, app, admin_user, tag, payload_patch):
+    def test_patch_success(self, app: Flask, admin_user, tag, payload_patch):
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
-        payload = {"name": "updated", "type": "knowledge"}
+        payload = {"name": "updated"}
 
         with app.test_request_context("/", json=payload):
             with (
@@ -159,7 +160,7 @@ class TestTagUpdateDeleteApi:
                 patch(
                     "controllers.console.tag.tags.TagService.update_tags",
                     return_value=tag,
-                ),
+                ) as update_tags_mock,
                 patch(
                     "controllers.console.tag.tags.TagService.get_tag_binding_count",
                     return_value=3,
@@ -168,6 +169,9 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, "tag-1")
 
         assert status == 200
+        update_payload, tag_id = update_tags_mock.call_args.args
+        assert update_payload == UpdateTagPayload(name="updated")
+        assert tag_id == "tag-1"
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -187,7 +191,7 @@ class TestTagUpdateDeleteApi:
                 with pytest.raises(Forbidden):
                     method(api, "tag-1")
 
-    def test_delete_success(self, app, admin_user):
+    def test_delete_success(self, app: Flask, admin_user):
         api = TagUpdateDeleteApi()
         method = unwrap(api.delete)
 
@@ -206,7 +210,7 @@ class TestTagUpdateDeleteApi:
 
 
 class TestTagBindingCollectionApi:
-    def test_create_success(self, app, admin_user, payload_patch):
+    def test_create_success(self, app: Flask, admin_user, payload_patch):
         api = TagBindingCollectionApi()
         method = unwrap(api.post)
 
@@ -248,7 +252,7 @@ class TestTagBindingCollectionApi:
 
 
 class TestTagBindingRemoveApi:
-    def test_remove_success(self, app, admin_user, payload_patch):
+    def test_remove_success(self, app: Flask, admin_user, payload_patch):
         api = TagBindingRemoveApi()
         method = unwrap(api.post)
 

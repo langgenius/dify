@@ -49,11 +49,11 @@ const InputFieldEditorPanel = ({
       </div>
       <button
         type="button"
-        data-testid="input-field-editor-close-btn"
-        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center"
+        aria-label={t('operation.close', { ns: 'common' })}
+        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
         onClick={onClose}
       >
-        <RiCloseLine className="size-4 text-text-tertiary" />
+        <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <InputFieldForm
         initialData={formData}

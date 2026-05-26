@@ -96,7 +96,7 @@ describe('VarReferencePickerTrigger', () => {
     fireEvent.click(screen.getByText('Source Node'), { ctrlKey: true })
     expect(handleVariableJump).toHaveBeenCalledWith('node-a')
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-clear'))
+    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
     expect(handleClearVar).toHaveBeenCalledTimes(1)
   })
 
@@ -131,7 +131,7 @@ describe('VarReferencePickerTrigger', () => {
       varName: 'answer',
     })
 
-    expect(screen.getByTestId('add-button'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.add' }))!.toBeInTheDocument()
   })
 
   it('should stay inert in readonly mode and show value type placeholder badge', () => {

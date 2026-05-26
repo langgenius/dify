@@ -24,6 +24,13 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
+const mockSearchParams = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}))
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: () => mockSearchParams.current,
+}))
+
 const mockSupportFunctionCall = vi.hoisted(() => vi.fn())
 vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
@@ -209,6 +216,7 @@ describe('Popup', () => {
     mockMarketplacePlugins.isLoading = false
     mockContextModelProviders.current = []
     mockTrialModels.current = ['test-openai', 'test-anthropic']
+    mockSearchParams.current = new URLSearchParams()
     Object.assign(mockTrialCredits, {
       credits: 200,
       totalCredits: 200,
@@ -773,6 +781,19 @@ describe('Popup', () => {
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
       payload: 'provider',
     })
+  })
+
+  it('should hide provider settings footer when current account settings tab is provider', () => {
+    mockSearchParams.current = new URLSearchParams('action=showSettings&tab=provider')
+
+    renderPopup(
+      <PopupHarness
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
   })
 
   it('should show empty state when no providers are configured', () => {

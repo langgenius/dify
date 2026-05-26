@@ -13,7 +13,7 @@ from models.model import (
 )
 from models.workflow import WorkflowRun
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from services.workflow_run_service import WorkflowRunService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -79,16 +79,16 @@ class TestWorkflowRunService:
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -535,13 +535,13 @@ class TestWorkflowRunService:
         tenant = account.current_tenant
 
         # Create app
-        app_args = {
-            "name": "Test App",
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🚀",
-            "icon_background": "#4ECDC4",
-        }
+        app_args = CreateAppParams(
+            name="Test App",
+            mode="chat",
+            icon_type="emoji",
+            icon="🚀",
+            icon_background="#4ECDC4",
+        )
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow run without node executions
@@ -586,13 +586,13 @@ class TestWorkflowRunService:
         tenant = account.current_tenant
 
         # Create app
-        app_args = {
-            "name": "Test App",
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🚀",
-            "icon_background": "#4ECDC4",
-        }
+        app_args = CreateAppParams(
+            name="Test App",
+            mode="chat",
+            icon_type="emoji",
+            icon="🚀",
+            icon_background="#4ECDC4",
+        )
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Use invalid workflow run ID
@@ -637,13 +637,13 @@ class TestWorkflowRunService:
         tenant = account.current_tenant
 
         # Create app
-        app_args = {
-            "name": "Test App",
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🚀",
-            "icon_background": "#4ECDC4",
-        }
+        app_args = CreateAppParams(
+            name="Test App",
+            mode="chat",
+            icon_type="emoji",
+            icon="🚀",
+            icon_background="#4ECDC4",
+        )
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow run

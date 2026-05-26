@@ -516,7 +516,7 @@ describe('DSL Import with Human Input Node', () => {
       ])
     })
 
-    it('should return empty output variables when no form inputs exist', () => {
+    it('should return no output variables when no form inputs exist', () => {
       const payload = {
         ...humanInputDefault.defaultValue,
         inputs: [],

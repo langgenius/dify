@@ -1,43 +1,49 @@
 'use client'
-import type { FC } from 'react'
-import type { DocumentItem } from '@/models/datasets'
+import type { SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback } from 'react'
+import {
+  ComboboxItem,
+  ComboboxItemText,
+  ComboboxList,
+} from '@langgenius/dify-ui/combobox'
 import FileIcon from '../document-file-icon'
 
 type Props = {
   className?: string
-  list: DocumentItem[]
-  onChange: (value: DocumentItem) => void
 }
 
-const DocumentList: FC<Props> = ({
-  className,
-  list,
-  onChange,
-}) => {
-  const handleChange = useCallback((item: DocumentItem) => {
-    return () => onChange(item)
-  }, [onChange])
+function getDocumentExtension(document: SimpleDocumentDetail) {
+  const detailExtension = document.data_source_detail_dict?.upload_file?.extension
+  if (detailExtension)
+    return detailExtension
 
+  const dataSourceInfo = document.data_source_info
+  if (dataSourceInfo && 'upload_file' in dataSourceInfo)
+    return dataSourceInfo.upload_file.extension
+
+  return ''
+}
+
+export default function DocumentList({
+  className,
+}: Props) {
   return (
-    <div className={cn('max-h-[calc(100vh-120px)] overflow-auto', className)}>
-      {list.map((item) => {
-        const { id, name, extension } = item
+    <ComboboxList className={cn('max-h-[calc(100vh-120px)] p-0', className)}>
+      {(item: SimpleDocumentDetail) => {
+        const extension = getDocumentExtension(item)
         return (
-          <div
-            key={id}
-            className="flex h-8 cursor-pointer items-center space-x-2 rounded-lg px-2 hover:bg-state-base-hover"
-            onClick={handleChange(item)}
+          <ComboboxItem
+            key={item.id}
+            value={item}
+            className="mx-0 flex h-8 grid-cols-none items-center gap-2 rounded-lg px-3 py-0"
           >
             <FileIcon name={item.name} extension={extension} size="lg" />
-            <div className="truncate text-sm text-text-secondary">{name}</div>
-          </div>
+            <ComboboxItemText className="min-w-0 px-0 system-sm-regular text-text-secondary">
+              {item.name}
+            </ComboboxItemText>
+          </ComboboxItem>
         )
-      })}
-    </div>
+      }}
+    </ComboboxList>
   )
 }
-
-export default React.memo(DocumentList)

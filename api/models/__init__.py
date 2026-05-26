@@ -8,6 +8,19 @@ from .account import (
     TenantAccountRole,
     TenantStatus,
 )
+from .agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentIconType,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .comment import (
     WorkflowComment,
@@ -73,7 +86,7 @@ from .model import (
     TrialApp,
     UploadFile,
 )
-from .oauth import DatasourceOauthParamConfig, DatasourceProvider
+from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -125,6 +138,15 @@ __all__ = [
     "AccountIntegrate",
     "AccountStatus",
     "AccountTrialAppRecord",
+    "Agent",
+    "AgentConfigRevision",
+    "AgentConfigRevisionOperation",
+    "AgentConfigSnapshot",
+    "AgentIconType",
+    "AgentKind",
+    "AgentScope",
+    "AgentSource",
+    "AgentStatus",
     "ApiRequest",
     "ApiToken",
     "ApiToolProvider",
@@ -177,6 +199,7 @@ __all__ = [
     "MessageChain",
     "MessageFeedback",
     "MessageFile",
+    "OAuthAccessToken",
     "OperationLog",
     "PinnedConversation",
     "Provider",
@@ -210,6 +233,8 @@ __all__ = [
     "UploadFile",
     "Whitelist",
     "Workflow",
+    "WorkflowAgentBindingType",
+    "WorkflowAgentNodeBinding",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
     "WorkflowArchiveLog",

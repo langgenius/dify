@@ -90,7 +90,7 @@ describe('FloatRightContainer', () => {
       )
 
       await screen.findByRole('dialog')
-      const closeIcon = screen.getByTestId('close-icon')
+      const closeIcon = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeIcon).toBeInTheDocument()
 
       await userEvent.click(closeIcon)

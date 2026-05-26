@@ -108,7 +108,7 @@ const Uploading: FC<Props> = ({
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="flex items-center gap-1 self-stretch">
-          <span className="i-ri-loader-2-line h-4 w-4 animate-spin-slow text-text-accent" />
+          <span className="i-ri-loader-2-line size-4 animate-spin-slow text-text-accent" />
           <div className="system-md-regular text-text-secondary">
             {t(`${i18nPrefix}.uploadingPackage`, {
               ns: 'plugin',

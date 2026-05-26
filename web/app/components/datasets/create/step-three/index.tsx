@@ -33,7 +33,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
   }
 
   return (
-    <div className="flex h-full max-h-full w-full justify-center overflow-y-auto">
+    <div className="flex size-full max-h-full justify-center overflow-y-auto">
       <div className="h-full max-w-[960px] shrink-0 grow overflow-y-auto px-14 sm:px-16">
         <div className="mx-auto max-w-[640px] pt-10 pb-8">
           {!datasetId && (

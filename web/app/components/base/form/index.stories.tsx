@@ -44,7 +44,7 @@ type PlaygroundFormFieldsProps = {
 const PlaygroundFormFields = ({ form, status }: PlaygroundFormFieldsProps) => {
   type PlaygroundFormValues = typeof demoFormOpts.defaultValues
   const name = useStore(form.store, state => (state.values as PlaygroundFormValues).name)
-  const contactFormApi = form as ContactFieldsFormApi
+  const contactFormApi = form as unknown as ContactFieldsFormApi
 
   return (
     <form

@@ -35,9 +35,9 @@ from services.app_dsl_service import (
     ImportMode,
     ImportStatus,
     PendingData,
-    _check_version_compatibility,
 )
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
+from services.dsl_version import check_version_compatibility
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -147,16 +147,16 @@ class TestAppDslService:
             )
             TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
             tenant = account.current_tenant
-            app_args = {
-                "name": fake.company(),
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FF6B6B",
-                "api_rph": 100,
-                "api_rpm": 10,
-            }
+            app_args = CreateAppParams(
+                name=fake.company(),
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🤖",
+                icon_background="#FF6B6B",
+                api_rph=100,
+                api_rpm=10,
+            )
             app_service = AppService()
             app = app_service.create_app(tenant.id, app_args, account)
             return app, account
@@ -193,22 +193,25 @@ class TestAppDslService:
     # ── Version Compatibility ─────────────────────────────────────────
 
     def test_check_version_compatibility_invalid_version_returns_failed(self):
-        assert _check_version_compatibility("not-a-version") == ImportStatus.FAILED
+        assert check_version_compatibility("not-a-version", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.FAILED
 
     def test_check_version_compatibility_newer_version_returns_pending(self):
-        assert _check_version_compatibility("99.0.0") == ImportStatus.PENDING
+        assert check_version_compatibility("99.0.0", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
     def test_check_version_compatibility_major_older_returns_pending(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(app_dsl_service, "CURRENT_DSL_VERSION", "1.0.0")
-        assert _check_version_compatibility("0.9.9") == ImportStatus.PENDING
+        assert check_version_compatibility("0.9.9", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
     def test_check_version_compatibility_minor_older_returns_completed_with_warnings(
         self,
     ):
-        assert _check_version_compatibility("0.5.0") == ImportStatus.COMPLETED_WITH_WARNINGS
+        assert (
+            check_version_compatibility("0.5.0", app_dsl_service.CURRENT_DSL_VERSION)
+            == ImportStatus.COMPLETED_WITH_WARNINGS
+        )
 
     def test_check_version_compatibility_equal_returns_completed(self):
-        assert _check_version_compatibility(CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
+        assert check_version_compatibility(CURRENT_DSL_VERSION, CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
 
     # ── Import: Validation ────────────────────────────────────────────
 

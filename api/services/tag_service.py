@@ -21,7 +21,6 @@ class SaveTagPayload(BaseModel):
 
 class UpdateTagPayload(BaseModel):
     name: str = Field(min_length=1, max_length=50)
-    type: TagType
 
 
 class TagBindingCreatePayload(BaseModel):

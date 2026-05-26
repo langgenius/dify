@@ -3,12 +3,14 @@ import logging
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
+from controllers.common.fields import SimpleResultDataResponse, SimpleResultOptionalDataResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -33,6 +35,7 @@ from controllers.console.wraps import (
 )
 from events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
+from libs.helper import timezone as validate_timezone_string
 from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
@@ -50,7 +53,6 @@ from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 logger = logging.getLogger(__name__)
 
 
@@ -69,15 +71,23 @@ class EmailCodeLoginPayload(BaseModel):
     code: str = Field(...)
     token: str = Field(...)
     language: str | None = Field(default=None)
+    timezone: str | None = Field(default=None)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return validate_timezone_string(value)
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(LoginPayload)
-reg(EmailPayload)
-reg(EmailCodeLoginPayload)
+register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
+register_response_schema_models(
+    console_ns,
+    SimpleResultDataResponse,
+    SimpleResultOptionalDataResponse,
+    SimpleResultResponse,
+)
 
 
 @console_ns.route("/login")
@@ -87,6 +97,7 @@ class LoginApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultOptionalDataResponse.__name__])
     @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
@@ -160,6 +171,7 @@ class LoginApi(Resource):
 @console_ns.route("/logout")
 class LogoutApi(Resource):
     @setup_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         account = current_user
@@ -183,6 +195,7 @@ class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -210,6 +223,7 @@ class ResetPasswordSendEmailApi(Resource):
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -242,6 +256,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @decrypt_code_field
     def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
@@ -294,6 +309,7 @@ class EmailCodeLoginApi(Resource):
                     email=user_email,
                     name=user_email,
                     interface_language=get_valid_language(language),
+                    timezone=args.timezone,
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
@@ -317,6 +333,7 @@ class EmailCodeLoginApi(Resource):
 
 @console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)

@@ -52,7 +52,7 @@ const ConfigDocument: FC = () => {
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-          <Document className="h-4 w-4 text-text-primary-on-surface" />
+          <Document className="size-4 text-text-primary-on-surface" />
         </div>
       </div>
       <div className="flex grow items-center">

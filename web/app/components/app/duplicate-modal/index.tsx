@@ -72,9 +72,14 @@ const DuplicateAppModal = ({
       <Dialog open={show}>
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none px-8 text-left align-middle">
 
-          <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onHide}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onHide}
+          >
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
           <div className="relative mt-3 mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
           <div className="mb-9 system-sm-regular text-text-secondary">
             <div className="mb-2 system-md-medium">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
@@ -104,15 +109,13 @@ const DuplicateAppModal = ({
       </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(icon_type === 'image'
-              ? { type: 'image', url: icon_url!, fileId: icon }
-              : { type: 'emoji', icon, background: icon_background! })
-            setShowAppIconPicker(false)
           }}
         />
       )}

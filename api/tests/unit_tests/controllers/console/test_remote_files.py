@@ -98,6 +98,28 @@ def test_get_remote_file_info_uses_head_when_successful(app, monkeypatch: pytest
     get_mock.assert_not_called()
 
 
+def test_get_remote_file_info_preserves_unencoded_target_query(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = remote_files_module.GetRemoteFileInfo()
+    handler = _unwrap(api.get)
+    target_url = "http://example.com/api/aiagent/httpview/txt"
+    query = "fileNameKey=cankao1_ce4305bc-be20-4c5d-8732-de1741d28e27"
+
+    head_resp = _FakeResponse(
+        status_code=200,
+        headers={"Content-Type": "text/plain", "Content-Length": "128"},
+        method="HEAD",
+    )
+    head_mock = MagicMock(return_value=head_resp)
+    monkeypatch.setattr(remote_files_module.ssrf_proxy, "head", head_mock)
+    monkeypatch.setattr(remote_files_module.ssrf_proxy, "get", MagicMock())
+
+    with app.test_request_context(f"/remote-files/{target_url}?{query}", method="GET"):
+        payload = handler(api, url=target_url)
+
+    assert payload == {"file_type": "text/plain", "file_length": 128}
+    head_mock.assert_called_once_with(f"{target_url}?{query}")
+
+
 def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = remote_files_module.GetRemoteFileInfo()
     handler = _unwrap(api.get)

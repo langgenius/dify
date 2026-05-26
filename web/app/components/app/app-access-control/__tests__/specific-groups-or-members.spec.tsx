@@ -86,11 +86,13 @@ describe('SpecificGroupsOrMembers', () => {
       expect(screen.getByText(baseMember.name)).toBeInTheDocument()
     })
 
-    const groupRemove = screen.getByText(baseGroup.name).closest('div')?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const removeButtons = screen.getAllByRole('button', { name: /operation\.remove$/ })
+    const groupRemove = removeButtons[0]!
+    const memberRemove = removeButtons[1]!
+
     fireEvent.click(groupRemove)
     expect(useAccessControlStore.getState().specificGroups).toEqual([])
 
-    const memberRemove = screen.getByText(baseMember.name).closest('div')?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
     fireEvent.click(memberRemove)
     expect(useAccessControlStore.getState().specificMembers).toEqual([])
   })

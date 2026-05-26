@@ -113,8 +113,7 @@ describe('MCPServerModal', () => {
 
     it('should render close icon', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      const closeButton = document.querySelector('.cursor-pointer svg')
-      expect(closeButton)!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /operation\.close/ }))!.toBeInTheDocument()
     })
   })
 
@@ -175,11 +174,8 @@ describe('MCPServerModal', () => {
       const onHide = vi.fn()
       render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      const closeButton = document.querySelector('.cursor-pointer')
-      if (closeButton) {
-        fireEvent.click(closeButton)
-        expect(onHide).toHaveBeenCalled()
-      }
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
+      expect(onHide).toHaveBeenCalled()
     })
 
     it('should call onHide when the dialog requests close', () => {

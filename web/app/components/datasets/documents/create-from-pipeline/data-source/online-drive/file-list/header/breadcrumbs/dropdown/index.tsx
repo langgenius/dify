@@ -5,7 +5,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Menu from './menu'
 
@@ -21,18 +20,9 @@ const Dropdown = ({
   onBreadcrumbClick,
 }: DropdownProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  const handleBreadCrumbClick = useCallback((index: number) => {
-    onBreadcrumbClick(index)
-    setOpen(false)
-  }, [onBreadcrumbClick])
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={(
           <button
@@ -40,8 +30,7 @@ const Dropdown = ({
             aria-label={t('operation.more', { ns: 'common' })}
             className={cn(
               'flex size-6 items-center justify-center rounded-md',
-              'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+              'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover',
             )}
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
@@ -56,7 +45,7 @@ const Dropdown = ({
         <Menu
           breadcrumbs={breadcrumbs}
           startIndex={startIndex}
-          onBreadcrumbClick={handleBreadCrumbClick}
+          onBreadcrumbClick={onBreadcrumbClick}
         />
       </DropdownMenuContent>
       <span className="system-xs-regular text-divider-deep">/</span>

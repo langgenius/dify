@@ -175,7 +175,6 @@ class TestDuplicateDocumentIndexingTasks:
         for document in documents:
             for i in range(segments_per_doc):
                 segment = DocumentSegment(
-                    id=fake.uuid4(),
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset.id,
                     document_id=document.id,

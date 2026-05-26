@@ -52,7 +52,7 @@ const APIKeyInfoPanel: FC = () => {
         onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
       >
         <div className="text-sm font-medium">{t('apiKeyInfo.setAPIBtn', { ns: 'appOverview' })}</div>
-        <LinkExternal02 className="h-4 w-4" />
+        <LinkExternal02 className="size-4" />
       </Button>
       {!isCloud && (
         <a
@@ -62,14 +62,14 @@ const APIKeyInfoPanel: FC = () => {
           rel="noopener noreferrer"
         >
           <div>{t('apiKeyInfo.tryCloud', { ns: 'appOverview' })}</div>
-          <LinkExternal02 className="h-3 w-3" />
+          <LinkExternal02 className="size-3" />
         </a>
       )}
       <div
         onClick={() => setIsShow(false)}
-        className="absolute top-4 right-4 flex h-8 w-8 cursor-pointer items-center justify-center"
+        className="absolute top-4 right-4 flex size-8 cursor-pointer items-center justify-center"
       >
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="size-4 text-text-tertiary" />
       </div>
     </div>
   )

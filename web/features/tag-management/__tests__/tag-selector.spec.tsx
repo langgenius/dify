@@ -233,7 +233,7 @@ describe('TagSelector', () => {
 
     await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
     await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'NewKnowledgeTag')
-    await user.click(await screen.findByTestId('create-tag-option'))
+    await user.click(await screen.findByRole('option', { name: /NewKnowledgeTag/i }))
 
     await waitFor(() => {
       expect(createTag).toHaveBeenCalledWith('NewKnowledgeTag', 'knowledge')

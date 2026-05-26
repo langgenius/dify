@@ -10,11 +10,11 @@ import {
   AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
+  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
   AutocompleteItemText,
-  AutocompleteLabel,
   AutocompleteList,
   AutocompleteSeparator,
   AutocompleteStatus,
@@ -232,7 +232,7 @@ const GroupedSuggestionList = () => {
       {groups.map((group, groupIndex) => (
         <AutocompleteGroup key={group.label} items={group.items}>
           {groupIndex > 0 && <AutocompleteSeparator />}
-          <AutocompleteLabel>{group.label}</AutocompleteLabel>
+          <AutocompleteGroupLabel>{group.label}</AutocompleteGroupLabel>
           <AutocompleteCollection>
             {(item: Suggestion) => (
               <SuggestionItem key={item.value} item={item} />
@@ -252,7 +252,7 @@ const CommandPaletteList = () => {
       {groups.map((group, groupIndex) => (
         <AutocompleteGroup key={group.label} items={group.items}>
           {groupIndex > 0 && <AutocompleteSeparator />}
-          <AutocompleteLabel>{group.label}</AutocompleteLabel>
+          <AutocompleteGroupLabel>{group.label}</AutocompleteGroupLabel>
           <AutocompleteCollection>
             {(item: Suggestion) => (
               <AutocompleteItem key={item.value} value={item} className="grid grid-cols-[1fr_auto]">
@@ -475,7 +475,7 @@ const FuzzyMatchingDemo = () => {
 }
 
 const meta = {
-  title: 'Base/UI/Autocomplete',
+  title: 'Base/Form/Autocomplete',
   component: Autocomplete,
   parameters: {
     layout: 'centered',
@@ -599,7 +599,7 @@ export const LimitResults: Story = {
 
 export const CommandPalette: Story = {
   render: () => (
-    <div className="w-[440px] rounded-xl border border-divider-subtle bg-components-panel-bg-alt p-2 shadow-xs">
+    <div className="w-110 rounded-xl border border-divider-subtle bg-components-panel-bg-alt p-2 shadow-xs">
       <Autocomplete
         open
         inline

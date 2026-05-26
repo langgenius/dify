@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * Success
  */
-export const zPostLogoutResponse = z.record(z.string(), z.unknown())
+export const zPostLogoutResponse = zSimpleResultResponse

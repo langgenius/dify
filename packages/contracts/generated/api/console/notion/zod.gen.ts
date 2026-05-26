@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * TextContentResponse
+ */
+export const zTextContentResponse = z.object({
+  content: z.string(),
+})
+
+/**
  * NotionEstimatePayload
  */
 export const zNotionEstimatePayload = z.object({
@@ -20,7 +27,7 @@ export const zGetNotionPagesByPageIdByPageTypePreviewPath = z.object({
 /**
  * Success
  */
-export const zGetNotionPagesByPageIdByPageTypePreviewResponse = z.record(z.string(), z.unknown())
+export const zGetNotionPagesByPageIdByPageTypePreviewResponse = zTextContentResponse
 
 export const zPostNotionPagesByPageIdByPageTypePreviewBody = zNotionEstimatePayload
 

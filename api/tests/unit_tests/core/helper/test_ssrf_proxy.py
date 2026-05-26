@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -6,6 +6,7 @@ import pytest
 from core.helper.ssrf_proxy import (
     SSRF_DEFAULT_MAX_RETRIES,
     SSRFProxy,
+    _build_ssrf_client,
     _get_user_provided_host_header,
     _to_graphon_http_response,
     graphon_ssrf_proxy,
@@ -39,6 +40,34 @@ def test_retry_exceed_max_retries(mock_get_client):
     with pytest.raises(Exception) as e:
         make_request("GET", "http://example.com", max_retries=SSRF_DEFAULT_MAX_RETRIES - 1)
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
+
+
+def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports():
+    mock_client = MagicMock()
+    http_transport = MagicMock()
+    https_transport = MagicMock()
+
+    with (
+        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_ALL_URL", None),
+        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy.example.com:8080"),
+        patch("core.helper.ssrf_proxy.dify_config.SSRF_PROXY_HTTPS_URL", "http://proxy.example.com:8443"),
+        patch("core.helper.ssrf_proxy.httpx.HTTPTransport", side_effect=[http_transport, https_transport]) as transport,
+        patch("core.helper.ssrf_proxy.httpx.Client", return_value=mock_client) as client,
+    ):
+        ssrf_client = _build_ssrf_client(verify=False)
+
+    assert ssrf_client is mock_client
+    transport.assert_has_calls(
+        [
+            call(proxy="http://proxy.example.com:8080", verify=False),
+            call(proxy="http://proxy.example.com:8443", verify=False),
+        ],
+    )
+    client.assert_called_once_with(
+        mounts={"http://": http_transport, "https://": https_transport},
+        verify=False,
+        limits=ANY,
+    )
 
 
 class TestGetUserProvidedHostHeader:

@@ -53,7 +53,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             binding_ids = [binding.id for binding, _ in attachments_with_bindings]
             total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
 
-            index_node_ids = [segment.index_node_id for segment in segments]
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             segment_contents = [segment.content for segment in segments]
         except Exception:
             logger.exception("Cleaned document when document deleted failed")

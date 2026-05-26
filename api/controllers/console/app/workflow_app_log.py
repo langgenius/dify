@@ -16,6 +16,7 @@ from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
 from graphon.enums import WorkflowExecutionStatus
+from libs.helper import to_timestamp
 from libs.login import login_required
 from models import App
 from models.model import AppMode
@@ -82,9 +83,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class WorkflowRunForArchivedLogResponse(ResponseModel):
@@ -117,9 +116,7 @@ class WorkflowAppLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class WorkflowArchivedLogPartialResponse(ResponseModel):
@@ -133,9 +130,7 @@ class WorkflowArchivedLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class WorkflowAppLogPaginationResponse(ResponseModel):
@@ -185,7 +180,7 @@ class WorkflowAppLogApi(Resource):
         """
         Get workflow app logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
@@ -228,7 +223,7 @@ class WorkflowArchivedLogApi(Resource):
         """
         Get workflow archived logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))
 
         workflow_app_service = WorkflowAppService()
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:

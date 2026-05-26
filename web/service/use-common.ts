@@ -7,7 +7,6 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
@@ -52,7 +51,6 @@ export const commonQueryKeys = {
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
-  apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
     NAME_SPACE,
@@ -178,7 +176,13 @@ export type MailRegisterResponse = { result: string, data: {} }
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
+    mutationFn: (body: {
+      token: string
+      new_password: string
+      password_confirm: string
+      language?: string
+      timezone?: string
+    }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
   })
@@ -246,7 +250,7 @@ export const useLogout = () => {
   })
 }
 
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string, token: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -310,13 +314,6 @@ export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
     queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
-  })
-}
-
-export const useApiBasedExtensions = () => {
-  return useQuery<ApiBasedExtension[]>({
-    queryKey: commonQueryKeys.apiBasedExtensions,
-    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
   })
 }
 

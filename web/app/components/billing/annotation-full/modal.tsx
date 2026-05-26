@@ -28,7 +28,7 @@ const AnnotationFullModal: FC<Props> = ({
       }}
     >
       <DialogContent className="w-full overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogCloseButton />
 
         <GridMask wrapperClassName="rounded-lg" canvasClassName="rounded-lg" gradientClassName="rounded-lg">
           <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out">

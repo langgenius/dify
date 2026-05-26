@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import ItemOperation from '../index'
 
@@ -13,11 +13,21 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
-      <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
-      </DropdownMenuContext>
-    ),
+    DropdownMenu: ({
+      children,
+      modal,
+    }: {
+      children: React.ReactNode
+      modal?: boolean
+    }) => {
+      const [isOpen, setIsOpen] = React.useState(false)
+
+      return (
+        <DropdownMenuContext value={{ isOpen, setOpen: setIsOpen }}>
+          <div data-modal={modal} data-open={isOpen} data-testid="dropdown-menu">{children}</div>
+        </DropdownMenuContext>
+      )
+    },
     DropdownMenuTrigger: ({
       children,
       onClick,
@@ -158,37 +168,41 @@ describe('ItemOperation', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should close the menu when mouse leaves the panel and item is not hovering', async () => {
-      renderComponent()
+    it('should keep the menu open when item hover leaves', async () => {
+      const { props, rerender } = renderComponent({ isItemHovering: true })
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       await screen.findByText('explore.sidebar.action.pin')
-      const menu = screen.getByTestId('dropdown-content')
 
-      fireEvent.mouseEnter(menu)
-      fireEvent.mouseLeave(menu)
+      rerender(<ItemOperation {...props} isItemHovering={false} />)
 
-      await waitFor(() => {
-        expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
-      })
+      expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
     })
 
-    it('should stop propagation when clicking inside the dropdown content', async () => {
+    it('should render a non-modal menu', () => {
+      renderComponent()
+
+      expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
+    })
+
+    it('should stop propagation when clicking menu actions', async () => {
       const onParentClick = vi.fn()
+      const togglePin = vi.fn()
 
       render(
         <div onClick={onParentClick}>
           <ItemOperation
             isPinned={false}
             isShowDelete
-            togglePin={vi.fn()}
+            togglePin={togglePin}
             onDelete={vi.fn()}
           />
         </div>,
       )
 
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
-      fireEvent.click(await screen.findByTestId('dropdown-content'))
+      fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
+      expect(togglePin).toHaveBeenCalledTimes(1)
       expect(onParentClick).not.toHaveBeenCalled()
     })
   })

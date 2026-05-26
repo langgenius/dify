@@ -379,7 +379,7 @@ describe('CommonCreateModal', () => {
       const mockOnClose = vi.fn()
       render(<CommonCreateModal {...defaultProps} onClose={mockOnClose} />)
 
-      fireEvent.click(screen.getByTestId('modal-close'))
+      fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
 
       expect(mockOnClose).toHaveBeenCalled()
     })

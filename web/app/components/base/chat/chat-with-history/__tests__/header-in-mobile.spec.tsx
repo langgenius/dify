@@ -184,7 +184,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown (More button)
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     // Find and click "View Chat Settings"
     await waitFor(() => {
@@ -213,7 +213,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown and chat settings
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
     await waitFor(() => {
       expect(screen.getByText(/share\.chat\.viewChatSettings/i))!.toBeInTheDocument()
     })
@@ -241,7 +241,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     // "View Chat Settings" should not be present
     await waitFor(() => {
@@ -259,7 +259,7 @@ describe('HeaderInMobile', () => {
     render(<HeaderInMobile />)
 
     // Open dropdown
-    fireEvent.click(await screen.findByTestId('mobile-more-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.more' }))
 
     // Click "New Conversation" or "Reset Chat"
     await waitFor(() => {

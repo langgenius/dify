@@ -107,7 +107,7 @@ const VarGroupItem: FC<Props> = ({
         ? (
             <div className="flex items-center">
               <div className="flex items-center normal-case!">
-                <Folder className="mr-0.5 h-3.5 w-3.5" />
+                <Folder className="mr-0.5 size-3.5" />
                 {(!isEditGroupName)
                   ? (
                       <div className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100" onClick={setEditGroupName}>
@@ -137,7 +137,7 @@ const VarGroupItem: FC<Props> = ({
                   onClick={onRemove}
                 >
                   <RiDeleteBinLine
-                    className="h-4 w-4"
+                    className="size-4"
                   />
                 </div>
               )}

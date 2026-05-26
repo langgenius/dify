@@ -9,9 +9,9 @@ from celery import shared_task
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
 from models.account import TenantPluginAutoUpgradeStrategy
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 

@@ -231,7 +231,7 @@ describe('ApiKeyModal', () => {
     const mockOnClose = vi.fn()
     render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 

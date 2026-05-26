@@ -134,8 +134,8 @@ export type GetOauthDataSourceByProviderResponse
 export type GetOauthDataSourceByProviderByBindingIdSyncData = {
   body?: never
   path: {
-    provider: string
     binding_id: string
+    provider: string
   }
   query?: never
   url: '/oauth/data-source/{provider}/{binding_id}/sync'

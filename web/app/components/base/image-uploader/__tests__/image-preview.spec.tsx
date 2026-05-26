@@ -28,12 +28,12 @@ vi.mock('@/utils/download', () => ({
 }))
 
 const getOverlay = () => screen.getByTestId('image-preview-container') as HTMLDivElement
-const getCloseButton = () => screen.getByTestId('image-preview-close-button') as HTMLDivElement
-const getCopyButton = () => screen.getByTestId('image-preview-copy-button') as HTMLDivElement
-const getZoomOutButton = () => screen.getByTestId('image-preview-zoom-out-button') as HTMLDivElement
-const getZoomInButton = () => screen.getByTestId('image-preview-zoom-in-button') as HTMLDivElement
-const getDownloadButton = () => screen.getByTestId('image-preview-download-button') as HTMLDivElement
-const getOpenInTabButton = () => screen.getByTestId('image-preview-open-in-tab-button') as HTMLDivElement
+const getCloseButton = () => screen.getByRole('button', { name: 'common.operation.cancel' }) as HTMLButtonElement
+const getCopyButton = () => screen.getByRole('button', { name: 'common.operation.copyImage' }) as HTMLButtonElement
+const getZoomOutButton = () => screen.getByRole('button', { name: 'common.operation.zoomOut' }) as HTMLButtonElement
+const getZoomInButton = () => screen.getByRole('button', { name: 'common.operation.zoomIn' }) as HTMLButtonElement
+const getDownloadButton = () => screen.getByRole('button', { name: 'common.operation.download' }) as HTMLButtonElement
+const getOpenInTabButton = () => screen.getByRole('button', { name: 'common.operation.openInNewTab' }) as HTMLButtonElement
 
 const base64Image = 'aGVsbG8='
 const dataImage = `data:image/png;base64,${base64Image}`

@@ -9,11 +9,11 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiHammerFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -101,7 +101,7 @@ const MCPCard = ({
       <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
         <div className="flex w-0 grow items-center gap-2">
           <div className="flex items-center gap-1">
-            <RiHammerFill className="h-3 w-3 shrink-0 text-text-quaternary" />
+            <RiHammerFill className="size-3 shrink-0 text-text-quaternary" />
             {data.tools.length > 0 && (
               <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
             )}
@@ -112,11 +112,11 @@ const MCPCard = ({
           <div className={cn('system-xs-regular text-divider-deep', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
           <div className={cn('truncate system-xs-regular text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
         </div>
-        {data.is_team_authorization && data.tools.length > 0 && <Indicator color="green" className="shrink-0" />}
+        {data.is_team_authorization && data.tools.length > 0 && <StatusDot status="success" className="shrink-0" />}
         {(!data.is_team_authorization || !data.tools.length) && (
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
             {t('mcp.noConfigured', { ns: 'tools' })}
-            <Indicator color="red" />
+            <StatusDot status="error" />
           </div>
         )}
       </div>

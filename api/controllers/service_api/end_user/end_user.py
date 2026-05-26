@@ -2,12 +2,15 @@ from uuid import UUID
 
 from flask_restx import Resource
 
+from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.end_user.error import EndUserNotFoundError
 from controllers.service_api.wraps import validate_app_token
 from fields.end_user_fields import EndUserDetail
 from models.model import App
 from services.end_user_service import EndUserService
+
+register_response_schema_models(service_api_ns, EndUserDetail)
 
 
 @service_api_ns.route("/end-users/<uuid:end_user_id>")
@@ -24,6 +27,7 @@ class EndUserApi(Resource):
             404: "End user not found",
         },
     )
+    @service_api_ns.response(200, "End user retrieved successfully", service_api_ns.models[EndUserDetail.__name__])
     @validate_app_token
     def get(self, app_model: App, end_user_id: UUID):
         """Get end user detail.

@@ -9,6 +9,6 @@ jobs:
       pull-requests: write
     runs-on: depot-ubuntu-24.04
     steps:
-      - uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # v6.0.1
+      - uses: actions/labeler@f27b608878404679385c85cfa523b85ccb86e213 # v6.1.0
         with:
           sync-labels: true

@@ -19,7 +19,7 @@ const Item = ({
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">
-          <GlobalVariableIcon className="h-4 w-4 text-util-colors-orange-orange-600" />
+          <GlobalVariableIcon className="size-4 text-util-colors-orange-orange-600" />
           <div className="system-sm-medium text-text-primary">
             <span className="text-text-tertiary">sys.</span>
             {payload.name}

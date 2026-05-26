@@ -86,12 +86,10 @@ class TokenBufferMemory:
 
         detail = ImagePromptMessageContent.DETAIL.HIGH
         if file_extra_config and app_record:
-            # Build files directly without filtering by belongs_to
             file_objs = [
                 file_factory.build_from_message_file(
                     message_file=message_file,
                     tenant_id=app_record.tenant_id,
-                    config=file_extra_config,
                     access_controller=_file_access_controller,
                 )
                 for message_file in message_files
@@ -237,10 +235,11 @@ class TokenBufferMemory:
             if isinstance(m.content, list):
                 inner_msg = ""
                 for content in m.content:
-                    if isinstance(content, TextPromptMessageContent):
-                        inner_msg += f"{content.data}\n"
-                    elif isinstance(content, ImagePromptMessageContent):
-                        inner_msg += "[image]\n"
+                    match content:
+                        case TextPromptMessageContent():
+                            inner_msg += f"{content.data}\n"
+                        case ImagePromptMessageContent():
+                            inner_msg += "[image]\n"
 
                 string_messages.append(f"{role}: {inner_msg.strip()}")
             else:

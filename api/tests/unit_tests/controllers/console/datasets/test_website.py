@@ -49,7 +49,7 @@ def bypass_auth_and_setup(mocker: MockerFixture):
 
 
 class TestWebsiteCrawlApi:
-    def test_crawl_success(self, app, mocker: MockerFixture):
+    def test_crawl_success(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -86,7 +86,7 @@ class TestWebsiteCrawlApi:
         assert status == 200
         assert result["job_id"] == "job-1"
 
-    def test_crawl_invalid_payload(self, app, mocker: MockerFixture):
+    def test_crawl_invalid_payload(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -114,7 +114,7 @@ class TestWebsiteCrawlApi:
             with pytest.raises(WebsiteCrawlError, match="invalid payload"):
                 method(api)
 
-    def test_crawl_service_error(self, app, mocker: MockerFixture):
+    def test_crawl_service_error(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlApi()
         method = unwrap(api.post)
 
@@ -151,7 +151,7 @@ class TestWebsiteCrawlApi:
 
 
 class TestWebsiteCrawlStatusApi:
-    def test_get_status_success(self, app, mocker: MockerFixture):
+    def test_get_status_success(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
@@ -182,7 +182,7 @@ class TestWebsiteCrawlStatusApi:
         assert status == 200
         assert result["status"] == "completed"
 
-    def test_get_status_invalid_provider(self, app, mocker: MockerFixture):
+    def test_get_status_invalid_provider(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 
@@ -204,7 +204,7 @@ class TestWebsiteCrawlStatusApi:
             with pytest.raises(WebsiteCrawlError, match="invalid provider"):
                 method(api, job_id)
 
-    def test_get_status_service_error(self, app, mocker: MockerFixture):
+    def test_get_status_service_error(self, app: Flask, mocker: MockerFixture):
         api = WebsiteCrawlStatusApi()
         method = unwrap(api.get)
 

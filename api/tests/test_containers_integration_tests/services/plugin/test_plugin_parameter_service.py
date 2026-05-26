@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.tools import BuiltinToolProvider
@@ -49,8 +50,8 @@ class TestGetDynamicSelectOptionsTool:
         mock_tool_mgr,
         mock_encrypter_fn,
         mock_client_cls,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
     ):
         tenant_id = str(uuid4())
         provider_ctrl = MagicMock()
@@ -91,8 +92,8 @@ class TestGetDynamicSelectOptionsTool:
         self,
         mock_tool_mgr,
         mock_encrypter_fn,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
     ):
         provider_ctrl = MagicMock()
         provider_ctrl.need_credentials = True

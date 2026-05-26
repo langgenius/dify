@@ -1,7 +1,6 @@
 'use client'
 import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
@@ -23,6 +21,10 @@ type Props = {
   placement?: Placement
 }
 
+const deferAction = (action: () => void) => {
+  queueMicrotask(action)
+}
+
 const Operation: FC<Props> = ({
   title,
   isPinned,
@@ -34,24 +36,14 @@ const Operation: FC<Props> = ({
   placement = 'bottom-start',
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const handleDeferredAction = useCallback((action: () => void) => {
-    setOpen(false)
-    queueMicrotask(action)
-  }, [])
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu>
       <DropdownMenuTrigger
-        render={<div />}
+        className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
       >
-        <div className={cn('flex cursor-pointer items-center rounded-lg p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-          <div className="system-md-semibold">{title}</div>
-          <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4" />
-        </div>
+        <span className="system-md-semibold">{title}</span>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement={placement}
@@ -64,7 +56,7 @@ const Operation: FC<Props> = ({
         {isShowRenameConversation && (
           <DropdownMenuItem
             className="system-md-regular"
-            onClick={() => onRenameConversation && handleDeferredAction(onRenameConversation)}
+            onClick={() => onRenameConversation && deferAction(onRenameConversation)}
           >
             <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
           </DropdownMenuItem>
@@ -73,7 +65,7 @@ const Operation: FC<Props> = ({
           <DropdownMenuItem
             variant="destructive"
             className="system-md-regular"
-            onClick={() => handleDeferredAction(onDelete)}
+            onClick={() => deferAction(onDelete)}
           >
             <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
           </DropdownMenuItem>

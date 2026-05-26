@@ -43,7 +43,7 @@ const Item: FC<ItemProps> = ({
       {isActive && (
         <div
           data-testid="tab-active-indicator"
-          className="absolute right-0 bottom-0 left-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
+          className="absolute inset-x-0 bottom-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
         >
         </div>
       )}

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -154,7 +155,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
         args: WorkflowRunListArgs = {"limit": args_model.limit}
         if args_model.last_id is not None:
             args["last_id"] = args_model.last_id
@@ -188,7 +189,7 @@ class WorkflowRunExportApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def get(self, app_model: App, run_id: str):
+    def get(self, app_model: App, run_id: UUID):
         tenant_id = str(app_model.tenant_id)
         app_id = str(app_model.id)
         run_id_str = str(run_id)
@@ -250,7 +251,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         """
         Get advanced chat workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
@@ -290,7 +291,7 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
         args: WorkflowRunListArgs = {"limit": args_model.limit}
         if args_model.last_id is not None:
             args["last_id"] = args_model.last_id
@@ -331,7 +332,7 @@ class WorkflowRunCountApi(Resource):
         """
         Get workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
@@ -367,14 +368,14 @@ class WorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id):
+    def get(self, app_model: App, run_id: UUID):
         """
         Get workflow run detail
         """
-        run_id = str(run_id)
+        run_id_str = str(run_id)
 
         workflow_run_service = WorkflowRunService()
-        workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id)
+        workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id_str)
         if workflow_run is None:
             raise NotFoundError("Workflow run not found")
 
@@ -396,17 +397,17 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id):
+    def get(self, app_model: App, run_id: UUID):
         """
         Get workflow run node execution list
         """
-        run_id = str(run_id)
+        run_id_str = str(run_id)
 
         workflow_run_service = WorkflowRunService()
         user = cast("Account | EndUser", current_user)
         node_executions = workflow_run_service.get_workflow_run_node_executions(
             app_model=app_model,
-            run_id=run_id,
+            run_id=run_id_str,
             user=user,
         )
 

@@ -48,20 +48,21 @@ const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
   },
 ]
 
+const LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '**/base/input',
+      '**/base/input/*',
+    ],
+    message: 'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
+  },
+]
+
 export const WEB_RESTRICTED_IMPORT_PATTERNS = [
   ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
   ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
   ...FLOATING_UI_RESTRICTED_IMPORT_PATTERNS,
-]
-
-export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
-  {
-    group: [
-      '**/base/drawer',
-      '**/base/drawer/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/drawer instead. See issue #32767.',
-  },
+  ...LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS,
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {

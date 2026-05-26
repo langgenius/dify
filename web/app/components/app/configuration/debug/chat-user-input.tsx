@@ -1,12 +1,12 @@
 import type { Inputs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 
@@ -94,9 +94,10 @@ const ChatUserInput = ({
                 {type === 'paragraph' && (
                   <Textarea
                     className="h-[120px] grow"
+                    aria-label={name || key}
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                    onValueChange={(value) => { handleInputValueChange(key, value) }}
                     readOnly={readonly}
                   />
                 )}

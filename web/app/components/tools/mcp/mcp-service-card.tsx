@@ -16,6 +16,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
@@ -24,7 +25,6 @@ import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useDocLink } from '@/context/i18n'
@@ -40,7 +40,7 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-1">
-      <Indicator color={serverActivated ? 'green' : 'yellow'} />
+      <StatusDot status={serverActivated ? 'success' : 'warning'} />
       <div className={cn('system-xs-semibold-uppercase', serverActivated ? 'text-text-success' : 'text-text-warning')}>
         {serverActivated
           ? t('overview.status.running', { ns: 'appOverview' })
@@ -73,7 +73,7 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
       </div>
       <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
         <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-          <div className="overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-text-secondary">
+          <div className="truncate text-xs font-medium text-text-secondary">
             {serverURL}
           </div>
         </div>
@@ -91,7 +91,7 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
                       aria-label={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
                       onClick={onRegenerate}
                     >
-                      <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                      <RiLoopLeftLine className={cn('size-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
                     </button>
                   )}
                 />
@@ -324,7 +324,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
             <div className="flex w-full items-center gap-3 self-stretch">
               <div className="flex grow items-center">
                 <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
-                  <Mcp className="h-4 w-4 text-text-primary-on-surface" />
+                  <Mcp className="size-4 text-text-primary-on-surface" />
                 </div>
                 <div className="group w-full">
                   <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
@@ -378,7 +378,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 onClick={openServerModal}
               >
                 <div className="flex items-center justify-center gap-px">
-                  <RiEditLine className="h-3.5 w-3.5" />
+                  <RiEditLine className="size-3.5" />
                   <div className="px-[3px] system-xs-medium text-text-tertiary">
                     {serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}
                   </div>

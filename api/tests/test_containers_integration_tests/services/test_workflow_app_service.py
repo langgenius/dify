@@ -17,7 +17,7 @@ from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
 # Delay import of AppService to avoid circular dependency
-# from services.app_service import AppService
+# from services.app_service import AppService, CreateAppParams
 from services.workflow_app_service import LogView, WorkflowAppService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -82,20 +82,20 @@ class TestWorkflowAppService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -146,20 +146,20 @@ class TestWorkflowAppService:
         """
         fake = Faker()
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)

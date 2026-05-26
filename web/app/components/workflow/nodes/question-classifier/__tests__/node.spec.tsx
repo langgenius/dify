@@ -76,12 +76,18 @@ describe('question-classifier/node', () => {
     render(
       <Node
         {...baseNodeProps}
-        data={createData({ classes: [createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })] })}
+        data={createData({
+          classes: [
+            createTopic({ label: 'Billing' } as Partial<Topic>),
+            createTopic({ id: 'topic-2', name: 'Refunds', label: 'Refund desk' } as Partial<Topic>),
+          ],
+        })}
       />,
     )
 
     expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
-    expect(screen.getByText('Billing questions')).toBeInTheDocument()
+    expect(screen.getByText('Billing')).toBeInTheDocument()
+    expect(screen.getByText('Refund desk')).toBeInTheDocument()
     expect(screen.getByText('handle-topic-1')).toBeInTheDocument()
     expect(screen.getByText('handle-topic-2')).toBeInTheDocument()
   })

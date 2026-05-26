@@ -153,7 +153,7 @@ describe('InputFieldEditorPanel', () => {
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
 
-      const closeButton = screen.getByRole('button', { name: '' })
+      const closeButton = screen.getByRole('button', { name: /Close|operation.close/ })
       expect(closeButton).toBeInTheDocument()
     })
 
@@ -270,7 +270,7 @@ describe('InputFieldEditorPanel', () => {
       const props = createInputFieldEditorProps({ onClose })
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
-      fireEvent.click(screen.getByTestId('input-field-editor-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })

@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -72,6 +73,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -130,7 +132,8 @@ class CompletionApi(InstalledAppResource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def post(self, installed_app, task_id: str):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
@@ -205,7 +208,8 @@ class ChatApi(InstalledAppResource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def post(self, installed_app, task_id: str):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

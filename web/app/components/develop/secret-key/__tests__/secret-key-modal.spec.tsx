@@ -190,7 +190,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBeGreaterThanOrEqual(2)
-      const deleteIcon = document.body.querySelector('svg[class*="h-4"][class*="w-4"]')
+      const deleteIcon = document.body.querySelector('svg[class*="size-4"]')
       expect(deleteIcon).toBeInTheDocument()
     })
 
@@ -397,7 +397,7 @@ describe('SecretKeyModal', () => {
     it('should have delete button visible for managers', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      const deleteIcon = document.body.querySelector('svg[class*="h-4"][class*="w-4"]')
+      const deleteIcon = document.body.querySelector('svg[class*="size-4"]')
       const deleteButton = deleteIcon?.closest('button')
       expect(deleteButton).toBeInTheDocument()
     })

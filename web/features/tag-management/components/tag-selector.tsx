@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { isCreateTagOption } from './tag-combobox-item'
-import { TagPanel } from './tag-panel'
+import { TagSearchContent } from './tag-search-content'
 import { TagTrigger } from './tag-trigger'
 
 const TAG_COMBOBOX_FILTER: NonNullable<ComboboxRootProps<TagComboboxItem, true>['filter']> = (tag, query) => tag.name.includes(query)
@@ -214,8 +214,7 @@ export const TagSelector = ({
       <ComboboxTrigger
         aria-label={triggerLabel}
         className={cn(
-          open ? 'bg-state-base-hover' : 'bg-transparent',
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-open:bg-state-base-hover data-open:hover:bg-state-base-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
         )}
         icon={false}
       >
@@ -230,7 +229,7 @@ export const TagSelector = ({
         popupProps={popupProps}
         popupClassName={cn('w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]', popupClassName)}
       >
-        <TagPanel
+        <TagSearchContent
           type={type}
           inputValue={inputValue}
           onInputValueChange={setInputValue}

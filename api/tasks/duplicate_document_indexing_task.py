@@ -137,7 +137,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     select(DocumentSegment).where(DocumentSegment.document_id == document.id)
                 ).all()
                 if segments:
-                    index_node_ids = [segment.index_node_id for segment in segments]
+                    index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
                     # delete from vector index
                     index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)

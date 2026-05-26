@@ -543,8 +543,8 @@ class TestWebhookService:
             "bad_file": MagicMock(filename="test.bad", content_type="text/plain"),
         }
 
-        files["good_file"].read.return_value = b"content"
-        files["bad_file"].read.side_effect = Exception("Read error")
+        files["good_file"].stream.read.return_value = b"content"
+        files["bad_file"].stream.read.side_effect = Exception("Read error")
 
         webhook_trigger = MagicMock()
         webhook_trigger.tenant_id = "test_tenant"

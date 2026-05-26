@@ -84,18 +84,6 @@ vi.mock('@/app/components/base/app-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: {
-    onSelect: (payload: { type: 'image', url: string, fileId: string }) => void
-    onClose: () => void
-  }) => (
-    <div data-testid="app-icon-picker">
-      <button onClick={() => onSelect({ type: 'image', url: 'https://example.com/icon.png', fileId: 'file-id-1' })}>select-app-icon</button>
-      <button onClick={onClose}>close-app-icon-picker</button>
-    </div>
-  ),
-}))
-
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: 'app-123',
   name: 'Demo App',
@@ -273,6 +261,15 @@ describe('SwitchAppModal', () => {
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
+    it('should call onClose when close button is clicked', async () => {
+      const user = userEvent.setup()
+      const { onClose } = renderComponent()
+
+      await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
       // Arrange
@@ -306,17 +303,23 @@ describe('SwitchAppModal', () => {
       mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-003' })
 
       await user.click(screen.getByText('open-icon-picker'))
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
 
-      await user.click(screen.getByText('select-app-icon'))
+      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       await waitFor(() => {
         expect(mockSwitchApp).toHaveBeenCalledWith(expect.objectContaining({
           appID: appDetail.id,
-          icon_type: 'image',
-          icon: 'file-id-1',
-          icon_background: undefined,
+          icon_type: 'emoji',
+          icon: '🚀',
+          icon_background: '#E4FBCC',
         }))
       })
     })
@@ -326,9 +329,14 @@ describe('SwitchAppModal', () => {
       renderComponent()
 
       await user.click(screen.getByText('open-icon-picker'))
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
-      await user.click(screen.getByText('close-app-icon-picker'))
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
