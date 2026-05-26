@@ -8,10 +8,26 @@ from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
 
 
+class PluginParameterShowOnCondition(BaseModel):
+    """
+    YAML ``show_on`` entry: AND-joined sibling parameter visibility.
+
+    The field (or select option) is shown only when every listed sibling's
+    configured value equals the given string literal.
+    """
+
+    variable: str = Field(..., description="Sibling parameter name to read for comparison")
+    value: str = Field(..., description="Expected value as a string (YAML literal)")
+
+
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
     icon: str | None = Field(default=None, description="The icon of the option, can be a url or a base64 encoded image")
+    show_on: list[PluginParameterShowOnCondition] = Field(
+        default_factory=list,
+        description="If non-empty, this option is visible only when sibling values match every condition",
+    )
 
     @field_validator("value", mode="before")
     @classmethod
@@ -80,6 +96,10 @@ class PluginParameter(BaseModel):
     min: Union[float, int] | None = None
     max: Union[float, int] | None = None
     precision: int | None = None
+    show_on: list[PluginParameterShowOnCondition] = Field(
+        default_factory=list,
+        description="If non-empty, this parameter is visible only when sibling values match every condition",
+    )
     options: list[PluginParameterOption] = Field(default_factory=list)
 
     @field_validator("options", mode="before")
