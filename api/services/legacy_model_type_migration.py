@@ -1896,6 +1896,9 @@ class Migration:
             stmt_winner = stmt_winner.with_for_update()
         winner_lb_rows = session.execute(stmt_winner).scalars().all()
 
+        # Key includes model_name because a credential can serve multiple models
+        # (e.g., gpt-4o and gpt-4o-mini) — LB rows for different models under the
+        # same credential are NOT duplicates and must not be deleted.
         winner_keys: set[tuple[str, str, str]] = {
             (str(r.provider_name), str(r.model_name), str(r.model_type))
             for r in winner_lb_rows
