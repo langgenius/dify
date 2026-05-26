@@ -33,7 +33,7 @@ from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account
-from models.model import AppMode
+from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -84,7 +84,7 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model):
+    def post(self, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -131,7 +131,7 @@ class CompletionMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model, task_id: str):
+    def post(self, app_model: App, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 
@@ -159,7 +159,7 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args_model = ChatMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -212,7 +212,7 @@ class ChatMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model, task_id: str):
+    def post(self, app_model: App, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 

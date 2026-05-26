@@ -33,7 +33,7 @@ from fields.conversation_fields import (
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
-from models.model import AppMode
+from models.model import App, AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 
@@ -93,7 +93,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         current_user, _ = current_account_with_tenant()
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -165,7 +165,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def get(self, app_model, conversation_id: UUID):
+    def get(self, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
         return ConversationMessageDetailResponse.model_validate(
             _get_conversation(app_model, conversation_id_str), from_attributes=True
@@ -182,7 +182,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def delete(self, app_model, conversation_id: UUID):
+    def delete(self, app_model: App, conversation_id: UUID):
         current_user, _ = current_account_with_tenant()
         conversation_id_str = str(conversation_id)
 
@@ -207,7 +207,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         current_user, _ = current_account_with_tenant()
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -318,7 +318,7 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model, conversation_id: UUID):
+    def get(self, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
         return ConversationDetailResponse.model_validate(
             _get_conversation(app_model, conversation_id_str), from_attributes=True
@@ -335,7 +335,7 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model, conversation_id: UUID):
+    def delete(self, app_model: App, conversation_id: UUID):
         current_user, _ = current_account_with_tenant()
         conversation_id_str = str(conversation_id)
 
