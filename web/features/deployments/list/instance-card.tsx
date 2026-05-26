@@ -394,10 +394,11 @@ export function InstanceCard({ app }: {
         Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
     : t('card.notDeployed')
+  const releaseHistoryIsLoading = releaseHistoryQuery.isLoading
   const statusIsLoading = environmentDeploymentsQuery.isLoading || (!activeDeploymentRows.length && releaseHistoryQuery.isLoading)
   const statusHasError = environmentDeploymentsQuery.isError || releaseHistoryQuery.isError
   const showDeployAction = !statusIsLoading && !statusHasError && hasRelease && activeDeploymentRows.length === 0
-  const showFooterCreateReleaseAction = !statusIsLoading && !statusHasError && !hasRelease
+  const showFooterCreateReleaseAction = !releaseHistoryIsLoading && !statusIsLoading && !statusHasError && !hasRelease
 
   return (
     <div
