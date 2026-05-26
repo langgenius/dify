@@ -6,8 +6,8 @@ from mimetypes import guess_extension
 from typing import TYPE_CHECKING, Any, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
-from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
@@ -278,7 +278,7 @@ class AppRunner:
         message_id: str | None = None,
         user_id: str | None = None,
         tenant_id: str | None = None,
-        ):
+    ):
         """
         Handle invoke result
         :param invoke_result: invoke result
