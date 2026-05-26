@@ -196,6 +196,7 @@ const ApiKeyModal = ({
             memberList={memberList}
             onChange={v => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
+            hidePartialMembers
           />
         </div>
       )}

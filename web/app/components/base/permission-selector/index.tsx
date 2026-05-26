@@ -26,6 +26,12 @@ type PermissionSelectorProps = {
   onMemberSelect: (v: string[]) => void
   /** i18n namespace for label strings (defaults to datasetSettings for backward compat) */
   i18nNamespace?: string
+  /**
+   * Hide the "Partial members" option. Useful for surfaces (e.g. plugin
+   * credential creation) where partial-member access is delegated to RBAC
+   * and the picker should only expose only_me / all_team_members.
+   */
+  hidePartialMembers?: boolean
 }
 
 const PermissionSelector = ({
@@ -36,6 +42,7 @@ const PermissionSelector = ({
   onChange,
   onMemberSelect,
   i18nNamespace = 'datasetSettings',
+  hidePartialMembers = false,
 }: PermissionSelectorProps) => {
   const { t } = useTranslation()
   const userProfile = useAppContextWithSelector(state => state.userProfile)
@@ -203,18 +210,20 @@ const PermissionSelector = ({
               isSelected={isAllTeamMembers}
             />
             {/* Partial members */}
-            <Item
-              leftIcon={(
-                <div className="flex size-6 shrink-0 items-center justify-center">
-                  <RiLock2Line className="size-4 text-text-secondary" />
-                </div>
-              )}
-              text={t('form.permissionsInvitedMembers', { ns: i18nNamespace })}
-              onClick={onSelectPartialMembers}
-              isSelected={isPartialMembers}
-            />
+            {!hidePartialMembers && (
+              <Item
+                leftIcon={(
+                  <div className="flex size-6 shrink-0 items-center justify-center">
+                    <RiLock2Line className="size-4 text-text-secondary" />
+                  </div>
+                )}
+                text={t('form.permissionsInvitedMembers', { ns: i18nNamespace })}
+                onClick={onSelectPartialMembers}
+                isSelected={isPartialMembers}
+              />
+            )}
           </div>
-          {isPartialMembers && (
+          {!hidePartialMembers && isPartialMembers && (
             <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pb-1 pl-1 pr-1">
               <div className="sticky left-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                 <Input
