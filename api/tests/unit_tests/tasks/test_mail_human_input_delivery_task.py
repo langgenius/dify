@@ -54,7 +54,7 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
     monkeypatch.setattr(
         task_module.FeatureService,
         "get_features",
-        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=True),
+        lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
     )
     jobs: Sequence[task_module._EmailDeliveryJob] = [_build_job(recipient_count=2)]
     monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: jobs)
@@ -78,7 +78,7 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(monkeypatch
     monkeypatch.setattr(
         task_module.FeatureService,
         "get_features",
-        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=False),
+        lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=False),
     )
     monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [])
 
@@ -109,7 +109,7 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
     monkeypatch.setattr(
         task_module.FeatureService,
         "get_features",
-        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=True),
+        lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
     )
     monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [job])
     monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: variable_pool)
@@ -142,7 +142,7 @@ def test_dispatch_human_input_email_task_sanitizes_subject(
     monkeypatch.setattr(
         task_module.FeatureService,
         "get_features",
-        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=True),
+        lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
     )
     monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [job])
     monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: None)
