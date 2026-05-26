@@ -607,7 +607,7 @@ class AppApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @get_app_model(mode=None)
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get app detail"""
         current_user, current_tenant_id = current_account_with_tenant()
         app_service = AppService()
@@ -616,7 +616,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode
+            app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
         if dify_config.RBAC_ENABLED:
             app_access_matrix = enterprise_rbac_service.RBACService.AppAccess.matrix(
@@ -643,7 +643,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def put(self, app_model):
+    def put(self, app_model: App):
         """Update app"""
         args = UpdateAppPayload.model_validate(console_ns.payload)
 
@@ -672,7 +672,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model):
+    def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
         app_service.delete_app(app_model)
@@ -693,7 +693,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, current_tenant_id = current_account_with_tenant()
@@ -765,7 +765,7 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -787,7 +787,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Publish app to Creators Platform"""
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
@@ -818,7 +818,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -840,7 +840,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
@@ -867,7 +867,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -889,7 +889,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model(mode=None)
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -930,7 +930,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model
-    def post(self, app_model):
+    def post(self, app_model: App):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
