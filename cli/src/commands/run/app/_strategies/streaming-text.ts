@@ -1,8 +1,8 @@
 import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
+import { handle } from '../../../../sys/index.js'
 import { renderHitlHint, renderHitlOutput } from '../hitl-render.js'
 import { decodeStreamError, HitlPauseError } from '../sse-collector.js'
-import { handle } from '../../../../sys/index.js'
 
 export class StreamingTextStrategy implements RunStrategy {
   async execute(ctx: RunContext): Promise<void> {

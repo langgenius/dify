@@ -1,7 +1,6 @@
 import type { Store } from '../store/store.js'
 import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '../types/app-meta.js'
-import { CACHE_APP_INFO, cachePath } from '../store/manager.js'
-import { YamlStore } from '../store/store.js'
+import { CACHE_APP_INFO, getCache } from '../store/manager.js'
 import { FieldInfo, FieldInputSchema, FieldParameters } from '../types/app-meta.js'
 
 export const APP_INFO_TTL_MS = 60 * 60 * 1000
@@ -35,25 +34,25 @@ type State = {
 }
 
 export type AppInfoCacheOptions = {
-  readonly configDir: string
+  readonly store?: Store
   readonly ttlMs?: number
   readonly now?: () => Date
 }
 
-export async function loadAppInfoCache(opts: AppInfoCacheOptions): Promise<AppInfoCache> {
-  const path = cachePath(opts.configDir, CACHE_APP_INFO)
+export async function loadAppInfoCache(opts: AppInfoCacheOptions = {}): Promise<AppInfoCache> {
+  const store = opts.store ?? getCache(CACHE_APP_INFO)
   const ttlMs = opts.ttlMs ?? APP_INFO_TTL_MS
-  const state: State = { entries: readEntries(new YamlStore(path)) }
+  const state: State = { entries: readEntries(store) }
   return {
     get: (host, appId) => state.entries.get(key(host, appId)),
     set: async (host, appId, meta) => {
       const record: AppMetaCacheRecord = { meta, fetchedAt: (opts.now ?? (() => new Date()))().toISOString() }
       state.entries.set(key(host, appId), record)
-      writeEntries(new YamlStore(path), state.entries)
+      writeEntries(store, state.entries)
     },
     delete: async (host, appId) => {
       state.entries.delete(key(host, appId))
-      writeEntries(new YamlStore(path), state.entries)
+      writeEntries(store, state.entries)
     },
     isFresh: (record, now) => {
       const t = (now ?? new Date()).getTime() - new Date(record.fetchedAt).getTime()

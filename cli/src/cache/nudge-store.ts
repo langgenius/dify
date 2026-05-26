@@ -1,6 +1,5 @@
 import type { Store } from '../store/store.js'
-import { CACHE_NUDGE, cachePath } from '../store/manager.js'
-import { YamlStore } from '../store/store.js'
+import { CACHE_NUDGE, getCache } from '../store/manager.js'
 
 export const WARN_INTERVAL_MS = 24 * 60 * 60 * 1000
 
@@ -15,16 +14,16 @@ export type NudgeStore = {
 }
 
 export type NudgeStoreOptions = {
-  readonly configDir: string
+  readonly store?: Store
   readonly now?: () => Date
   readonly intervalMs?: number
 }
 
-export async function loadNudgeStore(opts: NudgeStoreOptions): Promise<NudgeStore> {
-  const path = cachePath(opts.configDir, CACHE_NUDGE)
+export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<NudgeStore> {
+  const store = opts.store ?? getCache(CACHE_NUDGE)
   const intervalMs = opts.intervalMs ?? WARN_INTERVAL_MS
   const clock = opts.now ?? (() => new Date())
-  const memory = readWarned(new YamlStore(path))
+  const memory = readWarned(store)
 
   return {
     canWarn: (host, now) => {
@@ -40,9 +39,9 @@ export async function loadNudgeStore(opts: NudgeStoreOptions): Promise<NudgeStor
       // Re-read disk inside the write cycle so concurrent processes touching
       // different hosts don't clobber each other's stamps. Same-host writers
       // converge on a near-identical timestamp, so order doesn't matter.
-      const onDisk = readWarned(new YamlStore(path))
+      const onDisk = readWarned(store)
       onDisk.set(host, stamp)
-      writeWarned(new YamlStore(path), onDisk)
+      writeWarned(store, onDisk)
     },
   }
 }

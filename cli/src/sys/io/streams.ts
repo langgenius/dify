@@ -18,7 +18,7 @@ export function nullStreams(): IOStreams {
 export function realStreams(outputFormat = ''): IOStreams {
   return {
     outputFormat,
-    ...io()
+    ...io(),
   }
 }
 

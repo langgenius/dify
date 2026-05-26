@@ -7,13 +7,13 @@ import { META_PROBE_TIMEOUT_MS, MetaClient } from '../../api/meta.js'
 import { loadHosts } from '../../auth/hosts.js'
 import { loadAppInfoCache } from '../../cache/app-info.js'
 import { loadNudgeStore } from '../../cache/nudge-store.js'
+import { getEnv } from '../../env/registry.js'
 import { BaseError } from '../../errors/base.js'
 import { ErrorCode } from '../../errors/codes.js'
 import { formatErrorForCli } from '../../errors/format.js'
-import { getEnv } from '../../env/registry.js'
 import { createClient } from '../../http/client.js'
-import { realStreams } from '../../sys/io/streams'
 import { resolveConfigDir } from '../../store/dir.js'
+import { realStreams } from '../../sys/io/streams'
 import { hostWithScheme } from '../../util/host.js'
 import { versionInfo } from '../../version/info.js'
 import { maybeNudgeCompat } from '../../version/nudge.js'
@@ -57,9 +57,9 @@ export async function buildAuthedContext(
   })
   const http = createClient({ host, bearer: bundle.tokens.bearer, retryAttempts })
 
-  const cache = opts.withCache === true ? await loadAppInfoCache({ configDir }) : undefined
+  const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
 
-  await runCompatNudge({ configDir, host, io })
+  await runCompatNudge({ host, io })
 
   return { bundle, http, host, io, configDir, cache }
 }
@@ -67,12 +67,11 @@ export async function buildAuthedContext(
 // Best-effort nudge: never throws, never blocks. Lives here so every authed
 // command flows through it without per-command wiring.
 async function runCompatNudge(opts: {
-  readonly configDir: string
   readonly host: string
   readonly io: IOStreams
 }): Promise<void> {
   try {
-    const store = await loadNudgeStore({ configDir: opts.configDir })
+    const store = await loadNudgeStore()
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {

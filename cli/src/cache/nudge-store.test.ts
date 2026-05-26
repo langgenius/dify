@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import yaml from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CACHE_NUDGE, cachePath } from '../store/manager.js'
+import { YamlStore } from '../store/store.js'
 import { loadNudgeStore, WARN_INTERVAL_MS } from './nudge-store.js'
 
 function nudgeStorePath(dir: string): string {
@@ -22,13 +23,13 @@ describe('NudgeStore', () => {
   })
 
   it('canWarn=true when no prior record exists', async () => {
-    const store = await loadNudgeStore({ configDir: dir })
+    const store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)) })
     expect(store.canWarn(HOST)).toBe(true)
   })
 
   it('canWarn=false within the silence window, true past it', async () => {
     const t0 = new Date('2026-05-19T12:00:00.000Z')
-    const store = await loadNudgeStore({ configDir: dir, now: () => t0 })
+    const store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t0 })
     await store.markWarned(HOST)
     expect(store.canWarn(HOST, new Date('2026-05-19T18:00:00.000Z'))).toBe(false)
     expect(store.canWarn(HOST, new Date('2026-05-20T12:00:00.000Z'))).toBe(true)
@@ -36,7 +37,7 @@ describe('NudgeStore', () => {
 
   it('canWarn clamps negative elapsed under clock skew (treats as still in window)', async () => {
     const t0 = new Date('2026-05-19T12:00:00.000Z')
-    const store = await loadNudgeStore({ configDir: dir, now: () => t0 })
+    const store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t0 })
     await store.markWarned(HOST)
     const pastClock = new Date('2026-05-19T11:00:00.000Z') // clock moved backwards 1h
     expect(store.canWarn(HOST, pastClock)).toBe(false)
@@ -44,22 +45,22 @@ describe('NudgeStore', () => {
 
   it('markWarned persists across store reloads', async () => {
     const t0 = new Date('2026-05-19T12:00:00.000Z')
-    const s1 = await loadNudgeStore({ configDir: dir, now: () => t0 })
+    const s1 = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t0 })
     await s1.markWarned(HOST)
-    const s2 = await loadNudgeStore({ configDir: dir, now: () => t0 })
+    const s2 = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t0 })
     expect(s2.canWarn(HOST)).toBe(false)
   })
 
   it('treats a corrupt cache file as empty', async () => {
     const path = nudgeStorePath(dir)
     await writeCacheFile(path, '{ not valid json')
-    const store = await loadNudgeStore({ configDir: dir })
+    const store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)) })
     expect(store.canWarn(HOST)).toBe(true)
   })
 
   it('writes ISO timestamps under warned/<host> on disk', async () => {
     const t = new Date('2026-05-19T12:00:00.000Z')
-    const store = await loadNudgeStore({ configDir: dir, now: () => t })
+    const store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t })
     await store.markWarned(HOST)
     const raw = await readFile(nudgeStorePath(dir), 'utf8')
     const parsed = yaml.load(raw) as Record<string, unknown>
@@ -71,11 +72,11 @@ describe('NudgeStore', () => {
     // warns about a different host. Without merge-on-write the second writer
     // would clobber the first.
     const t = new Date('2026-05-19T12:00:00.000Z')
-    const a = await loadNudgeStore({ configDir: dir, now: () => t })
-    const b = await loadNudgeStore({ configDir: dir, now: () => t })
+    const a = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t })
+    const b = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t })
     await a.markWarned('https://a.example')
     await b.markWarned('https://b.example')
-    const reread = await loadNudgeStore({ configDir: dir, now: () => t })
+    const reread = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => t })
     expect(reread.canWarn('https://a.example')).toBe(false)
     expect(reread.canWarn('https://b.example')).toBe(false)
   })

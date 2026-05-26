@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { loadConfig } from '../config/config-loader'
 import { emptyConfig, FILE_NAME } from '../config/schema'
+import { platform } from '../sys'
 import { saveConfig } from './config-writer'
 import { YamlStore } from './store'
 
@@ -48,7 +49,7 @@ describe('saveConfig', () => {
   })
 
   it('writes file with mode 0o600 (POSIX)', async () => {
-    if (process.platform === 'win32')
+    if (platform() === 'win32')
       return
     saveConfig(makeStore(dir), emptyConfig())
     const s = await stat(join(dir, FILE_NAME))
@@ -63,7 +64,7 @@ describe('saveConfig', () => {
   })
 
   it('creates parent dir at 0o700 if absent', async () => {
-    if (process.platform === 'win32')
+    if (platform() === 'win32')
       return
     const nested = join(dir, 'nested', 'sub')
     saveConfig(makeStore(nested), emptyConfig())

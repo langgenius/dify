@@ -2,6 +2,10 @@ export function getEnv(name: string): string | undefined {
   return process.env[name]
 }
 
+export function env(): NodeJS.ProcessEnv {
+  return process.env
+}
+
 export function processExit(code: number): never {
   return process.exit(code) as never
 }
@@ -16,12 +20,16 @@ export function io() {
   }
 }
 
-export function handle(sig: string, handler: ()=>void) {
+export function handle(sig: string, handler: () => void) {
   process.once('SIGINT', handler)
 }
 
-export function platform(): string {
+export function platform(): NodeJS.Platform {
   return process.platform
+}
+
+export function arch(): string {
+  return process.arch
 }
 
 export function pid(): number {
