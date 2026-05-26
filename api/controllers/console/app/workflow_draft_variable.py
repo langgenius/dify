@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypedDict
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
@@ -345,14 +346,15 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, app_model: App, variable_id: str):
+    def get(self, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
         return variable
 
@@ -363,7 +365,7 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, app_model: App, variable_id: str):
+    def patch(self, app_model: App, variable_id: UUID):
         # Request payload for file types:
         #
         # Local File:
@@ -390,10 +392,11 @@ class VariableApi(Resource):
         )
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
 
         new_name = args_model.name
@@ -434,14 +437,15 @@ class VariableApi(Resource):
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def delete(self, app_model: App, variable_id: str):
+    def delete(self, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
         draft_var_srv.delete_variable(variable)
         db.session.commit()
@@ -457,7 +461,7 @@ class VariableResetApi(Resource):
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def put(self, app_model: App, variable_id: str):
+    def put(self, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -468,10 +472,11 @@ class VariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, app_id={app_model.id}",
             )
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)

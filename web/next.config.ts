@@ -34,6 +34,17 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // Deny framing on device-flow routes — no trusted embedder exists.
+  async headers() {
+    const antiFrame = [
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'Content-Security-Policy', value: 'frame-ancestors \'none\'' },
+    ]
+    return [
+      { source: '/device', headers: antiFrame },
+      { source: '/device/:path*', headers: antiFrame },
+    ]
+  },
   output: 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },

@@ -73,6 +73,10 @@
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
     },
+    "./progress": {
+      "types": "./src/progress/index.tsx",
+      "import": "./src/progress/index.tsx"
+    },
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
@@ -104,6 +108,10 @@
     "./select": {
       "types": "./src/select/index.tsx",
       "import": "./src/select/index.tsx"
+    },
+    "./status-dot": {
+      "types": "./src/status-dot/index.tsx",
+      "import": "./src/status-dot/index.tsx"
     },
     "./slider": {
       "types": "./src/slider/index.tsx",
@@ -164,6 +172,7 @@
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
     "playwright": "catalog:",

@@ -136,7 +136,7 @@ class EmailDeliveryTestHandler:
     ) -> DeliveryTestResult:
         if not isinstance(method, EmailDeliveryMethod):
             raise DeliveryTestUnsupportedError("Delivery method does not support test send.")
-        features = FeatureService.get_features(context.tenant_id)
+        features = FeatureService.get_features(context.tenant_id, exclude_vector_space=True)
         if not features.human_input_email_delivery_enabled:
             raise DeliveryTestError("Email delivery is not available for current plan.")
         if not mail.is_inited():

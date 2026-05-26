@@ -265,6 +265,34 @@ class TestCloudEditionBillingResourceCheck:
 
         # Assert
         assert result == "member_added"
+        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    def test_loads_vector_space_when_checking_vector_space_limit(
+        self, mock_get_features, mock_validate_token, app: Flask
+    ):
+        """Test vector-space resource checks keep vector-space in feature payload."""
+        # Arrange
+        mock_validate_token.return_value = Mock(tenant_id="tenant123")
+
+        mock_features = Mock()
+        mock_features.billing.enabled = True
+        mock_features.vector_space.limit = 10
+        mock_features.vector_space.size = 5
+        mock_get_features.return_value = mock_features
+
+        @cloud_edition_billing_resource_check("vector_space", "dataset")
+        def add_segment():
+            return "segment_added"
+
+        # Act
+        with app.test_request_context("/", method="GET"):
+            result = add_segment()
+
+        # Assert
+        assert result == "segment_added"
+        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=False)
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")

@@ -77,7 +77,55 @@ register_response_schema_models(console_ns, SimpleResultDataResponse, Verificati
 def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
     if role != TenantAccountRole.DATASET_OPERATOR:
         return True
-    return FeatureService.get_features(tenant_id=tenant_id).dataset_operator_enabled
+    return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
+
+
+def _normalize_invitee_emails(emails: list[str]) -> list[str]:
+    return list(dict.fromkeys(email.lower() for email in emails))
+
+
+def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
+    new_member_count = 0
+    for email in emails:
+        account = AccountService.get_account_by_email_with_case_fallback(email)
+        if not account:
+            new_member_count += 1
+            continue
+
+        exists = db.session.scalar(
+            select(TenantAccountJoin.id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == account.id)
+            .limit(1)
+        )
+        if not exists:
+            new_member_count += 1
+
+    return new_member_count
+
+
+def _count_current_members(tenant_id: str) -> int:
+    return (
+        db.session.scalar(select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.tenant_id == tenant_id)) or 0
+    )
+
+
+def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
+    if new_member_count <= 0:
+        return
+
+    features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
+
+    if dify_config.ENTERPRISE_ENABLED:
+        workspace_members = features.workspace_members
+        if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
+            raise WorkspaceMembersLimitExceeded()
+        return
+
+    if dify_config.BILLING_ENABLED and features.billing.enabled is True:
+        members = features.members
+        current_member_count = _count_current_members(tenant_id)
+        if 0 < members.limit < current_member_count + new_member_count:
+            raise WorkspaceMembersLimitExceeded()
 
 
 def _normalize_invitee_emails(emails: list[str]) -> list[str]:

@@ -99,6 +99,13 @@ def _node(*, scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCE
         },
         call_depth=0,
     )
+    from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+    from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
+
+    class _AlwaysAllowFileValidator:
+        def is_owned_by_tenant(self, *, file_id: str, tenant_id: str) -> bool:
+            return True
+
     return DifyAgentNode(
         node_id="agent-node",
         data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
@@ -109,6 +116,8 @@ def _node(*, scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCE
         agent_backend_client=FakeAgentBackendRunClient(scenario=scenario),
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
+        type_checker=PerOutputTypeChecker(file_validator=_AlwaysAllowFileValidator()),
+        failure_orchestrator=OutputFailureOrchestrator(),
     )
 
 

@@ -94,7 +94,7 @@ class TestDuplicateDocumentIndexingTaskProxy:
         assert features1 == mock_features
         assert features2 == mock_features
         assert features1 is features2  # Should be the same instance due to caching
-        mock_feature_service.get_features.assert_called_once_with("tenant-123")
+        mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
     @patch(
         "services.document_indexing_proxy.duplicate_document_indexing_task_proxy.normal_duplicate_document_indexing_task"

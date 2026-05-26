@@ -472,6 +472,9 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
+            from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+            from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
 
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
@@ -486,6 +489,11 @@ class DifyNodeFactory(NodeFactory):
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 "output_adapter": WorkflowAgentOutputAdapter(),
+                # Stage 4 §5/§7: per-output validation + failure orchestration. The
+                # tenant validator queries upload_files so it stays cheap when
+                # outputs contain no file refs.
+                "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                "failure_orchestrator": OutputFailureOrchestrator(),
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,

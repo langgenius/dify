@@ -166,10 +166,10 @@ class TenantListApi(Resource):
                 if tenant_plan:
                     plan = tenant_plan["plan"] or CloudPlan.SANDBOX
                 else:
-                    features = FeatureService.get_features(tenant.id)
+                    features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
                     plan = features.billing.subscription.plan or CloudPlan.SANDBOX
             elif not is_enterprise_only:
-                features = FeatureService.get_features(tenant.id)
+                features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
                 plan = features.billing.subscription.plan or CloudPlan.SANDBOX
 
             # Create a dictionary with tenant attributes

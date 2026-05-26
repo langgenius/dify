@@ -170,6 +170,16 @@ class _AutomaticProcessRule(BaseModel):
     mode: Literal[ProcessRuleMode.AUTOMATIC]
     summary_index_setting: _SummaryIndexSetting | None = None
 
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
 
 class _CustomProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -178,6 +188,16 @@ class _CustomProcessRule(BaseModel):
     rules: _EstimateRules
     summary_index_setting: _SummaryIndexSetting | None = None
 
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
 
 class _HierarchicalProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -185,6 +205,16 @@ class _HierarchicalProcessRule(BaseModel):
     mode: Literal[ProcessRuleMode.HIERARCHICAL]
     rules: _EstimateRules
     summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
 
 
 _EstimateProcessRule = Annotated[
@@ -1295,7 +1325,7 @@ class DatasetService:
     def get_dataset_auto_disable_logs(dataset_id: str) -> AutoDisableLogsDict:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
         if not features.billing.enabled or features.billing.subscription.plan == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
@@ -1977,7 +2007,7 @@ class DocumentService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
 
         if features.billing.enabled:
             if not knowledge_config.original_document_id:
@@ -2768,7 +2798,7 @@ class DocumentService:
         assert current_user.current_tenant_id is not None
         assert knowledge_config.data_source
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
 
         if features.billing.enabled:
             count = 0
