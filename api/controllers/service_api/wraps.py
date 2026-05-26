@@ -140,20 +140,24 @@ def cloud_edition_billing_resource_check[**P, R](
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id)
+            features = FeatureService.get_features(
+                api_token.tenant_id,
+                exclude_vector_space=resource != "vector_space",
+            )
 
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
-                vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == "members" and 0 < members.limit <= members.size:
                     raise Forbidden("The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     raise Forbidden("The number of apps has reached the limit of your subscription.")
-                elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
+                elif resource == "vector_space":
+                    vector_space = features.vector_space
+                    if 0 < vector_space.limit <= vector_space.size:
+                        raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     raise Forbidden("The number of documents has reached the limit of your subscription.")
                 else:
@@ -174,7 +178,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id)
+            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:

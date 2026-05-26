@@ -36,7 +36,7 @@ class TestWorkspacePermissionHelper:
         # Should not raise
         check_workspace_owner_transfer_permission("test-workspace-id")
 
-        mock_feature_service.get_features.assert_called_once_with("test-workspace-id")
+        mock_feature_service.get_features.assert_called_once_with("test-workspace-id", exclude_vector_space=True)
 
     @patch("libs.workspace_permission.EnterpriseService")
     @patch("libs.workspace_permission.dify_config")

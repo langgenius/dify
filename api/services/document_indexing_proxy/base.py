@@ -41,7 +41,7 @@ class DocumentTaskProxyBase(ABC):
 
     @cached_property
     def features(self):
-        return FeatureService.get_features(self._tenant_id)
+        return FeatureService.get_features(self._tenant_id, exclude_vector_space=True)
 
     @abstractmethod
     def _send_to_direct_queue(self, task_func: Callable[..., Any]):
