@@ -55,8 +55,6 @@
   "permissionSet.permissions": "権限",
   "role.addRole": "+ ロールを追加",
   "role.created": "ロールを作成しました",
-  "role.defaultGlobal.description": "ワークスペースに適用されるデフォルトのグローバル権限スキーム",
-  "role.defaultGlobal.title": "デフォルトグローバル",
   "role.deleteDescription": "このロールは完全に削除され、それを使用するメンバーまたはアクセスルールから削除されます。",
   "role.deleteTitle": "「{{name}}」を削除しますか？",
   "role.deleted": "ロールを削除しました",
@@ -77,5 +75,7 @@
   "role.noDescription": "説明なし",
   "role.noMatchingRoles": "一致するロールが見つかりません",
   "role.searchPlaceholder": "ロールを検索...",
-  "role.updated": "ロールを更新しました"
+  "role.updated": "ロールを更新しました",
+  "role.workspaceRoles.description": "ロールを作成し、このワークスペースで各ロールが実行できる操作を定義します。",
+  "role.workspaceRoles.title": "ワークスペースロール"
 }

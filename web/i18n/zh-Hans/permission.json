@@ -55,8 +55,6 @@
   "permissionSet.permissions": "权限",
   "role.addRole": "+ 添加角色",
   "role.created": "角色已创建",
-  "role.defaultGlobal.description": "应用于工作空间的默认全局权限方案",
-  "role.defaultGlobal.title": "默认全局",
   "role.deleteDescription": "此角色将被永久删除，并从使用它的成员或访问规则中移除。",
   "role.deleteTitle": "删除“{{name}}”？",
   "role.deleted": "角色已删除",
@@ -77,5 +75,7 @@
   "role.noDescription": "无描述",
   "role.noMatchingRoles": "未找到匹配角色",
   "role.searchPlaceholder": "搜索角色...",
-  "role.updated": "角色已更新"
+  "role.updated": "角色已更新",
+  "role.workspaceRoles.description": "创建角色并定义每个角色在此工作空间中可以执行的操作。",
+  "role.workspaceRoles.title": "工作空间角色"
 }
