@@ -1,0 +1,80 @@
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type {
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  RiAddLine,
+} from '@remixicon/react'
+import {
+  memo,
+  useCallback,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import BlockSelector from '@/app/components/workflow/block-selector'
+import {
+  BlockEnum,
+} from '@/app/components/workflow/types'
+import {
+  useAvailableBlocks,
+  useNodesInteractions,
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks/index'
+
+type AddBlockProps = {
+  iterationNodeId: string
+  iterationNodeData: IterationNodeType
+}
+const AddBlock = ({
+  iterationNodeData,
+}: AddBlockProps) => {
+  const { t } = useTranslation()
+  const { nodesReadOnly } = useNodesReadOnly()
+  const { handleNodeAdd } = useNodesInteractions()
+  const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
+
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    handleNodeAdd(
+      {
+        nodeType: type,
+        pluginDefaultValue,
+      },
+      {
+        prevNodeId: iterationNodeData.start_node_id,
+        prevNodeSourceHandle: 'source',
+      },
+    )
+  }, [handleNodeAdd, iterationNodeData.start_node_id])
+
+  const renderTriggerElement = useCallback((open: boolean) => {
+    return (
+      <div className={cn(
+        'relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
+        `${nodesReadOnly && 'cursor-not-allowed! bg-components-button-secondary-bg-disabled'}`,
+        open && 'bg-components-button-secondary-bg-hover',
+      )}
+      >
+        <RiAddLine className="mr-1 size-4" />
+        {t('common.addBlock', { ns: 'workflow' })}
+      </div>
+    )
+  }, [nodesReadOnly, t])
+
+  return (
+    <div className="absolute top-7 left-14 z-10 flex h-8 items-center">
+      <div className="group/insert relative h-0.5 w-16 bg-gray-300">
+        <div className="absolute top-1/2 right-0 h-2 w-0.5 -translate-y-1/2 bg-primary-500"></div>
+      </div>
+      <BlockSelector
+        disabled={nodesReadOnly}
+        onSelect={handleSelect}
+        trigger={renderTriggerElement}
+        triggerInnerClassName="inline-flex"
+        popupClassName="min-w-[256px]!"
+        availableBlocksTypes={availableNextBlocks}
+      />
+    </div>
+  )
+}
+
+export default memo(AddBlock)

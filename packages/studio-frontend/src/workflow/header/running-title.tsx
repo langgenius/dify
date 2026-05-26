@@ -1,0 +1,25 @@
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
+import { useIsChatMode } from '@/app/components/workflow/hooks/index'
+import { useStore } from '@/app/components/workflow/store/index'
+import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
+
+const RunningTitle = () => {
+  const { t } = useTranslation()
+  const isChatMode = useIsChatMode()
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+
+  return (
+    <div className="flex h-[18px] items-center text-xs text-gray-500">
+      <ClockPlay className="mr-1 size-3 text-gray-500" />
+      <span>{isChatMode ? `Test Chat${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}` : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}</span>
+      <span className="mx-1">·</span>
+      <span className="ml-1 flex h-[18px] items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-[10px] font-semibold text-indigo-600 uppercase">
+        {t('common.viewOnly', { ns: 'workflow' })}
+      </span>
+    </div>
+  )
+}
+
+export default memo(RunningTitle)

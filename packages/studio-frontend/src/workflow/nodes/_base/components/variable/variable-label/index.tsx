@@ -1,0 +1,5 @@
+export { default as VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/variable-icon-with-color'
+export { default as VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/variable-label-in-editor'
+export { default as VariableLabelInNode } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/variable-label-in-node'
+export { default as VariableLabelInSelect } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/variable-label-in-select'
+export { default as VariableLabelInText } from '@/app/components/workflow/nodes/_base/components/variable/variable-label/variable-label-in-text'

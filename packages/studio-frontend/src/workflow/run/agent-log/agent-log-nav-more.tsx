@@ -1,0 +1,59 @@
+import type { AgentLogItemWithChildren } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { RiMoreLine } from '@remixicon/react'
+import { useState } from 'react'
+
+type AgentLogNavMoreProps = {
+  options: AgentLogItemWithChildren[]
+  onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
+}
+const AgentLogNavMore = ({
+  options,
+  onShowAgentOrToolLog,
+}: AgentLogNavMoreProps) => {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <DropdownMenu
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <DropdownMenuTrigger
+        render={(
+          <Button
+            className="size-6"
+            variant="ghost-accent"
+          />
+        )}
+      >
+        <RiMoreLine className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-start"
+        sideOffset={2}
+        alignOffset={-54}
+        popupClassName="w-[136px] p-1"
+      >
+        {
+          options.map(option => (
+            <DropdownMenuItem
+              key={option.message_id}
+              className="system-md-regular"
+              onClick={() => onShowAgentOrToolLog(option)}
+            >
+              {option.label}
+            </DropdownMenuItem>
+          ))
+        }
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export default AgentLogNavMore

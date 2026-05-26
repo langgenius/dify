@@ -1,0 +1,41 @@
+import type { NodeTracing } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  RiArrowRightSLine,
+  RiRestartFill,
+} from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+
+type RetryLogTriggerProps = {
+  nodeInfo: NodeTracing
+  onShowRetryResultList: (detail: NodeTracing[]) => void
+}
+const RetryLogTrigger = ({
+  nodeInfo,
+  onShowRetryResultList,
+}: RetryLogTriggerProps) => {
+  const { t } = useTranslation()
+  const { retryDetail } = nodeInfo
+
+  const handleShowRetryResultList = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+    onShowRetryResultList(retryDetail || [])
+  }
+
+  return (
+    <Button
+      className="mb-1 flex w-full items-center justify-between"
+      variant="tertiary"
+      onClick={handleShowRetryResultList}
+    >
+      <div className="flex items-center">
+        <RiRestartFill className="mr-0.5 size-4 shrink-0 text-components-button-tertiary-text" />
+        {t('nodes.common.retry.retries', { ns: 'workflow', num: retryDetail?.length })}
+      </div>
+      <RiArrowRightSLine className="size-4 shrink-0 text-components-button-tertiary-text" />
+    </Button>
+  )
+}
+
+export default RetryLogTrigger

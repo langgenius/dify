@@ -11,6 +11,9 @@
       ],
       "@dify/studio-frontend/*": [
         "../packages/studio-frontend/src/*"
+      ],
+      "@/app/components/workflow/*": [
+        "../packages/studio-frontend/src/workflow/*"
       ]
     },
     "resolveJsonModule": true,

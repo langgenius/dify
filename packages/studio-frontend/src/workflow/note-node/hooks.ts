@@ -1,0 +1,34 @@
+import type { EditorState } from 'lexical'
+import type { NoteTheme } from '@/app/components/workflow/note-node/types'
+import { useCallback } from 'react'
+import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '@/app/components/workflow/hooks/index'
+import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from '@/app/components/workflow/note-node/constants'
+
+export const useNote = (id: string) => {
+  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { saveStateToHistory } = useWorkflowHistory()
+
+  const handleThemeChange = useCallback((theme: NoteTheme) => {
+    handleNodeDataUpdateWithSyncDraft({ id, data: { theme } })
+    saveStateToHistory(WorkflowHistoryEvent.NoteChange, { nodeId: id })
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
+
+  const handleEditorChange = useCallback((editorState: EditorState) => {
+    if (!editorState?.isEmpty())
+      handleNodeDataUpdateWithSyncDraft({ id, data: { text: JSON.stringify(editorState) } })
+    else
+      handleNodeDataUpdateWithSyncDraft({ id, data: { text: '' } })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+
+  const handleShowAuthorChange = useCallback((showAuthor: boolean) => {
+    localStorage.setItem(NOTE_SHOW_AUTHOR_STORAGE_KEY, String(showAuthor))
+    handleNodeDataUpdateWithSyncDraft({ id, data: { showAuthor } })
+    saveStateToHistory(WorkflowHistoryEvent.NoteChange, { nodeId: id })
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
+
+  return {
+    handleThemeChange,
+    handleEditorChange,
+    handleShowAuthorChange,
+  }
+}

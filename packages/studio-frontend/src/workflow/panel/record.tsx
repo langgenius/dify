@@ -1,0 +1,37 @@
+import type { WorkflowRunDetailResponse } from '@/models/log'
+import { memo, useCallback } from 'react'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/index'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/index'
+import Run from '@/app/components/workflow/run/index'
+import { useStore } from '@/app/components/workflow/store/index'
+import { formatWorkflowRunIdentifier } from '@/app/components/workflow/utils/index'
+
+const Record = () => {
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const getWorkflowRunAndTraceUrl = useHooksStore(s => s.getWorkflowRunAndTraceUrl)
+
+  const handleResultCallback = useCallback((res: WorkflowRunDetailResponse) => {
+    const graph = res.graph
+    handleUpdateWorkflowCanvas({
+      nodes: graph.nodes,
+      edges: graph.edges,
+      viewport: graph.viewport || { x: 0, y: 0, zoom: 1 },
+    })
+  }, [handleUpdateWorkflowCanvas])
+
+  return (
+    <div className="flex h-full w-[400px] flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+      <div className="flex items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
+        {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
+      </div>
+      <Run
+        runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
+        tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
+        getResultCallback={handleResultCallback}
+      />
+    </div>
+  )
+}
+
+export default memo(Record)

@@ -1,0 +1,64 @@
+import type { FC } from 'react'
+import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import type { DataSet } from '@/models/datasets'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import AppIcon from '@/app/components/base/app-icon'
+import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
+
+const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
+  data,
+}) => {
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
+  const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+
+  useEffect(() => {
+    if (data.dataset_ids?.length > 0) {
+      const dataSetsWithDetail = data.dataset_ids.reduce<DataSet[]>((acc, id) => {
+        if (datasetsDetail[id])
+          acc.push(datasetsDetail[id])
+        return acc
+      }, [])
+      setSelectedDatasets(dataSetsWithDetail)
+    }
+    else {
+      setSelectedDatasets([])
+    }
+  }, [data.dataset_ids, datasetsDetail])
+
+  if (!selectedDatasets.length)
+    return null
+
+  return (
+    <div className="mb-1 px-3 py-1">
+      <div className="space-y-0.5">
+        {selectedDatasets.map(({ id, name, icon_info }) => {
+          const iconInfo = icon_info || {
+            icon: '📙',
+            icon_type: 'emoji' as const,
+            icon_background: '#FFF4ED',
+            icon_url: '',
+          }
+          return (
+            <div key={id} className="flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1">
+              <AppIcon
+                size="xs"
+                iconType={iconInfo.icon_type}
+                icon={iconInfo.icon}
+                background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
+                imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
+                className="shrink-0"
+              />
+              <div className="w-0 grow truncate system-xs-regular text-text-secondary">
+                {name}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export default React.memo(Node)

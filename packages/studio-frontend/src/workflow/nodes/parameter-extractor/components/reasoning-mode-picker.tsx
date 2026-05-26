@@ -1,0 +1,50 @@
+'use client'
+import type { FC } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { ReasoningModeType } from '@/app/components/workflow/nodes/parameter-extractor/types'
+
+const i18nPrefix = 'nodes.parameterExtractor'
+
+type Props = {
+  type: ReasoningModeType
+  onChange: (type: ReasoningModeType) => void
+}
+
+const ReasoningModePicker: FC<Props> = ({
+  type,
+  onChange,
+}) => {
+  const { t } = useTranslation()
+
+  const handleChange = useCallback((type: ReasoningModeType) => {
+    return () => {
+      onChange(type)
+    }
+  }, [onChange])
+
+  return (
+    <Field
+      title={t(`${i18nPrefix}.reasoningMode`, { ns: 'workflow' })}
+      tooltip={t(`${i18nPrefix}.reasoningModeTip`, { ns: 'workflow' })!}
+    >
+      <div className="grid grid-cols-2 gap-x-1">
+        <OptionCard
+          title={t(`${i18nPrefix}.reasoningModeFunctionToolCalling`, { ns: 'workflow' })}
+          onSelect={handleChange(ReasoningModeType.functionCall)}
+          selected={type === ReasoningModeType.functionCall}
+        />
+        <OptionCard
+          title={t(`${i18nPrefix}.reasoningModePrompt`, { ns: 'workflow' })}
+          selected={type === ReasoningModeType.prompt}
+          onSelect={handleChange(ReasoningModeType.prompt)}
+        />
+      </div>
+    </Field>
+
+  )
+}
+export default React.memo(ReasoningModePicker)

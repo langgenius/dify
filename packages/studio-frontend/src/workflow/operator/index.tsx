@@ -1,0 +1,139 @@
+import type { Node } from 'reactflow'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { MiniMap } from 'reactflow'
+import UndoRedo from '@/app/components/workflow/header/undo-redo'
+import { useStore } from '@/app/components/workflow/store/index'
+import { ControlMode } from '@/app/components/workflow/types'
+import VariableInspectPanel from '@/app/components/workflow/variable-inspect/index'
+import VariableTrigger from '@/app/components/workflow/variable-inspect/trigger'
+import ZoomInOut from '@/app/components/workflow/operator/zoom-in-out'
+
+type OperatorProps = {
+  handleUndo: () => void
+  handleRedo: () => void
+}
+
+const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
+  const bottomPanelRef = useRef<HTMLDivElement>(null)
+  const bottomPanelSizeRef = useRef<{ width?: number, height?: number }>({})
+  const bottomPanelResizeFrameRef = useRef<number | undefined>(undefined)
+  const [showMiniMap, setShowMiniMap] = useState(true)
+  const showUserCursors = useStore(s => s.showUserCursors)
+  const setShowUserCursors = useStore(s => s.setShowUserCursors)
+  const showUserComments = useStore(s => s.showUserComments)
+  const setShowUserComments = useStore(s => s.setShowUserComments)
+  const controlMode = useStore(s => s.controlMode)
+  const isCommentMode = controlMode === ControlMode.Comment
+
+  const handleToggleMiniMap = useCallback(() => {
+    setShowMiniMap(prev => !prev)
+  }, [])
+
+  const handleToggleUserCursors = useCallback(() => {
+    setShowUserCursors(!showUserCursors)
+  }, [showUserCursors, setShowUserCursors])
+
+  const handleToggleUserComments = useCallback(() => {
+    setShowUserComments(!showUserComments)
+  }, [showUserComments, setShowUserComments])
+
+  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
+  const rightPanelWidth = useStore(s => s.rightPanelWidth)
+  const setBottomPanelWidth = useStore(s => s.setBottomPanelWidth)
+  const setBottomPanelHeight = useStore(s => s.setBottomPanelHeight)
+
+  const bottomPanelWidth = useMemo(() => {
+    if (!workflowCanvasWidth || !rightPanelWidth)
+      return 'auto'
+    return Math.max((workflowCanvasWidth - rightPanelWidth), 400)
+  }, [workflowCanvasWidth, rightPanelWidth])
+
+  const getMiniMapNodeClassName = useCallback((node: Node) => {
+    return node.data?.selected
+      ? 'bg-workflow-minimap-block border-components-option-card-option-selected-border'
+      : 'bg-workflow-minimap-block'
+  }, [])
+
+  // update bottom panel height
+  useEffect(() => {
+    if (bottomPanelRef.current) {
+      const updateBottomPanelSize = (width: number, height: number) => {
+        if (bottomPanelSizeRef.current.width === width && bottomPanelSizeRef.current.height === height)
+          return
+
+        bottomPanelSizeRef.current = { width, height }
+        if (bottomPanelResizeFrameRef.current)
+          cancelAnimationFrame(bottomPanelResizeFrameRef.current)
+
+        bottomPanelResizeFrameRef.current = requestAnimationFrame(() => {
+          bottomPanelResizeFrameRef.current = undefined
+          setBottomPanelWidth(width)
+          setBottomPanelHeight(height)
+        })
+      }
+
+      const resizeContainerObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize, blockSize } = entry.borderBoxSize[0]!
+          updateBottomPanelSize(inlineSize, blockSize)
+        }
+      })
+      resizeContainerObserver.observe(bottomPanelRef.current)
+      return () => {
+        if (bottomPanelResizeFrameRef.current) {
+          cancelAnimationFrame(bottomPanelResizeFrameRef.current)
+          bottomPanelResizeFrameRef.current = undefined
+        }
+        resizeContainerObserver.disconnect()
+      }
+    }
+  }, [setBottomPanelHeight, setBottomPanelWidth])
+
+  return (
+    <div
+      ref={bottomPanelRef}
+      className="absolute inset-x-0 bottom-0 z-10 px-1"
+      style={
+        {
+          width: bottomPanelWidth,
+        }
+      }
+    >
+      <div className="flex justify-between px-1 pb-2">
+        <div className="flex items-center gap-2">
+          <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
+        </div>
+        <VariableTrigger />
+        <div className="relative">
+          {showMiniMap && (
+            <MiniMap
+              pannable
+              zoomable
+              style={{
+                width: 102,
+                height: 72,
+              }}
+              maskColor="var(--color-workflow-minimap-bg)"
+              nodeClassName={getMiniMapNodeClassName}
+              nodeStrokeWidth={3}
+              className="absolute! bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
+            border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
+            />
+          )}
+          <ZoomInOut
+            showMiniMap={showMiniMap}
+            onToggleMiniMap={handleToggleMiniMap}
+            showUserCursors={showUserCursors}
+            onToggleUserCursors={handleToggleUserCursors}
+            showUserComments={showUserComments}
+            onToggleUserComments={handleToggleUserComments}
+            isCommentMode={isCommentMode}
+          />
+        </div>
+      </div>
+      <VariableInspectPanel />
+    </div>
+  )
+}
+
+export default memo(Operator)

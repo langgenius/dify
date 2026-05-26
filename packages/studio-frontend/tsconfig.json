@@ -2,7 +2,7 @@
   "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["../../web/*", "./src/*"]
     }
   },
   "include": [

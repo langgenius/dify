@@ -1,0 +1,89 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataInDoc } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import { RiAddLine } from '@remixicon/react'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import MetadataIcon from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-icon'
+
+const AddCondition = ({
+  metadataList,
+  handleAddCondition,
+}: Pick<MetadataShape, 'handleAddCondition' | 'metadataList'>) => {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+
+  const filteredMetadataList = useMemo(() => {
+    return metadataList?.filter(metadata => metadata.name.includes(searchText))
+  }, [metadataList, searchText])
+
+  const handleAddConditionWrapped = useCallback((item: MetadataInDoc) => {
+    handleAddCondition?.(item)
+    setOpen(false)
+  }, [handleAddCondition])
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <Button
+            size="small"
+            variant="secondary"
+          >
+            <RiAddLine className="size-3.5" />
+            {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={12}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
+        <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
+          <div className="p-2 pb-1">
+            <Input
+              showLeftIcon
+              placeholder={t('nodes.knowledgeRetrieval.metadata.panel.search', { ns: 'workflow' })}
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+            />
+          </div>
+          <div className="p-1">
+            {filteredMetadataList?.map(metadata => (
+              <div
+                key={metadata.name}
+                className="flex h-6 cursor-pointer items-center rounded-md px-3 system-sm-medium text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAddConditionWrapped(metadata)}
+              >
+                <div className="mr-1 p-px">
+                  <MetadataIcon type={metadata.type} />
+                </div>
+                <div
+                  className="grow truncate"
+                  title={metadata.name}
+                >
+                  {metadata.name}
+                </div>
+                <div className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+export default AddCondition

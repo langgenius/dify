@@ -1,0 +1,67 @@
+import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
+import Divider from '@/app/components/base/divider/index'
+import TipPopup from '@/app/components/workflow/operator/tip-popup'
+
+type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
+const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
+  const { t } = useTranslation()
+  const { store } = useWorkflowHistoryStore()
+  const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
+
+  useEffect(() => {
+    const unsubscribe = store.temporal.subscribe((state) => {
+      setButtonsDisabled({
+        undo: state.pastStates.length === 0,
+        redo: state.futureStates.length === 0,
+      })
+    })
+    return () => unsubscribe()
+  }, [store])
+
+  const { nodesReadOnly } = useNodesReadOnly()
+
+  return (
+    <div className="flex items-center space-x-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-[5px]">
+      <TipPopup title={t('common.undo', { ns: 'workflow' })!} shortcut="workflow.undo">
+        <button
+          type="button"
+          aria-label={t('common.undo', { ns: 'workflow' })!}
+          data-tooltip-id="workflow.undo"
+          disabled={nodesReadOnly || buttonsDisabled.undo}
+          className={
+            cn('flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
+            && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+          }
+          onClick={handleUndo}
+        >
+          <span className="i-ri-arrow-go-back-line size-4" />
+        </button>
+      </TipPopup>
+      <TipPopup title={t('common.redo', { ns: 'workflow' })!} shortcut="workflow.redo">
+        <button
+          type="button"
+          aria-label={t('common.redo', { ns: 'workflow' })!}
+          data-tooltip-id="workflow.redo"
+          disabled={nodesReadOnly || buttonsDisabled.redo}
+          className={
+            cn('flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
+            && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+          }
+          onClick={handleRedo}
+        >
+          <span className="i-ri-arrow-go-forward-fill size-4" />
+        </button>
+      </TipPopup>
+      <Divider type="vertical" className="mx-0.5 h-3.5" />
+      <ViewWorkflowHistory />
+    </div>
+  )
+}
+
+export default memo(UndoRedo)

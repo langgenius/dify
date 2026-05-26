@@ -1,0 +1,130 @@
+import type { FC } from 'react'
+import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
+import VarGroupItem from '@/app/components/workflow/nodes/variable-assigner/components/var-group-item'
+import useConfig from '@/app/components/workflow/nodes/variable-assigner/use-config'
+
+const i18nPrefix = 'nodes.variableAssigner'
+const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
+  id,
+  data,
+}) => {
+  const { t } = useTranslation()
+
+  const {
+    readOnly,
+    inputs,
+    handleListOrTypeChange,
+    isEnableGroup,
+    handleGroupEnabledChange,
+    handleAddGroup,
+    handleListOrTypeChangeInGroup,
+    handleGroupRemoved,
+    handleVarGroupNameChange,
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm,
+    getAvailableVars,
+    filterVar,
+  } = useConfig(id, data)
+
+  return (
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-4">
+        {!isEnableGroup
+          ? (
+              <VarGroupItem
+                readOnly={readOnly}
+                nodeId={id}
+                payload={{
+                  output_type: inputs.output_type,
+                  variables: inputs.variables,
+                }}
+                onChange={handleListOrTypeChange}
+                groupEnabled={false}
+                availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type), true)}
+              />
+            )
+          : (
+              <div>
+                <div className="space-y-2">
+                  {inputs.advanced_settings?.groups.map((item, index) => (
+                    <div key={item.groupId}>
+                      <VarGroupItem
+                        readOnly={readOnly}
+                        nodeId={id}
+                        payload={item}
+                        onChange={handleListOrTypeChangeInGroup(item.groupId)}
+                        groupEnabled
+                        canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
+                        onRemove={handleGroupRemoved(item.groupId)}
+                        onGroupNameChange={handleVarGroupNameChange(item.groupId)}
+                        availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type), true)}
+                      />
+                      {index !== inputs.advanced_settings?.groups.length - 1 && <Split className="my-4" />}
+                    </div>
+
+                  ))}
+                </div>
+                <AddButton
+                  className="mt-2"
+                  text={t(`${i18nPrefix}.addGroup`, { ns: 'workflow' })}
+                  onClick={handleAddGroup}
+                />
+              </div>
+            )}
+      </div>
+      <Split />
+      <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
+        <Field
+          title={t(`${i18nPrefix}.aggregationGroup`, { ns: 'workflow' })}
+          tooltip={t(`${i18nPrefix}.aggregationGroupTip`, { ns: 'workflow' })!}
+          operations={(
+            <Switch
+              checked={isEnableGroup}
+              onCheckedChange={handleGroupEnabledChange}
+              size="md"
+              disabled={readOnly}
+            />
+          )}
+        />
+      </div>
+      {isEnableGroup && (
+        <>
+          <Split />
+          <OutputVars>
+            <>
+              {inputs.advanced_settings?.groups.map((item, index) => (
+                <VarItem
+                  key={index}
+                  name={`${item.group_name}.output`}
+                  type={item.output_type}
+                  description={t(`${i18nPrefix}.outputVars.varDescribe`, {
+                    ns: 'workflow',
+                    groupName: item.group_name,
+                  })}
+                />
+              ))}
+            </>
+          </OutputVars>
+        </>
+      )}
+      <RemoveEffectVarConfirm
+        isShow={isShowRemoveVarConfirm}
+        onCancel={hideRemoveVarConfirm}
+        onConfirm={onRemoveVarConfirm}
+      />
+    </div>
+  )
+}
+
+export default React.memo(Panel)

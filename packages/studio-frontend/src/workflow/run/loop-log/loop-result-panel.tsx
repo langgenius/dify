@@ -1,0 +1,166 @@
+'use client'
+import type { FC } from 'react'
+import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  RiArrowLeftLine,
+  RiArrowRightSLine,
+  RiErrorWarningLine,
+  RiLoader2Line,
+} from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
+
+const i18nPrefix = 'singleRun'
+
+const getLoopRunKey = (loop: NodeTracing[], fallbackIndex: number) => {
+  const executionMetadata = loop[0]?.execution_metadata
+
+  if (executionMetadata?.parallel_mode_run_id !== undefined)
+    return executionMetadata.parallel_mode_run_id
+
+  if (executionMetadata?.loop_index !== undefined)
+    return String(executionMetadata.loop_index)
+
+  return String(fallbackIndex)
+}
+
+type Props = {
+  list: NodeTracing[][]
+  onBack: () => void
+  loopDurationMap?: LoopDurationMap
+  loopVariableMap?: LoopVariableMap
+}
+
+const LoopResultPanel: FC<Props> = ({
+  list,
+  onBack,
+  loopDurationMap,
+  loopVariableMap,
+}) => {
+  const { t } = useTranslation()
+  const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
+
+  const toggleLoop = useCallback((index: number) => {
+    setExpandedLoops(prev => ({
+      ...prev,
+      [index]: !prev[index],
+    }))
+  }, [])
+
+  const countLoopDuration = (loop: NodeTracing[], index: number, loopDurationMap: LoopDurationMap): string => {
+    const loopItem = loopDurationMap[getLoopRunKey(loop, index)]
+    const duration = loopItem
+    return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
+  }
+
+  const loopStatusShow = (index: number, loop: NodeTracing[], loopDurationMap?: LoopDurationMap) => {
+    const hasFailed = loop.some(item => item.status === NodeRunningStatus.Failed)
+    const isRunning = loop.some(item => item.status === NodeRunningStatus.Running)
+    const hasDurationMap = loopDurationMap && Object.keys(loopDurationMap).length !== 0
+
+    if (hasFailed)
+      return <RiErrorWarningLine className="size-4 text-text-destructive" />
+
+    if (isRunning)
+      return <RiLoader2Line className="size-3.5 animate-spin text-primary-600" />
+
+    return (
+      <>
+        {hasDurationMap && (
+          <div className="system-xs-regular text-text-tertiary">
+            {countLoopDuration(loop, index, loopDurationMap)}
+          </div>
+        )}
+        <RiArrowRightSLine
+          className={cn(
+            'size-4 shrink-0 text-text-tertiary transition-transform duration-200',
+            expandedLoops[index] && 'rotate-90',
+          )}
+        />
+      </>
+    )
+  }
+
+  return (
+    <div className="bg-components-panel-bg">
+      <div
+        className="flex h-8 cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary"
+        onClick={(e) => {
+          e.stopPropagation()
+          e.nativeEvent.stopImmediatePropagation()
+          onBack()
+        }}
+      >
+        <RiArrowLeftLine className="mr-1 size-4" />
+        <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
+      </div>
+      {/* List */}
+      <div className="bg-components-panel-bg p-2">
+        {list.map((loop, index) => (
+          <div key={index} className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}>
+            <div
+              className={cn(
+                'flex w-full cursor-pointer items-center justify-between px-3',
+                expandedLoops[index] ? 'pt-3 pb-2' : 'py-3',
+                'rounded-xl text-left',
+              )}
+              onClick={() => toggleLoop(index)}
+            >
+              <div className={cn('flex grow items-center gap-2')}>
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
+                  <Loop className="size-3 text-text-primary-on-surface" />
+                </div>
+                <span className="grow system-sm-semibold-uppercase text-text-primary">
+                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
+                  {' '}
+                  {index + 1}
+                </span>
+                {loopStatusShow(index, loop, loopDurationMap)}
+              </div>
+            </div>
+            {expandedLoops[index] && (
+              <div
+                className="h-px grow bg-divider-subtle"
+              >
+              </div>
+            )}
+            <div className={cn(
+              'transition-all duration-200',
+              expandedLoops[index]
+                ? 'opacity-100'
+                : 'max-h-0 overflow-hidden opacity-0',
+            )}
+            >
+              {
+                loopVariableMap?.[getLoopRunKey(loop, index)] && (
+                  <div className="p-2 pb-0">
+                    <CodeEditor
+                      readOnly
+                      title={<div>{t('nodes.loop.loopVariables', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
+                      language={CodeLanguage.json}
+                      height={112}
+                      value={loopVariableMap[getLoopRunKey(loop, index)]}
+                      isJSONStringifyBeauty
+                    />
+                  </div>
+                )
+              }
+              <TracingPanel
+                list={loop}
+                className="bg-background-section-burn"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+export default React.memo(LoopResultPanel)

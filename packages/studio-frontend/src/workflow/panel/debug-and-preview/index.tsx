@@ -1,0 +1,154 @@
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
+import { debounce } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { useStore } from '@/app/components/workflow/store'
+import {
+  useWorkflowInteractions,
+} from '@/app/components/workflow/hooks/index'
+import { useResizePanel } from '@/app/components/workflow/nodes/_base/hooks/use-resize-panel'
+import { BlockEnum } from '@/app/components/workflow/types'
+import ChatWrapper from '@/app/components/workflow/panel/debug-and-preview/chat-wrapper'
+
+export type ChatWrapperRefType = {
+  handleRestart: () => void
+}
+const DebugAndPreview = () => {
+  const { t } = useTranslation()
+  const chatRef = useRef({ handleRestart: noop })
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
+  const [expanded, setExpanded] = useState(true)
+  const nodes = useNodes<StartNodeType>()
+  const selectedNode = nodes.find(node => node.data.selected)
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const variables = startNode?.data.variables || []
+  const visibleVariables = variables
+
+  const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
+
+  const handleRestartChat = () => {
+    handleNodeCancelRunningStatus()
+    handleEdgeCancelRunningStatus()
+    chatRef.current.handleRestart()
+  }
+
+  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
+  const nodePanelWidth = useStore(s => s.nodePanelWidth)
+  const panelWidth = useStore(s => s.previewPanelWidth)
+  const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
+    if (source === 'user')
+      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+    setPanelWidth(width)
+  }, [setPanelWidth])
+  const maxPanelWidth = useMemo(() => {
+    if (!workflowCanvasWidth)
+      return 720
+
+    if (!selectedNode)
+      return workflowCanvasWidth - 400
+
+    return workflowCanvasWidth - 400 - 400
+  }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
+  const {
+    triggerRef,
+    containerRef,
+  } = useResizePanel({
+    direction: 'horizontal',
+    triggerDirection: 'left',
+    minWidth: 400,
+    maxWidth: maxPanelWidth,
+    onResize: debounce((width: number) => {
+      handleResize(width, 'user')
+    }),
+  })
+
+  return (
+    <div className="relative h-full">
+      <div
+        ref={triggerRef}
+        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+      >
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+      </div>
+      <div
+        ref={containerRef}
+        className={cn(
+          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
+        )}
+        style={{ width: `${panelWidth}px` }}
+      >
+        <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2 system-xl-semibold text-text-primary">
+          <div className="h-8">{t('common.debugAndPreview', { ns: 'workflow' }).toLocaleUpperCase()}</div>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton onClick={() => handleRestartChat()}>
+                    <RefreshCcw01 className="size-4" />
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {t('operation.refresh', { ns: 'common' })}
+              </TooltipContent>
+            </Tooltip>
+            {visibleVariables.length > 0 && (
+              <div className="relative">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
+                        <RiEqualizer2Line className="size-4" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('panel.userInputField', { ns: 'workflow' })}
+                  </TooltipContent>
+                </Tooltip>
+                {expanded && <div className="absolute right-[5px] bottom-[-17px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+              </div>
+            )}
+            <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
+            <div
+              className="flex size-6 cursor-pointer items-center justify-center"
+              onClick={handleCancelDebugAndPreviewPanel}
+            >
+              <RiCloseLine className="size-4 text-text-tertiary" />
+            </div>
+          </div>
+        </div>
+        <div className="grow overflow-y-auto rounded-b-2xl">
+          <ChatWrapper
+            ref={chatRef}
+            showConversationVariableModal={showConversationVariableModal}
+            onConversationModalHide={() => setShowConversationVariableModal(false)}
+            showInputsFieldsPanel={expanded}
+            onHide={() => setExpanded(false)}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default memo(DebugAndPreview)
