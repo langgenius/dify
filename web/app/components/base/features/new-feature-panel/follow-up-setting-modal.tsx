@@ -8,14 +8,14 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldItem, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -161,70 +161,75 @@ const FollowUpSettingModal = ({
               <FieldsetLegend className="mb-1.5 py-0 system-sm-semibold-uppercase text-text-secondary">
                 {t('feature.suggestedQuestionsAfterAnswer.modal.promptLabel', { ns: 'appDebug' })}
               </FieldsetLegend>
-              <RadioRoot
-                value={PROMPT_MODE.default}
-                variant="unstyled"
-                nativeButton
-                render={<button type="button" />}
-                className={cn(
-                  'w-full rounded-xl border p-4 text-left transition-colors',
-                  promptMode === PROMPT_MODE.default
-                    ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                    : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="system-sm-semibold text-text-primary">
-                      {t('feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOption', { ns: 'appDebug' })}
+              <FieldItem>
+                <RadioRoot
+                  value={PROMPT_MODE.default}
+                  variant="unstyled"
+                  nativeButton
+                  render={<button type="button" />}
+                  className={cn(
+                    'w-full rounded-xl border p-4 text-left transition-colors',
+                    promptMode === PROMPT_MODE.default
+                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
+                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="system-sm-semibold text-text-primary">
+                        {t('feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOption', { ns: 'appDebug' })}
+                      </div>
+                      <div className="mt-1 system-xs-regular text-text-tertiary">
+                        {t('feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOptionDescription', { ns: 'appDebug' })}
+                      </div>
                     </div>
-                    <div className="mt-1 system-xs-regular text-text-tertiary">
-                      {t('feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOptionDescription', { ns: 'appDebug' })}
-                    </div>
+                    <RadioControl aria-hidden="true" />
                   </div>
-                  <RadioControl aria-hidden="true" />
-                </div>
-                {promptMode === PROMPT_MODE.default && (
-                  <div className="mt-3 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-3 py-2">
-                    <div className="system-sm-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
-                      {DEFAULT_FOLLOW_UP_PROMPT}
+                  {promptMode === PROMPT_MODE.default && (
+                    <div className="mt-3 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-3 py-2">
+                      <div className="system-sm-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
+                        {DEFAULT_FOLLOW_UP_PROMPT}
+                      </div>
                     </div>
+                  )}
+                </RadioRoot>
+              </FieldItem>
+              <FieldItem>
+                <RadioRoot
+                  value={PROMPT_MODE.custom}
+                  variant="unstyled"
+                  nativeButton
+                  render={<button type="button" />}
+                  className={cn(
+                    'w-full rounded-xl border p-4 text-left transition-colors',
+                    promptMode === PROMPT_MODE.custom
+                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
+                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="system-sm-semibold text-text-primary">
+                        {t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOption', { ns: 'appDebug' })}
+                      </div>
+                      <div className="mt-1 system-xs-regular text-text-tertiary">
+                        {t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOptionDescription', { ns: 'appDebug' })}
+                      </div>
+                    </div>
+                    <RadioControl aria-hidden="true" />
                   </div>
-                )}
-              </RadioRoot>
-              <RadioRoot
-                value={PROMPT_MODE.custom}
-                variant="unstyled"
-                nativeButton
-                render={<button type="button" />}
-                className={cn(
-                  'w-full rounded-xl border p-4 text-left transition-colors',
-                  promptMode === PROMPT_MODE.custom
-                    ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                    : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="system-sm-semibold text-text-primary">
-                      {t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOption', { ns: 'appDebug' })}
-                    </div>
-                    <div className="mt-1 system-xs-regular text-text-tertiary">
-                      {t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOptionDescription', { ns: 'appDebug' })}
-                    </div>
-                  </div>
-                  <RadioControl aria-hidden="true" />
-                </div>
-                {promptMode === PROMPT_MODE.custom && (
-                  <Textarea
-                    className="mt-3 min-h-32 resize-y border-components-input-border-active bg-components-input-bg-normal"
-                    value={prompt}
-                    onChange={e => setPrompt(e.target.value)}
-                    maxLength={CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH}
-                    placeholder={t('feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder', { ns: 'appDebug' }) || ''}
-                  />
-                )}
-              </RadioRoot>
+                  {promptMode === PROMPT_MODE.custom && (
+                    <Textarea
+                      aria-label={t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOption', { ns: 'appDebug' })}
+                      className="mt-3 min-h-32 resize-y border-components-input-border-active bg-components-input-bg-normal"
+                      value={prompt}
+                      onValueChange={value => setPrompt(value)}
+                      maxLength={CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH}
+                      placeholder={t('feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder', { ns: 'appDebug' }) || ''}
+                    />
+                  )}
+                </RadioRoot>
+              </FieldItem>
             </FieldsetRoot>
           </FieldRoot>
         </div>

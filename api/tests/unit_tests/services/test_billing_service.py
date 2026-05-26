@@ -313,6 +313,54 @@ class TestBillingServiceSubscriptionInfo:
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": tenant_id})
 
+    def test_get_info_exclude_vector_space(self, mock_send_request):
+        """When requested, get_info asks billing to skip vector_space."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {
+            "enabled": True,
+            "subscription": {"plan": "professional", "interval": "month", "education": False},
+            "members": {"size": 1, "limit": 50},
+            "apps": {"size": 1, "limit": 200},
+            "knowledge_rate_limit": {"limit": 1000},
+            "documents_upload_quota": {"size": 0, "limit": 1000},
+            "annotation_quota_limit": {"size": 0, "limit": 5000},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+        }
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
+
+        # Assert
+        assert "vector_space" not in result
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/info",
+            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
+        )
+
+    def test_get_vector_space_success(self, mock_send_request):
+        """Test successful retrieval of vector-space usage and limit."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {"size": 5120.75, "limit": 20480}
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_vector_space(tenant_id)
+
+        # Assert
+        assert result == expected_response
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/vector-space",
+            params={"tenant_id": tenant_id},
+        )
+
     def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
         """Test knowledge rate limit retrieval with default values."""
         # Arrange
@@ -1744,8 +1792,9 @@ class TestBillingServiceSubscriptionInfoDataType:
         assert isinstance(result["apps"]["size"], int)
         assert isinstance(result["apps"]["limit"], int)
 
-        assert isinstance(result["vector_space"]["size"], float)
-        assert isinstance(result["vector_space"]["limit"], int)
+        if "vector_space" in result:
+            assert isinstance(result["vector_space"]["size"], float)
+            assert isinstance(result["vector_space"]["limit"], int)
 
         assert isinstance(result["knowledge_rate_limit"]["limit"], int)
 
@@ -1783,11 +1832,13 @@ class TestBillingServiceSubscriptionInfoDataType:
     def test_get_info_without_optional_fields(self, mock_send_request, string_billing_response):
         """NotRequired fields can be absent without raising."""
         del string_billing_response["next_credit_reset_date"]
+        del string_billing_response["vector_space"]
         mock_send_request.return_value = string_billing_response
 
         result = BillingService.get_info("tenant-type-test")
 
         assert "next_credit_reset_date" not in result
+        assert "vector_space" not in result
         self._assert_billing_info_types(result)
 
     def test_get_info_with_extra_fields(self, mock_send_request, string_billing_response):

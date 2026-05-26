@@ -128,7 +128,7 @@ class TestConversationApi:
 
         body, status = result
         assert status == 204
-        assert body["result"] == "success"
+        assert body == ""
 
     def test_delete_not_found(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationApi()

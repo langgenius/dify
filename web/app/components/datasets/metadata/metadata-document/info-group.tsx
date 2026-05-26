@@ -91,6 +91,7 @@ const InfoGroup: FC<Props> = ({
                   <div className="flex items-center space-x-0.5">
                     <InputCombined
                       className="h-6"
+                      label={item.name}
                       type={item.type}
                       value={item.value}
                       onChange={value => onChange?.({ ...item, value })}

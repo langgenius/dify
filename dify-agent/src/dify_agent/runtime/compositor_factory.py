@@ -1,10 +1,17 @@
 """Safe Agenton compositor construction for API-submitted configs.
 
 Only explicitly allowed provider type ids are constructible here. The default
-provider set contains prompt layers, the state-free Dify structured output
-layer, plus Dify plugin LLM layers. Public DTOs provide tenant/plugin/model
-data, while server-only plugin daemon settings are injected through the provider
-factory for ``DifyPluginLayer``. The resulting ``Compositor`` remains Agenton
+provider set contains prompt layers, the optional pydantic-ai history layer, the
+state-free Dify structured output layer, the Dify execution-context layer, and
+the Dify plugin business-layer family:
+
+- ``dify.execution_context`` for shared tenant/user/run daemon context,
+- ``dify.plugin.llm`` for plugin-backed model selection, and
+- ``dify.plugin.tools`` for prepared plugin tool exposure.
+
+Public DTOs provide Dify context plus plugin/model/tool data, while server-only
+plugin daemon settings are injected through the provider factory for
+``DifyExecutionContextLayer``. The resulting ``Compositor`` remains Agenton
 state-only: live resources such as the plugin daemon HTTP client are supplied
 later by the runtime and never enter providers, layers, or session snapshots.
 """
@@ -16,11 +23,13 @@ from pydantic_ai.messages import UserContent
 
 from agenton.compositor import Compositor, CompositorConfig, LayerProvider, LayerProviderInput
 from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptTypes, PydanticAIPrompt, PydanticAITool
+from agenton_collections.layers.pydantic_ai import PydanticAIHistoryLayer
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
-from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
+from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 
 
@@ -35,16 +44,18 @@ def create_default_layer_providers(
     """Return the server provider set of safe config-constructible layers."""
     return (
         LayerProvider.from_layer_type(PromptLayer),
+        LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_factory(
-            layer_type=DifyPluginLayer,
-            create=lambda config: DifyPluginLayer.from_config_with_settings(
-                DifyPluginLayerConfig.model_validate(config),
+            layer_type=DifyExecutionContextLayer,
+            create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
+                DifyExecutionContextLayerConfig.model_validate(config),
                 daemon_url=plugin_daemon_url,
                 daemon_api_key=plugin_daemon_api_key,
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
+        LayerProvider.from_layer_type(DifyPluginToolsLayer),
     )
 
 

@@ -2,8 +2,21 @@
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 
 export const SliderRoot = BaseSlider.Root
+
+export function SliderLabel({
+  className,
+  ...props
+}: BaseSlider.Label.Props) {
+  return (
+    <BaseSlider.Label
+      className={cn(formLabelClassName, className)}
+      {...props}
+    />
+  )
+}
 
 type SliderRootProps = BaseSlider.Root.Props<number>
 
@@ -136,7 +149,7 @@ export function Slider({
       step={step}
       disabled={disabled}
       name={name}
-      thumbAlignment="edge-client-only"
+      thumbAlignment="center"
       className={cn(sliderRootClassName, className)}
     >
       <SliderControl className={slotClassNames?.control}>

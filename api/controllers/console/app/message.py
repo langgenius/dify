@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -336,13 +337,13 @@ class MessageSuggestedQuestionApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model, message_id):
+    def get(self, app_model, message_id: UUID):
         current_user, _ = current_account_with_tenant()
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, message_id=message_id, user=current_user, invoke_from=InvokeFrom.DEBUGGER
+                app_model=app_model, message_id=message_id_str, user=current_user, invoke_from=InvokeFrom.DEBUGGER
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")
@@ -416,11 +417,11 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model, message_id: str):
-        message_id = str(message_id)
+    def get(self, app_model, message_id: UUID):
+        message_id_str = str(message_id)
 
         message = db.session.scalar(
-            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+            select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)
         )
 
         if not message:

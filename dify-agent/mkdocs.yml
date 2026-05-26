@@ -11,13 +11,18 @@ nav:
   - Agenton:
       - Overview: agenton/index.md
       - Guide: agenton/guide/index.md
-      - API Reference: agenton/api/index.md
       - Examples: agenton/examples/index.md
   - Dify Agent:
       - Overview: dify-agent/index.md
-      - Get Started: dify-agent/get-started/index.md
+      - User Manual:
+          - Get Started: dify-agent/get-started/index.md
+          - Prompt Layer: dify-agent/user-manual/prompt-layer/index.md
+          - Execution Context Layer: dify-agent/user-manual/execution-context-layer/index.md
+          - Plugin LLM Layer: dify-agent/user-manual/plugin-llm-layer/index.md
+          - Plugin Tool Layer: dify-agent/user-manual/plugin-tool-layer/index.md
+          - History Layer: dify-agent/user-manual/history-layer/index.md
+          - Structured Output Layer: dify-agent/user-manual/structured-output-layer/index.md
       - Operations Guide: dify-agent/guide/index.md
-      - Run API: dify-agent/api/index.md
       - Examples: dify-agent/examples/index.md
 
 theme:

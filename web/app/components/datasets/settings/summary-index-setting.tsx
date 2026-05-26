@@ -1,7 +1,7 @@
-import type { ChangeEvent } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import {
   memo,
   useCallback,
@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Textarea from '@/app/components/base/textarea'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -53,9 +52,9 @@ const SummaryIndexSetting = ({
     })
   }, [onSummaryIndexSettingChange])
 
-  const handleSummaryIndexPromptChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleSummaryIndexPromptChange = useCallback((value: string) => {
     onSummaryIndexSettingChange?.({
-      summary_prompt: e.target.value,
+      summary_prompt: value,
     })
   }, [onSummaryIndexSettingChange])
 
@@ -95,8 +94,9 @@ const SummaryIndexSetting = ({
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
+                aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                 value={summaryIndexSetting?.summary_prompt ?? ''}
-                onChange={handleSummaryIndexPromptChange}
+                onValueChange={handleSummaryIndexPromptChange}
                 disabled={readonly}
                 placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
               />
@@ -166,8 +166,9 @@ const SummaryIndexSetting = ({
                 </div>
                 <div className="grow">
                   <Textarea
+                    aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                     value={summaryIndexSetting?.summary_prompt ?? ''}
-                    onChange={handleSummaryIndexPromptChange}
+                    onValueChange={handleSummaryIndexPromptChange}
                     disabled={readonly}
                     placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
                   />
@@ -214,8 +215,9 @@ const SummaryIndexSetting = ({
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
+                aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                 value={summaryIndexSetting?.summary_prompt ?? ''}
-                onChange={handleSummaryIndexPromptChange}
+                onValueChange={handleSummaryIndexPromptChange}
                 disabled={readonly}
                 placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
               />

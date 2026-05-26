@@ -48,7 +48,7 @@ def current_user():
 
 
 @pytest.fixture(autouse=True)
-def mock_auth(monkeypatch, current_user):
+def mock_auth(monkeypatch: pytest.MonkeyPatch, current_user):
     monkeypatch.setattr(
         external_controller,
         "current_account_with_tenant",
@@ -72,7 +72,7 @@ class TestExternalApiTemplateListApi:
                 return_value=([api_item], 1),
             ),
         ):
-            resp, status = method(api)
+            resp, status = method(api, "id")
 
         assert status == 200
         assert resp["total"] == 1
@@ -323,7 +323,7 @@ class TestExternalApiTemplateListApiAdvanced:
                 return_value=(templates, 25),
             ),
         ):
-            resp, status = method(api)
+            resp, status = method(api, "id")
 
         assert status == 200
         assert resp["total"] == 25

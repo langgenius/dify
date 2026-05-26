@@ -124,10 +124,10 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
         mock_datasource_provider_service,
         mock_notion_extractor,
         mock_document,
-        dataset_id,
-        document_id,
-        notion_workspace_id,
-        notion_page_id,
+        dataset_id: str,
+        document_id: str,
+        notion_workspace_id: str,
+        notion_page_id: str,
     ):
         """Test that NotionExtractor is initialized with expected arguments."""
         # Arrange
@@ -151,9 +151,9 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
         mock_datasource_provider_service,
         mock_notion_extractor,
         mock_document,
-        dataset_id,
-        document_id,
-        credential_id,
+        dataset_id: str,
+        document_id: str,
+        credential_id: str,
     ):
         """Test that datasource credentials are requested with expected identifiers."""
         # Arrange
@@ -176,8 +176,8 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
         mock_datasource_provider_service,
         mock_notion_extractor,
         mock_document,
-        dataset_id,
-        document_id,
+        dataset_id: str,
+        document_id: str,
     ):
         """Test that missing credential_id is forwarded as None."""
         # Arrange
@@ -212,8 +212,8 @@ class TestDataSourceInfoSerialization:
         self,
         mock_document,
         mock_dataset,
-        dataset_id,
-        document_id,
+        dataset_id: str,
+        document_id: str,
     ):
         """data_source_info must be serialized with json.dumps before DB write."""
         with (

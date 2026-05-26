@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -131,17 +132,17 @@ class TagUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, tag_id):
+    def patch(self, tag_id: UUID):
         current_user, _ = current_account_with_tenant()
-        tag_id = str(tag_id)
+        tag_id_str = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str)
 
-        binding_count = TagService.get_tag_binding_count(tag_id)
+        binding_count = TagService.get_tag_binding_count(tag_id_str)
 
         response = TagResponse.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
@@ -154,10 +155,10 @@ class TagUpdateDeleteApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @console_ns.response(204, "Tag deleted successfully")
-    def delete(self, tag_id):
-        tag_id = str(tag_id)
+    def delete(self, tag_id: UUID):
+        tag_id_str = str(tag_id)
 
-        TagService.delete_tag(tag_id)
+        TagService.delete_tag(tag_id_str)
 
         return "", 204
 

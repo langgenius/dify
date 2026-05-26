@@ -140,7 +140,7 @@ class CompletionStopApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
-    def post(self, app_model, end_user, task_id):
+    def post(self, app_model, end_user, task_id: str):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -226,7 +226,7 @@ class ChatStopApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
-    def post(self, app_model, end_user, task_id):
+    def post(self, app_model, end_user, task_id: str):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

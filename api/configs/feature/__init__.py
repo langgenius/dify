@@ -265,6 +265,11 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
+        description="TTL in seconds for caching tenant plugin model providers in Redis",
+        default=60 * 60 * 24,
+    )
+
     PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
         description="Maximum allowed size (bytes) for plugin-generated files",
         default=50 * 1024 * 1024,
@@ -519,6 +524,44 @@ class HttpConfig(BaseSettings):
     @computed_field
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
+
+    OPENAPI_ENABLED: bool = Field(
+        description=(
+            "Enable the /openapi/v1/* endpoint group used by difyctl and other "
+            "programmatic clients. Set to true to activate; disabled by default."
+        ),
+        validation_alias=AliasChoices("OPENAPI_ENABLED"),
+        default=False,
+    )
+
+    inner_OPENAPI_CORS_ALLOW_ORIGINS: str = Field(
+        description=(
+            "Comma-separated allowlist for /openapi/v1/* CORS. "
+            "Default empty = same-origin only. Browser-cookie routes within "
+            "the group reject cross-origin OPTIONS regardless of this list."
+        ),
+        validation_alias=AliasChoices("OPENAPI_CORS_ALLOW_ORIGINS"),
+        default="",
+    )
+
+    @computed_field
+    def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return [o for o in self.inner_OPENAPI_CORS_ALLOW_ORIGINS.split(",") if o]
+
+    inner_OPENAPI_KNOWN_CLIENT_IDS: str = Field(
+        description=(
+            "Comma-separated client_id values accepted at "
+            "POST /openapi/v1/oauth/device/code. New CLIs / SDKs added here "
+            "without code changes. Unknown client_id returns 400 unsupported_client."
+        ),
+        validation_alias=AliasChoices("OPENAPI_KNOWN_CLIENT_IDS"),
+        default="difyctl",
+    )
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def OPENAPI_KNOWN_CLIENT_IDS(self) -> frozenset[str]:
+        return frozenset(c for c in self.inner_OPENAPI_KNOWN_CLIENT_IDS.split(",") if c)
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
         ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
@@ -895,6 +938,17 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    ENABLE_OAUTH_BEARER: bool = Field(
+        description="Enable OAuth bearer authentication (device-flow + Service API /v1/* bearer middleware).",
+        default=True,
+    )
+
+    OPENAPI_RATE_LIMIT_PER_TOKEN: PositiveInt = Field(
+        description="Per-token rate limit on /openapi/v1/* (requests per minute). "
+        "Bucket keyed on sha256(token), shared across api replicas via Redis.",
+        default=60,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -1180,6 +1234,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
         description="Enable scheduled workflow run cleanup task",
         default=False,
+    )
+    ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK: bool = Field(
+        description="Enable scheduled cleanup of revoked/expired OAuth access-token rows past retention.",
+        default=True,
+    )
+    OAUTH_ACCESS_TOKEN_RETENTION_DAYS: PositiveInt = Field(
+        description="Days to retain revoked OAuth access-token rows before deletion.",
+        default=30,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",

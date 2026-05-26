@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -162,7 +163,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, server_id):
+    def get(self, server_id: UUID):
         _, current_tenant_id = current_account_with_tenant()
         server = db.session.scalar(
             select(AppMCPServer)

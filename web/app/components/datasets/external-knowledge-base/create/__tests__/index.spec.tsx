@@ -78,6 +78,12 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof ExternalKnow
   return render(<ExternalKnowledgeBaseCreate {...defaultProps} {...props} />)
 }
 
+const getVisibleText = (text: string) => {
+  const element = screen.getAllByText(text).find(element => !element.classList.contains('sr-only'))
+  expect(element).toBeDefined()
+  return element!
+}
+
 describe('ExternalKnowledgeBaseCreate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -878,8 +884,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
       expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
       // Should show Top K and Score Threshold labels
       // Should show Top K and Score Threshold labels
-      expect(screen.getByText('appDebug.datasetConfig.top_k'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.datasetConfig.score_threshold'))!.toBeInTheDocument()
+      expect(getVisibleText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
+      expect(getVisibleText('appDebug.datasetConfig.score_threshold')).toBeInTheDocument()
     })
   })
 

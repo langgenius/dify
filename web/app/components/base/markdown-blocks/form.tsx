@@ -3,6 +3,7 @@ import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
@@ -10,7 +11,6 @@ import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -372,11 +372,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return null
           return (
             <Textarea
+              aria-label={name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={e => updateValue(name, e.target.value)}
+              onValueChange={value => updateValue(name, value)}
             />
           )
         }

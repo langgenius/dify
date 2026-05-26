@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -87,10 +89,10 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @console_ns.response(204, "Binding deleted successfully")
-    def delete(self, binding_id):
+    def delete(self, binding_id: UUID):
         # The role of the current user in the table must be admin or owner
         _, current_tenant_id = current_account_with_tenant()
 
-        ApiKeyAuthService.delete_provider_auth(current_tenant_id, binding_id)
+        ApiKeyAuthService.delete_provider_auth(current_tenant_id, str(binding_id))
 
-        return {"result": "success"}, 204
+        return "", 204

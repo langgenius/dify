@@ -8,8 +8,10 @@ from controllers.console.error import NotInitValidateError, NotSetupError, Unaut
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     account_initialization_required,
+    cloud_edition_billing_enabled,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
+    cloud_utm_record,
     enterprise_license_required,
     only_edition_cloud,
     only_edition_enterprise,
@@ -145,6 +147,42 @@ class TestEditionChecks:
 
         # Assert
         assert result == "self_hosted_success"
+
+
+class TestBillingEnabled:
+    """Test billing enabled decorator."""
+
+    def test_should_allow_when_billing_config_enabled(self):
+        """Test billing decorator uses local config without loading tenant features."""
+
+        @cloud_edition_billing_enabled
+        def billing_view():
+            return "billing_success"
+
+        with patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True):
+            with patch("controllers.console.wraps.FeatureService.get_features") as get_features:
+                result = billing_view()
+
+        assert result == "billing_success"
+        get_features.assert_not_called()
+
+    def test_should_reject_when_billing_config_disabled(self):
+        """Test billing decorator rejects when local billing config is disabled."""
+        app = create_app_with_login()
+
+        @cloud_edition_billing_enabled
+        def billing_view():
+            return "billing_success"
+
+        with app.test_request_context():
+            with patch("controllers.console.wraps.dify_config.BILLING_ENABLED", False):
+                with patch("controllers.console.wraps.FeatureService.get_features") as get_features:
+                    with pytest.raises(Exception) as exc_info:
+                        billing_view()
+
+        assert exc_info.value.code == 403
+        assert "Billing feature is not enabled" in str(exc_info.value.description)
+        get_features.assert_not_called()
 
 
 class TestBillingResourceLimits:
@@ -301,6 +339,53 @@ class TestRateLimiting:
                     # Verify rate limit log was created
                     mock_session.add.assert_called_once()
                     mock_session.commit.assert_called_once()
+
+
+class TestCloudUtmRecord:
+    """Test cloud UTM recording decorator."""
+
+    def test_should_record_utm_when_billing_config_enabled_and_cookie_exists(self):
+        """Test UTM recording uses billing config without loading tenant features."""
+        app = create_app_with_login()
+
+        @cloud_utm_record
+        def view():
+            return "success"
+
+        with app.test_request_context("/", headers={"Cookie": "utm_info={}"}):
+            with (
+                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True),
+                patch("controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("u1"), "t1")),
+                patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
+                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
+            ):
+                result = view()
+
+        assert result == "success"
+        record_utm.assert_called_once_with("t1", {})
+        get_features.assert_not_called()
+
+    def test_should_skip_utm_when_billing_config_disabled(self):
+        """Test UTM recording skips tenant feature loading when billing config is disabled."""
+        app = create_app_with_login()
+
+        @cloud_utm_record
+        def view():
+            return "success"
+
+        with app.test_request_context("/", headers={"Cookie": "utm_info={}"}):
+            with (
+                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", False),
+                patch("controllers.console.wraps.current_account_with_tenant") as current_account,
+                patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
+                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
+            ):
+                result = view()
+
+        assert result == "success"
+        current_account.assert_not_called()
+        record_utm.assert_not_called()
+        get_features.assert_not_called()
 
 
 class TestSystemSetup:

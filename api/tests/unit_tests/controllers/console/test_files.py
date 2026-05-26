@@ -59,12 +59,8 @@ def mock_current_user():
 
 
 @pytest.fixture
-def mock_account_context(mock_current_user):
-    with patch(
-        "controllers.console.files.current_account_with_tenant",
-        return_value=(mock_current_user, None),
-    ):
-        yield
+def mock_current_tenant_id():
+    return "tenant-123"
 
 
 @pytest.fixture
@@ -95,15 +91,15 @@ class TestFileApiGet:
 
 
 class TestFileApiPost:
-    def test_no_file_uploaded(self, app: Flask, mock_account_context):
+    def test_no_file_uploaded(self, app: Flask, mock_current_user):
         api = FileApi()
         post_method = unwrap(api.post)
 
         with app.test_request_context(method="POST", data={}):
             with pytest.raises(NoFileUploadedError):
-                post_method(api)
+                post_method(api, mock_current_user)
 
-    def test_too_many_files(self, app: Flask, mock_account_context):
+    def test_too_many_files(self, app: Flask, mock_current_user):
         api = FileApi()
         post_method = unwrap(api.post)
 
@@ -118,9 +114,9 @@ class TestFileApiPost:
                 mock_request.form.get.return_value = None
 
                 with pytest.raises(TooManyFilesError):
-                    post_method(api)
+                    post_method(api, mock_current_user)
 
-    def test_filename_missing(self, app: Flask, mock_account_context):
+    def test_filename_missing(self, app: Flask, mock_current_user):
         api = FileApi()
         post_method = unwrap(api.post)
 
@@ -130,28 +126,24 @@ class TestFileApiPost:
 
         with app.test_request_context(method="POST", data=data):
             with pytest.raises(FilenameNotExistsError):
-                post_method(api)
+                post_method(api, mock_current_user)
 
     def test_dataset_upload_without_permission(self, app: Flask, mock_current_user):
         mock_current_user.is_dataset_editor = False
 
-        with patch(
-            "controllers.console.files.current_account_with_tenant",
-            return_value=(mock_current_user, None),
-        ):
-            api = FileApi()
-            post_method = unwrap(api.post)
+        api = FileApi()
+        post_method = unwrap(api.post)
 
-            data = {
-                "file": (io.BytesIO(b"abc"), "test.txt"),
-                "source": "datasets",
-            }
+        data = {
+            "file": (io.BytesIO(b"abc"), "test.txt"),
+            "source": "datasets",
+        }
 
-            with app.test_request_context(method="POST", data=data):
-                with pytest.raises(Forbidden):
-                    post_method(api)
+        with app.test_request_context(method="POST", data=data):
+            with pytest.raises(Forbidden):
+                post_method(api, mock_current_user)
 
-    def test_successful_upload(self, app: Flask, mock_account_context, mock_file_service):
+    def test_successful_upload(self, app: Flask, mock_current_user, mock_file_service):
         api = FileApi()
         post_method = unwrap(api.post)
 
@@ -179,13 +171,13 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            response, status = post_method(api)
+            response, status = post_method(api, mock_current_user)
 
         assert status == 201
         assert response["id"] == "file-id-123"
         assert response["name"] == "test.txt"
 
-    def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
+    def test_upload_with_invalid_source(self, app: Flask, mock_current_user, mock_file_service):
         """Test that invalid source parameter gets normalized to None"""
         api = FileApi()
         post_method = unwrap(api.post)
@@ -216,7 +208,7 @@ class TestFileApiPost:
         }
 
         with app.test_request_context(method="POST", data=data):
-            response, status = post_method(api)
+            response, status = post_method(api, mock_current_user)
 
         assert status == 201
         assert response["id"] == "file-id-456"
@@ -225,7 +217,7 @@ class TestFileApiPost:
         call_kwargs = mock_file_service.upload_file.call_args[1]
         assert call_kwargs["source"] is None
 
-    def test_file_too_large_error(self, app: Flask, mock_account_context, mock_file_service):
+    def test_file_too_large_error(self, app: Flask, mock_current_user, mock_file_service):
         api = FileApi()
         post_method = unwrap(api.post)
 
@@ -240,9 +232,9 @@ class TestFileApiPost:
 
         with app.test_request_context(method="POST", data=data):
             with pytest.raises(FileTooLargeError):
-                post_method(api)
+                post_method(api, mock_current_user)
 
-    def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_service):
+    def test_unsupported_file_type(self, app: Flask, mock_current_user, mock_file_service):
         api = FileApi()
         post_method = unwrap(api.post)
 
@@ -257,9 +249,9 @@ class TestFileApiPost:
 
         with app.test_request_context(method="POST", data=data):
             with pytest.raises(UnsupportedFileTypeError):
-                post_method(api)
+                post_method(api, mock_current_user)
 
-    def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_service):
+    def test_blocked_extension(self, app: Flask, mock_current_user, mock_file_service):
         api = FileApi()
         post_method = unwrap(api.post)
 
@@ -274,17 +266,17 @@ class TestFileApiPost:
 
         with app.test_request_context(method="POST", data=data):
             with pytest.raises(BlockedFileExtensionError):
-                post_method(api)
+                post_method(api, mock_current_user)
 
 
 class TestFilePreviewApi:
-    def test_get_preview(self, app: Flask, mock_account_context, mock_file_service):
+    def test_get_preview(self, app: Flask, mock_current_tenant_id, mock_file_service):
         api = FilePreviewApi()
         get_method = unwrap(api.get)
         mock_file_service.get_file_preview.return_value = "preview text"
 
         with app.test_request_context():
-            result = get_method(api, "1234")
+            result = get_method(api, mock_current_tenant_id, "1234")
 
         assert result == {"content": "preview text"}
 

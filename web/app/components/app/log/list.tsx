@@ -17,6 +17,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
@@ -47,7 +48,6 @@ import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import PromptLogModal from '../../base/prompt-log-modal'
-import Indicator from '../../header/indicator'
 import {
   applyAnnotationAdded,
   applyAnnotationEdited,
@@ -114,7 +114,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   if (statusCount.paused > 0) {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="yellow" />
+        <StatusDot status="warning" />
         <span className="text-util-colors-warning-warning-600">Pending</span>
       </div>
     )
@@ -122,7 +122,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   else if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="green" />
+        <StatusDot status="success" />
         <span className="text-util-colors-green-green-600">Success</span>
       </div>
     )
@@ -130,7 +130,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   else if (statusCount.failed === 0) {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="green" />
+        <StatusDot status="success" />
         <span className="text-util-colors-green-green-600">Partial Success</span>
       </div>
     )
@@ -138,7 +138,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   else {
     return (
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-        <Indicator color="red" />
+        <StatusDot status="error" />
         <span className="text-util-colors-red-red-600">
           {statusCount.failed}
           {' '}
