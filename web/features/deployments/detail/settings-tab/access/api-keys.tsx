@@ -4,16 +4,37 @@ import type {
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import type { FormEvent } from 'react'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
@@ -68,8 +89,10 @@ function RevokeApiKeyButton({ apiKey }: {
 }) {
   const { t } = useTranslation('deployments')
   const queryClient = useQueryClient()
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
   const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
   const isRevoking = revokeApiKey.isPending
+  const apiKeyName = apiKey.name || apiKey.id || t('access.api.table.key')
 
   function invalidateApiKeys() {
     if (apiKey.appInstanceId && apiKey.environmentId) {
@@ -104,6 +127,7 @@ function RevokeApiKeyButton({ apiKey }: {
       {
         onSuccess: async () => {
           await invalidateApiKeys()
+          setShowRevokeConfirm(false)
           toast.success(t('access.api.revokeSuccess'))
         },
         onError: () => {
@@ -113,22 +137,51 @@ function RevokeApiKeyButton({ apiKey }: {
     )
   }
 
+  function handleRevokeConfirmOpenChange(open: boolean) {
+    if (isRevoking)
+      return
+
+    setShowRevokeConfirm(open)
+  }
+
   return (
-    <button
-      type="button"
-      onClick={handleRevoke}
-      aria-label={t('access.revoke')}
-      aria-busy={isRevoking}
-      disabled={!apiKey.id || isRevoking}
-      className={cn(
-        'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        isRevoking
-          ? 'cursor-not-allowed opacity-60'
-          : 'hover:bg-state-destructive-hover hover:text-text-destructive',
-      )}
-    >
-      <span className={cn(isRevoking ? 'i-ri-loader-2-line animate-spin' : 'i-ri-delete-bin-line', 'size-3.5')} />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setShowRevokeConfirm(true)}
+        aria-label={t('access.revoke')}
+        aria-busy={isRevoking}
+        disabled={!apiKey.id || isRevoking}
+        className={cn(
+          'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          isRevoking
+            ? 'cursor-not-allowed opacity-60'
+            : 'hover:bg-state-destructive-hover hover:text-text-destructive',
+        )}
+      >
+        <span className={cn(isRevoking ? 'i-ri-loader-2-line animate-spin' : 'i-ri-delete-bin-line', 'size-3.5')} />
+      </button>
+      <AlertDialog open={showRevokeConfirm} onOpenChange={handleRevokeConfirmOpenChange}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('access.api.revokeConfirmTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('access.api.revokeConfirmDescription', { name: apiKeyName })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton disabled={isRevoking}>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={isRevoking} disabled={isRevoking} onClick={handleRevoke}>
+              {t('access.revoke')}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -247,82 +300,182 @@ export function ApiKeyList({ apiKeys, environments }: {
   )
 }
 
-export function ApiKeyGenerateMenu({ appInstanceId, environments, apiKeys, onCreatedToken }: {
+export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken }: {
   appInstanceId: string
   environments: Environment[]
   apiKeys: ApiKey[]
   onCreatedToken: (token: string) => void
 }) {
   const { t } = useTranslation('deployments')
-  const [open, setOpen] = useState(false)
+  const nameInputId = useId()
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>()
+  const [draftName, setDraftName] = useState('')
+  const [nameError, setNameError] = useState(false)
   const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
   const selectableEnvironments = environments.filter(env => env.id)
+  const selectedEnvironment = selectedEnvironmentId
+    ? environments.find(env => env.id === selectedEnvironmentId)
+    : undefined
   const disabled = selectableEnvironments.length === 0
+  const isCreating = generateApiKey.isPending
 
-  function createApiKeyLabel(environmentId: string) {
-    const existingCount = apiKeys.filter(key =>
-      key.environmentId === environmentId,
-    ).length
-    const name = environments.find(env => env.id === environmentId)?.name ?? 'env'
-
-    return `${name}-key-${String(existingCount + 1).padStart(3, '0')}`
+  function resetCreateDialog() {
+    setCreateDialogOpen(false)
+    setSelectedEnvironmentId(undefined)
+    setDraftName('')
+    setNameError(false)
   }
 
-  function handleGenerateApiKey(environmentId: string) {
+  function handleOpenCreateDialog() {
+    const firstEnvironmentId = selectableEnvironments[0]?.id
+    if (!firstEnvironmentId)
+      return
+
+    setSelectedEnvironmentId(firstEnvironmentId)
+    setDraftName('')
+    setNameError(false)
+    setCreateDialogOpen(true)
+  }
+
+  function handleEnvironmentChange(environmentId: string) {
+    setSelectedEnvironmentId(environmentId)
+    setNameError(false)
+  }
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (nextOpen || isCreating)
+      return
+
+    resetCreateDialog()
+  }
+
+  function handleGenerateApiKey(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const name = draftName.trim()
+
+    if (!selectedEnvironmentId || !name) {
+      setNameError(true)
+      return
+    }
+
     generateApiKey.mutate(
       {
         params: {
           appInstanceId,
-          environmentId,
+          environmentId: selectedEnvironmentId,
         },
         body: {
           appInstanceId,
-          environmentId,
-          name: createApiKeyLabel(environmentId),
+          environmentId: selectedEnvironmentId,
+          name,
         },
       },
       {
         onSuccess: (response) => {
           if (response.token)
             onCreatedToken(response.token)
+          resetCreateDialog()
         },
       },
     )
   }
 
   return (
-    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
+    <>
+      <Button
+        type="button"
+        variant="secondary"
         disabled={disabled}
-        className={cn(
-          'inline-flex h-8 items-center gap-1.5 rounded-lg px-3 system-sm-medium',
-          'border border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text',
-          'hover:bg-components-button-secondary-bg-hover',
-          disabled && 'cursor-not-allowed opacity-50',
-        )}
+        onClick={handleOpenCreateDialog}
       >
-        <span className="i-ri-add-line size-3.5" />
         {t('access.api.newKey')}
-        <span className="i-ri-arrow-down-s-line size-3.5" />
-      </DropdownMenuTrigger>
-      {open && !disabled && (
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-55">
-          {selectableEnvironments.map(env => (
-            <DropdownMenuItem
-              key={env.id}
-              className="gap-2 px-3"
-              onClick={() => {
-                setOpen(false)
-                handleGenerateApiKey(env.id!)
-              }}
-            >
-              <span className="system-sm-regular text-text-secondary">
-                {t('access.api.newKeyForEnv', { env: environmentName(env) })}
-              </span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      )}
-    </DropdownMenu>
+      </Button>
+      <Dialog open={createDialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
+          <DialogCloseButton disabled={isCreating} />
+          <form onSubmit={handleGenerateApiKey}>
+            <div className="border-b border-divider-subtle px-6 py-5 pr-14">
+              <DialogTitle className="title-xl-semi-bold text-text-primary">
+                {t('access.api.createKeyTitle')}
+              </DialogTitle>
+            </div>
+
+            <div className="flex flex-col gap-4 px-6 py-5">
+              <div>
+                <Select
+                  value={selectedEnvironmentId ?? null}
+                  disabled={isCreating}
+                  onValueChange={value => value && handleEnvironmentChange(value)}
+                >
+                  <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
+                    {t('access.api.table.environment')}
+                  </SelectLabel>
+                  <SelectTrigger>
+                    {environmentName(selectedEnvironment)}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectableEnvironments.map(env => (
+                      <SelectItem key={env.id} value={env.id!}>
+                        <SelectItemText>{environmentName(env)}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor={nameInputId}
+                  className="mb-1 block system-sm-medium text-text-secondary"
+                >
+                  {t('access.api.nameLabel')}
+                </label>
+                <Input
+                  id={nameInputId}
+                  value={draftName}
+                  disabled={isCreating}
+                  autoFocus
+                  aria-invalid={nameError || undefined}
+                  aria-describedby={nameError ? `${nameInputId}-error` : undefined}
+                  placeholder={t('access.api.namePlaceholder')}
+                  onChange={(event) => {
+                    setDraftName(event.target.value)
+                    if (nameError && event.target.value.trim())
+                      setNameError(false)
+                  }}
+                />
+                {nameError && (
+                  <div id={`${nameInputId}-error`} className="mt-1 system-xs-regular text-text-destructive">
+                    {t('access.api.nameRequired')}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isCreating}
+                onClick={() => handleDialogOpenChange(false)}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={isCreating}
+                disabled={!selectedEnvironmentId || !draftName.trim()}
+              >
+                {t('access.api.createKey')}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
