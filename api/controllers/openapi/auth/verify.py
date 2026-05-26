@@ -20,6 +20,8 @@ def check_scope(data: AuthData) -> None:
 def check_membership(data: AuthData) -> None:
     if data.tenant is None:
         raise Unauthorized("tenant unset")
+    if data.account_id is None:
+        raise Unauthorized("account_id unset")
     check_workspace_membership(
         account_id=data.account_id,
         tenant_id=data.tenant.id,
@@ -36,16 +38,20 @@ def check_app_access(data: AuthData) -> None:
 
 
 _ALLOWED_MODES_BY_TOKEN_TYPE: dict[TokenType, frozenset[WebAppAccessMode]] = {
-    TokenType.OAUTH_ACCOUNT: frozenset({
-        WebAppAccessMode.PUBLIC,
-        WebAppAccessMode.SSO_VERIFIED,
-        WebAppAccessMode.PRIVATE_ALL,
-        WebAppAccessMode.PRIVATE,
-    }),
-    TokenType.OAUTH_EXTERNAL_SSO: frozenset({
-        WebAppAccessMode.PUBLIC,
-        WebAppAccessMode.SSO_VERIFIED,
-    }),
+    TokenType.OAUTH_ACCOUNT: frozenset(
+        {
+            WebAppAccessMode.PUBLIC,
+            WebAppAccessMode.SSO_VERIFIED,
+            WebAppAccessMode.PRIVATE_ALL,
+            WebAppAccessMode.PRIVATE,
+        }
+    ),
+    TokenType.OAUTH_EXTERNAL_SSO: frozenset(
+        {
+            WebAppAccessMode.PUBLIC,
+            WebAppAccessMode.SSO_VERIFIED,
+        }
+    ),
 }
 
 
@@ -63,9 +69,7 @@ def check_private_app_permission(data: AuthData) -> None:
     user_id = _resolve_user_id(data)
     if user_id is None:
         raise Forbidden("cannot resolve user for private app check")
-    if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
-        user_id=user_id, app_id=data.app.id
-    ):
+    if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=data.app.id):
         raise Forbidden("user_not_allowed_for_private_app")
 
 

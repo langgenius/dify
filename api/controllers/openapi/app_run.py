@@ -128,8 +128,14 @@ class AppRunApi(Resource):
     @auth_router.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, *, auth_data: AuthData):
         app_model = auth_data.app
+        if app_model is None:
+            raise InternalServerError()
         caller = auth_data.caller
+        if caller is None:
+            raise InternalServerError()
         caller_kind = auth_data.caller_kind
+        if caller_kind is None:
+            raise InternalServerError()
         body = request.get_json(silent=True) or {}
         try:
             payload = AppRunRequest.model_validate(body)
@@ -165,8 +171,14 @@ class AppRunTaskStopApi(Resource):
     @auth_router.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model = auth_data.app
+        if app_model is None:
+            raise InternalServerError()
         caller = auth_data.caller
+        if caller is None:
+            raise InternalServerError()
         caller_kind = auth_data.caller_kind
+        if caller_kind is None:
+            raise InternalServerError()
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return {"result": "success"}

@@ -12,7 +12,7 @@ import logging
 
 from flask import Response, request
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
@@ -59,7 +59,11 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
     @auth_router.guard(scope=Scope.APPS_RUN)
     def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
         app_model = auth_data.app
+        if app_model is None:
+            raise InternalServerError()
         caller = auth_data.caller
+        if caller is None:
+            raise InternalServerError()
         caller_kind = auth_data.caller_kind
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
@@ -76,7 +80,11 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
     @auth_router.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, form_token: str, *, auth_data: AuthData):
         app_model = auth_data.app
+        if app_model is None:
+            raise InternalServerError()
         caller = auth_data.caller
+        if caller is None:
+            raise InternalServerError()
         caller_kind = auth_data.caller_kind
         payload = HumanInputFormSubmitPayload.model_validate(request.get_json(silent=True) or {})
 
