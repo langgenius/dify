@@ -117,6 +117,28 @@ def _collect_processing_signatures(lines: list[dict[str, object]]) -> set[tuple[
     return signatures
 
 
+def _cache_event_row_ids(
+    lines: list[dict[str, object]],
+    *,
+    table_name: str,
+    row_ids: set[str],
+    event_name: str,
+) -> set[str]:
+    matching_row_ids: set[str] = set()
+    for line in lines:
+        if line.get("event") != event_name:
+            continue
+        attrs = line.get("attrs")
+        if not isinstance(attrs, dict):
+            continue
+        if attrs.get("table_name") != table_name:
+            continue
+        row_id = str(attrs.get("id"))
+        if row_id in row_ids:
+            matching_row_ids.add(row_id)
+    return matching_row_ids
+
+
 def _patch_batch_size(
     monkeypatch: pytest.MonkeyPatch,
     migration_module,
@@ -1188,28 +1210,44 @@ def test_provider_model_settings_group_crossing_batches_is_completed_once_with_a
     }
 
 
-def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group_business_key_semantics(
+def test_load_balancing_inherit_rows_are_deduplicated_by_normalized_model_type_before_canonicalization(
     migration_module,
     sqlite_engine: sa.Engine,
     dirty_fixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    inserted_row_id = "00000000-0000-0000-0000-00000000dd01"
+    older_canonical_row_id = "00000000-0000-0000-0000-00000000dd01"
+    newer_legacy_row_id = "00000000-0000-0000-0000-00000000dd02"
     created_at = datetime(2025, 1, 1, 8, 0, 0)
-    updated_at = created_at + timedelta(minutes=15)
+    older_updated_at = created_at + timedelta(minutes=15)
+    newer_updated_at = created_at + timedelta(minutes=30)
     _insert_load_balancing_model_config(
         sqlite_engine,
-        row_id=inserted_row_id,
+        row_id=older_canonical_row_id,
+        tenant_id=dirty_fixture.primary.tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM.value,
+        name="__inherit__",
+        encrypted_config='{"api_key":"older-inherit"}',
+        credential_id=dirty_fixture.primary.winner_credential_id,
+        enabled=True,
+        created_at=created_at,
+        updated_at=older_updated_at,
+    )
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id=newer_legacy_row_id,
         tenant_id=dirty_fixture.primary.tenant_id,
         provider_name="openai",
         model_name="gpt-4o-mini",
         model_type="text-generation",
-        name=dirty_fixture.primary.loser_credential_name,
-        encrypted_config='{"api_key":"second-lb"}',
+        name="__inherit__",
+        encrypted_config='{"api_key":"newer-inherit"}',
         credential_id=dirty_fixture.primary.distinct_credential_id,
         enabled=True,
         created_at=created_at,
-        updated_at=updated_at,
+        updated_at=newer_updated_at,
     )
 
     deleted_cache_keys: list[str] = []
@@ -1221,10 +1259,7 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
 
     tenant_id = dirty_fixture.primary.tenant_id
     table_name = "load_balancing_model_configs"
-    expected_row_ids = {
-        dirty_fixture.primary.load_balancing_config_id,
-        inserted_row_id,
-    }
+    expected_row_ids = {older_canonical_row_id, newer_legacy_row_id}
 
     dry_run_output = io.StringIO()
     migration_module.LegacyModelTypeMigrationService(
@@ -1237,44 +1272,79 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
     ).migrate()
 
     dry_run_lines = _parse_json_lines(dry_run_output)
+    dry_run_signatures = {
+        signature
+        for signature in _collect_processing_signatures(dry_run_lines)
+        if signature[1] == table_name and signature[2] in expected_row_ids
+    }
     dry_run_row_updates = [
         cast(dict[str, object], line["attrs"])
         for line in dry_run_lines
         if line.get("event") == "row_updated"
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+        and str(cast(dict[str, object], line["attrs"]).get("id")) in expected_row_ids
     ]
-    assert len(dry_run_row_updates) == 2
-    assert {str(attrs["id"]) for attrs in dry_run_row_updates} == expected_row_ids
-    assert all(attrs.get("old_values") == {"model_type": "text-generation"} for attrs in dry_run_row_updates)
-    assert all(attrs.get("new_values") == {"model_type": ModelType.LLM.value} for attrs in dry_run_row_updates)
+    assert len(dry_run_row_updates) == 1
+    assert str(dry_run_row_updates[0]["id"]) == newer_legacy_row_id
+    assert dry_run_row_updates[0]["old_values"] == {"model_type": "text-generation"}
+    assert dry_run_row_updates[0]["new_values"] == {"model_type": ModelType.LLM.value}
     assert all("rewrite_source" not in attrs for attrs in dry_run_row_updates)
 
-    dry_run_group_processed = [
+    dry_run_row_deletes = [
         cast(dict[str, object], line["attrs"])
         for line in dry_run_lines
-        if line.get("event") == "group_processed"
+        if line.get("event") == "row_deleted"
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+        and str(cast(dict[str, object], line["attrs"]).get("id")) in expected_row_ids
     ]
-    assert dry_run_group_processed == []
+    assert len(dry_run_row_deletes) == 1
+    assert dry_run_row_deletes[0]["business_key"] == {
+        "tenant_id": tenant_id,
+        "provider_name": "openai",
+        "model_name": "gpt-4o-mini",
+        "model_type": ModelType.LLM.value,
+    }
+    assert dry_run_row_deletes[0]["merge_winner_id"] == newer_legacy_row_id
+    assert dry_run_row_deletes[0]["row"] == {
+        "id": older_canonical_row_id,
+        "tenant_id": tenant_id,
+        "provider_name": "openai",
+        "model_name": "gpt-4o-mini",
+        "model_type": ModelType.LLM.value,
+        "name": "__inherit__",
+        "encrypted_config": {"api_key": "older-inherit"},
+        "credential_id": dirty_fixture.primary.winner_credential_id,
+        "credential_source_type": CredentialSourceType.CUSTOM_MODEL.value,
+        "enabled": True,
+        "created_at": created_at.isoformat(),
+        "updated_at": older_updated_at.isoformat(),
+    }
 
-    dry_run_cache_plans = [
-        cast(dict[str, object], line["attrs"])
-        for line in dry_run_lines
-        if line.get("event") == "cache_delete_planned"
+    dry_run_deleted_index = next(
+        index
+        for index, line in enumerate(dry_run_lines)
+        if line.get("event") == "row_deleted"
         and isinstance(line.get("attrs"), dict)
-        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
-    ]
-    assert len(dry_run_cache_plans) == 2
-    assert {str(attrs["id"]) for attrs in dry_run_cache_plans} == expected_row_ids
+        and cast(dict[str, object], line["attrs"]).get("id") == older_canonical_row_id
+    )
+    dry_run_updated_index = next(
+        index
+        for index, line in enumerate(dry_run_lines)
+        if line.get("event") == "row_updated"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("id") == newer_legacy_row_id
+    )
+    assert dry_run_deleted_index < dry_run_updated_index
 
-    dry_run_business_keys = [
-        _json_key(business_key)
-        for attrs in [*dry_run_row_updates, *dry_run_cache_plans]
-        if isinstance((business_key := attrs.get("business_key")), dict)
-    ]
-    assert len(set(dry_run_business_keys)) == len(dry_run_business_keys)
+    dry_run_cache_plan_ids = _cache_event_row_ids(
+        dry_run_lines,
+        table_name=table_name,
+        row_ids=expected_row_ids,
+        event_name="cache_delete_planned",
+    )
+    assert newer_legacy_row_id in dry_run_cache_plan_ids
 
     apply_output = io.StringIO()
     migration_module.LegacyModelTypeMigrationService(
@@ -1287,47 +1357,100 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
     ).migrate()
 
     apply_lines = _parse_json_lines(apply_output)
+    apply_signatures = {
+        signature
+        for signature in _collect_processing_signatures(apply_lines)
+        if signature[1] == table_name and signature[2] in expected_row_ids
+    }
     apply_row_updates = [
         cast(dict[str, object], line["attrs"])
         for line in apply_lines
         if line.get("event") == "row_updated"
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
+        and str(cast(dict[str, object], line["attrs"]).get("id")) in expected_row_ids
     ]
-    assert len(apply_row_updates) == 2
-    assert {str(attrs["id"]) for attrs in apply_row_updates} == expected_row_ids
+    assert len(apply_row_updates) == 1
+    assert str(apply_row_updates[0]["id"]) == newer_legacy_row_id
+    assert apply_signatures == dry_run_signatures
 
-    apply_group_processed = [
-        cast(dict[str, object], line["attrs"])
-        for line in apply_lines
-        if line.get("event") == "group_processed"
-        and isinstance(line.get("attrs"), dict)
-        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
-    ]
-    assert apply_group_processed == []
-
-    apply_cache_deletes = [
-        cast(dict[str, object], line["attrs"])
-        for line in apply_lines
-        if line.get("event") == "cache_deleted"
-        and isinstance(line.get("attrs"), dict)
-        and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
-    ]
-    assert len(apply_cache_deletes) == 2
-    assert {str(attrs["id"]) for attrs in apply_cache_deletes} == expected_row_ids
-    assert len(deleted_cache_keys) == 2
-
-    apply_business_keys = [
-        _json_key(business_key)
-        for attrs in [*apply_row_updates, *apply_cache_deletes]
-        if isinstance((business_key := attrs.get("business_key")), dict)
-    ]
-    assert len(set(apply_business_keys)) == len(apply_business_keys)
+    apply_cache_delete_ids = _cache_event_row_ids(
+        apply_lines,
+        table_name=table_name,
+        row_ids=expected_row_ids,
+        event_name="cache_deleted",
+    )
+    assert apply_cache_delete_ids == dry_run_cache_plan_ids
+    assert deleted_cache_keys
 
     lb_rows = fetch_table_rows(sqlite_engine, table_name, tenant_id=tenant_id)
-    migrated_rows = [row for row in lb_rows if str(row["id"]) in expected_row_ids]
-    assert len(migrated_rows) == 2
-    assert all(row["model_type"] == ModelType.LLM.value for row in migrated_rows)
+    surviving_rows = [row for row in lb_rows if str(row["id"]) in expected_row_ids]
+    assert len(surviving_rows) == 1
+    surviving_row = surviving_rows[0]
+    assert surviving_row["id"] == newer_legacy_row_id
+    assert surviving_row["tenant_id"] == tenant_id
+    assert surviving_row["provider_name"] == "openai"
+    assert surviving_row["model_name"] == "gpt-4o-mini"
+    assert surviving_row["model_type"] == ModelType.LLM.value
+    assert surviving_row["name"] == "__inherit__"
+    assert surviving_row["encrypted_config"] == '{"api_key":"newer-inherit"}'
+    assert surviving_row["credential_id"] == dirty_fixture.primary.distinct_credential_id
+    assert surviving_row["credential_source_type"] == CredentialSourceType.CUSTOM_MODEL.value
+
+
+def test_load_balancing_non_inherit_rows_do_not_participate_in_normalized_model_type_deduplication(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    dirty_fixture,
+) -> None:
+    inserted_row_id = "00000000-0000-0000-0000-00000000dd03"
+    created_at = datetime(2025, 1, 1, 8, 0, 0)
+    updated_at = created_at + timedelta(minutes=15)
+    _insert_load_balancing_model_config(
+        sqlite_engine,
+        row_id=inserted_row_id,
+        tenant_id=dirty_fixture.primary.tenant_id,
+        provider_name="openai",
+        model_name="gpt-4o-mini",
+        model_type=ModelType.LLM.value,
+        name=dirty_fixture.primary.loser_credential_name,
+        encrypted_config='{"api_key":"second-lb"}',
+        credential_id=dirty_fixture.primary.distinct_credential_id,
+        enabled=True,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    output = io.StringIO()
+    migration_module.LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=True,
+        output=output,
+        tables=("load_balancing_model_configs",),
+        model_types=(ModelType.LLM,),
+        tenant_ids=(dirty_fixture.primary.tenant_id,),
+    ).migrate()
+
+    lines = _parse_json_lines(output)
+    row_deleted_events = [
+        cast(dict[str, object], line["attrs"])
+        for line in lines
+        if line.get("event") == "row_deleted"
+        and isinstance(line.get("attrs"), dict)
+        and cast(dict[str, object], line["attrs"]).get("table_name") == "load_balancing_model_configs"
+    ]
+    assert row_deleted_events == []
+
+    lb_rows = fetch_table_rows(
+        sqlite_engine,
+        "load_balancing_model_configs",
+        tenant_id=dirty_fixture.primary.tenant_id,
+    )
+    matching_rows = [
+        row for row in lb_rows if str(row["id"]) in {dirty_fixture.primary.load_balancing_config_id, inserted_row_id}
+    ]
+    assert len(matching_rows) == 2
+    assert all(row["model_type"] == ModelType.LLM.value for row in matching_rows)
 
 
 def test_migration_apply_updates_all_five_tables_and_rewrites_credential_references(

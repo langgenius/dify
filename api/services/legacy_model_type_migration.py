@@ -8,9 +8,9 @@ decisions, row updates, row deletes, and structured logging. Only some grouped t
 also add cache cleanup; that includes `provider_models` and
 `provider_model_credentials`. Provider-model-credential groups extend that flow by
 rewriting credential references in provider models and load-balancing configs before
-removing loser credential rows. `load_balancing_model_configs` is the intentional
-exception: it does not group or merge rows, and instead reloads and canonicalizes each
-legacy row independently with row-level cache cleanup.
+removing loser credential rows. `load_balancing_model_configs` stays mostly row-level,
+but it first deduplicates `name="__inherit__"` rows by business key before it
+canonicalizes the remaining legacy rows independently with row-level cache cleanup.
 """
 
 from __future__ import annotations
@@ -177,6 +177,16 @@ class _ProviderModelSettingBusinessKey(_BusinessKey):
 
 
 @dataclass(frozen=True, slots=True)
+class _LoadBalancingModelConfigInheritBusinessKey(_BusinessKey):
+    """Business key for `name="__inherit__"` load-balancing configs."""
+
+    tenant_id: str
+    provider_name: str
+    model_name: str
+    model_type: ModelType
+
+
+@dataclass(frozen=True, slots=True)
 class _ProviderModelCredentialBusinessKey(_BusinessKey):
     """Although `ProviderModelCredential` does not have the unique index
     (tenant_id, provider_name. model_name, model_type, credential_name).
@@ -208,6 +218,13 @@ class _ProviderModelSettingGroupPlan:
     group_row_ids: list[str]
     winner: _RowWithRawModelType[ProviderModelSetting] | None
     loser_rows: list[_RowWithRawModelType[ProviderModelSetting]]
+
+
+@dataclass(frozen=True, slots=True)
+class _LoadBalancingModelConfigInheritGroupPlan:
+    group_row_ids: list[str]
+    winner: _RowWithRawModelType[LoadBalancingModelConfig] | None
+    loser_rows: list[_RowWithRawModelType[LoadBalancingModelConfig]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -515,8 +532,29 @@ class Migration:
             legacy_values.extend(_CANONICAL_TO_LEGACY[model_type])
         return legacy_values
 
+    def _selected_model_type_values(self) -> list[str]:
+        model_type_values: list[str] = []
+        for model_type in self._model_types:
+            model_type_values.append(model_type.value)
+            model_type_values.extend(_CANONICAL_TO_LEGACY[model_type])
+        return list(dict.fromkeys(model_type_values))
+
     def _allowed_values_for_canonical_model_type(self, canonical_model_type: ModelType) -> tuple[str, ...]:
         return (*_CANONICAL_TO_LEGACY[canonical_model_type], canonical_model_type.value)
+
+    def _normalize_selected_model_type(self, raw_model_type: str) -> ModelType | None:
+        canonical_model_type = _LEGACY_TO_CANONICAL.get(raw_model_type)
+        if canonical_model_type is not None:
+            return canonical_model_type
+
+        try:
+            parsed_model_type = ModelType(raw_model_type)
+        except ValueError:
+            return None
+
+        if parsed_model_type not in self._model_types:
+            return None
+        return parsed_model_type
 
     def _has_legacy_rows[T: TypeBase](self, rows: Sequence[_RowWithRawModelType[T]]) -> bool:
         return any(row.raw_model_type in _LEGACY_TO_CANONICAL for row in rows)
@@ -1195,9 +1233,11 @@ class Migration:
         """
         Migrate load-balancing configs row by row.
 
-        This table only needs model_type canonicalization. Unlike the grouped tables, it
-        must not merge rows by business key; each legacy candidate is reloaded and updated
-        independently so the migration remains a pure per-row rewrite plus cache cleanup.
+        This table first deduplicates `name="__inherit__"` rows per normalized
+        `(tenant_id, provider_name, model_name, model_type)` business key, then
+        canonicalizes the remaining legacy rows independently. The pre-pass must run
+        first so a legacy/canonical `__inherit__` pair keeps only the newest row before
+        the row-level canonicalization would collapse them onto the same canonical key.
         """
         self._log_event(
             "table_started",
@@ -1209,6 +1249,7 @@ class Migration:
             },
         )
 
+        processed_inherit_groups = self._deduplicate_inherit_load_balancing_model_configs()
         processed_rows = 0
         last_id: str | None = None
 
@@ -1229,9 +1270,216 @@ class Migration:
                 "tenant_id": self._tenant_id,
                 "apply": self._apply,
                 "table_name": LoadBalancingModelConfig.__tablename__,
+                "processed_inherit_groups": processed_inherit_groups,
                 "processed_rows": processed_rows,
             },
         )
+
+    def _deduplicate_inherit_load_balancing_model_configs(self) -> int:
+        seen_business_keys: dict[_LoadBalancingModelConfigInheritBusinessKey, list[str]] = {}
+        processed_groups = 0
+        last_id: str | None = None
+
+        while True:
+            candidates = self._load_load_balancing_inherit_candidates(last_id)
+            if not candidates:
+                break
+
+            for candidate in candidates:
+                last_id = str(candidate.row.id)
+                business_key = _LoadBalancingModelConfigInheritBusinessKey(
+                    tenant_id=candidate.row.tenant_id,
+                    provider_name=candidate.row.provider_name,
+                    model_name=candidate.row.model_name,
+                    model_type=candidate.canonical_model_type,
+                )
+                if business_key in seen_business_keys:
+                    continue
+
+                seen_business_keys[business_key] = self._process_load_balancing_inherit_group(candidate, business_key)
+                processed_groups += 1
+
+        return processed_groups
+
+    def _load_load_balancing_inherit_candidates(
+        self, last_id: str | None
+    ) -> list[_RowWithRawModelType[LoadBalancingModelConfig]]:
+        raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        with _session_factory(self._engine) as session:
+            stmt = (
+                select(LoadBalancingModelConfig, raw_model_type)
+                .where(
+                    LoadBalancingModelConfig.tenant_id == self._tenant_id,
+                    LoadBalancingModelConfig.name == "__inherit__",
+                    sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).in_(
+                        self._selected_model_type_values()
+                    ),
+                )
+                .order_by(LoadBalancingModelConfig.id.asc())
+                .limit(self._batch_size)
+            )
+            if last_id is not None:
+                stmt = stmt.where(LoadBalancingModelConfig.id > last_id)
+            rows = session.execute(stmt).all()
+
+        wrapped_rows: list[_RowWithRawModelType[LoadBalancingModelConfig]] = []
+        for load_balancing_model_config, raw_value in rows:
+            raw_model_type_value = str(raw_value)
+            canonical_model_type = self._normalize_selected_model_type(raw_model_type_value)
+            if canonical_model_type is None:
+                self._log_event(
+                    event="invalid_model_type",
+                    message=f"invalid model type: {raw_value}",
+                    attrs={
+                        "id": load_balancing_model_config.id,
+                        "table_name": load_balancing_model_config.__tablename__,
+                    },
+                )
+                continue
+
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=load_balancing_model_config,
+                    raw_model_type=raw_model_type_value,
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _load_load_balancing_inherit_group(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[LoadBalancingModelConfig],
+        *,
+        lock_rows: bool,
+    ) -> list[_RowWithRawModelType[LoadBalancingModelConfig]]:
+        raw_model_type = sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).label(_RAW_MODEL_TYPE_COLUMN)
+        stmt = (
+            select(LoadBalancingModelConfig, raw_model_type)
+            .where(
+                LoadBalancingModelConfig.tenant_id == candidate.row.tenant_id,
+                LoadBalancingModelConfig.provider_name == candidate.row.provider_name,
+                LoadBalancingModelConfig.model_name == candidate.row.model_name,
+                LoadBalancingModelConfig.name == "__inherit__",
+                sa.type_coerce(LoadBalancingModelConfig.model_type, sa.String()).in_(
+                    self._allowed_values_for_canonical_model_type(candidate.canonical_model_type)
+                ),
+            )
+            .order_by(LoadBalancingModelConfig.id.asc())
+        )
+        if lock_rows:
+            stmt = stmt.with_for_update()
+
+        rows = session.execute(stmt).all()
+        wrapped_rows: list[_RowWithRawModelType[LoadBalancingModelConfig]] = []
+        for load_balancing_model_config, raw_value in rows:
+            raw_model_type_value = str(raw_value)
+            canonical_model_type = self._normalize_selected_model_type(raw_model_type_value)
+            if canonical_model_type is None:
+                continue
+            wrapped_rows.append(
+                _RowWithRawModelType(
+                    row=load_balancing_model_config,
+                    raw_model_type=raw_model_type_value,
+                    canonical_model_type=canonical_model_type,
+                )
+            )
+        return wrapped_rows
+
+    def _build_load_balancing_inherit_group_plan(
+        self,
+        session: Session,
+        candidate: _RowWithRawModelType[LoadBalancingModelConfig],
+        *,
+        lock_rows: bool,
+    ) -> _LoadBalancingModelConfigInheritGroupPlan:
+        rows = self._load_load_balancing_inherit_group(session, candidate, lock_rows=lock_rows)
+        group_row_ids = [str(row.row.id) for row in rows]
+        if len(rows) <= 1:
+            return _LoadBalancingModelConfigInheritGroupPlan(group_row_ids=group_row_ids, winner=None, loser_rows=[])
+
+        winner = self._select_winner(rows)
+        return _LoadBalancingModelConfigInheritGroupPlan(
+            group_row_ids=group_row_ids,
+            winner=winner,
+            loser_rows=[row for row in rows if row.row.id != winner.row.id],
+        )
+
+    def _emit_load_balancing_inherit_group_plan(
+        self,
+        plan: _LoadBalancingModelConfigInheritGroupPlan,
+        *,
+        session: Session,
+        tx_id: str,
+        business_key: _LoadBalancingModelConfigInheritBusinessKey,
+    ) -> None:
+        if plan.winner is None:
+            return
+
+        cache_plans: list[_CacheDeletePlan] = []
+        for loser in plan.loser_rows:
+            loser_row_id = str(loser.row.id)
+            if self._apply:
+                session.execute(sa.delete(LoadBalancingModelConfig).where(LoadBalancingModelConfig.id == loser_row_id))
+            self._log_row_deleted(
+                LoadBalancingModelConfig.__tablename__,
+                loser,
+                tx_id=tx_id,
+                business_key=business_key,
+                related_winner_id=str(plan.winner.row.id),
+            )
+            cache_plans.append(
+                _CacheDeletePlan(
+                    tenant_id=self._tenant_id,
+                    identity_id=loser_row_id,
+                    cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+                    table_name=LoadBalancingModelConfig.__tablename__,
+                    row_id=loser_row_id,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+            )
+
+        self._log_cache_plans(cache_plans, apply=self._apply)
+        self._log_group_processed(
+            LoadBalancingModelConfig.__tablename__,
+            business_key,
+            plan.group_row_ids,
+            tx_id=tx_id,
+        )
+
+    def _process_load_balancing_inherit_group(
+        self,
+        candidate: _RowWithRawModelType[LoadBalancingModelConfig],
+        business_key: _LoadBalancingModelConfigInheritBusinessKey,
+    ) -> list[str]:
+        tx_id = self._new_tx_id()
+        group_row_ids = [str(candidate.row.id)]
+
+        try:
+            with _session_factory(self._engine) as session, session.begin():
+                self._configure_lock_timeout(session)
+                plan = self._build_load_balancing_inherit_group_plan(session, candidate, lock_rows=True)
+                group_row_ids = plan.group_row_ids or group_row_ids
+                self._emit_load_balancing_inherit_group_plan(
+                    plan,
+                    session=session,
+                    tx_id=tx_id,
+                    business_key=business_key,
+                )
+        except OperationalError as exc:
+            if self._is_lock_timeout_error(exc):
+                self._log_lock_timeout(
+                    LoadBalancingModelConfig.__tablename__,
+                    str(candidate.row.id),
+                    tx_id,
+                    business_key,
+                    exc,
+                )
+                return group_row_ids
+            raise
+
+        return group_row_ids
 
     def _load_load_balancing_model_config_candidates(
         self, last_id: str | None
