@@ -287,8 +287,9 @@ class TestCloudEditionBillingResourceCheck:
             return "segment_added"
 
         # Act
-        with app.test_request_context("/", method="GET"), patch(
-            "controllers.service_api.wraps.dify_config.BILLING_ENABLED", True
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
         ):
             result = add_segment()
 
