@@ -181,8 +181,8 @@ catalog:
   knip: 6.14.2
   ky: 2.0.2
   lamejs: 1.2.1
-  lockfile: 1.0.4
   lexical: 0.44.0
+  lockfile: 1.0.4
   loro-crdt: 1.12.1
   mermaid: 11.15.0
   mime: 4.1.0
