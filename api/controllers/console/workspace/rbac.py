@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import wraps
 from typing import Any
 
 from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
-from werkzeug.exceptions import Forbidden, NotFound
+from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.console import console_ns
+from core.db.session_factory import session_factory
 from libs.login import current_account_with_tenant, login_required
+from models import Account
 from services.enterprise import rbac_service as svc
-
 
 _LEGACY_ROLE_PERMISSION_KEYS: dict[str, list[str]] = {
     # This is a compatibility projection from the pre-RBAC workspace roles into
@@ -74,6 +74,36 @@ def _dump(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json")
 
 
+def _account_names_by_ids(account_ids: list[str]) -> dict[str, str]:
+    ids = sorted({account_id.strip() for account_id in account_ids if account_id and account_id.strip()})
+    if not ids:
+        return {}
+
+    with session_factory.create_session() as session:
+        rows = session.execute(select(Account.id, Account.name).where(Account.id.in_(ids))).all()
+
+    return {account_id: name or "" for account_id, name in rows}
+
+
+def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> None:
+    account_ids: list[str] = []
+    for item in items:
+        for account in item.accounts:
+            account_id = str(account.get("account_id") or "").strip()
+            if account_id and not account.get("account_name"):
+                account_ids.append(account_id)
+
+    account_names = _account_names_by_ids(account_ids)
+    if not account_names:
+        return
+
+    for item in items:
+        for account in item.accounts:
+            account_id = str(account.get("account_id") or "").strip()
+            if account_id and not account.get("account_name"):
+                account["account_name"] = account_names.get(account_id, "")
+
+
 class _PaginationQuery(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -126,7 +156,9 @@ def _legacy_workspace_roles(options: svc.ListOption | None = None) -> svc.Pagina
     ]
 
     page_number = options.page_number if options and options.page_number is not None else 1
-    results_per_page = options.results_per_page if options and options.results_per_page is not None else len(legacy_roles)
+    results_per_page = (
+        options.results_per_page if options and options.results_per_page is not None else len(legacy_roles)
+    )
     reverse = options.reverse if options and options.reverse is not None else False
 
     ordered_roles = list(reversed(legacy_roles)) if reverse else legacy_roles
@@ -386,7 +418,9 @@ class RBACAppMatrixApi(Resource):
     @login_required
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.AppAccess.matrix(tenant_id, account_id, str(app_id)))
+        result = svc.RBACService.AppAccess.matrix(tenant_id, account_id, str(app_id))
+        _hydrate_access_matrix_account_names(result.items)
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<uuid:policy_id>/role-bindings")
@@ -394,9 +428,7 @@ class RBACAppRoleBindingsApi(Resource):
     @login_required
     def get(self, app_id, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.AppAccess.list_role_bindings(tenant_id, account_id, str(app_id), str(policy_id))
-        )
+        return _dump(svc.RBACService.AppAccess.list_role_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<uuid:policy_id>/member-bindings")
@@ -404,9 +436,7 @@ class RBACAppMemberBindingsApi(Resource):
     @login_required
     def get(self, app_id, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id))
-        )
+        return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<uuid:policy_id>/bindings")
@@ -436,7 +466,9 @@ class RBACDatasetMatrixApi(Resource):
     @login_required
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.DatasetAccess.matrix(tenant_id, account_id, str(dataset_id)))
+        result = svc.RBACService.DatasetAccess.matrix(tenant_id, account_id, str(dataset_id))
+        _hydrate_access_matrix_account_names(result.items)
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policies/<uuid:policy_id>/role-bindings")
@@ -445,9 +477,7 @@ class RBACDatasetRoleBindingsApi(Resource):
     def get(self, dataset_id, policy_id):
         tenant_id, account_id = _current_ids()
         return _dump(
-            svc.RBACService.DatasetAccess.list_role_bindings(
-                tenant_id, account_id, str(dataset_id), str(policy_id)
-            )
+            svc.RBACService.DatasetAccess.list_role_bindings(tenant_id, account_id, str(dataset_id), str(policy_id))
         )
 
 
@@ -476,9 +506,7 @@ class RBACDatasetMemberBindingsApi(Resource):
     def get(self, dataset_id, policy_id):
         tenant_id, account_id = _current_ids()
         return _dump(
-            svc.RBACService.DatasetAccess.list_member_bindings(
-                tenant_id, account_id, str(dataset_id), str(policy_id)
-            )
+            svc.RBACService.DatasetAccess.list_member_bindings(tenant_id, account_id, str(dataset_id), str(policy_id))
         )
 
 
@@ -493,7 +521,9 @@ class RBACWorkspaceAppMatrixApi(Resource):
     def get(self):
         tenant_id, account_id = _current_ids()
         options = _pagination_options()
-        return _dump(svc.RBACService.WorkspaceAccess.app_matrix(tenant_id, account_id, options=options))
+        result = svc.RBACService.WorkspaceAccess.app_matrix(tenant_id, account_id, options=options)
+        _hydrate_access_matrix_account_names(result.items)
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/role-bindings")
@@ -501,9 +531,7 @@ class RBACWorkspaceAppRoleBindingsApi(Resource):
     @login_required
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.WorkspaceAccess.list_app_role_bindings(tenant_id, account_id, str(policy_id))
-        )
+        return _dump(svc.RBACService.WorkspaceAccess.list_app_role_bindings(tenant_id, account_id, str(policy_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/bindings")
@@ -527,9 +555,7 @@ class RBACWorkspaceAppMemberBindingsApi(Resource):
     @login_required
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.WorkspaceAccess.list_app_member_bindings(tenant_id, account_id, str(policy_id))
-        )
+        return _dump(svc.RBACService.WorkspaceAccess.list_app_member_bindings(tenant_id, account_id, str(policy_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policy")
@@ -538,7 +564,9 @@ class RBACWorkspaceDatasetMatrixApi(Resource):
     def get(self):
         tenant_id, account_id = _current_ids()
         options = _pagination_options()
-        return _dump(svc.RBACService.WorkspaceAccess.dataset_matrix(tenant_id, account_id, options=options))
+        result = svc.RBACService.WorkspaceAccess.dataset_matrix(tenant_id, account_id, options=options)
+        _hydrate_access_matrix_account_names(result.items)
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/role-bindings")
@@ -546,9 +574,7 @@ class RBACWorkspaceDatasetRoleBindingsApi(Resource):
     @login_required
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.WorkspaceAccess.list_dataset_role_bindings(tenant_id, account_id, str(policy_id))
-        )
+        return _dump(svc.RBACService.WorkspaceAccess.list_dataset_role_bindings(tenant_id, account_id, str(policy_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/bindings")
