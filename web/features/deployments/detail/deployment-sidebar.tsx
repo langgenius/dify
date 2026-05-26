@@ -76,7 +76,7 @@ const TABS: TabDef[] = [
   { key: 'instances', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
   { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon },
-  { key: 'api', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
+  { key: 'tokens', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
   { key: 'settings', icon: SettingsIcon, selectedIcon: SettingsSelectedIcon },
 ]
 

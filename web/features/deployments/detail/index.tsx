@@ -35,7 +35,7 @@ export function InstanceDetail({ appInstanceId, children }: {
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                       <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
-                      {activeTab === 'api' && (
+                      {activeTab === 'tokens' && (
                         <div className="shrink-0">
                           <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
                         </div>
@@ -43,9 +43,9 @@ export function InstanceDetail({ appInstanceId, children }: {
                     </div>
                     <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                   </div>
-                  {(activeTab === 'api' || activeTab === 'releases' || activeTab === 'instances') && (
+                  {(activeTab === 'tokens' || activeTab === 'releases' || activeTab === 'instances') && (
                     <div className="shrink-0 pt-1.5">
-                      {activeTab === 'api'
+                      {activeTab === 'tokens'
                         ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
                         : activeTab === 'instances'
                           ? <NewDeploymentButton appInstanceId={appInstanceId} />

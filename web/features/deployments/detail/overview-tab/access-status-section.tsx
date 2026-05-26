@@ -14,7 +14,7 @@ type AccessStatusSectionProps = {
 }
 
 type AccessStatusItem = {
-  key: 'webapp' | 'cli' | 'api'
+  key: 'webapp' | 'cli' | 'tokens'
   href: string
   icon: string
   label: string
@@ -22,7 +22,7 @@ type AccessStatusItem = {
   meta?: string
 }
 
-const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli', 'api']
+const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli', 'tokens']
 
 export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount }: AccessStatusSectionProps) {
   const { t } = useTranslation('deployments')
@@ -42,8 +42,8 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
       enabled: Boolean(accessChannels?.webAppEnabled),
     },
     {
-      key: 'api',
-      href: `/deployments/${appInstanceId}/api`,
+      key: 'tokens',
+      href: `/deployments/${appInstanceId}/tokens`,
       icon: 'i-ri-code-s-slash-line',
       label: t('card.access.api'),
       enabled: Boolean(accessChannels?.developerApiEnabled),
