@@ -99,12 +99,30 @@ def _node(*, scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCE
         },
         call_depth=0,
     )
+    from core.workflow.nodes.agent_v2.output_check_executor import (
+        FileOutputCheckExecutor,
+        LoadedFileContent,
+        OutputCheckModelResponse,
+    )
+    from core.workflow.nodes.agent_v2.output_check_executor import (
+        FileOutputCheckUsage as _CheckUsage,
+    )
     from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
     from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
 
     class _AlwaysAllowFileValidator:
         def is_owned_by_tenant(self, *, file_id: str, tenant_id: str) -> bool:
             return True
+
+    class _NeverInvokedContentLoader:
+        """Default fakes never enable an output check, so this loader is unused."""
+
+        def load(self, *, file_id: str, tenant_id: str):  # pragma: no cover - defensive
+            return LoadedFileContent(text="", unsupported=True)
+
+    class _NeverInvokedModelInvoker:
+        def invoke(self, **_kwargs):  # pragma: no cover - defensive
+            return OutputCheckModelResponse(text="VERDICT: PASS", usage=_CheckUsage())
 
     return DifyAgentNode(
         node_id="agent-node",
@@ -117,6 +135,10 @@ def _node(*, scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCE
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
         type_checker=PerOutputTypeChecker(file_validator=_AlwaysAllowFileValidator()),
+        output_check_executor=FileOutputCheckExecutor(
+            content_loader=_NeverInvokedContentLoader(),
+            model_invoker=_NeverInvokedModelInvoker(),
+        ),
         failure_orchestrator=OutputFailureOrchestrator(),
     )
 

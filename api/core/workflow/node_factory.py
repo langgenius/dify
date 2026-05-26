@@ -473,8 +473,11 @@ class DifyNodeFactory(NodeFactory):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
             from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.output_check_executor import FileOutputCheckExecutor
+            from core.workflow.nodes.agent_v2.output_check_model_invoker import ModelRuntimeOutputCheckInvoker
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
+            from core.workflow.nodes.agent_v2.upload_file_content_loader import UploadFileContentLoader
 
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
@@ -489,10 +492,15 @@ class DifyNodeFactory(NodeFactory):
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 "output_adapter": WorkflowAgentOutputAdapter(),
-                # Stage 4 §5/§7: per-output validation + failure orchestration. The
-                # tenant validator queries upload_files so it stays cheap when
-                # outputs contain no file refs.
+                # Stage 4 §5/§6/§7: per-output validation + benchmark check +
+                # failure orchestration. The tenant validator and content
+                # loader query upload_files lazily so they stay cheap when
+                # declared outputs include no file refs.
                 "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                "output_check_executor": FileOutputCheckExecutor(
+                    content_loader=UploadFileContentLoader(),
+                    model_invoker=ModelRuntimeOutputCheckInvoker(),
+                ),
                 "failure_orchestrator": OutputFailureOrchestrator(),
             }
         return {

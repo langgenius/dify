@@ -23,11 +23,12 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
 from .output_adapter import WorkflowAgentOutputAdapter
+from .output_check_executor import FileOutputCheckExecutor, FileOutputCheckOutcome
 from .output_failure_orchestrator import (
     FailedOutput,
     OutputFailureDecision,
@@ -73,6 +74,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         event_adapter: AgentBackendRunEventAdapter,
         output_adapter: WorkflowAgentOutputAdapter,
         type_checker: PerOutputTypeChecker,
+        output_check_executor: FileOutputCheckExecutor,
         failure_orchestrator: OutputFailureOrchestrator,
     ) -> None:
         super().__init__(
@@ -87,6 +89,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._event_adapter = event_adapter
         self._output_adapter = output_adapter
         self._type_checker = type_checker
+        self._output_check_executor = output_check_executor
         self._failure_orchestrator = failure_orchestrator
 
     @classmethod
@@ -142,6 +145,22 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs))
         )
         outputs_by_name = {o.name: o for o in effective_outputs}
+
+        # Stage 4 §6: output check borrows the Agent Soul's model identity for
+        # its evaluator call. ``runtime_request_builder.build`` would also
+        # reject a missing model later, but we surface a deterministic error
+        # here so the failure_event has a sensible code.
+        agent_soul = AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict)
+        if agent_soul.model is None:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error="Workflow Agent node requires Agent Soul model config.",
+                error_type="agent_model_not_configured",
+            )
+            return
+        agent_model: AgentSoulModelConfig = agent_soul.model
 
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
@@ -234,7 +253,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 )
                 return
 
-            # ──── Stage 4: per-output type check ────
+            # ──── Stage 4 §5: per-output type check ────
             type_check = self._type_checker.check(
                 declared_outputs=effective_outputs,
                 raw_output=terminal_event.output,
@@ -242,19 +261,38 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             )
             self._record_type_check_metadata(metadata, type_check)
 
+            # ──── Stage 4 §6: file benchmark output check ────
+            # Only run when type check passes; comparing content of a value
+            # that's already mis-typed is wasted work and would produce a
+            # confusing second failure for the same root cause.
+            output_check: FileOutputCheckOutcome | None = None
             if not type_check.has_failures:
-                yield StreamCompletedEvent(
-                    node_run_result=self._output_adapter.build_success_result(
-                        event=terminal_event,
-                        inputs=inputs,
-                        process_data=process_data,
-                        metadata=metadata,
-                    )
+                output_check = self._output_check_executor.check_all(
+                    declared_outputs=effective_outputs,
+                    raw_output=terminal_event.output,
+                    tenant_id=dify_ctx.tenant_id,
+                    model_provider=agent_model.model_provider,
+                    model_name=agent_model.model,
+                    model_settings=agent_model.model_settings,
                 )
-                return
+                self._record_output_check_metadata(metadata, output_check)
 
-            # ──── Stage 4: orchestrate retry / default / fail ────
-            failures = [
+                if not output_check.has_failures:
+                    yield StreamCompletedEvent(
+                        node_run_result=self._output_adapter.build_success_result(
+                            event=terminal_event,
+                            inputs=inputs,
+                            process_data=process_data,
+                            metadata=metadata,
+                        )
+                    )
+                    return
+
+            # ──── Stage 4 §7: orchestrate retry / default / fail ────
+            # Aggregate failures from both stages. They are mutually exclusive
+            # (§6 only runs when §5 passes), so the resulting list contains
+            # exclusively TYPE_CHECK or OUTPUT_CHECK failures, never both.
+            failures: list[FailedOutput] = [
                 FailedOutput(
                     declared=outputs_by_name[result.name],
                     failure_kind=OutputFailureKind.TYPE_CHECK,
@@ -263,6 +301,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 for result in type_check.failures
                 if result.name in outputs_by_name
             ]
+            if output_check is not None:
+                failures.extend(
+                    FailedOutput(
+                        declared=outputs_by_name[result.output_name],
+                        failure_kind=OutputFailureKind.OUTPUT_CHECK,
+                        reason=result.reason,
+                    )
+                    for result in output_check.failures
+                    if result.output_name in outputs_by_name
+                )
+
             outcome = self._failure_orchestrator.decide(failures=failures, current_attempt=attempt)
             metadata["output_failure_decision"] = outcome.decision.value
             metadata["output_failure_reason"] = outcome.primary_reason
@@ -283,10 +332,18 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 )
                 return
 
-            error_type = (
-                "output_type_check_failed_fail_branch"
-                if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
+            # Pick an error_type that reflects which stage produced the
+            # surviving failure(s); FAIL_BRANCH gets a suffixed variant so
+            # downstream metrics can tell the two paths apart.
+            base_code = (
+                "output_content_check_failed"
+                if OutputFailureKind.OUTPUT_CHECK in outcome.failure_kinds
                 else "output_type_check_failed"
+            )
+            error_type = (
+                f"{base_code}_fail_branch"
+                if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
+                else base_code
             )
             yield self._failure_event(
                 inputs=inputs,
@@ -383,6 +440,45 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 for r in outcome.results
             ],
         }
+
+    @staticmethod
+    def _record_output_check_metadata(metadata: dict[str, Any], outcome: FileOutputCheckOutcome) -> None:
+        """Persist §6 results into node metadata, including the D-2 usage bucket.
+
+        ``output_check_usage`` is keyed by output name so multiple file
+        outputs can share metadata without colliding. The bucket is recorded
+        even on FAILED / SKIPPED results so the billing pipeline observes any
+        model usage the executor did spend.
+        """
+        if not outcome.results:
+            return
+        per_output_usage: dict[str, dict[str, Any]] = {}
+        result_payload: list[dict[str, Any]] = []
+        for r in outcome.results:
+            result_payload.append(
+                {
+                    "name": r.output_name,
+                    "status": r.status.value,
+                    "reason": r.reason,
+                    "skip_reason": r.skip_reason.value if r.skip_reason else None,
+                    "content_truncated": r.content_truncated,
+                }
+            )
+            per_output_usage[r.output_name] = {
+                "prompt_tokens": r.usage.prompt_tokens,
+                "completion_tokens": r.usage.completion_tokens,
+                "total_tokens": r.usage.total_tokens,
+                "total_price": str(r.usage.total_price),
+                "currency": r.usage.currency,
+                "latency_ms": r.usage.latency_ms,
+            }
+        metadata["output_check"] = {
+            "passed": not outcome.has_failures,
+            "results": result_payload,
+        }
+        # D-2: keep this bucket separate from ``agent_run_usage`` so billing
+        # can tell agent inference apart from output verification.
+        metadata["output_check_usage"] = per_output_usage
 
     @staticmethod
     def _patch_event_with_defaults(
