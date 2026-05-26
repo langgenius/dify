@@ -506,7 +506,7 @@ class AccountService:
         db.session.commit()
 
     @staticmethod
-    def login(account: Account, *, ip_address: str | None = None) -> TokenPair:
+    def login(account: Account, *, ip_address: str = "") -> TokenPair:
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
@@ -1154,7 +1154,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(account: Account, name: str | None = None, is_setup: bool | None = False):
+    def create_owner_tenant_if_not_exist(account: Account, name: str = "", is_setup: bool | None = False):
         """Check if user have a workspace or not"""
         available_ta = db.session.scalar(
             select(TenantAccountJoin)

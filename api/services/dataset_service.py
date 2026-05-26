@@ -1521,7 +1521,7 @@ class DocumentService:
     }
 
     @staticmethod
-    def get_document(dataset_id: str, document_id: str | None = None) -> Document | None:
+    def get_document(dataset_id: str, document_id: str = "") -> Document | None:
         if document_id:
             document = db.session.scalar(
                 select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
@@ -3919,7 +3919,7 @@ class SegmentService:
 
     @classmethod
     def get_child_chunks(
-        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str | None = None
+        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str = ""
     ):
         assert isinstance(current_user, Account)
 
@@ -3952,7 +3952,7 @@ class SegmentService:
         document_id: str,
         tenant_id: str,
         status_list: list[str] | None = None,
-        keyword: str | None = None,
+        keyword: str = "",
         page: int = 1,
         limit: int = 20,
     ):

@@ -193,7 +193,7 @@ class DatasourceProviderService:
         tenant_id: str,
         provider: str,
         plugin_id: str,
-        credential_id: str | None = None,
+        credential_id: str = "",
     ) -> dict[str, Any]:
         """
         Return decrypted datasource credentials.

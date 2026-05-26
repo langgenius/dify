@@ -212,7 +212,7 @@ class ConversationService:
         user: Account | EndUser | None,
         limit: int,
         last_id: str | None,
-        variable_name: str | None = None,
+        variable_name: str = "",
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 

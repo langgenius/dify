@@ -133,7 +133,7 @@ class TriggerProviderService:
         parameters: Mapping[str, Any],
         properties: Mapping[str, Any],
         credentials: Mapping[str, str],
-        subscription_id: str | None = None,
+        subscription_id: str = "",
         credential_expires_at: int = -1,
         expires_at: int = -1,
     ) -> Mapping[str, Any]:
@@ -331,7 +331,7 @@ class TriggerProviderService:
                 )
 
     @classmethod
-    def get_subscription_by_id(cls, tenant_id: str, subscription_id: str | None = None) -> TriggerSubscription | None:
+    def get_subscription_by_id(cls, tenant_id: str, subscription_id: str = "") -> TriggerSubscription | None:
         """
         Get a trigger subscription by the ID.
         """

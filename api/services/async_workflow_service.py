@@ -308,7 +308,7 @@ class AsyncWorkflowService:
     def _get_workflow(
         workflow_service: WorkflowService,
         app_model: App,
-        workflow_id: str | None = None,
+        workflow_id: str = "",
         session: Session | None = None,
     ) -> Workflow:
         """

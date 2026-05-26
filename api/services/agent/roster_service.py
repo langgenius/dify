@@ -71,7 +71,7 @@ class AgentRosterService:
         }
 
     def list_roster_agents(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str = ""
     ) -> dict[str, Any]:
         stmt = select(Agent).where(
             Agent.tenant_id == tenant_id,
@@ -107,7 +107,7 @@ class AgentRosterService:
         }
 
     def list_invite_options(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str = "", app_id: str | None = None
     ) -> dict[str, Any]:
         result = self.list_roster_agents(tenant_id=tenant_id, page=page, limit=limit, keyword=keyword)
         usage_by_agent_id: dict[str, list[str]] = {}

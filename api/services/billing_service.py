@@ -637,9 +637,9 @@ class BillingService:
         contents: list[LangContentDict],
         frequency: str = "once",
         status: str = "active",
-        notification_id: str | None = None,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        notification_id: str = "",
+        start_time: str = "",
+        end_time: str = "",
     ) -> UpsertNotificationDict:
         """Create or update a notification.
 

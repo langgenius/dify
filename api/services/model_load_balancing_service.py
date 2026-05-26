@@ -503,7 +503,7 @@ class ModelLoadBalancingService:
         model: str,
         model_type: str,
         credentials: dict[str, Any],
-        config_id: str | None = None,
+        config_id: str = "",
     ):
         """
         Validate load balancing credentials.

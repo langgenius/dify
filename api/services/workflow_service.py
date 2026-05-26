@@ -140,7 +140,7 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(self, app_model: App, workflow_id: str = "") -> Workflow | None:
         """
         Get draft workflow
         """

@@ -132,7 +132,7 @@ class WebAppAuthService:
 
     @classmethod
     def is_app_require_permission_check(
-        cls, app_code: str | None = None, app_id: str | None = None, access_mode: str | None = None
+        cls, app_code: str = "", app_id: str | None = None, access_mode: str = ""
     ) -> bool:
         """
         Check if the app requires permission check based on its access mode.
@@ -154,7 +154,7 @@ class WebAppAuthService:
         return False
 
     @classmethod
-    def get_app_auth_type(cls, app_code: str | None = None, access_mode: str | None = None) -> WebAppAuthType:
+    def get_app_auth_type(cls, app_code: str = "", access_mode: str = "") -> WebAppAuthType:
         """
         Get the authentication type for the app based on its access mode.
         """
