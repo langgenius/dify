@@ -595,3 +595,18 @@ class RateLimiter:
 
         self._redis_client.zadd(key, {member: current_time})
         self._redis_client.expire(key, self.time_window * 2)
+
+    def seconds_until_available(self, email: str) -> int:
+        """Seconds until the oldest in-window entry expires, freeing a slot.
+
+        Defensive floor of 1 second. Caller should only invoke this after
+        is_rate_limited() returned True.
+        """
+        key = self._get_key(email)
+        oldest = cast(Any, self._redis_client).zrange(key, 0, 0, withscores=True)
+        if not oldest:
+            return 1
+        _member, score = oldest[0]
+        free_at = int(score) + self.time_window
+        remaining = free_at - int(time.time())
+        return max(remaining, 1)
