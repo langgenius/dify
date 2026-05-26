@@ -47,17 +47,6 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/textarea', () => ({
-  default: ({ value, onChange, ...props }: Record<string, unknown>) => (
-    <textarea
-      data-testid="description-textarea"
-      value={value as string}
-      onChange={onChange as () => void}
-      {...props}
-    />
-  ),
-}))
-
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick?: () => void }) => (
     <div data-testid="app-icon" onClick={onClick} />
@@ -102,7 +91,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should initialize description as empty', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const textarea = screen.getByTestId('description-textarea') as HTMLTextAreaElement
+    const textarea = screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.description' }) as HTMLTextAreaElement
     expect(textarea.value).toBe('')
   })
 
@@ -146,7 +135,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should update description when textarea changes', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const textarea = screen.getByTestId('description-textarea')
+    const textarea = screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.description' })
     fireEvent.change(textarea, { target: { value: 'My description' } })
 
     expect((textarea as HTMLTextAreaElement).value).toBe('My description')
@@ -225,7 +214,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     const nameInput = screen.getByTestId('name-input')
     fireEvent.change(nameInput, { target: { value: '  Trimmed Name  ' } })
 
-    const textarea = screen.getByTestId('description-textarea')
+    const textarea = screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.description' })
     fireEvent.change(textarea, { target: { value: '  Some desc  ' } })
 
     fireEvent.click(screen.getByText('workflow.common.publish'))
