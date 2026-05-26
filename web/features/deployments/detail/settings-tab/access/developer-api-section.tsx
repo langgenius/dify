@@ -171,7 +171,7 @@ function CreatedApiTokenDialog({ token, onDismiss }: {
   const { t } = useTranslation('deployments')
 
   return (
-    <Dialog open={Boolean(token)} onOpenChange={open => !open && onDismiss()}>
+    <Dialog open={Boolean(token)} onOpenChange={open => !open && onDismiss()} disablePointerDismissal>
       <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
         <DialogCloseButton />
         <div className="border-b border-divider-subtle px-6 py-5 pr-14">
