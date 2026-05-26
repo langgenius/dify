@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -141,6 +142,9 @@ def cloud_edition_billing_resource_check[**P, R](
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             if resource == "vector_space":
+                if not dify_config.BILLING_ENABLED:
+                    return view(*args, **kwargs)
+
                 vector_space = FeatureService.get_vector_space(api_token.tenant_id)
                 if 0 < vector_space.limit <= vector_space.size:
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")

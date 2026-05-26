@@ -97,6 +97,9 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
             if resource == "vector_space":
+                if not dify_config.BILLING_ENABLED:
+                    return view(*args, **kwargs)
+
                 vector_space = FeatureService.get_vector_space(current_tenant_id)
                 if 0 < vector_space.limit <= vector_space.size:
                     abort(
