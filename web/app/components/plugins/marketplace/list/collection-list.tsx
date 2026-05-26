@@ -83,7 +83,7 @@ export function CollectionHeader<TCollection extends BaseCollection>({
   const label = renderI18nObject(collection.label, lang)
   const description = renderI18nObject(collection.description, lang)
   // Plugin marketplace uses `partners`, Template marketplace uses `Partner Template`.
-  const isPartnersCollection = collection.name === 'partners' || collection.name === 'Partner Template'
+  const isPartnersCollection = collection.name === 'partners' || collection.name === 'partner-template' || collection.name === 'Partner Template'
 
   return (
     <div className="mb-2 flex items-end justify-between">
