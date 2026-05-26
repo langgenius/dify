@@ -13,15 +13,11 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
-import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 
 const SOURCE_APP_PAGE_SIZE = 20
@@ -229,114 +225,5 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
         </div>
       </ComboboxContent>
     </Combobox>
-  )
-}
-
-function CreateInstanceForm({ onClose }: {
-  onClose: () => void
-}) {
-  const { t } = useTranslation('deployments')
-  const router = useRouter()
-  const createInstance = useMutation(consoleQuery.enterprise.appInstanceService.createAppInstance.mutationOptions())
-
-  const canCreate = !createInstance.isPending
-
-  const handleCreate = async (form: HTMLFormElement) => {
-    if (!canCreate)
-      return
-
-    const formData = new FormData(form)
-    const name = String(formData.get('name') ?? '').trim()
-    const description = String(formData.get('description') ?? '').trim()
-    if (!name)
-      return
-
-    try {
-      const result = await createInstance.mutateAsync({
-        body: {
-          name: name.trim(),
-          description: description.trim() || undefined,
-        },
-      })
-      const appInstanceId = result.appInstance?.id
-      if (!appInstanceId)
-        throw new Error('Create app instance did not return an app instance.')
-      onClose()
-      router.push(`/deployments/${appInstanceId}/overview`)
-    }
-    catch {
-      toast.error(t('createModal.createFailed'))
-    }
-  }
-
-  return (
-    <form
-      className="flex flex-col gap-5"
-      onSubmit={(event) => {
-        event.preventDefault()
-        void handleCreate(event.currentTarget)
-      }}
-    >
-      <div>
-        <DialogTitle className="title-xl-semi-bold text-text-primary">
-          {t('createModal.title')}
-        </DialogTitle>
-        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-          {t('createModal.description')}
-        </DialogDescription>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="instance-name">
-          {t('createModal.nameLabel')}
-        </label>
-        <Input
-          id="instance-name"
-          name="name"
-          type="text"
-          placeholder={t('createModal.namePlaceholder')}
-          required
-          className="h-8"
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="instance-desc">
-          {t('createModal.descriptionLabel')}
-        </label>
-        <textarea
-          id="instance-desc"
-          name="description"
-          placeholder={t('createModal.descriptionPlaceholder')}
-          className="min-h-20 w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
-        />
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="secondary" onClick={onClose}>
-          {t('createModal.cancel')}
-        </Button>
-        <Button type="submit" variant="primary" disabled={!canCreate}>
-          {t('createModal.create')}
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-export function CreateInstanceModal({ open, onOpenChange }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) {
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
-      <DialogContent className="w-130 max-w-[90vw]">
-        <DialogCloseButton />
-        {open && <CreateInstanceForm onClose={() => onOpenChange(false)} />}
-      </DialogContent>
-    </Dialog>
   )
 }

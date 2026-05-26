@@ -15,14 +15,14 @@ export type DeploymentUiStatus
     | 'not_deployed'
     | 'unknown'
 
-export const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
+const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
 // Mirrors appdeploy/v1/common.proto RuntimeInstanceStatus for EnvironmentDeployment.status.
-export const RUNTIME_INSTANCE_STATUS_UNDEPLOYED = 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED' satisfies RuntimeInstanceStatus
-export const RUNTIME_INSTANCE_STATUS_DEPLOYING = 'RUNTIME_INSTANCE_STATUS_DEPLOYING' satisfies RuntimeInstanceStatus
-export const RUNTIME_INSTANCE_STATUS_READY = 'RUNTIME_INSTANCE_STATUS_READY' satisfies RuntimeInstanceStatus
-export const RUNTIME_INSTANCE_STATUS_FAILED = 'RUNTIME_INSTANCE_STATUS_FAILED' satisfies RuntimeInstanceStatus
-export const RUNTIME_INSTANCE_STATUS_DRIFTED = 'RUNTIME_INSTANCE_STATUS_DRIFTED' satisfies RuntimeInstanceStatus
-export const RUNTIME_INSTANCE_STATUS_INVALID = 'RUNTIME_INSTANCE_STATUS_INVALID' satisfies RuntimeInstanceStatus
+const RUNTIME_INSTANCE_STATUS_UNDEPLOYED = 'RUNTIME_INSTANCE_STATUS_UNDEPLOYED' satisfies RuntimeInstanceStatus
+const RUNTIME_INSTANCE_STATUS_DEPLOYING = 'RUNTIME_INSTANCE_STATUS_DEPLOYING' satisfies RuntimeInstanceStatus
+const RUNTIME_INSTANCE_STATUS_READY = 'RUNTIME_INSTANCE_STATUS_READY' satisfies RuntimeInstanceStatus
+const RUNTIME_INSTANCE_STATUS_FAILED = 'RUNTIME_INSTANCE_STATUS_FAILED' satisfies RuntimeInstanceStatus
+const RUNTIME_INSTANCE_STATUS_DRIFTED = 'RUNTIME_INSTANCE_STATUS_DRIFTED' satisfies RuntimeInstanceStatus
+const RUNTIME_INSTANCE_STATUS_INVALID = 'RUNTIME_INSTANCE_STATUS_INVALID' satisfies RuntimeInstanceStatus
 
 type RuntimeInstanceStatusQueryData = {
   data?: RuntimeInstanceStatusRow[]
@@ -114,7 +114,7 @@ export function deploymentStatus(row?: RuntimeInstanceStatusRow): DeploymentUiSt
   return 'unknown'
 }
 
-export function hasDeployingDeployment(rows?: RuntimeInstanceStatusRow[]) {
+function hasDeployingDeployment(rows?: RuntimeInstanceStatusRow[]) {
   return rows?.some(row => deploymentStatus(row) === 'deploying') ?? false
 }
 

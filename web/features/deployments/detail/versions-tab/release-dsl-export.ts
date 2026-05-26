@@ -15,7 +15,7 @@ function sanitizeFileNamePart(value?: string) {
     .replace(/^-+|-+$/g, '') ?? ''
 }
 
-export function releaseDslFileName({ release, appInstanceName }: {
+function releaseDslFileName({ release, appInstanceName }: {
   release: Release
   appInstanceName?: string
 }) {
