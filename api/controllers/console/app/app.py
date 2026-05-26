@@ -16,7 +16,7 @@ from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
@@ -26,7 +26,6 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -852,11 +851,11 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session
     @get_app_model
-    def get(self, app_model):
+    def get(self, session: Session, app_model: App):
         """Get app trace"""
-        with session_factory.create_session() as session:
-            app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
+        app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
         return app_trace_config
 

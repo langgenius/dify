@@ -19,11 +19,16 @@ from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
+    DeclaredArrayItem,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.agent_config_entities import (
+    effective_declared_outputs as _effective_declared_outputs,
+)
 
+from .output_failure_orchestrator import retry_idempotency_key
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -56,6 +61,9 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
+    # idempotency key so the backend treats each retry as a fresh request.
+    attempt: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,9 +150,13 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:
-        if context.workflow_run_id:
-            return f"{context.workflow_run_id}:{context.node_execution_id}"
-        return context.node_execution_id
+        # Stage 4 §7 / D-4: retries get distinct keys (``...:retry-{attempt}``) so
+        # the Agent backend's protocol-level dedup can't replay a previous run.
+        return retry_idempotency_key(
+            workflow_run_id=context.workflow_run_id,
+            node_execution_id=context.node_execution_id,
+            attempt=context.attempt,
+        )
 
     @staticmethod
     def _build_metadata(
@@ -237,11 +249,17 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
-        if not declared_outputs:
-            return None
+        """Build the structured-output layer config sent to Agent backend.
+
+        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
+        PRD-mandated defaults (text / files / json) at runtime so the backend
+        always receives a stable schema and the downstream Inspector + nodes
+        have consistent output names. The defaults are NOT persisted.
+        """
+        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
         properties: dict[str, Any] = {}
         required: list[str] = []
-        for output in declared_outputs:
+        for output in effective_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -251,20 +269,51 @@ class WorkflowAgentRuntimeRequestBuilder:
         return AgentBackendOutputConfig(json_schema=schema)
 
     @staticmethod
+    def effective_declared_outputs(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+    ) -> Sequence[DeclaredOutputConfig]:
+        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
+
+        Kept as a static method on the builder so existing call sites
+        (``agent_node._run``, tests) don't need to change their import.
+        """
+        return _effective_declared_outputs(list(declared_outputs))
+
+    @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        match output.type:
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
+        if output.description:
+            schema["description"] = output.description
+        return schema
+
+    @staticmethod
+    def _schema_for_type(
+        output_type: DeclaredOutputType,
+        *,
+        array_item: DeclaredArrayItem | None = None,
+    ) -> dict[str, Any]:
+        match output_type:
             case DeclaredOutputType.STRING:
-                schema: dict[str, Any] = {"type": "string"}
+                return {"type": "string"}
             case DeclaredOutputType.NUMBER:
-                schema = {"type": "number"}
+                return {"type": "number"}
             case DeclaredOutputType.BOOLEAN:
-                schema = {"type": "boolean"}
+                return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                schema = {"type": "object"}
+                return {"type": "object"}
             case DeclaredOutputType.ARRAY:
-                schema = {"type": "array"}
+                # Stage 4 §4.2: items shape mirrors the declared array_item.
+                # Validator guarantees array_item is set when type is array.
+                item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
+                schema: dict[str, Any] = {
+                    "type": "array",
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                }
+                if array_item is not None and array_item.description:
+                    schema["items"]["description"] = array_item.description
+                return schema
             case DeclaredOutputType.FILE:
-                schema = {
+                return {
                     "type": "object",
                     "properties": {
                         "file_id": {"type": "string"},
@@ -273,9 +322,6 @@ class WorkflowAgentRuntimeRequestBuilder:
                         "url": {"type": "string"},
                     },
                 }
-        if output.description:
-            schema["description"] = output.description
-        return schema
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:

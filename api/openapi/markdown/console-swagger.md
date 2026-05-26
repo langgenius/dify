@@ -12153,19 +12153,44 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | DebugPermission | string |  |  |
 
+#### DeclaredArrayItem
+
+Per-item shape for an ``array``-typed declared output.
+
+PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+are rejected so the runtime type checker and JSON Schema stay easy to reason
+about. Stage 4 §4.2.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
+
 #### DeclaredOutputCheckConfig
+
+File-output content check via a model-based comparison against a benchmark file.
+
+Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | benchmark_file_ref | object |  | No |
+| enabled | boolean |  | No |
+| model_ref | object |  | No |
 | prompt | string |  | No |
-| type | string |  | Yes |
 
 #### DeclaredOutputConfig
 
+One declared output of a Workflow Agent Node.
+
+Stage 4 normalizes the shape: ``check`` is singular (was ``checks: list`` in
+stage 3), and ``failure_strategy`` defaults to a populated value so runtime
+code can call ``output.failure_strategy.on_failure`` without None-guards.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| checks | [ [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) ] |  | No |
+| array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
+| check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |
@@ -12176,18 +12201,35 @@ Condition detail
 
 #### DeclaredOutputFailureStrategy
 
+Per-output failure handling.
+
+A single strategy applies to both ``type_check`` and ``output_check`` failures
+(PRD does not distinguish them at the UX level). Stage 4 §4.4.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| max_retries | integer |  | No |
-| on_output_check_failed | string |  | No |
-| on_type_check_failed | string |  | No |
+| default_value |  |  | No |
+| on_failure | [OutputErrorStrategy](#outputerrorstrategy) |  | No |
+| retry | [DeclaredOutputRetryConfig](#declaredoutputretryconfig) |  | No |
 
 #### DeclaredOutputFileConfig
+
+File-type output metadata. Both lists empty means "any file accepted".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | extensions | [ string ] |  | No |
 | mime_types | [ string ] |  | No |
+
+#### DeclaredOutputRetryConfig
+
+Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| max_retries | integer |  | No |
+| retry_interval_ms | integer |  | No |
 
 #### DeclaredOutputType
 
@@ -13583,6 +13625,18 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
+
+#### OutputErrorStrategy
+
+Per-output failure handling strategy.
+
+Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of
+a Workflow Agent Node. The runtime applies the strategy after type check or
+output check fails and any configured retry attempts have been exhausted.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OutputErrorStrategy | string | Per-output failure handling strategy.  Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of a Workflow Agent Node. The runtime applies the strategy after type check or output check fails and any configured retry attempts have been exhausted. |  |
 
 #### OwnerTransferCheckPayload
 

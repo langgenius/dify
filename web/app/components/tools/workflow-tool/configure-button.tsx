@@ -1,9 +1,9 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Indicator from '@/app/components/header/indicator'
 import { useRouter } from '@/next/navigation'
 import Divider from '../../base/divider'
 
@@ -90,7 +90,7 @@ const WorkflowToolConfigureButton = ({
                   disabled={!isCurrentWorkspaceManager || disabled}
                 >
                   {t('common.configure', { ns: 'workflow' })}
-                  {outdated && <Indicator className="ml-1" color="yellow" />}
+                  {outdated && <StatusDot className="ml-1" status="warning" />}
                 </Button>
                 <Button
                   size="small"

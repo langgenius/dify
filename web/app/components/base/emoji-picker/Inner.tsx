@@ -1,6 +1,6 @@
 'use client'
 import type { EmojiMartData } from '@emoji-mart/data'
-import type { ChangeEvent, FC } from 'react'
+import type { ChangeEvent } from 'react'
 import data from '@emoji-mart/data'
 import {
   MagnifyingGlassIcon,
@@ -12,30 +12,9 @@ import { useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import { searchEmoji } from '@/utils/emoji'
+import { backgroundColors, defaultEmojiBackground } from './constants'
 
 init({ data })
-
-const backgroundColors = [
-  '#FFEAD5',
-  '#E4FBCC',
-  '#D3F8DF',
-  '#E0F2FE',
-
-  '#E0EAFF',
-  '#EFF1F5',
-  '#FBE8FF',
-  '#FCE7F6',
-
-  '#FEF7C3',
-  '#E6F4D7',
-  '#D5F5F6',
-  '#D1E9FF',
-
-  '#D1E0FF',
-  '#D5D9EB',
-  '#ECE9FE',
-  '#FFE4E8',
-]
 
 type IEmojiPickerInnerProps = {
   emoji?: string
@@ -44,28 +23,32 @@ type IEmojiPickerInnerProps = {
   className?: string
 }
 
-const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
+function EmojiPickerInner({
   emoji,
   background,
   onSelect,
   className,
-}) => {
+}: IEmojiPickerInnerProps) {
   const { categories } = data as EmojiMartData
   const [selectedEmoji, setSelectedEmoji] = useState(emoji || '')
-  const [selectedBackground, setSelectedBackground] = useState(background || backgroundColors[0])
+  const [selectedBackground, setSelectedBackground] = useState(background || defaultEmojiBackground)
   const [showStyleColors, setShowStyleColors] = useState(!!emoji)
 
   const [searchedEmojis, setSearchedEmojis] = useState<string[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const styleColorsLabelId = React.useId()
 
-  React.useEffect(() => {
-    if (selectedEmoji) {
-      /* v8 ignore next 2 - @preserve */
-      if (selectedBackground)
-        onSelect?.(selectedEmoji, selectedBackground)
-    }
-  }, [onSelect, selectedEmoji, selectedBackground])
+  const handleEmojiSelect = (emoji: string) => {
+    setSelectedEmoji(emoji)
+    setShowStyleColors(true)
+    onSelect?.(emoji, selectedBackground)
+  }
+
+  const handleBackgroundSelect = (background: string) => {
+    setSelectedBackground(background)
+    if (selectedEmoji)
+      onSelect?.(selectedEmoji, background)
+  }
 
   return (
     <div className={cn(className, 'flex flex-col')}>
@@ -108,8 +91,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                       aria-label={emoji}
                       className="inline-flex size-10 items-center justify-center rounded-lg border-none bg-transparent p-0"
                       onClick={() => {
-                        setSelectedEmoji(emoji)
-                        setShowStyleColors(true)
+                        handleEmojiSelect(emoji)
                       }}
                     >
                       <span className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
@@ -136,8 +118,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                       aria-label={emoji}
                       className="inline-flex size-10 items-center justify-center rounded-lg border-none bg-transparent p-0"
                       onClick={() => {
-                        setSelectedEmoji(emoji)
-                        setShowStyleColors(true)
+                        handleEmojiSelect(emoji)
                       }}
                     >
                       <span className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
@@ -194,7 +175,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                   )
                 }
                 onClick={() => {
-                  setSelectedBackground(color)
+                  handleBackgroundSelect(color)
                 }}
               >
                 <span
