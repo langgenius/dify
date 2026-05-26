@@ -61,9 +61,11 @@ record TTL so active runs that keep producing events remain observable.
 
 ## Scheduling and shutdown semantics
 
-`POST /runs` validates the composition, persists a `running` run record, and starts
-an `asyncio` task in the same process. There is no Redis job stream, consumer
-group, pending reclaim, or automatic retry layer.
+`POST /runs` persists a `running` run record and starts an `asyncio` task in the
+same process. There is no Redis job stream, consumer group, pending reclaim, or
+automatic retry layer. Request-shaped runtime failures such as bad composition,
+prompt, output, or snapshot inputs are reported later as failed runs rather than
+rejected synchronously once the request DTO itself is accepted.
 
 During FastAPI shutdown the scheduler rejects new runs, waits up to
 `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` for active tasks, then cancels remaining tasks
