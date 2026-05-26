@@ -145,6 +145,19 @@ type AppDetailWithSite = {
   site: { access_token: string, app_base_url: string, enable_site: boolean }
 }
 
+export async function updateAppSettings(
+  appId: string,
+  data: { name?: string, description?: string, icon_type?: string, icon?: string, icon_background?: string },
+): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    await ctx.put(`/console/api/apps/${appId}`, { data })
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
 export async function enableAppSiteAndGetURL(appId: string): Promise<string> {
   const ctx = await createApiContext()
   try {
