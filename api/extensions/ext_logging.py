@@ -53,13 +53,13 @@ def init_app(app: DifyApp):
     logging.getLogger("sqlalchemy.engine").propagate = False
 
     # Apply timezone if specified (only for text format)
-    if _use_text_formatter():
+    if dify_config.LOG_OUTPUT_FORMAT == "text":
         _apply_timezone(log_handlers)
 
 
 def _create_formatter() -> logging.Formatter:
     """Create appropriate formatter based on configuration."""
-    if _use_json_formatter():
+    if dify_config.LOG_OUTPUT_FORMAT == "json":
         from core.logging.structured_formatter import StructuredJSONFormatter
 
         return StructuredJSONFormatter()
@@ -69,23 +69,6 @@ def _create_formatter() -> logging.Formatter:
             fmt=dify_config.LOG_FORMAT,
             datefmt=dify_config.LOG_DATEFORMAT,
         )
-
-
-def _use_json_formatter() -> bool:
-    """
-    Choose JSON logging when explicitly requested or when LOG_FORMAT uses the legacy
-    shorthand value `json`.
-
-    Some deployments set `LOG_FORMAT=json` without also setting `LOG_OUTPUT_FORMAT=json`.
-    Treat that combination as a request for structured logging instead of passing the
-    literal string `json` into the `%`-style text formatter.
-    """
-
-    return dify_config.LOG_OUTPUT_FORMAT == "json" or dify_config.LOG_FORMAT.strip().lower() == "json"
-
-
-def _use_text_formatter() -> bool:
-    return not _use_json_formatter()
 
 
 def _apply_timezone(handlers: list[logging.Handler]):
