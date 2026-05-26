@@ -43,12 +43,12 @@ const FileUploaderInAttachment = ({
     {
       value: TransferMethod.local_file,
       label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
-      icon: <RiUploadCloud2Line className="h-4 w-4" />,
+      icon: <RiUploadCloud2Line className="size-4" />,
     },
     {
       value: TransferMethod.remote_url,
       label: t('fileUploader.pasteFileLink', { ns: 'common' }),
-      icon: <RiLink className="h-4 w-4" />,
+      icon: <RiLink className="size-4" />,
     },
   ]
 

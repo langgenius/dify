@@ -2,6 +2,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
@@ -12,7 +13,7 @@ from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 # Delay import of AppService to avoid circular dependency
-# from services.app_service import AppService
+# from services.app_service import AppService, AppListParams, CreateAppParams
 
 
 class TestAppService:
@@ -64,34 +65,34 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Setup app creation arguments
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
+        app_params = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         # Create app
-        # Import here to avoid circular dependency
-        from services.app_service import AppService
-
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_params, account)
 
         # Verify app was created correctly
-        assert app.name == app_args["name"]
-        assert app.description == app_args["description"]
-        assert app.mode == app_args["mode"]
-        assert app.icon_type == app_args["icon_type"]
-        assert app.icon == app_args["icon"]
-        assert app.icon_background == app_args["icon_background"]
+        assert app.name == app_params.name
+        assert app.description == app_params.description
+        assert app.mode == app_params.mode
+        assert app.icon_type == app_params.icon_type
+        assert app.icon == app_params.icon
+        assert app.icon_background == app_params.icon_background
         assert app.tenant_id == tenant.id
-        assert app.api_rph == app_args["api_rph"]
-        assert app.api_rpm == app_args["api_rpm"]
+        assert app.api_rph == app_params.api_rph
+        assert app.api_rpm == app_params.api_rpm
         assert app.created_by == account.id
         assert app.updated_by == account.id
         assert app.status == "normal"
@@ -120,7 +121,7 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
 
@@ -129,20 +130,20 @@ class TestAppService:
         app_modes = [v.value for v in default_app_templates]
 
         for mode in app_modes:
-            app_args = {
-                "name": f"{fake.company()} {mode}",
-                "description": f"Test app for {mode} mode",
-                "mode": mode,
-                "icon_type": "emoji",
-                "icon": "🚀",
-                "icon_background": "#4ECDC4",
-            }
+            app_params = CreateAppParams(
+                name=f"{fake.company()} {mode}",
+                description=f"Test app for {mode} mode",
+                mode=mode,
+                icon_type="emoji",
+                icon="🚀",
+                icon_background="#4ECDC4",
+            )
 
-            app = app_service.create_app(tenant.id, app_args, account)
+            app = app_service.create_app(tenant.id, app_params, account)
 
             # Verify app mode was set correctly
             assert app.mode == mode
-            assert app.name == app_args["name"]
+            assert app.name == app_params.name
             assert app.tenant_id == tenant.id
             assert app.created_by == account.id
 
@@ -163,20 +164,20 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🎯",
-            "icon_background": "#45B7D1",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        app_params = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🎯",
+            icon_background="#45B7D1",
+        )
 
         app_service = AppService()
-        created_app = app_service.create_app(tenant.id, app_args, account)
+        created_app = app_service.create_app(tenant.id, app_params, account)
 
         # Get app using the service - needs current_user mock
         mock_current_user = create_autospec(Account, instance=True)
@@ -211,31 +212,27 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppListParams, AppService, CreateAppParams
 
         app_service = AppService()
 
         # Create multiple apps
         app_names = [fake.company() for _ in range(5)]
         for name in app_names:
-            app_args = {
-                "name": name,
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "📱",
-                "icon_background": "#96CEB4",
-            }
-            app_service.create_app(tenant.id, app_args, account)
+            app_params = CreateAppParams(
+                name=name,
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="📱",
+                icon_background="#96CEB4",
+            )
+            app_service.create_app(tenant.id, app_params, account)
 
         # Get paginated apps
-        args = {
-            "page": 1,
-            "limit": 10,
-            "mode": "chat",
-        }
+        params = AppListParams(page=1, limit=10, mode="chat")
 
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
 
         # Verify pagination results
         assert paginated_apps is not None
@@ -267,60 +264,47 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppListParams, AppService, CreateAppParams
 
         app_service = AppService()
 
         # Create apps with different modes
-        chat_app_args = {
-            "name": "Chat App",
-            "description": "A chat application",
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "💬",
-            "icon_background": "#FF6B6B",
-        }
-        completion_app_args = {
-            "name": "Completion App",
-            "description": "A completion application",
-            "mode": "completion",
-            "icon_type": "emoji",
-            "icon": "✍️",
-            "icon_background": "#4ECDC4",
-        }
+        chat_app_params = CreateAppParams(
+            name="Chat App",
+            description="A chat application",
+            mode="chat",
+            icon_type="emoji",
+            icon="💬",
+            icon_background="#FF6B6B",
+        )
+        completion_app_params = CreateAppParams(
+            name="Completion App",
+            description="A completion application",
+            mode="completion",
+            icon_type="emoji",
+            icon="✍️",
+            icon_background="#4ECDC4",
+        )
 
-        chat_app = app_service.create_app(tenant.id, chat_app_args, account)
-        completion_app = app_service.create_app(tenant.id, completion_app_args, account)
+        chat_app = app_service.create_app(tenant.id, chat_app_params, account)
+        completion_app = app_service.create_app(tenant.id, completion_app_params, account)
 
         # Test filter by mode
-        chat_args = {
-            "page": 1,
-            "limit": 10,
-            "mode": "chat",
-        }
-        chat_apps = app_service.get_paginate_apps(account.id, tenant.id, chat_args)
+        chat_apps = app_service.get_paginate_apps(account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"))
         assert len(chat_apps.items) == 1
         assert chat_apps.items[0].mode == "chat"
 
         # Test filter by name
-        name_args = {
-            "page": 1,
-            "limit": 10,
-            "mode": "chat",
-            "name": "Chat",
-        }
-        filtered_apps = app_service.get_paginate_apps(account.id, tenant.id, name_args)
+        filtered_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", name="Chat")
+        )
         assert len(filtered_apps.items) == 1
         assert "Chat" in filtered_apps.items[0].name
 
         # Test filter by created_by_me
-        created_by_me_args = {
-            "page": 1,
-            "limit": 10,
-            "mode": "completion",
-            "is_created_by_me": True,
-        }
-        my_apps = app_service.get_paginate_apps(account.id, tenant.id, created_by_me_args)
+        my_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="completion", is_created_by_me=True)
+        )
         assert len(my_apps.items) == 1
 
     def test_get_paginate_apps_with_tag_filters(
@@ -342,34 +326,29 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppListParams, AppService, CreateAppParams
 
         app_service = AppService()
 
         # Create an app
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🏷️",
-            "icon_background": "#FFEAA7",
-        }
-        app = app_service.create_app(tenant.id, app_args, account)
+        app_params = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🏷️",
+            icon_background="#FFEAA7",
+        )
+        app = app_service.create_app(tenant.id, app_params, account)
 
         # Mock TagService to return the app ID for tag filtering
         with patch("services.app_service.TagService.get_target_ids_by_tag_ids") as mock_tag_service:
             mock_tag_service.return_value = [app.id]
 
             # Test with tag filter
-            args = {
-                "page": 1,
-                "limit": 10,
-                "mode": "chat",
-                "tag_ids": ["tag1", "tag2"],
-            }
+            params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["tag1", "tag2"])
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
 
             # Verify tag service was called
             mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"])
@@ -383,14 +362,9 @@ class TestAppService:
         with patch("services.app_service.TagService.get_target_ids_by_tag_ids") as mock_tag_service:
             mock_tag_service.return_value = []
 
-            args = {
-                "page": 1,
-                "limit": 10,
-                "mode": "chat",
-                "tag_ids": ["nonexistent_tag"],
-            }
+            params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["nonexistent_tag"])
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
 
             # Should return None when no apps match tag filter
             assert paginated_apps is None
@@ -412,20 +386,20 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🎯",
-            "icon_background": "#45B7D1",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        app_params = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🎯",
+            icon_background="#45B7D1",
+        )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_params, account)
 
         # Store original values
         original_name = app.name
@@ -481,19 +455,19 @@ class TestAppService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
-            {
-                "name": fake.company(),
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🎯",
-                "icon_background": "#45B7D1",
-            },
+            CreateAppParams(
+                name=fake.company(),
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🎯",
+                icon_background="#45B7D1",
+            ),
             account,
         )
 
@@ -533,19 +507,19 @@ class TestAppService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
-            {
-                "name": fake.company(),
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🎯",
-                "icon_background": "#45B7D1",
-            },
+            CreateAppParams(
+                name=fake.company(),
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🎯",
+                icon_background="#45B7D1",
+            ),
             account,
         )
 
@@ -584,20 +558,20 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🎯",
-            "icon_background": "#45B7D1",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        app_params = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🎯",
+            icon_background="#45B7D1",
+        )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_params, account)
 
         # Store original name
         original_name = app.name
@@ -637,20 +611,20 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🎯",
-            "icon_background": "#45B7D1",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        app_params = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🎯",
+            icon_background="#45B7D1",
+        )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_params, account)
 
         # Store original values
         original_icon = app.icon
@@ -698,18 +672,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🌐",
-            "icon_background": "#74B9FF",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🌐",
+            icon_background="#74B9FF",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -758,18 +731,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🔌",
-            "icon_background": "#A29BFE",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🔌",
+            icon_background="#A29BFE",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -818,18 +790,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🔄",
-            "icon_background": "#FD79A8",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🔄",
+            icon_background="#FD79A8",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -869,18 +840,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🗑️",
-            "icon_background": "#E17055",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🗑️",
+            icon_background="#E17055",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -921,18 +891,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🧹",
-            "icon_background": "#00B894",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🧹",
+            icon_background="#00B894",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -981,18 +950,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "📊",
-            "icon_background": "#6C5CE7",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="📊",
+            icon_background="#6C5CE7",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -1020,18 +988,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🔗",
-            "icon_background": "#FDCB6E",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🔗",
+            icon_background="#FDCB6E",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -1060,18 +1027,17 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🆔",
-            "icon_background": "#E84393",
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🆔",
+            icon_background="#E84393",
+        )
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -1107,26 +1073,20 @@ class TestAppService:
             password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
-
-        # Setup app creation arguments with invalid mode
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "invalid_mode",  # Invalid mode
-            "icon_type": "emoji",
-            "icon": "❌",
-            "icon_background": "#D63031",
-        }
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import CreateAppParams
 
-        app_service = AppService()
-
-        # Attempt to create app with invalid mode
-        with pytest.raises(ValueError, match="invalid mode value"):
-            app_service.create_app(tenant.id, app_args, account)
+        # Attempt to create app with invalid mode - Pydantic will reject invalid literal
+        with pytest.raises(ValidationError):
+            CreateAppParams(
+                name=fake.company(),
+                description=fake.text(max_nb_chars=100),
+                mode="invalid_mode",  # type: ignore[arg-type]
+                icon_type="emoji",
+                icon="❌",
+                icon_background="#D63031",
+            )
 
     def test_get_apps_with_special_characters_in_name(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1152,99 +1112,103 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppListParams, AppService, CreateAppParams
 
         app_service = AppService()
 
         # Create apps with special characters in names
         app_with_percent = app_service.create_app(
             tenant.id,
-            {
-                "name": "App with 50% discount",
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FF6B6B",
-                "api_rph": 100,
-                "api_rpm": 10,
-            },
+            CreateAppParams(
+                name="App with 50% discount",
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🤖",
+                icon_background="#FF6B6B",
+                api_rph=100,
+                api_rpm=10,
+            ),
             account,
         )
 
         app_with_underscore = app_service.create_app(
             tenant.id,
-            {
-                "name": "test_data_app",
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FF6B6B",
-                "api_rph": 100,
-                "api_rpm": 10,
-            },
+            CreateAppParams(
+                name="test_data_app",
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🤖",
+                icon_background="#FF6B6B",
+                api_rph=100,
+                api_rpm=10,
+            ),
             account,
         )
 
         app_with_backslash = app_service.create_app(
             tenant.id,
-            {
-                "name": "path\\to\\app",
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FF6B6B",
-                "api_rph": 100,
-                "api_rpm": 10,
-            },
+            CreateAppParams(
+                name="path\\to\\app",
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🤖",
+                icon_background="#FF6B6B",
+                api_rph=100,
+                api_rpm=10,
+            ),
             account,
         )
 
         # Create app that should NOT match
         app_no_match = app_service.create_app(
             tenant.id,
-            {
-                "name": "100% different",
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FF6B6B",
-                "api_rph": 100,
-                "api_rpm": 10,
-            },
+            CreateAppParams(
+                name="100% different",
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🤖",
+                icon_background="#FF6B6B",
+                api_rph=100,
+                api_rpm=10,
+            ),
             account,
         )
 
         # Test 1: Search with % character
-        args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        paginated_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10)
+        )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
         assert len(paginated_apps.items) == 1
         assert paginated_apps.items[0].name == "App with 50% discount"
 
         # Test 2: Search with _ character
-        args = {"name": "test_data", "mode": "chat", "page": 1, "limit": 10}
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        paginated_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(name="test_data", mode="chat", page=1, limit=10)
+        )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
         assert len(paginated_apps.items) == 1
         assert paginated_apps.items[0].name == "test_data_app"
 
         # Test 3: Search with \ character
-        args = {"name": "path\\to\\app", "mode": "chat", "page": 1, "limit": 10}
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        paginated_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(name="path\\to\\app", mode="chat", page=1, limit=10)
+        )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
         assert len(paginated_apps.items) == 1
         assert paginated_apps.items[0].name == "path\\to\\app"
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
-        args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        paginated_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10)
+        )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
         assert all("50%" in app.name for app in paginated_apps.items)

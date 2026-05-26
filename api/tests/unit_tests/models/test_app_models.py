@@ -11,6 +11,7 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -196,6 +197,55 @@ class TestAppModelValidation:
 
             # Assert
             assert result == AppMode.CHAT
+
+    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self):
+        """Plugin-backed built-in tools are checked through core PluginService."""
+        # Arrange
+        app = App(
+            tenant_id="tenant-1",
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        app_model_config = AppModelConfig(
+            app_id=str(uuid4()),
+            agent_mode=json.dumps(
+                {
+                    "enabled": True,
+                    "strategy": "function_call",
+                    "tools": [
+                        {
+                            "provider_type": "builtin",
+                            "provider_id": "langgenius/openai/openai",
+                            "tool_name": "chat",
+                            "tool_parameters": {},
+                        }
+                    ],
+                    "prompt": None,
+                }
+            ),
+        )
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        session_factory = SimpleNamespace(begin=MagicMock(return_value=session_context))
+
+        # Act
+        with (
+            patch.object(App, "app_model_config", new_callable=lambda: property(lambda self: app_model_config)),
+            patch("models.model.db", SimpleNamespace(engine=object())),
+            patch("models.model.sessionmaker", return_value=session_factory),
+            patch("core.tools.tool_manager.ToolManager.get_hardcoded_provider", side_effect=Exception),
+            patch("core.plugin.plugin_service.PluginService.check_tools_existence", return_value=[False]) as exists,
+        ):
+            result = app.deleted_tools
+
+        # Assert
+        assert result == [{"type": "builtin", "tool_name": "chat", "provider_id": "langgenius/openai/openai"}]
+        exists.assert_called_once()
+        assert exists.call_args.args[0] == "tenant-1"
+        assert [str(provider_id) for provider_id in exists.call_args.args[1]] == ["langgenius/openai/openai"]
 
 
 class TestAppModelConfig:

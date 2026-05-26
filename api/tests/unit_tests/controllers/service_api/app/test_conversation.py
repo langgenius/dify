@@ -495,7 +495,7 @@ class TestConversationPayloadsController:
 
 
 class TestConversationApiController:
-    def test_list_not_chat(self, app) -> None:
+    def test_list_not_chat(self, app: Flask) -> None:
         api = ConversationApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
@@ -543,7 +543,7 @@ class TestConversationApiController:
 
 
 class TestConversationDetailApiController:
-    def test_delete_not_chat(self, app) -> None:
+    def test_delete_not_chat(self, app: Flask) -> None:
         api = ConversationDetailApi()
         handler = _unwrap(api.delete)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
@@ -593,7 +593,7 @@ class TestConversationRenameApiController:
 
 
 class TestConversationVariablesApiController:
-    def test_not_chat(self, app) -> None:
+    def test_not_chat(self, app: Flask) -> None:
         api = ConversationVariablesApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)

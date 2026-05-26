@@ -1,39 +1,29 @@
-import type { FC } from 'react'
-import type { ChunkingMode, ParentMode } from '@/models/datasets'
+import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRouter } from '@/next/navigation'
-import DocumentPicker from '../../common/document-picker'
+import { DocumentPicker } from '../../common/document-picker'
 
 type DocumentTitleProps = {
   datasetId: string
-  extension?: string
-  name?: string
-  chunkingMode?: ChunkingMode
-  parent_mode?: ParentMode
-  iconCls?: string
-  textCls?: string
+  document?: SimpleDocumentDetail | null
+  parentMode?: ParentMode
   wrapperCls?: string
 }
 
-export const DocumentTitle: FC<DocumentTitleProps> = ({
+export function DocumentTitle({
   datasetId,
-  extension,
-  name,
-  chunkingMode,
-  parent_mode,
+  document,
+  parentMode,
   wrapperCls,
-}) => {
+}: DocumentTitleProps) {
   const router = useRouter()
+
   return (
     <div className={cn('flex flex-1 items-center justify-start', wrapperCls)}>
       <DocumentPicker
         datasetId={datasetId}
-        value={{
-          name,
-          extension,
-          chunkingMode,
-          parentMode: parent_mode || 'paragraph',
-        }}
+        value={document}
+        parentMode={parentMode}
         onChange={(doc) => {
           router.push(`/datasets/${datasetId}/documents/${doc.id}`)
         }}

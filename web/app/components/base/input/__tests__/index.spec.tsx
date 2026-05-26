@@ -66,7 +66,7 @@ describe('Input component', () => {
   it('calls onClear when clear icon is clicked', () => {
     const onClear = vi.fn()
     render(<Input showClearIcon value="test" onClear={onClear} />)
-    const clearIconContainer = screen.getByTestId('input-clear')
+    const clearIconContainer = screen.getByRole('button', { name: 'common.operation.clear' })
     fireEvent.click(clearIconContainer!)
     expect(onClear).toHaveBeenCalledTimes(1)
   })

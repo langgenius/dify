@@ -39,6 +39,7 @@ QueryParamDoc = TypedDict(
 def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None:
     """Register a JSON schema and promote any nested Pydantic `$defs`."""
 
+    schema = _swagger_2_compatible_schema(schema)
     nested_definitions = schema.get("$defs")
     schema_to_register = dict(schema)
     if isinstance(nested_definitions, dict):
@@ -63,6 +64,35 @@ def _register_schema_model(namespace: Namespace, model: type[BaseModel], *, mode
         model.__name__,
         model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0, mode=mode),
     )
+
+
+def _swagger_2_compatible_schema(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_swagger_2_compatible_schema(item) for item in value]
+
+    if not isinstance(value, dict):
+        return value
+
+    converted = {key: _swagger_2_compatible_schema(child) for key, child in value.items()}
+    any_of = value.get("anyOf")
+    if not isinstance(any_of, list):
+        return converted
+
+    non_null_candidates = [
+        candidate for candidate in any_of if isinstance(candidate, Mapping) and candidate.get("type") != "null"
+    ]
+    has_null_candidate = any(isinstance(candidate, Mapping) and candidate.get("type") == "null" for candidate in any_of)
+    if not has_null_candidate or len(non_null_candidates) != 1:
+        return converted
+
+    non_null_schema = _swagger_2_compatible_schema(dict(non_null_candidates[0]))
+    if not isinstance(non_null_schema, dict):
+        return converted
+
+    converted.pop("anyOf", None)
+    converted.update(non_null_schema)
+    converted["x-nullable"] = True
+    return converted
 
 
 def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:

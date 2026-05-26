@@ -209,26 +209,25 @@ class TestDeleteSegmentFromIndexTask:
         segments = []
 
         for i in range(count):
-            segment = DocumentSegment()
-            segment.id = fake.uuid4()
-            segment.tenant_id = document.tenant_id
-            segment.dataset_id = document.dataset_id
-            segment.document_id = document.id
-            segment.position = i + 1
-            segment.content = f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}"
-            segment.answer = f"Test segment answer {i + 1}: {fake.text(max_nb_chars=100)}"
-            segment.word_count = fake.random_int(min=10, max=100)
-            segment.tokens = fake.random_int(min=5, max=50)
-            segment.keywords = [fake.word() for _ in range(3)]
-            segment.index_node_id = f"node_{fake.uuid4()}"
-            segment.index_node_hash = fake.sha256()
-            segment.hit_count = 0
-            segment.enabled = True
-            segment.status = SegmentStatus.COMPLETED
-            segment.created_by = account.id
-            segment.created_at = fake.date_time_this_year()
-            segment.updated_by = account.id
-            segment.updated_at = segment.created_at
+            created_at = fake.date_time_this_year()
+            segment = DocumentSegment(
+                tenant_id=document.tenant_id,
+                dataset_id=document.dataset_id,
+                document_id=document.id,
+                position=i + 1,
+                content=f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}",
+                answer=f"Test segment answer {i + 1}: {fake.text(max_nb_chars=100)}",
+                word_count=fake.random_int(min=10, max=100),
+                tokens=fake.random_int(min=5, max=50),
+                keywords=[fake.word() for _ in range(3)],
+                index_node_id=f"node_{fake.uuid4()}",
+                index_node_hash=fake.sha256(),
+                hit_count=0,
+                enabled=True,
+                status=SegmentStatus.COMPLETED,
+                created_by=account.id,
+                updated_by=account.id,
+            )
 
             db_session_with_containers.add(segment)
             segments.append(segment)

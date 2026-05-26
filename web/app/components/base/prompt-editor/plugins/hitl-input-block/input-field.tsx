@@ -123,11 +123,10 @@ const InputField: React.FC<InputFieldProps> = ({
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">
-        <Button data-testid="hitl-input-cancel-btn" onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         {isEdit
           ? (
               <Button
-                data-testid="hitl-input-save-btn"
                 variant="primary"
                 onClick={handleSave}
                 disabled={!nameValid}
@@ -137,7 +136,6 @@ const InputField: React.FC<InputFieldProps> = ({
             )
           : (
               <Button
-                data-testid="hitl-input-insert-btn"
                 className="flex"
                 variant="primary"
                 disabled={!nameValid}

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from graphon.nodes.human_input.entities import FormInput
+from graphon.nodes.human_input.entities import ParagraphInputConfig
 from graphon.nodes.human_input.enums import TimeoutUnit
 from libs.datetime_utils import naive_utc_now
 
@@ -45,7 +45,7 @@ class HumanInputForm:
     tenant_id: str
     app_id: str | None
     form_content: str
-    inputs: list[FormInput]
+    inputs: list[ParagraphInputConfig]
     user_actions: list[dict[str, Any]]
     timeout: int
     timeout_unit: TimeoutUnit

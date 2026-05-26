@@ -33,7 +33,6 @@ for module_name in RESOURCE_MODULES:
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
 from . import (
-    admin,
     apikey,
     extension,
     feature,
@@ -45,6 +44,8 @@ from . import (
     spec,
     version,
 )
+from .agent import composer as agent_composer
+from .agent import roster as agent_roster
 
 # Import app controllers
 from .app import (
@@ -67,6 +68,7 @@ from .app import (
     workflow_app_log,
     workflow_comment,
     workflow_draft_variable,
+    workflow_node_output_inspector,
     workflow_run,
     workflow_statistic,
     workflow_trigger,
@@ -117,7 +119,7 @@ from .explore import (
     saved_message,
     trial,
 )
-from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
+from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
 from .tag import tags
@@ -142,10 +144,11 @@ api.add_namespace(console_ns)
 __all__ = [
     "account",
     "activate",
-    "admin",
     "advanced_prompt_template",
     "agent",
+    "agent_composer",
     "agent_providers",
+    "agent_roster",
     "annotation",
     "api",
     "apikey",
@@ -216,6 +219,7 @@ __all__ = [
     "workflow_app_log",
     "workflow_comment",
     "workflow_draft_variable",
+    "workflow_node_output_inspector",
     "workflow_run",
     "workflow_statistic",
     "workflow_trigger",

@@ -110,13 +110,20 @@ export const useDatasetDetail = (datasetId: string) => {
     queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
     queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
     enabled: !!datasetId,
+    retry: (failureCount, error) => {
+      if (error instanceof Response && [403, 404].includes(error.status))
+        return false
+
+      return failureCount < 3
+    },
   })
 }
 
-export const useDatasetRelatedApps = (datasetId: string) => {
+export const useDatasetRelatedApps = (datasetId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
     queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
+    enabled: options?.enabled ?? !!datasetId,
   })
 }
 

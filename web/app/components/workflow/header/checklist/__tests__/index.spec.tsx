@@ -54,6 +54,8 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   },
   PopoverTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
   PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverTitle: ({ children, className }: { children: ReactNode, className?: string }) => <h2 className={className}>{children}</h2>,
+  PopoverDescription: ({ children, className }: { children: ReactNode, className?: string }) => <p className={className}>{children}</p>,
   PopoverClose: ({ children, className }: { children: ReactNode, className?: string }) => <button className={className}>{children}</button>,
 }))
 

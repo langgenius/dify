@@ -3,7 +3,7 @@ import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
-import CreateContent from '../create-content'
+import { CreateContent } from '../create-content'
 
 const renderCreateContent = (props: CreateContentProps) => {
   return render(
@@ -50,7 +50,7 @@ describe('CreateContent', () => {
     it('should render close button', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
-      expect(screen.getByTestId('modal-close-btn')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -162,7 +162,7 @@ describe('CreateContent', () => {
       const handleClose = vi.fn()
       renderCreateContent({ onSave: handleSave, onClose: handleClose })
 
-      fireEvent.click(screen.getByTestId('modal-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(handleClose).toHaveBeenCalled()
     })

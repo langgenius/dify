@@ -139,7 +139,7 @@ class TestTenantListApi:
         assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
         assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        get_features_mock.assert_called_once_with("t2")
+        get_features_mock.assert_called_once_with("t2", exclude_vector_space=True)
 
     def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(self, app: Flask):
         """Test fallback to FeatureService when bulk billing returns empty result.
@@ -235,7 +235,7 @@ class TestTenantListApi:
 
         assert status == 200
         assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
-        get_features_mock.assert_called_once_with("t1")
+        get_features_mock.assert_called_once_with("t1", exclude_vector_space=True)
 
     def test_get_enterprise_only_skips_feature_service(self, app: Flask):
         api = TenantListApi()
@@ -308,12 +308,7 @@ class TestWorkspaceListApi:
         method = unwrap(api.get)
 
         tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=False,
-            total=1,
-        )
+        paginate_result = MagicMock(items=[tenant], has_next=False, total=1)
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
@@ -329,25 +324,12 @@ class TestWorkspaceListApi:
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(
-            id="t1",
-            name="T",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=True,
-            total=10,
-        )
+        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
+        paginate_result = MagicMock(items=[tenant], has_next=True, total=10)
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch(
-                "controllers.console.workspace.workspace.db.paginate",
-                return_value=paginate_result,
-            ),
+            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
         ):
             result, status = method(api)
 

@@ -78,14 +78,14 @@ Stop a running chat message task.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Task Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Task Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### /completion-messages
 
@@ -126,14 +126,14 @@ Stop a running completion message task.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Task Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Task Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### /conversations
 
@@ -227,14 +227,14 @@ Pin a specific conversation to keep it at the top of the list.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Conversation pinned successfully |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Conversation Not Found or Not a Chat App |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation pinned successfully | [ResultResponse](#resultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Conversation Not Found or Not a Chat App |  |
+| 500 | Internal Server Error |  |
 
 ### /conversations/{c_id}/unpin
 
@@ -251,14 +251,14 @@ Unpin a specific conversation to remove it from the top of the list.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Conversation unpinned successfully |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Conversation Not Found or Not a Chat App |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation unpinned successfully | [ResultResponse](#resultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Conversation Not Found or Not a Chat App |  |
+| 500 | Internal Server Error |  |
 
 ### /email-code-login
 
@@ -275,11 +275,11 @@ Send email verification code for login
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Email code sent successfully |
-| 400 | Bad request - invalid email format |
-| 404 | Account not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email code sent successfully | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 400 | Bad request - invalid email format |  |
+| 404 | Account not found |  |
 
 ### /email-code-login/validity
 
@@ -296,12 +296,12 @@ Verify email code and complete login
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Email code verified and login successful |
-| 400 | Bad request - invalid code or token |
-| 401 | Invalid token or expired code |
-| 404 | Account not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email code verified and login successful | [AccessTokenResultResponse](#accesstokenresultresponse) |
+| 400 | Bad request - invalid code or token |  |
+| 401 | Invalid token or expired code |  |
+| 404 | Account not found |  |
 
 ### /files/upload
 
@@ -359,12 +359,12 @@ Send password reset email
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Password reset email sent successfully |
-| 400 | Bad request - invalid email format |
-| 404 | Account not found |
-| 429 | Too many requests - rate limit exceeded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Password reset email sent successfully | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 400 | Bad request - invalid email format |  |
+| 404 | Account not found |  |
+| 429 | Too many requests - rate limit exceeded |  |
 
 ### /forgot-password/resets
 
@@ -381,12 +381,12 @@ Reset user password with verification token
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Password reset successfully |
-| 400 | Bad request - invalid parameters or password mismatch |
-| 401 | Invalid or expired token |
-| 404 | Account not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Password reset successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Bad request - invalid parameters or password mismatch |  |
+| 401 | Invalid or expired token |  |
+| 404 | Account not found |  |
 
 ### /forgot-password/validity
 
@@ -403,11 +403,11 @@ Verify password reset token validity
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Token is valid |
-| 400 | Bad request - invalid token format |
-| 401 | Invalid or expired token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Token is valid | [VerificationTokenResponse](#verificationtokenresponse) |
+| 400 | Bad request - invalid token format |  |
+| 401 | Invalid or expired token |  |
 
 ### /form/human_input/{form_token}
 
@@ -480,13 +480,13 @@ Authenticate user for web application access
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Authentication successful |
-| 400 | Bad request - invalid email or password format |
-| 401 | Authentication failed - email or password mismatch |
-| 403 | Account banned or login disabled |
-| 404 | Account not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authentication successful | [AccessTokenResultResponse](#accesstokenresultresponse) |
+| 400 | Bad request - invalid email or password format |  |
+| 401 | Authentication failed - email or password mismatch |  |
+| 403 | Account banned or login disabled |  |
+| 404 | Account not found |  |
 
 ### /login/status
 
@@ -497,10 +497,10 @@ Check login status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Login status |
-| 401 | Login status |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Login status | [LoginStatusResponse](#loginstatusresponse) |
+| 401 | Login status |  |
 
 ### /logout
 
@@ -511,9 +511,9 @@ Logout user from web application
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Logout successful |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Logout successful | [SimpleResultResponse](#simpleresultresponse) |
 
 ### /messages
 
@@ -558,14 +558,14 @@ Submit feedback (like/dislike) for a specific message.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Feedback submitted successfully |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Message Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedback submitted successfully | [ResultResponse](#resultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Message Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### /messages/{message_id}/more-like-this
 
@@ -607,14 +607,14 @@ Get suggested follow-up questions after a message (chat apps only).
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request - Not a chat app or feature disabled |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Message Not Found or Conversation Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [SuggestedQuestionsResponse](#suggestedquestionsresponse) |
+| 400 | Bad Request - Not a chat app or feature disabled |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Message Not Found or Conversation Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### /meta
 
@@ -791,14 +791,14 @@ Save a specific message for later reference.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Message saved successfully |
-| 400 | Bad Request - Not a completion app |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Message Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Message saved successfully | [ResultResponse](#resultresponse) |
+| 400 | Bad Request - Not a completion app |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Message Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### /saved-messages/{message_id}
 
@@ -874,10 +874,10 @@ Only non-sensitive configuration data should be returned by this endpoint.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | System features retrieved successfully |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | System features retrieved successfully | [SystemFeatureModel](#systemfeaturemodel) |
+| 500 | Internal server error |  |
 
 ### /text-to-audio
 
@@ -922,11 +922,11 @@ Retrieve the access mode for a web application (public or restricted).
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [AccessModeResponse](#accessmoderesponse) |
+| 400 | Bad Request |  |
+| 500 | Internal Server Error |  |
 
 ### /webapp/permission
 
@@ -943,12 +943,12 @@ Check if user has permission to access a web application.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [BooleanResultResponse](#booleanresultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 500 | Internal Server Error |  |
 
 ### /workflows/run
 
@@ -997,14 +997,14 @@ Stop a running workflow task.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Task Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Task Not Found |  |
+| 500 | Internal Server Error |  |
 
 ---
 ## default
@@ -1038,42 +1038,77 @@ Returns Server-Sent Events stream.
 ---
 ### Models
 
+#### AccessModeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accessMode | string |  | Yes |
+
+#### AccessTokenData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+
+#### AccessTokenResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [AccessTokenData](#accesstokendata) |  | Yes |
+| result | string |  | Yes |
+
 #### AppAccessModeQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| appCode |  | Application code | No |
-| appId |  | Application ID | No |
+| appCode | string | Application code | No |
+| appId | string | Application ID | No |
+
+#### BooleanResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | boolean |  | Yes |
+
+#### BrandingModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| application_title | string |  | Yes |
+| enabled | boolean |  | Yes |
+| favicon | string |  | Yes |
+| login_page_logo | string |  | Yes |
+| workspace_logo | string |  | Yes |
 
 #### ChatMessagePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id |  | Conversation ID | No |
-| files |  | Files to be processed | No |
+| conversation_id | string | Conversation ID | No |
+| files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the chat | Yes |
-| parent_message_id |  | Parent message ID | No |
+| parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode |  | Response mode: blocking or streaming | No |
+| response_mode | string | Response mode: blocking or streaming<br>*Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string | Source of retriever | No |
 
 #### CompletionMessagePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  | Files to be processed | No |
+| files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode |  | Response mode: blocking or streaming | No |
+| response_mode | string | Response mode: blocking or streaming<br>*Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string | Source of retriever | No |
 
 #### ConversationListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  |  | No |
+| last_id | string |  | No |
 | limit | integer |  | No |
-| pinned |  |  | No |
+| pinned | boolean |  | No |
 | sort_by | string | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
 #### ConversationRenamePayload
@@ -1081,14 +1116,14 @@ Returns Server-Sent Events stream.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean |  | No |
-| name |  |  | No |
+| name | string |  | No |
 
 #### EmailCodeLoginSendPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
-| language |  |  | No |
+| language | string |  | No |
 
 #### EmailCodeLoginVerifyPayload
 
@@ -1102,33 +1137,33 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id |  |  | No |
-| created_at |  |  | No |
-| created_by |  |  | No |
-| extension |  |  | No |
-| file_key |  |  | No |
+| conversation_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| extension | string |  | No |
+| file_key | string |  | No |
 | id | string |  | Yes |
-| mime_type |  |  | No |
+| mime_type | string |  | No |
 | name | string |  | Yes |
-| original_url |  |  | No |
-| preview_url |  |  | No |
+| original_url | string |  | No |
+| preview_url | string |  | No |
 | size | integer |  | Yes |
-| source_url |  |  | No |
-| tenant_id |  |  | No |
-| user_id |  |  | No |
+| source_url | string |  | No |
+| tenant_id | string |  | No |
+| user_id | string |  | No |
 
 #### FileWithSignedUrl
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at |  |  | No |
-| created_by |  |  | No |
-| extension |  |  | No |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
 | id | string |  | Yes |
-| mime_type |  |  | No |
+| mime_type | string |  | Yes |
 | name | string |  | Yes |
 | size | integer |  | Yes |
-| url |  |  | No |
+| url | string |  | Yes |
 
 #### ForgotPasswordCheckPayload
 
@@ -1151,7 +1186,33 @@ Returns Server-Sent Events stream.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
-| language |  |  | No |
+| language | string |  | No |
+
+#### LicenseLimitationModel
+
+- enabled: whether this limit is enforced
+- size: current usage count
+- limit: maximum allowed count; 0 means unlimited
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean | Whether this limit is currently active | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
+| size | integer | Number of resources already consumed | Yes |
+
+#### LicenseModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expired_at | string |  | Yes |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
+| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
+
+#### LicenseStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LicenseStatus | string |  |  |
 
 #### LoginPayload
 
@@ -1160,19 +1221,26 @@ Returns Server-Sent Events stream.
 | email | string |  | Yes |
 | password | string |  | Yes |
 
+#### LoginStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_logged_in | boolean |  | Yes |
+| logged_in | boolean |  | Yes |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content |  |  | No |
-| rating |  |  | No |
+| content | string |  | No |
+| rating | string | *Enum:* `"dislike"`, `"like"` | No |
 
 #### MessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
-| first_id |  | First message ID for pagination | No |
+| first_id | string | First message ID for pagination | No |
 | limit | integer | Number of messages to return (1-100) | No |
 
 #### MessageMoreLikeThisQuery
@@ -1180,6 +1248,25 @@ Returns Server-Sent Events stream.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | response_mode | string | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+
+#### PluginInstallationPermissionModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_installation_scope | [PluginInstallationScope](#plugininstallationscope) |  | Yes |
+| restrict_to_marketplace_only | boolean |  | Yes |
+
+#### PluginInstallationScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginInstallationScope | string |  |  |
+
+#### PluginManagerModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
 
 #### RemoteFileInfo
 
@@ -1194,6 +1281,12 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | url | string (uri) | Remote file URL | Yes |
 
+#### ResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
 #### SavedMessageCreatePayload
 
 | Name | Type | Description | Required |
@@ -1204,21 +1297,91 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id |  |  | No |
+| last_id | string |  | No |
 | limit | integer |  | No |
+
+#### SimpleResultDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | string |  | Yes |
+| result | string |  | Yes |
+
+#### SimpleResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### SuggestedQuestionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ string ] |  | Yes |
+
+#### SystemFeatureModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_dsl_version | string |  | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| enable_change_email | boolean |  | Yes |
+| enable_collaboration_mode | boolean |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_trial_app | boolean |  | Yes |
+| is_allow_create_workspace | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseModel](#licensemodel) |  | Yes |
+| max_plugin_package_size | integer |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | string |  | Yes |
+| trial_models | [ string ] |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### TextToAudioPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id |  | Message ID | No |
-| streaming |  | Enable streaming response | No |
-| text |  | Text to convert to audio | No |
-| voice |  | Voice to use for TTS | No |
+| message_id | string | Message ID | No |
+| streaming | boolean | Enable streaming response | No |
+| text | string | Text to convert to audio | No |
+| voice | string | Voice to use for TTS | No |
+
+#### VerificationTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| is_valid | boolean |  | Yes |
+| token | string |  | Yes |
+
+#### WebAppAuthModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_email_code_login | boolean |  | Yes |
+| allow_email_password_login | boolean |  | Yes |
+| allow_sso | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
+
+#### WebAppAuthSSOModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| protocol | string |  | Yes |
 
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files |  |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |

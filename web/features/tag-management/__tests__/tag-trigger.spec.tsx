@@ -41,8 +41,7 @@ describe('Trigger', () => {
     it('should render a badge even when a tag label is an empty string', () => {
       render(<TagTrigger tags={['']} />)
 
-      // One outer container + one tag badge.
-      expect(screen.getAllByTestId(/^tag-badge-/)).toHaveLength(1)
+      expect(screen.getAllByRole('listitem')).toHaveLength(1)
       expect(screen.queryByText('common.tag.addTag')).not.toBeInTheDocument()
     })
 
@@ -51,7 +50,7 @@ describe('Trigger', () => {
       render(<TagTrigger tags={tags} />)
 
       tags.forEach(tag => expect(screen.getByText(tag)).toBeInTheDocument())
-      expect(screen.getAllByTestId(/^tag-badge-/)).toHaveLength(tags.length)
+      expect(screen.getAllByRole('listitem')).toHaveLength(tags.length)
     })
   })
 })

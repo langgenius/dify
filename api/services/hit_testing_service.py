@@ -3,6 +3,8 @@ import logging
 import time
 from typing import Any, TypedDict, cast
 
+from sqlalchemy import select
+
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.index_processor.constant.query_type import QueryType
@@ -13,6 +15,7 @@ from extensions.ext_database import db
 from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
+from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
 
 logger = logging.getLogger(__name__)
@@ -41,6 +44,59 @@ class HitTestingRetrievalModelDict(DefaultRetrievalModelDict, total=False):
 
 
 class HitTestingService:
+    @staticmethod
+    def _dump_dataset_document(document: DatasetDocument) -> dict[str, Any]:
+        return {
+            "id": document.id,
+            "data_source_type": document.data_source_type,
+            "name": document.name,
+            "doc_type": document.doc_type,
+            "doc_metadata": document.doc_metadata,
+        }
+
+    @classmethod
+    def _dump_retrieval_records(cls, records: list[Any]) -> list[dict[str, Any]]:
+        dumped_records = [record.model_dump() for record in records]
+        document_ids = {
+            segment.get("document_id")
+            for record in dumped_records
+            if isinstance(record, dict)
+            for segment in [record.get("segment")]
+            if isinstance(segment, dict) and segment.get("document_id")
+        }
+        if not document_ids:
+            return dumped_records
+
+        documents = {
+            document.id: cls._dump_dataset_document(document)
+            for document in db.session.scalars(
+                select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
+            ).all()
+        }
+
+        records_with_documents: list[dict[str, Any]] = []
+        missing_document_ids: set[str] = set()
+        for record in dumped_records:
+            segment = record.get("segment")
+            if not isinstance(segment, dict):
+                records_with_documents.append(record)
+                continue
+
+            document_id = segment.get("document_id")
+            if document_id in documents:
+                segment["document"] = documents[document_id]
+                records_with_documents.append(record)
+            elif document_id:
+                missing_document_ids.add(document_id)
+
+        if missing_document_ids:
+            logger.warning(
+                "Skipping hit-testing records with missing documents, document_ids=%s",
+                sorted(missing_document_ids),
+            )
+
+        return records_with_documents
+
     @classmethod
     def retrieve(
         cls,
@@ -174,7 +230,7 @@ class HitTestingService:
             "query": {
                 "content": query,
             },
-            "records": [record.model_dump() for record in records],
+            "records": cls._dump_retrieval_records(records),
         }
 
     @classmethod

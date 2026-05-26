@@ -4,8 +4,8 @@ import { useState } from 'react'
 import TabSliderNew from '.'
 
 const OPTIONS = [
-  { value: 'visual', text: 'Visual builder', icon: <RiSparklingFill className="mr-2 h-4 w-4 text-primary-500" /> },
-  { value: 'code', text: 'Code', icon: <RiTerminalBoxLine className="mr-2 h-4 w-4 text-text-tertiary" /> },
+  { value: 'visual', text: 'Visual builder', icon: <RiSparklingFill className="mr-2 size-4 text-primary-500" /> },
+  { value: 'code', text: 'Code', icon: <RiTerminalBoxLine className="mr-2 size-4 text-text-tertiary" /> },
 ]
 
 const TabSliderNewDemo = ({

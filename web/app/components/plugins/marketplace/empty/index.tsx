@@ -1,6 +1,6 @@
 'use client'
-import { useTranslation } from '#i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from '#i18n'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
 
@@ -43,13 +43,13 @@ const Empty = ({
           </div>
         )
       }
-      <div className="absolute top-1/2 left-1/2 z-2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-        <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg">
-          <Group className="h-5 w-5 text-text-primary" />
+      <div className="absolute top-1/2 left-1/2 z-2 flex -translate-1/2 flex-col items-center">
+        <div className="relative mb-3 flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg">
+          <Group className="size-5 text-text-primary" />
           <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
           <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
-          <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-          <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+          <Line className="absolute top-0 left-1/2 -translate-1/2 rotate-90" />
+          <Line className="absolute top-full left-1/2 -translate-1/2 rotate-90" />
         </div>
         <div className="text-center system-md-regular text-text-tertiary">
           {text || t('marketplace.noPluginFound', { ns: 'plugin' })}

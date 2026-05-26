@@ -15,6 +15,11 @@ from models.model import App, AppMode
 from tests.unit_tests.conftest import setup_mock_tenant_owner_execute_result
 
 
+def _configure_current_app_mock(mock_current_app):
+    mock_current_app.login_manager = Mock()
+    mock_current_app._get_current_object = Mock(return_value=Mock())
+
+
 class TestAppParameterApi:
     """Test suite for AppParameterApi"""
 
@@ -45,7 +50,7 @@ class TestAppParameterApi:
     ):
         """Test retrieving parameters for a chat app."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_config = Mock()
         mock_config.id = str(uuid.uuid4())
@@ -95,7 +100,7 @@ class TestAppParameterApi:
     ):
         """Test retrieving parameters for a workflow app."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app_model.mode = AppMode.WORKFLOW
         mock_workflow = Mock()
@@ -140,7 +145,7 @@ class TestAppParameterApi:
     ):
         """Test that AppUnavailableError is raised when chat app has no config."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app_model.app_model_config = None
         mock_app_model.workflow = None
@@ -178,7 +183,7 @@ class TestAppParameterApi:
     ):
         """Test that AppUnavailableError is raised when workflow app has no workflow."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app_model.mode = AppMode.WORKFLOW
         mock_app_model.workflow = None
@@ -245,7 +250,7 @@ class TestAppMetaApi:
     ):
         """Test retrieving app metadata via AppService."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_service_instance = Mock()
         mock_service_instance.get_app_meta.return_value = {
@@ -320,7 +325,7 @@ class TestAppInfoApi:
         self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask, mock_app_model
     ):
         """Test retrieving basic app information."""
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         # Mock authentication
         mock_api_token = Mock()
@@ -361,7 +366,7 @@ class TestAppInfoApi:
     ):
         """Test retrieving app info with multiple tags."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
@@ -414,7 +419,7 @@ class TestAppInfoApi:
     ):
         """Test retrieving app info when app has no tags."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())
@@ -466,7 +471,7 @@ class TestAppInfoApi:
     ):
         """Test that all app modes are correctly returned."""
         # Arrange
-        mock_current_app.login_manager = Mock()
+        _configure_current_app_mock(mock_current_app)
 
         mock_app = Mock(spec=App)
         mock_app.id = str(uuid.uuid4())

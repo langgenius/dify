@@ -3,14 +3,14 @@
 import type { FC } from 'react'
 import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
+import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
@@ -104,7 +104,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       actions={(
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
+            <RiSearchEyeLine className="mr-0.5 size-4" />
             {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -141,16 +141,18 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
           </div>
           <div className="mt-1">
             {rules.map(rule => (
-              <div
+              <label
                 key={rule.id}
-                className={s.ruleItem}
-                onClick={() => onRuleToggle(rule.id)}
+                className={`${s.ruleItem} cursor-pointer`}
               >
-                <Checkbox checked={rule.enabled} />
-                <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
+                <Checkbox
+                  checked={rule.enabled}
+                  onCheckedChange={() => onRuleToggle(rule.id)}
+                />
+                <span className="ml-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
-                </label>
-              </div>
+                </span>
+              </label>
             ))}
             {
               showSummaryIndexSetting && IS_CE_EDITION && (
@@ -167,42 +169,37 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
               <>
                 <Divider type="horizontal" className="my-4 bg-divider-subtle" />
                 <div className="flex items-center py-0.5">
-                  <div
-                    className="flex items-center"
-                    onClick={() => {
-                      if (hasCurrentDatasetDocForm)
-                        return
-                      if (currentDocForm === ChunkingMode.qa)
-                        onDocFormChange(ChunkingMode.text)
-                      else
-                        onDocFormChange(ChunkingMode.qa)
-                    }}
+                  <label
+                    className={`flex items-center ${hasCurrentDatasetDocForm ? '' : 'cursor-pointer'}`}
                   >
                     <Checkbox
                       checked={currentDocForm === ChunkingMode.qa}
                       disabled={hasCurrentDatasetDocForm}
+                      onCheckedChange={() => {
+                        if (hasCurrentDatasetDocForm)
+                          return
+                        if (currentDocForm === ChunkingMode.qa)
+                          onDocFormChange(ChunkingMode.text)
+                        else
+                          onDocFormChange(ChunkingMode.qa)
+                      }}
                     />
-                    <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
+                    <span className="ml-2 system-sm-regular text-text-secondary">
                       {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
-                    </label>
-                  </div>
+                    </span>
+                  </label>
                   <LanguageSelect
                     currentLanguage={docLanguage || locale}
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={(
-                        <span className="flex h-3.5 w-3.5 shrink-0 p-px">
-                          <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
-                        </span>
-                      )}
-                    />
-                    <TooltipContent>
-                      {t('stepTwo.QATip', { ns: 'datasetCreation' })}
-                    </TooltipContent>
-                  </Tooltip>
+                  <Infotip
+                    aria-label={t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    className="size-3.5"
+                    iconClassName="h-full w-full"
+                  >
+                    {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                  </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
                   <div

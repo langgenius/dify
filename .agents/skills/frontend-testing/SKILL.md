@@ -5,7 +5,7 @@ description: Generate Vitest + React Testing Library tests for Dify frontend com
 
 # Dify Frontend Testing Skill
 
-This skill enables Claude to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
+This skill enables Codex to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
 
 > **⚠️ Authoritative Source**: This skill is derived from `web/docs/test.md`. Use Vitest mock/timer APIs (`vi.*`).
 
@@ -24,35 +24,27 @@ Apply this skill when the user:
 **Do NOT apply** when:
 
 - User is asking about backend/API tests (Python/pytest)
-- User is asking about E2E tests (Playwright/Cypress)
+- User is asking about E2E tests (Cucumber + Playwright under `e2e/`)
 - User is only asking conceptual questions without code context
 
 ## Quick Reference
 
-### Tech Stack
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Vitest | 4.0.16 | Test runner |
-| React Testing Library | 16.0 | Component testing |
-| jsdom | - | Test environment |
-| nock | 14.0 | HTTP mocking |
-| TypeScript | 5.x | Type safety |
-
 ### Key Commands
+
+Run these commands from `web/`. From the repository root, prefix them with `pnpm -C web`.
 
 ```bash
 # Run all tests
 pnpm test
 
 # Watch mode
-pnpm test:watch
+pnpm test --watch
 
 # Run specific file
 pnpm test path/to/file.spec.tsx
 
 # Generate coverage report
-pnpm test:coverage
+pnpm test --coverage
 
 # Analyze component complexity
 pnpm analyze-component <path>
@@ -228,7 +220,10 @@ Every test should clearly separate:
 ### 2. Black-Box Testing
 
 - Test observable behavior, not implementation details
-- Use semantic queries (getByRole, getByLabelText)
+- Use semantic queries (`getByRole` with accessible `name`, `getByLabelText`, `getByPlaceholderText`, `getByText`, and scoped `within(...)`)
+- Treat `getByTestId` as a last resort. If a control cannot be found by role/name, label, landmark, or dialog scope, fix the component accessibility first instead of adding or relying on `data-testid`.
+- Remove production `data-testid` attributes when semantic selectors can cover the behavior. Keep them only for non-visual mocked boundaries, editor/browser shims such as Monaco, canvas/chart output, or third-party widgets with no accessible DOM in the test environment.
+- Do not assert decorative icons by test id. Assert the named control that contains them, or mark decorative icons `aria-hidden`.
 - Avoid testing internal state directly
 - **Prefer pattern matching over hardcoded strings** in assertions:
 

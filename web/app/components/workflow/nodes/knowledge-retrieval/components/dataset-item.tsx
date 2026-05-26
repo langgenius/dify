@@ -94,25 +94,23 @@ const DatasetItem: FC<Props> = ({
             editable && (
               <ActionButton
                 aria-label={t('operation.edit', { ns: 'common' })}
-                data-testid="dataset-item-edit-button"
                 onClick={(e) => {
                   e.stopPropagation()
                   showSettingsModal()
                 }}
               >
-                <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+                <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
               </ActionButton>
             )
           }
           <ActionButton
             aria-label={t('operation.remove', { ns: 'common' })}
-            data-testid="dataset-item-remove-button"
             onClick={handleRemove}
             state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine className={`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
+            <RiDeleteBinLine className={`size-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
           </ActionButton>
         </div>
       )}

@@ -23,7 +23,7 @@ export function JsonSchemaConfigModal({
           onClose()
       }}
     >
-      <DialogContent className="h-[800px] max-h-none w-full max-w-[960px] overflow-hidden! border-none p-0 text-left align-middle">
+      <DialogContent className="h-[calc(100dvh-32px)] max-h-[800px] w-full max-w-[960px] overflow-hidden! border-none p-0 text-left align-middle">
 
         <JsonSchemaConfig
           defaultSchema={defaultSchema}

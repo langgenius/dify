@@ -32,7 +32,7 @@ const Collapse = ({
     return (
       <ArrowDownRoundFill
         className={cn(
-          'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+          'size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
           collapsedMerged && 'rotate-270',
         )}
       />
@@ -52,7 +52,7 @@ const Collapse = ({
         >
           {typeof trigger === 'function' ? trigger(collapseIcon) : trigger}
           {!hideCollapseIcon && (
-            <div className="h-4 w-4 shrink-0">
+            <div className="size-4 shrink-0">
               {collapseIcon}
             </div>
           )}

@@ -334,7 +334,7 @@ describe('CloudPlanItem', () => {
       expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
     })
 
-    it('should show education unsupported warning below the button without changing button text or blocking checkout', async () => {
+    it('should show education unsupported warning and switch checkout to professional annual', async () => {
       mockUseProviderContext.mockReturnValue({
         enableEducationPlan: true,
         isEducationAccount: true,
@@ -355,18 +355,18 @@ describe('CloudPlanItem', () => {
 
       fireEvent.click(button)
       expect(screen.getByText('education.educationPricingConfirm.title'))!.toBeInTheDocument()
-      expect(screen.getByText(/^education\.educationPricingConfirm\.description/))!.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.operation.close' }))!.not.toBeInTheDocument()
+      expect(screen.getByText('education.educationPricingConfirm.description'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' }))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))!.toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.continue' }))
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
         expect(assignedHref).toBe('https://subscription.example')
       })
     })
 
-    it('should close the unsupported plan confirm without checkout when canceled', async () => {
+    it('should continue selected plan checkout when keeping current plan', async () => {
       mockUseProviderContext.mockReturnValue({
         enableEducationPlan: true,
         isEducationAccount: true,
@@ -383,6 +383,31 @@ describe('CloudPlanItem', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
       fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
+        expect(assignedHref).toBe('https://subscription.example')
+      })
+    })
+
+    it('should close the unsupported plan confirm without checkout when using the close button', async () => {
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.team}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
         expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()

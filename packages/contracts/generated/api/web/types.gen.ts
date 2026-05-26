@@ -4,6 +4,36 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/api` | (string & {})
 }
 
+export type AccessModeResponse = {
+  accessMode: string
+}
+
+export type AccessTokenData = {
+  access_token: string
+}
+
+export type AccessTokenResultResponse = {
+  data: AccessTokenData
+  result: string
+}
+
+export type AppAccessModeQuery = {
+  appCode?: string | null
+  appId?: string | null
+}
+
+export type BooleanResultResponse = {
+  result: boolean
+}
+
+export type BrandingModel = {
+  application_title: string
+  enabled: boolean
+  favicon: string
+  login_page_logo: string
+  workspace_logo: string
+}
+
 export type ChatMessagePayload = {
   conversation_id?: string | null
   files?: Array<{
@@ -28,6 +58,18 @@ export type CompletionMessagePayload = {
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+}
+
+export type ConversationListQuery = {
+  last_id?: string | null
+  limit?: number
+  pinned?: boolean | null
+  sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationRenamePayload = {
+  auto_generate?: boolean
+  name?: string | null
 }
 
 export type EmailCodeLoginSendPayload = {
@@ -59,14 +101,14 @@ export type FileResponse = {
 }
 
 export type FileWithSignedUrl = {
-  created_at?: number | null
-  created_by?: string | null
-  extension?: string | null
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
   id: string
-  mime_type?: string | null
+  mime_type: string | null
   name: string
   size: number
-  url?: string | null
+  url: string | null
 }
 
 export type ForgotPasswordCheckPayload = {
@@ -86,13 +128,58 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type LicenseLimitationModel = {
+  enabled: boolean
+  limit: number
+  size: number
+}
+
+export type LicenseModel = {
+  expired_at: string
+  status: LicenseStatus
+  workspaces: LicenseLimitationModel
+}
+
+export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
 export type LoginPayload = {
   email: string
   password: string
 }
 
+export type LoginStatusResponse = {
+  app_logged_in: boolean
+  logged_in: boolean
+}
+
+export type MessageFeedbackPayload = {
+  content?: string | null
+  rating?: 'dislike' | 'like' | null
+}
+
+export type MessageListQuery = {
+  conversation_id: string
+  first_id?: string | null
+  limit?: number
+}
+
 export type MessageMoreLikeThisQuery = {
   response_mode: 'blocking' | 'streaming'
+}
+
+export type PluginInstallationPermissionModel = {
+  plugin_installation_scope: PluginInstallationScope
+  restrict_to_marketplace_only: boolean
+}
+
+export type PluginInstallationScope
+  = | 'all'
+    | 'none'
+    | 'official_and_specific_partners'
+    | 'official_only'
+
+export type PluginManagerModel = {
+  enabled: boolean
 }
 
 export type RemoteFileInfo = {
@@ -100,11 +187,84 @@ export type RemoteFileInfo = {
   file_type: string
 }
 
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type ResultResponse = {
+  result: string
+}
+
+export type SavedMessageCreatePayload = {
+  message_id: string
+}
+
+export type SavedMessageListQuery = {
+  last_id?: string | null
+  limit?: number
+}
+
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
+}
+
+export type SystemFeatureModel = {
+  app_dsl_version: string
+  branding: BrandingModel
+  enable_change_email: boolean
+  enable_collaboration_mode: boolean
+  enable_creators_platform: boolean
+  enable_email_code_login: boolean
+  enable_email_password_login: boolean
+  enable_explore_banner: boolean
+  enable_marketplace: boolean
+  enable_social_oauth_login: boolean
+  enable_trial_app: boolean
+  is_allow_create_workspace: boolean
+  is_allow_register: boolean
+  is_email_setup: boolean
+  license: LicenseModel
+  max_plugin_package_size: number
+  plugin_installation_permission: PluginInstallationPermissionModel
+  plugin_manager: PluginManagerModel
+  sso_enforced_for_signin: boolean
+  sso_enforced_for_signin_protocol: string
+  trial_models: Array<string>
+  webapp_auth: WebAppAuthModel
+}
+
 export type TextToAudioPayload = {
   message_id?: string | null
   streaming?: boolean | null
   text?: string | null
   voice?: string | null
+}
+
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
+export type WebAppAuthModel = {
+  allow_email_code_login: boolean
+  allow_email_password_login: boolean
+  allow_sso: boolean
+  enabled: boolean
+  sso_config: WebAppAuthSsoModel
+}
+
+export type WebAppAuthSsoModel = {
+  protocol: string
 }
 
 export type WorkflowRunPayload = {
@@ -220,9 +380,7 @@ export type PostChatMessagesByTaskIdStopError
   = PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostChatMessagesByTaskIdStopResponse
@@ -296,9 +454,7 @@ export type PostCompletionMessagesByTaskIdStopError
   = PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostCompletionMessagesByTaskIdStopResponse
@@ -310,8 +466,8 @@ export type GetConversationsData = {
   query?: {
     last_id?: string
     limit?: number
-    pinned?: 'true' | 'false'
-    sort_by?: 'created_at' | '-created_at' | 'updated_at' | '-updated_at'
+    pinned?: 'false' | 'true'
+    sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
   }
   url: '/conversations'
 }
@@ -376,7 +532,7 @@ export type DeleteConversationsByCIdError
 
 export type DeleteConversationsByCIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -389,8 +545,8 @@ export type PostConversationsByCIdNameData = {
     c_id: string
   }
   query?: {
-    name?: string
     auto_generate?: boolean
+    name?: string
   }
   url: '/conversations/{c_id}/name'
 }
@@ -456,9 +612,7 @@ export type PatchConversationsByCIdPinError
   = PatchConversationsByCIdPinErrors[keyof PatchConversationsByCIdPinErrors]
 
 export type PatchConversationsByCIdPinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PatchConversationsByCIdPinResponse
@@ -495,9 +649,7 @@ export type PatchConversationsByCIdUnpinError
   = PatchConversationsByCIdUnpinErrors[keyof PatchConversationsByCIdUnpinErrors]
 
 export type PatchConversationsByCIdUnpinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PatchConversationsByCIdUnpinResponse
@@ -522,9 +674,7 @@ export type PostEmailCodeLoginErrors = {
 export type PostEmailCodeLoginError = PostEmailCodeLoginErrors[keyof PostEmailCodeLoginErrors]
 
 export type PostEmailCodeLoginResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostEmailCodeLoginResponse
@@ -553,9 +703,7 @@ export type PostEmailCodeLoginValidityError
   = PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
 
 export type PostEmailCodeLoginValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessTokenResultResponse
 }
 
 export type PostEmailCodeLoginValidityResponse
@@ -610,9 +758,7 @@ export type PostForgotPasswordErrors = {
 export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
 
 export type PostForgotPasswordResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostForgotPasswordResponse
@@ -641,9 +787,7 @@ export type PostForgotPasswordResetsError
   = PostForgotPasswordResetsErrors[keyof PostForgotPasswordResetsErrors]
 
 export type PostForgotPasswordResetsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostForgotPasswordResetsResponse
@@ -669,9 +813,7 @@ export type PostForgotPasswordValidityError
   = PostForgotPasswordValidityErrors[keyof PostForgotPasswordValidityErrors]
 
 export type PostForgotPasswordValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostForgotPasswordValidityResponse
@@ -738,9 +880,7 @@ export type PostLoginErrors = {
 export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
 
 export type PostLoginResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessTokenResultResponse
 }
 
 export type PostLoginResponse = PostLoginResponses[keyof PostLoginResponses]
@@ -761,9 +901,7 @@ export type GetLoginStatusErrors = {
 export type GetLoginStatusError = GetLoginStatusErrors[keyof GetLoginStatusErrors]
 
 export type GetLoginStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: LoginStatusResponse
 }
 
 export type GetLoginStatusResponse = GetLoginStatusResponses[keyof GetLoginStatusResponses]
@@ -776,9 +914,7 @@ export type PostLogoutData = {
 }
 
 export type PostLogoutResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostLogoutResponse = PostLogoutResponses[keyof PostLogoutResponses]
@@ -828,8 +964,8 @@ export type PostMessagesByMessageIdFeedbacksData = {
     message_id: string
   }
   query?: {
-    rating?: 'like' | 'dislike'
     content?: string
+    rating?: 'dislike' | 'like'
   }
   url: '/messages/{message_id}/feedbacks'
 }
@@ -856,9 +992,7 @@ export type PostMessagesByMessageIdFeedbacksError
   = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostMessagesByMessageIdFeedbacksResponse
@@ -936,9 +1070,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsError
   = GetMessagesByMessageIdSuggestedQuestionsErrors[keyof GetMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetMessagesByMessageIdSuggestedQuestionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuggestedQuestionsResponse
 }
 
 export type GetMessagesByMessageIdSuggestedQuestionsResponse
@@ -1170,9 +1302,7 @@ export type PostSavedMessagesErrors = {
 export type PostSavedMessagesError = PostSavedMessagesErrors[keyof PostSavedMessagesErrors]
 
 export type PostSavedMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostSavedMessagesResponse = PostSavedMessagesResponses[keyof PostSavedMessagesResponses]
@@ -1209,7 +1339,7 @@ export type DeleteSavedMessagesByMessageIdError
 
 export type DeleteSavedMessagesByMessageIdResponses = {
   204: {
-    [key: string]: unknown
+    [key: string]: never
   }
 }
 
@@ -1267,9 +1397,7 @@ export type GetSystemFeaturesErrors = {
 export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
 
 export type GetSystemFeaturesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SystemFeatureModel
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]
@@ -1310,8 +1438,8 @@ export type GetWebappAccessModeData = {
   body?: never
   path?: never
   query?: {
-    appId?: string
     appCode?: string
+    appId?: string
   }
   url: '/webapp/access-mode'
 }
@@ -1328,9 +1456,7 @@ export type GetWebappAccessModeErrors = {
 export type GetWebappAccessModeError = GetWebappAccessModeErrors[keyof GetWebappAccessModeErrors]
 
 export type GetWebappAccessModeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessModeResponse
 }
 
 export type GetWebappAccessModeResponse
@@ -1360,9 +1486,7 @@ export type GetWebappPermissionErrors = {
 export type GetWebappPermissionError = GetWebappPermissionErrors[keyof GetWebappPermissionErrors]
 
 export type GetWebappPermissionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BooleanResultResponse
 }
 
 export type GetWebappPermissionResponse
@@ -1452,9 +1576,7 @@ export type PostWorkflowsTasksByTaskIdStopError
   = PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkflowsTasksByTaskIdStopResponse

@@ -89,20 +89,21 @@ class MLflowDataTrace(BaseTraceInstance):
     def trace(self, trace_info: BaseTraceInfo):
         """Simple dispatch to trace methods"""
         try:
-            if isinstance(trace_info, WorkflowTraceInfo):
-                self.workflow_trace(trace_info)
-            elif isinstance(trace_info, MessageTraceInfo):
-                self.message_trace(trace_info)
-            elif isinstance(trace_info, ToolTraceInfo):
-                self.tool_trace(trace_info)
-            elif isinstance(trace_info, ModerationTraceInfo):
-                self.moderation_trace(trace_info)
-            elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-                self.dataset_retrieval_trace(trace_info)
-            elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-                self.suggested_question_trace(trace_info)
-            elif isinstance(trace_info, GenerateNameTraceInfo):
-                self.generate_name_trace(trace_info)
+            match trace_info:
+                case WorkflowTraceInfo():
+                    self.workflow_trace(trace_info)
+                case MessageTraceInfo():
+                    self.message_trace(trace_info)
+                case ToolTraceInfo():
+                    self.tool_trace(trace_info)
+                case ModerationTraceInfo():
+                    self.moderation_trace(trace_info)
+                case DatasetRetrievalTraceInfo():
+                    self.dataset_retrieval_trace(trace_info)
+                case SuggestedQuestionTraceInfo():
+                    self.suggested_question_trace(trace_info)
+                case GenerateNameTraceInfo():
+                    self.generate_name_trace(trace_info)
         except Exception:
             logger.exception("[MLflow] Trace error")
             raise
@@ -480,14 +481,15 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def _parse_prompts(self, prompts):
         """Postprocess prompts format to be standard chat messages"""
-        if isinstance(prompts, str):
-            return prompts
-        elif isinstance(prompts, dict):
-            return self._parse_single_message(prompts)
-        elif isinstance(prompts, list):
-            messages = [self._parse_single_message(item) for item in prompts]
-            messages = self._resolve_tool_call_ids(messages)
-            return messages
+        match prompts:
+            case str():
+                return prompts
+            case dict():
+                return self._parse_single_message(prompts)
+            case list():
+                messages = [self._parse_single_message(item) for item in prompts]
+                messages = self._resolve_tool_call_ids(messages)
+                return messages
         return prompts  # Fallback to original format
 
     def _parse_single_message(self, item: dict[str, Any]):

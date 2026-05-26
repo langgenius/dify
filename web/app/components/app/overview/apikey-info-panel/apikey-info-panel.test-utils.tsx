@@ -59,7 +59,6 @@ const defaultProviderContext = {
 
 const defaultModalContext: ModalContextState = {
   setShowAccountSettingModal: noop,
-  setShowApiBasedExtensionModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
   setShowPricingModal: noop,

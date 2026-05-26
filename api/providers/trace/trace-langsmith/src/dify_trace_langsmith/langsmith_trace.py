@@ -64,7 +64,9 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
+        # trace_id must equal the root run's run_id (LangSmith protocol); external trace_id
+        # cannot be used here as it would cause HTTP 400.
+        trace_id = trace_info.message_id or trace_info.workflow_run_id
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
         message_dotted_order = (
@@ -77,6 +79,8 @@ class LangSmithDataTrace(BaseTraceInstance):
         )
         metadata = trace_info.metadata
         metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
+        if trace_info.trace_id:
+            metadata["external_trace_id"] = trace_info.trace_id
 
         if trace_info.message_id:
             message_run = LangSmithRunModel(

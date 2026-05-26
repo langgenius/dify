@@ -5,7 +5,8 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -28,7 +29,7 @@ from core.errors.error import (
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from models.model import AppMode
+from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -66,6 +67,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload)
+register_response_schema_models(web_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -84,7 +86,7 @@ class CompletionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -137,7 +139,8 @@ class CompletionStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, task_id):
+    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
+    def post(self, app_model: App, end_user: EndUser, task_id: str):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -166,7 +169,7 @@ class ChatApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -222,7 +225,8 @@ class ChatStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, task_id):
+    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
+    def post(self, app_model: App, end_user: EndUser, task_id: str):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

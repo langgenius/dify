@@ -257,6 +257,10 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof CreateSubscript
   ...overrides,
 })
 
+const getCreateButton = () => screen.getByRole('button', {
+  name: /pluginTrigger\.subscription\.(createButton|empty\.button)/,
+})
+
 const setupMocks = (config: {
   providerInfo?: TriggerProviderApiEntity
   oauthConfig?: TriggerOAuthConfig
@@ -353,7 +357,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(getCreateButton()).toBeInTheDocument()
     })
 
     it('should render icon button when buttonType is ICON_BUTTON', () => {
@@ -387,7 +391,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(getCreateButton()).toBeInTheDocument()
     })
 
     it('should apply shape prop correctly', () => {
@@ -592,7 +596,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
+      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
     })
 
     it('should display correct button text for MANUAL method', () => {
@@ -610,7 +614,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.manual')
+      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.createButton.manual')
     })
 
     it('should display default button text when multiple methods are supported', () => {
@@ -628,7 +632,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.empty.button')
+      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.empty.button')
     })
   })
 
@@ -780,7 +784,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       fireEvent.click(button)
 
       // Assert - modal should not open
@@ -830,7 +834,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       fireEvent.click(button)
 
       // Assert - modal should open
@@ -1328,7 +1332,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - should not have settings divider
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       const divider = button.querySelector('.bg-text-primary-on-surface')
       expect(divider).not.toBeInTheDocument()
     })
@@ -1447,7 +1451,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       expect(button)!.toHaveClass('w-full')
     })
 

@@ -382,7 +382,7 @@ const AppPublisher = ({
               disabled={disabled}
             >
               {t('common.publish', { ns: 'workflow' })}
-              <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
+              <span className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
             </Button>
           )}
         />
@@ -451,7 +451,7 @@ const AppPublisher = ({
             {systemFeatures.enable_creators_platform && (
               <div className="border-t border-divider-subtle p-4">
                 <SuggestedAction
-                  icon={<span className="i-ri-store-line h-4 w-4" />}
+                  icon={<span className="i-ri-store-line size-4" />}
                   disabled={!publishedAt || publishingToMarketplace}
                   onClick={handlePublishToMarketplace}
                 >

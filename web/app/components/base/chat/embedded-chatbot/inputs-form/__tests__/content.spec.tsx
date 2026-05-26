@@ -179,7 +179,7 @@ describe('InputsFormContent', () => {
 
   it('should handle bool input changes', async () => {
     render(<InputsFormContent />)
-    const checkbox = screen.getByTestId(/checkbox-/i)
+    const checkbox = screen.getByRole('checkbox', { name: 'Bool Label' })
     await user.click(checkbox)
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()

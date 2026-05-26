@@ -27,7 +27,7 @@ const InviteButton = (props: InviteButtonProps) => {
   }
   return (
     <Button variant="primary" {...props}>
-      <RiUserAddLine className="mr-1 h-4 w-4" />
+      <RiUserAddLine className="mr-1 size-4" />
       {t('members.invite', { ns: 'common' })}
     </Button>
   )

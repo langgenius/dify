@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
+from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     BaseTracingConfig,
@@ -50,6 +51,17 @@ if TYPE_CHECKING:
     from graphon.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
+
+
+def _dump_parent_trace_context(parent_trace_context: Any) -> dict[str, str] | None:
+    if isinstance(parent_trace_context, ParentTraceContext):
+        return parent_trace_context.model_dump(exclude_none=True)
+    if isinstance(parent_trace_context, dict):
+        try:
+            return ParentTraceContext.model_validate(parent_trace_context).model_dump(exclude_none=True)
+        except ValueError:
+            return None
+    return None
 
 
 class _AppTracingConfig(TypedDict, total=False):
@@ -857,8 +869,9 @@ class TraceTask:
         }
 
         parent_trace_context = self.kwargs.get("parent_trace_context")
-        if parent_trace_context:
-            metadata["parent_trace_context"] = parent_trace_context
+        dumped_parent_trace_context = _dump_parent_trace_context(parent_trace_context)
+        if dumped_parent_trace_context:
+            metadata["parent_trace_context"] = dumped_parent_trace_context
 
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
@@ -1371,13 +1384,14 @@ class TraceTask:
         }
 
         parent_trace_context = node_data.get("parent_trace_context")
-        if parent_trace_context:
-            metadata["parent_trace_context"] = parent_trace_context
+        dumped_parent_trace_context = _dump_parent_trace_context(parent_trace_context)
+        if dumped_parent_trace_context:
+            metadata["parent_trace_context"] = dumped_parent_trace_context
 
         message_id: str | None = None
         conversation_id = node_data.get("conversation_id")
         workflow_execution_id = node_data.get("workflow_execution_id")
-        if conversation_id and workflow_execution_id and not parent_trace_context:
+        if conversation_id and workflow_execution_id and not dumped_parent_trace_context:
             with Session(db.engine) as session:
                 msg_id = session.scalar(
                     select(Message.id).where(

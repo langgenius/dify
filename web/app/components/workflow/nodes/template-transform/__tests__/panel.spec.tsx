@@ -144,7 +144,7 @@ describe('template-transform/panel', () => {
       />,
     )
 
-    await user.click(screen.getByTestId('add-button'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.templateTransform.inputVars' }))
     await user.click(screen.getByRole('button', { name: 'change-var-list' }))
     await user.click(screen.getByRole('button', { name: 'rename-var' }))
     await user.click(screen.getByRole('button', { name: 'add-var' }))
@@ -185,6 +185,6 @@ describe('template-transform/panel', () => {
       />,
     )
 
-    expect(screen.queryByTestId('add-button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.templateTransform.inputVars' })).not.toBeInTheDocument()
   })
 })

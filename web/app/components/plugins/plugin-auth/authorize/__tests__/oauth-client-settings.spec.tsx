@@ -205,7 +205,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 
@@ -213,7 +213,7 @@ describe('OAuthClientSettings', () => {
     const mockOnClose = vi.fn()
     render(<ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />)
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
 
     await waitFor(() => {
       expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')

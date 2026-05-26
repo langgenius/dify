@@ -135,6 +135,15 @@ describe('UpdateDSLModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('should call cancel handler when the close button is clicked', () => {
+    const onCancel = vi.fn()
+    renderModal({ ...defaultProps, onCancel })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('should import a valid file and emit workflow update payload', async () => {
     renderModal()
 

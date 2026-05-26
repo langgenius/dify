@@ -157,7 +157,7 @@ describe('Uploader', () => {
     const hiddenInput = getHiddenInput()
     const clickSpy = vi.spyOn(hiddenInput, 'click')
 
-    fireEvent.click(screen.getByText('dslUploader.browse'))
+    fireEvent.click(screen.getByRole('button', { name: 'dslUploader.browse' }))
 
     expect(clickSpy).toHaveBeenCalled()
 

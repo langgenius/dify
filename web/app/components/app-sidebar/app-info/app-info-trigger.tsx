@@ -36,16 +36,16 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
           </div>
           {expand && (
             <div className="ml-auto flex items-center justify-center rounded-md p-0.5">
-              <div className="flex h-5 w-5 items-center justify-center">
-                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+              <div className="flex size-5 items-center justify-center">
+                <RiEqualizer2Line className="size-4 text-text-tertiary" />
               </div>
             </div>
           )}
         </div>
         {!expand && (
           <div className="flex items-center justify-center">
-            <div className="flex h-5 w-5 items-center justify-center rounded-md p-0.5">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+            <div className="flex size-5 items-center justify-center rounded-md p-0.5">
+              <RiEqualizer2Line className="size-4 text-text-tertiary" />
             </div>
           </div>
         )}

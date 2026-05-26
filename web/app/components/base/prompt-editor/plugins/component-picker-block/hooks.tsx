@@ -103,7 +103,7 @@ export const usePromptOptions = (
         return (
           <PromptMenuItem
             title={t('promptEditor.requestURL.item.title', { ns: 'common' })}
-            icon={<RiGlobalLine className="h-4 w-4 text-util-colors-violet-violet-600" />}
+            icon={<RiGlobalLine className="size-4 text-util-colors-violet-violet-600" />}
             disabled={!requestURLBlock.selectable}
             isSelected={isSelected}
             onClick={onSelect}
@@ -274,7 +274,7 @@ export const useExternalToolOptions = (
           <VariableMenuItem
             title={t('promptEditor.variable.modal.addTool', { ns: 'common' })}
             icon={<Tool03 className="h-[14px] w-[14px] text-text-accent" />}
-            extraElement={<ArrowUpRight className="h-3 w-3 text-text-tertiary" />}
+            extraElement={<ArrowUpRight className="size-3 text-text-tertiary" />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}

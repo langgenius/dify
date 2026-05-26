@@ -1,6 +1,6 @@
+import { CheckboxSkeleton } from '@langgenius/dify-ui/checkbox'
 import { RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import {
   SkeletonContainer,
@@ -37,7 +37,7 @@ const CardSkelton = React.memo(() => {
       <SkeletonContainer className="p-1 pb-2">
         <SkeletonRow>
           <SkeletonRow className="h-7 gap-x-0.5 rounded-lg bg-dataset-child-chunk-expand-btn-bg pr-3 pl-1">
-            <RiArrowRightSLine className="h-4 w-4 text-text-secondary opacity-20" />
+            <RiArrowRightSLine className="size-4 text-text-secondary opacity-20" />
             <SkeletonRectangle className="w-32 bg-text-quaternary" />
           </SkeletonRow>
         </SkeletonRow>
@@ -51,14 +51,13 @@ CardSkelton.displayName = 'CardSkelton'
 const ParagraphListSkeleton = () => {
   return (
     <div className="relative z-10 flex h-full flex-col overflow-y-hidden">
-      <div className="absolute top-0 left-0 z-20 h-full w-full bg-dataset-chunk-list-mask-bg" />
+      <div className="absolute top-0 left-0 z-20 size-full bg-dataset-chunk-list-mask-bg" />
       {Array.from({ length: 10 }).map((_, index) => {
         return (
           <div key={index} className="flex items-start gap-x-2">
-            <Checkbox
+            <CheckboxSkeleton
               key={`${index}-checkbox`}
               className="mt-3.5 shrink-0"
-              disabled
             />
             <div className="grow">
               <CardSkelton />

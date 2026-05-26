@@ -300,7 +300,7 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      await user.click(screen.getByTestId('add-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge' }))
       await user.click(screen.getByText('select-dataset'))
 
       expect(onChange).toHaveBeenCalledWith([
@@ -606,7 +606,7 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
       await user.click(screen.getByText('workflow.nodes.ifElse.comparisonOperator.is'))
-      await user.click(screen.getByText(/March 09 2024/).nextElementSibling as Element)
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       fireEvent.change(screen.getByDisplayValue('agent'), { target: { value: 'updated-agent' } })
       fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
 
