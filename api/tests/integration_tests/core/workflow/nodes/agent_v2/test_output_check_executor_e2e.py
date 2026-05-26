@@ -42,7 +42,6 @@ from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixture: real upload_files row + real storage object
 # ──────────────────────────────────────────────────────────────────────────────
@@ -108,7 +107,7 @@ def stored_text_file(
     finally:
         try:
             storage.delete(upload_key)
-        except Exception:  # noqa: BLE001 — best-effort
+        except Exception:
             pass
         with session_factory.create_session() as session:
             session.execute(delete(UploadFile).where(UploadFile.id == upload_id))
@@ -157,7 +156,7 @@ def two_stored_files(
         for k in keys:
             try:
                 storage.delete(k)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         with session_factory.create_session() as session:
             session.execute(delete(UploadFile).where(UploadFile.id.in_(ids)))
