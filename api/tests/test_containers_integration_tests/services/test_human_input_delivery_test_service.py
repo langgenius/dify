@@ -127,7 +127,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=False),
+            lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=False),
         )
         handler = EmailDeliveryTestHandler(session_factory=MagicMock())
         context = DeliveryTestContext(
@@ -142,7 +142,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: False)
 
@@ -159,7 +159,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
@@ -178,7 +178,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
@@ -214,7 +214,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
