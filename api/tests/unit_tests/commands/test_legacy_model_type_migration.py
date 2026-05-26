@@ -1223,6 +1223,7 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
     table_name = "load_balancing_model_configs"
     expected_row_ids = {
         dirty_fixture.primary.load_balancing_config_id,
+        dirty_fixture.primary.winner_load_balancing_config_id,
         inserted_row_id,
     }
 
@@ -1244,7 +1245,7 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
     ]
-    assert len(dry_run_row_updates) == 2
+    assert len(dry_run_row_updates) == 3
     assert {str(attrs["id"]) for attrs in dry_run_row_updates} == expected_row_ids
     assert all(attrs.get("old_values") == {"model_type": "text-generation"} for attrs in dry_run_row_updates)
     assert all(attrs.get("new_values") == {"model_type": ModelType.LLM.value} for attrs in dry_run_row_updates)
@@ -1266,7 +1267,7 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
     ]
-    assert len(dry_run_cache_plans) == 2
+    assert len(dry_run_cache_plans) == 3
     assert {str(attrs["id"]) for attrs in dry_run_cache_plans} == expected_row_ids
 
     dry_run_business_keys = [
@@ -1294,7 +1295,7 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
     ]
-    assert len(apply_row_updates) == 2
+    assert len(apply_row_updates) == 3
     assert {str(attrs["id"]) for attrs in apply_row_updates} == expected_row_ids
 
     apply_group_processed = [
@@ -1313,9 +1314,9 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
         and isinstance(line.get("attrs"), dict)
         and cast(dict[str, object], line["attrs"]).get("table_name") == table_name
     ]
-    assert len(apply_cache_deletes) == 2
+    assert len(apply_cache_deletes) == 3
     assert {str(attrs["id"]) for attrs in apply_cache_deletes} == expected_row_ids
-    assert len(deleted_cache_keys) == 2
+    assert len(deleted_cache_keys) == 3
 
     apply_business_keys = [
         _json_key(business_key)
@@ -1326,7 +1327,7 @@ def test_load_balancing_model_configs_are_canonicalized_row_by_row_without_group
 
     lb_rows = fetch_table_rows(sqlite_engine, table_name, tenant_id=tenant_id)
     migrated_rows = [row for row in lb_rows if str(row["id"]) in expected_row_ids]
-    assert len(migrated_rows) == 2
+    assert len(migrated_rows) == 3
     assert all(row["model_type"] == ModelType.LLM.value for row in migrated_rows)
 
 
@@ -1363,10 +1364,12 @@ def test_migration_apply_updates_all_five_tables_and_rewrites_credential_referen
     assert provider_model_row["credential_id"] == dirty_fixture.primary.winner_credential_id
 
     lb_rows = fetch_table_rows(sqlite_engine, "load_balancing_model_configs", tenant_id=dirty_fixture.primary.tenant_id)
-    lb_row = next(row for row in lb_rows if row["id"] == dirty_fixture.primary.load_balancing_config_id)
-    assert lb_row["model_type"] == LEGACY_TO_CANONICAL["text-generation"]
-    assert lb_row["credential_id"] == dirty_fixture.primary.winner_credential_id
-    assert lb_row["encrypted_config"] == dirty_fixture.primary.winner_encrypted_config
+    lb_ids = {str(r["id"]) for r in lb_rows}
+    # The loser LB row is deleted during credential dedup (winner already has a row for the same key).
+    assert str(dirty_fixture.primary.load_balancing_config_id) not in lb_ids
+    winner_lb_row = next(row for row in lb_rows if row["id"] == dirty_fixture.primary.winner_load_balancing_config_id)
+    assert winner_lb_row["model_type"] == LEGACY_TO_CANONICAL["text-generation"]
+    assert winner_lb_row["credential_id"] == dirty_fixture.primary.winner_credential_id
 
     credential_rows = fetch_table_rows(
         sqlite_engine, "provider_model_credentials", tenant_id=dirty_fixture.primary.tenant_id
@@ -1536,3 +1539,70 @@ def test_migration_is_idempotent_on_second_apply(
     after_second = snapshot_legacy_model_type_state(sqlite_engine)
 
     assert after_second == after_first
+
+
+def test_lb_loser_row_deleted_when_winner_has_same_model(
+    sqlite_engine, dirty_fixture, migration_module
+) -> None:
+    """Loser LB row must be deleted when winner credential already has an LB row
+    for the same (provider_name, model_name, model_type)."""
+    LegacyModelTypeMigrationService = migration_module.LegacyModelTypeMigrationService
+    primary = dirty_fixture.primary
+
+    output = io.StringIO()
+    LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=True,
+        output=output,
+    ).migrate()
+
+    lb_rows = fetch_table_rows(sqlite_engine, "load_balancing_model_configs", tenant_id=primary.tenant_id)
+    lb_ids = {str(r["id"]) for r in lb_rows}
+
+    assert str(primary.load_balancing_config_id) not in lb_ids, (
+        "loser LB row should have been deleted (winner already had matching row)"
+    )
+    assert str(primary.winner_load_balancing_config_id) in lb_ids, (
+        "winner LB row must survive"
+    )
+    llm_lb_rows = [r for r in lb_rows if str(r["model_type"]) == "llm" and str(r["model_name"]) == "gpt-4o-mini"]
+    assert len(llm_lb_rows) == 1, f"expected 1 LB row for llm gpt-4o-mini, got {llm_lb_rows}"
+
+
+def test_lb_loser_deletion_logged_in_dry_run(
+    sqlite_engine, dirty_fixture, migration_module
+) -> None:
+    """Dry run must log a row_deleted event (not row_updated/rewrite) for the loser LB row."""
+    LegacyModelTypeMigrationService = migration_module.LegacyModelTypeMigrationService
+    primary = dirty_fixture.primary
+
+    output = io.StringIO()
+    LegacyModelTypeMigrationService(
+        engine=sqlite_engine,
+        apply=False,
+        output=output,
+    ).migrate()
+
+    events = _parse_json_lines(output)
+
+    deletion_events = [
+        e for e in events
+        if e.get("event") == "row_deleted"
+        and isinstance(e.get("attrs"), dict)
+        and e["attrs"].get("table_name") == "load_balancing_model_configs"
+        and str(e["attrs"].get("id")) == str(primary.load_balancing_config_id)
+    ]
+    assert deletion_events, "expected a row_deleted event for the loser LB row in dry-run"
+
+    credential_rewrite_events = [
+        e for e in events
+        if e.get("event") == "row_updated"
+        and isinstance(e.get("attrs"), dict)
+        and e["attrs"].get("table_name") == "load_balancing_model_configs"
+        and str(e["attrs"].get("id")) == str(primary.load_balancing_config_id)
+        and isinstance(e["attrs"].get("rewrite_source"), dict)
+        and e["attrs"]["rewrite_source"].get("rewrite_kind") == "credential_reference"
+    ]
+    assert not credential_rewrite_events, (
+        "loser LB row must not be logged as a credential_reference rewrite when winner has matching row"
+    )

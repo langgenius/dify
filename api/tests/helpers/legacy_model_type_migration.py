@@ -44,6 +44,7 @@ class DirtyTenantFixture:
     distinct_credential_id: str
     provider_model_id: str
     load_balancing_config_id: str
+    winner_load_balancing_config_id: str
     provider_model_setting_id: str
     tenant_default_model_id: str
     embedding_provider_model_id: str
@@ -317,6 +318,7 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
                 "updated_at": now - timedelta(hours=3),
             },
         )
+        winner_load_balancing_config_id = str(uuid4())
         conn.execute(
             sa.text(
                 """
@@ -331,20 +333,30 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
                         :load_balancing_config_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation',
                         :lb_name, :loser_config, :loser_id, :credential_source_type,
                         :enabled, :created_at, :updated_at
+                    ),
+                    (
+                        :lb_winner_id, :tenant_id, :provider_name, 'gpt-4o-mini', 'text-generation',
+                        :winner_name, :winner_config, :winner_cred_id, :credential_source_type,
+                        :enabled, :created_at, :winner_updated_at
                     )
                 """
             ),
             {
                 "load_balancing_config_id": load_balancing_config_id,
+                "lb_winner_id": winner_load_balancing_config_id,
                 "tenant_id": tenant_id,
                 "provider_name": provider_name,
                 "lb_name": loser_credential_name,
                 "loser_config": loser_encrypted_config,
                 "loser_id": loser_credential_id,
+                "winner_name": f"{tenant_id}-winner-lb",
+                "winner_config": winner_encrypted_config,
+                "winner_cred_id": winner_credential_id,
                 "credential_source_type": CredentialSourceType.CUSTOM_MODEL.value,
                 "enabled": True,
                 "created_at": now - timedelta(days=2),
                 "updated_at": now - timedelta(hours=2),
+                "winner_updated_at": now - timedelta(hours=1),
             },
         )
 
@@ -355,6 +367,7 @@ def _seed_tenant(engine: Engine, *, tenant_id: str, provider_name: str) -> Dirty
         distinct_credential_id=distinct_credential_id,
         provider_model_id=provider_model_id,
         load_balancing_config_id=load_balancing_config_id,
+        winner_load_balancing_config_id=winner_load_balancing_config_id,
         provider_model_setting_id=provider_model_setting_id,
         tenant_default_model_id=tenant_default_model_id,
         embedding_provider_model_id=embedding_provider_model_id,
