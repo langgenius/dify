@@ -61,9 +61,7 @@ def require_workspace_role(*allowed_roles: TenantAccountRole) -> Callable[[F], F
 
             workspace_id = kwargs.get("workspace_id")
             if not workspace_id:
-                raise RuntimeError(
-                    "require_workspace_role expects a 'workspace_id' route parameter"
-                )
+                raise RuntimeError("require_workspace_role expects a 'workspace_id' route parameter")
 
             join = db.session.execute(
                 select(TenantAccountJoin).where(
