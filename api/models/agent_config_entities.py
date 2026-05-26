@@ -128,9 +128,7 @@ class AgentSoulDifyToolConfig(BaseModel):
         # explicit values so a frontend bug surfaces immediately instead of
         # producing a silently-ignored override.
         if self.name is not None and self.name != self.tool_name:
-            raise ValueError(
-                "name override is not yet supported; omit ``name`` or set it equal to ``tool_name``."
-            )
+            raise ValueError("name override is not yet supported; omit ``name`` or set it equal to ``tool_name``.")
         return self
 
 

@@ -378,9 +378,7 @@ def test_generic_value_error_maps_to_config_invalid():
     ``agent_tool_config_invalid`` — distinct from
     ``agent_tool_declaration_not_found`` so callers can render a different
     hint."""
-    builder = WorkflowAgentPluginToolsBuilder(
-        tool_runtime_provider=FakeRuntimeProvider(ValueError("runtime missing"))
-    )
+    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(ValueError("runtime missing")))
     with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_config_invalid"

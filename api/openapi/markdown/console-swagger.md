@@ -10721,7 +10721,6 @@ new callers should send ``plugin_id`` + ``provider`` when available.
 | description | string |  | No |
 | enabled | boolean |  | No |
 | name | string |  | No |
-| parameter_overrides | object |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |

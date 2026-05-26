@@ -138,9 +138,6 @@ export type AgentSoulDifyToolConfig = {
   description?: string | null
   enabled?: boolean
   name?: string | null
-  parameter_overrides?: {
-    [key: string]: unknown
-  }
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
@@ -149,7 +146,6 @@ export type AgentSoulDifyToolConfig = {
     [key: string]: unknown
   }
   tool_name: string
-  [key: string]: unknown
 }
 
 export type AgentSoulDifyToolCredentialRef = {

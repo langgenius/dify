@@ -1846,11 +1846,10 @@ export const zAgentSoulDifyToolConfig = z.object({
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
   name: z.string().max(255).nullish(),
-  parameter_overrides: z.record(z.string(), z.unknown()).optional(),
   plugin_id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
-  provider_type: z.string().optional().default('builtin'),
+  provider_type: z.string().optional().default('plugin'),
   runtime_parameters: z.record(z.string(), z.unknown()).optional(),
   tool_name: z.string().min(1).max(255),
 })
