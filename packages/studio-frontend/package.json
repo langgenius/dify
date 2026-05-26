@@ -4,7 +4,15 @@
   "version": "0.0.1",
   "private": true,
   "exports": {
-    "./*": "./src/*"
+    "./*": {
+      "types": "./src/*",
+      "default": "./src/*"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": ["./src/*"]
+    }
   },
   "scripts": {
     "type-check": "tsgo"

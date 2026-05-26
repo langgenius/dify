@@ -32,6 +32,18 @@
       ],
       "@/app/components/develop/*": [
         "../packages/studio-frontend/src/develop/components/*"
+      ],
+      "@dify/studio-frontend/contracts/*": [
+        "../packages/studio-frontend/src/contracts/*"
+      ],
+      "@dify/studio-frontend/types/*": [
+        "../packages/studio-frontend/src/types/*"
+      ],
+      "@dify/studio-frontend/utils/*": [
+        "../packages/studio-frontend/src/utils/*"
+      ],
+      "@dify/studio-frontend/components/*": [
+        "../packages/studio-frontend/src/components/*"
       ]
     },
     "resolveJsonModule": true,
