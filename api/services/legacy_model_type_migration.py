@@ -1,3 +1,18 @@
+"""
+Migrate legacy provider-related model_type values to canonical values.
+
+The grouped tables scan legacy candidates in id order, then reload the full business-key
+group inside a transaction before deciding a winner row and the loser rows to delete.
+Those grouped flows share the same dry-run/apply handling for group reloads, winner-loser
+decisions, row updates, row deletes, and structured logging. Only some grouped tables
+also add cache cleanup; that includes `provider_models` and
+`provider_model_credentials`. Provider-model-credential groups extend that flow by
+rewriting credential references in provider models and load-balancing configs before
+removing loser credential rows. `load_balancing_model_configs` is the intentional
+exception: it does not group or merge rows, and instead reloads and canonicalizes each
+legacy row independently with row-level cache cleanup.
+"""
+
 from __future__ import annotations
 
 import io
@@ -107,6 +122,25 @@ class _HasRowId(Protocol):
 
 class _HasRowIdAndUpdatedAt(_HasRowId, Protocol):
     updated_at: datetime
+
+
+def _normalize_error_code_string(value: object) -> str | None:
+    if isinstance(value, str):
+        normalized_value = value.strip().upper()
+        return normalized_value or None
+    return None
+
+
+def _normalize_error_code_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        normalized_value = value.strip()
+        if normalized_value.isdigit():
+            return int(normalized_value)
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +258,12 @@ _LEGACY_TO_CANONICAL: dict[str, ModelType] = {
     for canonical_model_type, legacy_values in _CANONICAL_TO_LEGACY.items()
     for legacy_value in legacy_values
 }
+_POSTGRES_LOCK_TIMEOUT_SQLSTATES: frozenset[str] = frozenset({"55P03"})
+_MYSQL_LOCK_TIMEOUT_ERRNOS: frozenset[int] = frozenset({1205})
+_LOCK_TIMEOUT_FALLBACK_MESSAGES: tuple[str, ...] = (
+    "canceling statement due to lock timeout",
+    "lock wait timeout exceeded",
+)
 _RAW_MODEL_TYPE_COLUMN = "_raw_model_type"
 
 
@@ -1218,9 +1258,9 @@ class Migration:
         self, candidate: _RowWithRawModelType[LoadBalancingModelConfig]
     ) -> None:
         tx_id = self._new_tx_id()
+        processed_row_id: str | None = None
 
         try:
-            processed_row_id: str | None = None
             with _session_factory(self._engine) as session, session.begin():
                 self._configure_lock_timeout(session)
                 current_row = self._reload_load_balancing_model_config_candidate(session, candidate, lock_rows=True)
@@ -1228,6 +1268,12 @@ class Migration:
                     return
                 processed_row_id = str(current_row.row.id)
 
+                if self._apply:
+                    session.execute(
+                        sa.update(LoadBalancingModelConfig)
+                        .where(LoadBalancingModelConfig.id == processed_row_id)
+                        .values(model_type=current_row.canonical_model_type.value)
+                    )
                 self._log_row_updated(
                     LoadBalancingModelConfig.__tablename__,
                     processed_row_id,
@@ -1235,12 +1281,6 @@ class Migration:
                     {"model_type": current_row.canonical_model_type.value},
                     tx_id=tx_id,
                 )
-                if self._apply:
-                    session.execute(
-                        sa.update(LoadBalancingModelConfig)
-                        .where(LoadBalancingModelConfig.id == processed_row_id)
-                        .values(model_type=current_row.canonical_model_type.value)
-                    )
         except OperationalError as exc:
             if self._is_lock_timeout_error(exc):
                 self._log_lock_timeout(
@@ -1722,13 +1762,43 @@ class Migration:
             )
 
     def _is_lock_timeout_error(self, exc: OperationalError) -> bool:
-        message = str(exc).lower()
-        return (
-            "lock wait timeout" in message
-            or "lock timeout" in message
-            or "could not obtain lock" in message
-            or "canceling statement due to lock timeout" in message
-        )
+        orig = exc.orig
+        structured_string_codes: set[str] = set()
+        structured_int_codes: set[int] = set()
+
+        if orig is not None:
+            for raw_code in (
+                getattr(orig, "sqlstate", None),
+                getattr(orig, "pgcode", None),
+                getattr(orig, "code", None),
+                getattr(orig, "errno", None),
+            ):
+                normalized_string_code = _normalize_error_code_string(raw_code)
+                if normalized_string_code is not None:
+                    structured_string_codes.add(normalized_string_code)
+
+                normalized_int_code = _normalize_error_code_int(raw_code)
+                if normalized_int_code is not None:
+                    structured_int_codes.add(normalized_int_code)
+
+            raw_args = getattr(orig, "args", None)
+            if isinstance(raw_args, tuple | list) and raw_args:
+                first_arg = raw_args[0]
+                normalized_string_code = _normalize_error_code_string(first_arg)
+                if normalized_string_code is not None:
+                    structured_string_codes.add(normalized_string_code)
+
+                normalized_int_code = _normalize_error_code_int(first_arg)
+                if normalized_int_code is not None:
+                    structured_int_codes.add(normalized_int_code)
+
+        if structured_string_codes & _POSTGRES_LOCK_TIMEOUT_SQLSTATES:
+            return True
+        if structured_int_codes & _MYSQL_LOCK_TIMEOUT_ERRNOS:
+            return True
+
+        error_message = str(orig if orig is not None else exc).lower()
+        return any(message in error_message for message in _LOCK_TIMEOUT_FALLBACK_MESSAGES)
 
     def _log_lock_timeout(
         self,

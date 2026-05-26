@@ -10,8 +10,9 @@ from typing import cast
 
 import pytest
 import sqlalchemy as sa
-from graphon.model_runtime.entities.model_entities import ModelType
+from sqlalchemy.exc import OperationalError
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import CredentialSourceType
 from models.provider import ProviderModel, ProviderModelSetting
 from tests.helpers.legacy_model_type_migration import (
@@ -589,6 +590,119 @@ def test_provider_models_processing_uses_same_plan_locking_and_transaction_entry
     assert configure_calls == ["dry", "apply"]
 
 
+@pytest.mark.parametrize(
+    ("orig", "expected"),
+    [
+        (SimpleNamespace(pgcode="55P03"), True),
+        (SimpleNamespace(sqlstate="55P03"), True),
+        (SimpleNamespace(errno=1205), True),
+        (RuntimeError("canceling statement due to lock timeout"), True),
+        (SimpleNamespace(pgcode="23505"), False),
+        (SimpleNamespace(errno=1213), False),
+    ],
+)
+def test_is_lock_timeout_error_prefers_structured_backend_codes(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    orig: object,
+    expected: bool,
+) -> None:
+    migration = migration_module.Migration(
+        tenant_id="tenant-1",
+        engine=sqlite_engine,
+        apply=True,
+        output=io.StringIO(),
+        model_types=(ModelType.LLM,),
+        orm_models=(),
+    )
+    exc = OperationalError("SELECT 1", {}, orig)
+
+    assert migration._is_lock_timeout_error(exc) is expected
+
+
+def test_process_load_balancing_model_config_row_logs_update_after_sql_execution(
+    migration_module,
+    sqlite_engine: sa.Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    migration = migration_module.Migration(
+        tenant_id="tenant-1",
+        engine=sqlite_engine,
+        apply=True,
+        output=io.StringIO(),
+        model_types=(ModelType.LLM,),
+        orm_models=(migration_module.LoadBalancingModelConfig,),
+    )
+    candidate = migration_module._RowWithRawModelType(
+        row=SimpleNamespace(id="lb-row-1"),
+        raw_model_type="text-generation",
+        canonical_model_type=ModelType.LLM,
+    )
+    action_log: list[str] = []
+
+    class _FakeBeginContext:
+        def __enter__(self) -> None:
+            action_log.append("begin")
+            return None
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class _FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        def begin(self) -> _FakeBeginContext:
+            return _FakeBeginContext()
+
+        def execute(self, stmt) -> None:
+            action_log.append("sql_execute")
+
+    def _fake_session_factory(engine: sa.Engine) -> _FakeSession:
+        return _FakeSession()
+
+    def _fake_configure(self, session) -> None:
+        action_log.append("configure_lock_timeout")
+
+    def _fake_reload(self, session, original_candidate, *, lock_rows: bool):
+        action_log.append(f"reload_candidate:{lock_rows}")
+        return candidate
+
+    def _fake_log_row_updated(self, *args, **kwargs) -> None:
+        action_log.append("log_row_updated")
+
+    def _fake_cache_cleanup(self, *, row_id: str, tx_id: str) -> None:
+        action_log.append("cache_cleanup")
+
+    monkeypatch.setattr(migration_module, "_session_factory", _fake_session_factory)
+    monkeypatch.setattr(migration_module.Migration, "_configure_lock_timeout", _fake_configure)
+    monkeypatch.setattr(
+        migration_module.Migration,
+        "_reload_load_balancing_model_config_candidate",
+        _fake_reload,
+    )
+    monkeypatch.setattr(migration_module.Migration, "_log_row_updated", _fake_log_row_updated)
+    monkeypatch.setattr(
+        migration_module.Migration,
+        "_log_load_balancing_model_config_cache_cleanup",
+        _fake_cache_cleanup,
+    )
+
+    migration._process_load_balancing_model_config_row(candidate)
+
+    assert action_log == [
+        "begin",
+        "configure_lock_timeout",
+        "reload_candidate:True",
+        "sql_execute",
+        "log_row_updated",
+        "cache_cleanup",
+    ]
+
+
 def test_group_completed_logs_exist_for_all_grouped_tables_and_use_canonical_model_type(
     migration_module,
     sqlite_engine: sa.Engine,
@@ -612,8 +726,7 @@ def test_group_completed_logs_exist_for_all_grouped_tables_and_use_canonical_mod
         if isinstance(line.get("attrs"), dict) and "group_row_ids" in cast(dict[str, object], line["attrs"])
     ]
     grouped_table_names = {
-        cast(dict[str, object], record["attrs"]).get("table_name")
-        for record in group_completed_records
+        cast(dict[str, object], record["attrs"]).get("table_name") for record in group_completed_records
     }
 
     assert grouped_table_names >= {
@@ -921,16 +1034,14 @@ def test_migration_apply_updates_all_five_tables_and_rewrites_credential_referen
 
     assert_tenant_rows_use_only_canonical_model_types(sqlite_engine, dirty_fixture.primary.tenant_id)
 
-    provider_model_rows = fetch_table_rows(
-        sqlite_engine, "provider_models", tenant_id=dirty_fixture.primary.tenant_id
+    provider_model_rows = fetch_table_rows(sqlite_engine, "provider_models", tenant_id=dirty_fixture.primary.tenant_id)
+    provider_model_row = next(
+        row for row in provider_model_rows if row["id"] == dirty_fixture.primary.provider_model_id
     )
-    provider_model_row = next(row for row in provider_model_rows if row["id"] == dirty_fixture.primary.provider_model_id)
     assert provider_model_row["model_type"] == LEGACY_TO_CANONICAL["text-generation"]
     assert provider_model_row["credential_id"] == dirty_fixture.primary.winner_credential_id
 
-    lb_rows = fetch_table_rows(
-        sqlite_engine, "load_balancing_model_configs", tenant_id=dirty_fixture.primary.tenant_id
-    )
+    lb_rows = fetch_table_rows(sqlite_engine, "load_balancing_model_configs", tenant_id=dirty_fixture.primary.tenant_id)
     lb_row = next(row for row in lb_rows if row["id"] == dirty_fixture.primary.load_balancing_config_id)
     assert lb_row["model_type"] == LEGACY_TO_CANONICAL["text-generation"]
     assert lb_row["credential_id"] == dirty_fixture.primary.winner_credential_id
@@ -939,11 +1050,14 @@ def test_migration_apply_updates_all_five_tables_and_rewrites_credential_referen
     credential_rows = fetch_table_rows(
         sqlite_engine, "provider_model_credentials", tenant_id=dirty_fixture.primary.tenant_id
     )
-    assert count_rows(
-        sqlite_engine,
-        "provider_model_credentials",
-        tenant_id=dirty_fixture.primary.tenant_id,
-    ) == 2
+    assert (
+        count_rows(
+            sqlite_engine,
+            "provider_model_credentials",
+            tenant_id=dirty_fixture.primary.tenant_id,
+        )
+        == 2
+    )
     credential_ids = {str(row["id"]) for row in credential_rows}
     assert credential_ids == {
         dirty_fixture.primary.winner_credential_id,
@@ -987,11 +1101,14 @@ def test_migration_filters_by_tenant_model_types_and_tables(
 
     service.migrate()
 
-    assert count_rows(
-        sqlite_engine,
-        "provider_model_credentials",
-        tenant_id=dirty_fixture.primary.tenant_id,
-    ) == 3
+    assert (
+        count_rows(
+            sqlite_engine,
+            "provider_model_credentials",
+            tenant_id=dirty_fixture.primary.tenant_id,
+        )
+        == 3
+    )
     credential_rows = fetch_table_rows(
         sqlite_engine,
         "provider_model_credentials",
@@ -1003,7 +1120,9 @@ def test_migration_filters_by_tenant_model_types_and_tables(
         "provider_models",
         tenant_id=dirty_fixture.primary.tenant_id,
     )
-    provider_model_row = next(row for row in provider_model_rows if row["id"] == dirty_fixture.primary.provider_model_id)
+    provider_model_row = next(
+        row for row in provider_model_rows if row["id"] == dirty_fixture.primary.provider_model_id
+    )
     embedding_provider_model_row = next(
         row for row in provider_model_rows if row["id"] == dirty_fixture.primary.embedding_provider_model_id
     )
@@ -1067,11 +1186,14 @@ def test_migration_does_not_merge_credentials_with_different_credential_name(
     distinct_row = next(row for row in credential_rows if row["id"] == dirty_fixture.primary.distinct_credential_id)
     assert distinct_row["credential_name"] == dirty_fixture.primary.distinct_credential_name
     assert distinct_row["model_type"] == LEGACY_TO_CANONICAL["text-generation"]
-    assert count_rows(
-        sqlite_engine,
-        "provider_model_credentials",
-        tenant_id=dirty_fixture.primary.tenant_id,
-    ) == 2
+    assert (
+        count_rows(
+            sqlite_engine,
+            "provider_model_credentials",
+            tenant_id=dirty_fixture.primary.tenant_id,
+        )
+        == 2
+    )
 
 
 def test_migration_is_idempotent_on_second_apply(
