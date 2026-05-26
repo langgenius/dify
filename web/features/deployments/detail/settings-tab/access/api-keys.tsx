@@ -52,6 +52,46 @@ import {
   API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES,
 } from '../../table-styles'
 
+const API_TOKEN_NAME_ADJECTIVES = [
+  'ancient',
+  'autumn',
+  'bright',
+  'calm',
+  'crystal',
+  'gentle',
+  'golden',
+  'hidden',
+  'holy',
+  'quiet',
+  'rapid',
+  'silver',
+]
+
+const API_TOKEN_NAME_NOUNS = [
+  'brook',
+  'cloud',
+  'field',
+  'forest',
+  'harbor',
+  'lake',
+  'meadow',
+  'moon',
+  'river',
+  'stone',
+  'valley',
+  'wave',
+]
+
+function randomListItem(items: string[]) {
+  return items[Math.floor(Math.random() * items.length)]!
+}
+
+function generateApiTokenName() {
+  const suffix = Math.floor(1000 + Math.random() * 9000)
+
+  return `${randomListItem(API_TOKEN_NAME_ADJECTIVES)}-${randomListItem(API_TOKEN_NAME_NOUNS)}-${suffix}`
+}
+
 function ApiKeyName({ apiKey }: {
   apiKey: ApiKey
 }) {
@@ -333,7 +373,7 @@ export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken
       return
 
     setSelectedEnvironmentId(firstEnvironmentId)
-    setDraftName('')
+    setDraftName(generateApiTokenName())
     setNameError(false)
     setCreateDialogOpen(true)
   }
@@ -404,29 +444,6 @@ export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken
 
             <div className="flex flex-col gap-4 px-6 py-5">
               <div>
-                <Select
-                  value={selectedEnvironmentId ?? null}
-                  disabled={isCreating}
-                  onValueChange={value => value && handleEnvironmentChange(value)}
-                >
-                  <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
-                    {t('access.api.table.environment')}
-                  </SelectLabel>
-                  <SelectTrigger>
-                    {environmentName(selectedEnvironment)}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectableEnvironments.map(env => (
-                      <SelectItem key={env.id} value={env.id!}>
-                        <SelectItemText>{environmentName(env)}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
                 <label
                   htmlFor={nameInputId}
                   className="mb-1 block system-sm-medium text-text-secondary"
@@ -452,6 +469,29 @@ export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken
                     {t('access.api.nameRequired')}
                   </div>
                 )}
+              </div>
+
+              <div>
+                <Select
+                  value={selectedEnvironmentId ?? null}
+                  disabled={isCreating}
+                  onValueChange={value => value && handleEnvironmentChange(value)}
+                >
+                  <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
+                    {t('access.api.table.environment')}
+                  </SelectLabel>
+                  <SelectTrigger>
+                    {environmentName(selectedEnvironment)}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectableEnvironments.map(env => (
+                      <SelectItem key={env.id} value={env.id!}>
+                        <SelectItemText>{environmentName(env)}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
