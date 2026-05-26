@@ -15,7 +15,7 @@ class AdvancedPromptTemplateQuery(BaseModel):
     model_name: str = Field(..., description="Model name")
 
 
-console_ns.schema_model(
+studio_ns.schema_model(
     AdvancedPromptTemplateQuery.__name__,
     AdvancedPromptTemplateQuery.model_json_schema(ref_template="#/definitions/{model}"),
 )
@@ -23,13 +23,13 @@ console_ns.schema_model(
 
 @studio_ns.route("/app/prompt-templates")
 class AdvancedPromptTemplateList(Resource):
-    @console_ns.doc("get_advanced_prompt_templates")
-    @console_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
-    @console_ns.expect(console_ns.models[AdvancedPromptTemplateQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_advanced_prompt_templates")
+    @studio_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
+    @studio_ns.expect(studio_ns.models[AdvancedPromptTemplateQuery.__name__])
+    @studio_ns.response(
         200, "Prompt templates retrieved successfully", fields.List(fields.Raw(description="Prompt template data"))
     )
-    @console_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required

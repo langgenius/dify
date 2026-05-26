@@ -178,7 +178,7 @@ class WorkflowCommentReplyUpdate(ResponseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     AccountWithRole,
     WorkflowCommentMentionUsersPayload,
     WorkflowCommentCreatePayload,
@@ -186,7 +186,7 @@ register_schema_models(
     WorkflowCommentReplyPayload,
 )
 register_response_schema_models(
-    console_ns,
+    studio_ns,
     WorkflowCommentAccount,
     WorkflowCommentReply,
     WorkflowCommentMention,
@@ -205,10 +205,10 @@ register_response_schema_models(
 class WorkflowCommentListApi(Resource):
     """API for listing and creating workflow comments."""
 
-    @console_ns.doc("list_workflow_comments")
-    @console_ns.doc(description="Get all comments for a workflow")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Comments retrieved successfully", console_ns.models[WorkflowCommentBasicList.__name__])
+    @studio_ns.doc("list_workflow_comments")
+    @studio_ns.doc(description="Get all comments for a workflow")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(200, "Comments retrieved successfully", studio_ns.models[WorkflowCommentBasicList.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -219,11 +219,11 @@ class WorkflowCommentListApi(Resource):
 
         return WorkflowCommentBasicList.model_validate({"data": comments}).model_dump(mode="json")
 
-    @console_ns.doc("create_workflow_comment")
-    @console_ns.doc(description="Create a new workflow comment")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentCreatePayload.__name__])
-    @console_ns.response(201, "Comment created successfully", console_ns.models[WorkflowCommentCreate.__name__])
+    @studio_ns.doc("create_workflow_comment")
+    @studio_ns.doc(description="Create a new workflow comment")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowCommentCreatePayload.__name__])
+    @studio_ns.response(201, "Comment created successfully", studio_ns.models[WorkflowCommentCreate.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -250,10 +250,10 @@ class WorkflowCommentListApi(Resource):
 class WorkflowCommentDetailApi(Resource):
     """API for managing individual workflow comments."""
 
-    @console_ns.doc("get_workflow_comment")
-    @console_ns.doc(description="Get a specific workflow comment")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.response(200, "Comment retrieved successfully", console_ns.models[WorkflowCommentDetail.__name__])
+    @studio_ns.doc("get_workflow_comment")
+    @studio_ns.doc(description="Get a specific workflow comment")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
+    @studio_ns.response(200, "Comment retrieved successfully", studio_ns.models[WorkflowCommentDetail.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -266,11 +266,11 @@ class WorkflowCommentDetailApi(Resource):
 
         return dump_response(WorkflowCommentDetail, comment)
 
-    @console_ns.doc("update_workflow_comment")
-    @console_ns.doc(description="Update a workflow comment")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentUpdatePayload.__name__])
-    @console_ns.response(200, "Comment updated successfully", console_ns.models[WorkflowCommentUpdate.__name__])
+    @studio_ns.doc("update_workflow_comment")
+    @studio_ns.doc(description="Update a workflow comment")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowCommentUpdatePayload.__name__])
+    @studio_ns.response(200, "Comment updated successfully", studio_ns.models[WorkflowCommentUpdate.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -293,10 +293,10 @@ class WorkflowCommentDetailApi(Resource):
 
         return dump_response(WorkflowCommentUpdate, result)
 
-    @console_ns.doc("delete_workflow_comment")
-    @console_ns.doc(description="Delete a workflow comment")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.response(204, "Comment deleted successfully")
+    @studio_ns.doc("delete_workflow_comment")
+    @studio_ns.doc(description="Delete a workflow comment")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
+    @studio_ns.response(204, "Comment deleted successfully")
     @login_required
     @setup_required
     @account_initialization_required
@@ -318,10 +318,10 @@ class WorkflowCommentDetailApi(Resource):
 class WorkflowCommentResolveApi(Resource):
     """API for resolving and reopening workflow comments."""
 
-    @console_ns.doc("resolve_workflow_comment")
-    @console_ns.doc(description="Resolve a workflow comment")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.response(200, "Comment resolved successfully", console_ns.models[WorkflowCommentResolve.__name__])
+    @studio_ns.doc("resolve_workflow_comment")
+    @studio_ns.doc(description="Resolve a workflow comment")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
+    @studio_ns.response(200, "Comment resolved successfully", studio_ns.models[WorkflowCommentResolve.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -343,11 +343,11 @@ class WorkflowCommentResolveApi(Resource):
 class WorkflowCommentReplyApi(Resource):
     """API for managing comment replies."""
 
-    @console_ns.doc("create_workflow_comment_reply")
-    @console_ns.doc(description="Add a reply to a workflow comment")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
-    @console_ns.response(201, "Reply created successfully", console_ns.models[WorkflowCommentReplyCreate.__name__])
+    @studio_ns.doc("create_workflow_comment_reply")
+    @studio_ns.doc(description="Add a reply to a workflow comment")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowCommentReplyPayload.__name__])
+    @studio_ns.response(201, "Reply created successfully", studio_ns.models[WorkflowCommentReplyCreate.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -376,11 +376,11 @@ class WorkflowCommentReplyApi(Resource):
 class WorkflowCommentReplyDetailApi(Resource):
     """API for managing individual comment replies."""
 
-    @console_ns.doc("update_workflow_comment_reply")
-    @console_ns.doc(description="Update a comment reply")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
-    @console_ns.response(200, "Reply updated successfully", console_ns.models[WorkflowCommentReplyUpdate.__name__])
+    @studio_ns.doc("update_workflow_comment_reply")
+    @studio_ns.doc(description="Update a comment reply")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowCommentReplyPayload.__name__])
+    @studio_ns.response(200, "Reply updated successfully", studio_ns.models[WorkflowCommentReplyUpdate.__name__])
     @login_required
     @setup_required
     @account_initialization_required
@@ -407,10 +407,10 @@ class WorkflowCommentReplyDetailApi(Resource):
 
         return dump_response(WorkflowCommentReplyUpdate, reply)
 
-    @console_ns.doc("delete_workflow_comment_reply")
-    @console_ns.doc(description="Delete a comment reply")
-    @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
-    @console_ns.response(204, "Reply deleted successfully")
+    @studio_ns.doc("delete_workflow_comment_reply")
+    @studio_ns.doc(description="Delete a comment reply")
+    @studio_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
+    @studio_ns.response(204, "Reply deleted successfully")
     @login_required
     @setup_required
     @account_initialization_required
@@ -438,11 +438,11 @@ class WorkflowCommentReplyDetailApi(Resource):
 class WorkflowCommentMentionUsersApi(Resource):
     """API for getting mentionable users for workflow comments."""
 
-    @console_ns.doc("workflow_comment_mention_users")
-    @console_ns.doc(description="Get all users in current tenant for mentions")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
-        200, "Mentionable users retrieved successfully", console_ns.models[WorkflowCommentMentionUsersPayload.__name__]
+    @studio_ns.doc("workflow_comment_mention_users")
+    @studio_ns.doc(description="Get all users in current tenant for mentions")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
+        200, "Mentionable users retrieved successfully", studio_ns.models[WorkflowCommentMentionUsersPayload.__name__]
     )
     @login_required
     @setup_required

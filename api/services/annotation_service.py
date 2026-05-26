@@ -1,30 +1,5 @@
 # Canonical implementation has moved to services.studio.annotation_service
 # This barrel is kept for backwards compatibility.
-from services.studio.annotation_service import AnnotationJobStatusDict, EmbeddingModelDict, AnnotationSettingDict, AnnotationSettingDisabledDict, EnableAnnotationArgs, UpsertAnnotationArgs, InsertAnnotationArgs, UpdateAnnotationArgs, UpdateAnnotationSettingArgs, AppAnnotationService, up_insert_app_annotation_from_message, enable_app_annotation, disable_app_annotation, get_annotation_list_by_app_id, export_annotation_list_by_app_id, insert_app_annotation_directly, update_app_annotation_directly, delete_app_annotation, delete_app_annotations_in_batch, batch_import_app_annotations, get_annotation_hit_histories, get_annotation_by_id, add_annotation_history, get_app_annotation_setting_by_app_id, update_app_annotation_setting, clear_all_annotations
+from services.studio.annotation_service import AnnotationJobStatusDict, EmbeddingModelDict, AnnotationSettingDict, AnnotationSettingDisabledDict, EnableAnnotationArgs, UpsertAnnotationArgs, InsertAnnotationArgs, UpdateAnnotationArgs, UpdateAnnotationSettingArgs, AppAnnotationService
 
-__all__ = ["AnnotationJobStatusDict",
-    "EmbeddingModelDict",
-    "AnnotationSettingDict",
-    "AnnotationSettingDisabledDict",
-    "EnableAnnotationArgs",
-    "UpsertAnnotationArgs",
-    "InsertAnnotationArgs",
-    "UpdateAnnotationArgs",
-    "UpdateAnnotationSettingArgs",
-    "AppAnnotationService",
-    "up_insert_app_annotation_from_message",
-    "enable_app_annotation",
-    "disable_app_annotation",
-    "get_annotation_list_by_app_id",
-    "export_annotation_list_by_app_id",
-    "insert_app_annotation_directly",
-    "update_app_annotation_directly",
-    "delete_app_annotation",
-    "delete_app_annotations_in_batch",
-    "batch_import_app_annotations",
-    "get_annotation_hit_histories",
-    "get_annotation_by_id",
-    "add_annotation_history",
-    "get_app_annotation_setting_by_app_id",
-    "update_app_annotation_setting",
-    "clear_all_annotations"]
+__all__ = ['AnnotationJobStatusDict', 'EmbeddingModelDict', 'AnnotationSettingDict', 'AnnotationSettingDisabledDict', 'EnableAnnotationArgs', 'UpsertAnnotationArgs', 'InsertAnnotationArgs', 'UpdateAnnotationArgs', 'UpdateAnnotationSettingArgs', 'AppAnnotationService']

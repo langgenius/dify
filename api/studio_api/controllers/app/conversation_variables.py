@@ -72,7 +72,7 @@ class PaginatedConversationVariableResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     ConversationVariablesQuery,
     ConversationVariableResponse,
     PaginatedConversationVariableResponse,
@@ -81,14 +81,14 @@ register_schema_models(
 
 @studio_ns.route("/apps/<uuid:app_id>/conversation-variables")
 class ConversationVariablesApi(Resource):
-    @console_ns.doc("get_conversation_variables")
-    @console_ns.doc(description="Get conversation variables for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ConversationVariablesQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_conversation_variables")
+    @studio_ns.doc(description="Get conversation variables for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[ConversationVariablesQuery.__name__])
+    @studio_ns.response(
         200,
         "Conversation variables retrieved successfully",
-        console_ns.models[PaginatedConversationVariableResponse.__name__],
+        studio_ns.models[PaginatedConversationVariableResponse.__name__],
     )
     @setup_required
     @login_required

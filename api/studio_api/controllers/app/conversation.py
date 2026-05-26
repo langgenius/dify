@@ -69,7 +69,7 @@ class ChatConversationQuery(BaseConversationQuery):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     CompletionConversationQuery,
     ChatConversationQuery,
     ConversationResponse,
@@ -85,12 +85,12 @@ register_schema_models(
 
 @studio_ns.route("/apps/<uuid:app_id>/completion-conversations")
 class CompletionConversationApi(Resource):
-    @console_ns.doc("list_completion_conversations")
-    @console_ns.doc(description="Get completion conversations with pagination and filtering")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CompletionConversationQuery.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ConversationPaginationResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("list_completion_conversations")
+    @studio_ns.doc(description="Get completion conversations with pagination and filtering")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[CompletionConversationQuery.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[ConversationPaginationResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -157,12 +157,12 @@ class CompletionConversationApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
-    @console_ns.doc("get_completion_conversation")
-    @console_ns.doc(description="Get completion conversation details with messages")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(200, "Success", console_ns.models[ConversationMessageDetailResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @studio_ns.doc("get_completion_conversation")
+    @studio_ns.doc(description="Get completion conversation details with messages")
+    @studio_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @studio_ns.response(200, "Success", studio_ns.models[ConversationMessageDetailResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -174,12 +174,12 @@ class CompletionConversationDetailApi(Resource):
             _get_conversation(app_model, conversation_id), from_attributes=True
         ).model_dump(mode="json")
 
-    @console_ns.doc("delete_completion_conversation")
-    @console_ns.doc(description="Delete a completion conversation")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(204, "Conversation deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @studio_ns.doc("delete_completion_conversation")
+    @studio_ns.doc(description="Delete a completion conversation")
+    @studio_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @studio_ns.response(204, "Conversation deleted successfully")
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -199,12 +199,12 @@ class CompletionConversationDetailApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
-    @console_ns.doc("list_chat_conversations")
-    @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatConversationQuery.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("list_chat_conversations")
+    @studio_ns.doc(description="Get chat conversations with pagination, filtering and summary")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[ChatConversationQuery.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[ConversationWithSummaryPaginationResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -310,12 +310,12 @@ class ChatConversationApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 class ChatConversationDetailApi(Resource):
-    @console_ns.doc("get_chat_conversation")
-    @console_ns.doc(description="Get chat conversation details")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(200, "Success", console_ns.models[ConversationDetailResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @studio_ns.doc("get_chat_conversation")
+    @studio_ns.doc(description="Get chat conversation details")
+    @studio_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @studio_ns.response(200, "Success", studio_ns.models[ConversationDetailResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -327,12 +327,12 @@ class ChatConversationDetailApi(Resource):
             _get_conversation(app_model, conversation_id), from_attributes=True
         ).model_dump(mode="json")
 
-    @console_ns.doc("delete_chat_conversation")
-    @console_ns.doc(description="Delete a chat conversation")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(204, "Conversation deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
+    @studio_ns.doc("delete_chat_conversation")
+    @studio_ns.doc(description="Delete a chat conversation")
+    @studio_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @studio_ns.response(204, "Conversation deleted successfully")
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])

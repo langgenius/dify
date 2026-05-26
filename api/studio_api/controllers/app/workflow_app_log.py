@@ -150,7 +150,7 @@ class WorkflowArchivedLogPaginationResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     WorkflowAppLogQuery,
     WorkflowRunForLogResponse,
     WorkflowRunForArchivedLogResponse,
@@ -163,14 +163,14 @@ register_schema_models(
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
 class WorkflowAppLogApi(Resource):
-    @console_ns.doc("get_workflow_app_logs")
-    @console_ns.doc(description="Get workflow application execution logs")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_app_logs")
+    @studio_ns.doc(description="Get workflow application execution logs")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowAppLogQuery.__name__])
+    @studio_ns.response(
         200,
         "Workflow app logs retrieved successfully",
-        console_ns.models[WorkflowAppLogPaginationResponse.__name__],
+        studio_ns.models[WorkflowAppLogPaginationResponse.__name__],
     )
     @setup_required
     @login_required
@@ -206,14 +206,14 @@ class WorkflowAppLogApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-archived-logs")
 class WorkflowArchivedLogApi(Resource):
-    @console_ns.doc("get_workflow_archived_logs")
-    @console_ns.doc(description="Get workflow archived execution logs")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_archived_logs")
+    @studio_ns.doc(description="Get workflow archived execution logs")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowAppLogQuery.__name__])
+    @studio_ns.response(
         200,
         "Workflow archived logs retrieved successfully",
-        console_ns.models[WorkflowArchivedLogPaginationResponse.__name__],
+        studio_ns.models[WorkflowArchivedLogPaginationResponse.__name__],
     )
     @setup_required
     @login_required

@@ -20,7 +20,7 @@ class AgentIdPath(BaseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     AgentInviteOptionsQuery,
     AgentIdPath,
     RosterAgentCreatePayload,
@@ -45,7 +45,7 @@ class AgentRosterListApi(Resource):
             tenant_id=tenant_id, page=query.page, limit=query.limit, keyword=query.keyword
         )
 
-    @console_ns.expect(console_ns.models[RosterAgentCreatePayload.__name__])
+    @studio_ns.expect(studio_ns.models[RosterAgentCreatePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -84,7 +84,7 @@ class AgentRosterDetailApi(Resource):
         _, tenant_id = current_account_with_tenant()
         return _agent_roster_service().get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id))
 
-    @console_ns.expect(console_ns.models[RosterAgentUpdatePayload.__name__])
+    @studio_ns.expect(studio_ns.models[RosterAgentUpdatePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required

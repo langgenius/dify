@@ -27,7 +27,7 @@ class WorkflowStatisticQuery(BaseModel):
         return value
 
 
-register_schema_models(console_ns, WorkflowStatisticQuery)
+register_schema_models(studio_ns, WorkflowStatisticQuery)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
@@ -37,11 +37,11 @@ class WorkflowDailyRunsStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @console_ns.doc("get_workflow_daily_runs_statistic")
-    @console_ns.doc(description="Get workflow daily runs statistics")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Daily runs statistics retrieved successfully")
+    @studio_ns.doc("get_workflow_daily_runs_statistic")
+    @studio_ns.doc(description="Get workflow daily runs statistics")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowStatisticQuery.__name__])
+    @studio_ns.response(200, "Daily runs statistics retrieved successfully")
     @get_app_model
     @setup_required
     @login_required
@@ -77,11 +77,11 @@ class WorkflowDailyTerminalsStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @console_ns.doc("get_workflow_daily_terminals_statistic")
-    @console_ns.doc(description="Get workflow daily terminals statistics")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Daily terminals statistics retrieved successfully")
+    @studio_ns.doc("get_workflow_daily_terminals_statistic")
+    @studio_ns.doc(description="Get workflow daily terminals statistics")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowStatisticQuery.__name__])
+    @studio_ns.response(200, "Daily terminals statistics retrieved successfully")
     @get_app_model
     @setup_required
     @login_required
@@ -117,11 +117,11 @@ class WorkflowDailyTokenCostStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @console_ns.doc("get_workflow_daily_token_cost_statistic")
-    @console_ns.doc(description="Get workflow daily token cost statistics")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Daily token cost statistics retrieved successfully")
+    @studio_ns.doc("get_workflow_daily_token_cost_statistic")
+    @studio_ns.doc(description="Get workflow daily token cost statistics")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowStatisticQuery.__name__])
+    @studio_ns.response(200, "Daily token cost statistics retrieved successfully")
     @get_app_model
     @setup_required
     @login_required
@@ -157,11 +157,11 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @console_ns.doc("get_workflow_average_app_interaction_statistic")
-    @console_ns.doc(description="Get workflow average app interaction statistics")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Average app interaction statistics retrieved successfully")
+    @studio_ns.doc("get_workflow_average_app_interaction_statistic")
+    @studio_ns.doc(description="Get workflow average app interaction statistics")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowStatisticQuery.__name__])
+    @studio_ns.response(200, "Average app interaction statistics retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required

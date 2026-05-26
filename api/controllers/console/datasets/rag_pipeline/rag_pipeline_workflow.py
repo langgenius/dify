@@ -56,7 +56,8 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 

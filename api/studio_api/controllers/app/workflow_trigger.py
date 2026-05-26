@@ -17,9 +17,9 @@ from models.enums import AppTriggerStatus
 from models.model import Account, App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
-from .. import console_ns
+from .. import studio_ns
 from ..app.wraps import get_app_model
-from ..wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class WebhookTriggerResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     Parser,
     ParserEnable,
     WorkflowTriggerResponse,
@@ -86,12 +86,12 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.expect(console_ns.models[Parser.__name__])
+    @studio_ns.expect(studio_ns.models[Parser.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
-    @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[WebhookTriggerResponse.__name__])
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
         args = Parser.model_validate(request.args.to_dict(flat=True))
@@ -123,7 +123,7 @@ class AppTriggersApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
-    @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[WorkflowTriggerListResponse.__name__])
     def get(self, app_model: App):
         """Get app triggers list"""
         assert isinstance(current_user, Account)
@@ -159,13 +159,13 @@ class AppTriggersApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/trigger-enable")
 class AppTriggerEnableApi(Resource):
-    @console_ns.expect(console_ns.models[ParserEnable.__name__])
+    @studio_ns.expect(studio_ns.models[ParserEnable.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=AppMode.WORKFLOW)
-    @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[WorkflowTriggerResponse.__name__])
     def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(studio_ns.payload)

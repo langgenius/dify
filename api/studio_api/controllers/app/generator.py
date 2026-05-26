@@ -41,9 +41,9 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
-register_enum_models(console_ns, LLMMode)
+register_enum_models(studio_ns, LLMMode)
 register_schema_models(
-    console_ns,
+    studio_ns,
     RuleGeneratePayload,
     RuleCodeGeneratePayload,
     RuleStructuredOutputPayload,
@@ -55,12 +55,12 @@ register_schema_models(
 
 @studio_ns.route("/rule-generate")
 class RuleGenerateApi(Resource):
-    @console_ns.doc("generate_rule_config")
-    @console_ns.doc(description="Generate rule configuration using LLM")
-    @console_ns.expect(console_ns.models[RuleGeneratePayload.__name__])
-    @console_ns.response(200, "Rule configuration generated successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
+    @studio_ns.doc("generate_rule_config")
+    @studio_ns.doc(description="Generate rule configuration using LLM")
+    @studio_ns.expect(studio_ns.models[RuleGeneratePayload.__name__])
+    @studio_ns.response(200, "Rule configuration generated successfully")
+    @studio_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -84,12 +84,12 @@ class RuleGenerateApi(Resource):
 
 @studio_ns.route("/rule-code-generate")
 class RuleCodeGenerateApi(Resource):
-    @console_ns.doc("generate_rule_code")
-    @console_ns.doc(description="Generate code rules using LLM")
-    @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
-    @console_ns.response(200, "Code rules generated successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
+    @studio_ns.doc("generate_rule_code")
+    @studio_ns.doc(description="Generate code rules using LLM")
+    @studio_ns.expect(studio_ns.models[RuleCodeGeneratePayload.__name__])
+    @studio_ns.response(200, "Code rules generated successfully")
+    @studio_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -116,12 +116,12 @@ class RuleCodeGenerateApi(Resource):
 
 @studio_ns.route("/rule-structured-output-generate")
 class RuleStructuredOutputGenerateApi(Resource):
-    @console_ns.doc("generate_structured_output")
-    @console_ns.doc(description="Generate structured output rules using LLM")
-    @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
-    @console_ns.response(200, "Structured output generated successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
+    @studio_ns.doc("generate_structured_output")
+    @studio_ns.doc(description="Generate structured output rules using LLM")
+    @studio_ns.expect(studio_ns.models[RuleStructuredOutputPayload.__name__])
+    @studio_ns.response(200, "Structured output generated successfully")
+    @studio_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -148,12 +148,12 @@ class RuleStructuredOutputGenerateApi(Resource):
 
 @studio_ns.route("/instruction-generate")
 class InstructionGenerateApi(Resource):
-    @console_ns.doc("generate_instruction")
-    @console_ns.doc(description="Generate instruction for workflow nodes or general use")
-    @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
-    @console_ns.response(200, "Instruction generated successfully")
-    @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
-    @console_ns.response(402, "Provider quota exceeded")
+    @studio_ns.doc("generate_instruction")
+    @studio_ns.doc(description="Generate instruction for workflow nodes or general use")
+    @studio_ns.expect(studio_ns.models[InstructionGeneratePayload.__name__])
+    @studio_ns.response(200, "Instruction generated successfully")
+    @studio_ns.response(400, "Invalid request parameters or flow/workflow not found")
+    @studio_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -242,11 +242,11 @@ class InstructionGenerateApi(Resource):
 
 @studio_ns.route("/instruction-generate/template")
 class InstructionGenerationTemplateApi(Resource):
-    @console_ns.doc("get_instruction_template")
-    @console_ns.doc(description="Get instruction generation template")
-    @console_ns.expect(console_ns.models[InstructionTemplatePayload.__name__])
-    @console_ns.response(200, "Template retrieved successfully")
-    @console_ns.response(400, "Invalid request parameters")
+    @studio_ns.doc("get_instruction_template")
+    @studio_ns.doc(description="Get instruction generation template")
+    @studio_ns.expect(studio_ns.models[InstructionTemplatePayload.__name__])
+    @studio_ns.response(200, "Template retrieved successfully")
+    @studio_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required

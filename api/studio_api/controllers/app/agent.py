@@ -22,19 +22,19 @@ class AgentLogQuery(BaseModel):
         return uuid_value(value)
 
 
-register_schema_models(console_ns, AgentLogQuery)
+register_schema_models(studio_ns, AgentLogQuery)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/agent/logs")
 class AgentLogApi(Resource):
-    @console_ns.doc("get_agent_logs")
-    @console_ns.doc(description="Get agent execution logs for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AgentLogQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_agent_logs")
+    @studio_ns.doc(description="Get agent execution logs for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AgentLogQuery.__name__])
+    @studio_ns.response(
         200, "Agent logs retrieved successfully", fields.List(fields.Raw(description="Agent log entries"))
     )
-    @console_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required

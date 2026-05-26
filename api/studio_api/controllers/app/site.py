@@ -67,18 +67,18 @@ class AppSiteResponse(ResponseModel):
     use_icon_as_answer_icon: bool
 
 
-register_schema_models(console_ns, AppSiteUpdatePayload, AppSiteResponse)
+register_schema_models(studio_ns, AppSiteUpdatePayload, AppSiteResponse)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/site")
 class AppSite(Resource):
-    @console_ns.doc("update_app_site")
-    @console_ns.doc(description="Update application site configuration")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppSiteUpdatePayload.__name__])
-    @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "App not found")
+    @studio_ns.doc("update_app_site")
+    @studio_ns.doc(description="Update application site configuration")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AppSiteUpdatePayload.__name__])
+    @studio_ns.response(200, "Site configuration updated successfully", studio_ns.models[AppSiteResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "App not found")
     @setup_required
     @login_required
     @edit_permission_required
@@ -122,12 +122,12 @@ class AppSite(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
 class AppSiteAccessTokenReset(Resource):
-    @console_ns.doc("reset_app_site_access_token")
-    @console_ns.doc(description="Reset access token for application site")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Access token reset successfully", console_ns.models[AppSiteResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions (admin/owner required)")
-    @console_ns.response(404, "App or site not found")
+    @studio_ns.doc("reset_app_site_access_token")
+    @studio_ns.doc(description="Reset access token for application site")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(200, "Access token reset successfully", studio_ns.models[AppSiteResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions (admin/owner required)")
+    @studio_ns.response(404, "App or site not found")
     @setup_required
     @login_required
     @is_admin_or_owner_required

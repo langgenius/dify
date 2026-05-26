@@ -10,7 +10,7 @@ from services.agent.composer_validator import ComposerConfigValidator
 from services.entities.agent_entities import ComposerSavePayload
 from studio_api.blueprint import studio_ns
 
-register_schema_models(console_ns, ComposerSavePayload)
+register_schema_models(studio_ns, ComposerSavePayload)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
@@ -27,7 +27,7 @@ class WorkflowAgentComposerApi(Resource):
             node_id=node_id,
         )
 
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @studio_ns.expect(studio_ns.models[ComposerSavePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -47,7 +47,7 @@ class WorkflowAgentComposerApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class WorkflowAgentComposerValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @studio_ns.expect(studio_ns.models[ComposerSavePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -85,7 +85,7 @@ class WorkflowAgentComposerImpactApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class WorkflowAgentComposerSaveToRosterApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @studio_ns.expect(studio_ns.models[ComposerSavePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -113,7 +113,7 @@ class AgentAppComposerApi(Resource):
         _, tenant_id = current_account_with_tenant()
         return AgentComposerService.load_agent_app_composer(tenant_id=tenant_id, app_id=app_model.id)
 
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @studio_ns.expect(studio_ns.models[ComposerSavePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -132,7 +132,7 @@ class AgentAppComposerApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/agent-composer/validate")
 class AgentAppComposerValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @studio_ns.expect(studio_ns.models[ComposerSavePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required

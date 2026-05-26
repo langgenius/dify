@@ -60,7 +60,8 @@ from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow_service import WorkflowService
 from studio_api.blueprint import studio_ns
 
 logger = logging.getLogger(__name__)
@@ -263,7 +264,7 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     SyncDraftWorkflowPayload,
     AdvancedChatWorkflowRunPayload,
     IterationNodeRunPayload,
@@ -280,9 +281,9 @@ register_schema_models(
     DraftWorkflowTriggerRunPayload,
     DraftWorkflowTriggerRunAllPayload,
 )
-register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
+register_response_schema_model(studio_ns, WorkflowRunNodeExecutionResponse)
 register_response_schema_models(
-    console_ns,
+    studio_ns,
     WorkflowConversationVariableResponse,
     PipelineVariableResponse,
     WorkflowEnvironmentVariableResponse,
@@ -352,15 +353,15 @@ def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDi
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
-    @console_ns.doc("get_draft_workflow")
-    @console_ns.doc(description="Get draft workflow for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_draft_workflow")
+    @studio_ns.doc(description="Get draft workflow for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
         200,
         "Draft workflow retrieved successfully",
-        console_ns.models[WorkflowResponse.__name__],
+        studio_ns.models[WorkflowResponse.__name__],
     )
-    @console_ns.response(404, "Draft workflow not found")
+    @studio_ns.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -384,13 +385,13 @@ class DraftWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @console_ns.doc("sync_draft_workflow")
-    @console_ns.doc(description="Sync draft workflow configuration")
-    @console_ns.expect(console_ns.models[SyncDraftWorkflowPayload.__name__])
-    @console_ns.response(
+    @studio_ns.doc("sync_draft_workflow")
+    @studio_ns.doc(description="Sync draft workflow configuration")
+    @studio_ns.expect(studio_ns.models[SyncDraftWorkflowPayload.__name__])
+    @studio_ns.response(
         200,
         "Draft workflow synced successfully",
-        console_ns.model(
+        studio_ns.model(
             "SyncDraftWorkflowResponse",
             {
                 "result": fields.String,
@@ -399,8 +400,8 @@ class DraftWorkflowApi(Resource):
             },
         ),
     )
-    @console_ns.response(400, "Invalid workflow configuration")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.response(400, "Invalid workflow configuration")
+    @studio_ns.response(403, "Permission denied")
     @edit_permission_required
     def post(self, app_model: App):
         """
@@ -457,13 +458,13 @@ class DraftWorkflowApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 class AdvancedChatDraftWorkflowRunApi(Resource):
-    @console_ns.doc("run_advanced_chat_draft_workflow")
-    @console_ns.doc(description="Run draft workflow for advanced chat application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunPayload.__name__])
-    @console_ns.response(200, "Workflow run started successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.doc("run_advanced_chat_draft_workflow")
+    @studio_ns.doc(description="Run draft workflow for advanced chat application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AdvancedChatWorkflowRunPayload.__name__])
+    @studio_ns.response(200, "Workflow run started successfully")
+    @studio_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -503,13 +504,13 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
 class AdvancedChatDraftRunIterationNodeApi(Resource):
-    @console_ns.doc("run_advanced_chat_draft_iteration_node")
-    @console_ns.doc(description="Run draft workflow iteration node for advanced chat")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[IterationNodeRunPayload.__name__])
-    @console_ns.response(200, "Iteration node run started successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(404, "Node not found")
+    @studio_ns.doc("run_advanced_chat_draft_iteration_node")
+    @studio_ns.doc(description="Run draft workflow iteration node for advanced chat")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[IterationNodeRunPayload.__name__])
+    @studio_ns.response(200, "Iteration node run started successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -541,13 +542,13 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class WorkflowDraftRunIterationNodeApi(Resource):
-    @console_ns.doc("run_workflow_draft_iteration_node")
-    @console_ns.doc(description="Run draft workflow iteration node")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[IterationNodeRunPayload.__name__])
-    @console_ns.response(200, "Workflow iteration node run started successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(404, "Node not found")
+    @studio_ns.doc("run_workflow_draft_iteration_node")
+    @studio_ns.doc(description="Run draft workflow iteration node")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[IterationNodeRunPayload.__name__])
+    @studio_ns.response(200, "Workflow iteration node run started successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -579,13 +580,13 @@ class WorkflowDraftRunIterationNodeApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
 class AdvancedChatDraftRunLoopNodeApi(Resource):
-    @console_ns.doc("run_advanced_chat_draft_loop_node")
-    @console_ns.doc(description="Run draft workflow loop node for advanced chat")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[LoopNodeRunPayload.__name__])
-    @console_ns.response(200, "Loop node run started successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(404, "Node not found")
+    @studio_ns.doc("run_advanced_chat_draft_loop_node")
+    @studio_ns.doc(description="Run draft workflow loop node for advanced chat")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[LoopNodeRunPayload.__name__])
+    @studio_ns.response(200, "Loop node run started successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -617,13 +618,13 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class WorkflowDraftRunLoopNodeApi(Resource):
-    @console_ns.doc("run_workflow_draft_loop_node")
-    @console_ns.doc(description="Run draft workflow loop node")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[LoopNodeRunPayload.__name__])
-    @console_ns.response(200, "Workflow loop node run started successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(404, "Node not found")
+    @studio_ns.doc("run_workflow_draft_loop_node")
+    @studio_ns.doc(description="Run draft workflow loop node")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[LoopNodeRunPayload.__name__])
+    @studio_ns.response(200, "Workflow loop node run started successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -678,7 +679,7 @@ class HumanInputDeliveryTestPayload(BaseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     HumanInputFormPreviewPayload,
     HumanInputFormSubmitPayload,
     HumanInputDeliveryTestPayload,
@@ -687,10 +688,10 @@ register_schema_models(
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
 class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
-    @console_ns.doc("get_advanced_chat_draft_human_input_form")
-    @console_ns.doc(description="Get human input form preview for advanced chat workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
+    @studio_ns.doc("get_advanced_chat_draft_human_input_form")
+    @studio_ns.doc(description="Get human input form preview for advanced chat workflow")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[HumanInputFormPreviewPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -716,10 +717,10 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
 class AdvancedChatDraftHumanInputFormRunApi(Resource):
-    @console_ns.doc("submit_advanced_chat_draft_human_input_form")
-    @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @studio_ns.doc("submit_advanced_chat_draft_human_input_form")
+    @studio_ns.doc(description="Submit human input form preview for advanced chat workflow")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[HumanInputFormSubmitPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -745,10 +746,10 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
 class WorkflowDraftHumanInputFormPreviewApi(Resource):
-    @console_ns.doc("get_workflow_draft_human_input_form")
-    @console_ns.doc(description="Get human input form preview for workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
+    @studio_ns.doc("get_workflow_draft_human_input_form")
+    @studio_ns.doc(description="Get human input form preview for workflow")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[HumanInputFormPreviewPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -774,10 +775,10 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")
 class WorkflowDraftHumanInputFormRunApi(Resource):
-    @console_ns.doc("submit_workflow_draft_human_input_form")
-    @console_ns.doc(description="Submit human input form preview for workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @studio_ns.doc("submit_workflow_draft_human_input_form")
+    @studio_ns.doc(description="Submit human input form preview for workflow")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[HumanInputFormSubmitPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -803,10 +804,10 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
 class WorkflowDraftHumanInputDeliveryTestApi(Resource):
-    @console_ns.doc("test_workflow_draft_human_input_delivery")
-    @console_ns.doc(description="Test human input delivery for workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
+    @studio_ns.doc("test_workflow_draft_human_input_delivery")
+    @studio_ns.doc(description="Test human input delivery for workflow")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[HumanInputDeliveryTestPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -831,12 +832,12 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
 class DraftWorkflowRunApi(Resource):
-    @console_ns.doc("run_draft_workflow")
-    @console_ns.doc(description="Run draft workflow")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
-    @console_ns.response(200, "Draft workflow run started successfully")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.doc("run_draft_workflow")
+    @studio_ns.doc(description="Run draft workflow")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[DraftWorkflowRunPayload.__name__])
+    @studio_ns.response(200, "Draft workflow run started successfully")
+    @studio_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -869,12 +870,12 @@ class DraftWorkflowRunApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
-    @console_ns.doc("stop_workflow_task")
-    @console_ns.doc(description="Stop running workflow task")
-    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID"})
-    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(404, "Task not found")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.doc("stop_workflow_task")
+    @studio_ns.doc(description="Stop running workflow task")
+    @studio_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID"})
+    @studio_ns.response(200, "Task stopped successfully", studio_ns.models[SimpleResultResponse.__name__])
+    @studio_ns.response(404, "Task not found")
+    @studio_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -896,17 +897,17 @@ class WorkflowTaskStopApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run")
 class DraftWorkflowNodeRunApi(Resource):
-    @console_ns.doc("run_draft_workflow_node")
-    @console_ns.doc(description="Run draft workflow node")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[DraftWorkflowNodeRunPayload.__name__])
-    @console_ns.response(
+    @studio_ns.doc("run_draft_workflow_node")
+    @studio_ns.doc(description="Run draft workflow node")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.expect(studio_ns.models[DraftWorkflowNodeRunPayload.__name__])
+    @studio_ns.response(
         200,
         "Node run started successfully",
-        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+        studio_ns.models[WorkflowRunNodeExecutionResponse.__name__],
     )
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(404, "Node not found")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -949,13 +950,13 @@ class DraftWorkflowNodeRunApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
-    @console_ns.doc("get_published_workflow")
-    @console_ns.doc(description="Get published workflow for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_published_workflow")
+    @studio_ns.doc(description="Get published workflow for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
         200,
         "Published workflow retrieved successfully, or null if not found",
-        console_ns.models[WorkflowResponse.__name__],
+        studio_ns.models[WorkflowResponse.__name__],
     )
     @setup_required
     @login_required
@@ -976,7 +977,7 @@ class PublishedWorkflowApi(Resource):
 
         return dump_response(WorkflowResponse, workflow)
 
-    @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
+    @studio_ns.expect(studio_ns.models[PublishWorkflowPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1017,10 +1018,10 @@ class PublishedWorkflowApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 class DefaultBlockConfigsApi(Resource):
-    @console_ns.doc("get_default_block_configs")
-    @console_ns.doc(description="Get default block configurations for workflow")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Default block configurations retrieved successfully")
+    @studio_ns.doc("get_default_block_configs")
+    @studio_ns.doc(description="Get default block configurations for workflow")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(200, "Default block configurations retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1037,12 +1038,12 @@ class DefaultBlockConfigsApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
-    @console_ns.doc("get_default_block_config")
-    @console_ns.doc(description="Get default block configuration by type")
-    @console_ns.doc(params={"app_id": "Application ID", "block_type": "Block type"})
-    @console_ns.response(200, "Default block configuration retrieved successfully")
-    @console_ns.response(404, "Block type not found")
-    @console_ns.expect(console_ns.models[DefaultBlockConfigQuery.__name__])
+    @studio_ns.doc("get_default_block_config")
+    @studio_ns.doc(description="Get default block configuration by type")
+    @studio_ns.doc(params={"app_id": "Application ID", "block_type": "Block type"})
+    @studio_ns.response(200, "Default block configuration retrieved successfully")
+    @studio_ns.response(404, "Block type not found")
+    @studio_ns.expect(studio_ns.models[DefaultBlockConfigQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1068,17 +1069,17 @@ class DefaultBlockConfigApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
 class ConvertToWorkflowApi(Resource):
-    @console_ns.expect(console_ns.models[ConvertToWorkflowPayload.__name__])
-    @console_ns.doc("convert_to_workflow")
-    @console_ns.doc(description="Convert application to workflow mode")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
+    @studio_ns.expect(studio_ns.models[ConvertToWorkflowPayload.__name__])
+    @studio_ns.doc("convert_to_workflow")
+    @studio_ns.doc(description="Convert application to workflow mode")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
         200,
         "Application converted to workflow successfully",
-        console_ns.models[NewAppResponse.__name__],
+        studio_ns.models[NewAppResponse.__name__],
     )
-    @console_ns.response(400, "Application cannot be converted")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.response(400, "Application cannot be converted")
+    @studio_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1109,14 +1110,14 @@ class ConvertToWorkflowApi(Resource):
 class WorkflowFeaturesApi(Resource):
     """Update draft workflow features."""
 
-    @console_ns.expect(console_ns.models[WorkflowFeaturesPayload.__name__])
-    @console_ns.doc("update_workflow_features")
-    @console_ns.doc(description="Update draft workflow features")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
+    @studio_ns.expect(studio_ns.models[WorkflowFeaturesPayload.__name__])
+    @studio_ns.doc("update_workflow_features")
+    @studio_ns.doc(description="Update draft workflow features")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
         200,
         "Workflow features updated successfully",
-        console_ns.models[SimpleResultResponse.__name__],
+        studio_ns.models[SimpleResultResponse.__name__],
     )
     @setup_required
     @login_required
@@ -1137,14 +1138,14 @@ class WorkflowFeaturesApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowListQuery.__name__])
-    @console_ns.doc("get_all_published_workflows")
-    @console_ns.doc(description="Get all published workflows for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
+    @studio_ns.expect(studio_ns.models[WorkflowListQuery.__name__])
+    @studio_ns.doc("get_all_published_workflows")
+    @studio_ns.doc(description="Get all published workflows for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
         200,
         "Published workflows retrieved successfully",
-        console_ns.models[WorkflowPaginationResponse.__name__],
+        studio_ns.models[WorkflowPaginationResponse.__name__],
     )
     @setup_required
     @login_required
@@ -1189,12 +1190,12 @@ class PublishedAllWorkflowApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
 class DraftWorkflowRestoreApi(Resource):
-    @console_ns.doc("restore_workflow_to_draft")
-    @console_ns.doc(description="Restore a published workflow version into the draft workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
-    @console_ns.response(200, "Workflow restored successfully")
-    @console_ns.response(400, "Source workflow must be published")
-    @console_ns.response(404, "Workflow not found")
+    @studio_ns.doc("restore_workflow_to_draft")
+    @studio_ns.doc(description="Restore a published workflow version into the draft workflow")
+    @studio_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
+    @studio_ns.response(200, "Workflow restored successfully")
+    @studio_ns.response(400, "Source workflow must be published")
+    @studio_ns.response(404, "Workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1226,13 +1227,13 @@ class DraftWorkflowRestoreApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
 class WorkflowByIdApi(Resource):
-    @console_ns.doc("update_workflow_by_id")
-    @console_ns.doc(description="Update workflow by ID")
-    @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
-    @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
-    @console_ns.response(200, "Workflow updated successfully", console_ns.models[WorkflowResponse.__name__])
-    @console_ns.response(404, "Workflow not found")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.doc("update_workflow_by_id")
+    @studio_ns.doc(description="Update workflow by ID")
+    @studio_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
+    @studio_ns.expect(studio_ns.models[WorkflowUpdatePayload.__name__])
+    @studio_ns.response(200, "Workflow updated successfully", studio_ns.models[WorkflowResponse.__name__])
+    @studio_ns.response(404, "Workflow not found")
+    @studio_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1301,16 +1302,16 @@ class WorkflowByIdApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run")
 class DraftWorkflowNodeLastRunApi(Resource):
-    @console_ns.doc("get_draft_workflow_node_last_run")
-    @console_ns.doc(description="Get last run result for draft workflow node")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_draft_workflow_node_last_run")
+    @studio_ns.doc(description="Get last run result for draft workflow node")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.response(
         200,
         "Node last run retrieved successfully",
-        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+        studio_ns.models[WorkflowRunNodeExecutionResponse.__name__],
     )
-    @console_ns.response(404, "Node last run not found")
-    @console_ns.response(403, "Permission denied")
+    @studio_ns.response(404, "Node last run not found")
+    @studio_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1337,20 +1338,20 @@ class DraftWorkflowTriggerRunApi(Resource):
     Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
     """
 
-    @console_ns.doc("poll_draft_workflow_trigger_run")
-    @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
+    @studio_ns.doc("poll_draft_workflow_trigger_run")
+    @studio_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(
+        studio_ns.model(
             "DraftWorkflowTriggerRunRequest",
             {
                 "node_id": fields.String(required=True, description="Node ID"),
             },
         )
     )
-    @console_ns.response(200, "Trigger event received and workflow executed successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(500, "Internal server error")
+    @studio_ns.response(200, "Trigger event received and workflow executed successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(500, "Internal server error")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1409,12 +1410,12 @@ class DraftWorkflowTriggerNodeApi(Resource):
     Path: /apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger/run
     """
 
-    @console_ns.doc("poll_draft_workflow_trigger_node")
-    @console_ns.doc(description="Poll for trigger events and execute single node when event arrives")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Trigger event received and node executed successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(500, "Internal server error")
+    @studio_ns.doc("poll_draft_workflow_trigger_node")
+    @studio_ns.doc(description="Poll for trigger events and execute single node when event arrives")
+    @studio_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @studio_ns.response(200, "Trigger event received and node executed successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(500, "Internal server error")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1488,13 +1489,13 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     Path: /apps/<uuid:app_id>/workflows/draft/trigger/run-all
     """
 
-    @console_ns.doc("draft_workflow_trigger_run_all")
-    @console_ns.doc(description="Full workflow debug when the start node is a trigger")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
-    @console_ns.response(200, "Workflow executed successfully")
-    @console_ns.response(403, "Permission denied")
-    @console_ns.response(500, "Internal server error")
+    @studio_ns.doc("draft_workflow_trigger_run_all")
+    @studio_ns.doc(description="Full workflow debug when the start node is a trigger")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
+    @studio_ns.response(200, "Workflow executed successfully")
+    @studio_ns.response(403, "Permission denied")
+    @studio_ns.response(500, "Internal server error")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1554,14 +1555,14 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
 @studio_ns.route("/apps/workflows/online-users")
 class WorkflowOnlineUsersApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowOnlineUsersPayload.__name__])
-    @console_ns.response(
+    @studio_ns.expect(studio_ns.models[WorkflowOnlineUsersPayload.__name__])
+    @studio_ns.response(
         200,
         "Workflow online users retrieved successfully",
-        console_ns.models[WorkflowOnlineUsersResponse.__name__],
+        studio_ns.models[WorkflowOnlineUsersResponse.__name__],
     )
-    @console_ns.doc("get_workflow_online_users")
-    @console_ns.doc(description="Get workflow online users")
+    @studio_ns.doc("get_workflow_online_users")
+    @studio_ns.doc(description="Get workflow online users")
     @setup_required
     @login_required
     @account_initialization_required

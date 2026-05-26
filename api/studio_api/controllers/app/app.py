@@ -57,7 +57,7 @@ from studio_api.blueprint import studio_ns
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
-register_enum_models(console_ns, IconType)
+register_enum_models(studio_ns, IconType)
 
 _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
@@ -412,11 +412,11 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
-register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
-register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
+register_enum_models(studio_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+register_response_schema_models(studio_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     AppListQuery,
     CreateAppPayload,
     UpdateAppPayload,
@@ -459,10 +459,10 @@ register_schema_models(
 
 @studio_ns.route("/apps")
 class AppListApi(Resource):
-    @console_ns.doc("list_apps")
-    @console_ns.doc(description="Get list of applications with pagination and filtering")
-    @console_ns.expect(console_ns.models[AppListQuery.__name__])
-    @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
+    @studio_ns.doc("list_apps")
+    @studio_ns.doc(description="Get list of applications with pagination and filtering")
+    @studio_ns.expect(studio_ns.models[AppListQuery.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[AppPagination.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -532,12 +532,12 @@ class AppListApi(Resource):
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
         return pagination_model.model_dump(mode="json"), 200
 
-    @console_ns.doc("create_app")
-    @console_ns.doc(description="Create a new application")
-    @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
-    @console_ns.response(201, "App created successfully", console_ns.models[AppDetail.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
+    @studio_ns.doc("create_app")
+    @studio_ns.doc(description="Create a new application")
+    @studio_ns.expect(studio_ns.models[CreateAppPayload.__name__])
+    @studio_ns.response(201, "App created successfully", studio_ns.models[AppDetail.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -564,10 +564,10 @@ class AppListApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>")
 class AppApi(Resource):
-    @console_ns.doc("get_app_detail")
-    @console_ns.doc(description="Get application details")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Success", console_ns.models[AppDetailWithSite.__name__])
+    @studio_ns.doc("get_app_detail")
+    @studio_ns.doc(description="Get application details")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(200, "Success", studio_ns.models[AppDetailWithSite.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -586,13 +586,13 @@ class AppApi(Resource):
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 
-    @console_ns.doc("update_app")
-    @console_ns.doc(description="Update application details")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[UpdateAppPayload.__name__])
-    @console_ns.response(200, "App updated successfully", console_ns.models[AppDetailWithSite.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
+    @studio_ns.doc("update_app")
+    @studio_ns.doc(description="Update application details")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[UpdateAppPayload.__name__])
+    @studio_ns.response(200, "App updated successfully", studio_ns.models[AppDetailWithSite.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -617,11 +617,11 @@ class AppApi(Resource):
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 
-    @console_ns.doc("delete_app")
-    @console_ns.doc(description="Delete application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(204, "App deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("delete_app")
+    @studio_ns.doc(description="Delete application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(204, "App deleted successfully")
+    @studio_ns.response(403, "Insufficient permissions")
     @get_app_model
     @setup_required
     @login_required
@@ -637,12 +637,12 @@ class AppApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/copy")
 class AppCopyApi(Resource):
-    @console_ns.doc("copy_app")
-    @console_ns.doc(description="Create a copy of an existing application")
-    @console_ns.doc(params={"app_id": "Application ID to copy"})
-    @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
-    @console_ns.response(201, "App copied successfully", console_ns.models[AppDetailWithSite.__name__])
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("copy_app")
+    @studio_ns.doc(description="Create a copy of an existing application")
+    @studio_ns.doc(params={"app_id": "Application ID to copy"})
+    @studio_ns.expect(studio_ns.models[CopyAppPayload.__name__])
+    @studio_ns.response(201, "App copied successfully", studio_ns.models[AppDetailWithSite.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -698,12 +698,12 @@ class AppCopyApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/export")
 class AppExportApi(Resource):
-    @console_ns.doc("export_app")
-    @console_ns.doc(description="Export application configuration as DSL")
-    @console_ns.doc(params={"app_id": "Application ID to export"})
-    @console_ns.expect(console_ns.models[AppExportQuery.__name__])
-    @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("export_app")
+    @studio_ns.doc(description="Export application configuration as DSL")
+    @studio_ns.doc(params={"app_id": "Application ID to export"})
+    @studio_ns.expect(studio_ns.models[AppExportQuery.__name__])
+    @studio_ns.response(200, "App exported successfully", studio_ns.models[AppExportResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
     @get_app_model
     @setup_required
     @login_required
@@ -725,7 +725,7 @@ class AppExportApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
 class AppPublishToCreatorsPlatformApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[RedirectUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -752,11 +752,11 @@ class AppPublishToCreatorsPlatformApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
-    @console_ns.doc("check_app_name")
-    @console_ns.doc(description="Check if app name is available")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppNamePayload.__name__])
-    @console_ns.response(200, "Name availability checked", console_ns.models[AppDetail.__name__])
+    @studio_ns.doc("check_app_name")
+    @studio_ns.doc(description="Check if app name is available")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AppNamePayload.__name__])
+    @studio_ns.response(200, "Name availability checked", studio_ns.models[AppDetail.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -773,12 +773,12 @@ class AppNameApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/icon")
 class AppIconApi(Resource):
-    @console_ns.doc("update_app_icon")
-    @console_ns.doc(description="Update application icon")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppIconPayload.__name__])
-    @console_ns.response(200, "Icon updated successfully")
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("update_app_icon")
+    @studio_ns.doc(description="Update application icon")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AppIconPayload.__name__])
+    @studio_ns.response(200, "Icon updated successfully")
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -800,12 +800,12 @@ class AppIconApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/site-enable")
 class AppSiteStatus(Resource):
-    @console_ns.doc("update_app_site_status")
-    @console_ns.doc(description="Enable or disable app site")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppSiteStatusPayload.__name__])
-    @console_ns.response(200, "Site status updated successfully", console_ns.models[AppDetail.__name__])
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("update_app_site_status")
+    @studio_ns.doc(description="Enable or disable app site")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AppSiteStatusPayload.__name__])
+    @studio_ns.response(200, "Site status updated successfully", studio_ns.models[AppDetail.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -822,12 +822,12 @@ class AppSiteStatus(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/api-enable")
 class AppApiStatus(Resource):
-    @console_ns.doc("update_app_api_status")
-    @console_ns.doc(description="Enable or disable app API")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppApiStatusPayload.__name__])
-    @console_ns.response(200, "API status updated successfully", console_ns.models[AppDetail.__name__])
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("update_app_api_status")
+    @studio_ns.doc(description="Enable or disable app API")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AppApiStatusPayload.__name__])
+    @studio_ns.response(200, "API status updated successfully", studio_ns.models[AppDetail.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -844,10 +844,10 @@ class AppApiStatus(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/trace")
 class AppTraceApi(Resource):
-    @console_ns.doc("get_app_trace")
-    @console_ns.doc(description="Get app tracing configuration")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Trace configuration retrieved successfully")
+    @studio_ns.doc("get_app_trace")
+    @studio_ns.doc(description="Get app tracing configuration")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(200, "Trace configuration retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -859,16 +859,16 @@ class AppTraceApi(Resource):
 
         return app_trace_config
 
-    @console_ns.doc("update_app_trace")
-    @console_ns.doc(description="Update app tracing configuration")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AppTracePayload.__name__])
-    @console_ns.response(
+    @studio_ns.doc("update_app_trace")
+    @studio_ns.doc(description="Update app tracing configuration")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[AppTracePayload.__name__])
+    @studio_ns.response(
         200,
         "Trace configuration updated successfully",
-        console_ns.models[SimpleResultResponse.__name__],
+        studio_ns.models[SimpleResultResponse.__name__],
     )
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required

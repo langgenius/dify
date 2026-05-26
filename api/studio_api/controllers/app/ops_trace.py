@@ -24,7 +24,7 @@ class TraceConfigPayload(BaseModel):
     tracing_config: dict[str, Any] = Field(..., description="Tracing configuration data")
 
 
-register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
+register_schema_models(studio_ns, TraceProviderQuery, TraceConfigPayload)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/trace-config")
@@ -33,14 +33,14 @@ class TraceAppConfigApi(Resource):
     Manage trace app configurations
     """
 
-    @console_ns.doc("get_trace_app_config")
-    @console_ns.doc(description="Get tracing configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceProviderQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_trace_app_config")
+    @studio_ns.doc(description="Get tracing configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[TraceProviderQuery.__name__])
+    @studio_ns.response(
         200, "Tracing configuration retrieved successfully", fields.Raw(description="Tracing configuration data")
     )
-    @console_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -58,14 +58,14 @@ class TraceAppConfigApi(Resource):
         except Exception as e:
             raise BadRequest(str(e))
 
-    @console_ns.doc("create_trace_app_config")
-    @console_ns.doc(description="Create a new tracing configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
-    @console_ns.response(
+    @studio_ns.doc("create_trace_app_config")
+    @studio_ns.doc(description="Create a new tracing configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[TraceConfigPayload.__name__])
+    @studio_ns.response(
         201, "Tracing configuration created successfully", fields.Raw(description="Created configuration data")
     )
-    @console_ns.response(400, "Invalid request parameters or configuration already exists")
+    @studio_ns.response(400, "Invalid request parameters or configuration already exists")
     @setup_required
     @login_required
     @account_initialization_required
@@ -86,12 +86,12 @@ class TraceAppConfigApi(Resource):
         except Exception as e:
             raise BadRequest(str(e))
 
-    @console_ns.doc("update_trace_app_config")
-    @console_ns.doc(description="Update an existing tracing configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
-    @console_ns.response(200, "Tracing configuration updated successfully", fields.Raw(description="Success response"))
-    @console_ns.response(400, "Invalid request parameters or configuration not found")
+    @studio_ns.doc("update_trace_app_config")
+    @studio_ns.doc(description="Update an existing tracing configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[TraceConfigPayload.__name__])
+    @studio_ns.response(200, "Tracing configuration updated successfully", fields.Raw(description="Success response"))
+    @studio_ns.response(400, "Invalid request parameters or configuration not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -110,12 +110,12 @@ class TraceAppConfigApi(Resource):
         except Exception as e:
             raise BadRequest(str(e))
 
-    @console_ns.doc("delete_trace_app_config")
-    @console_ns.doc(description="Delete an existing tracing configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceProviderQuery.__name__])
-    @console_ns.response(204, "Tracing configuration deleted successfully")
-    @console_ns.response(400, "Invalid request parameters or configuration not found")
+    @studio_ns.doc("delete_trace_app_config")
+    @studio_ns.doc(description="Delete an existing tracing configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[TraceProviderQuery.__name__])
+    @studio_ns.response(204, "Tracing configuration deleted successfully")
+    @studio_ns.response(400, "Invalid request parameters or configuration not found")
     @setup_required
     @login_required
     @account_initialization_required

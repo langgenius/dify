@@ -1,4 +1,4 @@
-from controllers.console.namespace import console_ns
+from controllers.console.namespace import console_ns as auth_ns
 
 from studio_api.blueprint import studio_api, studio_bp, studio_ns
 
@@ -34,7 +34,7 @@ from .app import (
 from .socketio import workflow as socketio_workflow
 
 # Shared auth controllers — imported so their routes are available on /studio/api/ too.
-# They register on console_ns, which is added to both blueprints.
+# They register on console_ns, which is added to studio_api as auth_ns.
 from controllers.console.auth import (
     activate,
     data_source_bearer_auth,
@@ -47,7 +47,7 @@ from controllers.console.auth import (
 )
 
 studio_api.add_namespace(studio_ns)
-studio_api.add_namespace(console_ns)
+studio_api.add_namespace(auth_ns)
 
 __all__ = [
     "activate",
@@ -60,7 +60,7 @@ __all__ = [
     "app_import",
     "audio",
     "completion",
-    "console_ns",
+    "studio_ns",
     "conversation",
     "conversation_variables",
     "data_source_bearer_auth",

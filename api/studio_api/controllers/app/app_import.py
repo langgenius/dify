@@ -18,7 +18,7 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.feature_service import FeatureService
 
-from .. import console_ns
+from .. import studio_ns
 
 
 class AppImportPayload(BaseModel):
@@ -33,16 +33,16 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
-register_enum_models(console_ns, ImportStatus)
-register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
+register_enum_models(studio_ns, ImportStatus)
+register_schema_models(studio_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
 @studio_ns.route("/apps/imports")
 class AppImportApi(Resource):
-    @console_ns.expect(console_ns.models[AppImportPayload.__name__])
-    @console_ns.response(200, "Import completed", console_ns.models[Import.__name__])
-    @console_ns.response(202, "Import pending confirmation", console_ns.models[Import.__name__])
-    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
+    @studio_ns.expect(studio_ns.models[AppImportPayload.__name__])
+    @studio_ns.response(200, "Import completed", studio_ns.models[Import.__name__])
+    @studio_ns.response(202, "Import pending confirmation", studio_ns.models[Import.__name__])
+    @studio_ns.response(400, "Import failed", studio_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -91,8 +91,8 @@ class AppImportApi(Resource):
 
 @studio_ns.route("/apps/imports/<string:import_id>/confirm")
 class AppImportConfirmApi(Resource):
-    @console_ns.response(200, "Import confirmed", console_ns.models[Import.__name__])
-    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
+    @studio_ns.response(200, "Import confirmed", studio_ns.models[Import.__name__])
+    @studio_ns.response(400, "Import failed", studio_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -119,7 +119,7 @@ class AppImportConfirmApi(Resource):
 
 @studio_ns.route("/apps/imports/<string:app_id>/check-dependencies")
 class AppImportCheckDependenciesApi(Resource):
-    @console_ns.response(200, "Dependencies checked", console_ns.models[CheckDependenciesResult.__name__])
+    @studio_ns.response(200, "Dependencies checked", studio_ns.models[CheckDependenciesResult.__name__])
     @setup_required
     @login_required
     @get_app_model

@@ -51,21 +51,21 @@ class AudioTranscriptResponse(BaseModel):
     text: str = Field(description="Transcribed text from audio")
 
 
-register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
+register_schema_models(studio_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
-    @console_ns.doc("chat_message_audio_transcript")
-    @console_ns.doc(description="Transcript audio to text for chat messages")
-    @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.response(
+    @studio_ns.doc("chat_message_audio_transcript")
+    @studio_ns.doc(description="Transcript audio to text for chat messages")
+    @studio_ns.doc(params={"app_id": "App ID"})
+    @studio_ns.response(
         200,
         "Audio transcription successful",
-        console_ns.models[AudioTranscriptResponse.__name__],
+        studio_ns.models[AudioTranscriptResponse.__name__],
     )
-    @console_ns.response(400, "Bad request - No audio uploaded or unsupported type")
-    @console_ns.response(413, "Audio file too large")
+    @studio_ns.response(400, "Bad request - No audio uploaded or unsupported type")
+    @studio_ns.response(413, "Audio file too large")
     @setup_required
     @login_required
     @account_initialization_required
@@ -109,12 +109,12 @@ class ChatMessageAudioApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
-    @console_ns.doc("chat_message_text_to_speech")
-    @console_ns.doc(description="Convert text to speech for chat messages")
-    @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
-    @console_ns.response(200, "Text to speech conversion successful")
-    @console_ns.response(400, "Bad request - Invalid parameters")
+    @studio_ns.doc("chat_message_text_to_speech")
+    @studio_ns.doc(description="Convert text to speech for chat messages")
+    @studio_ns.doc(params={"app_id": "App ID"})
+    @studio_ns.expect(studio_ns.models[TextToSpeechPayload.__name__])
+    @studio_ns.response(200, "Text to speech conversion successful")
+    @studio_ns.response(400, "Bad request - Invalid parameters")
     @get_app_model
     @setup_required
     @login_required
@@ -159,14 +159,14 @@ class ChatMessageTextApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
-    @console_ns.doc("get_text_to_speech_voices")
-    @console_ns.doc(description="Get available TTS voices for a specific language")
-    @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.expect(console_ns.models[TextToSpeechVoiceQuery.__name__])
-    @console_ns.response(
+    @studio_ns.doc("get_text_to_speech_voices")
+    @studio_ns.doc(description="Get available TTS voices for a specific language")
+    @studio_ns.doc(params={"app_id": "App ID"})
+    @studio_ns.expect(studio_ns.models[TextToSpeechVoiceQuery.__name__])
+    @studio_ns.response(
         200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
     )
-    @console_ns.response(400, "Invalid language parameter")
+    @studio_ns.response(400, "Invalid language parameter")
     @get_app_model
     @setup_required
     @login_required

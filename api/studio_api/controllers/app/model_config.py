@@ -35,18 +35,18 @@ class ModelConfigRequest(BaseModel):
     agent_mode: dict[str, Any] | None = Field(default=None, description="Agent mode configuration")
 
 
-register_schema_models(console_ns, ModelConfigRequest)
+register_schema_models(studio_ns, ModelConfigRequest)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/model-config")
 class ModelConfigResource(Resource):
-    @console_ns.doc("update_app_model_config")
-    @console_ns.doc(description="Update application model configuration")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ModelConfigRequest.__name__])
-    @console_ns.response(200, "Model configuration updated successfully")
-    @console_ns.response(400, "Invalid configuration")
-    @console_ns.response(404, "App not found")
+    @studio_ns.doc("update_app_model_config")
+    @studio_ns.doc(description="Update application model configuration")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[ModelConfigRequest.__name__])
+    @studio_ns.response(200, "Model configuration updated successfully")
+    @studio_ns.response(400, "Invalid configuration")
+    @studio_ns.response(404, "App not found")
     @setup_required
     @login_required
     @edit_permission_required

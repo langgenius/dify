@@ -57,16 +57,16 @@ class AppMCPServerResponse(ResponseModel):
         return to_timestamp(value)
 
 
-register_schema_models(console_ns, MCPServerCreatePayload, MCPServerUpdatePayload, AppMCPServerResponse)
+register_schema_models(studio_ns, MCPServerCreatePayload, MCPServerUpdatePayload, AppMCPServerResponse)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/server")
 class AppMCPServerController(Resource):
-    @console_ns.doc("get_app_mcp_server")
-    @console_ns.doc(description="Get MCP server configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
-        200, "MCP server configuration retrieved successfully", console_ns.models[AppMCPServerResponse.__name__]
+    @studio_ns.doc("get_app_mcp_server")
+    @studio_ns.doc(description="Get MCP server configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
+        200, "MCP server configuration retrieved successfully", studio_ns.models[AppMCPServerResponse.__name__]
     )
     @login_required
     @account_initialization_required
@@ -78,14 +78,14 @@ class AppMCPServerController(Resource):
             return {}
         return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
 
-    @console_ns.doc("create_app_mcp_server")
-    @console_ns.doc(description="Create MCP server configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MCPServerCreatePayload.__name__])
-    @console_ns.response(
-        201, "MCP server configuration created successfully", console_ns.models[AppMCPServerResponse.__name__]
+    @studio_ns.doc("create_app_mcp_server")
+    @studio_ns.doc(description="Create MCP server configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[MCPServerCreatePayload.__name__])
+    @studio_ns.response(
+        201, "MCP server configuration created successfully", studio_ns.models[AppMCPServerResponse.__name__]
     )
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(403, "Insufficient permissions")
     @account_initialization_required
     @get_app_model
     @login_required
@@ -112,15 +112,15 @@ class AppMCPServerController(Resource):
         db.session.commit()
         return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json"), 201
 
-    @console_ns.doc("update_app_mcp_server")
-    @console_ns.doc(description="Update MCP server configuration for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MCPServerUpdatePayload.__name__])
-    @console_ns.response(
-        200, "MCP server configuration updated successfully", console_ns.models[AppMCPServerResponse.__name__]
+    @studio_ns.doc("update_app_mcp_server")
+    @studio_ns.doc(description="Update MCP server configuration for an application")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[MCPServerUpdatePayload.__name__])
+    @studio_ns.response(
+        200, "MCP server configuration updated successfully", studio_ns.models[AppMCPServerResponse.__name__]
     )
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Server not found")
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "Server not found")
     @get_app_model
     @login_required
     @setup_required
@@ -152,12 +152,12 @@ class AppMCPServerController(Resource):
 
 @studio_ns.route("/apps/<uuid:server_id>/server/refresh")
 class AppMCPServerRefreshController(Resource):
-    @console_ns.doc("refresh_app_mcp_server")
-    @console_ns.doc(description="Refresh MCP server configuration and regenerate server code")
-    @console_ns.doc(params={"server_id": "Server ID"})
-    @console_ns.response(200, "MCP server refreshed successfully", console_ns.models[AppMCPServerResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Server not found")
+    @studio_ns.doc("refresh_app_mcp_server")
+    @studio_ns.doc(description="Refresh MCP server configuration and regenerate server code")
+    @studio_ns.doc(params={"server_id": "Server ID"})
+    @studio_ns.response(200, "MCP server refreshed successfully", studio_ns.models[AppMCPServerResponse.__name__])
+    @studio_ns.response(403, "Insufficient permissions")
+    @studio_ns.response(404, "Server not found")
     @setup_required
     @login_required
     @account_initialization_required

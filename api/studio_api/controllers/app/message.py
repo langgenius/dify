@@ -154,7 +154,7 @@ class MessageInfiniteScrollPaginationResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     ChatMessagesQuery,
     MessageFeedbackPayload,
     FeedbackExportQuery,
@@ -163,17 +163,17 @@ register_schema_models(
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(studio_ns, SimpleResultResponse)
 
 
 @studio_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageListApi(Resource):
-    @console_ns.doc("list_chat_messages")
-    @console_ns.doc(description="Get chat messages for a conversation with pagination")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatMessagesQuery.__name__])
-    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
-    @console_ns.response(404, "Conversation not found")
+    @studio_ns.doc("list_chat_messages")
+    @studio_ns.doc(description="Get chat messages for a conversation with pagination")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[ChatMessagesQuery.__name__])
+    @studio_ns.response(200, "Success", studio_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
+    @studio_ns.response(404, "Conversation not found")
     @login_required
     @account_initialization_required
     @setup_required
@@ -245,13 +245,13 @@ class ChatMessageListApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/feedbacks")
 class MessageFeedbackApi(Resource):
-    @console_ns.doc("create_message_feedback")
-    @console_ns.doc(description="Create or update message feedback (like/dislike)")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(404, "Message not found")
-    @console_ns.response(403, "Insufficient permissions")
+    @studio_ns.doc("create_message_feedback")
+    @studio_ns.doc(description="Create or update message feedback (like/dislike)")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[MessageFeedbackPayload.__name__])
+    @studio_ns.response(200, "Feedback updated successfully", studio_ns.models[SimpleResultResponse.__name__])
+    @studio_ns.response(404, "Message not found")
+    @studio_ns.response(403, "Insufficient permissions")
     @get_app_model
     @setup_required
     @login_required
@@ -301,13 +301,13 @@ class MessageFeedbackApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/annotations/count")
 class MessageAnnotationCountApi(Resource):
-    @console_ns.doc("get_annotation_count")
-    @console_ns.doc(description="Get count of message annotations for the app")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_annotation_count")
+    @studio_ns.doc(description="Get count of message annotations for the app")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.response(
         200,
         "Annotation count retrieved successfully",
-        console_ns.models[AnnotationCountResponse.__name__],
+        studio_ns.models[AnnotationCountResponse.__name__],
     )
     @get_app_model
     @setup_required
@@ -323,15 +323,15 @@ class MessageAnnotationCountApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(Resource):
-    @console_ns.doc("get_message_suggested_questions")
-    @console_ns.doc(description="Get suggested questions for a message")
-    @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_message_suggested_questions")
+    @studio_ns.doc(description="Get suggested questions for a message")
+    @studio_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
+    @studio_ns.response(
         200,
         "Suggested questions retrieved successfully",
-        console_ns.models[SuggestedQuestionsResponse.__name__],
+        studio_ns.models[SuggestedQuestionsResponse.__name__],
     )
-    @console_ns.response(404, "Message or conversation not found")
+    @studio_ns.response(404, "Message or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -367,13 +367,13 @@ class MessageSuggestedQuestionApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/feedbacks/export")
 class MessageFeedbackExportApi(Resource):
-    @console_ns.doc("export_feedbacks")
-    @console_ns.doc(description="Export user feedback data for Google Sheets")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[FeedbackExportQuery.__name__])
-    @console_ns.response(200, "Feedback data exported successfully")
-    @console_ns.response(400, "Invalid parameters")
-    @console_ns.response(500, "Internal server error")
+    @studio_ns.doc("export_feedbacks")
+    @studio_ns.doc(description="Export user feedback data for Google Sheets")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[FeedbackExportQuery.__name__])
+    @studio_ns.response(200, "Feedback data exported successfully")
+    @studio_ns.response(400, "Invalid parameters")
+    @studio_ns.response(500, "Internal server error")
     @get_app_model
     @setup_required
     @login_required
@@ -407,11 +407,11 @@ class MessageFeedbackExportApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>")
 class MessageApi(Resource):
-    @console_ns.doc("get_message")
-    @console_ns.doc(description="Get message details by ID")
-    @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
-    @console_ns.response(404, "Message not found")
+    @studio_ns.doc("get_message")
+    @studio_ns.doc(description="Get message details by ID")
+    @studio_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
+    @studio_ns.response(200, "Message retrieved successfully", studio_ns.models[MessageDetailResponse.__name__])
+    @studio_ns.response(404, "Message not found")
     @get_app_model
     @setup_required
     @login_required

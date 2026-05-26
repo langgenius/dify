@@ -116,12 +116,12 @@ class WorkflowPauseDetailsResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns,
+    studio_ns,
     WorkflowRunListQuery,
     WorkflowRunCountQuery,
 )
 register_response_schema_models(
-    console_ns,
+    studio_ns,
     AdvancedChatWorkflowRunPaginationResponse,
     WorkflowRunPaginationResponse,
     WorkflowRunCountResponse,
@@ -137,14 +137,14 @@ register_response_schema_models(
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
 class AdvancedChatAppWorkflowRunListApi(Resource):
-    @console_ns.doc("get_advanced_chat_workflow_runs")
-    @console_ns.doc(description="Get advanced chat workflow run list")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
-    @console_ns.response(
+    @studio_ns.doc("get_advanced_chat_workflow_runs")
+    @studio_ns.doc(description="Get advanced chat workflow run list")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @studio_ns.response(
         200,
         "Workflow runs retrieved successfully",
-        console_ns.models[AdvancedChatWorkflowRunPaginationResponse.__name__],
+        studio_ns.models[AdvancedChatWorkflowRunPaginationResponse.__name__],
     )
     @setup_required
     @login_required
@@ -180,10 +180,10 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export")
 class WorkflowRunExportApi(Resource):
-    @console_ns.doc("get_workflow_run_export_url")
-    @console_ns.doc(description="Generate a download URL for an archived workflow run.")
-    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Export URL generated", console_ns.models[WorkflowRunExportResponse.__name__])
+    @studio_ns.doc("get_workflow_run_export_url")
+    @studio_ns.doc(description="Generate a download URL for an archived workflow run.")
+    @studio_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @studio_ns.response(200, "Export URL generated", studio_ns.models[WorkflowRunExportResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -233,14 +233,14 @@ class WorkflowRunExportApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
 class AdvancedChatAppWorkflowRunCountApi(Resource):
-    @console_ns.doc("get_advanced_chat_workflow_runs_count")
-    @console_ns.doc(description="Get advanced chat workflow runs count statistics")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
-    @console_ns.response(
+    @studio_ns.doc("get_advanced_chat_workflow_runs_count")
+    @studio_ns.doc(description="Get advanced chat workflow runs count statistics")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @studio_ns.response(
         200,
         "Workflow runs count retrieved successfully",
-        console_ns.models[WorkflowRunCountResponse.__name__],
+        studio_ns.models[WorkflowRunCountResponse.__name__],
     )
     @setup_required
     @login_required
@@ -273,14 +273,14 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-runs")
 class WorkflowRunListApi(Resource):
-    @console_ns.doc("get_workflow_runs")
-    @console_ns.doc(description="Get workflow run list")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_runs")
+    @studio_ns.doc(description="Get workflow run list")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @studio_ns.response(
         200,
         "Workflow runs retrieved successfully",
-        console_ns.models[WorkflowRunPaginationResponse.__name__],
+        studio_ns.models[WorkflowRunPaginationResponse.__name__],
     )
     @setup_required
     @login_required
@@ -314,14 +314,14 @@ class WorkflowRunListApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
 class WorkflowRunCountApi(Resource):
-    @console_ns.doc("get_workflow_runs_count")
-    @console_ns.doc(description="Get workflow runs count statistics")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_runs_count")
+    @studio_ns.doc(description="Get workflow runs count statistics")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @studio_ns.response(
         200,
         "Workflow runs count retrieved successfully",
-        console_ns.models[WorkflowRunCountResponse.__name__],
+        studio_ns.models[WorkflowRunCountResponse.__name__],
     )
     @setup_required
     @login_required
@@ -354,15 +354,15 @@ class WorkflowRunCountApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
 class WorkflowRunDetailApi(Resource):
-    @console_ns.doc("get_workflow_run_detail")
-    @console_ns.doc(description="Get workflow run detail")
-    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_run_detail")
+    @studio_ns.doc(description="Get workflow run detail")
+    @studio_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @studio_ns.response(
         200,
         "Workflow run detail retrieved successfully",
-        console_ns.models[WorkflowRunDetailResponse.__name__],
+        studio_ns.models[WorkflowRunDetailResponse.__name__],
     )
-    @console_ns.response(404, "Workflow run not found")
+    @studio_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -383,15 +383,15 @@ class WorkflowRunDetailApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
 class WorkflowRunNodeExecutionListApi(Resource):
-    @console_ns.doc("get_workflow_run_node_executions")
-    @console_ns.doc(description="Get workflow run node execution list")
-    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_run_node_executions")
+    @studio_ns.doc(description="Get workflow run node execution list")
+    @studio_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @studio_ns.response(
         200,
         "Node executions retrieved successfully",
-        console_ns.models[WorkflowRunNodeExecutionListResponse.__name__],
+        studio_ns.models[WorkflowRunNodeExecutionListResponse.__name__],
     )
-    @console_ns.response(404, "Workflow run not found")
+    @studio_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -419,15 +419,15 @@ class WorkflowRunNodeExecutionListApi(Resource):
 class ConsoleWorkflowPauseDetailsApi(Resource):
     """Console API for getting workflow pause details."""
 
-    @console_ns.doc("get_workflow_pause_details")
-    @console_ns.doc(description="Get workflow pause details")
-    @console_ns.doc(params={"workflow_run_id": "Workflow run ID"})
-    @console_ns.response(
+    @studio_ns.doc("get_workflow_pause_details")
+    @studio_ns.doc(description="Get workflow pause details")
+    @studio_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @studio_ns.response(
         200,
         "Workflow pause details retrieved successfully",
-        console_ns.models[WorkflowPauseDetailsResponse.__name__],
+        studio_ns.models[WorkflowPauseDetailsResponse.__name__],
     )
-    @console_ns.response(404, "Workflow run not found")
+    @studio_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required

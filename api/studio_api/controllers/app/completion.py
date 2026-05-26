@@ -66,20 +66,20 @@ class ChatMessagePayload(BaseMessagePayload):
         return uuid_value(value)
 
 
-register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_schema_models(studio_ns, CompletionMessagePayload, ChatMessagePayload)
+register_response_schema_models(studio_ns, SimpleResultResponse)
 
 
 # define completion message api for user
 @studio_ns.route("/apps/<uuid:app_id>/completion-messages")
 class CompletionMessageApi(Resource):
-    @console_ns.doc("create_completion_message")
-    @console_ns.doc(description="Generate completion message for debugging")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
-    @console_ns.response(200, "Completion generated successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(404, "App not found")
+    @studio_ns.doc("create_completion_message")
+    @studio_ns.doc(description="Generate completion message for debugging")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[CompletionMessagePayload.__name__])
+    @studio_ns.response(200, "Completion generated successfully")
+    @studio_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -123,10 +123,10 @@ class CompletionMessageApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
 class CompletionMessageStopApi(Resource):
-    @console_ns.doc("stop_completion_message")
-    @console_ns.doc(description="Stop a running completion message generation")
-    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
-    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
+    @studio_ns.doc("stop_completion_message")
+    @studio_ns.doc(description="Stop a running completion message generation")
+    @studio_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @studio_ns.response(200, "Task stopped successfully", studio_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -147,13 +147,13 @@ class CompletionMessageStopApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageApi(Resource):
-    @console_ns.doc("create_chat_message")
-    @console_ns.doc(description="Generate chat message for debugging")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(404, "App or conversation not found")
+    @studio_ns.doc("create_chat_message")
+    @studio_ns.doc(description="Generate chat message for debugging")
+    @studio_ns.doc(params={"app_id": "Application ID"})
+    @studio_ns.expect(studio_ns.models[ChatMessagePayload.__name__])
+    @studio_ns.response(200, "Chat message generated successfully")
+    @studio_ns.response(400, "Invalid request parameters")
+    @studio_ns.response(404, "App or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -204,10 +204,10 @@ class ChatMessageApi(Resource):
 
 @studio_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
 class ChatMessageStopApi(Resource):
-    @console_ns.doc("stop_chat_message")
-    @console_ns.doc(description="Stop a running chat message generation")
-    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
-    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
+    @studio_ns.doc("stop_chat_message")
+    @studio_ns.doc(description="Stop a running chat message generation")
+    @studio_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @studio_ns.response(200, "Task stopped successfully", studio_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
