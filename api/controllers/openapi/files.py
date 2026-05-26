@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
-from werkzeug.exceptions import BadRequest, InternalServerError
+from werkzeug.exceptions import BadRequest
 
 import services
 from controllers.common.errors import (
@@ -41,13 +41,7 @@ class AppFileUploadApi(Resource):
     @openapi_ns.response(HTTPStatus.CREATED, "File uploaded", openapi_ns.models[FileResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
     def post(self, app_id: str, *, auth_data: AuthData):
-        app_model = auth_data.app
-        if app_model is None:
-            raise InternalServerError()
-        caller = auth_data.caller
-        if caller is None:
-            raise InternalServerError()
-        caller_kind = auth_data.caller_kind
+        app_model, caller, _ = auth_data.require_app_context()
         if "file" not in request.files:
             raise NoFileUploadedError()
         if len(request.files) > 1:

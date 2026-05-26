@@ -14,7 +14,7 @@ from collections.abc import Generator
 from flask import Response, request
 from flask_restx import Resource
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import InternalServerError, NotFound, UnprocessableEntity
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.openapi import openapi_ns
 from controllers.openapi.auth.composition import auth_router
@@ -39,13 +39,7 @@ class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.response(200, "SSE event stream")
     @auth_router.guard(scope=Scope.APPS_RUN)
     def get(self, app_id: str, task_id: str, *, auth_data: AuthData):
-        app_model = auth_data.app
-        if app_model is None:
-            raise InternalServerError()
-        caller = auth_data.caller
-        if caller is None:
-            raise InternalServerError()
-        caller_kind = auth_data.caller_kind
+        app_model, caller, caller_kind = auth_data.require_app_context()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise UnprocessableEntity("mode_not_supported_for_event_reconnect")

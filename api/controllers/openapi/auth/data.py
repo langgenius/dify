@@ -5,6 +5,7 @@ from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
 from libs.oauth_bearer import Scope, TokenType
@@ -60,3 +61,9 @@ class AuthData(BaseModel):
 
     caller: Account | EndUser | None = None
     caller_kind: Literal["account", "end_user"] | None = None
+
+    def require_app_context(self) -> tuple[App, Account | EndUser, Literal["account", "end_user"]]:
+        """Return (app, caller, caller_kind), raising 500 if the pipeline failed to populate them."""
+        if self.app is None or self.caller is None or self.caller_kind is None:
+            raise InternalServerError("pipeline_invariant_violated: app context missing")
+        return self.app, self.caller, self.caller_kind
