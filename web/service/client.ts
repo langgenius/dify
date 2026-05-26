@@ -207,7 +207,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               }
 
               await context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
               })
             },
           },
@@ -218,7 +218,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
@@ -254,7 +254,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               ].forEach(queryKey => context.client.removeQueries({ queryKey }))
 
               return context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
               })
             },
           },
@@ -267,7 +267,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
               if (!appInstanceId) {
                 return context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 })
               }
 
@@ -285,7 +285,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
               ])
             },
@@ -297,7 +297,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
               if (!appInstanceId) {
                 return context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 })
               }
 
@@ -315,7 +315,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   }),
                 }),
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
               ])
             },
@@ -329,7 +329,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
@@ -365,7 +365,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
@@ -401,7 +401,7 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
@@ -437,13 +437,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = data.appInstance?.id ?? data.release?.appInstanceId
               if (!appInstanceId) {
                 return context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 })
               }
 
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
@@ -479,13 +479,13 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = data.appInstance?.id ?? data.release?.appInstanceId
               if (!appInstanceId) {
                 return context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 })
               }
 
               return Promise.all([
                 context.client.invalidateQueries({
-                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key({ type: 'query' }),
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                 }),
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
