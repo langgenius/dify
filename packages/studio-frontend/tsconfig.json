@@ -13,6 +13,8 @@
     "node_modules",
     "src/**/*.spec.ts",
     "src/**/*.spec.tsx",
-    "src/**/__tests__"
+    "src/**/__tests__",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx"
   ]
 }

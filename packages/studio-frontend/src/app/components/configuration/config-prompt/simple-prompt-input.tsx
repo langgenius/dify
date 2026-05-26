@@ -1,0 +1,291 @@
+'use client'
+import type { FC } from 'react'
+import type { ExternalDataTool } from '@/models/common'
+import type { PromptVariable } from '@/models/debug'
+import type { GenRes } from '@/service/debug'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
+import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
+import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { Infotip } from '@/app/components/base/infotip'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
+import ConfigContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useModalContext } from '@/context/modal-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { AppModeEnum } from '@/types/app'
+import { getNewVar, getVars } from '@/utils/var'
+import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var/index'
+import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
+
+type ISimplePromptInput = {
+  mode: AppModeEnum
+  promptTemplate: string
+  promptVariables: PromptVariable[]
+  readonly?: boolean
+  onChange?: (prompt: string, promptVariables: PromptVariable[]) => void
+  noTitle?: boolean
+  gradientBorder?: boolean
+  editorHeight?: number
+  noResize?: boolean
+}
+
+const Prompt: FC<ISimplePromptInput> = ({
+  mode,
+  promptTemplate,
+  promptVariables,
+  readonly = false,
+  onChange,
+  noTitle,
+  editorHeight: initEditorHeight,
+  noResize,
+}) => {
+  const { t } = useTranslation()
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+  const featuresStore = useFeaturesStore()
+  const {
+    features,
+    setFeatures,
+  } = featuresStore!.getState()
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  const {
+    appId,
+    modelConfig,
+    dataSets,
+    setModelConfig,
+    setPrevPromptConfig,
+    setIntroduction,
+    hasSetBlockStatus,
+    showSelectDataSet,
+    externalDataToolsConfig,
+  } = useContext(ConfigContext)
+  const { setShowExternalDataToolModal } = useModalContext()
+  const handleOpenExternalDataToolModal = () => {
+    setShowExternalDataToolModal({
+      payload: {},
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
+        eventEmitter?.emit({
+          type: ADD_EXTERNAL_DATA_TOOL,
+          payload: newExternalDataTool,
+        } as any)
+        eventEmitter?.emit({
+          type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+          payload: newExternalDataTool.variable,
+        } as any)
+      },
+      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        for (let i = 0; i < promptVariables.length; i++) {
+          if (promptVariables[i]!.key === newExternalDataTool.variable) {
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
+            return false
+          }
+        }
+
+        return true
+      },
+    })
+  }
+
+  const [newPromptVariables, setNewPromptVariables] = React.useState<PromptVariable[]>(promptVariables)
+  const [newTemplates, setNewTemplates] = React.useState('')
+  const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
+
+  const handleChange = (newTemplates: string, keys: string[]) => {
+    // Filter out keys that are not properly defined (either not exist or exist but without valid name)
+    const newPromptVariables = keys.filter((key) => {
+      // Check if key exists in external data tools
+      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key))
+        return false
+
+      // Check if key exists in prompt variables
+      const existingVar = promptVariables.find((item: PromptVariable) => item.key === key)
+      if (!existingVar) {
+        // Variable doesn't exist at all
+        return true
+      }
+
+      // Variable exists but check if it has valid name and key
+      return !existingVar.name || !existingVar.name.trim() || !existingVar.key || !existingVar.key.trim()
+
+      return false
+    }).map(key => getNewVar(key, ''))
+
+    if (newPromptVariables.length > 0) {
+      setNewPromptVariables(newPromptVariables)
+      setNewTemplates(newTemplates)
+      showConfirmAddVar()
+      return
+    }
+    onChange?.(newTemplates, [])
+  }
+
+  const handleAutoAdd = (isAdd: boolean) => {
+    return () => {
+      onChange?.(newTemplates, isAdd ? newPromptVariables : [])
+      hideConfirmAddVar()
+    }
+  }
+
+  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
+  const handleAutomaticRes = (res: GenRes) => {
+    // put eventEmitter in first place to prevent overwrite the configs.prompt_variables.But another problem is that prompt won't hight the prompt_variables.
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      payload: res.modified,
+    } as any)
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.configs.prompt_template = res.modified
+      draft.configs.prompt_variables = (res.variables || []).map(key => ({ key, name: key, type: 'string', required: true }))
+    })
+    setModelConfig(newModelConfig)
+    setPrevPromptConfig(modelConfig.configs)
+
+    if (mode !== AppModeEnum.COMPLETION) {
+      setIntroduction(res.opening_statement || '')
+      const newFeatures = produce(features, (draft) => {
+        draft.opening = {
+          ...draft.opening,
+          enabled: !!res.opening_statement,
+          opening_statement: res.opening_statement,
+        }
+      })
+      setFeatures(newFeatures)
+    }
+    showAutomaticFalse()
+  }
+  const minHeight = initEditorHeight || 228
+  const [editorHeight, setEditorHeight] = useState(minHeight)
+
+  return (
+    <div className={cn('relative rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
+      <div className="rounded-xl bg-background-section-burn">
+        {!noTitle && (
+          <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
+            <div className="flex items-center space-x-1">
+              <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
+              {!readonly && (
+                <Infotip
+                  aria-label={t('promptTip', { ns: 'appDebug' })}
+                  className="ml-1"
+                  popupClassName="w-[180px]"
+                >
+                  {t('promptTip', { ns: 'appDebug' })}
+                </Infotip>
+              )}
+            </div>
+            <div className="flex items-center">
+              {!readonly && !isMobile && (
+                <AutomaticBtn onClick={showAutomaticTrue} />
+              )}
+            </div>
+          </div>
+        )}
+
+        <PromptEditorHeightResizeWrap
+          className="min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
+          height={editorHeight}
+          minHeight={minHeight}
+          onHeightChange={setEditorHeight}
+          hideResize={noResize}
+          footer={(
+            <div className="flex rounded-b-xl bg-background-default pb-2 pl-4">
+              <div className="h-[18px] rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-[18px] text-text-tertiary">{promptTemplate.length}</div>
+            </div>
+          )}
+        >
+          <PromptEditor
+            className="min-h-[210px]"
+            compact
+            value={promptTemplate}
+            contextBlock={{
+              show: false,
+              selectable: !hasSetBlockStatus.context,
+              datasets: dataSets.map(item => ({
+                id: item.id,
+                name: item.name,
+                type: item.data_source_type,
+              })),
+              onAddContext: showSelectDataSet,
+            }}
+            variableBlock={{
+              show: true,
+              variables: modelConfig.configs.prompt_variables.filter((item: PromptVariable) => item.type !== 'api' && item.key && item.key.trim() && item.name && item.name.trim()).map((item: PromptVariable) => ({
+                name: item.name,
+                value: item.key,
+              })),
+            }}
+            externalToolBlock={{
+              show: true,
+              externalTools: modelConfig.configs.prompt_variables.filter((item: PromptVariable) => item.type === 'api').map((item: PromptVariable) => ({
+                name: item.name,
+                variableName: item.key,
+                icon: item.icon,
+                icon_background: item.icon_background,
+              })),
+              onAddExternalTool: handleOpenExternalDataToolModal,
+            }}
+            historyBlock={{
+              show: false,
+              selectable: false,
+              history: {
+                user: '',
+                assistant: '',
+              },
+              onEditRole: noop,
+            }}
+            queryBlock={{
+              show: false,
+              selectable: !hasSetBlockStatus.query,
+            }}
+            onChange={(value) => {
+              if (handleChange)
+                handleChange(value, [])
+            }}
+            onBlur={() => {
+              handleChange(promptTemplate, getVars(promptTemplate))
+            }}
+            editable={!readonly}
+          />
+        </PromptEditorHeightResizeWrap>
+      </div>
+
+      {isShowConfirmAddVar && (
+        <ConfirmAddVar
+          varNameArr={newPromptVariables.map(v => v.name)}
+          onConfirm={handleAutoAdd(true)}
+          onCancel={handleAutoAdd(false)}
+          onHide={hideConfirmAddVar}
+        />
+      )}
+
+      {showAutomatic && (
+        <GetAutomaticResModal
+          flowId={appId}
+          mode={mode as AppModeEnum}
+          isShow={showAutomatic}
+          onClose={showAutomaticFalse}
+          onFinished={handleAutomaticRes}
+          currentPrompt={promptTemplate}
+          isBasicMode
+        />
+      )}
+    </div>
+  )
+}
+
+export default React.memo(Prompt)

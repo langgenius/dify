@@ -1,0 +1,13 @@
+.textGradient {
+  background: linear-gradient(92deg, #2250F2 -29.55%, #0EBCF3 75.22%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.optimizationNoteText {
+  background: linear-gradient(263deg, rgba(21, 90, 239, 0.95) -20.92%, rgba(11, 165, 236, 0.95) 87.04%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

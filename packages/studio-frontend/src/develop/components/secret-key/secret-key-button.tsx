@@ -1,0 +1,35 @@
+'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { RiKey2Line } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+
+type ISecretKeyButtonProps = {
+  className?: string
+  appId?: string
+  textCls?: string
+}
+
+const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) => {
+  const [isVisible, setVisible] = useState(false)
+  const { t } = useTranslation()
+  return (
+    <>
+      <Button
+        className={`px-3 ${className}`}
+        onClick={() => setVisible(true)}
+        size="small"
+        variant="ghost"
+      >
+        <div className="flex size-3.5 items-center justify-center">
+          <RiKey2Line className="size-3.5 text-text-tertiary" />
+        </div>
+        <div className={`px-[3px] system-xs-medium text-text-tertiary ${textCls}`}>{t('apiKey', { ns: 'appApi' })}</div>
+      </Button>
+      <SecretKeyModal isShow={isVisible} onClose={() => setVisible(false)} appId={appId} />
+    </>
+  )
+}
+
+export default SecretKeyButton

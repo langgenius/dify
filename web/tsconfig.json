@@ -14,6 +14,24 @@
       ],
       "@/app/components/workflow/*": [
         "../packages/studio-frontend/src/workflow/*"
+      ],
+      "@/app/components/app/*": [
+        "../packages/studio-frontend/src/app/components/*"
+      ],
+      "@/app/(commonLayout)/apps/*": [
+        "../packages/studio-frontend/src/apps/pages/*"
+      ],
+      "@/app/(commonLayout)/app/(appDetailLayout)/*": [
+        "../packages/studio-frontend/src/app/detail/*"
+      ],
+      "@/app/components/app-sidebar/*": [
+        "../packages/studio-frontend/src/app-sidebar/components/*"
+      ],
+      "@/app/components/workflow-app/*": [
+        "../packages/studio-frontend/src/workflow-app/components/*"
+      ],
+      "@/app/components/develop/*": [
+        "../packages/studio-frontend/src/develop/components/*"
       ]
     },
     "resolveJsonModule": true,

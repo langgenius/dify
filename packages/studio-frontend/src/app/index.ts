@@ -1,3 +1,2 @@
-// Studio app module - Phase 1 placeholder
-// Components to be migrated from web/app/components/app/
-export {}
+export * from './components'
+export * from './detail'

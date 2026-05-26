@@ -1,0 +1,48 @@
+'use client'
+import type { FC } from 'react'
+import type { AgentConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { RiSettings2Line } from '@remixicon/react'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AgentSetting from '@/app/components/app/configuration/config/agent/agent-setting/index'
+
+type Props = {
+  isFunctionCall: boolean
+  isChatModel: boolean
+  agentConfig?: AgentConfig
+  onAgentSettingChange: (payload: AgentConfig) => void
+}
+
+const AgentSettingButton: FC<Props> = ({
+  onAgentSettingChange,
+  isFunctionCall,
+  isChatModel,
+  agentConfig,
+}) => {
+  const { t } = useTranslation()
+  const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
+
+  return (
+    <>
+      <Button onClick={() => setIsShowAgentSetting(true)} className="mr-2 shrink-0">
+        <RiSettings2Line className="mr-1 size-4 text-text-tertiary" />
+        {t('agent.setting.name', { ns: 'appDebug' })}
+      </Button>
+      {isShowAgentSetting && (
+        <AgentSetting
+          isFunctionCall={isFunctionCall}
+          payload={agentConfig as AgentConfig}
+          isChatModel={isChatModel}
+          onSave={(payloadNew) => {
+            onAgentSettingChange(payloadNew)
+            setIsShowAgentSetting(false)
+          }}
+          onCancel={() => setIsShowAgentSetting(false)}
+        />
+      )}
+    </>
+  )
+}
+export default React.memo(AgentSettingButton)

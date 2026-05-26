@@ -1,0 +1,28 @@
+.gradientBorder {
+  background: radial-gradient(circle at 100% 100%, #fcfcfd 0, #fcfcfd 10px, transparent 10px) 0% 0%/12px 12px no-repeat,
+            radial-gradient(circle at 0 100%, #fcfcfd 0, #fcfcfd 10px, transparent 10px) 100% 0%/12px 12px no-repeat,
+            radial-gradient(circle at 100% 0, #fcfcfd 0, #fcfcfd 10px, transparent 10px) 0% 100%/12px 12px no-repeat,
+            radial-gradient(circle at 0 0, #fcfcfd 0, #fcfcfd 10px, transparent 10px) 100% 100%/12px 12px no-repeat,
+            linear-gradient(#fcfcfd, #fcfcfd) 50% 50%/calc(100% - 4px) calc(100% - 24px) no-repeat,
+            linear-gradient(#fcfcfd, #fcfcfd) 50% 50%/calc(100% - 24px) calc(100% - 4px) no-repeat,
+            radial-gradient(at 100% 100%, rgba(45,13,238,0.8) 0%, transparent 70%),
+            radial-gradient(at 100% 0%, rgba(45,13,238,0.8) 0%, transparent 70%),
+            radial-gradient(at 0% 0%, rgba(42,135,245,0.8) 0%, transparent 70%),
+            radial-gradient(at 0% 100%, rgba(42,135,245,0.8) 0%, transparent 70%);
+  border-radius: 12px;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.warningBorder {
+  border: 2px solid #F79009;
+  border-radius: 12px;
+}
+
+.optionWrap {
+  display: none;
+}
+
+.boxHeader:hover .optionWrap {
+  display: flex;
+}
