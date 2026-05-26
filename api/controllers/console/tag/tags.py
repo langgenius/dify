@@ -118,7 +118,7 @@ class TagListApi(Resource):
     @account_initialization_required
     @with_current_user
     def post(self, current_user: Account):
-        # The role of the current user in the ta table must be admin, owner, or editor
+        # Allow users with edit permission, or dataset editors (including dataset operators).
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
