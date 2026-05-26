@@ -2,11 +2,11 @@
 
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReleaseDeployment } from './release-deployments'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Pagination from '@/app/components/base/pagination'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -381,6 +381,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   }))
   const releaseRows = releaseHistoryQuery.data?.data?.filter(hasReleaseId) ?? []
   const totalReleases = releaseHistoryQuery.data?.pagination?.totalCount ?? releaseRows.length
+  const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
   const shouldLoadRuntimeInstances = releaseRows.length > 0
   const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input,
@@ -424,10 +425,9 @@ export function ReleaseHistoryTable({ appInstanceId }: {
       {totalReleases > RELEASE_HISTORY_PAGE_SIZE && (
         <Pagination
           className="border-y border-divider-subtle"
-          current={currentPage}
-          total={totalReleases}
-          limit={RELEASE_HISTORY_PAGE_SIZE}
-          onChange={setCurrentPage}
+          page={currentPage + 1}
+          totalPages={totalReleasePages}
+          onPageChange={page => setCurrentPage(page - 1)}
         />
       )}
     </div>

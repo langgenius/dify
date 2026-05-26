@@ -8,8 +8,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { toast } from '@langgenius/dify-ui/toast'
-import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -259,7 +259,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     <label id="release-source-mode-label" className="system-xs-medium-uppercase text-text-tertiary">
                       {t('versions.releaseSourceLabel')}
                     </label>
-                    <ToggleGroup<ReleaseSourceMode>
+                    <SegmentedControl<ReleaseSourceMode>
                       aria-labelledby="release-source-mode-label"
                       value={[releaseSourceMode]}
                       onValueChange={(value) => {
@@ -269,15 +269,15 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                       }}
                       className="shrink-0"
                     >
-                      <ToggleGroupItem value="sourceApp" className="gap-1.5">
+                      <SegmentedControlItem value="sourceApp" className="gap-1.5">
                         <span className="i-ri-apps-2-line size-4 shrink-0" aria-hidden="true" />
                         <span>{t('versions.sourceAppOption')}</span>
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="dsl" className="gap-1.5">
+                      </SegmentedControlItem>
+                      <SegmentedControlItem value="dsl" className="gap-1.5">
                         <span className="i-ri-upload-cloud-2-line size-4 shrink-0" aria-hidden="true" />
                         <span>{t('versions.manualDslOption')}</span>
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                      </SegmentedControlItem>
+                    </SegmentedControl>
                   </div>
 
                   <div className="min-h-12">

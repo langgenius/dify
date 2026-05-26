@@ -51,8 +51,8 @@ type AccessSubjectType = NonNullable<AccessSubject['subjectType']>
 const ACCESS_MODE_PUBLIC = 'ACCESS_MODE_PUBLIC' satisfies AccessMode
 const ACCESS_MODE_PRIVATE = 'ACCESS_MODE_PRIVATE' satisfies AccessMode
 const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessMode
-const ACCESS_SUBJECT_TYPE_ACCOUNT = 'ACCESS_SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
-const ACCESS_SUBJECT_TYPE_GROUP = 'ACCESS_SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
+const SUBJECT_TYPE_ACCOUNT = 'SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
+const SUBJECT_TYPE_GROUP = 'SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
 
 function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissionKind {
   if (mode === ACCESS_MODE_PRIVATE)
@@ -140,9 +140,9 @@ type SelectableAccessSubject = {
 }
 
 function subjectTypeFromSubject(subject: Subject): AccessSubjectType {
-  if (subject.subjectType === 'group' || subject.groupData)
-    return ACCESS_SUBJECT_TYPE_GROUP
-  return ACCESS_SUBJECT_TYPE_ACCOUNT
+  if (subject.subjectType === SUBJECT_TYPE_GROUP || subject.groupData)
+    return SUBJECT_TYPE_GROUP
+  return SUBJECT_TYPE_ACCOUNT
 }
 
 function normalizeSubject(subject: Subject): SelectableAccessSubject | undefined {
@@ -200,7 +200,7 @@ function selectedSubjectsFromPolicy(policy?: AccessPolicy) {
 function SubjectIcon({ subject }: {
   subject: SelectableAccessSubject
 }) {
-  const isGroup = subject.subjectType === ACCESS_SUBJECT_TYPE_GROUP
+  const isGroup = subject.subjectType === SUBJECT_TYPE_GROUP
 
   return (
     <span className={cn(isGroup ? 'i-ri-group-line' : 'i-ri-user-line', 'size-3.5 shrink-0 text-text-tertiary')} aria-hidden="true" />
@@ -281,7 +281,7 @@ function SubjectPicker({
                     >
                       <SubjectIcon subject={subject} />
                       <span className="max-w-32 truncate">{getSubjectLabel(subject)}</span>
-                      {subject.subjectType === ACCESS_SUBJECT_TYPE_GROUP && subject.memberCount != null && (
+                      {subject.subjectType === SUBJECT_TYPE_GROUP && subject.memberCount != null && (
                         <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
                       )}
                       <ComboboxChipRemove
@@ -327,7 +327,7 @@ function SubjectPicker({
                       <ComboboxItemText className="flex items-center gap-2 px-0">
                         <SubjectIcon subject={subject} />
                         <span className="min-w-0 flex-1 truncate">{getSubjectLabel(subject)}</span>
-                        {subject.subjectType === ACCESS_SUBJECT_TYPE_GROUP && subject.memberCount != null && (
+                        {subject.subjectType === SUBJECT_TYPE_GROUP && subject.memberCount != null && (
                           <span className="shrink-0 system-xs-regular text-text-tertiary">
                             {t('access.members.memberCount', { count: subject.memberCount })}
                           </span>
