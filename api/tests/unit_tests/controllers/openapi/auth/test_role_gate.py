@@ -17,9 +17,9 @@ locks in that ``g`` is *not* a valid identity source.
 from __future__ import annotations
 
 import uuid
+from contextlib import contextmanager
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -78,16 +78,20 @@ def _sso_ctx() -> AuthContext:
     )
 
 
-def _join(role: TenantAccountRole) -> SimpleNamespace:
-    return SimpleNamespace(role=role)
+@contextmanager
+def _stub_role(role: TenantAccountRole | None):
+    """Stub the service-layer membership lookup the gate delegates to.
 
-
-def _scalar(value: object) -> MagicMock:
-    """Build a MagicMock that mimics `db.session.execute(...).scalar_one_or_none()`."""
-
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = value
-    return result
+    The gate no longer issues SQL itself — it calls
+    ``TenantService.get_account_role_in_tenant`` and acts purely on the
+    returned role (``None`` → non-member). These tests pin that behaviour;
+    the query itself is covered in ``TestTenantService``.
+    """
+    with patch(
+        "controllers.openapi.auth.role_gate.TenantService.get_account_role_in_tenant",
+        return_value=role,
+    ) as mocked:
+        yield mocked
 
 
 # ---------------------------------------------------------------------------
@@ -105,8 +109,7 @@ def test_non_member_gets_404():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/switch"):
         _seed(_account_ctx())
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(None)
+        with _stub_role(None):
             with pytest.raises(NotFound):
                 view(workspace_id=workspace_id)
 
@@ -126,8 +129,7 @@ def test_normal_member_blocked_when_admin_required():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/members"):
         _seed(_account_ctx())
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(_join(TenantAccountRole.NORMAL))
+        with _stub_role(TenantAccountRole.NORMAL):
             with pytest.raises(Forbidden):
                 view(workspace_id=workspace_id)
 
@@ -142,8 +144,7 @@ def test_editor_blocked_when_admin_required():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/members"):
         _seed(_account_ctx())
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(_join(TenantAccountRole.EDITOR))
+        with _stub_role(TenantAccountRole.EDITOR):
             with pytest.raises(Forbidden):
                 view(workspace_id=workspace_id)
 
@@ -163,8 +164,7 @@ def test_admin_passes_when_admin_required():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/members"):
         _seed(_account_ctx())
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(_join(TenantAccountRole.ADMIN))
+        with _stub_role(TenantAccountRole.ADMIN):
             assert view(workspace_id=workspace_id) == "ok"
 
 
@@ -178,8 +178,7 @@ def test_owner_passes_when_admin_required():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/members"):
         _seed(_account_ctx())
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(_join(TenantAccountRole.OWNER))
+        with _stub_role(TenantAccountRole.OWNER):
             assert view(workspace_id=workspace_id) == "ok"
 
 
@@ -205,8 +204,7 @@ def test_membership_only_passes_for_any_role():
     ):
         with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/switch"):
             _seed(_account_ctx())
-            with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-                mock_db.session.execute.return_value = _scalar(_join(role))
+            with _stub_role(role):
                 assert view(workspace_id=workspace_id) == "ok"
 
 
@@ -220,22 +218,22 @@ def test_membership_only_still_404s_non_member():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/switch"):
         _seed(_account_ctx())
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(None)
+        with _stub_role(None):
             with pytest.raises(NotFound):
                 view(workspace_id=workspace_id)
 
 
 # ---------------------------------------------------------------------------
-# Query is scoped to the caller's account_id and the URL workspace_id
+# Lookup is scoped to the caller's account_id and the URL workspace_id
 # ---------------------------------------------------------------------------
 
 
-def test_query_is_scoped_to_caller_and_workspace():
-    """The decorator must look up `(workspace_id, caller's account_id)` —
-    otherwise a member of workspace A could quietly hit endpoints for
-    workspace B. Inspect the SQLAlchemy expressions we end up handing to
-    `db.session.execute` to make that guarantee load-bearing.
+def test_lookup_is_scoped_to_caller_and_workspace():
+    """The decorator must delegate the lookup keyed on
+    `(caller's account_id, URL workspace_id)` — otherwise a member of
+    workspace A could quietly hit endpoints for workspace B. Assert the
+    exact arguments handed to the service; the SQL those arguments compile
+    to is pinned in ``TestTenantService.test_get_account_role_in_tenant_*``.
     """
 
     app = Flask(__name__)
@@ -248,14 +246,12 @@ def test_query_is_scoped_to_caller_and_workspace():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/switch"):
         _seed(_account_ctx(account_id=account_id))
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(_join(TenantAccountRole.NORMAL))
+        with _stub_role(TenantAccountRole.NORMAL) as mocked:
             view(workspace_id=workspace_id)
 
-        stmt = mock_db.session.execute.call_args.args[0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        assert workspace_id in compiled
-        assert str(account_id) in compiled
+        _session, passed_account_id, passed_workspace_id = mocked.call_args.args
+        assert passed_account_id == str(account_id)
+        assert passed_workspace_id == workspace_id
 
 
 # ---------------------------------------------------------------------------
@@ -284,8 +280,8 @@ def test_seeding_only_flask_g_does_not_satisfy_gate():
     ``g.auth_ctx``, so every real request raised RuntimeError → 500 while the
     suite stayed green (it seeded ``g`` directly). Here we seed ONLY ``g`` and
     leave the ContextVar empty: the gate must still raise, proving it does not
-    accept ``g`` as an identity source. Reading ``g`` again would let the DB
-    lookup run (mocked to succeed) and this would fail.
+    accept ``g`` as an identity source. Reading ``g`` again would let the
+    membership lookup run (stubbed to succeed) and this would fail.
     """
     from flask import g
 
@@ -298,8 +294,7 @@ def test_seeding_only_flask_g_does_not_satisfy_gate():
 
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/switch"):
         g.auth_ctx = _account_ctx()  # the wrong slot — must be ignored
-        with patch("controllers.openapi.auth.role_gate.db") as mock_db:
-            mock_db.session.execute.return_value = _scalar(_join(TenantAccountRole.OWNER))
+        with _stub_role(TenantAccountRole.OWNER):
             with pytest.raises(RuntimeError):
                 view(workspace_id=workspace_id)
 

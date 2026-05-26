@@ -29,13 +29,12 @@ from collections.abc import Callable
 from functools import wraps
 from typing import TypeVar
 
-from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 from extensions.ext_database import db
 from libs.oauth_bearer import try_get_auth_ctx
-from models import TenantAccountJoin
 from models.account import TenantAccountRole
+from services.account_service import TenantService
 
 F = TypeVar("F", bound=Callable[..., object])
 
@@ -63,17 +62,14 @@ def require_workspace_role(*allowed_roles: TenantAccountRole) -> Callable[[F], F
             if not workspace_id:
                 raise RuntimeError("require_workspace_role expects a 'workspace_id' route parameter")
 
-            join = db.session.execute(
-                select(TenantAccountJoin).where(
-                    TenantAccountJoin.tenant_id == str(workspace_id),
-                    TenantAccountJoin.account_id == str(ctx.account_id),
-                )
-            ).scalar_one_or_none()
+            role = TenantService.get_account_role_in_tenant(
+                db.session, str(ctx.account_id), str(workspace_id)
+            )
 
-            if join is None:
+            if role is None:
                 raise NotFound("workspace not found")
 
-            if allowed and TenantAccountRole(join.role) not in allowed:
+            if allowed and role not in allowed:
                 raise Forbidden("insufficient workspace role")
 
             return fn(*args, **kwargs)
