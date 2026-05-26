@@ -15,8 +15,8 @@ changes.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 import inspect
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -49,6 +49,29 @@ class TestCurrentIds:
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
             mock_user.return_value = (SimpleNamespace(id="acct-1"), "tenant-1")
             assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
+
+
+class TestAccessMatrixAccountNames:
+    def test_hydrates_missing_account_names(self):
+        items = [
+            rbac_mod.svc.AccessMatrixItem(
+                accounts=[
+                    {"account_id": "acct-1", "account_name": "Alice"},
+                    {"account_id": "acct-2", "account_name": ""},
+                ]
+            )
+        ]
+
+        with patch(
+            "controllers.console.workspace.rbac._account_names_by_ids", return_value={"acct-2": "Bob"}
+        ) as mock_names:
+            rbac_mod._hydrate_access_matrix_account_names(items)
+
+        mock_names.assert_called_once_with(["acct-2"])
+        assert items[0].accounts == [
+            {"account_id": "acct-1", "account_name": "Alice"},
+            {"account_id": "acct-2", "account_name": "Bob"},
+        ]
 
 
 class TestPydanticModels:
@@ -109,9 +132,7 @@ class TestPydanticModels:
         assert parsed.reverse is True
 
     def test_pagination_query_accepts_legacy_inner_names(self):
-        parsed = rbac_mod._PaginationQuery.model_validate(
-            {"page_number": 4, "results_per_page": 30, "reverse": False}
-        )
+        parsed = rbac_mod._PaginationQuery.model_validate({"page_number": 4, "results_per_page": 30, "reverse": False})
         assert parsed.page_number == 4
         assert parsed.results_per_page == 30
         assert parsed.reverse is False
@@ -253,8 +274,7 @@ class TestPaginationMapping:
             ),
             _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.dataset_matrix")
-            as mock_list,
+            patch("controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.dataset_matrix") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
             inspect.unwrap(rbac_mod.RBACWorkspaceDatasetMatrixApi.get)(rbac_mod.RBACWorkspaceDatasetMatrixApi())
