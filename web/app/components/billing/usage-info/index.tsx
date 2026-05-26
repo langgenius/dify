@@ -144,13 +144,13 @@ const UsageInfo: FC<Props> = ({
           <div
             className={cn(
               'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
-              isSandboxPlan ? 'w-full' : 'w-[30px]',
+              isSandboxPlan ? 'w-full' : 'w-7.5',
             )}
           />
         </div>
       )
     : (
-        <MeterRoot value={effectivePercent} max={100}>
+        <MeterRoot value={effectivePercent} max={100} aria-label={name}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
@@ -162,7 +162,7 @@ const UsageInfo: FC<Props> = ({
       return (
         <Tooltip>
           <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-[200px] max-w-[200px]">
+          <TooltipContent className="w-50 max-w-50">
             {storageTooltip}
           </TooltipContent>
         </Tooltip>
