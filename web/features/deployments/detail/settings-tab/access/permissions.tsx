@@ -54,6 +54,8 @@ const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessMode
 const SUBJECT_TYPE_ACCOUNT = 'SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
 const SUBJECT_TYPE_GROUP = 'SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
 const ACCESS_SUBJECT_LABEL_PAGE_SIZE = 100
+const ACCESS_SUBJECT_SEARCH_PAGE_SIZE = 50
+const ACCESS_SUBJECT_SEARCH_DEBOUNCE = 300
 
 function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissionKind {
   if (mode === ACCESS_MODE_PRIVATE)
@@ -79,9 +81,10 @@ const permissionIcon: Record<AccessPermissionKind, string> = {
 
 const permissionOrder: AccessPermissionKind[] = ['organization', 'specific', 'anyone']
 
-function PermissionPicker({ value, disabled, onChange }: {
+function PermissionPicker({ value, disabled, loading, onChange }: {
   value: AccessPermissionKind
   disabled?: boolean
+  loading?: boolean
   onChange: (kind: AccessPermissionKind) => void
 }) {
   const { t } = useTranslation('deployments')
@@ -99,7 +102,7 @@ function PermissionPicker({ value, disabled, onChange }: {
       >
         <span className={cn(icon, 'size-4 shrink-0 text-text-tertiary')} />
         <span className="flex-1 truncate text-left">{label}</span>
-        <span className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary" />
+        <span className={cn(loading ? 'i-ri-loader-2-line animate-spin' : 'i-ri-arrow-down-s-line', 'size-4 shrink-0 text-text-tertiary motion-reduce:animate-none')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" popupClassName="w-85 p-1">
         {permissionOrder.map((kind) => {
@@ -212,47 +215,62 @@ function SubjectIcon({ subject }: {
   )
 }
 
-type SubjectPickerProps = {
+type AccessSubjectComboboxProps = {
   disabled?: boolean
+  loading?: boolean
   selectedSubjects: SelectableAccessSubject[]
   onChange: (subjects: SelectableAccessSubject[]) => void
 }
 
-function SubjectPicker({
+function AccessSubjectCombobox({
   disabled,
+  loading,
   selectedSubjects,
   onChange,
-}: SubjectPickerProps) {
+}: AccessSubjectComboboxProps) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
-  const debouncedKeyword = useDebounce(keyword, { wait: 300 })
+  const debouncedKeyword = useDebounce(keyword, { wait: ACCESS_SUBJECT_SEARCH_DEBOUNCE })
+  const searchKeyword = debouncedKeyword.trim()
+  const isInteractionDisabled = Boolean(disabled || loading)
   const subjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
     input: {
       query: {
-        keyword: debouncedKeyword.trim() || undefined,
+        keyword: searchKeyword || undefined,
         pageNumber: 1,
-        resultsPerPage: 50,
+        resultsPerPage: ACCESS_SUBJECT_SEARCH_PAGE_SIZE,
       },
     },
-    enabled: open,
+    enabled: open && !isInteractionDisabled,
   }))
   const subjects = subjectsQuery.data?.subjects
     ?.map(normalizeSubject)
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
+  const selectedItems = selectedSubjects.filter(selectedSubject =>
+    !subjects.some(subject => isSameSubject(subject, selectedSubject)),
+  )
+  const items = [...selectedItems, ...subjects]
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && isInteractionDisabled)
+      return
     if (!nextOpen)
       setKeyword('')
     setOpen(nextOpen)
   }
 
   const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
+    if (!isInteractionDisabled && details.reason !== 'item-press')
       setKeyword(inputValue)
   }
 
   const handleValueChange = (nextSubjects: SelectableAccessSubject[]) => {
+    if (isInteractionDisabled)
+      return
+    if (nextSubjects.length === 0)
+      return
+
     setKeyword('')
     onChange(nextSubjects)
   }
@@ -263,7 +281,7 @@ function SubjectPicker({
       open={open}
       value={selectedSubjects}
       inputValue={keyword}
-      items={subjects}
+      items={items}
       disabled={disabled}
       itemToStringLabel={getSubjectLabel}
       itemToStringValue={getSubjectValue}
@@ -289,7 +307,7 @@ function SubjectPicker({
                       <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
                     )}
                     <ComboboxChipRemove
-                      disabled={disabled || selectedSubjects.length <= 1}
+                      disabled={isInteractionDisabled || selectedSubjects.length <= 1}
                       aria-label={t('operation.remove', { ns: 'common' })}
                     >
                       <span className="i-ri-close-circle-fill size-3.5" aria-hidden="true" />
@@ -297,6 +315,9 @@ function SubjectPicker({
                   </ComboboxChip>
                 ))}
                 <ComboboxInput
+                  name="access-subjects"
+                  disabled={disabled}
+                  readOnly={isInteractionDisabled}
                   aria-label={t('access.members.pickPlaceholder')}
                   placeholder={selectedValue.length ? '' : t('access.members.pickPlaceholder')}
                   className={cn('px-1 py-0.5 system-sm-medium', selectedValue.length ? 'min-w-16' : 'min-w-0')}
@@ -305,9 +326,24 @@ function SubjectPicker({
             )}
           </ComboboxValue>
         </ComboboxChips>
-        <ComboboxInputTrigger className="mt-0.5" />
+        <ComboboxInputTrigger className="mt-0.5" disabled={isInteractionDisabled}>
+          {loading
+            ? (
+                <span
+                  className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              )
+            : undefined}
+        </ComboboxInputTrigger>
       </ComboboxInputGroup>
-      <ComboboxContent popupClassName="w-(--anchor-width) min-w-90 p-0">
+      <ComboboxContent
+        popupClassName="max-w-none p-0 aria-disabled:pointer-events-none"
+        popupProps={{
+          'aria-busy': subjectsQuery.isFetching || undefined,
+          'aria-disabled': isInteractionDisabled || undefined,
+        }}
+      >
         {subjectsQuery.isLoading
           ? (
               <ComboboxStatus className="flex flex-col gap-2 px-3 py-3">
@@ -320,8 +356,13 @@ function SubjectPicker({
             )
           : (
               <>
+                {subjectsQuery.isFetching && (
+                  <ComboboxStatus className="border-b border-divider-subtle px-3 py-2 system-xs-regular">
+                    {t('common.loading')}
+                  </ComboboxStatus>
+                )}
                 <ComboboxList className="p-1">
-                  {subjects.map(subject => (
+                  {items.map(subject => (
                     <ComboboxItem
                       key={subjectKey(subject)}
                       value={subject}
@@ -406,7 +447,7 @@ export function EnvironmentPermissionRow({
   const hasDraft = draft.fingerprint === policyFingerprint
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
   const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy, subjectLabelCandidates) : []
-  const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
+  const subjects = hasDraft && draft.subjects ? draft.subjects : accessSubjectsQuery.isLoading ? [] : policySelectedSubjects
   const isSaving = setEnvironmentAccessPolicy.isPending
   const controlsDisabled = isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError
 
@@ -480,6 +521,7 @@ export function EnvironmentPermissionRow({
         <PermissionPicker
           value={permissionKind}
           disabled={controlsDisabled}
+          loading={isSaving}
           onChange={handlePermissionChange}
         />
       </DetailTableCell>
@@ -490,12 +532,13 @@ export function EnvironmentPermissionRow({
         {permissionKind === 'specific'
           ? (
               <>
-                <SubjectPicker
+                <AccessSubjectCombobox
                   selectedSubjects={subjects}
-                  disabled={controlsDisabled}
+                  disabled={accessPolicyQuery.isLoading || accessPolicyQuery.isError || accessSubjectsQuery.isLoading}
+                  loading={isSaving}
                   onChange={handleSubjectsChange}
                 />
-                {subjects.length === 0 && (
+                {!accessSubjectsQuery.isLoading && subjects.length === 0 && (
                   <span className="mt-1.5 block system-xs-regular text-text-tertiary">
                     {t('access.members.emptySelection')}
                   </span>
