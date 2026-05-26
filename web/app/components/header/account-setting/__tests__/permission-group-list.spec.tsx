@@ -37,6 +37,10 @@ const permissionGroups = [
   }),
 ]
 
+const getPermissionRow = (permissionName: string) => screen.getByText(permissionName).closest('div')!
+
+const getPermissionCheckbox = (permissionName: string) => within(getPermissionRow(permissionName)).getByRole('checkbox')
+
 describe('PermissionGroupList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -44,17 +48,17 @@ describe('PermissionGroupList', () => {
 
   // Rendering keeps the permission catalog visible as grouped collapsible rows.
   describe('Rendering', () => {
-    it('should render the list with a fixed scroll height', () => {
+    it('should render the list as a flexible scroll region', () => {
       const { container } = render(
         <PermissionGroupList
           groups={permissionGroups}
           value={[]}
           onChange={vi.fn()}
-          height={280}
         />,
       )
 
-      expect(container.querySelector('div[style*="height: 280px"]')).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveClass('min-h-0', 'flex-1')
+      expect(container.querySelector('.h-full.overflow-hidden')).toBeInTheDocument()
     })
 
     it('should render an empty state when there are no permission groups', () => {
@@ -73,8 +77,8 @@ describe('PermissionGroupList', () => {
       )
 
       expect(screen.getByRole('button', { name: /API access/ })).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('checkbox', { name: 'View API' })).toHaveAttribute('aria-checked', 'true')
-      expect(screen.queryByRole('checkbox', { name: 'Import DSL' })).not.toBeInTheDocument()
+      expect(getPermissionCheckbox('View API')).toHaveAttribute('aria-checked', 'true')
+      expect(screen.queryByText('Import DSL')).not.toBeInTheDocument()
     })
   })
 
@@ -91,7 +95,7 @@ describe('PermissionGroupList', () => {
       await user.click(apiGroupButton)
 
       expect(apiGroupButton).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('checkbox', { name: 'View API' })).toBeInTheDocument()
+      expect(getPermissionCheckbox('View API')).toBeInTheDocument()
     })
 
     it('should toggle a group when clicking its arrow control', async () => {
@@ -128,7 +132,7 @@ describe('PermissionGroupList', () => {
       expect(handleChange).toHaveBeenCalledWith(['app.dsl.export', 'app.dsl.import'])
     })
 
-    it('should remove a permission once when clicking its checkbox directly', async () => {
+    it('should remove a selected permission when clicking its item row', async () => {
       const user = userEvent.setup()
       const handleChange = vi.fn()
 
@@ -140,8 +144,7 @@ describe('PermissionGroupList', () => {
         />,
       )
 
-      const exportDslCheckbox = screen.getByRole('checkbox', { name: 'Export DSL' })
-      await user.click(exportDslCheckbox)
+      await user.click(screen.getByText('Export DSL'))
 
       expect(handleChange).toHaveBeenCalledTimes(1)
       expect(handleChange).toHaveBeenCalledWith([])
@@ -225,7 +228,7 @@ describe('PermissionGroupList', () => {
       )
 
       await user.click(screen.getByText('Import DSL'))
-      await user.click(screen.getByRole('checkbox', { name: 'Export DSL' }))
+      await user.click(getPermissionCheckbox('Export DSL'))
 
       expect(handleChange).not.toHaveBeenCalled()
     })
@@ -246,7 +249,7 @@ describe('PermissionGroupList', () => {
       await user.click(apiGroupButton)
 
       expect(apiGroupButton).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('checkbox', { name: 'View API' })).toBeInTheDocument()
+      expect(getPermissionCheckbox('View API')).toBeInTheDocument()
     })
   })
 })
