@@ -17,8 +17,11 @@ from controllers.console.wraps import (
     only_edition_enterprise,
     only_edition_self_hosted,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
-from models.account import AccountStatus
+from models import Account
+from models.account import AccountStatus, TenantAccountRole
 from services.feature_service import LicenseStatus
 
 
@@ -31,6 +34,17 @@ class MockUser(UserMixin):
 
     def get_id(self) -> str:
         return self.id
+
+
+def make_account(account_id: str = "account-1") -> Account:
+    account = Account(
+        name="Test Account",
+        email=f"{account_id}@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = account_id
+    account.role = TenantAccountRole.OWNER
+    return account
 
 
 def create_app_with_login():
@@ -82,6 +96,42 @@ class TestAccountInitialization:
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")):
             with pytest.raises(AccountNotInitializedError):
                 protected_view()
+
+
+class TestCurrentContextInjection:
+    """Test request context injection decorators."""
+
+    def test_with_current_tenant_id_injects_tenant_id(self):
+        class Handler:
+            @with_current_tenant_id
+            def get(self, current_tenant_id: str):
+                return current_tenant_id
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(MagicMock(), "tenant-123")):
+            assert Handler().get() == "tenant-123"
+
+    def test_with_current_user_injects_account(self):
+        current_user = make_account()
+
+        class Handler:
+            @with_current_user
+            def get(self, injected_user):
+                return injected_user
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
+            assert Handler().get() is current_user
+
+    def test_stacked_current_context_injectors_preserve_argument_order(self):
+        current_user = make_account()
+
+        class Handler:
+            @with_current_user
+            @with_current_tenant_id
+            def get(self, current_tenant_id: str, injected_user):
+                return current_tenant_id, injected_user
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
+            assert Handler().get() == ("tenant-123", current_user)
 
 
 class TestEditionChecks:
