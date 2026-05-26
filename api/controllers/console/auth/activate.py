@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from constants.languages import supported_language
 from controllers.common.schema import register_schema_models
-from controllers.console import console_ns
+from controllers.console.namespace import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now

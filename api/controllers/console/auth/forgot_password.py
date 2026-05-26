@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_models
-from controllers.console import console_ns
+from controllers.console.namespace import console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
     EmailPasswordResetLimitError,

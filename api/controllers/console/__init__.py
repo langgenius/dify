@@ -1,7 +1,6 @@
 from importlib import import_module
 
 from flask import Blueprint
-from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
@@ -14,7 +13,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 
-console_ns = Namespace("console", description="Console management API operations", path="/")
+from .namespace import console_ns  # noqa: E402 — must follow api definition
 
 _SHARED_RESOURCE_MODULES = (
     "controllers.console.explore.audio",

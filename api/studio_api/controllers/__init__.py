@@ -1,4 +1,4 @@
-from controllers.console import console_ns
+from controllers.console.namespace import console_ns
 
 from studio_api.blueprint import studio_api, studio_bp, studio_ns
 

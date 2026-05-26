@@ -6,7 +6,7 @@ from configs import dify_config
 from constants.languages import get_valid_language, languages
 from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console import console_ns
+from controllers.console.namespace import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailCodeError,
