@@ -14,8 +14,6 @@ from controllers.openapi.auth.prepare import (
     resolve_external_user,
 )
 
-# --- load_app ---
-
 
 def test_load_app_writes_app_to_builder():
     app = MagicMock()
@@ -53,8 +51,6 @@ def test_load_app_raises_forbidden_when_api_disabled():
             load_app(builder)
 
 
-# --- load_tenant ---
-
 def test_load_tenant_writes_tenant():
     app = MagicMock()
     app.tenant_id = uuid.uuid4()
@@ -87,8 +83,6 @@ def test_load_tenant_raises_forbidden_when_missing():
             load_tenant(builder)
 
 
-# --- load_account ---
-
 def test_load_account_writes_caller():
     account = MagicMock()
     account_id = uuid.uuid4()
@@ -115,8 +109,6 @@ def test_load_account_raises_unauthorized_when_not_found():
             load_account(builder)
 
 
-# --- resolve_external_user ---
-
 def test_resolve_external_user_writes_caller():
     tenant = MagicMock()
     app = MagicMock()
@@ -134,8 +126,6 @@ def test_resolve_external_user_raises_unauthorized_when_context_missing():
     with pytest.raises(Unauthorized):
         resolve_external_user(builder)
 
-
-# --- load_app_access_mode ---
 
 def test_load_app_access_mode_writes_mode():
     from services.enterprise.enterprise_service import WebAppAccessMode
@@ -169,8 +159,6 @@ def test_load_app_access_mode_no_op_when_app_missing():
     load_app_access_mode(builder)
     assert "app_access_mode" not in builder
 
-
-# --- build_external_identity ---
 
 def test_build_external_identity_constructs_from_builder_keys():
     from controllers.openapi.auth.data import ExternalIdentity

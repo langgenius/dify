@@ -35,10 +35,6 @@ from libs.oauth_bearer import (
 )
 from services.feature_service import FeatureService, LicenseStatus
 
-# ---------------------------------------------------------------------------
-# New design: AuthPipeline / PipelineRoute / PipelineRouter
-# ---------------------------------------------------------------------------
-
 
 class AuthPipeline:
     """Pure step-runner — no routing, no guard.
@@ -143,11 +139,10 @@ class PipelineRouter:
         allowed_token_types: frozenset[TokenType] | None,
         edition: frozenset[Edition] | None,
     ) -> Any:
-        # Gate 1: endpoint-level edition (404 — feature doesn't exist here)
+        # 404 not 403 — this edition doesn't expose the feature at all
         if edition is not None and current_edition() not in edition:
             raise NotFound()
 
-        # Gate 2: EE license for endpoint-level edition requirement
         if edition is not None and Edition.EE in edition:
             _check_license()
 
@@ -157,7 +152,6 @@ class PipelineRouter:
 
         identity = get_authenticator().authenticate(token)
 
-        # Gate 3: endpoint-level token type allowlist (403)
         if allowed_token_types is not None and identity.token_type not in allowed_token_types:
             emit_wrong_surface(
                 subject_type=_subject_type_str(identity),
@@ -171,7 +165,6 @@ class PipelineRouter:
         if route is None:
             raise Forbidden("unsupported_token_type")
 
-        # Gate 4: route-level edition invariant (token type requires EE)
         if route.required_edition is not None:
             if current_edition() not in route.required_edition:
                 raise Forbidden("external_sso_requires_ee")
@@ -179,11 +172,6 @@ class PipelineRouter:
                 _check_license()
 
         return route.pipeline._run(identity, args, kwargs, view, scope=scope)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _should_run(step: Any, req_ctx: RequestContext, data: AuthData | None) -> bool:

@@ -13,8 +13,6 @@ from controllers.openapi.auth.data import (
 )
 from libs.oauth_bearer import Scope, TokenType
 
-# --- Edition / current_edition ---
-
 
 def test_current_edition_saas():
     with patch("controllers.openapi.auth.data.dify_config") as cfg:
@@ -37,8 +35,6 @@ def test_current_edition_ce():
         assert current_edition() == Edition.CE
 
 
-# --- ExternalIdentity ---
-
 def test_external_identity_frozen():
     ei = ExternalIdentity(email="a@b.com", issuer="idp")
     with pytest.raises(ValidationError):
@@ -49,8 +45,6 @@ def test_external_identity_issuer_optional():
     ei = ExternalIdentity(email="a@b.com")
     assert ei.issuer is None
 
-
-# --- RequestContext ---
 
 def test_request_context_frozen():
     ctx = RequestContext(
@@ -65,8 +59,6 @@ def test_request_context_scope_optional():
     ctx = RequestContext(token_type=TokenType.OAUTH_ACCOUNT, path_params={})
     assert ctx.scope is None
 
-
-# --- AuthData ---
 
 def test_auth_data_frozen():
     data = AuthData(

@@ -32,8 +32,6 @@ def _data(**kwargs):
     return AuthData(**defaults)
 
 
-# --- Cond operators ---
-
 def test_and_both_true():
     a = Cond(lambda ctx, _: True)
     b = Cond(lambda ctx, _: True)
@@ -69,8 +67,6 @@ def test_chain_and_or():
     assert ((always_true | always_false) & always_true)(_ctx()) is True
 
 
-# --- Helper constructors ---
-
 def test_request_cond_ignores_data():
     c = request_cond(lambda ctx: ctx.token_type == TokenType.OAUTH_ACCOUNT)
     assert c(_ctx(TokenType.OAUTH_ACCOUNT)) is True
@@ -94,8 +90,6 @@ def test_config_cond_ignores_ctx_and_data():
     c2 = config_cond(lambda: False)
     assert c2(_ctx(), _data()) is False
 
-
-# --- Pre-built conditions ---
 
 def test_token_is_oauth_account():
     assert TOKEN_IS_OAUTH_ACCOUNT(_ctx(TokenType.OAUTH_ACCOUNT)) is True

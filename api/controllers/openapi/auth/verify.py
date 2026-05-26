@@ -17,10 +17,6 @@ def check_scope(data: AuthData) -> None:
     raise Forbidden("insufficient_scope")
 
 
-# reject_external_sso removed — PipelineRouter._execute raises Forbidden("external_sso_requires_ee")
-# directly when route.required_edition is not satisfied. Not a pipeline step.
-
-
 def check_membership(data: AuthData) -> None:
     if data.tenant is None:
         raise Unauthorized("tenant unset")

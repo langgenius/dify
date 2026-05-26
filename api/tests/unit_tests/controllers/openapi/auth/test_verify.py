@@ -24,8 +24,6 @@ def _data(**kwargs) -> AuthData:
     return AuthData(**defaults)
 
 
-# --- check_scope ---
-
 def test_check_scope_passes_when_required_is_none():
     check_scope(_data(required_scope=None))
 
@@ -42,12 +40,6 @@ def test_check_scope_raises_forbidden_when_scope_missing():
     with pytest.raises(Forbidden, match="insufficient_scope"):
         check_scope(_data(required_scope=Scope.APPS_RUN, scopes=frozenset({Scope.APPS_READ})))
 
-
-# reject_external_sso is no longer a pipeline step — PipelineRouter._execute raises
-# Forbidden("external_sso_requires_ee") directly when route.required_edition is not satisfied.
-# Test coverage for this is in test_pipeline.py (test_router_rejects_token_type_on_wrong_edition).
-
-# --- check_membership ---
 
 def test_check_membership_raises_unauthorized_when_tenant_none():
     with pytest.raises(Unauthorized):
@@ -73,8 +65,6 @@ def test_check_membership_calls_check_workspace_membership():
     )
 
 
-# --- check_app_access ---
-
 def test_check_app_access_passes_when_tenant_none():
     check_app_access(_data(tenant=None))
 
@@ -95,8 +85,6 @@ def test_check_app_access_raises_when_not_member():
         with pytest.raises(Forbidden, match="subject_no_app_access"):
             check_app_access(data)
 
-
-# --- check_acl ---
 
 def test_check_acl_raises_when_app_or_mode_missing():
     with pytest.raises(Forbidden):
@@ -129,8 +117,6 @@ def test_check_acl_external_sso_allowed_for_sso_verified():
     )
     check_acl(data)
 
-
-# --- check_private_app_permission ---
 
 def test_check_private_app_permission_raises_when_app_none():
     with pytest.raises(Forbidden):

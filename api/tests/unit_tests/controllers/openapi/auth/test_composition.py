@@ -29,12 +29,10 @@ def test_external_sso_pipeline_prepare_has_five_entries():
 
 
 def test_external_sso_auth_list_has_three_entries():
-    # check_scope (unconditional) + 2 When entries
     assert len(external_sso_pipeline._auth) == 3
 
 
 def test_account_pipeline_has_unconditional_load_account():
-    # load_account is the only bare (non-When) entry in account prepare
     non_when = [s for s in account_pipeline._prepare if not isinstance(s, When)]
     assert len(non_when) == 1
 
@@ -49,7 +47,6 @@ def test_external_sso_pipeline_remaining_prepare_entries_are_when():
 
 
 def test_first_auth_entry_is_check_scope_in_both_pipelines():
-    # check_scope is unconditional (not a When) and comes first in auth
     assert not isinstance(account_pipeline._auth[0], When)
     assert not isinstance(external_sso_pipeline._auth[0], When)
 

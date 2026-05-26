@@ -31,7 +31,7 @@ account_pipeline = AuthPipeline(
     prepare=[
         When(PATH_HAS_APP_ID, then=load_app),
         When(PATH_HAS_APP_ID, then=load_tenant),
-        load_account,  # unconditional — this IS the account pipeline
+        load_account,  # all tokens here are account tokens
         When(PATH_HAS_APP_ID & EDITION_EE, then=load_app_access_mode),
     ],
     auth=[

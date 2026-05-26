@@ -103,7 +103,6 @@ def test_guard_token_type_gate_returns_403(app):
 
 
 def test_guard_unregistered_token_type_returns_403(app):
-    # Router has only OAUTH_ACCOUNT; present OAUTH_EXTERNAL_SSO without allowed_token_types gate
     router = _make_router(token_type=TokenType.OAUTH_ACCOUNT)
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
