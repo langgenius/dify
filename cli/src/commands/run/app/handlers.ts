@@ -1,4 +1,4 @@
-import type { ColorScheme } from '../../../io/color.js'
+import type { ColorScheme } from '../../../sys/io/color.js'
 import type { TextHandler } from '../../../printers/format-text.js'
 
 export const RUN_MODES = {

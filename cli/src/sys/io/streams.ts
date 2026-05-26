@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { PassThrough, Readable, Writable } from 'node:stream'
+import { io } from '..'
 
 export type IOStreams = {
   out: NodeJS.WritableStream
@@ -16,12 +17,8 @@ export function nullStreams(): IOStreams {
 
 export function realStreams(outputFormat = ''): IOStreams {
   return {
-    out: process.stdout,
-    err: process.stderr,
-    in: process.stdin,
-    isOutTTY: Boolean(process.stdout.isTTY),
-    isErrTTY: Boolean(process.stderr.isTTY),
     outputFormat,
+    ...io()
   }
 }
 

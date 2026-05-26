@@ -1,5 +1,5 @@
 import { Flags } from '../../../framework/flags.js'
-import { realStreams } from '../../../io/streams.js'
+import { realStreams } from '../../../sys/io/streams'
 import { resolveConfigDir } from '../../../store/dir.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runLogin } from './login.js'

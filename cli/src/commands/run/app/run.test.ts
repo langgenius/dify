@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { loadAppInfoCache } from '../../../cache/app-info.js'
 import { createClient } from '../../../http/client.js'
-import { bufferStreams } from '../../../io/streams.js'
+import { bufferStreams } from '../../../sys/io/streams'
 import { resumeApp } from '../../resume/app/run.js'
 import { runApp } from './run.js'
 

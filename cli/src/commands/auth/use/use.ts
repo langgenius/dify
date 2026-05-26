@@ -1,9 +1,9 @@
 import type { HostsBundle, Workspace } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../io/streams.js'
+import type { IOStreams } from '../../../sys/io/streams'
 import { saveHosts } from '../../../auth/hosts.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../io/color.js'
+import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 
 export type UseOptions = {
   readonly configDir: string

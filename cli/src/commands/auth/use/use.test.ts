@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadHosts, saveHosts } from '../../../auth/hosts.js'
-import { bufferStreams } from '../../../io/streams.js'
+import { bufferStreams } from '../../../sys/io/streams'
 import { runUse } from './use.js'
 
 function accountBundle(): HostsBundle {

@@ -2,6 +2,7 @@ import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
 import { renderHitlHint, renderHitlOutput } from '../hitl-render.js'
 import { decodeStreamError, HitlPauseError } from '../sse-collector.js'
+import { handle } from '../../../../sys/index.js'
 
 export class StreamingTextStrategy implements RunStrategy {
   async execute(ctx: RunContext): Promise<void> {
@@ -22,7 +23,8 @@ export class StreamingTextStrategy implements RunStrategy {
       ctrl.abort()
       exit(1)
     }
-    process.once('SIGINT', cleanup)
+
+    handle('SIGINT', cleanup)
 
     try {
       const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal })
@@ -58,9 +60,6 @@ export class StreamingTextStrategy implements RunStrategy {
     catch (err) {
       ctrl.abort()
       throw err
-    }
-    finally {
-      process.off('SIGINT', cleanup)
     }
   }
 }
