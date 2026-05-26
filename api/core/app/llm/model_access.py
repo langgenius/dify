@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import logging
+import time
 from typing import Any
 
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
+from core.entities.model_entities import ModelWithProviderEntity
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -13,12 +16,20 @@ from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
 
+logger = logging.getLogger(__name__)
+_SLOW_FETCH_MODEL_CONFIG_LOG_SECONDS = 0.2
+_SLOW_MODEL_ACCESS_INTERNAL_LOG_SECONDS = 0.05
+
 
 class DifyCredentialsProvider:
     """Resolves and returns LLM credentials for a given provider and model.
 
     Fetched credentials are stored in :attr:`credentials_cache` and reused for
     subsequent ``fetch`` calls for the same ``(provider_name, model_name)``.
+    The matching validated provider model is cached alongside the credentials so
+    follow-up workflow startup checks can reuse the earlier provider lookup
+    instead of resolving the same model metadata a second time.
+
     Because of that cache, a single instance can return stale credentials after
     the tenant or provider configuration changes (e.g. API key rotation).
 
@@ -30,6 +41,7 @@ class DifyCredentialsProvider:
     tenant_id: str
     provider_manager: ProviderManager
     credentials_cache: dict[tuple[str, str], dict[str, Any]]
+    provider_model_cache: dict[tuple[str, str], ModelWithProviderEntity]
 
     def __init__(
         self,
@@ -45,26 +57,60 @@ class DifyCredentialsProvider:
             )
         self.provider_manager = provider_manager
         self.credentials_cache = {}
+        self.provider_model_cache = {}
+
+    def get_cached_provider_model(self, provider_name: str, model_name: str) -> ModelWithProviderEntity | None:
+        provider_model = self.provider_model_cache.get((provider_name, model_name))
+        if provider_model is None:
+            return None
+
+        return provider_model.model_copy(deep=True)
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
         if (provider_name, model_name) in self.credentials_cache:
             return deepcopy(self.credentials_cache[(provider_name, model_name)])
 
+        fetch_started_at = time.perf_counter()
+        provider_configurations_started_at = fetch_started_at
         provider_configurations = self.provider_manager.get_configurations(self.tenant_id)
+        provider_configurations_elapsed = time.perf_counter() - provider_configurations_started_at
+
+        provider_lookup_started_at = time.perf_counter()
         provider_configuration = provider_configurations.get(provider_name)
+        provider_lookup_elapsed = time.perf_counter() - provider_lookup_started_at
         if not provider_configuration:
             raise ValueError(f"Provider {provider_name} does not exist.")
 
+        provider_model_started_at = time.perf_counter()
         provider_model = provider_configuration.get_provider_model(model_type=ModelType.LLM, model=model_name)
+        provider_model_elapsed = time.perf_counter() - provider_model_started_at
         if provider_model is None:
             raise ModelNotExistError(f"Model {model_name} not exist.")
         provider_model.raise_for_status()
 
+        current_credentials_started_at = time.perf_counter()
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model_name)
+        current_credentials_elapsed = time.perf_counter() - current_credentials_started_at
         if credentials is None:
             raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
 
+        total_elapsed = time.perf_counter() - fetch_started_at
+        if total_elapsed >= _SLOW_MODEL_ACCESS_INTERNAL_LOG_SECONDS:
+            logger.info(
+                "Slow credentials fetch during workflow startup, tenant_id=%s provider=%s model=%s "
+                "configurations=%.3fs provider_lookup=%.3fs provider_model=%.3fs current_credentials=%.3fs total=%.3fs",
+                self.tenant_id,
+                provider_name,
+                model_name,
+                provider_configurations_elapsed,
+                provider_lookup_elapsed,
+                provider_model_elapsed,
+                current_credentials_elapsed,
+                total_elapsed,
+            )
+
         self.credentials_cache[(provider_name, model_name)] = deepcopy(credentials)
+        self.provider_model_cache[(provider_name, model_name)] = provider_model.model_copy(deep=True)
         return credentials
 
 
@@ -90,12 +136,23 @@ class DifyModelFactory:
         self.model_manager = model_manager
 
     def init_model_instance(self, provider_name: str, model_name: str) -> ModelInstance:
-        return self.model_manager.get_model_instance(
+        started_at = time.perf_counter()
+        model_instance = self.model_manager.get_model_instance(
             tenant_id=self.tenant_id,
             provider=provider_name,
             model_type=ModelType.LLM,
             model=model_name,
         )
+        elapsed = time.perf_counter() - started_at
+        if elapsed >= _SLOW_MODEL_ACCESS_INTERNAL_LOG_SECONDS:
+            logger.info(
+                "Slow model instance init during workflow startup, tenant_id=%s provider=%s model=%s elapsed=%.3fs",
+                self.tenant_id,
+                provider_name,
+                model_name,
+                elapsed,
+            )
+        return model_instance
 
 
 def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsProvider, DifyModelFactory]:
@@ -138,21 +195,50 @@ def fetch_model_config(
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
 
+    fetch_started_at = time.perf_counter()
+    credentials_started_at = fetch_started_at
     credentials = credentials_provider.fetch(node_data_model.provider, node_data_model.name)
+    credentials_elapsed = time.perf_counter() - credentials_started_at
+
+    model_instance_started_at = time.perf_counter()
     model_instance = model_factory.init_model_instance(node_data_model.provider, node_data_model.name)
+    model_instance_elapsed = time.perf_counter() - model_instance_started_at
     provider_model_bundle = model_instance.provider_model_bundle
 
-    provider_model = provider_model_bundle.configuration.get_provider_model(
-        model=node_data_model.name,
-        model_type=ModelType.LLM,
-    )
-    if provider_model is None:
-        raise ModelNotExistError(f"Model {node_data_model.name} does not exist.")
-    provider_model.raise_for_status()
+    provider_model = None
+    if isinstance(credentials_provider, DifyCredentialsProvider):
+        provider_model = credentials_provider.get_cached_provider_model(
+            provider_name=node_data_model.provider,
+            model_name=node_data_model.name,
+        )
 
+    if provider_model is None:
+        provider_model = provider_model_bundle.configuration.get_provider_model(
+            model=node_data_model.name,
+            model_type=ModelType.LLM,
+        )
+        if provider_model is None:
+            raise ModelNotExistError(f"Model {node_data_model.name} does not exist.")
+        provider_model.raise_for_status()
+
+    schema_started_at = time.perf_counter()
     model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
+    schema_elapsed = time.perf_counter() - schema_started_at
     if model_schema is None:
         raise ModelNotExistError(f"Model {node_data_model.name} schema does not exist.")
+
+    total_elapsed = time.perf_counter() - fetch_started_at
+    if total_elapsed >= _SLOW_FETCH_MODEL_CONFIG_LOG_SECONDS:
+        logger.info(
+            "Slow fetch_model_config during workflow startup, provider=%s model=%s "
+            "credentials=%.3fs model_instance=%.3fs schema=%.3fs total=%.3fs",
+            node_data_model.provider,
+            node_data_model.name,
+            credentials_elapsed,
+            model_instance_elapsed,
+            schema_elapsed,
+            total_elapsed,
+        )
 
     parameters, stop = _normalize_completion_params(node_data_model.completion_params)
     model_instance.provider = node_data_model.provider

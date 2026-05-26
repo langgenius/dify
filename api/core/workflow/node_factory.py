@@ -1,5 +1,7 @@
 import importlib
+import logging
 import pkgutil
+import time
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -67,6 +69,8 @@ if TYPE_CHECKING:
     from graphon.runtime import GraphRuntimeState
 
 LATEST_VERSION = "latest"
+logger = logging.getLogger(__name__)
+_SLOW_NODE_CREATION_LOG_SECONDS = 0.2
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
     (BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES)
 )
@@ -373,86 +377,100 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
+        create_started_at = time.perf_counter()
         adapted_node_config = adapt_node_config_for_graph(node_config)
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
-        # Graph configs are initially validated against permissive shared node data.
-        # Re-validate using the resolved node class so workflow-local node schemas
-        # stay explicit and constructors receive the concrete typed payload.
-        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
-        node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
-            BuiltinNodeTypes.CODE: lambda: {
-                "code_executor": self._code_executor,
-                "code_limits": self._code_limits,
-            },
-            BuiltinNodeTypes.TEMPLATE_TRANSFORM: lambda: {
-                "jinja2_template_renderer": self._jinja2_template_renderer,
-                "max_output_length": self._template_transform_max_output_length,
-            },
-            BuiltinNodeTypes.HTTP_REQUEST: lambda: {
-                "http_request_config": self._http_request_config,
-                "http_client": self._http_request_http_client,
-                "tool_file_manager_factory": self._bound_tool_file_manager_factory,
-                "file_manager": self._http_request_file_manager,
-                "file_reference_factory": self._file_reference_factory,
-            },
-            BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "runtime": self._human_input_runtime,
-                "file_reference_factory": self._file_reference_factory,
-                "form_repository": self._human_input_runtime.build_form_repository(),
-            },
-            BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
-                node_class=node_class,
-                node_data=resolved_node_data,
-                wrap_model_instance=True,
-                include_http_client=True,
-                include_llm_file_saver=True,
-                include_prompt_message_serializer=True,
-                include_retriever_attachment_loader=True,
-                include_jinja2_template_renderer=True,
-            ),
-            BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
-                "unstructured_api_config": self._document_extractor_unstructured_api_config,
-                "http_client": self._http_request_http_client,
-            },
-            BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
-                node_class=node_class,
-                node_data=resolved_node_data,
-                wrap_model_instance=True,
-                include_http_client=True,
-                include_llm_file_saver=True,
-                include_prompt_message_serializer=True,
-                include_retriever_attachment_loader=False,
-                include_jinja2_template_renderer=False,
-            ),
-            BuiltinNodeTypes.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
-                node_class=node_class,
-                node_data=resolved_node_data,
-                wrap_model_instance=True,
-                include_http_client=False,
-                include_llm_file_saver=False,
-                include_prompt_message_serializer=True,
-                include_retriever_attachment_loader=False,
-                include_jinja2_template_renderer=False,
-            ),
-            BuiltinNodeTypes.TOOL: lambda: {
-                "tool_file_manager": self._bound_tool_file_manager_factory(),
-                "runtime": self._tool_runtime,
-            },
-            BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
-        }
-        node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
-        constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
-        return node_class(
-            node_id=node_id,
-            data=constructor_node_data,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
-            **node_init_kwargs,
-        )
+
+        try:
+            node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
+            # Graph configs are initially validated against permissive shared node data.
+            # Re-validate using the resolved node class so workflow-local node schemas
+            # stay explicit and constructors receive the concrete typed payload.
+            resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+            node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
+                BuiltinNodeTypes.CODE: lambda: {
+                    "code_executor": self._code_executor,
+                    "code_limits": self._code_limits,
+                },
+                BuiltinNodeTypes.TEMPLATE_TRANSFORM: lambda: {
+                    "jinja2_template_renderer": self._jinja2_template_renderer,
+                    "max_output_length": self._template_transform_max_output_length,
+                },
+                BuiltinNodeTypes.HTTP_REQUEST: lambda: {
+                    "http_request_config": self._http_request_config,
+                    "http_client": self._http_request_http_client,
+                    "tool_file_manager_factory": self._bound_tool_file_manager_factory,
+                    "file_manager": self._http_request_file_manager,
+                    "file_reference_factory": self._file_reference_factory,
+                },
+                BuiltinNodeTypes.HUMAN_INPUT: lambda: {
+                    "runtime": self._human_input_runtime,
+                    "file_reference_factory": self._file_reference_factory,
+                    "form_repository": self._human_input_runtime.build_form_repository(),
+                },
+                BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
+                    node_class=node_class,
+                    node_data=resolved_node_data,
+                    wrap_model_instance=True,
+                    include_http_client=True,
+                    include_llm_file_saver=True,
+                    include_prompt_message_serializer=True,
+                    include_retriever_attachment_loader=True,
+                    include_jinja2_template_renderer=True,
+                ),
+                BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
+                    "unstructured_api_config": self._document_extractor_unstructured_api_config,
+                    "http_client": self._http_request_http_client,
+                },
+                BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
+                    node_class=node_class,
+                    node_data=resolved_node_data,
+                    wrap_model_instance=True,
+                    include_http_client=True,
+                    include_llm_file_saver=True,
+                    include_prompt_message_serializer=True,
+                    include_retriever_attachment_loader=False,
+                    include_jinja2_template_renderer=False,
+                ),
+                BuiltinNodeTypes.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
+                    node_class=node_class,
+                    node_data=resolved_node_data,
+                    wrap_model_instance=True,
+                    include_http_client=False,
+                    include_llm_file_saver=False,
+                    include_prompt_message_serializer=True,
+                    include_retriever_attachment_loader=False,
+                    include_jinja2_template_renderer=False,
+                ),
+                BuiltinNodeTypes.TOOL: lambda: {
+                    "tool_file_manager": self._bound_tool_file_manager_factory(),
+                    "runtime": self._tool_runtime,
+                },
+                BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            }
+            node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
+            constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
+            return node_class(
+                node_id=node_id,
+                data=constructor_node_data,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                **node_init_kwargs,
+            )
+        finally:
+            create_elapsed = time.perf_counter() - create_started_at
+            if create_elapsed >= _SLOW_NODE_CREATION_LOG_SECONDS:
+                logger.info(
+                    "Slow workflow node creation before workflow_started, "
+                    "workflow_id=%s node_id=%s node_type=%s elapsed=%.3fs",
+                    self.graph_init_params.workflow_id,
+                    node_id,
+                    node_type,
+                    create_elapsed,
+                )
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:

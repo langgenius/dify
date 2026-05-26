@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import logging
+import time
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
@@ -59,6 +61,8 @@ if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+logger = logging.getLogger(__name__)
+_SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS = 0.05
 
 
 class ProviderManager:
@@ -134,17 +138,29 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
+        started_at = time.perf_counter()
         cached_configurations = self._configurations_cache.get(tenant_id)
         if cached_configurations is not None:
+            elapsed = time.perf_counter() - started_at
+            if elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
+                logger.info(
+                    "Slow provider configuration cache hit during workflow startup, tenant_id=%s elapsed=%.3fs",
+                    tenant_id,
+                    elapsed,
+                )
             return cached_configurations
-
+ 
         # Get all provider records of the workspace
+        provider_records_started_at = time.perf_counter()
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
-
+        provider_records_elapsed = time.perf_counter() - provider_records_started_at
+ 
         # Initialize trial provider records if not exist
+        init_trial_started_at = time.perf_counter()
         provider_name_to_provider_records_dict = self._init_trial_provider_records(
             tenant_id, provider_name_to_provider_records_dict
         )
+        init_trial_elapsed = time.perf_counter() - init_trial_started_at
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -156,7 +172,9 @@ class ProviderManager:
                 ]
 
         # Get all provider model records of the workspace
+        provider_models_started_at = time.perf_counter()
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
+        provider_models_elapsed = time.perf_counter() - provider_models_started_at
         for provider_name in list(provider_name_to_provider_model_records_dict.keys()):
             provider_id = ModelProviderID(provider_name)
             if str(provider_id) not in provider_name_to_provider_model_records_dict:
@@ -165,11 +183,15 @@ class ProviderManager:
                 )
 
         # Get all provider entities
+        provider_entities_started_at = time.perf_counter()
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_entities = model_provider_factory.get_providers()
+        provider_entities_elapsed = time.perf_counter() - provider_entities_started_at
 
         # Get All preferred provider types of the workspace
+        preferred_provider_started_at = time.perf_counter()
         provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
+        preferred_provider_elapsed = time.perf_counter() - preferred_provider_started_at
         # Ensure that both the original provider name and its ModelProviderID string representation
         # are present in the dictionary to handle cases where either form might be used
         for provider_name in list(provider_name_to_preferred_model_provider_records_dict.keys()):
@@ -181,19 +203,26 @@ class ProviderManager:
                 )
 
         # Get All provider model settings
+        model_settings_started_at = time.perf_counter()
         provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(tenant_id)
+        model_settings_elapsed = time.perf_counter() - model_settings_started_at
 
         # Get All load balancing configs
+        load_balancing_started_at = time.perf_counter()
         provider_name_to_provider_load_balancing_model_configs_dict = self._get_all_provider_load_balancing_configs(
             tenant_id
         )
+        load_balancing_elapsed = time.perf_counter() - load_balancing_started_at
 
         # Get All provider model credentials
+        model_credentials_started_at = time.perf_counter()
         provider_name_to_provider_model_credentials_dict = self._get_all_provider_model_credentials(tenant_id)
+        model_credentials_elapsed = time.perf_counter() - model_credentials_started_at
 
         provider_configurations = ProviderConfigurations(tenant_id=tenant_id)
 
         # Construct ProviderConfiguration objects for each provider
+        construct_started_at = time.perf_counter()
         for provider_entity in provider_entities:
             # handle include, exclude
             if is_filtered(
@@ -296,8 +325,29 @@ class ProviderManager:
             provider_configuration.bind_model_runtime(self._model_runtime)
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
+        construct_elapsed = time.perf_counter() - construct_started_at
 
         self._configurations_cache[tenant_id] = provider_configurations
+
+        total_elapsed = time.perf_counter() - started_at
+        if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
+            logger.info(
+                "Slow provider configuration assembly during workflow startup, tenant_id=%s "
+                "providers=%.3fs init_trial=%.3fs provider_models=%.3fs provider_entities=%.3fs "
+                "preferred_provider=%.3fs model_settings=%.3fs load_balancing=%.3fs "
+                "model_credentials=%.3fs construct=%.3fs total=%.3fs",
+                tenant_id,
+                provider_records_elapsed,
+                init_trial_elapsed,
+                provider_models_elapsed,
+                provider_entities_elapsed,
+                preferred_provider_elapsed,
+                model_settings_elapsed,
+                load_balancing_elapsed,
+                model_credentials_elapsed,
+                construct_elapsed,
+                total_elapsed,
+            )
 
         # Return the encapsulated object
         return provider_configurations
@@ -310,14 +360,35 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
+        started_at = time.perf_counter()
+        provider_configurations_started_at = started_at
         provider_configurations = self.get_configurations(tenant_id)
+        provider_configurations_elapsed = time.perf_counter() - provider_configurations_started_at
 
         # get provider instance
+        provider_lookup_started_at = time.perf_counter()
         provider_configuration = provider_configurations.get(provider)
+        provider_lookup_elapsed = time.perf_counter() - provider_lookup_started_at
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
+        model_type_instance_started_at = time.perf_counter()
         model_type_instance = provider_configuration.get_model_type_instance(model_type)
+        model_type_instance_elapsed = time.perf_counter() - model_type_instance_started_at
+
+        total_elapsed = time.perf_counter() - started_at
+        if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
+            logger.info(
+                "Slow provider model bundle resolution during workflow startup, tenant_id=%s provider=%s "
+                "model_type=%s configurations=%.3fs provider_lookup=%.3fs model_type_instance=%.3fs total=%.3fs",
+                tenant_id,
+                provider,
+                model_type.value,
+                provider_configurations_elapsed,
+                provider_lookup_elapsed,
+                model_type_instance_elapsed,
+                total_elapsed,
+            )
 
         return ProviderModelBundle(
             configuration=provider_configuration,

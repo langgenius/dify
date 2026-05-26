@@ -86,6 +86,8 @@ from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
+_SLOW_WORKFLOW_GRAPH_INIT_LOG_SECONDS = 0.2
+_SLOW_WORKFLOW_STARTED_EVENT_LOG_SECONDS = 0.2
 
 
 class WorkflowBasedAppRunner:
@@ -108,6 +110,15 @@ class WorkflowBasedAppRunner:
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
+    @staticmethod
+    def _elapsed_from_runtime_start(start_at: float) -> float:
+        # GraphRuntimeState.start_at is seeded with either epoch seconds or a
+        # monotonic perf-counter value depending on the caller path.
+        current_time = time.time()
+        if start_at > current_time - 60 * 60 * 24:
+            return current_time - start_at
+        return time.perf_counter() - start_at
+
     def _init_graph(
         self,
         graph_config: Mapping[str, Any],
@@ -122,6 +133,7 @@ class WorkflowBasedAppRunner:
         """
         Init graph
         """
+        init_started_at = time.perf_counter()
         if "nodes" not in graph_config or "edges" not in graph_config:
             raise ValueError("nodes or edges not found in workflow graph")
 
@@ -161,6 +173,17 @@ class WorkflowBasedAppRunner:
 
         if not graph:
             raise ValueError("graph not found in workflow")
+
+        init_elapsed = time.perf_counter() - init_started_at
+        if init_elapsed >= _SLOW_WORKFLOW_GRAPH_INIT_LOG_SECONDS:
+            logger.info(
+                "Slow workflow graph init before workflow_started, "
+                "workflow_id=%s app_id=%s root_node_id=%s elapsed=%.3fs",
+                workflow_id,
+                self._app_id,
+                root_node_id,
+                init_elapsed,
+            )
 
         return graph
 
@@ -401,6 +424,18 @@ class WorkflowBasedAppRunner:
         """
         match event:
             case GraphRunStartedEvent():
+                elapsed_to_started = self._elapsed_from_runtime_start(
+                    workflow_entry.graph_engine.graph_runtime_state.start_at
+                )
+                if elapsed_to_started >= _SLOW_WORKFLOW_STARTED_EVENT_LOG_SECONDS:
+                    workflow_id = getattr(getattr(self, "_workflow", None), "id", "")
+                    logger.info(
+                        "Slow workflow_started event emission, workflow_id=%s app_id=%s reason=%s elapsed=%.3fs",
+                        workflow_id,
+                        self._app_id,
+                        event.reason,
+                        elapsed_to_started,
+                    )
                 self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
             case GraphRunSucceededEvent():
                 self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
