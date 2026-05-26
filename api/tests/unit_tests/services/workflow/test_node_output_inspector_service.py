@@ -153,13 +153,29 @@ def test_snapshot_404_when_workflow_run_missing():
     assert exc.value.code == "workflow_run_not_found"
 
 
-def test_snapshot_404_for_published_run_per_decision_d1():
+def test_snapshot_accepts_published_run_d1_lifted():
+    """D-1 was lifted 2026-05-26: any ``triggered_from`` is now accepted."""
     service = _make_service()
-    run = _workflow_run(triggered_from=WorkflowRunTriggeredFrom.APP_RUN)
-    with _patch_session(workflow_run=run):
-        with pytest.raises(NodeOutputInspectorError) as exc:
-            service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
-    assert exc.value.code == "published_run_inspector_not_implemented"
+    run = _workflow_run(
+        nodes=[_agent_v2_node(node_id="agent-1")],
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+    )
+    with _patch_session(workflow_run=run, executions=[]):
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
+    assert snapshot.workflow_run_id == "run-1"
+    assert [n.node_id for n in snapshot.node_outputs] == ["agent-1"]
+
+
+def test_snapshot_accepts_webhook_triggered_run():
+    """Webhook / schedule / plugin triggers are also published-side."""
+    service = _make_service()
+    run = _workflow_run(
+        nodes=[_agent_v2_node(node_id="agent-1")],
+        triggered_from=WorkflowRunTriggeredFrom.WEBHOOK,
+    )
+    with _patch_session(workflow_run=run, executions=[]):
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
+    assert snapshot.workflow_run_id == "run-1"
 
 
 def test_node_detail_404_when_node_id_absent_from_graph():

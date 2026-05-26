@@ -2,22 +2,32 @@
 
 PRD §Node Output Inspector replaces the consumer-organized Variable Inspector
 with a producer-organized view of each node's declared outputs and their
-per-run status. This module exposes three read-only endpoints; the SSE stream
-described in design §8.5 is deferred to a follow-up PR so the snapshot APIs
-unblock the frontend earlier.
+per-run status. This module exposes two parallel sets of three read-only
+endpoints — one for ``/workflows/draft/runs/...`` (Composer test runs) and one
+for ``/workflows/published/runs/...`` (real App API / webapp / webhook /
+schedule / plugin triggers). Both sets share the same service code, the same
+response shapes, and the same error codes; the URL is the *only* difference,
+so the frontend can pick the right prefix based on which run-detail page the
+user is on.
 
-All three endpoints are scoped to *draft* workflow runs (decision D-1) — the
-service layer 404s anything else.
+Decision D-1 (published Inspector deferred) was lifted 2026-05-26 — the
+``published_run_inspector_not_implemented`` 404 code is therefore no longer
+produced.
 
 URLs follow the design doc and reuse the existing
 ``/apps/<uuid:app_id>/workflows/draft/...`` prefix from
-:mod:`controllers.console.app.workflow_draft_variable`.
+:mod:`controllers.console.app.workflow_draft_variable`. The
+``published`` prefix mirrors it shape-for-shape.
 """
 
 from __future__ import annotations
 
+import json
+import logging
+from collections.abc import Iterator
 from uuid import UUID
 
+from flask import Response
 from flask_restx import Resource
 
 from controllers.console import console_ns
@@ -26,10 +36,23 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from libs.exception import BaseHTTPException
 from libs.login import login_required
 from models import App, AppMode
+from services.workflow import inspector_events
 from services.workflow.node_output_inspector_service import (
     NodeOutputInspectorError,
     NodeOutputInspectorService,
 )
+
+logger = logging.getLogger(__name__)
+
+
+# Heartbeat cadence — every N empty subscribe ticks emit a SSE comment so
+# intervening proxies (nginx, ingress) don't reap the idle connection.
+# ``inspector_events.subscribe`` ticks at 1s, so 15 → 15s heartbeat.
+_HEARTBEAT_EVERY_TICKS = 15
+# Hard ceiling on a single stream — if we never see a terminal workflow
+# event (engine crashed, redis dropped the message), force-close after this
+# many ticks (= seconds).
+_STREAM_HARD_TIMEOUT_TICKS = 1800  # 30 min
 
 
 def _service() -> NodeOutputInspectorService:
@@ -59,7 +82,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @console_ns.doc("get_workflow_draft_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(404, "Workflow run not found or not a draft run")
+    @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -137,3 +160,256 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
         except NodeOutputInspectorError as error:
             raise _InspectorNotFound(error) from error
         return preview.model_dump(mode="json")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SSE event stream — shared generator used by draft + published variants
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _sse_envelope(event: str, data: dict | str, event_id: int) -> str:
+    """Format one SSE record per D-5 ``{event, data, id}`` envelope.
+
+    ``data`` is JSON-serialized when given as a dict; raw strings are
+    forwarded unchanged so we can also emit ``:keepalive`` comment lines.
+    """
+    payload = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
+    return f"event: {event}\nid: {event_id}\ndata: {payload}\n\n"
+
+
+def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
+    """Yield SSE-framed strings for one workflow run.
+
+    The stream begins with a full ``snapshot`` event so the client has a
+    starting state without needing a separate REST GET. Then for every
+    ``node_changed`` message from the pub/sub channel we re-read that node
+    from DB and push a fresh ``node_changed`` event. When the workflow run
+    reaches a terminal state we push one final ``workflow_run_completed``
+    event and close the stream.
+
+    Failures inside the loop are caught and surfaced as ``error`` events so
+    the frontend can show a banner rather than seeing the connection drop
+    silently. The Inspector never raises across the SSE boundary.
+    """
+    service = _service()
+    run_id_str = str(run_id)
+
+    # Initial snapshot — also flushes a 404 back at the client right away
+    # if the run is gone (raised before yielding any bytes, so Flask turns it
+    # into the normal HTTP 404 path).
+    try:
+        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str)
+    except NodeOutputInspectorError as error:
+        raise _InspectorNotFound(error) from error
+
+    event_id = 0
+    yield _sse_envelope("snapshot", snapshot.model_dump(mode="json"), event_id)
+
+    # If the run already finished by the time the client connected, emit
+    # the terminal envelope synchronously and close — no point subscribing.
+    if snapshot.workflow_run_status.value in {"succeeded", "failed", "stopped", "partial_succeeded"}:
+        event_id += 1
+        yield _sse_envelope(
+            "workflow_run_completed",
+            {"workflow_run_id": run_id_str, "workflow_run_status": snapshot.workflow_run_status.value},
+            event_id,
+        )
+        return
+
+    # Live subscription
+    ticks_since_heartbeat = 0
+    total_ticks = 0
+    for message in inspector_events.subscribe(run_id_str, timeout_seconds=1.0):
+        total_ticks += 1
+        if total_ticks > _STREAM_HARD_TIMEOUT_TICKS:
+            logger.warning(
+                "Inspector SSE: forcing close after %ds without terminal event for run %s",
+                _STREAM_HARD_TIMEOUT_TICKS,
+                run_id_str,
+            )
+            return
+
+        # Heartbeat sentinel (no real message arrived this tick).
+        if message.node_id is None and message.status is None:
+            ticks_since_heartbeat += 1
+            if ticks_since_heartbeat >= _HEARTBEAT_EVERY_TICKS:
+                yield ":keepalive\n\n"
+                ticks_since_heartbeat = 0
+            continue
+        ticks_since_heartbeat = 0
+
+        if message.kind == "workflow_completed":
+            event_id += 1
+            yield _sse_envelope(
+                "workflow_run_completed",
+                {"workflow_run_id": run_id_str, "workflow_run_status": message.status or "unknown"},
+                event_id,
+            )
+            return
+
+        # node_changed: recompute the node slice from DB
+        if not message.node_id:
+            continue
+        try:
+            node_view = service.node_detail(
+                app_model=app_model,
+                workflow_run_id=run_id_str,
+                node_id=message.node_id,
+            )
+        except NodeOutputInspectorError:
+            # Node may not appear in the graph yet (race with persistence); skip.
+            continue
+        except Exception:
+            logger.warning(
+                "Inspector SSE: node_detail failed for run %s node %s",
+                run_id_str,
+                message.node_id,
+                exc_info=True,
+            )
+            event_id += 1
+            yield _sse_envelope(
+                "error",
+                {"node_id": message.node_id, "message": "failed to refresh node detail"},
+                event_id,
+            )
+            continue
+
+        event_id += 1
+        yield _sse_envelope("node_changed", node_view.model_dump(mode="json"), event_id)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs/events")
+class WorkflowDraftRunNodeOutputEventsApi(Resource):
+    """SSE stream of inspector deltas for a draft run."""
+
+    @console_ns.doc("stream_workflow_draft_run_node_output_events")
+    @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(404, "Workflow run not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, run_id: UUID):
+        return Response(
+            _stream_inspector_events(app_model, run_id),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Published-run endpoints — symmetric to the draft trio above
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs")
+class WorkflowPublishedRunNodeOutputsApi(Resource):
+    """Whole-run snapshot for a *published* workflow run.
+
+    Same response shape as the ``/draft/`` variant — frontend can multiplex
+    based on which page (Composer test-run vs. Run History) is mounted.
+    """
+
+    @console_ns.doc("get_workflow_published_run_node_outputs")
+    @console_ns.doc(description="Snapshot of every node's declared outputs for a published workflow run.")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(404, "Workflow run not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, run_id: UUID):
+        try:
+            snapshot = _service().snapshot_workflow_run(
+                app_model=app_model,
+                workflow_run_id=str(run_id),
+            )
+        except NodeOutputInspectorError as error:
+            raise _InspectorNotFound(error) from error
+        return snapshot.model_dump(mode="json")
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs/<string:node_id>")
+class WorkflowPublishedRunNodeOutputDetailApi(Resource):
+    """One node's declared outputs + per-output status (published run)."""
+
+    @console_ns.doc("get_workflow_published_run_node_output_detail")
+    @console_ns.doc(description="One node's declared outputs for a published workflow run.")
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "run_id": "Workflow run ID",
+            "node_id": "Node ID inside the workflow graph",
+        }
+    )
+    @console_ns.response(404, "Workflow run / node not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, run_id: UUID, node_id: str):
+        try:
+            view = _service().node_detail(
+                app_model=app_model,
+                workflow_run_id=str(run_id),
+                node_id=node_id,
+            )
+        except NodeOutputInspectorError as error:
+            raise _InspectorNotFound(error) from error
+        return view.model_dump(mode="json")
+
+
+@console_ns.route(
+    "/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>"
+    "/node-outputs/<string:node_id>/<string:output_name>/preview"
+)
+class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
+    """Full value for one declared output of a published run."""
+
+    @console_ns.doc("get_workflow_published_run_node_output_preview")
+    @console_ns.doc(description="Full value for one declared output of a published run.")
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "run_id": "Workflow run ID",
+            "node_id": "Node ID inside the workflow graph",
+            "output_name": "Declared output name as exposed by Composer",
+        }
+    )
+    @console_ns.response(404, "Workflow run / node / output not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
+        try:
+            preview = _service().output_preview(
+                app_model=app_model,
+                workflow_run_id=str(run_id),
+                node_id=node_id,
+                output_name=output_name,
+            )
+        except NodeOutputInspectorError as error:
+            raise _InspectorNotFound(error) from error
+        return preview.model_dump(mode="json")
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/published/runs/<uuid:run_id>/node-outputs/events")
+class WorkflowPublishedRunNodeOutputEventsApi(Resource):
+    """SSE stream of inspector deltas for a published run."""
+
+    @console_ns.doc("stream_workflow_published_run_node_output_events")
+    @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(404, "Workflow run not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, run_id: UUID):
+        return Response(
+            _stream_inspector_events(app_model, run_id),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )

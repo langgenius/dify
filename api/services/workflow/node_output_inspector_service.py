@@ -19,8 +19,11 @@ Design constraints baked into this version:
    if the draft was edited mid-run). Execution facts come from
    ``WorkflowNodeExecutionModel`` rows already produced by the workflow
    runtime.
-2. **Draft runs only** (decision D-1). Published-run Inspector is deferred to
-   stage 4.1; we 404 anything else here.
+2. **Draft + published runs** (decision D-1 lifted 2026-05-26). The Inspector
+   accepts ``WorkflowRunTriggeredFrom.DEBUGGING`` (draft test runs) as well as
+   ``APP_RUN`` / ``WEBHOOK`` / ``SCHEDULE`` / ``PLUGIN`` / ``RAG_PIPELINE_*``
+   triggers; the underlying graph + executions are uniform across all of them.
+   Cross-tenant / cross-app rows still 404 via the standard tenant/app scope.
 3. **Declared outputs by node kind**:
    * Agent v2 nodes resolve their declared list via
      :class:`WorkflowAgentBindingResolver` (the binding owns the canonical
@@ -31,10 +34,10 @@ Design constraints baked into this version:
 4. **Per-output status** is derived from the metadata the agent_v2 stack
    already records (``output_type_check`` and ``output_check`` blobs); falling
    back to the node's overall status when those signals aren't present.
-5. **SSE stream is intentionally out of scope for v1** — covered in a follow-up
-   PR. The Inspector design doc (§8.5) calls out the
-   ``{event, data, id}`` envelope shared with babysit chat; that lives in the
-   next change.
+5. **SSE stream** (design §8.5) lives in
+   :mod:`controllers.console.app.workflow_node_output_inspector` alongside the
+   REST endpoints. The Inspector and the babysit chat SSE share the
+   ``{event, data, id}`` envelope per decision D-5.
 """
 
 from __future__ import annotations
@@ -66,7 +69,6 @@ from graphon.enums import (
 from graphon.file import helpers as file_helpers
 from models import App
 from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
-from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 
 logger = logging.getLogger(__name__)
@@ -348,13 +350,16 @@ def _full_value(value: Any) -> Any:
 
 
 class NodeOutputInspectorService:
-    """Read-only Inspector for *draft* workflow runs (decision D-1).
+    """Read-only Inspector for draft + published workflow runs.
 
     The service is dependency-light: it holds a single
     :class:`WorkflowAgentBindingResolver` so agent v2 nodes can map to their
     declared outputs without re-implementing binding lookup. All other I/O
     uses the global session factory so workflow runs / executions stay on the
     repo-default code path.
+
+    Tenancy is enforced via ``app_model.tenant_id`` + ``app_model.id`` on
+    every load — the same scope guard regardless of trigger source.
     """
 
     def __init__(self, binding_resolver: WorkflowAgentBindingResolver | None = None) -> None:
@@ -458,8 +463,11 @@ class NodeOutputInspectorService:
 
         Enforces:
           * row exists,
-          * row belongs to the app's tenant,
-          * row's ``triggered_from`` is ``DEBUGGING`` (decision D-1).
+          * row belongs to the app's tenant + app.
+
+        The trigger source (DEBUGGING vs. APP_RUN / WEBHOOK / SCHEDULE / ...) is
+        deliberately not checked here — D-1 was lifted 2026-05-26 and the
+        Inspector now serves both draft and published runs.
         """
         with session_factory.create_session() as session:
             workflow_run = session.scalar(
@@ -471,12 +479,6 @@ class NodeOutputInspectorService:
             )
             if workflow_run is None:
                 raise NodeOutputInspectorError("workflow_run_not_found", "Workflow run not found.")
-            if workflow_run.triggered_from != WorkflowRunTriggeredFrom.DEBUGGING:
-                # Decision D-1: published runs are out of scope for stage 4.
-                raise NodeOutputInspectorError(
-                    "published_run_inspector_not_implemented",
-                    "Inspector currently supports draft (debugging) workflow runs only.",
-                )
 
             executions = session.scalars(
                 select(WorkflowNodeExecutionModel).where(
