@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
@@ -47,11 +48,15 @@ vi.mock('@/hooks/use-document-title', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar', () => ({
-  default: () => <aside aria-label="dataset navigation" />,
+  default: ({ extraInfo }: { extraInfo?: (mode: 'expand' | 'collapse') => ReactNode }) => (
+    <aside aria-label="dataset navigation">
+      {extraInfo?.('expand')}
+    </aside>
+  ),
 }))
 
 vi.mock('@/app/components/datasets/extra-info', () => ({
-  default: () => <div />,
+  default: () => <div>Dataset extra info</div>,
 }))
 
 const mockUsePathname = vi.mocked(usePathname)
@@ -146,6 +151,7 @@ describe('DatasetDetailLayout', () => {
 
       // Assert
       expect(screen.getByText('Pipeline content')).toBeInTheDocument()
+      expect(screen.getByText('Dataset extra info')).toBeInTheDocument()
       expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: true })
       expect(mockReplace).not.toHaveBeenCalled()
     })
@@ -173,6 +179,30 @@ describe('DatasetDetailLayout', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-1/documents')
       })
+    })
+
+    it('should hide extra info when the user does not have dataset edit permission', () => {
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/settings')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          permission_keys: [DatasetACLPermission.Readonly],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Dataset settings content</div>
+        </DatasetDetailLayout>,
+      )
+
+      expect(screen.getByText('Dataset settings content')).toBeInTheDocument()
+      expect(screen.queryByText('Dataset extra info')).not.toBeInTheDocument()
     })
   })
 })

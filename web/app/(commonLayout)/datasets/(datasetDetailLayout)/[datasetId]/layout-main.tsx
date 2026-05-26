@@ -20,7 +20,6 @@ import { useStore } from '@/app/components/app/store'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { useAppContext } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -65,8 +64,6 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (v?.type === 'workflow-canvas-maximize')
       setHideHeader(v.payload)
   })
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
@@ -220,7 +217,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           <AppSideBar
             navigation={navigation}
             extraInfo={
-              !isCurrentWorkspaceDatasetOperator
+              datasetACLCapabilities.canEdit
                 ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }
