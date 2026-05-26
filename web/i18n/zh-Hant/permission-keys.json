@@ -39,8 +39,6 @@
   "page.tool.access": "訪問 Tool 頁面",
   "plugin.install": "安裝與更新插件",
   "plugin.manage": "管理插件",
-  "plugin.preference.manage": "管理插件偏好",
-  "plugin.uninstall": "卸載插件",
   "tool.manage": "管理工具",
   "workspace.member.manage": "管理成員",
   "workspace.member.view": "查看成員列表",

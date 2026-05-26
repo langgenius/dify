@@ -39,8 +39,6 @@
   "page.tool.access": "Tool ページにアクセス",
   "plugin.install": "プラグインのインストールと更新",
   "plugin.manage": "プラグインを管理",
-  "plugin.preference.manage": "プラグイン設定を管理",
-  "plugin.uninstall": "プラグインをアンインストール",
   "tool.manage": "ツールを管理",
   "workspace.member.manage": "メンバーを管理",
   "workspace.member.view": "メンバー一覧を表示",

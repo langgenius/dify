@@ -39,8 +39,6 @@
   "page.tool.access": "Access Tool page",
   "plugin.install": "Install and update plugins",
   "plugin.manage": "Manage plugins",
-  "plugin.preference.manage": "Manage plugin preferences",
-  "plugin.uninstall": "Uninstall plugins",
   "tool.manage": "Manage tools",
   "workspace.member.manage": "Manage members",
   "workspace.member.view": "View members",

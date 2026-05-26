@@ -25,7 +25,7 @@ const createAppContext = (overrides: Partial<ReturnType<typeof useAppContext>> =
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
   langGeniusVersionInfo: { current_version: '1.0.0' },
-  workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.preference.manage'],
+  workspacePermissionKeys: ['plugin.install', 'plugin.manage'],
   ...overrides,
 }) as ReturnType<typeof useAppContext>
 
@@ -177,6 +177,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canUpdate).toBe(true)
       expect(result.current.canViewInstalledPlugins).toBe(true)
       expect(result.current.canManagePlugin).toBe(true)
+      expect(result.current.canUninstall).toBe(true)
     })
 
     it('should allow install and update but not manage with plugin.install only', () => {
@@ -192,14 +193,14 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagePlugin).toBe(false)
     })
 
-    it('should allow uninstall with plugin.uninstall only', () => {
+    it('should not allow uninstall with legacy plugin.uninstall only', () => {
       vi.mocked(useAppContext).mockReturnValue(createAppContext({
         workspacePermissionKeys: ['plugin.uninstall'],
       }))
 
       const { result } = renderHook(() => useReferenceSetting())
 
-      expect(result.current.canUninstall).toBe(true)
+      expect(result.current.canUninstall).toBe(false)
       expect(result.current.canInstall).toBe(false)
       expect(result.current.canUpdate).toBe(false)
     })
@@ -216,19 +217,19 @@ describe('useReferenceSetting Hook', () => {
   })
 
   describe('canSetPreferences', () => {
-    it('should be true when user has plugin.preference.manage', () => {
+    it('should not allow preference settings with legacy plugin.preference.manage only', () => {
       vi.mocked(useAppContext).mockReturnValue(createAppContext({
         workspacePermissionKeys: ['plugin.preference.manage'],
       }))
 
       const { result } = renderHook(() => useReferenceSetting())
 
-      expect(result.current.canSetPreferences).toBe(true)
-      expect(result.current.canSetPermissions).toBe(true)
+      expect(result.current.canSetPreferences).toBe(false)
+      expect(result.current.canSetPermissions).toBe(false)
       expect(result.current.canSetAutoUpdate).toBe(false)
     })
 
-    it('should be true when user has plugin.install for auto update control', () => {
+    it('should be true when user has plugin.install for plugin preferences', () => {
       vi.mocked(useAppContext).mockReturnValue(createAppContext({
         workspacePermissionKeys: ['plugin.install'],
       }))
@@ -236,7 +237,7 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting())
 
       expect(result.current.canSetPreferences).toBe(true)
-      expect(result.current.canSetPermissions).toBe(false)
+      expect(result.current.canSetPermissions).toBe(true)
       expect(result.current.canSetAutoUpdate).toBe(true)
     })
 
