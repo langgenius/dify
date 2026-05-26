@@ -3,6 +3,9 @@ from __future__ import annotations
 import importlib
 import io
 import json
+import os
+import threading
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -10,6 +13,7 @@ from typing import cast
 
 import pytest
 import sqlalchemy as sa
+from click.testing import CliRunner
 from sqlalchemy.exc import OperationalError
 
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -296,6 +300,7 @@ def test_data_migrate_command_defaults_output_to_stdout_stream(
             *,
             engine: sa.Engine,
             apply: bool,
+            concurrency: int,
             output: io.TextIOBase | None = None,
             tables: tuple[str, ...] | None,
             model_types: tuple[ModelType, ...],
@@ -305,6 +310,7 @@ def test_data_migrate_command_defaults_output_to_stdout_stream(
                 {
                     "engine": engine,
                     "apply": apply,
+                    "concurrency": concurrency,
                     "output": output,
                     "tables": tables,
                     "model_types": model_types,
@@ -330,9 +336,11 @@ def test_data_migrate_command_defaults_output_to_stdout_stream(
         model_types=("llm", "text-embedding"),
         tenant_id_file=str(tenant_id_file),
         output=None,
+        concurrency=7,
     )
 
     assert service_calls[0]["apply"] is True
+    assert service_calls[0]["concurrency"] == 7
     assert service_calls[0]["output"] is fake_stdout
     assert service_calls[0]["tables"] == ("provider_models",)
     assert tuple(cast(list[str], service_calls[0]["tenant_ids"])) == ("tenant-alpha",)
@@ -353,6 +361,7 @@ def test_data_migrate_command_opens_output_file_and_closes_stream(
             *,
             engine: sa.Engine,
             apply: bool,
+            concurrency: int,
             output: io.TextIOBase | None = None,
             tables: tuple[str, ...] | None,
             model_types: tuple[ModelType, ...],
@@ -362,6 +371,7 @@ def test_data_migrate_command_opens_output_file_and_closes_stream(
                 {
                     "engine": engine,
                     "apply": apply,
+                    "concurrency": concurrency,
                     "output": output,
                     "tables": tables,
                     "model_types": model_types,
@@ -387,15 +397,76 @@ def test_data_migrate_command_opens_output_file_and_closes_stream(
         model_types=(),
         tenant_id_file=None,
         output=output_path,
+        concurrency=3,
     )
 
     output_stream = cast(io.TextIOBase, service_calls[0]["output"])
+    assert service_calls[0]["concurrency"] == 3
     assert output_stream is not output_path
     assert isinstance(output_stream, io.TextIOBase)
     assert Path(output_stream.name) == output_path
     assert output_stream.closed is True
     assert output_path.read_text(encoding="utf-8") == '{"event":"test"}\n'
     assert service_calls[1] == {"migrated": True}
+
+
+@pytest.mark.parametrize(
+    ("cpu_count", "expected_concurrency"),
+    [
+        (8, 8),
+        (None, 1),
+    ],
+)
+def test_data_migrate_command_defaults_concurrency_from_cpu_count_or_falls_back_to_one(
+    monkeypatch: pytest.MonkeyPatch,
+    cpu_count: int | None,
+    expected_concurrency: int,
+) -> None:
+    service_calls: list[dict[str, object]] = []
+    command_module = importlib.import_module("commands.data_migrate")
+
+    class FakeService:
+        def __init__(
+            self,
+            *,
+            engine: sa.Engine,
+            apply: bool,
+            concurrency: int,
+            output: io.TextIOBase | None = None,
+            tables: tuple[str, ...] | None,
+            model_types: tuple[ModelType, ...],
+            tenant_ids: tuple[str, ...] | None,
+        ) -> None:
+            service_calls.append(
+                {
+                    "engine": engine,
+                    "apply": apply,
+                    "concurrency": concurrency,
+                    "output": output,
+                    "tables": tables,
+                    "model_types": model_types,
+                    "tenant_ids": tenant_ids,
+                }
+            )
+
+        def migrate(self) -> None:
+            service_calls.append({"migrated": True})
+
+    monkeypatch.setattr(os, "cpu_count", lambda: cpu_count)
+    importlib.reload(command_module)
+    try:
+        monkeypatch.setattr(command_module, "LegacyModelTypeMigrationService", FakeService)
+        monkeypatch.setattr(command_module, "db", SimpleNamespace(engine=object()))
+
+        result = CliRunner().invoke(command_module.data_migrate, ["legacy-model-types"])
+
+        assert result.exit_code == 0, result.output
+        assert command_module._DEFAULT_CONCURRENCY == expected_concurrency
+        assert service_calls[0]["concurrency"] == expected_concurrency
+        assert service_calls[1] == {"migrated": True}
+    finally:
+        monkeypatch.undo()
+        importlib.reload(command_module)
 
 
 def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reverse_dependency_expansion(
@@ -434,6 +505,7 @@ def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reve
         service = migration_module.LegacyModelTypeMigrationService(
             engine=sqlite_engine,
             apply=False,
+            concurrency=1,
             tables=("provider_models",),
             model_types=(ModelType.LLM,),
             tenant_ids=("tenant-alpha", "tenant-beta"),
@@ -448,6 +520,181 @@ def test_service_migrate_batches_by_tenant_respects_selected_tables_without_reve
     for call in init_calls:
         assert tuple(cast(tuple[str, ...], call["table_names"])) == ("provider_models",)
         assert call["model_types"] == (ModelType.LLM,)
+
+
+def test_service_migrate_with_concurrency_greater_than_one_runs_tenants_in_parallel_without_changing_migration_scope(
+    migration_module,
+    sqlite_engine: sa.Engine,
+) -> None:
+    init_calls: list[dict[str, object]] = []
+    started_tenants: list[str] = []
+    worker_errors: list[BaseException] = []
+    release_runs = threading.Event()
+    all_started = threading.Event()
+    active_runs = 0
+    max_active_runs = 0
+    state_lock = threading.Lock()
+
+    class FakeMigration:
+        def __init__(
+            self,
+            *,
+            tenant_id: str,
+            engine: sa.Engine,
+            apply: bool,
+            output: io.TextIOBase,
+            model_types: tuple[ModelType, ...],
+            orm_models: tuple[type[object], ...],
+        ) -> None:
+            self._tenant_id = tenant_id
+            init_calls.append(
+                {
+                    "tenant_id": tenant_id,
+                    "engine": engine,
+                    "apply": apply,
+                    "model_types": model_types,
+                    "table_names": tuple(model.__table__.name for model in orm_models),
+                }
+            )
+
+        def run(self) -> None:
+            nonlocal active_runs, max_active_runs
+            with state_lock:
+                active_runs += 1
+                max_active_runs = max(max_active_runs, active_runs)
+                started_tenants.append(self._tenant_id)
+                if len(started_tenants) == 2:
+                    all_started.set()
+
+            release_runs.wait(timeout=1)
+
+            with state_lock:
+                active_runs -= 1
+
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        monkeypatch.setattr(migration_module, "Migration", FakeMigration)
+        service = migration_module.LegacyModelTypeMigrationService(
+            engine=sqlite_engine,
+            apply=False,
+            concurrency=2,
+            tables=("provider_models",),
+            model_types=(ModelType.LLM,),
+            tenant_ids=("tenant-alpha", "tenant-beta"),
+        )
+
+        def _run_service() -> None:
+            try:
+                service.migrate()
+            except BaseException as exc:  # pragma: no cover - test harness
+                worker_errors.append(exc)
+
+        worker = threading.Thread(target=_run_service)
+        worker.start()
+        started_in_parallel = all_started.wait(timeout=0.5)
+        release_runs.set()
+        worker.join(timeout=1)
+    finally:
+        monkeypatch.undo()
+
+    assert worker_errors == []
+    assert started_in_parallel is True
+    assert worker.is_alive() is False
+    assert max_active_runs == 2
+    assert {call["tenant_id"] for call in init_calls} == {"tenant-alpha", "tenant-beta"}
+    for call in init_calls:
+        assert tuple(cast(tuple[str, ...], call["table_names"])) == ("provider_models",)
+        assert call["model_types"] == (ModelType.LLM,)
+
+
+def test_service_parallel_migrate_serializes_shared_output_by_line(
+    migration_module,
+    sqlite_engine: sa.Engine,
+) -> None:
+    worker_errors: list[BaseException] = []
+    start_barrier = threading.Barrier(2)
+
+    class SlowLineOutput(io.StringIO):
+        def __init__(self) -> None:
+            super().__init__()
+            self.overlap_count = 0
+            self._in_write = False
+            self._state_lock = threading.Lock()
+
+        def write(self, s: str) -> int:
+            with self._state_lock:
+                if self._in_write:
+                    self.overlap_count += 1
+                self._in_write = True
+            try:
+                time.sleep(0.01)
+                return super().write(s)
+            finally:
+                with self._state_lock:
+                    self._in_write = False
+
+    class FakeMigration:
+        def __init__(
+            self,
+            *,
+            tenant_id: str,
+            engine: sa.Engine,
+            apply: bool,
+            output: io.TextIOBase,
+            model_types: tuple[ModelType, ...],
+            orm_models: tuple[type[object], ...],
+        ) -> None:
+            self._tenant_id = tenant_id
+            self._output = output
+
+        def run(self) -> None:
+            try:
+                start_barrier.wait(timeout=1)
+            except threading.BrokenBarrierError as exc:
+                raise AssertionError("parallel migrate should schedule both tenant runs together") from exc
+
+            for index in range(3):
+                self._output.write(f"{self._tenant_id}:line-{index}\n")
+
+    monkeypatch = pytest.MonkeyPatch()
+    output = SlowLineOutput()
+    try:
+        monkeypatch.setattr(migration_module, "Migration", FakeMigration)
+        service = migration_module.LegacyModelTypeMigrationService(
+            engine=sqlite_engine,
+            apply=False,
+            concurrency=2,
+            output=output,
+            tables=("provider_models",),
+            model_types=(ModelType.LLM,),
+            tenant_ids=("tenant-alpha", "tenant-beta"),
+        )
+
+        def _run_service() -> None:
+            try:
+                service.migrate()
+            except BaseException as exc:  # pragma: no cover - test harness
+                worker_errors.append(exc)
+
+        worker = threading.Thread(target=_run_service)
+        worker.start()
+        worker.join(timeout=2)
+    finally:
+        monkeypatch.undo()
+
+    assert worker.is_alive() is False
+    assert worker_errors == []
+    assert output.overlap_count == 0
+    assert sorted(output.getvalue().splitlines()) == sorted(
+        [
+            "tenant-alpha:line-0",
+            "tenant-alpha:line-1",
+            "tenant-alpha:line-2",
+            "tenant-beta:line-0",
+            "tenant-beta:line-1",
+            "tenant-beta:line-2",
+        ]
+    )
 
 
 def test_migration_dry_run_emits_json_lines_without_db_or_cache_mutation(

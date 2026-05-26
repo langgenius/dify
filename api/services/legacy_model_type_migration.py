@@ -18,8 +18,10 @@ from __future__ import annotations
 import io
 import json
 import sys
+import threading
 import uuid
 from collections.abc import Iterable, Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import IntEnum, StrEnum
@@ -271,17 +273,79 @@ def _session_factory(engine: sa.Engine) -> Session:
     return Session(bind=engine, expire_on_commit=False)
 
 
+class _ThreadSafeLineWriter(io.TextIOBase):
+    """
+    Serialize line-oriented writes to a shared text stream across tenant workers.
+
+    `Migration._log_event` writes one JSON document per `print(..., flush=True)` call. The
+    wrapper buffers fragments per thread until a newline arrives, then emits the full line
+    while holding a process-local lock so concurrent tenants cannot interleave bytes.
+    """
+
+    _stream: io.TextIOBase
+    _lock: threading.Lock
+    _local: threading.local
+
+    def __init__(self, stream: io.TextIOBase) -> None:
+        super().__init__()
+        self._stream = stream
+        self._lock = threading.Lock()
+        self._local = threading.local()
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, text: str) -> int:
+        if not text:
+            return 0
+
+        buffered_text = self._buffer + text
+        lines = buffered_text.splitlines(keepends=True)
+        remainder = ""
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            remainder = lines.pop()
+
+        for line in lines:
+            self._write_line(line)
+
+        self._buffer = remainder
+        return len(text)
+
+    def flush(self) -> None:
+        buffered_text = self._buffer
+        if buffered_text:
+            self._write_line(buffered_text)
+            self._buffer = ""
+
+        with self._lock:
+            self._stream.flush()
+
+    @property
+    def _buffer(self) -> str:
+        return cast(str, getattr(self._local, "buffer", ""))
+
+    @_buffer.setter
+    def _buffer(self, value: str) -> None:
+        self._local.buffer = value
+
+    def _write_line(self, text: str) -> None:
+        with self._lock:
+            self._stream.write(text)
+
+
 class LegacyModelTypeMigrationService:
     """
     Migrate legacy provider-related model_type values to canonical values.
 
     The command can scope the migration by table, tenant, and canonical model type. When
     `provider_model_credentials` is selected, that migration also rewrites references in
-    `provider_models` and `load_balancing_model_configs`.
+    `provider_models` and `load_balancing_model_configs`. Tenant migrations can run in a
+    thread pool; JSONL output remains line-safe through a shared synchronized writer.
     """
 
     _engine: sa.Engine
     _apply: bool
+    _concurrency: int
     _output: io.TextIOBase
     _model_types: tuple[ModelType, ...]
     _orm_models: tuple[ORMModel, ...]
@@ -292,13 +356,18 @@ class LegacyModelTypeMigrationService:
         engine: sa.Engine,
         *,
         apply: bool = False,
+        concurrency: int = 1,
         output: io.TextIOBase | None = None,
         tables: Sequence[str] | None = None,
         model_types: Sequence[ModelType] = _SUPPORTED_MODEL_TYPES,
         tenant_ids: Sequence[str] | None = None,
     ) -> None:
+        if concurrency < 1:
+            raise ValueError("concurrency must be greater than or equal to 1")
+
         self._engine = engine
         self._apply = apply
+        self._concurrency = concurrency
         self._output = cast(io.TextIOBase, sys.stdout if output is None else output)
         self._model_types = tuple(dict.fromkeys(model_types))
         self._orm_models = self._resolve_models(tables)
@@ -335,15 +404,34 @@ class LegacyModelTypeMigrationService:
         return tuple(ordered_models)
 
     def migrate(self) -> None:
-        for tenant_id in self._iter_tenant_ids():
-            Migration(
-                tenant_id=tenant_id,
-                engine=self._engine,
-                apply=self._apply,
-                output=self._output,
-                model_types=self._model_types,
-                orm_models=self._orm_models,
-            ).run()
+        tenant_ids = tuple(self._iter_tenant_ids())
+        if not tenant_ids:
+            return
+
+        output = _ThreadSafeLineWriter(self._output)
+        if self._concurrency == 1 or len(tenant_ids) == 1:
+            for tenant_id in tenant_ids:
+                self._run_tenant_migration(tenant_id, output)
+            return
+
+        with ThreadPoolExecutor(max_workers=min(self._concurrency, len(tenant_ids))) as executor:
+            futures = [executor.submit(self._run_tenant_migration, tenant_id, output) for tenant_id in tenant_ids]
+            for future in as_completed(futures):
+                future.result()
+
+    def _run_tenant_migration(self, tenant_id: str, output: io.TextIOBase) -> None:
+        """
+        Execute one tenant migration with the shared, line-synchronized output stream.
+        """
+
+        Migration(
+            tenant_id=tenant_id,
+            engine=self._engine,
+            apply=self._apply,
+            output=output,
+            model_types=self._model_types,
+            orm_models=self._orm_models,
+        ).run()
 
     def _iter_tenant_ids(self) -> Iterator[str]:
         if self._tenant_ids is not None:

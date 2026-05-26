@@ -1,6 +1,9 @@
+import io
+import os
+import sys
 from contextlib import nullcontext
 from pathlib import Path
-import sys
+from typing import cast
 
 import click
 
@@ -17,6 +20,7 @@ _SUPPORTED_MODEL_TYPE_CHOICES = (
     ModelType.TEXT_EMBEDDING.value,
     ModelType.RERANK.value,
 )
+_DEFAULT_CONCURRENCY = os.cpu_count() or 1
 
 
 def _normalize_multi_value_option(
@@ -78,6 +82,7 @@ def data_migrate() -> None:
         "Limit model_type migration to specific tables. Accepts comma-separated values or repeated flags. "
         "When provider_model_credentials is selected, provider_models and "
         "load_balancing_model_configs may also be updated for credential reference rewrites."
+        "Default to: "
     ),
 )
 @click.option(
@@ -87,7 +92,7 @@ def data_migrate() -> None:
     type=str,
     help=(
         "Canonical model types to migrate. Accepts comma-separated values or repeated flags. "
-        "Defaults to llm, text-embedding, rerank."
+        "Defaults to: `llm,text-embedding,rerank`"
     ),
 )
 @click.option(
@@ -100,12 +105,20 @@ def data_migrate() -> None:
     type=click.Path(dir_okay=False, resolve_path=True, path_type=Path),
     help="Optional file path for JSON lines event logs. Defaults to stdout.",
 )
+@click.option(
+    "--concurrency",
+    type=click.IntRange(min=1),
+    default=_DEFAULT_CONCURRENCY,
+    show_default=True,
+    help="Number of tenant-level worker threads to run in parallel.",
+)
 def legacy_model_types(
     apply: bool,
     tables: tuple[str, ...],
     model_types: tuple[str, ...],
     tenant_id_file: str | None,
     output: Path | None,
+    concurrency: int = _DEFAULT_CONCURRENCY,
 ) -> None:
     """
     Migrate legacy provider-related model_type values and emit JSON lines events.
@@ -144,7 +157,8 @@ def legacy_model_types(
         LegacyModelTypeMigrationService(
             engine=db.engine,
             apply=apply,
-            output=output_stream,
+            concurrency=concurrency,
+            output=cast(io.TextIOBase, output_stream),
             tables=normalized_tables or None,
             model_types=selected_model_types,
             tenant_ids=tenant_ids,
