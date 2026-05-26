@@ -229,7 +229,7 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByRole('meter')).toBeInTheDocument()
+        expect(screen.getByRole('meter', { name: 'Storage' })).toBeInTheDocument()
         expect(container.querySelector('[aria-hidden="true"]')).toBeNull()
       })
 
@@ -270,7 +270,7 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(screen.getByRole('meter')).toBeInTheDocument()
+        expect(screen.getByRole('meter', { name: 'Storage' })).toBeInTheDocument()
         expect(container.querySelector('[aria-hidden="true"]')).toBeNull()
       })
 

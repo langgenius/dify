@@ -13,12 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -121,8 +121,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.paragraph && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Textarea
+            aria-label={t('variableConfig.defaultValue', { ns: 'appDebug' })}
             value={String(tempPayload.default ?? '')}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
+            onValueChange={value => onPayloadChange('default')(value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
         </Field>

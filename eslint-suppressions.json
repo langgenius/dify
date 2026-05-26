@@ -1757,14 +1757,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/textarea/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/voice-input/__tests__/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 3

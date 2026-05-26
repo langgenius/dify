@@ -84,25 +84,6 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }
 })
 
-vi.mock('@/app/components/base/textarea', () => ({
-  default: ({ value, onChange, placeholder, readOnly, className }: {
-    value: string
-    onChange: (e: { target: { value: string } }) => void
-    placeholder?: string
-    readOnly?: boolean
-    className?: string
-  }) => (
-    <textarea
-      data-testid={`textarea-${placeholder}`}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      readOnly={readOnly}
-      className={className}
-    />
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
   default: ({ name, value, required, onChange, readonly }: {
     name: string
@@ -223,7 +204,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('textarea-Description')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
     })
 
     it('should render select input type', () => {
@@ -275,7 +256,7 @@ describe('ChatUserInput', () => {
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('input-Name')).toBeInTheDocument()
-      expect(screen.getByTestId('textarea-Description')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
       expect(screen.getByTestId('select-input')).toBeInTheDocument()
     })
 
@@ -334,7 +315,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{ desc: 'Long text here' }} />)
-      expect(screen.getByTestId('textarea-Description')).toHaveValue('Long text here')
+      expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Long text here')
     })
 
     it('should display existing input values for number type', () => {
@@ -418,7 +399,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByTestId('textarea-Description'), { target: { value: 'New Description' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'New Description' } })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ desc: 'New Description' })
     })
@@ -526,7 +507,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('textarea-Description')).toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAttribute('readonly')
     })
 
     it('should disable select when readonly is true', () => {

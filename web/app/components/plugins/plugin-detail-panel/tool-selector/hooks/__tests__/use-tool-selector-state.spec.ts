@@ -1,4 +1,3 @@
-import type * as React from 'react'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -161,9 +160,8 @@ describe('useToolSelectorState', () => {
       useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
     )
 
-    const event = { target: { value: 'New description' } } as React.ChangeEvent<HTMLTextAreaElement>
     act(() => {
-      result.current.handleDescriptionChange(event)
+      result.current.handleDescriptionChange('New description')
     })
 
     expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({

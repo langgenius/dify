@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
-import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
 
@@ -72,6 +72,7 @@ const PrePopulate: FC<Props> = ({
   value,
   onValueChange,
 }) => {
+  const { t } = useTranslation()
   const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
   const handleTypeChange = useCallback((isVar: boolean) => {
     setOnPlaceholderClicked(true)
@@ -127,9 +128,10 @@ const PrePopulate: FC<Props> = ({
   return (
     <div className={cn('relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
       <Textarea
+        aria-label={t(`${i18nPrefix}.staticContent`, { ns: 'workflow' })}
         value={value || ''}
         className="h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
-        onChange={e => onValueChange?.(e.target.value)}
+        onValueChange={value => onValueChange?.(value)}
         onFocus={() => {
           setOnPlaceholderClicked(true)
           setIsFocus(true)
