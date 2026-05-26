@@ -20,6 +20,7 @@ const {
   mockFetchReleases,
   mockCheckForUpdates,
   mockToastNotify,
+  mockInvalidateQueries,
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
@@ -30,6 +31,7 @@ const {
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
     mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
     mockToastNotify: vi.fn(),
+    mockInvalidateQueries: vi.fn(),
   }
 })
 
@@ -46,6 +48,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
       promise: vi.fn(),
     },
   ),
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    invalidateQueries: mockInvalidateQueries,
+  }),
 }))
 
 vi.mock('@/context/modal-context', () => ({
