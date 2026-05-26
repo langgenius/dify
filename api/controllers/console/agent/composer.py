@@ -1,3 +1,5 @@
+from typing import override
+
 from flask_restx import Resource
 
 from controllers.common.schema import register_schema_models
@@ -19,6 +21,7 @@ class WorkflowAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @override
     def get(self, app_model, node_id: str):
         _, tenant_id = current_account_with_tenant()
         return AgentComposerService.load_workflow_composer(
@@ -33,6 +36,7 @@ class WorkflowAgentComposerApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @override
     def put(self, app_model, node_id: str):
         account, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
@@ -52,6 +56,7 @@ class WorkflowAgentComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @override
     def post(self, app_model, node_id: str):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
@@ -64,6 +69,7 @@ class WorkflowAgentComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @override
     def get(self, app_model, node_id: str):
         return AgentComposerService.get_workflow_candidates(app_id=app_model.id)
 
@@ -74,6 +80,7 @@ class WorkflowAgentComposerImpactApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @override
     def post(self, app_model, node_id: str):
         _, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
@@ -91,6 +98,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @override
     def post(self, app_model, node_id: str):
         account, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
@@ -109,6 +117,7 @@ class AgentAppComposerApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
+    @override
     def get(self, app_model):
         _, tenant_id = current_account_with_tenant()
         return AgentComposerService.load_agent_app_composer(tenant_id=tenant_id, app_id=app_model.id)
@@ -119,6 +128,7 @@ class AgentAppComposerApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model()
+    @override
     def put(self, app_model):
         account, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
@@ -137,6 +147,7 @@ class AgentAppComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
+    @override
     def post(self, app_model):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
@@ -149,5 +160,6 @@ class AgentAppComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
+    @override
     def get(self, app_model):
         return AgentComposerService.get_agent_app_candidates(app_id=app_model.id)
