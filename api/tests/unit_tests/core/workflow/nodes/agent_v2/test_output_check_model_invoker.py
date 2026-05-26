@@ -167,9 +167,7 @@ def test_assistant_content_list_is_flattened_to_string():
         def __init__(self, text: str) -> None:
             self.text = text
 
-    msg = AssistantPromptMessage.model_construct(
-        content=[_TextPart("VERDICT: PASS"), _TextPart("REASON: ok")]
-    )
+    msg = AssistantPromptMessage.model_construct(content=[_TextPart("VERDICT: PASS"), _TextPart("REASON: ok")])
     result = _llm_result()
     result.message = msg
     manager = _make_manager_returning(result)

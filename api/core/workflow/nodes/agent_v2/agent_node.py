@@ -341,9 +341,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 else "output_type_check_failed"
             )
             error_type = (
-                f"{base_code}_fail_branch"
-                if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
-                else base_code
+                f"{base_code}_fail_branch" if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH else base_code
             )
             yield self._failure_event(
                 inputs=inputs,
