@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import { dirname } from 'node:path'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
+import { pid } from '../sys'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
@@ -33,7 +34,7 @@ abstract class FileBasedStore implements Store {
    */
   flush(): void {
     if (this.raw_content !== undefined) {
-      const tmp = `${this.file_path}.tmp.${process.pid}.${Date.now()}`
+      const tmp = `${this.file_path}.tmp.${pid()}.${Date.now()}`
       try {
         fs.writeFileSync(tmp, this.raw_content, { mode: FILE_PERM })
         fs.renameSync(tmp, this.file_path)

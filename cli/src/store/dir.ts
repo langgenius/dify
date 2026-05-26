@@ -1,5 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { getEnv, platform } from '../sys'
 
 export const ENV_CONFIG_DIR = 'DIFY_CONFIG_DIR'
 export const ENV_XDG_CONFIG_HOME = 'XDG_CONFIG_HOME'
@@ -15,10 +16,10 @@ export type ConfigEnvironment = {
 }
 
 export const realEnvironment: ConfigEnvironment = {
-  getEnv: name => process.env[name],
+  getEnv: getEnv,
   homeDir: () => homedir(),
-  platform: () => process.platform,
-  appData: () => process.env.APPDATA ?? process.env.LOCALAPPDATA,
+  platform: () => platform(),
+  appData: () => getEnv('APPDATA') ?? getEnv('LOCALAPPDATA'),
 }
 
 export function resolveConfigDir(env: ConfigEnvironment = realEnvironment): string {

@@ -19,3 +19,11 @@ export function io() {
 export function handle(sig: string, handler: ()=>void) {
   process.once('SIGINT', handler)
 }
+
+export function platform(): string {
+  return process.platform
+}
+
+export function pid(): number {
+  return Number(process.pid)
+}
