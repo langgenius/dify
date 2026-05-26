@@ -15,14 +15,10 @@ from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import WorkspaceDetailResponse, WorkspaceListResponse, WorkspaceSummaryResponse
-from controllers.openapi.auth.surface_gate import accept_subjects
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
-from libs.oauth_bearer import (
-    ACCEPT_USER_ANY,
-    SubjectType,
-    get_auth_ctx,
-    validate_bearer,
-)
+from libs.oauth_bearer import Scope, TokenType
 from models import Tenant, TenantAccountJoin
 from services.account_service import TenantService
 
@@ -30,12 +26,9 @@ from services.account_service import TenantService
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
     @openapi_ns.response(200, "Workspace list", openapi_ns.models[WorkspaceListResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
-    def get(self):
-        ctx = get_auth_ctx()
-
-        rows = TenantService.get_workspaces_for_account(db.session, str(ctx.account_id))
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, *, auth_data: AuthData):
+        rows = TenantService.get_workspaces_for_account(db.session, str(auth_data.account_id))
 
         return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows))).model_dump(mode="json"), 200
 
@@ -43,12 +36,9 @@ class WorkspacesApi(Resource):
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
     @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
-    def get(self, workspace_id: str):
-        ctx = get_auth_ctx()
-
-        row = TenantService.find_workspace_for_account(db.session, str(ctx.account_id), workspace_id)
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, workspace_id: str, *, auth_data: AuthData):
+        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
         if row is None:
             raise NotFound("workspace not found")
