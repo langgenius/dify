@@ -242,7 +242,11 @@ def _create_glide_client(config: ValkeyVectorConfig) -> tuple[Any, asyncio.Abstr
 
         kwargs["credentials"] = ServerCredentials(password=config.password)
 
-    glide_config = GlideClientConfiguration(**kwargs)
+    # FIXED: Added client_name to make connection metadata explicit
+    glide_config = GlideClientConfiguration(
+        **kwargs,
+        client_name="dify_valkey",
+    )
     if config.db:
         glide_config.database_id = config.db
 
@@ -618,3 +622,4 @@ class ValkeyVectorFactory(AbstractVectorFactory):
                 distance_metric=dify_config.VALKEY_DISTANCE_METRIC,
             ),
         )
+
