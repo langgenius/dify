@@ -222,6 +222,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
             "schedule": crontab(minute="0", hour="0"),
         }
+    if dify_config.ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK:
+        imports.append("schedule.clean_oauth_access_tokens_task")
+        beat_schedule["clean_oauth_access_tokens_task"] = {
+            "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
+            "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
+        }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {

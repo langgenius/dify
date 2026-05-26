@@ -259,7 +259,7 @@ class ModelProviderModelApi(Resource):
             tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
@@ -395,7 +395,7 @@ class ModelProviderModelCredentialApi(Resource):
             credential_id=args.credential_id,
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
@@ -532,7 +532,7 @@ class ModelProviderAvailableModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, model_type):
+    def get(self, model_type: str):
         _, tenant_id = current_account_with_tenant()
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)

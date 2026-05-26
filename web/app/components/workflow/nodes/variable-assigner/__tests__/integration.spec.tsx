@@ -192,7 +192,7 @@ describe('variable-assigner path', () => {
         />,
       )
 
-      await user.click(container.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement)
+      await user.click(container.querySelector('.size-4.cursor-pointer') as HTMLElement)
       await user.click(screen.getByRole('button', { name: 'confirm-add-variable' }))
 
       expect(mockHandleAssignVariableValueChange).toHaveBeenCalledWith(
@@ -434,7 +434,7 @@ describe('variable-assigner path', () => {
       expect(container).toHaveTextContent('Source Node:source-node.initialVar:false')
       expect(container.querySelector('.relative.rounded-lg')).toHaveClass('border-dashed!')
 
-      await user.click(container.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement)
+      await user.click(container.querySelector('.size-4.cursor-pointer') as HTMLElement)
       await user.click(screen.getByRole('button', { name: 'confirm-add-variable' }))
       expect(mockHandleAssignVariableValueChange).toHaveBeenCalled()
     })

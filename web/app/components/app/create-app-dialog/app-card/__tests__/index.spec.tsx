@@ -17,6 +17,20 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() {
+      return mockConfig.isCloudEdition
+    },
+  }
+})
+
 const mockApp: App = {
   can_trial: true,
   app: {
@@ -70,6 +84,7 @@ describe('AppCard', () => {
   }
 
   beforeEach(() => {
+    mockConfig.isCloudEdition = true
     vi.clearAllMocks()
   })
 
@@ -260,6 +275,13 @@ describe('AppCard', () => {
         appId: mockApp.app_id,
         app: mockApp,
       })
+    })
+
+    it('should hide try button outside cloud edition', () => {
+      mockConfig.isCloudEdition = false
+      renderWithProvider(<AppCard {...defaultProps} />)
+
+      expect(screen.queryByRole('button', { name: /explore\.appCard\.try/ })).not.toBeInTheDocument()
     })
   })
 

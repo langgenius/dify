@@ -1,9 +1,9 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import { usePluginTaskStatus } from '@/app/components/plugins/plugin-page/plugin-tasks/hooks'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
@@ -37,16 +37,16 @@ const PluginsNav = ({
       >
         {
           (isFailed || isInstallingWithError) && !activated && (
-            <Indicator
-              color="red"
+            <StatusDot
+              status="error"
               className="absolute -top-px -left-px"
             />
           )
         }
-        <div className="mr-0.5 flex h-5 w-5 items-center justify-center">
+        <div className="mr-0.5 flex size-5 items-center justify-center">
           {
             (!(isInstalling || isInstallingWithError) || activated) && (
-              <Group className="h-4 w-4" />
+              <Group className="size-4" />
             )
           }
           {

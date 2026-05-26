@@ -1,11 +1,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiBookOpenLine, RiKey2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
-import Indicator from '@/app/components/header/indicator'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 
@@ -35,10 +35,10 @@ const Card = ({
             </div>
           </div>
           <div className="flex items-center gap-x-1">
-            <Indicator
+            <StatusDot
               className="shrink-0"
-              color={
-                apiBaseUrl ? 'green' : 'yellow'
+              status={
+                apiBaseUrl ? 'success' : 'warning'
               }
             />
             <div

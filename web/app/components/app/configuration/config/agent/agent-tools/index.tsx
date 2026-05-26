@@ -7,6 +7,7 @@ import type { AgentTool } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -24,7 +25,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Infotip } from '@/app/components/base/infotip'
-import Indicator from '@/app/components/header/indicator'
 import { CollectionType } from '@/app/components/tools/types'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
@@ -198,10 +198,10 @@ const AgentTools: FC = () => {
               )}
             >
               <div className="flex w-0 grow items-center">
-                {item.isDeleted && <DefaultToolIcon className="h-5 w-5" />}
+                {item.isDeleted && <DefaultToolIcon className="size-5" />}
                 {!item.isDeleted && (
                   <div className={cn((item.notAuthor || !item.enabled) && 'shrink-0 opacity-50')}>
-                    {typeof item.icon === 'string' && <div className="h-5 w-5 rounded-md bg-cover bg-center" style={{ backgroundImage: `url(${item.icon})` }} />}
+                    {typeof item.icon === 'string' && <div className="size-5 rounded-md bg-cover bg-center" style={{ backgroundImage: `url(${item.icon})` }} />}
                     {typeof item.icon !== 'string' && <AppIcon className="rounded-md" size="xs" icon={item.icon?.content} background={item.icon?.background} />}
                   </div>
                 )}
@@ -268,7 +268,7 @@ const AgentTools: FC = () => {
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
                     >
-                      <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -287,7 +287,7 @@ const AgentTools: FC = () => {
                                 setIsShowSettingTool(true)
                               }}
                             >
-                              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                              <RiEqualizer2Line className="size-4 text-text-tertiary" />
                             </button>
                           )}
                         />
@@ -310,7 +310,7 @@ const AgentTools: FC = () => {
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
                     >
-                      <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -340,7 +340,7 @@ const AgentTools: FC = () => {
                       }}
                     >
                       {t('notAuthorized', { ns: 'tools' })}
-                      <Indicator className="ml-2" color="orange" />
+                      <StatusDot className="ml-2" status="warning" />
                     </Button>
                   )}
                 </div>

@@ -7,8 +7,9 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, TypedDict, cast
 
-from pydantic import BaseModel, TypeAdapter
-from sqlalchemy import delete, func, select, update
+from pydantic import BaseModel, TypeAdapter, ValidationError
+from sqlalchemy import Row, delete, func, select, update
+from sqlalchemy.orm import Session, scoped_session
 
 from core.db.session_factory import session_factory
 
@@ -46,6 +47,12 @@ from models.account import (
 )
 from models.model import DifySetup
 from services.billing_service import BillingService
+from services.entities.auth_entities import (
+    ChangeEmailNewEmailToken,
+    ChangeEmailOldEmailToken,
+    ChangeEmailPhase,
+    ChangeEmailTokenData,
+)
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -84,6 +91,8 @@ from tasks.mail_reset_password_task import (
 
 logger = logging.getLogger(__name__)
 
+_change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
+
 
 class InvitationDetailDict(TypedDict):
     account: Account
@@ -113,13 +122,10 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
-    # Phase-bound token metadata for the change-email flow. Tokens carry the
-    # current phase so that downstream endpoints can enforce proper progression
-    CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
-    CHANGE_EMAIL_PHASE_OLD = "old_email"
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
-    CHANGE_EMAIL_PHASE_NEW = "new_email"
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_EMAIL_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
@@ -157,6 +163,41 @@ class AccountService:
     def _delete_refresh_token(refresh_token: str, account_id: str):
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
+
+    @staticmethod
+    def get_account_by_email(session: Session | scoped_session, email: str) -> Account | None:
+        """Plain ``Account`` getter keyed by email. Case-sensitive — use
+        :meth:`has_active_account_with_email` for the case-insensitive
+        existence check that backs the SSO collision rule.
+        """
+        return session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+
+    @staticmethod
+    def has_active_account_with_email(session: Session | scoped_session, email: str) -> bool:
+        if not email:
+            return False
+        normalized = email.strip().lower()
+        if not normalized:
+            return False
+        row = session.execute(
+            select(Account.id).where(
+                func.lower(Account.email) == normalized,
+                Account.status == AccountStatus.ACTIVE,
+            )
+        ).scalar_one_or_none()
+        return row is not None
+
+    @staticmethod
+    def get_account_by_id(session: Session | scoped_session, account_id: str) -> Account | None:
+        """Plain ``Account`` getter — no banned check, no tenant rotation,
+        no ``last_active_at`` write. Use this from read-only identity
+        endpoints (``/openapi/v1/account``) where ``load_user``'s
+        side-effects (current-tenant assignment, commit) are unwanted.
+
+        ``session`` is injected by the caller so this service stays free
+        of the Flask-scoped ``db.session`` import.
+        """
+        return session.get(Account, account_id)
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
@@ -583,31 +624,42 @@ class AccountService:
     @classmethod
     def send_change_email_email(
         cls,
-        account: Account | None = None,
+        account: Account,
         email: str | None = None,
         old_email: str | None = None,
         language: str = "en-US",
         phase: str | None = None,
     ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
+        account_email = email if email is not None else account.email
         if not phase:
             raise ValueError("phase must be provided.")
         if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
             raise ValueError("phase must be one of old_email or new_email.")
+        if old_email is None:
+            raise ValueError("old_email must be provided.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_change_email_token(
-            account_email,
-            account,
-            old_email=old_email,
-            additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
-        )
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        token_data: ChangeEmailTokenData
+        if phase == cls.CHANGE_EMAIL_PHASE_OLD:
+            token_data = ChangeEmailOldEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        else:
+            token_data = ChangeEmailNewEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        token = cls.generate_change_email_token(token_data, account)
 
         send_change_mail_task.delay(
             language=language,
@@ -735,20 +787,16 @@ class AccountService:
     @classmethod
     def generate_change_email_token(
         cls,
-        email: str,
-        account: Account | None = None,
-        code: str | None = None,
-        old_email: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        additional_data["old_email"] = old_email
+        token_data: ChangeEmailTokenData,
+        account: Account,
+    ) -> str:
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="change_email", additional_data=additional_data
+            account=account,
+            email=token_data.email,
+            token_type="change_email",
+            additional_data=token_data.to_token_manager_payload(),
         )
-        return code, token
+        return token
 
     @classmethod
     def generate_owner_transfer_token(
@@ -791,8 +839,15 @@ class AccountService:
         return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
-    def get_change_email_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "change_email")
+    def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
+        token_data = TokenManager.get_token_data(token, "change_email")
+        if token_data is None:
+            return None
+        try:
+            return _change_email_token_adapter.validate_python(token_data)
+        except ValidationError:
+            logger.warning("change_email token %s has invalid payload", token, exc_info=True)
+            return None
 
     @classmethod
     def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
@@ -1162,6 +1217,127 @@ class TenantService:
                 .where(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
             ).all()
         )
+
+    @staticmethod
+    def get_account_memberships(
+        session: Session | scoped_session,
+        account_id: str,
+    ) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
+        """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
+        the account belongs to. Unlike :meth:`get_join_tenants` this keeps
+        the join row so callers can read ``role``/``current`` alongside the
+        tenant — used by ``/openapi/v1/account`` to render workspace
+        membership + pick the default workspace.
+
+        ``session`` is injected by the caller so this service stays free
+        of the Flask-scoped ``db.session`` import.
+
+        No tenant-status filter: parity with the legacy controller query
+        (the openapi identity endpoint listed all joined tenants).
+        """
+        return (
+            session.query(TenantAccountJoin, Tenant)
+            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+            .filter(TenantAccountJoin.account_id == account_id)
+            .all()
+        )
+
+    @staticmethod
+    def get_workspaces_for_account(
+        session: Session | scoped_session,
+        account_id: str,
+    ) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
+        """``(Tenant, TenantAccountJoin)`` rows for every workspace the
+        account belongs to, ordered by ``Tenant.created_at`` ASC — the
+        canonical ordering for ``/openapi/v1/workspaces``.
+
+        Distinct from :meth:`get_account_memberships`: tuple order is
+        flipped (tenant first) and rows are sorted, so the workspace
+        listing is stable across requests.
+        """
+        return list(
+            session.execute(
+                select(Tenant, TenantAccountJoin)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == account_id)
+                .order_by(Tenant.created_at.asc())
+            ).all()
+        )
+
+    @staticmethod
+    def account_belongs_to_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> bool:
+        """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
+        Backs the CE-deployment membership fallback in
+        ``controllers.openapi.auth.strategies.MembershipStrategy``.
+
+        ``None``/empty ``account_id`` short-circuits to ``False`` so SSO
+        bearers (no account) and missing identity collapse cleanly.
+        """
+        if not account_id:
+            return False
+        row = session.execute(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return row is not None
+
+    @staticmethod
+    def get_tenant_by_id(session: Session | scoped_session, tenant_id: str) -> Tenant | None:
+        """Plain ``session.get(Tenant, tenant_id)`` — no status filter.
+        Callers map ``status == ARCHIVE`` to their own error code (the
+        openapi auth pipeline raises 403 ``workspace unavailable``).
+        """
+        return session.get(Tenant, tenant_id)
+
+    @staticmethod
+    def get_tenants_by_ids(
+        session: Session | scoped_session,
+        tenant_ids: list[str],
+    ) -> list[Tenant]:
+        """Bulk ``Tenant`` fetch by primary-key list. Order is unspecified
+        — callers index by ``tenant.id`` (e.g. for cross-tenant denorm
+        in ``/openapi/v1/permitted-external-apps``).
+
+        Empty input short-circuits to ``[]`` to avoid emitting an
+        ``IN ()`` SQL fragment.
+        """
+        if not tenant_ids:
+            return []
+        return list(session.execute(select(Tenant).where(Tenant.id.in_(tenant_ids))).scalars().all())
+
+    @staticmethod
+    def get_tenant_name(session: Session | scoped_session, tenant_id: str) -> str | None:
+        """Single-column tenant name read. Used by openapi list endpoints
+        to denormalize ``workspace_name`` onto each row without dragging
+        the full ``Tenant`` ORM entity through.
+        """
+        return session.execute(select(Tenant.name).where(Tenant.id == tenant_id)).scalar_one_or_none()
+
+    @staticmethod
+    def find_workspace_for_account(
+        session: Session | scoped_session,
+        account_id: str,
+        workspace_id: str,
+    ) -> Row[tuple[Tenant, TenantAccountJoin]] | None:
+        """Single ``(Tenant, TenantAccountJoin)`` row scoped to the
+        account's membership in ``workspace_id``. ``None`` on non-member
+        — the caller maps that to 404 (not 403) so workspace IDs don't
+        leak across tenants via response codes.
+        """
+        return session.execute(
+            select(Tenant, TenantAccountJoin)
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(
+                Tenant.id == workspace_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).first()
 
     @staticmethod
     def get_current_tenant_by_account(account: Account):

@@ -51,17 +51,7 @@ const PublishAsKnowledgePipelineModal = ({
         icon_url: '',
       })
     }
-    setShowAppIconPicker(false)
   }, [])
-  const handleCloseIconPicker = useCallback(() => {
-    setPipelineIcon({
-      icon_type: pipelineIcon.icon_type,
-      icon: pipelineIcon.icon,
-      icon_background: pipelineIcon.icon_background,
-      icon_url: pipelineIcon.icon_url,
-    })
-    setShowAppIconPicker(false)
-  }, [pipelineIcon])
 
   const handleConfirm = () => {
     if (confirmDisabled)
@@ -84,10 +74,10 @@ const PublishAsKnowledgePipelineModal = ({
             <button
               type="button"
               aria-label={t('operation.close', { ns: 'common' })}
-              className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+              className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
               onClick={onCancel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+              <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
             </button>
           </div>
           <div className="px-6 py-3">
@@ -141,8 +131,12 @@ const PublishAsKnowledgePipelineModal = ({
           </div>
           {showAppIconPicker && (
             <AppIconPicker
+              open={showAppIconPicker}
+              initialEmoji={pipelineIcon.icon_type === 'emoji'
+                ? { icon: pipelineIcon.icon, background: pipelineIcon.icon_background }
+                : undefined}
+              onOpenChange={setShowAppIconPicker}
               onSelect={handleSelectIcon}
-              onClose={handleCloseIconPicker}
             />
           )}
         </DialogContent>

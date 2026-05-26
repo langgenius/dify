@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -18,7 +19,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
   useDeleteEndpoint,
@@ -157,15 +157,15 @@ const EndpointCard = ({
       <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
         <div className="flex items-center">
           <div className="mb-1 flex h-6 grow items-center gap-1 system-md-semibold text-text-secondary">
-            <span aria-hidden className="i-ri-login-circle-line h-4 w-4" />
+            <span aria-hidden className="i-ri-login-circle-line size-4" />
             <div>{data.name}</div>
           </div>
           <div className="hidden items-center group-hover:flex">
             <ActionButton onClick={showEndpointModalConfirm}>
-              <span aria-hidden className="i-ri-edit-line h-4 w-4" />
+              <span aria-hidden className="i-ri-edit-line size-4" />
             </ActionButton>
             <ActionButton onClick={showDeleteConfirm} className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
-              <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
+              <span aria-hidden className="i-ri-delete-bin-line size-4" />
             </ActionButton>
           </div>
         </div>
@@ -183,8 +183,8 @@ const EndpointCard = ({
                       onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
                     >
                       {isCopied
-                        ? <CopyCheck aria-hidden className="h-3.5 w-3.5 text-text-tertiary" />
-                        : <span aria-hidden className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" />}
+                        ? <CopyCheck aria-hidden className="size-3.5 text-text-tertiary" />
+                        : <span aria-hidden className="i-ri-clipboard-line size-3.5 text-text-tertiary" />}
                     </ActionButton>
                   )}
                 />
@@ -199,13 +199,13 @@ const EndpointCard = ({
       <div className="flex items-center justify-between p-2 pl-3">
         {active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
-            <Indicator color="green" />
+            <StatusDot status="success" />
             {t('detailPanel.serviceOk', { ns: 'plugin' })}
           </div>
         )}
         {!active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary">
-            <Indicator color="gray" />
+            <StatusDot status="disabled" />
             {t('detailPanel.disabled', { ns: 'plugin' })}
           </div>
         )}

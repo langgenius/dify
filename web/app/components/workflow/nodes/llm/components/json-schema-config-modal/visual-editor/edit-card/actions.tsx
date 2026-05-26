@@ -30,11 +30,11 @@ const Actions: FC<ActionsProps> = ({
               <button
                 type="button"
                 aria-label={addChildFieldLabel}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled"
+                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled"
                 onClick={onAddChildField}
                 disabled={disableAddBtn}
               >
-                <span aria-hidden className="i-ri-add-circle-line h-4 w-4" />
+                <span aria-hidden className="i-ri-add-circle-line size-4" />
               </button>
             </span>
           )}
@@ -47,10 +47,10 @@ const Actions: FC<ActionsProps> = ({
             <button
               type="button"
               aria-label={editLabel}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
               onClick={onEdit}
             >
-              <span aria-hidden className="i-ri-edit-line h-4 w-4" />
+              <span aria-hidden className="i-ri-edit-line size-4" />
             </button>
           )}
         />
@@ -62,10 +62,10 @@ const Actions: FC<ActionsProps> = ({
             <button
               type="button"
               aria-label={removeLabel}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
               onClick={onDelete}
             >
-              <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
+              <span aria-hidden className="i-ri-delete-bin-line size-4" />
             </button>
           )}
         />

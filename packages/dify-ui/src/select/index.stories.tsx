@@ -4,6 +4,7 @@ import {
   Select,
   SelectContent,
   SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
@@ -54,6 +55,29 @@ export const Default: Story = {
           </SelectItem>
           <SelectItem value="paris">
             <SelectItemText>Paris</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  ),
+}
+
+export const WithVisibleLabel: Story = {
+  render: () => (
+    <div className={triggerWidth}>
+      <Select defaultValue="seattle">
+        <SelectLabel>City</SelectLabel>
+        <SelectTrigger>
+          <SelectValue placeholder="Select a city" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="seattle">
+            <SelectItemText>Seattle</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          <SelectItem value="new-york">
+            <SelectItemText>New York</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
         </SelectContent>
@@ -123,7 +147,7 @@ export const WithGroupsAndSeparator: Story = {
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectLabel>OpenAI</SelectLabel>
+            <SelectGroupLabel>OpenAI</SelectGroupLabel>
             <SelectItem value="gpt-5">
               <SelectItemText>GPT-5</SelectItemText>
               <SelectItemIndicator />
@@ -135,7 +159,7 @@ export const WithGroupsAndSeparator: Story = {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Anthropic</SelectLabel>
+            <SelectGroupLabel>Anthropic</SelectGroupLabel>
             <SelectItem value="claude-opus">
               <SelectItemText>Claude Opus</SelectItemText>
               <SelectItemIndicator />
@@ -147,7 +171,7 @@ export const WithGroupsAndSeparator: Story = {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Google</SelectLabel>
+            <SelectGroupLabel>Google</SelectGroupLabel>
             <SelectItem value="gemini-25">
               <SelectItemText>Gemini 2.5</SelectItemText>
               <SelectItemIndicator />

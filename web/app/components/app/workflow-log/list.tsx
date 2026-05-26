@@ -12,11 +12,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AppModeEnum } from '@/types/app'
@@ -67,7 +67,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'succeeded') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-          <Indicator color="green" />
+          <StatusDot status="success" />
           <span className="text-util-colors-green-green-600">Success</span>
         </div>
       )
@@ -75,7 +75,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'failed') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-          <Indicator color="red" />
+          <StatusDot status="error" />
           <span className="text-util-colors-red-red-600">Failure</span>
         </div>
       )
@@ -83,7 +83,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'stopped') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-          <Indicator color="yellow" />
+          <StatusDot status="warning" />
           <span className="text-util-colors-warning-warning-600">Stop</span>
         </div>
       )
@@ -91,7 +91,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'paused') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-          <Indicator color="yellow" />
+          <StatusDot status="warning" />
           <span className="text-util-colors-warning-warning-600">Pending</span>
         </div>
       )
@@ -99,7 +99,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'running') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-          <Indicator color="blue" />
+          <StatusDot status="normal" />
           <span className="text-util-colors-blue-light-blue-light-600">Running</span>
         </div>
       )
@@ -107,7 +107,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'partial-succeeded') {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
-          <Indicator color="green" />
+          <StatusDot status="success" />
           <span className="text-util-colors-green-green-600">Partial Success</span>
         </div>
       )
@@ -137,7 +137,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               >
                 {t('table.header.startTime', { ns: 'appLog' })}
                 <ArrowDownIcon
-                  className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all', 'text-text-tertiary', sortOrder === 'asc' ? 'rotate-180' : '')}
+                  className={cn('ml-0.5 size-3 stroke-current stroke-2 transition-all', 'text-text-tertiary', sortOrder === 'asc' ? 'rotate-180' : '')}
                   aria-hidden="true"
                 />
               </button>
@@ -164,7 +164,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>
@@ -180,7 +180,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 </td>
                 <td className="p-3 pr-2">{log.workflow_run.total_tokens}</td>
                 <td className="p-3 pr-2">
-                  <div className={cn(endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary', 'overflow-hidden text-ellipsis whitespace-nowrap')}>
+                  <div className={cn(endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary', 'truncate')}>
                     {endUser}
                   </div>
                 </td>

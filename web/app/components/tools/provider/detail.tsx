@@ -20,6 +20,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiCloseLine,
@@ -31,7 +32,6 @@ import ActionButton from '@/app/components/base/action-button'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -268,7 +268,7 @@ const ProviderDetail = ({
                     </div>
                     <div className="flex gap-1">
                       <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
-                        <RiCloseLine className="h-4 w-4" />
+                        <RiCloseLine className="size-4" />
                       </ActionButton>
                     </div>
                   </div>
@@ -282,7 +282,7 @@ const ProviderDetail = ({
                       className={cn('my-3 w-full shrink-0')}
                       onClick={() => setIsShowEditCustomCollectionModal(true)}
                     >
-                      <Settings01 className="mr-1 h-4 w-4 text-text-tertiary" />
+                      <Settings01 className="mr-1 size-4 text-text-tertiary" />
                       <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
                     </Button>
                   )}
@@ -294,7 +294,7 @@ const ProviderDetail = ({
                       >
                         <a className="flex items-center" href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank">
                           <div className="system-sm-medium">{t('openInStudio', { ns: 'tools' })}</div>
-                          <LinkExternal02 className="ml-1 h-4 w-4" />
+                          <LinkExternal02 className="ml-1 size-4" />
                         </a>
                       </Button>
                       <Button
@@ -325,7 +325,7 @@ const ProviderDetail = ({
                                 }}
                                 disabled={!isCurrentWorkspaceManager}
                               >
-                                <Indicator className="mr-2" color="green" />
+                                <StatusDot className="mr-2" status="success" />
                                 {t('auth.authorized', { ns: 'tools' })}
                               </Button>
                             )}

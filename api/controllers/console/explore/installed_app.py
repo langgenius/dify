@@ -270,7 +270,7 @@ class InstalledAppApi(InstalledAppResource):
         db.session.delete(installed_app)
         db.session.commit()
 
-        return {"result": "success", "message": "App uninstalled successfully"}, 204
+        return "", 204
 
     @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     def patch(self, installed_app):

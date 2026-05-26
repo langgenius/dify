@@ -49,15 +49,20 @@ class AgentBackendModelConfig(BaseModel):
     model: str
     user_id: str | None = None
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
+    model_settings: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class AgentBackendOutputConfig(BaseModel):
-    """API-side structured output declaration for the conventional output layer."""
+    """API-side structured output declaration for the conventional output layer.
+
+    The structured-output tool name is fixed to ``final_output`` inside
+    ``dify_agent.layers.output`` so callers only control the JSON Schema plus
+    optional description/strictness metadata.
+    """
 
     json_schema: dict[str, JsonValue]
-    name: str = "final_result"
     description: str | None = None
     strict: bool | None = None
 
@@ -138,6 +143,7 @@ class AgentBackendRunRequestBuilder:
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         credentials=run_input.model.credentials,
+                        model_settings=run_input.model.model_settings or None,
                     ),
                 ),
             ]
@@ -151,7 +157,6 @@ class AgentBackendRunRequestBuilder:
                     metadata=run_input.metadata,
                     config=DifyOutputLayerConfig(
                         json_schema=run_input.output.json_schema,
-                        name=run_input.output.name,
                         description=run_input.output.description,
                         strict=run_input.output.strict,
                     ),

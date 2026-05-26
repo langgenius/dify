@@ -381,7 +381,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
                   </p>
                 </div>
-                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line h-4 w-4 shrink-0 text-text-secondary" />
+                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary" />
               </div>
             )}
             {/* more settings */}
@@ -478,22 +478,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
             <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
           </div>
-          {showAppIconPicker && (
-            <div onClick={e => e.stopPropagation()}>
-              <AppIconPicker
-                onSelect={(payload) => {
-                  setAppIcon(payload)
-                  setShowAppIconPicker(false)
-                }}
-                onClose={() => {
-                  setAppIcon(createAppIcon(appInfo))
-                  setShowAppIconPicker(false)
-                }}
-              />
-            </div>
-          )}
         </DialogContent>
       </Dialog>
+      <AppIconPicker
+        open={showAppIconPicker}
+        initialEmoji={appIcon.type === 'emoji'
+          ? { icon: appIcon.icon, background: appIcon.background }
+          : undefined}
+        onOpenChange={setShowAppIconPicker}
+        onSelect={setAppIcon}
+      />
     </>
   )
 }

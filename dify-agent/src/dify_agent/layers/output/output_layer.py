@@ -34,6 +34,8 @@ from agenton.layers import EmptyRuntimeState, NoLayerDeps, PlainLayer
 from dify_agent.layers.output.configs import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 
 
+_FINAL_OUTPUT_TOOL_NAME: Final[str] = "final_output"
+_VALIDATED_OUTPUT_TYPE_NAME: Final[str] = f"DifyValidatedOutput_{_FINAL_OUTPUT_TOOL_NAME}"
 _LOCAL_DEFS_REF_PREFIX: Final[str] = "#/$defs/"
 _NON_SCHEMA_VALUE_KEYWORDS: Final[frozenset[str]] = frozenset({"const", "default", "enum", "example", "examples"})
 
@@ -71,7 +73,9 @@ class DifyOutputLayer(PlainLayer[NoLayerDeps, DifyOutputLayerConfig, EmptyRuntim
         runtime validation inside the same dynamically generated dict-like type.
         First-version support is intentionally limited to top-level object JSON
         Schemas so the same schema can be validated with ``jsonschema`` and then
-        exposed to Pydantic AI without any wrapper/unwrapper translation.
+        exposed to Pydantic AI without any wrapper/unwrapper translation. The
+        public tool name and exposed schema title are always ``final_output`` so
+        providers see one stable structured-output contract shape.
 
         Raises:
             ValueError: If the JSON Schema is invalid, contains non-local
@@ -82,7 +86,6 @@ class DifyOutputLayer(PlainLayer[NoLayerDeps, DifyOutputLayerConfig, EmptyRuntim
         _reject_non_local_refs(user_schema)
         validated_output_type = _build_validated_output_type(
             user_schema,
-            name=self.config.name,
             description=self.config.description,
         )
 
@@ -91,7 +94,7 @@ class DifyOutputLayer(PlainLayer[NoLayerDeps, DifyOutputLayerConfig, EmptyRuntim
                 OutputSpec[object],
                 ToolOutput(
                     validated_output_type,
-                    name=self.config.name,
+                    name=_FINAL_OUTPUT_TOOL_NAME,
                     strict=self.config.strict,
                 ),
             ),
@@ -111,18 +114,16 @@ def _build_json_schema_validator(schema: dict[str, JsonValue]) -> JsonSchemaVali
 def _build_validated_output_type(
     schema: dict[str, JsonValue],
     *,
-    name: str,
     description: str | None,
 ) -> type[dict[str, object]]:
     """Create a dict-like output type with custom JSON schema and validation hooks.
 
-    The generated type is unique per output layer config. Its Pydantic core
+    The generated type object is fresh per output layer config. Its Pydantic core
     schema performs real ``jsonschema`` validation, while its JSON schema hook
     exposes a model-facing schema that Pydantic AI can turn into an output tool.
     """
     validator = _build_json_schema_validator(schema)
-    exposed_schema = _build_exposed_json_schema(schema, name=name, description=description)
-    type_name = _build_output_type_name(name)
+    exposed_schema = _build_exposed_json_schema(schema, description=description)
 
     def _validate_output(value: dict[str, object]) -> object:
         errors = sorted(validator.iter_errors(cast(JsonValue, value)), key=lambda error: _sort_error_path(error.path))
@@ -165,14 +166,13 @@ def _build_validated_output_type(
         "__get_pydantic_core_schema__": __get_pydantic_core_schema__,
         "__get_pydantic_json_schema__": __get_pydantic_json_schema__,
     }
-    validated_output_type = cast(type[dict[str, object]], type(type_name, (dict,), namespace))
+    validated_output_type = cast(type[dict[str, object]], type(_VALIDATED_OUTPUT_TYPE_NAME, (dict,), namespace))
     return validated_output_type
 
 
 def _build_exposed_json_schema(
     schema: dict[str, JsonValue],
     *,
-    name: str,
     description: str | None,
 ) -> dict[str, JsonValue]:
     """Return the schema exposed to the model through Pydantic AI.
@@ -183,16 +183,10 @@ def _build_exposed_json_schema(
     attached.
     """
     exposed_schema = _inline_local_defs_refs(schema)
-    exposed_schema["title"] = name
+    exposed_schema["title"] = _FINAL_OUTPUT_TOOL_NAME
     if description is not None:
         exposed_schema["description"] = description
     return exposed_schema
-
-
-def _build_output_type_name(name: str) -> str:
-    """Return a deterministic debug-friendly class name for one output schema."""
-    sanitized = "".join(character if character.isalnum() else "_" for character in name).strip("_") or "final_result"
-    return f"DifyValidatedOutput_{sanitized}"
 
 
 def _reject_non_local_refs(schema: JsonValue) -> None:

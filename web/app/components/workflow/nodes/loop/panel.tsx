@@ -47,10 +47,10 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           title={<div className="pl-3">{t('nodes.loop.loopVariables', { ns: 'workflow' })}</div>}
           operations={(
             <div
-              className="mr-4 flex h-5 w-5 cursor-pointer items-center justify-center"
+              className="mr-4 flex size-5 cursor-pointer items-center justify-center"
               onClick={handleAddLoopVariable}
             >
-              <RiAddLine className="h-4 w-4 text-text-tertiary" />
+              <RiAddLine className="size-4 text-text-tertiary" />
             </div>
           )}
         >
@@ -92,6 +92,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           >
             <div className="px-3 py-2">
               <InputNumberWithSlider
+                label={t(`${i18nPrefix}.loopMaxCount`, { ns: 'workflow' })}
                 min={1}
                 max={LOOP_NODE_MAX_COUNT}
                 value={inputs.loop_count}

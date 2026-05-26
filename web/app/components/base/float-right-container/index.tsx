@@ -55,14 +55,14 @@ const FloatRightContainer = ({
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
                       {title && (
-                        <DrawerTitle className="text-lg leading-6 font-medium text-text-primary">
+                        <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                           {title}
                         </DrawerTitle>
                       )}
                       {showClose && (
                         <DrawerCloseButton
                           aria-label={t('operation.close', { ns: 'common' })}
-                          className="h-6 w-6 rounded-md"
+                          className="size-6 rounded-md"
                         />
                       )}
                     </div>

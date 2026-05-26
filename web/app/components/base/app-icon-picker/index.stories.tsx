@@ -43,25 +43,25 @@ const AppIconPickerDemo = () => {
 
       <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-4 text-sm text-text-secondary shadow-sm">
         <div className="font-medium text-text-primary">Selection preview</div>
-        <pre className="mt-2 max-h-44 overflow-auto rounded-md bg-background-default-subtle p-3 font-mono text-xs leading-tight text-text-primary">
+        <pre className="mt-2 max-h-44 overflow-auto rounded-md bg-background-default-subtle p-3 font-mono text-xs/tight text-text-primary">
           {selection ? JSON.stringify(selection, null, 2) : 'No icon selected yet.'}
         </pre>
       </div>
 
-      {open && (
-        <AppIconPicker
-          onSelect={(result) => {
-            setSelection(result)
-            setOpen(false)
-          }}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      <AppIconPicker
+        open={open}
+        onOpenChange={setOpen}
+        onSelect={setSelection}
+      />
     </div>
   )
 }
 
 export const Playground: Story = {
+  args: {
+    open: false,
+    onOpenChange: () => {},
+  },
   render: () => <AppIconPickerDemo />,
   parameters: {
     docs: {
@@ -74,15 +74,11 @@ const [selection, setSelection] = useState<AppIconSelection | null>(null)
 return (
   <>
     <button onClick={() => setOpen(true)}>Choose icon…</button>
-    {open && (
-      <AppIconPicker
-        onSelect={(result) => {
-          setSelection(result)
-          setOpen(false)
-        }}
-        onClose={() => setOpen(false)}
-      />
-    )}
+    <AppIconPicker
+      open={open}
+      onOpenChange={setOpen}
+      onSelect={setSelection}
+    />
   </>
 )
         `.trim(),

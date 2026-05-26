@@ -6,6 +6,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -19,7 +20,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
-import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
@@ -98,12 +98,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
         <div className="flex items-center gap-1.5">
           {method.type === DeliveryMethodType.WebApp && (
             <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
-              <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+              <RiRobot2Fill className="size-3.5 text-text-primary-on-surface" />
             </div>
           )}
           {method.type === DeliveryMethodType.Email && (
             <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
-              <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+              <RiMailSendFill className="size-3.5 text-text-primary-on-surface" />
             </div>
           )}
           <div className="system-xs-medium text-text-secondary capitalize">{method.type}</div>
@@ -123,7 +123,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                           aria-label={emailSenderTooltipContent}
                           onClick={() => setShowTestEmailModal(true)}
                         >
-                          <RiSendPlane2Line className="h-4 w-4" />
+                          <RiSendPlane2Line className="size-4" />
                         </ActionButton>
                       )}
                     />
@@ -136,7 +136,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                           aria-label={configureLabel}
                           onClick={() => setShowEmailModal(true)}
                         >
-                          <RiEqualizer2Line className="h-4 w-4" />
+                          <RiEqualizer2Line className="size-4" />
                         </ActionButton>
                       )}
                     />
@@ -154,7 +154,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                       onMouseLeave={() => setIsHovering(false)}
                       onClick={() => onDelete(method.type)}
                     >
-                      <RiDeleteBinLine className="h-4 w-4" />
+                      <RiDeleteBinLine className="size-4" />
                     </ActionButton>
                   )}
                 />
@@ -177,7 +177,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               disabled={readonly}
             >
               {t(`${i18nPrefix}.deliveryMethod.notConfigured`, { ns: 'workflow' })}
-              <Indicator color="orange" className="ml-1" />
+              <StatusDot status="warning" className="ml-1" />
             </Button>
           )}
         </div>

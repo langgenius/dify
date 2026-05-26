@@ -1,6 +1,5 @@
-import urllib.parse
-
 import httpx
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -34,7 +33,7 @@ class GetRemoteFileInfo(Resource):
     @console_ns.response(200, "Success", console_ns.models[RemoteFileInfo.__name__])
     @login_required
     def get(self, url: str):
-        decoded_url = urllib.parse.unquote(url)
+        decoded_url = helpers.decode_remote_url(url, request.query_string)
         resp = ssrf_proxy.head(decoded_url)
         if resp.status_code != httpx.codes.OK:
             resp = ssrf_proxy.get(decoded_url, timeout=3)

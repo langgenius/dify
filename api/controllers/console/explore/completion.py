@@ -133,7 +133,7 @@ class CompletionApi(InstalledAppResource):
 )
 class CompletionStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, installed_app, task_id):
+    def post(self, installed_app, task_id: str):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
@@ -209,7 +209,7 @@ class ChatApi(InstalledAppResource):
 )
 class ChatStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, installed_app, task_id):
+    def post(self, installed_app, task_id: str):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

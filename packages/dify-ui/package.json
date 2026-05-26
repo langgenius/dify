@@ -65,13 +65,33 @@
       "types": "./src/form/index.tsx",
       "import": "./src/form/index.tsx"
     },
+    "./input": {
+      "types": "./src/input/index.tsx",
+      "import": "./src/input/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
     },
+    "./progress": {
+      "types": "./src/progress/index.tsx",
+      "import": "./src/progress/index.tsx"
+    },
     "./number-field": {
       "types": "./src/number-field/index.tsx",
       "import": "./src/number-field/index.tsx"
+    },
+    "./pagination": {
+      "types": "./src/pagination/index.tsx",
+      "import": "./src/pagination/index.tsx"
+    },
+    "./radio": {
+      "types": "./src/radio/index.tsx",
+      "import": "./src/radio/index.tsx"
+    },
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",
@@ -89,6 +109,10 @@
       "types": "./src/select/index.tsx",
       "import": "./src/select/index.tsx"
     },
+    "./status-dot": {
+      "types": "./src/status-dot/index.tsx",
+      "import": "./src/status-dot/index.tsx"
+    },
     "./slider": {
       "types": "./src/slider/index.tsx",
       "import": "./src/slider/index.tsx"
@@ -97,13 +121,13 @@
       "types": "./src/switch/index.tsx",
       "import": "./src/switch/index.tsx"
     },
+    "./segmented-control": {
+      "types": "./src/segmented-control/index.tsx",
+      "import": "./src/segmented-control/index.tsx"
+    },
     "./tabs": {
       "types": "./src/tabs/index.tsx",
       "import": "./src/tabs/index.tsx"
-    },
-    "./toggle-group": {
-      "types": "./src/toggle-group/index.tsx",
-      "import": "./src/toggle-group/index.tsx"
     },
     "./toast": {
       "types": "./src/toast/index.tsx",
@@ -148,6 +172,7 @@
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
     "playwright": "catalog:",

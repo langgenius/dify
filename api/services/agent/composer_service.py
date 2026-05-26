@@ -16,6 +16,12 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import (
+    DeclaredOutputConfig,
+)
+from models.agent_config_entities import (
+    effective_declared_outputs as _effective_declared_outputs,
+)
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError, AgentVersionNotFoundError
@@ -27,6 +33,10 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+
+# WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
+# Mirrors Workflow.version when it is "draft" (see models/workflow.py).
+_DRAFT_WORKFLOW_VERSION = "draft"
 
 
 class AgentComposerService:
@@ -284,6 +294,7 @@ class AgentComposerService:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
+            workflow_version=_DRAFT_WORKFLOW_VERSION,
             node_id=node_id,
             binding_type=WorkflowAgentBindingType.INLINE_AGENT,
             agent_id=agent.id,
@@ -387,6 +398,7 @@ class AgentComposerService:
                 tenant_id=tenant_id,
                 app_id=app_id,
                 workflow_id=workflow_id,
+                workflow_version=_DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
                 created_by=account_id,
             )
@@ -606,11 +618,16 @@ class AgentComposerService:
     def _get_workflow_binding(
         cls, *, tenant_id: str, workflow_id: str, node_id: str
     ) -> WorkflowAgentNodeBinding | None:
+        # Composer always operates against the draft workflow row, so this lookup
+        # is scoped to ``workflow_version="draft"``. Published bindings are
+        # materialized by WorkflowAgentPublishService.copy_agent_node_bindings_to_published
+        # and are not edited through the Composer.
         return db.session.scalar(
             select(WorkflowAgentNodeBinding)
             .where(
                 WorkflowAgentNodeBinding.tenant_id == tenant_id,
                 WorkflowAgentNodeBinding.workflow_id == workflow_id,
+                WorkflowAgentNodeBinding.workflow_version == _DRAFT_WORKFLOW_VERSION,
                 WorkflowAgentNodeBinding.node_id == node_id,
             )
             .limit(1)
@@ -670,6 +687,27 @@ class AgentComposerService:
             .limit(1)
         )
 
+    @staticmethod
+    def _declared_outputs_from_binding(binding: WorkflowAgentNodeBinding) -> list[DeclaredOutputConfig]:
+        """Re-hydrate the binding's node_job_config into typed declared outputs.
+
+        node_job_config is stored as JSON / LongText; the typed view is needed
+        so the effective_declared_outputs helper can fall back to defaults on
+        an empty list without callers re-implementing the fallback.
+        """
+        node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+        return list(node_job.declared_outputs)
+
+    @staticmethod
+    def _serialize_effective_outputs(declared_outputs: list[DeclaredOutputConfig]) -> list[dict[str, Any]]:
+        """JSON-serialize the effective declared outputs (PRD defaults if empty).
+
+        Stage 4 decision D-3 keeps defaults out of the DB; this helper is the
+        single place that injects them into the Composer load response so the
+        wire shape stays consistent whether the user has declared anything yet.
+        """
+        return [output.model_dump(mode="json") for output in _effective_declared_outputs(declared_outputs)]
+
     @classmethod
     def _empty_workflow_state(cls, *, app_id: str, workflow_id: str, node_id: str) -> dict[str, Any]:
         return {
@@ -680,6 +718,9 @@ class AgentComposerService:
             "soul_lock": {"locked": False, "can_unlock": False, "reason": "workflow_only_empty"},
             "agent_soul": AgentSoulConfig().model_dump(mode="json"),
             "node_job": WorkflowNodeJobConfig().model_dump(mode="json"),
+            # Stage 4 §4.1 / §10.1 (D-3): empty composer state still surfaces the
+            # PRD defaults so the front-end has stable output names to render.
+            "effective_declared_outputs": cls._serialize_effective_outputs([]),
             "save_options": [ComposerSaveStrategy.NODE_JOB_ONLY.value, ComposerSaveStrategy.SAVE_TO_ROSTER.value],
             "impact_summary": None,
             "app_id": app_id,
@@ -728,6 +769,11 @@ class AgentComposerService:
             if version
             else AgentSoulConfig().model_dump(mode="json"),
             "node_job": binding.node_job_config_dict,
+            # Stage 4 §4.1 / §10.1 (D-3): when the saved node_job carries no
+            # declared_outputs, surface the PRD defaults so the front-end can
+            # render them as read-only chips. When user-defined outputs exist
+            # this is the same list (so callers don't need to special-case).
+            "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
             "impact_summary": cls.calculate_impact(
                 tenant_id=binding.tenant_id, current_snapshot_id=binding.current_snapshot_id

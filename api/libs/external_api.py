@@ -76,6 +76,7 @@ def register_external_error_handlers(api: Api):
 
     def handle_value_error(e: ValueError):
         got_request_exception.send(current_app, exception=e)
+        current_app.logger.exception("value_error in request handler")
         status_code = 400
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
         return data, status_code

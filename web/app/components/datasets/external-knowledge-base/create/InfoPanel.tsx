@@ -10,7 +10,7 @@ const InfoPanel = () => {
     <div className="flex w-[360px] flex-col items-start pt-[108px] pr-8 pb-2">
       <div className="flex w-full min-w-[240px] flex-col items-start gap-3 self-stretch rounded-xl bg-background-section p-6">
         <div className="flex h-10 w-10 grow items-center justify-center gap-2 self-stretch rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-1">
-          <RiBookOpenLine className="h-5 w-5 text-text-accent" />
+          <RiBookOpenLine className="size-5 text-text-accent" />
         </div>
         <p className="flex flex-col items-start gap-2 self-stretch">
           <span className="self-stretch system-xl-semibold text-text-secondary">

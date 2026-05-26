@@ -1,5 +1,6 @@
 import type { FileEntity } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import {
   RiCloseLine,
   RiDownloadLine,
@@ -8,7 +9,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
 import {
@@ -46,13 +46,13 @@ const FileImageItem = ({
           showDeleteAction && (
             <Button
               aria-label={t('operation.remove', { ns: 'common' })}
-              className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
+              className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-image:flex"
               onClick={(e) => {
                 e.stopPropagation()
                 onRemove?.(id)
               }}
             >
-              <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" aria-hidden="true" />
+              <RiCloseLine className="size-4 text-components-button-secondary-text" aria-hidden="true" />
             </Button>
           )
         }
@@ -65,11 +65,9 @@ const FileImageItem = ({
           progress >= 0 && !fileIsUploaded(file) && (
             <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-effects-image-frame bg-background-overlay-alt">
               <ProgressCircle
-                percentage={progress}
-                size={12}
-                circleStrokeColor="stroke-components-progress-white-border"
-                circleFillColor="fill-transparent"
-                sectorFillColor="fill-components-progress-white-progress"
+                value={progress}
+                color="white"
+                aria-label={t('uploading', { ns: 'custom' })}
               />
             </div>
           )
@@ -80,13 +78,13 @@ const FileImageItem = ({
               <button
                 type="button"
                 aria-label={t('operation.retry', { ns: 'common' })}
-                className="h-5 w-5 border-none bg-transparent p-0"
+                className="size-5 border-none bg-transparent p-0"
                 onClick={(e) => {
                   e.stopPropagation()
                   onReUpload?.(id)
                 }}
               >
-                <ReplayLine className="h-5 w-5" aria-hidden="true" />
+                <ReplayLine className="size-5" aria-hidden="true" />
               </button>
             </div>
           )
@@ -97,13 +95,13 @@ const FileImageItem = ({
               <button
                 type="button"
                 aria-label={t('operation.download', { ns: 'common' })}
-                className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg border-none bg-components-actionbar-bg p-0 shadow-md"
+                className="absolute right-0.5 bottom-0.5 flex size-6 items-center justify-center rounded-lg border-none bg-components-actionbar-bg p-0 shadow-md"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
               >
-                <RiDownloadLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                <RiDownloadLine className="size-4 text-text-tertiary" aria-hidden="true" />
               </button>
             </div>
           )

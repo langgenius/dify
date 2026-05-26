@@ -1748,6 +1748,30 @@ export const zAgentSoulKnowledgeConfig = z.object({
 })
 
 /**
+ * AgentSoulModelCredentialRef
+ *
+ * Reference to model credentials resolved only at runtime.
+ */
+export const zAgentSoulModelCredentialRef = z.object({
+  id: z.string().max(255).nullish(),
+  provider: z.string().max(255).nullish(),
+  type: z.string().min(1).max(64),
+})
+
+/**
+ * AgentSoulModelConfig
+ *
+ * Stable model selection for Agent runtime without storing secret values.
+ */
+export const zAgentSoulModelConfig = z.object({
+  credential_ref: zAgentSoulModelCredentialRef.optional(),
+  model: z.string().min(1).max(255),
+  model_provider: z.string().min(1).max(255),
+  model_settings: z.record(z.string(), z.unknown()).optional(),
+  plugin_id: z.string().min(1).max(255),
+})
+
+/**
  * AgentSoulConfig
  */
 export const zAgentSoulConfig = z.object({
@@ -1758,6 +1782,7 @@ export const zAgentSoulConfig = z.object({
   knowledge: zAgentSoulKnowledgeConfig.optional(),
   memory: zAgentSoulMemoryConfig.optional(),
   misc_legacy: z.record(z.string(), z.unknown()).optional(),
+  model: zAgentSoulModelConfig.optional(),
   prompt: zAgentSoulPromptConfig.optional(),
   sandbox: zAgentSoulSandboxConfig.optional(),
   schema_version: z.int().optional().default(1),
@@ -1767,24 +1792,22 @@ export const zAgentSoulConfig = z.object({
 
 /**
  * DeclaredOutputCheckConfig
+ *
+ * File-output content check via a model-based comparison against a benchmark file.
+ *
+ * Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
  */
 export const zDeclaredOutputCheckConfig = z.object({
   benchmark_file_ref: z.record(z.string(), z.unknown()).nullish(),
+  enabled: z.boolean().optional().default(false),
+  model_ref: z.record(z.string(), z.unknown()).nullish(),
   prompt: z.string().nullish(),
-  type: z.string().min(1).max(64),
-})
-
-/**
- * DeclaredOutputFailureStrategy
- */
-export const zDeclaredOutputFailureStrategy = z.object({
-  max_retries: z.int().gte(0).lte(10).optional().default(0),
-  on_output_check_failed: z.string().nullish(),
-  on_type_check_failed: z.string().nullish(),
 })
 
 /**
  * DeclaredOutputFileConfig
+ *
+ * File-type output metadata. Both lists empty means "any file accepted".
  */
 export const zDeclaredOutputFileConfig = z.object({
   extensions: z.array(z.string()).optional(),
@@ -1804,10 +1827,69 @@ export const zDeclaredOutputType = z.enum([
 ])
 
 /**
+ * DeclaredArrayItem
+ *
+ * Per-item shape for an ``array``-typed declared output.
+ *
+ * PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+ * are rejected so the runtime type checker and JSON Schema stay easy to reason
+ * about. Stage 4 §4.2.
+ */
+export const zDeclaredArrayItem = z.object({
+  description: z.string().nullish(),
+  type: zDeclaredOutputType,
+})
+
+export const zFormInputConfig = z.unknown()
+
+/**
+ * OutputErrorStrategy
+ *
+ * Per-output failure handling strategy.
+ *
+ * Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of
+ * a Workflow Agent Node. The runtime applies the strategy after type check or
+ * output check fails and any configured retry attempts have been exhausted.
+ */
+export const zOutputErrorStrategy = z.enum(['default_value', 'fail_branch', 'stop'])
+
+/**
+ * DeclaredOutputRetryConfig
+ *
+ * Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
+ */
+export const zDeclaredOutputRetryConfig = z.object({
+  enabled: z.boolean().optional().default(false),
+  max_retries: z.int().gte(0).lte(10).optional().default(0),
+  retry_interval_ms: z.int().gte(0).lte(60000).optional().default(0),
+})
+
+/**
+ * DeclaredOutputFailureStrategy
+ *
+ * Per-output failure handling.
+ *
+ * A single strategy applies to both ``type_check`` and ``output_check`` failures
+ * (PRD does not distinguish them at the UX level). Stage 4 §4.4.
+ */
+export const zDeclaredOutputFailureStrategy = z.object({
+  default_value: z.unknown().optional(),
+  on_failure: zOutputErrorStrategy.optional(),
+  retry: zDeclaredOutputRetryConfig.optional(),
+})
+
+/**
  * DeclaredOutputConfig
+ *
+ * One declared output of a Workflow Agent Node.
+ *
+ * Stage 4 normalizes the shape: ``check`` is singular (was ``checks: list`` in
+ * stage 3), and ``failure_strategy`` defaults to a populated value so runtime
+ * code can call ``output.failure_strategy.on_failure`` without None-guards.
  */
 export const zDeclaredOutputConfig = z.object({
-  checks: z.array(zDeclaredOutputCheckConfig).optional(),
+  array_item: zDeclaredArrayItem.optional(),
+  check: zDeclaredOutputCheckConfig.optional(),
   description: z.string().nullish(),
   failure_strategy: zDeclaredOutputFailureStrategy.optional(),
   file: zDeclaredOutputFileConfig.optional(),
@@ -1845,8 +1927,6 @@ export const zComposerSavePayload = z.object({
   variant: zComposerVariant,
   version_note: z.string().nullish(),
 })
-
-export const zFormInputConfig = z.unknown()
 
 /**
  * ButtonStyle

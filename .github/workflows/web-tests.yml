@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run tests
-        run: vp test run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --reporter=blob --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -83,7 +83,7 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           directory: web/coverage
           flags: web
@@ -117,7 +117,7 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           directory: packages/dify-ui/coverage
           flags: dify-ui

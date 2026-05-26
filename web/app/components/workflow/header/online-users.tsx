@@ -181,7 +181,7 @@ const OnlineUsers = () => {
                       +
                       {remainingCount}
                     </div>
-                    <ChevronDownIcon className="h-3 w-3 cursor-pointer text-gray-500" />
+                    <ChevronDownIcon className="size-3 cursor-pointer text-gray-500" />
                   </div>
                 )}
               />

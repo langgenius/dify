@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -78,10 +79,10 @@ class AnnotationReplyActionStatusApi(Resource):
         }
     )
     @validate_app_token
-    def get(self, app_model: App, job_id, action):
+    def get(self, app_model: App, job_id: UUID, action: str):
         """Get the status of an annotation reply action job."""
-        job_id = str(job_id)
-        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
+        job_id_str = str(job_id)
+        app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -89,10 +90,10 @@ class AnnotationReplyActionStatusApi(Resource):
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
+            app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
             error_msg = redis_client.get(app_annotation_error_key).decode()
 
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
 
 
 @service_api_ns.route("/apps/annotations")
@@ -173,11 +174,11 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @validate_app_token
     @edit_permission_required
-    def put(self, app_model: App, annotation_id: str):
+    def put(self, app_model: App, annotation_id: UUID):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, annotation_id)
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id))
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
@@ -194,7 +195,7 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @validate_app_token
     @edit_permission_required
-    def delete(self, app_model: App, annotation_id: str):
+    def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id))
         return "", 204

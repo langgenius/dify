@@ -1,5 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { fetchCurrentPlanVectorSpace } from './billing'
+
+const currentPlanVectorSpaceQueryKey = ['billing', 'current-plan-vector-space'] as const
 
 export const useBindPartnerStackInfo = () => {
   return useMutation({
@@ -19,5 +22,13 @@ export const useBillingUrl = (enabled: boolean) => {
       const res = await consoleClient.billing.invoices()
       return res.url
     },
+  })
+}
+
+export const useCurrentPlanVectorSpace = (enabled = true) => {
+  return useQuery({
+    queryKey: currentPlanVectorSpaceQueryKey,
+    queryFn: () => fetchCurrentPlanVectorSpace(),
+    enabled,
   })
 }
