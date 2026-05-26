@@ -23,7 +23,7 @@ from flask_restx import Resource
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.web.error import NotFoundError
+from libs.exception import BaseHTTPException
 from libs.login import login_required
 from models import App, AppMode
 from services.workflow.node_output_inspector_service import (
@@ -37,9 +37,19 @@ def _service() -> NodeOutputInspectorService:
     return NodeOutputInspectorService()
 
 
-def _to_not_found(error: NodeOutputInspectorError) -> NotFoundError:
-    """All service-side conditions surface as 404 with a stable error code."""
-    return NotFoundError(error.code)
+class _InspectorNotFound(BaseHTTPException):
+    """404 that preserves the inspector's specific error code.
+
+    Without this the response body collapses to a generic ``not_found`` code
+    and clients lose the ability to distinguish, e.g.,
+    ``workflow_run_not_found`` from ``published_run_inspector_not_implemented``.
+    """
+
+    code = 404
+
+    def __init__(self, error: NodeOutputInspectorError) -> None:
+        self.error_code = error.code
+        super().__init__(description=str(error))
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs")
@@ -61,7 +71,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
                 workflow_run_id=str(run_id),
             )
         except NodeOutputInspectorError as error:
-            raise _to_not_found(error)
+            raise _InspectorNotFound(error) from error
         return snapshot.model_dump(mode="json")
 
 
@@ -91,7 +101,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
                 node_id=node_id,
             )
         except NodeOutputInspectorError as error:
-            raise _to_not_found(error)
+            raise _InspectorNotFound(error) from error
         return view.model_dump(mode="json")
 
 
@@ -125,5 +135,5 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
                 output_name=output_name,
             )
         except NodeOutputInspectorError as error:
-            raise _to_not_found(error)
+            raise _InspectorNotFound(error) from error
         return preview.model_dump(mode="json")
