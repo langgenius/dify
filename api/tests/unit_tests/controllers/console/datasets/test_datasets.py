@@ -516,6 +516,47 @@ class TestDatasetApiGet:
         assert status == 200
         assert data["embedding_available"] is True
 
+    def test_get_attaches_permission_keys_when_rbac_enabled(self, app: Flask):
+        api = DatasetApi()
+        method = unwrap(api.get)
+
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        user = MagicMock(id="account-1")
+        tenant_id = "tenant-1"
+        dataset = make_dataset(id=dataset_id)
+
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.datasets.datasets.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch.object(
+                DatasetService,
+                "get_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                DatasetService,
+                "check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetPermissions.batch_get",
+                return_value={dataset_id: ["dataset.acl.readonly", "dataset.acl.edit"]},
+            ) as batch_get_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
+        ):
+            provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
+
+            data, status = method(api, dataset_id)
+
+        batch_get_mock.assert_called_once_with(tenant_id, user.id, [dataset_id])
+        assert status == 200
+        assert dataset.permission_keys == ["dataset.acl.readonly", "dataset.acl.edit"]
+        assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
+
     def test_get_uses_default_external_retrieval_model(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)

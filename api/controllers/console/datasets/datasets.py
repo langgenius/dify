@@ -546,6 +546,13 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         _ensure_permission_keys(dataset, enabled=dify_config.RBAC_ENABLED)
+        if dify_config.RBAC_ENABLED:
+            permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+                str(current_tenant_id),
+                current_user.id,
+                [dataset_id_str],
+            )
+            setattr(dataset, "permission_keys", permission_keys_map.get(dataset_id_str, []))
         data = dump_response(DatasetDetailResponse, dataset)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
