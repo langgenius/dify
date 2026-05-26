@@ -622,4 +622,3 @@ class ValkeyVectorFactory(AbstractVectorFactory):
                 distance_metric=dify_config.VALKEY_DISTANCE_METRIC,
             ),
         )
-

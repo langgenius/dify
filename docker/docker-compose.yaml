@@ -53,8 +53,6 @@ x-shared-api-worker-config: &shared-api-worker-config
       required: false
     - path: ./envs/vectorstores/milvus.env
       required: false
-    - path: ./envs/vectorstores/valkey.env
-      required: false
     - path: ./envs/infrastructure/nginx.env
       required: false
     - path: ./envs/infrastructure/certbot.env
@@ -121,8 +119,6 @@ x-shared-worker-config: &shared-worker-config
       required: false
     - path: ./envs/vectorstores/milvus.env
       required: false
-    - path: ./envs/vectorstores/valkey.env
-      required: false
     - path: ./envs/infrastructure/nginx.env
       required: false
     - path: ./envs/infrastructure/certbot.env
@@ -188,8 +184,6 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/vectorstores/opensearch.env
       required: false
     - path: ./envs/vectorstores/milvus.env
-      required: false
-    - path: ./envs/vectorstores/valkey.env
       required: false
     - path: ./envs/infrastructure/nginx.env
       required: false
