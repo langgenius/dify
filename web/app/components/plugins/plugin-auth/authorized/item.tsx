@@ -162,34 +162,20 @@ const Item = ({
         )
       }
       {
-        showSwitchAwayHint
-          ? (
-            <Tooltip popupContent={t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}>
-              <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
-                <RiInformationLine className="h-4 w-4" />
-              </div>
-            </Tooltip>
-          )
-          : credential.from_enterprise
-            ? (
-              <Badge className="shrink-0">
-                {t('auth.enterprise', { ns: 'plugin' })}
-              </Badge>
-            )
-            : (
-              <Badge
-                className={cn(
-                  'shrink-0',
-                  isPersonal
-                    ? 'border-components-badge-bg-gray-soft bg-components-badge-bg-gray-soft text-text-tertiary'
-                    : 'border-components-badge-bg-blue-soft bg-components-badge-bg-blue-soft text-text-accent',
-                )}
-              >
-                {isPersonal
-                  ? t('auth.personal', { ns: 'plugin' })
-                  : t('auth.shared', { ns: 'plugin' })}
-              </Badge>
-            )
+        showSwitchAwayHint && (
+          <Tooltip popupContent={t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}>
+            <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
+              <RiInformationLine className="h-4 w-4" />
+            </div>
+          </Tooltip>
+        )
+      }
+      {
+        !showSwitchAwayHint && credential.from_enterprise && (
+          <Badge className="shrink-0">
+            {t('auth.enterprise', { ns: 'plugin' })}
+          </Badge>
+        )
       }
       {
         showAction && !renaming && (
