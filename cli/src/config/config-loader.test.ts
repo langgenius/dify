@@ -2,10 +2,15 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { loadConfig } from './loader.js'
-import { FILE_NAME } from './schema.js'
+import { FILE_NAME } from './schema'
+import { isBaseError } from '../errors/base'
+import { ErrorCode } from '../errors/codes'
+import { loadConfig } from './config-loader'
+import { YamlStore } from '../store/store'
+
+function makeStore(dir: string): YamlStore {
+  return new YamlStore(join(dir, FILE_NAME))
+}
 
 describe('loadConfig', () => {
   let dir: string
@@ -18,14 +23,14 @@ describe('loadConfig', () => {
     await mkdir(dir, { recursive: true }).catch(() => {})
   })
 
-  it('returns found:false when config.yml is missing', async () => {
-    const r = await loadConfig(dir)
+  it('returns found:false when config.yml is missing', () => {
+    const r = loadConfig(makeStore(dir))
     expect(r.found).toBe(false)
   })
 
   it('parses a minimal valid config.yml', async () => {
     await writeFile(join(dir, FILE_NAME), 'schema_version: 1\n', 'utf8')
-    const r = await loadConfig(dir)
+    const r = loadConfig(makeStore(dir))
     expect(r.found).toBe(true)
     if (r.found)
       expect(r.config.schema_version).toBe(1)
@@ -37,7 +42,7 @@ describe('loadConfig', () => {
       'schema_version: 1\ndefaults:\n  format: json\n  limit: 100\nstate:\n  current_app: app-1\n',
       'utf8',
     )
-    const r = await loadConfig(dir)
+    const r = loadConfig(makeStore(dir))
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).toBe('json')
@@ -50,7 +55,7 @@ describe('loadConfig', () => {
     await writeFile(join(dir, FILE_NAME), '::not yaml::: {{[', 'utf8')
     let caught: unknown
     try {
-      await loadConfig(dir)
+      loadConfig(makeStore(dir))
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -62,7 +67,7 @@ describe('loadConfig', () => {
     await writeFile(join(dir, FILE_NAME), 'defaults:\n  limit: 9999\n', 'utf8')
     let caught: unknown
     try {
-      await loadConfig(dir)
+      loadConfig(makeStore(dir))
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -74,7 +79,7 @@ describe('loadConfig', () => {
     await writeFile(join(dir, FILE_NAME), 'schema_version: 2\n', 'utf8')
     let caught: unknown
     try {
-      await loadConfig(dir)
+      loadConfig(makeStore(dir))
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)

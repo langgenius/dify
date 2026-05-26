@@ -2,7 +2,7 @@ import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { FILE_PERM } from '../config/dir.js'
+import { FILE_PERM } from '../store/dir.js'
 import { FileBackend, TOKENS_FILE_NAME } from './file-backend.js'
 
 describe('FileBackend', () => {

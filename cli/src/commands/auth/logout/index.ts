@@ -1,7 +1,7 @@
 import type { KyInstance } from 'ky'
 import { loadHosts } from '../../../auth/hosts.js'
 import { selectStore } from '../../../auth/store.js'
-import { resolveConfigDir } from '../../../config/dir.js'
+import { resolveConfigDir } from '../../../store/dir.js'
 import { createClient } from '../../../http/client.js'
 import { runWithSpinner } from '../../../io/spinner.js'
 import { realStreams } from '../../../io/streams.js'

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { DIR_PERM, FILE_PERM } from '../config/dir.js'
+import { DIR_PERM, FILE_PERM } from '../store/dir.js'
 
 const CACHE_FILE = 'nudge.json'
 const DISK_SCHEMA = 1

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { startMock } from '../../test/fixtures/dify-mock/server.js'
 import { saveHosts } from '../auth/hosts.js'
-import { ENV_CONFIG_DIR } from '../config/dir.js'
+import { ENV_CONFIG_DIR } from '../store/dir.js'
 import { runVersionProbe } from './probe.js'
 
 function bundle(overrides: Partial<HostsBundle> = {}): HostsBundle {

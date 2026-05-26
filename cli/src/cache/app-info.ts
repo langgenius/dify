@@ -1,7 +1,7 @@
 import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '../types/app-meta.js'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { DIR_PERM, FILE_PERM } from '../config/dir.js'
+import { DIR_PERM, FILE_PERM } from '../store/dir.js'
 import { FieldInfo, FieldInputSchema, FieldParameters } from '../types/app-meta.js'
 
 const CACHE_FILE = 'app-info.json'
