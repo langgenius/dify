@@ -282,7 +282,65 @@ def _insert_load_balancing_model_config(
         )
 
 
-def test_data_migrate_command_wires_filters_into_service(
+def test_data_migrate_command_defaults_output_to_stdout_stream(
+    command_module,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    service_calls: list[dict[str, object]] = []
+    fake_stdout = io.StringIO()
+
+    class FakeService:
+        def __init__(
+            self,
+            *,
+            engine: sa.Engine,
+            apply: bool,
+            output: io.TextIOBase | None = None,
+            tables: tuple[str, ...] | None,
+            model_types: tuple[ModelType, ...],
+            tenant_ids: tuple[str, ...] | None,
+        ) -> None:
+            service_calls.append(
+                {
+                    "engine": engine,
+                    "apply": apply,
+                    "output": output,
+                    "tables": tables,
+                    "model_types": model_types,
+                    "tenant_ids": tenant_ids,
+                }
+            )
+
+        def migrate(self) -> None:
+            service_calls.append({"migrated": True})
+
+    monkeypatch.setattr(command_module, "LegacyModelTypeMigrationService", FakeService)
+    monkeypatch.setattr(command_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(command_module.sys, "stdout", fake_stdout)
+    tenant_id_file = tmp_path / "tenant_ids.txt"
+    tenant_id_file.write_text("tenant-alpha\n", encoding="utf-8")
+
+    data_migrate = getattr(command_module, "data_migrate")
+    legacy_model_types = cast(object, data_migrate.commands["legacy-model-types"])
+
+    legacy_model_types.callback(
+        apply=True,
+        tables=("provider_models",),
+        model_types=("llm", "text-embedding"),
+        tenant_id_file=str(tenant_id_file),
+        output=None,
+    )
+
+    assert service_calls[0]["apply"] is True
+    assert service_calls[0]["output"] is fake_stdout
+    assert service_calls[0]["tables"] == ("provider_models",)
+    assert tuple(cast(list[str], service_calls[0]["tenant_ids"])) == ("tenant-alpha",)
+    assert service_calls[0]["model_types"] == (ModelType.LLM, ModelType.TEXT_EMBEDDING)
+    assert service_calls[1] == {"migrated": True}
+
+
+def test_data_migrate_command_opens_output_file_and_closes_stream(
     command_module,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -312,27 +370,31 @@ def test_data_migrate_command_wires_filters_into_service(
             )
 
         def migrate(self) -> None:
+            output = cast(io.TextIOBase, service_calls[0]["output"])
+            output.write('{"event":"test"}\n')
             service_calls.append({"migrated": True})
 
     monkeypatch.setattr(command_module, "LegacyModelTypeMigrationService", FakeService)
     monkeypatch.setattr(command_module, "db", SimpleNamespace(engine=object()))
-    tenant_id_file = tmp_path / "tenant_ids.txt"
-    tenant_id_file.write_text("tenant-alpha\n", encoding="utf-8")
+    output_path = tmp_path / "migration.jsonl"
 
     data_migrate = getattr(command_module, "data_migrate")
     legacy_model_types = cast(object, data_migrate.commands["legacy-model-types"])
 
     legacy_model_types.callback(
-        apply=True,
-        tables=("provider_models",),
-        model_types=("llm", "text-embedding"),
-        tenant_id_file=str(tenant_id_file),
+        apply=False,
+        tables=(),
+        model_types=(),
+        tenant_id_file=None,
+        output=output_path,
     )
 
-    assert service_calls[0]["apply"] is True
-    assert service_calls[0]["tables"] == ("provider_models",)
-    assert tuple(cast(list[str], service_calls[0]["tenant_ids"])) == ("tenant-alpha",)
-    assert service_calls[0]["model_types"] == (ModelType.LLM, ModelType.TEXT_EMBEDDING)
+    output_stream = cast(io.TextIOBase, service_calls[0]["output"])
+    assert output_stream is not output_path
+    assert isinstance(output_stream, io.TextIOBase)
+    assert Path(output_stream.name) == output_path
+    assert output_stream.closed is True
+    assert output_path.read_text(encoding="utf-8") == '{"event":"test"}\n'
     assert service_calls[1] == {"migrated": True}
 
 

@@ -1,3 +1,7 @@
+from contextlib import nullcontext
+from pathlib import Path
+import sys
+
 import click
 
 from extensions.ext_database import db
@@ -91,14 +95,20 @@ def data_migrate() -> None:
     type=click.Path(exists=True, dir_okay=False, readable=True, resolve_path=True),
     help="Optional file containing tenant ids, one per line.",
 )
+@click.option(
+    "--output",
+    type=click.Path(dir_okay=False, resolve_path=True, path_type=Path),
+    help="Optional file path for JSON lines event logs. Defaults to stdout.",
+)
 def legacy_model_types(
     apply: bool,
     tables: tuple[str, ...],
     model_types: tuple[str, ...],
     tenant_id_file: str | None,
+    output: Path | None,
 ) -> None:
     """
-    Migrate legacy provider-related model_type values.
+    Migrate legacy provider-related model_type values and emit JSON lines events.
     """
 
     normalized_tables = _normalize_multi_value_option(
@@ -122,13 +132,23 @@ def legacy_model_types(
     )
     tenant_ids = load_tenant_ids_from_file(tenant_id_file) if tenant_id_file else None
 
-    LegacyModelTypeMigrationService(
-        engine=db.engine,
-        apply=apply,
-        tables=normalized_tables or None,
-        model_types=selected_model_types,
-        tenant_ids=tenant_ids,
-    ).migrate()
+    if output is None:
+        output_context = nullcontext(sys.stdout)
+    else:
+        try:
+            output_context = output.open("w", encoding="utf-8")
+        except OSError as exc:
+            raise click.ClickException(f"failed to open output file '{output}': {exc.strerror or exc}") from exc
+
+    with output_context as output_stream:
+        LegacyModelTypeMigrationService(
+            engine=db.engine,
+            apply=apply,
+            output=output_stream,
+            tables=normalized_tables or None,
+            model_types=selected_model_types,
+            tenant_ids=tenant_ids,
+        ).migrate()
 
 
 data_migrate.add_command(legacy_model_types)
