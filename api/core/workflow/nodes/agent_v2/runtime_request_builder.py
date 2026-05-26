@@ -111,6 +111,11 @@ class WorkflowAgentRuntimeRequestBuilder:
                 app_id=context.dify_context.app_id,
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
+                # Thread the *real* runtime invocation source through to
+                # ToolManager so credential quotas, rate limits, and audit
+                # trails match the actual call site (DEBUGGER for draft test
+                # run, SERVICE_API / WEB_APP for published run).
+                invoke_from=context.dify_context.invoke_from,
             )
         except WorkflowAgentPluginToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error

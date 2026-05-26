@@ -16,6 +16,10 @@ from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.errors import (
+    ToolProviderCredentialValidationError,
+    ToolProviderNotFoundError,
+)
 from core.tools.tool_manager import ToolManager
 from models.agent_config_entities import AgentSoulDifyToolConfig, AgentSoulToolsConfig
 from models.provider_ids import ToolProviderID
@@ -54,7 +58,15 @@ class WorkflowAgentPluginToolsBuilder:
         app_id: str,
         user_id: str | None,
         tools: AgentSoulToolsConfig,
+        invoke_from: InvokeFrom,
     ) -> DifyPluginToolsLayerConfig | None:
+        """Resolve user-selected Dify Plugin Tools into the Agent backend DTO.
+
+        ``invoke_from`` is the *real* runtime caller category (DEBUGGER for a
+        Composer test run, SERVICE_API / WEB_APP for a published run). It must
+        be threaded through to :class:`ToolManager` so credential quotas, rate
+        limits, and audit tags match the actual call site.
+        """
         enabled_tools = [tool for tool in tools.dify_tools if tool.enabled]
         if not enabled_tools:
             return None
@@ -63,20 +75,14 @@ class WorkflowAgentPluginToolsBuilder:
         seen_names: set[str] = set()
         for tool_config in enabled_tools:
             agent_tool = self._to_agent_tool_entity(tool_config)
-            try:
-                tool_runtime = self._tool_runtime_provider.get_agent_tool_runtime(
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    agent_tool=agent_tool,
-                    user_id=user_id,
-                    invoke_from=InvokeFrom.VALIDATION,
-                    variable_pool=None,
-                )
-            except Exception as exc:
-                raise WorkflowAgentPluginToolsBuildError(
-                    "agent_tool_declaration_not_found",
-                    f"Unable to resolve Dify Plugin Tool {tool_config.tool_name!r}: {exc}",
-                ) from exc
+            tool_runtime = self._fetch_tool_runtime(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=user_id,
+                agent_tool=agent_tool,
+                invoke_from=invoke_from,
+                tool_config=tool_config,
+            )
 
             exposed_name = self._exposed_tool_name(tool_config)
             if exposed_name in seen_names:
@@ -89,6 +95,49 @@ class WorkflowAgentPluginToolsBuilder:
             prepared.append(self._to_backend_tool_config(tool_config, tool_runtime, exposed_name))
 
         return DifyPluginToolsLayerConfig(tools=prepared)
+
+    def _fetch_tool_runtime(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None,
+        agent_tool: AgentToolEntity,
+        invoke_from: InvokeFrom,
+        tool_config: AgentSoulDifyToolConfig,
+    ) -> Tool:
+        """Resolve the API-side ``Tool`` runtime, mapping fetch errors to
+        Inspector-friendly error codes so callers can render distinct UX for
+        "tool definition gone" vs "credential failed".
+        """
+        try:
+            return self._tool_runtime_provider.get_agent_tool_runtime(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                agent_tool=agent_tool,
+                user_id=user_id,
+                invoke_from=invoke_from,
+                variable_pool=None,
+            )
+        except ToolProviderNotFoundError as exc:
+            raise WorkflowAgentPluginToolsBuildError(
+                "agent_tool_declaration_not_found",
+                f"Dify Plugin Tool {tool_config.tool_name!r} declaration not found: {exc}",
+            ) from exc
+        except ToolProviderCredentialValidationError as exc:
+            raise WorkflowAgentPluginToolsBuildError(
+                "agent_tool_credential_invalid",
+                f"Dify Plugin Tool {tool_config.tool_name!r} credential validation failed: {exc}",
+            ) from exc
+        except ValueError as exc:
+            # ToolManager raises bare ValueError when the agent tool's
+            # ``runtime`` / runtime parameters are missing. Surface it under a
+            # narrower error code than a generic "declaration not found" so
+            # frontend can render an actionable hint.
+            raise WorkflowAgentPluginToolsBuildError(
+                "agent_tool_config_invalid",
+                f"Dify Plugin Tool {tool_config.tool_name!r} runtime construction failed: {exc}",
+            ) from exc
 
     @staticmethod
     def _to_agent_tool_entity(tool_config: AgentSoulDifyToolConfig) -> AgentToolEntity:
@@ -145,7 +194,7 @@ class WorkflowAgentPluginToolsBuilder:
             credential_type=self._credential_type(tool_config, runtime.credentials),
             name=exposed_name,
             description=description,
-            credentials=self._normalize_credentials(runtime.credentials),
+            credentials=self._normalize_credentials(runtime.credentials, tool_name=tool_config.tool_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
             parameters_json_schema=cast(dict[str, Any], tool_runtime.get_llm_parameters_json_schema()),
@@ -191,11 +240,29 @@ class WorkflowAgentPluginToolsBuilder:
         return runtime_parameters
 
     @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, DifyPluginCredentialValue]:
+    def _normalize_credentials(
+        credentials: Mapping[str, Any],
+        *,
+        tool_name: str,
+    ) -> dict[str, DifyPluginCredentialValue]:
+        """Forward only scalar credential values to the Agent backend.
+
+        ``DifyPluginCredentialValue`` is ``str | int | float | bool | None``.
+        Refusing non-scalar values (lists, dicts, custom objects) is safer than
+        ``str(value)`` — stringifying a nested OAuth token blob produces a
+        Python ``repr`` that the plugin daemon cannot use, and we'd rather
+        surface a clear ``agent_tool_credential_shape_invalid`` than send junk.
+        """
         normalized: dict[str, DifyPluginCredentialValue] = {}
         for key, value in credentials.items():
             if isinstance(value, str | int | float | bool) or value is None:
                 normalized[key] = value
-            else:
-                normalized[key] = str(value)
+                continue
+            raise WorkflowAgentPluginToolsBuildError(
+                "agent_tool_credential_shape_invalid",
+                (
+                    f"Dify Plugin Tool {tool_name!r} credential {key!r} has a non-scalar value "
+                    f"({type(value).__name__}); only str/int/float/bool/None are forwarded to the daemon."
+                ),
+            )
         return normalized

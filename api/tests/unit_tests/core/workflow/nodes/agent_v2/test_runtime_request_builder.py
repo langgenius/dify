@@ -28,10 +28,17 @@ class FakeCredentialsProvider:
 
 
 class FakePluginToolsBuilder:
-    def build(self, *, tenant_id, app_id, user_id, tools):
+    def __init__(self) -> None:
+        # Capture the runtime invocation source so tests can assert it was
+        # threaded through from ``DifyRunContext.invoke_from`` rather than
+        # hard-coded to a placeholder like ``VALIDATION``.
+        self.last_invoke_from: InvokeFrom | None = None
+
+    def build(self, *, tenant_id, app_id, user_id, tools, invoke_from):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
+        self.last_invoke_from = invoke_from
         if not tools.dify_tools:
             return None
         return DifyPluginToolsLayerConfig(
@@ -214,9 +221,10 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     )
     context = replace(context, snapshot=snapshot)
 
+    plugin_tools_builder = FakePluginToolsBuilder()
     result = WorkflowAgentRuntimeRequestBuilder(
         credentials_provider=FakeCredentialsProvider(),
-        plugin_tools_builder=FakePluginToolsBuilder(),
+        plugin_tools_builder=plugin_tools_builder,
     ).build(context)
 
     dumped = result.request.model_dump(mode="json")
@@ -229,6 +237,11 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
         "dify_tool_names": ["current_time"],
         "cli_tool_count": 0,
     }
+    # The runtime invocation source must flow from ``DifyRunContext.invoke_from``
+    # into the plugin tools builder so ToolManager attributes credential
+    # quotas / rate limits / audit tags to the real call site instead of a
+    # hard-coded ``VALIDATION`` placeholder.
+    assert plugin_tools_builder.last_invoke_from == context.dify_context.invoke_from
 
 
 def test_requires_agent_soul_model_config():

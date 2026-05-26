@@ -74,20 +74,30 @@ class AgentSoulDifyToolConfig(BaseModel):
     new callers should send ``plugin_id`` + ``provider`` when available.
     """
 
-    model_config = ConfigDict(extra="allow")
+    # ``extra="ignore"`` (not ``"allow"``) so historical Agent Soul payloads
+    # with unknown fields still load — but the extra keys are dropped instead
+    # of silently riding along into ``model_dump``. New callers should send the
+    # explicit schema fields below.
+    model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    provider_type: str = "builtin"
+    # Dify Plugin Tools live behind the ``PLUGIN`` provider type. ``BUILT_IN`` /
+    # ``WORKFLOW`` / ``API`` providers are not exposed to the Agent backend in
+    # this layer — keep the default narrow so a missing field surfaces as
+    # ``agent_tool_declaration_not_found`` against the correct provider table.
+    provider_type: str = "plugin"
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
     tool_name: str = Field(min_length=1, max_length=255)
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
+    # Reserved for a future user-rename UX. Accepted but currently rejected at
+    # validation time so frontend cannot silently believe a rename took effect
+    # (see :meth:`_validate_provider_and_credentials`).
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
-    parameter_overrides: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
@@ -113,6 +123,14 @@ class AgentSoulDifyToolConfig(BaseModel):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
             raise ValueError("credential_ref.id is required for credentialed Dify tools")
+        # ``name`` is reserved for a future user-rename UX. Until that lands
+        # the model-visible name is forced to match ``tool_name``; reject
+        # explicit values so a frontend bug surfaces immediately instead of
+        # producing a silently-ignored override.
+        if self.name is not None and self.name != self.tool_name:
+            raise ValueError(
+                "name override is not yet supported; omit ``name`` or set it equal to ``tool_name``."
+            )
         return self
 
 
