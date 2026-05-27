@@ -102,7 +102,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText('ESC'))!.toBeInTheDocument()
+      expect(screen.getByText('Esc'))!.toBeInTheDocument()
     })
 
     it('should render S keyboard hint on save button', () => {
@@ -393,8 +393,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      // Assert - check for ctrl key hint (Ctrl or Cmd depending on system)
-      const kbdElements = document.querySelectorAll('.system-kbd')
+      const kbdElements = document.querySelectorAll('kbd')
       expect(kbdElements.length).toBeGreaterThan(0)
     })
 

@@ -84,7 +84,7 @@ export type AppPublisherProps = {
   hasHumanInputNode?: boolean
 }
 
-const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
 
 type AppPublisherPublishHandler
   = | ((params?: ModelAndParameter | PublishWorkflowParams) => Promise<unknown> | unknown)

@@ -1,7 +1,6 @@
 import {
   formatWorkflowRunIdentifier,
   getKeyboardKeyCodeBySystem,
-  getKeyboardKeyNameBySystem,
   isEventTargetInputArea,
   isMac,
 } from '../common'
@@ -33,60 +32,6 @@ describe('isMac', () => {
       configurable: true,
     })
     expect(isMac()).toBe(false)
-  })
-})
-
-describe('getKeyboardKeyNameBySystem', () => {
-  const originalNavigator = globalThis.navigator
-
-  afterEach(() => {
-    Object.defineProperty(globalThis, 'navigator', {
-      value: originalNavigator,
-      writable: true,
-      configurable: true,
-    })
-  })
-
-  function setMac() {
-    Object.defineProperty(globalThis, 'navigator', {
-      value: { userAgent: 'Macintosh' },
-      writable: true,
-      configurable: true,
-    })
-  }
-
-  function setWindows() {
-    Object.defineProperty(globalThis, 'navigator', {
-      value: { userAgent: 'Windows NT' },
-      writable: true,
-      configurable: true,
-    })
-  }
-
-  it('should map ctrl to ⌘ on Mac', () => {
-    setMac()
-    expect(getKeyboardKeyNameBySystem('ctrl')).toBe('⌘')
-  })
-
-  it('should map alt to ⌥ on Mac', () => {
-    setMac()
-    expect(getKeyboardKeyNameBySystem('alt')).toBe('⌥')
-  })
-
-  it('should map shift to ⇧ on Mac', () => {
-    setMac()
-    expect(getKeyboardKeyNameBySystem('shift')).toBe('⇧')
-  })
-
-  it('should return the original key for unmapped keys on Mac', () => {
-    setMac()
-    expect(getKeyboardKeyNameBySystem('enter')).toBe('enter')
-  })
-
-  it('should return the original key on non-Mac', () => {
-    setWindows()
-    expect(getKeyboardKeyNameBySystem('ctrl')).toBe('ctrl')
-    expect(getKeyboardKeyNameBySystem('alt')).toBe('alt')
   })
 })
 

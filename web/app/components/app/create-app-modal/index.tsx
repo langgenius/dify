@@ -4,9 +4,11 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +28,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
@@ -265,7 +266,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
-                  <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+                  <KbdGroup>
+                    {['Mod', 'Enter'].map(key => (
+                      <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                    ))}
+                  </KbdGroup>
                 </Button>
               </div>
             </div>

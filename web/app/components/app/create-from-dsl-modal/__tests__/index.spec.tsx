@@ -98,10 +98,6 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
-vi.mock('../../workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,
-}))
-
 describe('CreateFromDSLModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()

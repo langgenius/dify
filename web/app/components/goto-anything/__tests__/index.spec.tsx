@@ -58,10 +58,6 @@ vi.mock('../context', () => ({
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
-
 const createActionItem = (key: ActionItem['key'], shortcut: string): ActionItem => ({
   key,
   shortcut,
@@ -108,7 +104,6 @@ vi.mock('../actions/commands/registry', () => ({
 
 vi.mock('@/app/components/workflow/utils/common', () => ({
   getKeyboardKeyCodeBySystem: () => 'ctrl',
-  getKeyboardKeyNameBySystem: (key: string) => key,
   isEventTargetInputArea: () => false,
   isMac: () => false,
 }))

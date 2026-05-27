@@ -4,7 +4,9 @@ import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +27,6 @@ import {
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -285,7 +286,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               className="gap-1"
             >
               <span>{t('newApp.Create', { ns: 'app' })}</span>
-              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+              <KbdGroup>
+                {['Mod', 'Enter'].map(key => (
+                  <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                ))}
+              </KbdGroup>
             </Button>
           </div>
         </DialogContent>

@@ -172,7 +172,6 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('@/app/components/workflow/utils', () => ({
   getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key === 'ctrl' ? '⌘' : key,
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({

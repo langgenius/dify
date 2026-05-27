@@ -855,6 +855,9 @@ importers:
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(@voidzero-dev/vite-plus-core@0.1.22(@types/node@25.9.1)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3)(yaml@2.9.0))
+      '@tanstack/react-hotkeys':
+        specifier: 'catalog:'
+        version: 0.10.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.13.25(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

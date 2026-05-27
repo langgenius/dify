@@ -130,10 +130,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span data-testid="shortcuts">{keys.join('+')}</span>,
-}))
-
 vi.mock('@/app/components/workflow/utils', () => ({
   getKeyboardKeyCodeBySystem: () => 'ctrl',
 }))
@@ -244,10 +240,10 @@ describe('Popup', () => {
     })
 
     it('should render publish button with shortcuts', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
-      expect(screen.getByTestId('shortcuts')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
     it('should render "Go to Add Documents" button', () => {
