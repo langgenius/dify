@@ -13,7 +13,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import SearchInput from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { usePathname } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -80,13 +80,10 @@ const WebAppsSection = () => {
       </div>
       {appsExpanded && searchVisible && (
         <div className="px-2 pb-2">
-          <Input
+          <SearchInput
             value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            onClear={() => setSearchText('')}
+            onChange={setSearchText}
             placeholder={t('mainNav.webApps.searchPlaceholder', { ns: 'common' })}
-            showClearIcon
-            className="h-8 px-2"
           />
         </div>
       )}

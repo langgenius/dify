@@ -62,24 +62,21 @@ describe('SearchInput', () => {
       expect(onChange).toHaveBeenCalledWith('')
     })
 
-    it('updates focus state on focus/blur', () => {
-      const { container } = render(<SearchInput value="" onChange={() => {}} />)
-      const wrapper = container.firstChild as HTMLElement
+    it('uses the dify-ui input focus styles', () => {
+      render(<SearchInput value="" onChange={() => {}} />)
       const input = screen.getByPlaceholderText('common.operation.search')
 
-      fireEvent.focus(input)
-      expect(wrapper).toHaveClass(/bg-components-input-bg-active/)
-
-      fireEvent.blur(input)
-      expect(wrapper).not.toHaveClass(/bg-components-input-bg-active/)
+      expect(input).toHaveClass(/focus:bg-components-input-bg-active/)
+      expect(input).toHaveClass(/focus:border-components-input-border-active/)
     })
   })
 
   describe('Style', () => {
     it('applies white style', () => {
-      const { container } = render(<SearchInput value="" onChange={() => {}} white />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('bg-white!')
+      render(<SearchInput value="" onChange={() => {}} white />)
+      const input = screen.getByPlaceholderText('common.operation.search')
+
+      expect(input).toHaveClass('bg-white!')
     })
 
     it('applies custom className', () => {

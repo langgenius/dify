@@ -8,7 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import SearchInput from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
 import Card from '@/app/components/plugins/card'
@@ -210,13 +210,10 @@ const ProviderList = ({
                 {showLabelFilter && (
                   <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
                 )}
-                <Input
-                  showLeftIcon
-                  showClearIcon
-                  wrapperClassName="w-[200px]"
+                <SearchInput
+                  className="w-[200px]"
                   value={keywords}
-                  onChange={e => handleKeywordsChange(e.target.value)}
-                  onClear={() => handleKeywordsChange('')}
+                  onChange={handleKeywordsChange}
                 />
               </div>
               {showToolsUpdateSetting && (
