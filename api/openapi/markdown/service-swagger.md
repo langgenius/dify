@@ -1363,11 +1363,11 @@ Tests retrieval performance for the specified dataset.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Hit testing results |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Hit testing results | [HitTestingResponse](#hittestingresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/metadata
 
@@ -1614,11 +1614,11 @@ Tests retrieval performance for the specified dataset.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Hit testing results |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Hit testing results | [HitTestingResponse](#hittestingresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/tags
 
@@ -2691,6 +2691,36 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### HitTestingChildChunk
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| score | number |  | Yes |
+
+#### HitTestingDocument
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data_source_type | string |  | Yes |
+| doc_metadata |  |  | Yes |
+| doc_type | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### HitTestingFile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
 #### HitTestingPayload
 
 | Name | Type | Description | Required |
@@ -2699,6 +2729,58 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | external_retrieval_model | object |  | No |
 | query | string |  | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+
+#### HitTestingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+
+#### HitTestingRecord
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
+| files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
+| score | number |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| summary | string |  | Yes |
+| tsne_position |  |  | Yes |
+
+#### HitTestingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
+
+#### HitTestingSegment
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| tokens | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### HumanInputFormSubmitPayload
 

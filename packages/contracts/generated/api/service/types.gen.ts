@@ -469,6 +469,30 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type HitTestingChildChunk = {
+  content: string
+  id: string
+  position: number
+  score: number
+}
+
+export type HitTestingDocument = {
+  data_source_type: string
+  doc_metadata: unknown
+  doc_type: string | null
+  id: string
+  name: string
+}
+
+export type HitTestingFile = {
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+  source_url: string
+}
+
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
@@ -476,6 +500,50 @@ export type HitTestingPayload = {
   } | null
   query: string
   retrieval_model?: RetrievalModel
+}
+
+export type HitTestingQuery = {
+  content: string
+}
+
+export type HitTestingRecord = {
+  child_chunks: Array<HitTestingChildChunk>
+  files: Array<HitTestingFile>
+  score: number | null
+  segment: HitTestingSegment
+  summary: string | null
+  tsne_position: unknown
+}
+
+export type HitTestingResponse = {
+  query: HitTestingQuery
+  records: Array<HitTestingRecord>
+}
+
+export type HitTestingSegment = {
+  answer: string | null
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document: HitTestingDocument
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string>
+  position: number
+  sign_content: string | null
+  status: string
+  stopped_at: number | null
+  tokens: number
+  word_count: number
 }
 
 export type HumanInputFormSubmitPayload = {
@@ -2510,9 +2578,7 @@ export type PostDatasetsByDatasetIdHitTestingError
   = PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HitTestingResponse
 }
 
 export type PostDatasetsByDatasetIdHitTestingResponse
@@ -2794,9 +2860,7 @@ export type PostDatasetsByDatasetIdRetrieveError
   = PostDatasetsByDatasetIdRetrieveErrors[keyof PostDatasetsByDatasetIdRetrieveErrors]
 
 export type PostDatasetsByDatasetIdRetrieveResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HitTestingResponse
 }
 
 export type PostDatasetsByDatasetIdRetrieveResponse
