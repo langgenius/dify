@@ -145,19 +145,14 @@ function printTopLevelHelp(tree: CommandTree): void {
     if (node.command?.hidden === true)
       continue
 
-    if (node.command) {
-      const desc = node.command.description ?? ''
-      process.stdout.write(`  ${topic}  ${desc}\n`)
-    }
-    else {
-      process.stdout.write(`  ${topic}\n`)
-    }
+    const desc = node.command?.description ?? ''
+    process.stdout.write(desc ? `  ${topic}  ${desc}\n` : `  ${topic}\n`)
 
     for (const [verb, sub] of Object.entries(node.subcommands)) {
       if (sub.command?.hidden === true)
         continue
-      const desc = sub.command?.description ?? ''
-      process.stdout.write(`    ${verb}  ${desc}\n`)
+      const subDesc = sub.command?.description ?? ''
+      process.stdout.write(subDesc ? `    ${verb}  ${subDesc}\n` : `    ${verb}\n`)
     }
   }
 

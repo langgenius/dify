@@ -397,6 +397,14 @@ describe('run() help routing', () => {
     expect(result.stdout).toContain('external')
   })
 
+  it('does not print trailing whitespace on group rows', async () => {
+    const groupTree: CommandTree = {
+      auth: { subcommands: { devices: { subcommands: { list: { command: GetApp, subcommands: {} } } } } },
+    }
+    const result = await captureRun(groupTree, ['help'])
+    expect(result.stdout).not.toMatch(/ \n/)
+  })
+
   it('emits a JSON site map for `help -o json`', async () => {
     const result = await captureRun(tree, ['help', '-o', 'json'])
     const obj = JSON.parse(result.stdout)
