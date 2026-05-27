@@ -131,7 +131,7 @@ function CreateSnippetDialog({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-6">
+          <div className="flex items-center justify-end gap-2 px-6 pb-6">
             <Button disabled={isSubmitting} onClick={handleClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>

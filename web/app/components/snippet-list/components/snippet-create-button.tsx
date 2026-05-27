@@ -34,9 +34,6 @@ const SnippetCreateButton = () => {
         setIsCreateDialogOpen(false)
         push(`/snippets/${snippet.id}/orchestrate`)
       },
-      onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('createFailed'))
-      },
     })
   }
 
