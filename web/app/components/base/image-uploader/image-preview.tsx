@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
 
@@ -168,10 +168,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     }
   }, [handleMouseUp])
 
-  useHotkeys('up', zoomIn)
-  useHotkeys('down', zoomOut)
-  useHotkeys('left', onPrev || noop)
-  useHotkeys('right', onNext || noop)
+  useHotkey('ArrowUp', zoomIn)
+  useHotkey('ArrowDown', zoomOut)
+  useHotkey('ArrowLeft', onPrev || noop)
+  useHotkey('ArrowRight', onNext || noop)
 
   const copyImageLabel = t('operation.copyImage', { ns: 'common' })
   const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })

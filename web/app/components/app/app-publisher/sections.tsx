@@ -3,19 +3,20 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { RiSettings2Line } from '@remixicon/react'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { AppModeEnum } from '@/types/app'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
@@ -163,7 +164,11 @@ export const PublisherSummarySection = ({
                   : (
                       <div className="flex gap-1">
                         <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                        <ShortcutsName keys={publishShortcut} bgColor="white" />
+                        <KbdGroup>
+                          {publishShortcut.map(key => (
+                            <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                          ))}
+                        </KbdGroup>
                       </div>
                     )}
               </Button>
