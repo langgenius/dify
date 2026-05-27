@@ -662,7 +662,9 @@ class ProviderManager:
         cache_decode_elapsed = 0.0
         if cache_result is None:
             feature_lookup_started_at = time.perf_counter()
-            model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+            model_load_balancing_enabled = FeatureService.get_features(
+                tenant_id, exclude_vector_space=True
+            ).model_load_balancing_enabled
             feature_lookup_elapsed = time.perf_counter() - feature_lookup_started_at
             cache_set_started_at = time.perf_counter()
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))

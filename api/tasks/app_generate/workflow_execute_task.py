@@ -104,12 +104,13 @@ class AppExecutionParams(BaseModel):
         workflow_run_id: str | None = None,
     ):
         user_params: _Account | _EndUser
-        if isinstance(user, Account):
-            user_params = _Account(user_id=user.id)
-        elif isinstance(user, EndUser):
-            user_params = _EndUser(end_user_id=user.id)
-        else:
-            raise AssertionError("this statement should be unreachable.")
+        match user:
+            case Account():
+                user_params = _Account(user_id=user.id)
+            case EndUser():
+                user_params = _EndUser(end_user_id=user.id)
+            case _:
+                raise AssertionError("this statement should be unreachable.")
         return cls(
             app_id=app_model.id,
             workflow_id=workflow.id,
@@ -176,22 +177,28 @@ class _AppRunner:
 
         with self._setup_flask_context(user):
             app_run_started_at = time.perf_counter()
-            response = self._run_app(
-                app=app,
-                workflow=workflow,
-                user=user,
-                pause_state_config=pause_config,
-            )
-            app_run_elapsed = time.perf_counter() - app_run_started_at
-            if app_run_elapsed >= _SLOW_WORKFLOW_TASK_STAGE_LOG_SECONDS:
-                logger.info(
-                    "Slow workflow task app generator setup before stream publish, "
-                    "app_id=%s workflow_id=%s app_mode=%s elapsed=%.3fs",
-                    exec_params.app_id,
-                    exec_params.workflow_id,
-                    exec_params.app_mode.value,
-                    app_run_elapsed,
+            try:
+                response = self._run_app(
+                    app=app,
+                    workflow=workflow,
+                    user=user,
+                    pause_state_config=pause_config,
                 )
+            except Exception as exc:
+                if exec_params.streaming:
+                    _publish_error_event(exc, exec_params.workflow_run_id, exec_params.app_mode)
+                raise
+            finally:
+                app_run_elapsed = time.perf_counter() - app_run_started_at
+                if app_run_elapsed >= _SLOW_WORKFLOW_TASK_STAGE_LOG_SECONDS:
+                    logger.info(
+                        "Slow workflow task app generator setup before stream publish, "
+                        "app_id=%s workflow_id=%s app_mode=%s elapsed=%.3fs",
+                        exec_params.app_id,
+                        exec_params.workflow_id,
+                        exec_params.app_mode.value,
+                        app_run_elapsed,
+                    )
             if not exec_params.streaming:
                 return response
 
@@ -260,6 +267,12 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
         return user
 
     return session.get(EndUser, workflow_run.created_by)
+
+
+def _publish_error_event(exc: Exception, workflow_run_id: str, app_mode: AppMode) -> None:
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
+    payload = json.dumps({"event": "error", "message": str(exc), "status": 500})
+    topic.publish(payload.encode())
 
 
 def _publish_streaming_response(
@@ -377,36 +390,37 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    if isinstance(generate_entity, AdvancedChatAppGenerateEntity):
-        assert conversation is not None
-        assert message is not None
-        _resume_advanced_chat(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            conversation=conversation,
-            message=message,
-            generate_entity=generate_entity,
-            graph_runtime_state=graph_runtime_state,
-            session_factory=session_factory,
-            pause_state_config=pause_config,
-            workflow_run_id=workflow_run_id,
-            workflow_run=workflow_run,
-        )
-    elif isinstance(generate_entity, WorkflowAppGenerateEntity):
-        _resume_workflow(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            generate_entity=generate_entity,
-            graph_runtime_state=graph_runtime_state,
-            session_factory=session_factory,
-            pause_state_config=pause_config,
-            workflow_run_id=workflow_run_id,
-            workflow_run=workflow_run,
-            workflow_run_repo=workflow_run_repo,
-            pause_entity=pause_entity,
-        )
+    match generate_entity:
+        case AdvancedChatAppGenerateEntity():
+            assert conversation is not None
+            assert message is not None
+            _resume_advanced_chat(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                conversation=conversation,
+                message=message,
+                generate_entity=generate_entity,
+                graph_runtime_state=graph_runtime_state,
+                session_factory=session_factory,
+                pause_state_config=pause_config,
+                workflow_run_id=workflow_run_id,
+                workflow_run=workflow_run,
+            )
+        case WorkflowAppGenerateEntity():
+            _resume_workflow(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                generate_entity=generate_entity,
+                graph_runtime_state=graph_runtime_state,
+                session_factory=session_factory,
+                pause_state_config=pause_config,
+                workflow_run_id=workflow_run_id,
+                workflow_run=workflow_run,
+                workflow_run_repo=workflow_run_repo,
+                pause_entity=pause_entity,
+            )
 
 
 def _resume_advanced_chat(

@@ -24,6 +24,7 @@ class UserFrom(StrEnum):
 
 class InvokeFrom(StrEnum):
     SERVICE_API = "service-api"
+    OPENAPI = "openapi"
     WEB_APP = "web-app"
     TRIGGER = "trigger"
     EXPLORE = "explore"
@@ -42,6 +43,7 @@ class InvokeFrom(StrEnum):
             InvokeFrom.EXPLORE: "explore_app",
             InvokeFrom.TRIGGER: "trigger",
             InvokeFrom.SERVICE_API: "api",
+            InvokeFrom.OPENAPI: "openapi",
         }
         return source_mapping.get(self, "dev")
 

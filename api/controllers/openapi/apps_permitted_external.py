@@ -1,0 +1,102 @@
+"""GET /openapi/v1/permitted-external-apps — external-subject app discovery (EE only).
+
+`dfoe_` (External SSO) callers reach apps gated by ACL access-mode
+(public / sso_verified). License-gated: CE deploys never enable the
+EE blueprint chain so this module is unreachable there.
+"""
+
+from __future__ import annotations
+
+from flask import request
+from flask_restx import Resource
+from pydantic import ValidationError
+from werkzeug.exceptions import UnprocessableEntity
+
+from controllers.openapi import openapi_ns
+from controllers.openapi._models import (
+    AppListRow,
+    PermittedExternalAppsListQuery,
+    PermittedExternalAppsListResponse,
+)
+from controllers.openapi.auth.surface_gate import accept_subjects
+from extensions.ext_database import db
+from libs.device_flow_security import enterprise_only
+from libs.oauth_bearer import (
+    ACCEPT_USER_ANY,
+    Scope,
+    SubjectType,
+    require_scope,
+    validate_bearer,
+)
+from models import App
+from services.account_service import TenantService
+from services.app_service import AppService
+from services.enterprise.app_permitted_service import list_permitted_apps
+from services.openapi.license_gate import license_required
+
+
+@openapi_ns.route("/permitted-external-apps")
+class PermittedExternalAppsListApi(Resource):
+    method_decorators = [
+        require_scope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+        license_required,
+        accept_subjects(SubjectType.EXTERNAL_SSO),
+        validate_bearer(accept=ACCEPT_USER_ANY),
+        enterprise_only,
+    ]
+
+    @openapi_ns.response(
+        200, "Permitted external apps list", openapi_ns.models[PermittedExternalAppsListResponse.__name__]
+    )
+    def get(self):
+        try:
+            query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
+        except ValidationError as exc:
+            raise UnprocessableEntity(exc.json())
+
+        page_result = list_permitted_apps(
+            page=query.page,
+            limit=query.limit,
+            mode=query.mode.value if query.mode else None,
+            name=query.name,
+        )
+
+        if not page_result.app_ids:
+            env = PermittedExternalAppsListResponse(
+                page=query.page, limit=query.limit, total=page_result.total, has_more=False, data=[]
+            )
+            return env.model_dump(mode="json"), 200
+
+        apps_by_id: dict[str, App] = {
+            str(a.id): a for a in AppService.find_visible_apps_by_ids(db.session, page_result.app_ids)
+        }
+        tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
+        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(db.session, tenant_ids)}
+
+        items: list[AppListRow] = []
+        for app_id in page_result.app_ids:
+            app = apps_by_id.get(app_id)
+            if not app or app.status != "normal":
+                continue
+            tenant = tenants_by_id.get(str(app.tenant_id))
+            items.append(
+                AppListRow(
+                    id=str(app.id),
+                    name=app.name,
+                    description=app.description,
+                    mode=app.mode,
+                    tags=[],  # tenant-scoped; not surfaced cross-tenant
+                    updated_at=app.updated_at.isoformat() if app.updated_at else None,
+                    created_by_name=None,  # cross-tenant author leak prevention
+                    workspace_id=str(app.tenant_id),
+                    workspace_name=tenant.name if tenant else None,
+                )
+            )
+        env = PermittedExternalAppsListResponse(
+            page=query.page,
+            limit=query.limit,
+            total=page_result.total,
+            has_more=query.page * query.limit < page_result.total,
+            data=items,
+        )
+        return env.model_dump(mode="json"), 200

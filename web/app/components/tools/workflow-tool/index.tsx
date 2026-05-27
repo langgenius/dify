@@ -13,6 +13,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { produce } from 'immer'
@@ -23,7 +24,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -256,9 +256,10 @@ export function WorkflowToolDrawer({
             <div>
               <div className="py-2 system-sm-medium text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
               <Textarea
+                aria-label={t('createTool.description', { ns: 'tools' })}
                 placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onValueChange={value => setDescription(value)}
               />
             </div>
             {/* Tool Input  */}
