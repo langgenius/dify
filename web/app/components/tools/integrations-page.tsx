@@ -5,6 +5,7 @@ import type { IntegrationSection } from '@/app/components/tools/integration-rout
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -113,6 +114,7 @@ export default function IntegrationsPage({
     toolsContentInsetClassNames.compact,
     toolsUnifiedContentFrameClassName,
   )
+  const scrollAreaLabel = integrationHeader?.title ?? activeItem?.label
   const sidebarWidthStyle = {
     '--integrations-sidebar-width': '200px',
     '--model-provider-warning-left': 'calc(240px + 200px)',
@@ -330,21 +332,41 @@ export default function IntegrationsPage({
             frameClassName={headerFrameClassName}
           />
         )}
-        <div className={cn(
-          'min-h-0 flex-1',
-          useFillLayout ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
-        )}
-        >
-          <IntegrationSectionRenderer
-            key={section}
-            section={section}
-            providerSearchText={providerSearchText}
-            onProviderSearchTextChange={setProviderSearchText}
-            onSwitchToMarketplace={handleSwitchToMarketplace}
-            canInstallPlugin={canManagement}
-            pluginCategoryToolbarAction={pluginSettingAction}
-          />
-        </div>
+        {useFillLayout
+          ? (
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <IntegrationSectionRenderer
+                  key={section}
+                  section={section}
+                  providerSearchText={providerSearchText}
+                  onProviderSearchTextChange={setProviderSearchText}
+                  onSwitchToMarketplace={handleSwitchToMarketplace}
+                  canInstallPlugin={canManagement}
+                  pluginCategoryToolbarAction={pluginSettingAction}
+                />
+              </div>
+            )
+          : (
+              <ScrollArea
+                className="min-h-0 flex-1 overflow-hidden"
+                label={scrollAreaLabel}
+                slotClassNames={{
+                  viewport: 'overscroll-contain',
+                  content: 'min-h-full',
+                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+                }}
+              >
+                <IntegrationSectionRenderer
+                  key={section}
+                  section={section}
+                  providerSearchText={providerSearchText}
+                  onProviderSearchTextChange={setProviderSearchText}
+                  onSwitchToMarketplace={handleSwitchToMarketplace}
+                  canInstallPlugin={canManagement}
+                  pluginCategoryToolbarAction={pluginSettingAction}
+                />
+              </ScrollArea>
+            )}
       </section>
     </div>
   )

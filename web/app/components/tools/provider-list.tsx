@@ -5,6 +5,13 @@ import type { Collection } from './types'
 import type { CardPayload } from '@/app/components/plugins/card'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -188,99 +195,108 @@ const ProviderList = ({
   return (
     <>
       <div className="relative flex h-0 shrink-0 grow overflow-hidden">
-        <div
-          ref={containerRef}
-          className="relative flex grow flex-col overflow-y-auto bg-components-panel-bg"
-        >
-          <div
-            className={cn(
-              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
-              toolListFrameClassName,
-              currentProviderId && 'pr-6',
-            )}
+        <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
+          <ScrollAreaViewport
+            ref={containerRef}
+            aria-label={t('menus.tools', { ns: 'common' })}
+            className="overscroll-contain"
+            role="region"
           >
-            {!isRouteCategory && (
-              <TabSliderNew
-                value={activeTab}
-                onChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
-                options={options}
-              />
-            )}
-            <div className="flex min-w-[200px] flex-1 items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                {showLabelFilter && (
-                  <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+            <ScrollAreaContent className="flex min-h-full flex-col">
+              <div
+                className={cn(
+                  'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
+                  toolListFrameClassName,
+                  currentProviderId && 'pr-6',
                 )}
-                <SearchInput
-                  className="w-[200px]"
-                  value={keywords}
-                  onChange={handleKeywordsChange}
-                />
-              </div>
-              {showToolsUpdateSetting && (
-                <UpdateSettingPopover
-                  category={PluginCategoryEnum.tool}
-                />
-              )}
-            </div>
-          </div>
-          {activeTab !== 'mcp' && (
-            <div
-              className={cn(
-                'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
-                toolListFrameClassName,
-                !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
-              )}
-            >
-              {isCollectionListLoading
-                ? <ToolCardSkeletonGrid />
-                : (
-                    <>
-                      {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
-                      {filteredCollectionList.map(collection => (
-                        <div
-                          key={collection.id}
-                          onClick={() => setCurrentProviderId(collection.id)}
-                        >
-                          <Card
-                            className={cn(
-                              'cursor-pointer',
-                              currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
-                            )}
-                            hideCornerMark
-                            payload={collectionToCardPayload(collection)}
-                            footer={(
-                              <CardMoreInfo
-                                tags={collection.labels?.map(label => getTagLabel(label)) || []}
-                              />
-                            )}
-                          />
-                        </div>
-                      ))}
-                      {!filteredCollectionList.length && activeTab === 'workflow' && (
-                        <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
-                          <WorkflowToolEmpty type={getToolType(activeTab)} />
-                        </div>
-                      )}
-                    </>
+              >
+                {!isRouteCategory && (
+                  <TabSliderNew
+                    value={activeTab}
+                    onChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
+                    options={options}
+                  />
+                )}
+                <div className="flex min-w-[200px] flex-1 items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {showLabelFilter && (
+                      <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+                    )}
+                    <SearchInput
+                      className="w-[200px]"
+                      value={keywords}
+                      onChange={handleKeywordsChange}
+                    />
+                  </div>
+                  {showToolsUpdateSetting && (
+                    <UpdateSettingPopover
+                      category={PluginCategoryEnum.tool}
+                    />
                   )}
-            </div>
-          )}
-          {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
-          )}
-          {enable_marketplace && activeTab === 'builtin' && (
-            <BuiltinMarketplacePanel
-              containerRef={containerRef}
-              contentInset={contentInset}
-              keywords={keywords}
-              tagFilterValue={tagFilterValue}
-            />
-          )}
-          {activeTab === 'mcp' && (
-            <MCPList searchText={keywords} contentInset={contentInset} />
-          )}
-        </div>
+                </div>
+              </div>
+              {activeTab !== 'mcp' && (
+                <div
+                  className={cn(
+                    'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
+                    toolListFrameClassName,
+                    !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+                  )}
+                >
+                  {isCollectionListLoading
+                    ? <ToolCardSkeletonGrid />
+                    : (
+                        <>
+                          {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+                          {filteredCollectionList.map(collection => (
+                            <div
+                              key={collection.id}
+                              onClick={() => setCurrentProviderId(collection.id)}
+                            >
+                              <Card
+                                className={cn(
+                                  'cursor-pointer',
+                                  currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
+                                )}
+                                hideCornerMark
+                                payload={collectionToCardPayload(collection)}
+                                footer={(
+                                  <CardMoreInfo
+                                    tags={collection.labels?.map(label => getTagLabel(label)) || []}
+                                  />
+                                )}
+                              />
+                            </div>
+                          ))}
+                          {!filteredCollectionList.length && activeTab === 'workflow' && (
+                            <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
+                              <WorkflowToolEmpty type={getToolType(activeTab)} />
+                            </div>
+                          )}
+                        </>
+                      )}
+                </div>
+              )}
+              {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
+                <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
+              )}
+              {enable_marketplace && activeTab === 'builtin' && (
+                <BuiltinMarketplacePanel
+                  containerRef={containerRef}
+                  contentInset={contentInset}
+                  keywords={keywords}
+                  tagFilterValue={tagFilterValue}
+                />
+              )}
+              {activeTab === 'mcp' && (
+                <MCPList searchText={keywords} contentInset={contentInset} />
+              )}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollAreaRoot>
       </div>
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail

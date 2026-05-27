@@ -5,6 +5,7 @@ import type { PluginPageContentInset } from './content-inset'
 import type { FilterState } from './filter-management'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -115,6 +116,13 @@ const PluginsPanel = ({
       : isExtensionIntegrationPage
         ? 'integrationsExtension'
         : 'default'
+  const scrollAreaLabel = isTriggerIntegrationPage
+    ? t('categorySingle.trigger', { ns: 'plugin' })
+    : isAgentStrategyIntegrationPage
+      ? t('categorySingle.agent', { ns: 'plugin' })
+      : isExtensionIntegrationPage
+        ? t('categorySingle.extension', { ns: 'plugin' })
+        : undefined
 
   return (
     <>
@@ -138,18 +146,26 @@ const PluginsPanel = ({
         <>
           {(filteredList?.length ?? 0) > 0
             ? (
-                <div className={cn(
-                  'flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto',
-                  'bg-components-panel-bg',
-                  isAgentStrategyIntegrationPage && 'pt-2',
-                  contentFrameClassName,
-                )}
+                <ScrollArea
+                  className={cn(
+                    'min-h-0 grow self-stretch overflow-hidden bg-components-panel-bg',
+                    contentFrameClassName,
+                  )}
+                  label={scrollAreaLabel}
+                  slotClassNames={{
+                    viewport: 'overscroll-contain',
+                    content: cn(
+                      'flex flex-wrap content-start items-start justify-center gap-2',
+                      isAgentStrategyIntegrationPage && 'pt-2',
+                    ),
+                    scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+                  }}
                 >
                   <div className="w-full">
                     <List pluginList={filteredList || []} />
                   </div>
                   {!isLastPage && (
-                    <div className="flex justify-center py-4">
+                    <div className="flex w-full justify-center py-4">
                       {isFetching
                         ? <Loading className="size-8" />
                         : (
@@ -159,7 +175,7 @@ const PluginsPanel = ({
                           )}
                     </div>
                   )}
-                </div>
+                </ScrollArea>
               )
             : (
                 <Empty
