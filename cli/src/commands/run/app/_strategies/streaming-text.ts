@@ -1,6 +1,6 @@
 import type { RunContext, RunStrategy } from './index.js'
 import { buildRunBody } from '../../../../api/app-run.js'
-import { handle } from '../../../../sys/index.js'
+import { handle, unhandle } from '../../../../sys/index.js'
 import { renderHitlHint, renderHitlOutput } from '../hitl-render.js'
 import { decodeStreamError, HitlPauseError } from '../sse-collector.js'
 
@@ -60,6 +60,9 @@ export class StreamingTextStrategy implements RunStrategy {
     catch (err) {
       ctrl.abort()
       throw err
+    }
+    finally {
+      unhandle('SIGINT', cleanup)
     }
   }
 }

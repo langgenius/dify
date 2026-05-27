@@ -27,6 +27,10 @@ export function handle(sig: string, handler: () => void) {
   process.once(sig, handler)
 }
 
+export function unhandle(sig: string, handler: () => void) {
+  process.off(sig, handler)
+}
+
 export function platform(): NodeJS.Platform {
   return process.platform
 }
