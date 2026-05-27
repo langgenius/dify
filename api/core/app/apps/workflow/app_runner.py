@@ -3,6 +3,9 @@ import time
 from collections.abc import Sequence
 from typing import cast
 
+from clients.agent_backend import AgentBackendRunRequestBuilder
+from clients.agent_backend.factory import create_agent_backend_run_client
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -10,6 +13,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.nodes.agent_v2.session_cleanup_layer import WorkflowAgentSessionCleanupLayer
+from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -166,6 +171,17 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry.graph_engine.layer(
+            WorkflowAgentSessionCleanupLayer(
+                session_store=WorkflowAgentRuntimeSessionStore(),
+                request_builder=AgentBackendRunRequestBuilder(),
+                agent_backend_client=create_agent_backend_run_client(
+                    base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                    use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+                    fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                ),
+            )
+        )
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
