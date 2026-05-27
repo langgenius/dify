@@ -114,6 +114,36 @@ describe('RoleModal', () => {
       })
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
+
+    it('should submit an updated role description when editing an existing role', async () => {
+      const user = userEvent.setup()
+      const handleSubmit = vi.fn()
+
+      render(
+        <RoleModal
+          open
+          mode="edit"
+          role={createRole({
+            description: 'Original description',
+            permission_keys: ['workspace.member.view'],
+          })}
+          onClose={vi.fn()}
+          onSubmit={handleSubmit}
+        />,
+      )
+
+      const descriptionInput = screen.getByLabelText('permission.role.modal.descriptionLabel')
+      await user.clear(descriptionInput)
+      await user.type(descriptionInput, '  Updated role description  ')
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      expect(handleSubmit).toHaveBeenCalledTimes(1)
+      expect(handleSubmit).toHaveBeenCalledWith({
+        name: 'Operator',
+        description: 'Updated role description',
+        permissionKeys: ['workspace.member.view'],
+      })
+    })
   })
 
   // View mode preserves the permission display but blocks edits and confirmation.

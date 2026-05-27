@@ -12,7 +12,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit' | 'view'
@@ -102,7 +102,7 @@ const PermissionSetModalBody = ({
           <Textarea
             id="permission-set-description"
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onValueChange={value => setDescription(value)}
             placeholder={t('permissionSet.descriptionPlaceholder', { ns: 'permission' })}
             className="min-h-20 resize-none"
             disabled={readonly}

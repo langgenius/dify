@@ -12,7 +12,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import PermissionField from './permission-field'
 
 export type RoleModalMode = 'create' | 'view' | 'edit'
@@ -49,8 +49,8 @@ const RoleModal = ({
     setName(e.target.value)
   }, [])
 
-  const onRoleDescChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDesc(e.target.value)
+  const onRoleDescChange = useCallback((value: string) => {
+    setDesc(value)
   }, [])
 
   const handleSubmit = () => {
@@ -102,7 +102,7 @@ const RoleModal = ({
             <Textarea
               id="role-description"
               value={desc}
-              onChange={onRoleDescChange}
+              onValueChange={onRoleDescChange}
               placeholder={t('role.modal.descriptionPlaceholder', { ns: 'permission' })}
               disabled={readonly}
               className="min-h-24 resize-none"

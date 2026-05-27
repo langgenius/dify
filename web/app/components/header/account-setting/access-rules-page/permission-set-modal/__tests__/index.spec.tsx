@@ -126,6 +126,38 @@ describe('PermissionSetModal', () => {
       })
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
+
+    it('should submit an updated description when editing an existing permission set', async () => {
+      const user = userEvent.setup()
+      const handleSubmit = vi.fn()
+
+      render(
+        <PermissionSetModal
+          open
+          mode="edit"
+          resourceType="app"
+          initialValues={{
+            name: 'Existing app rule',
+            description: 'Original description',
+            permissionKeys: ['app.acl.edit'],
+          }}
+          onClose={vi.fn()}
+          onSubmit={handleSubmit}
+        />,
+      )
+
+      const descriptionInput = screen.getByLabelText('permission.permissionSet.descriptionLabel')
+      await user.clear(descriptionInput)
+      await user.type(descriptionInput, '  Updated rule description  ')
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      expect(handleSubmit).toHaveBeenCalledTimes(1)
+      expect(handleSubmit).toHaveBeenCalledWith({
+        name: 'Existing app rule',
+        description: 'Updated rule description',
+        permissionKeys: ['app.acl.edit'],
+      })
+    })
   })
 
   // View mode is read-only and uses close-only footer actions.
