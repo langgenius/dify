@@ -231,28 +231,27 @@ class MigrationImportService:
         existing_app: App | None,
         options: ImportOptions,
     ) -> str:
-        with db.session.begin_nested():
-            import_service = AppDslService(db.session)
-            if existing_app is not None:
-                import_result = import_service.import_app(
-                    account=account,
-                    import_mode="yaml-content",
-                    yaml_content=dsl_content,
-                    app_id=existing_app.id,
-                )
-            else:
-                import_app_id = app_id if self._should_preserve_source_app_id(options) else None
-                import_result = import_service.import_app(
-                    account=account,
-                    import_mode="yaml-content",
-                    yaml_content=dsl_content,
-                    import_app_id=import_app_id,
-                )
-            if import_result.status not in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}:
-                error = import_result.error or f"unexpected import status {import_result.status}"
-                raise MigrationDataError(f"Workflow import failed: {error}")
-            if import_result.app_id is None:
-                raise MigrationDataError(f"Workflow import did not return an app id: {workflow_data.get('name')}")
+        import_service = AppDslService(db.session)
+        if existing_app is not None:
+            import_result = import_service.import_app(
+                account=account,
+                import_mode="yaml-content",
+                yaml_content=dsl_content,
+                app_id=existing_app.id,
+            )
+        else:
+            import_app_id = app_id if self._should_preserve_source_app_id(options) else None
+            import_result = import_service.import_app(
+                account=account,
+                import_mode="yaml-content",
+                yaml_content=dsl_content,
+                import_app_id=import_app_id,
+            )
+        if import_result.status not in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}:
+            error = import_result.error or f"unexpected import status {import_result.status}"
+            raise MigrationDataError(f"Workflow import failed: {error}")
+        if import_result.app_id is None:
+            raise MigrationDataError(f"Workflow import did not return an app id: {workflow_data.get('name')}")
         db.session.commit()
         return import_result.app_id
 
