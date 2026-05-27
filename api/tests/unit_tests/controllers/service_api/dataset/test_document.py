@@ -23,6 +23,7 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.service_api.dataset.document import (
+    DeprecatedDocumentAddByFileApi,
     DeprecatedDocumentAddByTextApi,
     DeprecatedDocumentUpdateByFileApi,
     DeprecatedDocumentUpdateByTextApi,
@@ -1169,6 +1170,11 @@ class TestDocumentRouteDeprecation:
         """Ensure only the legacy create-by-text alias is marked deprecated."""
         assert DeprecatedDocumentAddByTextApi.post.__apidoc__["deprecated"] is True
         assert DocumentAddByTextApi.post.__apidoc__.get("deprecated") is not True
+
+    def test_create_by_file_legacy_alias_is_deprecated(self):
+        """Ensure only the legacy create-by-file alias is marked deprecated."""
+        assert DeprecatedDocumentAddByFileApi.post.__apidoc__["deprecated"] is True
+        assert DocumentAddByFileApi.post.__apidoc__.get("deprecated") is not True
 
     def test_update_by_text_legacy_alias_is_deprecated(self):
         """Ensure only the legacy update-by-text alias is marked deprecated."""
