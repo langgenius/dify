@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '../sys'
+import { ca } from 'zod/locales'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
@@ -18,6 +19,12 @@ export type Store = {
   set: <T>(key: Key<T>, value: T) => void
 }
 
+export class ConcurrentAccessError extends Error {
+  constructor(filePath: string) {
+    super(`Another process is modifying the file ${filePath}. remove ${filePath}.lock to reset lock.`)
+  }
+}
+
 abstract class FileBasedStore implements Store {
   file_path: string
   raw_content: string | undefined
@@ -26,14 +33,15 @@ abstract class FileBasedStore implements Store {
   constructor(file_path: string) {
     this.file_path = file_path
     this.platform = resolvePlatform()
+    fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
   }
 
-  protected unlock(): void {
+  unlock(): void {
     lockfile.unlockSync(`${this.file_path}.lock`)
   }
 
   /**
-   * atomically write raw_content (if any) and unlock the file
+   * atomically write raw_content (if any)
    */
   flush(): void {
     if (this.raw_content !== undefined) {
@@ -50,49 +58,56 @@ abstract class FileBasedStore implements Store {
         throw err
       }
     }
-    lockfile.unlockSync(`${this.file_path}.lock`)
   }
 
   /**
    * lock and load the file into memory
    */
-  load(): void {
-    fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
-    lockfile.lockSync(`${this.file_path}.lock`)
-    this.raw_content = fs.readFileSync(this.file_path, 'utf8')
-  }
-
-  // Locks, loads (treating a missing file as empty), runs `body`,
-  // and always releases via `release` so callers cannot deadlock.
-  private withLock<R>(body: () => R, release: () => void): R {
+  lock(): void {
     try {
-      this.load()
+      lockfile.lockSync(`${this.file_path}.lock`)
     }
     catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code === 'EEXIST') {
-        throw new Error(`Another process is modifying the file ${this.file_path}`)
+        throw new ConcurrentAccessError(this.file_path)
       }
+      throw err
+    }
+  }
+
+  load(): void {
+    try {
+      this.raw_content = fs.readFileSync(this.file_path, 'utf8')
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
       if (code !== 'ENOENT') {
-        this.unlock()
         throw err
       }
-      this.raw_content = ''
     }
+  }
+
+  // Locks runs `body`,
+  // and always releases via `release` so callers cannot deadlock.
+  protected withLock<R>(body: () => R): R {
+    this.lock()
     try {
+      this.load()
       return body()
-    }
-    finally {
-      release()
+    } finally {
+      this.unlock()
     }
   }
 
   get<T>(key: Key<T>): T {
-    return this.withLock(() => this.doGet(key), () => this.unlock())
+    return this.withLock(() => this.doGet(key))
   }
 
   set<T>(key: Key<T>, value: T) {
-    this.withLock(() => this.doSet(key, value), () => this.flush())
+    this.withLock(() => {
+      this.doSet(key, value);
+      this.flush()
+    })
   }
 
   abstract doGet<T>(key: Key<T>): T
@@ -125,39 +140,24 @@ export class YamlStore extends FileBasedStore {
    * does not exist yet.
    */
   getTyped<T>(): T | null {
-    try {
+    return this.withLock(() => {
       this.load()
-    }
-    catch (err) {
-      this.unlock()
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT')
-        return null
-      throw err
-    }
-    try {
       return loadYaml(this.raw_content) as T
-    }
-    finally {
-      this.unlock()
-    }
+    })
   }
 
   /**
    * Atomically replace the whole YAML document with `data`.
    */
   setTyped<T>(data: T): void {
-    fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
-    lockfile.lockSync(`${this.file_path}.lock`)
-    try {
+    this.withLock(() => {
       this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
-    }
-    finally {
       this.flush()
-    }
+    })
   }
 
   doSet<T>(key: Key<T>, value: T): void {
-    const data = loadYaml(this.raw_content)
+    const data = loadYaml(this.raw_content) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
     if (lastKey === undefined)
@@ -173,6 +173,8 @@ export class YamlStore extends FileBasedStore {
   }
 }
 
-function loadYaml(raw: string | undefined): Record<string, unknown> {
-  return (yaml.load(raw ?? '') ?? {}) as Record<string, unknown>
+function loadYaml(raw: string | undefined): Record<string, unknown> | null {
+  if (raw === undefined)
+    return null
+  return (yaml.load(raw) ?? {}) as Record<string, unknown>
 }

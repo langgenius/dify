@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { YamlStore } from './store'
+import { ConcurrentAccessError, YamlStore } from './store'
 
 describe('YamlStore.doGet', () => {
   it('returns default when content is undefined', () => {
@@ -89,11 +89,11 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s1 = new YamlStore(path)
     const s2 = new YamlStore(path)
 
-    s1.load()
+    s1.lock()
 
-    expect(() => s2.get({ key: 'key', default: '' })).toThrow(`Another process is modifying the file ${path}`)
+    expect(() => s2.get({ key: 'key', default: '' })).toThrow(ConcurrentAccessError)
 
-    s1.flush()
+    s1.unlock()
 
     expect(s2.get({ key: 'key', default: '' })).toBe('value')
   })
@@ -105,11 +105,11 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s1 = new YamlStore(path)
     const s2 = new YamlStore(path)
 
-    s1.load()
+    s1.lock()
 
-    expect(() => s2.set({ key: 'key', default: '' }, 'blocked')).toThrow(`Another process is modifying the file ${path}`)
+    expect(() => s2.set({ key: 'key', default: '' }, 'blocked')).toThrow(ConcurrentAccessError)
 
-    s1.flush()
+    s1.unlock()
 
     s2.set({ key: 'key', default: '' }, 'written')
     expect(s2.get({ key: 'key', default: '' })).toBe('written')
