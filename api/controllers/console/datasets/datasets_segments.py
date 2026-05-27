@@ -159,9 +159,12 @@ class DatasetDocumentSegmentListApi(Resource):
             # Use database-specific methods for JSON array search
             if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
                 # PostgreSQL: Use jsonb_array_elements_text to properly handle Unicode/Chinese text
+                # Guard with jsonb_typeof to avoid "cannot extract elements from a scalar" error
+                # when keywords is null or a non-array JSON value.
                 keywords_condition = func.array_to_string(
                     func.array(
                         select(func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB)))
+                        .where(func.jsonb_typeof(cast(DocumentSegment.keywords, JSONB)) == "array")
                         .correlate(DocumentSegment)
                         .scalar_subquery()
                     ),
