@@ -527,6 +527,35 @@ describe('Workflow edge event wiring', () => {
     })
   })
 
+  it('should keep canvas mouse coordinates outside reactive workflow store state', () => {
+    const { container, store } = renderSubject()
+    const pane = getPane(container)
+    const setStateSpy = vi.spyOn(store, 'setState')
+
+    act(() => {
+      fireEvent.mouseMove(pane, { clientX: 150, clientY: 180 })
+    })
+
+    expect(setStateSpy).not.toHaveBeenCalledWith(expect.objectContaining({
+      mousePosition: expect.anything(),
+    }))
+
+    const getPointerPosition = (store.getState() as unknown as {
+      getPointerPosition?: () => {
+        pageX: number
+        pageY: number
+        elementX: number
+        elementY: number
+      }
+    }).getPointerPosition
+
+    expect(typeof getPointerPosition).toBe('function')
+    expect(getPointerPosition?.()).toMatchObject({
+      pageX: 150,
+      pageY: 180,
+    })
+  })
+
   it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', async () => {
     renderSubject({
       edges: [
@@ -665,12 +694,6 @@ describe('Workflow edge event wiring', () => {
         isCommentPlacing: true,
         pendingComment: null,
         isCommentPreviewHovering: true,
-        mousePosition: {
-          pageX: 100,
-          pageY: 120,
-          elementX: 40,
-          elementY: 60,
-        },
       },
     })
 

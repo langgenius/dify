@@ -1829,7 +1829,7 @@ export const useNodesInteractions = () => {
     const {
       clipboardElements: storeClipboardElements,
       clipboardEdges: storeClipboardEdges,
-      mousePosition,
+      getPointerPosition,
       setClipboardData,
     } = workflowStore.getState()
     const clipboardData = await readWorkflowClipboard(appDslVersion)
@@ -1920,9 +1920,10 @@ export const useNodesInteractions = () => {
       : compatibleClipboardElements
     const { x, y } = getTopLeftNodePosition(positionReferenceNodes)
     const { screenToFlowPosition } = reactflow
+    const pointerPosition = getPointerPosition()
     const currentPosition = screenToFlowPosition({
-      x: mousePosition.pageX,
-      y: mousePosition.pageY,
+      x: pointerPosition.pageX,
+      y: pointerPosition.pageY,
     })
     const offsetX = currentPosition.x - x
     const offsetY = currentPosition.y - y

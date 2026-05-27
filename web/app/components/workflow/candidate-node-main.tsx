@@ -1,6 +1,7 @@
 import type {
   FC,
 } from 'react'
+import type { PointerPosition } from './utils/pointer-position'
 import type {
   Node,
 } from '@/app/components/workflow/types'
@@ -8,6 +9,10 @@ import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
 import {
   memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from 'react'
 import {
   useReactFlow,
@@ -20,11 +25,11 @@ import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import {
-  useStore,
   useWorkflowStore,
 } from './store'
 import { BlockEnum } from './types'
 import { getIterationStartNode, getLoopStartNode } from './utils'
+import { getPointerPositionFromEvent } from './utils/pointer-position'
 
 type Props = {
   candidateNode: Node
@@ -34,19 +39,49 @@ const CandidateNodeMain: FC<Props> = ({
 }) => {
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
-  const mousePosition = useStore(s => s.mousePosition)
   const { zoom } = useViewport()
   const { handleNodeSelect } = useNodesInteractions()
   const { saveStateToHistory } = useWorkflowHistory()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
   const collaborativeWorkflow = useCollaborativeWorkflow()
+  const [pointerPosition, setPointerPosition] = useState<PointerPosition>(() => workflowStore.getState().getPointerPosition())
+  const latestPointerPositionRef = useRef(pointerPosition)
+  const pointerPositionFrameRef = useRef<number | undefined>(undefined)
+
+  const schedulePointerPositionUpdate = useCallback((position: PointerPosition) => {
+    latestPointerPositionRef.current = position
+    if (pointerPositionFrameRef.current)
+      return
+
+    pointerPositionFrameRef.current = requestAnimationFrame(() => {
+      pointerPositionFrameRef.current = undefined
+      setPointerPosition(latestPointerPositionRef.current)
+    })
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (pointerPositionFrameRef.current) {
+        cancelAnimationFrame(pointerPositionFrameRef.current)
+        pointerPositionFrameRef.current = undefined
+      }
+    }
+  }, [])
+
+  useEventListener('mousemove', (e) => {
+    const position = getPointerPositionFromEvent(e, document.getElementById('workflow-container'))
+    workflowStore.getState().setPointerPosition(position)
+    schedulePointerPositionUpdate(position)
+  })
 
   useEventListener('click', (e) => {
     e.preventDefault()
+    const clickPosition = getPointerPositionFromEvent(e, document.getElementById('workflow-container'))
+    workflowStore.getState().setPointerPosition(clickPosition)
     const { screenToFlowPosition } = reactflow
     const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const { x, y } = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
+    const { x, y } = screenToFlowPosition({ x: clickPosition.pageX, y: clickPosition.pageY })
     const newNodes = produce(nodes, (draft) => {
       draft.push({
         ...candidateNode,
@@ -92,8 +127,8 @@ const CandidateNodeMain: FC<Props> = ({
     <div
       className="absolute z-10"
       style={{
-        left: mousePosition.elementX,
-        top: mousePosition.elementY,
+        left: pointerPosition.elementX,
+        top: pointerPosition.elementY,
         transform: `scale(${zoom})`,
         transformOrigin: '0 0',
       }}

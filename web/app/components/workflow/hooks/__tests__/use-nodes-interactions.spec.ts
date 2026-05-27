@@ -32,6 +32,26 @@ const runtimeState = vi.hoisted(() => ({
 let currentNodes: Node[] = []
 let currentEdges: Edge[] = []
 
+type PointerPositionStore = {
+  getState: () => {
+    setPointerPosition: (position: {
+      pageX: number
+      pageY: number
+      elementX: number
+      elementY: number
+    }) => void
+  }
+}
+
+const setPastePointerPosition = (store: PointerPositionStore) => {
+  store.getState().setPointerPosition({
+    pageX: 60,
+    pageY: 80,
+    elementX: 60,
+    elementY: 80,
+  })
+}
+
 vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
@@ -737,11 +757,8 @@ describe('useNodesInteractions', () => {
           },
         }),
       ] as never,
-      mousePosition: {
-        pageX: 60,
-        pageY: 80,
-      } as never,
     })
+    setPastePointerPosition(store)
 
     act(() => {
       result.current.handleNodeAdd(
@@ -812,11 +829,8 @@ describe('useNodesInteractions', () => {
           }),
         ] as never,
         clipboardEdges: [] as never,
-        mousePosition: {
-          pageX: 60,
-          pageY: 80,
-        } as never,
       })
+      setPastePointerPosition(store)
 
       await act(async () => {
         await result.current.handleNodesPaste()
@@ -870,11 +884,8 @@ describe('useNodesInteractions', () => {
           }),
         ] as never,
         clipboardEdges: [] as never,
-        mousePosition: {
-          pageX: 60,
-          pageY: 80,
-        } as never,
       })
+      setPastePointerPosition(store)
 
       await act(async () => {
         await result.current.handleNodesPaste()
@@ -958,11 +969,8 @@ describe('useNodesInteractions', () => {
           }),
         ] as never,
         clipboardEdges: [] as never,
-        mousePosition: {
-          pageX: 60,
-          pageY: 80,
-        } as never,
       })
+      setPastePointerPosition(store)
 
       await act(async () => {
         await result.current.handleNodesPaste()
@@ -1043,11 +1051,8 @@ describe('useNodesInteractions', () => {
           }),
         ] as never,
         clipboardEdges: [] as never,
-        mousePosition: {
-          pageX: 60,
-          pageY: 80,
-        } as never,
       })
+      setPastePointerPosition(store)
 
       await act(async () => {
         await result.current.handleNodesPaste()

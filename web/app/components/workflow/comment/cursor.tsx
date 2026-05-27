@@ -1,12 +1,18 @@
 import type { FC } from 'react'
+import type { PointerPosition } from '../utils/pointer-position'
 import { memo } from 'react'
 import { Comment } from '@/app/components/base/icons/src/public/other'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 
-export const CommentCursor: FC = memo(() => {
+type CommentCursorProps = {
+  position: PointerPosition
+}
+
+export const CommentCursor: FC<CommentCursorProps> = memo(({
+  position,
+}) => {
   const controlMode = useStore(s => s.controlMode)
-  const mousePosition = useStore(s => s.mousePosition)
   const isCommentPlacing = useStore(s => s.isCommentPlacing)
 
   if (controlMode !== ControlMode.Comment || isCommentPlacing)
@@ -16,8 +22,8 @@ export const CommentCursor: FC = memo(() => {
     <div
       className="pointer-events-none absolute z-50 flex size-6 items-center justify-center"
       style={{
-        left: mousePosition.elementX,
-        top: mousePosition.elementY,
+        left: position.elementX,
+        top: position.elementY,
         transform: 'translate(-50%, -50%)',
       }}
     >
