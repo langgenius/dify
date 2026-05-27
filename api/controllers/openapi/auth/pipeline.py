@@ -20,6 +20,7 @@ from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.data import (
     AuthData,
     Edition,
+    ExternalIdentity,
     RequestContext,
     current_edition,
 )
@@ -39,8 +40,8 @@ from services.feature_service import FeatureService, LicenseStatus
 class AuthPipeline:
     """Pure step-runner — no routing, no guard.
 
-    `prepare` steps receive a mutable builder dict (includes `path_params`).
-    `auth` steps receive the fully constructed, frozen `AuthData`.
+    Both `prepare` and `auth` steps receive the same `AuthData` instance.
+    `prepare` steps populate it; `auth` steps validate it.
     """
 
     def __init__(self, prepare: list, auth: list) -> None:
@@ -62,17 +63,25 @@ class AuthPipeline:
             path_params=dict(request.view_args or {}),
         )
 
-        builder = _init_builder(identity, scope)
-        builder["path_params"] = dict(req_ctx.path_params)
+        data = AuthData(
+            token_type=identity.token_type,
+            account_id=identity.account_id,
+            token_hash=identity.token_hash,
+            token_id=identity.token_id,
+            scopes=frozenset(identity.scopes),
+            tenants=dict(identity.verified_tenants),
+            required_scope=scope,
+            path_params=dict(req_ctx.path_params),
+            external_identity=(
+                ExternalIdentity(email=identity.subject_email, issuer=identity.subject_issuer)
+                if identity.subject_email
+                else None
+            ),
+        )
 
         for step in self._prepare:
             if _should_run(step, req_ctx, data=None):
-                step(builder)
-
-        builder.pop("path_params", None)
-        builder.pop("_subject_email", None)
-        builder.pop("_subject_issuer", None)
-        data = AuthData(**builder)
+                step(data)
 
         for step in self._auth:
             if _should_run(step, req_ctx, data=data):
@@ -180,20 +189,6 @@ def _should_run(step: Any, req_ctx: RequestContext, data: AuthData | None) -> bo
     if isinstance(step, When):
         return step.applies(req_ctx, data)
     return True
-
-
-def _init_builder(identity: AuthContext, scope: Scope | None) -> dict:
-    return {
-        "token_type": identity.token_type,
-        "account_id": identity.account_id,
-        "token_hash": identity.token_hash,
-        "token_id": identity.token_id,
-        "scopes": frozenset(identity.scopes),
-        "tenants": dict(identity.verified_tenants),
-        "required_scope": scope,
-        "_subject_email": identity.subject_email,
-        "_subject_issuer": identity.subject_issuer,
-    }
 
 
 def _subject_type_str(identity: Any) -> str | None:

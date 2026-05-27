@@ -44,7 +44,7 @@ class RequestContext(BaseModel):
 
 
 class AuthData(BaseModel):
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     required_scope: Scope | None = None
     token_type: TokenType
@@ -54,6 +54,7 @@ class AuthData(BaseModel):
     scopes: frozenset[Scope]
     tenants: dict[str, bool] = Field(default_factory=dict)
     external_identity: ExternalIdentity | None = None
+    path_params: dict[str, str] = Field(default_factory=dict)
 
     app: App | None = None
     tenant: Tenant | None = None
@@ -63,7 +64,6 @@ class AuthData(BaseModel):
     caller_kind: Literal["account", "end_user"] | None = None
 
     def require_app_context(self) -> tuple[App, Account | EndUser, Literal["account", "end_user"]]:
-        """Return (app, caller, caller_kind), raising 500 if the pipeline failed to populate them."""
         if self.app is None or self.caller is None or self.caller_kind is None:
             raise InternalServerError("pipeline_invariant_violated: app context missing")
         return self.app, self.caller, self.caller_kind

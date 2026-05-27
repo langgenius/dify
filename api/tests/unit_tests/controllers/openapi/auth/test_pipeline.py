@@ -214,3 +214,56 @@ def test_router_rejects_token_type_on_wrong_edition(app):
 
             with pytest.raises(Forbidden):
                 view()
+
+
+def test_guard_populates_external_identity_from_subject_email(app):
+    from controllers.openapi.auth.data import ExternalIdentity
+
+    router = _make_router(token_type=TokenType.OAUTH_EXTERNAL_SSO)
+    received = {}
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx"),
+        ):
+            identity = _make_identity(
+                token_type=TokenType.OAUTH_EXTERNAL_SSO,
+                subject_email="user@sso.com",
+                subject_issuer="https://idp.example.com",
+            )
+            mock_auth.return_value.authenticate.return_value = identity
+
+            @router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}))
+            def view(*, auth_data):
+                received["data"] = auth_data
+
+            view()
+
+    assert isinstance(received["data"].external_identity, ExternalIdentity)
+    assert received["data"].external_identity.email == "user@sso.com"
+    assert received["data"].external_identity.issuer == "https://idp.example.com"
+
+
+def test_guard_no_external_identity_when_subject_email_absent(app):
+    router = _make_router()
+    received = {}
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx"),
+        ):
+            mock_auth.return_value.authenticate.return_value = _make_identity(subject_email=None)
+
+            @router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+            def view(*, auth_data):
+                received["data"] = auth_data
+
+            view()
+
+    assert received["data"].external_identity is None

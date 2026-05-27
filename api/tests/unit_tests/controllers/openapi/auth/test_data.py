@@ -60,14 +60,23 @@ def test_request_context_scope_optional():
     assert ctx.scope is None
 
 
-def test_auth_data_frozen():
+def test_auth_data_is_mutable():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         token_hash="abc",
         scopes=frozenset({Scope.FULL}),
     )
-    with pytest.raises(ValidationError):
-        data.token_type = TokenType.OAUTH_EXTERNAL_SSO  # type: ignore[misc]
+    data.token_type = TokenType.OAUTH_EXTERNAL_SSO
+    assert data.token_type == TokenType.OAUTH_EXTERNAL_SSO
+
+
+def test_auth_data_path_params_defaults_empty():
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+    )
+    assert data.path_params == {}
 
 
 def test_auth_data_account_id_optional():

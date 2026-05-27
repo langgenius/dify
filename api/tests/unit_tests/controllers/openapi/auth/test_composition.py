@@ -24,8 +24,8 @@ def test_account_auth_list_has_five_entries():
     assert len(account_pipeline._auth) == 5
 
 
-def test_external_sso_pipeline_prepare_has_five_entries():
-    assert len(external_sso_pipeline._prepare) == 5
+def test_external_sso_pipeline_prepare_has_four_entries():
+    assert len(external_sso_pipeline._prepare) == 4
 
 
 def test_external_sso_auth_list_has_three_entries():
@@ -37,14 +37,8 @@ def test_account_pipeline_has_unconditional_load_account():
     assert len(non_when) == 1
 
 
-def test_external_sso_pipeline_first_prepare_is_build_external_identity():
-    from controllers.openapi.auth.prepare import build_external_identity
-
-    assert external_sso_pipeline._prepare[0] is build_external_identity
-
-
-def test_external_sso_pipeline_remaining_prepare_entries_are_when():
-    assert all(isinstance(s, When) for s in external_sso_pipeline._prepare[1:])
+def test_external_sso_pipeline_all_prepare_entries_are_when():
+    assert all(isinstance(s, When) for s in external_sso_pipeline._prepare)
 
 
 def test_first_auth_entry_is_check_scope_in_both_pipelines():

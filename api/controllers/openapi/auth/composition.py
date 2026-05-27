@@ -11,7 +11,6 @@ from controllers.openapi.auth.data import Edition
 from controllers.openapi.auth.flow import When
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from controllers.openapi.auth.prepare import (
-    build_external_identity,
     load_account,
     load_app,
     load_app_access_mode,
@@ -45,7 +44,6 @@ account_pipeline = AuthPipeline(
 
 external_sso_pipeline = AuthPipeline(
     prepare=[
-        build_external_identity,
         When(PATH_HAS_APP_ID, then=load_app),
         When(PATH_HAS_APP_ID, then=load_tenant),
         When(PATH_HAS_APP_ID, then=resolve_external_user),
