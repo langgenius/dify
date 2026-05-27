@@ -98,9 +98,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
@@ -114,9 +114,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
@@ -130,9 +130,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
@@ -228,8 +228,8 @@ const NormalForm = () => {
           {allMethodsAreDisabled && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-                <div className="shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-                  <RiDoorLockLine className="h-5 w-5" />
+                <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+                  <RiDoorLockLine className="size-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
                 <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>

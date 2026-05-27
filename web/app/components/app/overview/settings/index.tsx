@@ -8,6 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
@@ -17,8 +18,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import PremiumBadge from '@/app/components/base/premium-badge'
-import Textarea from '@/app/components/base/textarea'
+import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -55,9 +55,11 @@ export type ConfigParams = {
 
 const prefixSettings = 'overview.appInfo.settings'
 type SelectOption = {
-  value: string
+  value: Language
   name: string
 }
+
+const LANGUAGE_OPTIONS: SelectOption[] = languages.filter(item => item.supported)
 
 const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
   const {
@@ -139,8 +141,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
-  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
-  const selectedLanguage = languageOptions.find(item => item.value === language)
+  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+
+  const handleLanguageChange = (nextValue: string | null) => {
+    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
+    if (nextLanguage)
+      setLanguage(nextLanguage.value)
+  }
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
       setShowPricingModal()
@@ -244,9 +251,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Dialog open={isShow} onOpenChange={open => !open && onHide()}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[520px] overflow-visible p-0">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
           {/* header */}
-          <div className="pt-5 pr-5 pb-3 pl-6">
+          <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
               <DialogTitle className="grow title-2xl-semi-bold text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</DialogTitle>
               <DialogCloseButton className="relative top-auto right-auto shrink-0" />
@@ -256,7 +263,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
           </div>
           {/* form body */}
-          <div className="space-y-5 px-6 py-3">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
             {/* name & icon */}
             <div className="flex gap-4">
               <div className="grow">
@@ -282,9 +289,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <div className="relative">
               <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
               <Textarea
+                aria-label={t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}
                 className="mt-1"
                 value={inputInfo.desc}
-                onChange={e => onDesChange(e.target.value)}
+                onValueChange={onDesChange}
                 placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
               />
               <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
@@ -308,17 +316,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
               <Select
                 value={selectedLanguage?.value ?? null}
-                onValueChange={(nextValue) => {
-                  if (!nextValue)
-                    return
-                  setLanguage(nextValue as Language)
-                }}
+                onValueChange={handleLanguageChange}
               >
-                <SelectTrigger size="large" className="w-[200px]">
+                <SelectTrigger
+                  aria-label={t(`${prefixSettings}.language`, { ns: 'appOverview' })}
+                  size="large"
+                  className="w-[200px]"
+                >
                   {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {languageOptions.map(item => (
+                  {LANGUAGE_OPTIONS.map(item => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
@@ -374,7 +382,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
                   </p>
                 </div>
-                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line h-4 w-4 shrink-0 text-text-secondary" />
+                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary" />
               </div>
             )}
             {/* more settings */}
@@ -388,14 +396,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       {/* upgrade button */}
                       {enableBilling && isFreePlan && (
                         <div className="h-[18px] select-none">
-                          <PremiumBadge size="s" color="blue" allowHover={true} onClick={handlePlanClick}>
+                          <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                             <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
                             <div className="system-xs-medium">
                               <span className="p-1">
                                 {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                               </span>
                             </div>
-                          </PremiumBadge>
+                          </PremiumBadgeButton>
                         </div>
                       )}
                     </div>
@@ -457,9 +465,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
                   <Textarea
+                    aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.customDisclaimer}
-                    onChange={onChange('customDisclaimer')}
+                    onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
                     placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
                   />
                 </div>
@@ -467,26 +476,20 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             )}
           </div>
           {/* footer */}
-          <div className="flex justify-end p-6 pt-5">
+          <div className="flex shrink-0 justify-end p-6 pt-5">
             <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
             <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
           </div>
-          {showAppIconPicker && (
-            <div onClick={e => e.stopPropagation()}>
-              <AppIconPicker
-                onSelect={(payload) => {
-                  setAppIcon(payload)
-                  setShowAppIconPicker(false)
-                }}
-                onClose={() => {
-                  setAppIcon(createAppIcon(appInfo))
-                  setShowAppIconPicker(false)
-                }}
-              />
-            </div>
-          )}
         </DialogContent>
       </Dialog>
+      <AppIconPicker
+        open={showAppIconPicker}
+        initialEmoji={appIcon.type === 'emoji'
+          ? { icon: appIcon.icon, background: appIcon.background }
+          : undefined}
+        onOpenChange={setShowAppIconPicker}
+        onSelect={setAppIcon}
+      />
     </>
   )
 }

@@ -14,7 +14,9 @@ describe('IndexMethod', () => {
     vi.clearAllMocks()
   })
 
-  const getKeywordSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords')
+  const getKeywordSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+    selector: 'input[type="range"]',
+  })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {

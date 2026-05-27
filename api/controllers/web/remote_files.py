@@ -1,6 +1,5 @@
-import urllib.parse
-
 import httpx
+from flask import request
 from pydantic import BaseModel, Field, HttpUrl
 
 import services
@@ -14,9 +13,10 @@ from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from graphon.file import helpers as file_helpers
+from models.model import App, EndUser
 from services.file_service import FileService
 
-from ..common.schema import register_schema_models
+from ..common.schema import register_response_schema_models, register_schema_models
 from . import web_ns
 from .wraps import WebApiResource
 
@@ -25,7 +25,8 @@ class RemoteFileUploadPayload(BaseModel):
     url: HttpUrl = Field(description="Remote file URL")
 
 
-register_schema_models(web_ns, RemoteFileUploadPayload, RemoteFileInfo, FileWithSignedUrl)
+register_schema_models(web_ns, RemoteFileUploadPayload)
+register_response_schema_models(web_ns, RemoteFileInfo, FileWithSignedUrl)
 
 
 @web_ns.route("/remote-files/<path:url>")
@@ -41,7 +42,7 @@ class RemoteFileInfoApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Remote file info", web_ns.models[RemoteFileInfo.__name__])
-    def get(self, app_model, end_user, url):
+    def get(self, app_model: App, end_user: EndUser, url: str):
         """Get information about a remote file.
 
         Retrieves basic information about a file located at a remote URL,
@@ -58,7 +59,7 @@ class RemoteFileInfoApi(WebApiResource):
         Raises:
             HTTPException: If the remote file cannot be accessed
         """
-        decoded_url = urllib.parse.unquote(url)
+        decoded_url = helpers.decode_remote_url(url, request.query_string)
         resp = ssrf_proxy.head(decoded_url)
         if resp.status_code != httpx.codes.OK:
             # failed back to get method
@@ -85,7 +86,7 @@ class RemoteFileUploadApi(WebApiResource):
         }
     )
     @web_ns.response(201, "Remote file uploaded", web_ns.models[FileWithSignedUrl.__name__])
-    def post(self, app_model, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         """Upload a file from a remote URL.
 
         Downloads a file from the provided remote URL and uploads it

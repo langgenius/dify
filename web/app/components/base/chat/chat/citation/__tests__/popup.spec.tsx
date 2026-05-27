@@ -61,6 +61,8 @@ const makeData = (overrides: Partial<Resources> = {}): Resources => ({
 const openPopup = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByTestId('popup-trigger'))
 }
+const getDownloadButton = (name = 'report.pdf') => screen.getByRole('button', { name })
+const queryDownloadButton = (name = 'report.pdf') => screen.queryByRole('button', { name })
 
 describe('Popup', () => {
   beforeEach(() => {
@@ -142,7 +144,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-download-btn'))!.toBeInTheDocument()
+      expect(getDownloadButton()).toBeInTheDocument()
     })
 
     it('should render download button in header for file dataSourceType with dataset_id', async () => {
@@ -157,7 +159,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-download-btn'))!.toBeInTheDocument()
+      expect(getDownloadButton()).toBeInTheDocument()
     })
 
     it('should render plain document name in header (no button) for notion type', async () => {
@@ -173,7 +175,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+      expect(queryDownloadButton('Notion Doc')).not.toBeInTheDocument()
     })
 
     it('should render plain document name in header when dataset_id is absent', async () => {
@@ -188,7 +190,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+      expect(queryDownloadButton()).not.toBeInTheDocument()
     })
 
     it('should disable the download button while isDownloading is true', async () => {
@@ -201,7 +203,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-download-btn'))!.toBeDisabled()
+      expect(getDownloadButton()).toBeDisabled()
     })
   })
 
@@ -457,7 +459,7 @@ describe('Popup', () => {
       render(<Popup data={makeData({ dataSourceType: 'upload_file' })} />)
 
       await openPopup(user)
-      await user.click(screen.getByTestId('popup-download-btn'))
+      await user.click(getDownloadButton())
 
       await waitFor(() => {
         expect(mockDownloadDocument).toHaveBeenCalledWith({ datasetId: 'ds-1', documentId: 'doc-1' })
@@ -471,7 +473,7 @@ describe('Popup', () => {
       render(<Popup data={makeData({ dataSourceType: 'upload_file' })} />)
 
       await openPopup(user)
-      await user.click(screen.getByTestId('popup-download-btn'))
+      await user.click(getDownloadButton())
 
       await waitFor(() => expect(mockDownloadDocument).toHaveBeenCalled())
       expect(mockDownloadUrl).not.toHaveBeenCalled()
@@ -489,7 +491,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+      expect(queryDownloadButton('Notion Doc')).not.toBeInTheDocument()
       expect(mockDownloadDocument).not.toHaveBeenCalled()
     })
 
@@ -502,7 +504,7 @@ describe('Popup', () => {
       render(<Popup data={makeData({ dataSourceType: 'upload_file' })} />)
 
       await openPopup(user)
-      await user.click(screen.getByTestId('popup-download-btn'))
+      await user.click(getDownloadButton())
 
       expect(mockDownloadDocument).not.toHaveBeenCalled()
     })
@@ -520,7 +522,7 @@ describe('Popup', () => {
       )
 
       await openPopup(user)
-      await user.click(screen.getByTestId('popup-download-btn'))
+      await user.click(getDownloadButton())
 
       await waitFor(() => {
         expect(mockDownloadDocument).toHaveBeenCalledWith({ datasetId: 'ds-1', documentId: 'primary-doc-id' })
@@ -539,7 +541,7 @@ describe('Popup', () => {
       )
 
       await openPopup(user)
-      await user.click(screen.getByTestId('popup-download-btn'))
+      await user.click(getDownloadButton())
 
       await waitFor(() => {
         expect(mockDownloadDocument).toHaveBeenCalled()
@@ -559,7 +561,7 @@ describe('Popup', () => {
       )
 
       await openPopup(user)
-      await user.click(screen.getByTestId('popup-download-btn'))
+      await user.click(getDownloadButton())
 
       expect(mockDownloadDocument).not.toHaveBeenCalled()
     })
@@ -741,7 +743,7 @@ describe('Popup', () => {
         // we check the handler directly if possible, or just the button absence.
         // Even if the button is rendered (it shouldn't be based on line 71),
         // we check the handler directly if possible, or just the button absence.
-        expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+        expect(queryDownloadButton()).not.toBeInTheDocument()
       })
 
       it('should return early if both documentIds are missing', async () => {
@@ -756,7 +758,7 @@ describe('Popup', () => {
           />,
         )
         await openPopup(user)
-        const btn = screen.queryByTestId('popup-download-btn')
+        const btn = queryDownloadButton()
         if (btn) {
           await user.click(btn)
           expect(mockDownloadDocument).not.toHaveBeenCalled()
@@ -774,7 +776,7 @@ describe('Popup', () => {
           />,
         )
         await openPopup(user)
-        expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+        expect(queryDownloadButton()).not.toBeInTheDocument()
       })
     })
   })

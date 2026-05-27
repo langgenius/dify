@@ -1,7 +1,13 @@
 import type { Context, Hono } from 'hono'
 import type { CookieRewriteOptions, CreateDevProxyAppOptions, DevProxyCorsAllowedOrigins, DevProxyRoute } from './types'
 import { Hono as HonoApp } from 'hono'
-import { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal } from './cookies'
+import {
+  getCookieHeaderValue,
+  resolveCookieRewriteLocalScopeKey,
+  rewriteCookieHeaderForUpstream,
+  rewriteSetCookieHeadersForLocal,
+  toScopedLocalCookieName,
+} from './cookies'
 
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
 const ALLOW_METHODS = 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS'
@@ -100,12 +106,26 @@ const createProxyRequestHeaders = (
     headers.set('origin', targetUrl.origin)
 
   if (cookieRewrite) {
+    const originalCookieHeader = headers.get('cookie') || undefined
+    const localScopeKey = resolveCookieRewriteLocalScopeKey(cookieRewrite, targetUrl)
     const rewrittenCookieHeader = rewriteCookieHeaderForUpstream(headers.get('cookie') || undefined, {
       ...cookieRewrite,
+      localScopeKey,
       useHostPrefix: targetUrl.protocol === 'https:',
     })
     if (rewrittenCookieHeader)
       headers.set('cookie', rewrittenCookieHeader)
+    else
+      headers.delete('cookie')
+
+    if (localScopeKey && cookieRewrite.csrfHeader) {
+      const scopedCsrfCookieName = toScopedLocalCookieName(cookieRewrite.csrfHeader.cookieName, localScopeKey)
+      const scopedCsrfToken = getCookieHeaderValue(originalCookieHeader, scopedCsrfCookieName)
+      if (scopedCsrfToken)
+        headers.set(cookieRewrite.csrfHeader.headerName, scopedCsrfToken)
+      else
+        headers.delete(cookieRewrite.csrfHeader.headerName)
+    }
   }
 
   return headers
@@ -123,6 +143,7 @@ const getSetCookieHeaders = (headers: Headers) => {
 
 const createUpstreamResponseHeaders = (
   response: Response,
+  targetUrl: URL,
   requestOrigin: string | undefined | null,
   allowedOrigins: DevProxyCorsAllowedOrigins,
   cookieRewrite: CookieRewriteOptions | false | undefined,
@@ -131,9 +152,15 @@ const createUpstreamResponseHeaders = (
   RESPONSE_HEADERS_TO_DROP.forEach(header => headers.delete(header))
   headers.delete('set-cookie')
 
+  const localScopeKey = cookieRewrite
+    ? resolveCookieRewriteLocalScopeKey(cookieRewrite, targetUrl)
+    : undefined
   const setCookieHeaders = getSetCookieHeaders(response.headers)
   const responseSetCookieHeaders = cookieRewrite
-    ? rewriteSetCookieHeadersForLocal(setCookieHeaders)
+    ? rewriteSetCookieHeadersForLocal(setCookieHeaders, {
+        ...cookieRewrite,
+        localScopeKey,
+      })
     : setCookieHeaders
 
   responseSetCookieHeaders.forEach((cookie) => {
@@ -167,6 +194,7 @@ const proxyRequest = async (
   const upstreamResponse = await fetchImpl(targetUrl, requestInit)
   const responseHeaders = createUpstreamResponseHeaders(
     upstreamResponse,
+    targetUrl,
     context.req.header('origin'),
     allowedOrigins,
     route.cookieRewrite,

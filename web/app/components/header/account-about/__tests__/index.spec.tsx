@@ -90,15 +90,9 @@ describe('AccountAbout', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
-      // Modal content renders into a portal, so we need to use document.
-      const closeButton = document.querySelector('div.absolute.cursor-pointer')
 
-      if (!closeButton)
-        throw new Error('Close button not found')
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-      fireEvent.click(closeButton)
-
-      // Assert
       expect(mockOnCancel).toHaveBeenCalled()
     })
   })

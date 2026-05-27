@@ -23,7 +23,7 @@ Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS
    - `e2e/scripts/run-cucumber.ts` and `e2e/cucumber.config.ts` when tags or execution flow matter
 3. Read [`references/playwright-best-practices.md`](references/playwright-best-practices.md) only when locator, assertion, isolation, or waiting choices are involved.
 4. Read [`references/cucumber-best-practices.md`](references/cucumber-best-practices.md) only when scenario wording, step granularity, tags, or expression design are involved.
-5. Re-check official docs with Context7 before introducing a new Playwright or Cucumber pattern.
+5. Re-check official Playwright or Cucumber docs with the available documentation tools before introducing a new framework pattern.
 
 ## Local Rules
 

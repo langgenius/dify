@@ -131,7 +131,7 @@ describe('ParamConfigContent', () => {
     it('should render audition button when language has example', () => {
       renderWithProvider()
 
-      const auditionButton = screen.queryByTestId('audition-button')
+      const auditionButton = screen.queryByRole('group', { name: /appApi\.play|play/i })
       expect(auditionButton)!.toBeInTheDocument()
     })
 
@@ -143,7 +143,7 @@ describe('ParamConfigContent', () => {
 
       renderWithProvider()
 
-      const auditionButton = screen.queryByTestId('audition-button')
+      const auditionButton = screen.queryByRole('group', { name: /appApi\.play|play/i })
       expect(auditionButton).toBeNull()
     })
 

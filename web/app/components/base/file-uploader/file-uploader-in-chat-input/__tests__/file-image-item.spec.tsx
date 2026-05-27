@@ -44,16 +44,14 @@ describe('FileImageItem', () => {
   it('should render delete button when showDeleteAction is true', () => {
     render(<FileImageItem file={createFile()} showDeleteAction />)
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
   })
 
   it('should call onRemove when delete button is clicked', () => {
     const onRemove = vi.fn()
     render(<FileImageItem file={createFile()} showDeleteAction onRemove={onRemove} />)
 
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
@@ -69,21 +67,18 @@ describe('FileImageItem', () => {
   })
 
   it('should render replay icon when upload failed', () => {
-    const { container } = render(<FileImageItem file={createFile({ progress: -1 })} />)
+    render(<FileImageItem file={createFile({ progress: -1 })} />)
 
-    // ReplayLine renders as an SVG icon with data-icon attribute
-    const replaySvg = container.querySelector('svg[data-icon="ReplayLine"]')
-    expect(replaySvg)!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    const { container } = render(
+    render(
       <FileImageItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
     )
 
-    const replaySvg = container.querySelector('svg[data-icon="ReplayLine"]')
-    fireEvent.click(replaySvg!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
@@ -118,30 +113,23 @@ describe('FileImageItem', () => {
     expect(previewContainer)!.toBeInTheDocument()
 
     // Close button is the last clickable div with an SVG in the preview container
-    const closeIcon = screen.getByTestId('image-preview-close-button')
-    fireEvent.click(closeIcon.parentElement!)
+    const closeIcon = screen.getByRole('button', { name: 'common.operation.cancel' })
+    fireEvent.click(closeIcon)
 
     expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
   })
 
   it('should render download overlay when showDownloadAction is true', () => {
-    const { container } = render(<FileImageItem file={createFile()} showDownloadAction />)
+    render(<FileImageItem file={createFile()} showDownloadAction />)
 
-    // The download icon SVG should be present
-    const svgs = container.querySelectorAll('svg')
-    expect(svgs.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
   })
 
   it('should call downloadUrl when download button is clicked', async () => {
     const { downloadUrl } = await import('@/utils/download')
-    const { container } = render(<FileImageItem file={createFile()} showDownloadAction />)
+    render(<FileImageItem file={createFile()} showDownloadAction />)
 
-    // Find the RiDownloadLine SVG (it doesn't have data-icon attribute, unlike ReplayLine)
-    const svgs = container.querySelectorAll('svg')
-    const downloadSvg = Array.from(svgs).find(
-      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
-    )
-    fireEvent.click(downloadSvg!.parentElement!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
 
     expect(downloadUrl).toHaveBeenCalled()
   })
@@ -169,15 +157,9 @@ describe('FileImageItem', () => {
   it('should use url with attachment param for download_url when url is available', async () => {
     const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: 'https://example.com/photo.png' })
-    const { container } = render(<FileImageItem file={file} showDownloadAction />)
+    render(<FileImageItem file={file} showDownloadAction />)
 
-    // The download SVG should be rendered
-    const svgs = container.querySelectorAll('svg')
-    expect(svgs.length).toBeGreaterThanOrEqual(1)
-    const downloadSvg = Array.from(svgs).find(
-      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
-    )
-    fireEvent.click(downloadSvg!.parentElement!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
     expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
       url: expect.stringContaining('as_attachment=true'),
     }))
@@ -186,13 +168,9 @@ describe('FileImageItem', () => {
   it('should use base64Url for download_url when url is not available', async () => {
     const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: undefined, base64Url: 'data:image/png;base64,abc' })
-    const { container } = render(<FileImageItem file={file} showDownloadAction />)
+    render(<FileImageItem file={file} showDownloadAction />)
 
-    const svgs = container.querySelectorAll('svg')
-    const downloadSvg = Array.from(svgs).find(
-      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
-    )
-    fireEvent.click(downloadSvg!.parentElement!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
 
     expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
       url: 'data:image/png;base64,abc',
@@ -224,50 +202,15 @@ describe('FileImageItem', () => {
     fireEvent.click(img.parentElement!)
 
     // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
-    // Preview won't show because imagePreviewUrl is empty string (falsy)
     expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
   })
 
   it('should call downloadUrl with correct params when download button is clicked', async () => {
     const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: 'https://example.com/photo.png', name: 'photo.png' })
-    const { container } = render(<FileImageItem file={file} showDownloadAction />)
+    render(<FileImageItem file={file} showDownloadAction />)
 
-    const svgs = container.querySelectorAll('svg')
-    const downloadSvg = Array.from(svgs).find(
-      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
-    )
-    fireEvent.click(downloadSvg!.parentElement!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
 
     expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
       url: expect.stringContaining('as_attachment=true'),

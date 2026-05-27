@@ -26,10 +26,10 @@ describe('LoadingError', () => {
     expect(screen.getByText('plugin.installModal.pluginLoadErrorDesc')).toBeInTheDocument()
   })
 
-  it('should render disabled checkbox', () => {
+  it('should render non-interactive checkbox skeleton', () => {
     render(<LoadingError />)
 
-    expect(screen.getByTestId('checkbox-undefined')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('should render error icon with close indicator', () => {

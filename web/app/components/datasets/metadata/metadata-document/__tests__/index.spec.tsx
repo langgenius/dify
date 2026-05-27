@@ -377,7 +377,7 @@ describe('MetadataDocument', () => {
         setTempList,
       })
 
-      const { container } = render(
+      render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
@@ -385,14 +385,12 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      const inputs = container.querySelectorAll('input')
-      if (inputs.length > 0) {
-        fireEvent.change(inputs[0]!, { target: { value: 'new value' } })
+      const valueInput = screen.getByDisplayValue('Value 1')
+      fireEvent.change(valueInput, { target: { value: 'new value' } })
 
-        await waitFor(() => {
-          expect(setTempList).toHaveBeenCalled()
-        })
-      }
+      await waitFor(() => {
+        expect(setTempList).toHaveBeenCalled()
+      })
     })
 
     it('should have handleAddMetaData function available', () => {
@@ -445,7 +443,7 @@ describe('MetadataDocument', () => {
         setTempList,
       })
 
-      const { container } = render(
+      render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
@@ -453,13 +451,11 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      const inputs = container.querySelectorAll('input')
-      if (inputs.length > 0) {
-        fireEvent.change(inputs[0]!, { target: { value: 'updated' } })
-        await waitFor(() => {
-          expect(setTempList).toHaveBeenCalled()
-        })
-      }
+      const valueInput = screen.getByDisplayValue('Value 1')
+      fireEvent.change(valueInput, { target: { value: 'updated' } })
+      await waitFor(() => {
+        expect(setTempList).toHaveBeenCalled()
+      })
     })
 
     it('should pass onDelete callback to InfoGroup', async () => {

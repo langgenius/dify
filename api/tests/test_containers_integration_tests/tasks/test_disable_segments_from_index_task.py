@@ -7,6 +7,7 @@ The task is responsible for removing document segments from the search index whe
 """
 
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 from faker import Faker
 from sqlalchemy import select
@@ -82,7 +83,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account, fake: Faker | None = None):
+    def _create_test_dataset(self, db_session_with_containers: Session, account: Account, fake: Faker | None = None):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -117,7 +118,7 @@ class TestDisableSegmentsFromIndexTask:
         return dataset
 
     def _create_test_document(
-        self, db_session_with_containers: Session, dataset, account: Account, fake: Faker | None = None
+        self, db_session_with_containers: Session, dataset: Dataset, account: Account, fake: Faker | None = None
     ):
         """
         Helper method to create a test document with realistic data.
@@ -164,7 +165,7 @@ class TestDisableSegmentsFromIndexTask:
         return document
 
     def _create_test_segments(
-        self, db_session_with_containers: Session, document, dataset, account, count=3, fake=None
+        self, db_session_with_containers: Session, document, dataset: Dataset, account: Account, count=3, fake=None
     ):
         """
         Helper method to create test document segments with realistic data.
@@ -184,30 +185,31 @@ class TestDisableSegmentsFromIndexTask:
         segments = []
 
         for i in range(count):
-            segment = DocumentSegment()
-            segment.id = fake.uuid4()
-            segment.tenant_id = dataset.tenant_id
-            segment.dataset_id = dataset.id
-            segment.document_id = document.id
-            segment.position = i + 1
-            segment.content = f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}"
-            segment.answer = f"Test answer {i + 1}" if i % 2 == 0 else None
-            segment.word_count = fake.random_int(min=10, max=100)
-            segment.tokens = fake.random_int(min=5, max=50)
-            segment.keywords = [fake.word() for _ in range(3)]
-            segment.index_node_id = f"node_{segment.id}"
-            segment.index_node_hash = fake.sha256()
-            segment.hit_count = 0
-            segment.enabled = True
-            segment.disabled_at = None
-            segment.disabled_by = None
-            segment.status = SegmentStatus.COMPLETED
-            segment.created_by = account.id
-            segment.updated_by = account.id
-            segment.indexing_at = fake.date_time_this_year()
-            segment.completed_at = fake.date_time_this_year()
-            segment.error = None
-            segment.stopped_at = None
+            id = fake.uuid4()
+            segment = DocumentSegment(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                document_id=document.id,
+                position=i + 1,
+                content=f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}",
+                answer=f"Test answer {i + 1}" if i % 2 == 0 else None,
+                word_count=fake.random_int(min=10, max=100),
+                tokens=fake.random_int(min=5, max=50),
+                keywords=[fake.word() for _ in range(3)],
+                index_node_id=f"node_{id}",
+                index_node_hash=fake.sha256(),
+                hit_count=0,
+                enabled=True,
+                disabled_at=None,
+                disabled_by=None,
+                status=SegmentStatus.COMPLETED,
+                created_by=account.id,
+                updated_by=account.id,
+                indexing_at=fake.date_time_this_year(),
+                completed_at=fake.date_time_this_year(),
+                error=None,
+                stopped_at=None,
+            )
 
             segments.append(segment)
 
@@ -217,7 +219,9 @@ class TestDisableSegmentsFromIndexTask:
 
         return segments
 
-    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset, fake: Faker | None = None):
+    def _create_dataset_process_rule(
+        self, db_session_with_containers: Session, dataset: Dataset, fake: Faker | None = None
+    ):
         """
         Helper method to create a dataset process rule.
 
@@ -230,21 +234,19 @@ class TestDisableSegmentsFromIndexTask:
             DatasetProcessRule: Created process rule instance
         """
         fake = fake or Faker()
-        process_rule = DatasetProcessRule()
-        process_rule.id = fake.uuid4()
-        process_rule.tenant_id = dataset.tenant_id
-        process_rule.dataset_id = dataset.id
-        process_rule.mode = ProcessRuleMode.AUTOMATIC
-        process_rule.rules = (
-            "{"
-            '"mode": "automatic", '
-            '"rules": {'
-            '"pre_processing_rules": [], "segmentation": '
-            '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
-            "}"
+        process_rule = DatasetProcessRule(
+            dataset_id=dataset.id,
+            mode=ProcessRuleMode.AUTOMATIC,
+            rules=(
+                "{"
+                '"mode": "automatic", '
+                '"rules": {'
+                '"pre_processing_rules": [], "segmentation": '
+                '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
+                "}"
+            ),
+            created_by=str(uuid4()),
         )
-        process_rule.created_by = dataset.created_by
-        process_rule.updated_by = dataset.updated_by
 
         db_session_with_containers.add(process_rule)
         db_session_with_containers.commit()

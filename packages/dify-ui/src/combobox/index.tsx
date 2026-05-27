@@ -6,6 +6,7 @@ import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -31,7 +32,6 @@ export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEvent
 
 const comboboxPopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
-  'data-side-top:origin-bottom data-side-bottom:origin-top data-side-left:origin-right data-side-right:origin-left',
 ]
 
 const comboboxListClassName = [
@@ -40,7 +40,7 @@ const comboboxListClassName = [
 ]
 
 const comboboxItemClassName = [
-  'mx-1 grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
+  'grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-selected:text-text-primary',
@@ -51,7 +51,7 @@ const comboboxItemClassName = [
 const comboboxTriggerVariants = cva(
   [
     'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-open:bg-state-base-hover-alt',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
@@ -101,7 +101,7 @@ export function ComboboxTrigger({
         {children}
       </span>
       {icon !== false && (
-        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
+        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
           {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
         </BaseCombobox.Icon>
       )}
@@ -115,7 +115,7 @@ const comboboxInputGroupVariants = cva(
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
-    'data-open:border-components-input-border-active data-open:bg-components-input-bg-active',
+    'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal',
@@ -400,7 +400,7 @@ export function ComboboxLabel({
 }: BaseCombobox.Label.Props) {
   return (
     <BaseCombobox.Label
-      className={cn('mb-1 block text-text-secondary system-sm-medium', className)}
+      className={cn(formLabelClassName, className)}
       {...props}
     />
   )
@@ -436,7 +436,7 @@ export function ComboboxEmpty({
 }: BaseCombobox.Empty.Props) {
   return (
     <BaseCombobox.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
       {...props}
     />
   )

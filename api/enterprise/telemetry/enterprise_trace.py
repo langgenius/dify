@@ -77,28 +77,29 @@ class EnterpriseOtelTrace:
         self._exporter = exporter
 
     def trace(self, trace_info: BaseTraceInfo) -> None:
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self._workflow_trace(trace_info)
-        elif isinstance(trace_info, MessageTraceInfo):
-            self._message_trace(trace_info)
-        elif isinstance(trace_info, ToolTraceInfo):
-            self._tool_trace(trace_info)
-        elif isinstance(trace_info, DraftNodeExecutionTrace):
-            self._draft_node_execution_trace(trace_info)
-        elif isinstance(trace_info, WorkflowNodeTraceInfo):
-            self._node_execution_trace(trace_info)
-        elif isinstance(trace_info, ModerationTraceInfo):
-            self._moderation_trace(trace_info)
-        elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self._suggested_question_trace(trace_info)
-        elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self._dataset_retrieval_trace(trace_info)
-        elif isinstance(trace_info, GenerateNameTraceInfo):
-            self._generate_name_trace(trace_info)
-        elif isinstance(trace_info, PromptGenerationTraceInfo):
-            self._prompt_generation_trace(trace_info)
-        else:
-            raise AssertionError("this statment should be unreachable")
+        match trace_info:
+            case WorkflowTraceInfo():
+                self._workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self._message_trace(trace_info)
+            case ToolTraceInfo():
+                self._tool_trace(trace_info)
+            case DraftNodeExecutionTrace():
+                self._draft_node_execution_trace(trace_info)
+            case WorkflowNodeTraceInfo():
+                self._node_execution_trace(trace_info)
+            case ModerationTraceInfo():
+                self._moderation_trace(trace_info)
+            case SuggestedQuestionTraceInfo():
+                self._suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self._dataset_retrieval_trace(trace_info)
+            case GenerateNameTraceInfo():
+                self._generate_name_trace(trace_info)
+            case PromptGenerationTraceInfo():
+                self._prompt_generation_trace(trace_info)
+            case _:
+                raise AssertionError("this statment should be unreachable")
 
     def _common_attrs(self, trace_info: BaseTraceInfo) -> dict[str, Any]:
         metadata = self._metadata(trace_info)

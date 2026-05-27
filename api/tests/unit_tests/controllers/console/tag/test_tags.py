@@ -13,7 +13,10 @@ from controllers.console.tag.tags import (
     TagListApi,
     TagUpdateDeleteApi,
 )
+from models import Account
+from models.account import AccountStatus, TenantAccountRole
 from models.enums import TagType
+from services.tag_service import UpdateTagPayload
 
 
 def unwrap(func):
@@ -34,20 +37,26 @@ def app():
 
 @pytest.fixture
 def admin_user():
-    return MagicMock(
-        id="user-1",
-        has_edit_permission=True,
-        is_dataset_editor=True,
+    account = Account(
+        name="Admin User",
+        email="admin@example.com",
+        status=AccountStatus.ACTIVE,
     )
+    account.id = "user-1"
+    account.role = TenantAccountRole.OWNER
+    return account
 
 
 @pytest.fixture
 def readonly_user():
-    return MagicMock(
-        id="user-2",
-        has_edit_permission=False,
-        is_dataset_editor=False,
+    account = Account(
+        name="Readonly User",
+        email="readonly@example.com",
+        status=AccountStatus.ACTIVE,
     )
+    account.id = "user-2"
+    account.role = TenantAccountRole.NORMAL
+    return account
 
 
 @pytest.fixture
@@ -80,10 +89,6 @@ class TestTagListApi:
         with app.test_request_context("/?type=knowledge"):
             with (
                 patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(MagicMock(), "tenant-1"),
-                ),
-                patch(
                     "controllers.console.tag.tags.TagService.get_tags",
                     return_value=[
                         SimpleNamespace(
@@ -95,12 +100,12 @@ class TestTagListApi:
                     ],
                 ),
             ):
-                result, status = method(api)
+                result, status = method(api, "tenant-1")
 
         assert status == 200
         assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
-    def test_post_success(self, app, admin_user, tag, payload_patch):
+    def test_post_success(self, app: Flask, admin_user, tag, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
 
@@ -108,17 +113,13 @@ class TestTagListApi:
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
                 payload_patch(payload),
                 patch(
                     "controllers.console.tag.tags.TagService.save_tags",
                     return_value=tag,
                 ),
             ):
-                result, status = method(api)
+                result, status = method(api, admin_user)
 
         assert status == 200
         assert result["name"] == "test-tag"
@@ -132,42 +133,37 @@ class TestTagListApi:
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(readonly_user, None),
-                ),
                 payload_patch(payload),
             ):
                 with pytest.raises(Forbidden):
-                    method(api)
+                    method(api, readonly_user)
 
 
 class TestTagUpdateDeleteApi:
-    def test_patch_success(self, app, admin_user, tag, payload_patch):
+    def test_patch_success(self, app: Flask, admin_user, tag, payload_patch):
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
-        payload = {"name": "updated", "type": "knowledge"}
+        payload = {"name": "updated"}
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
                 payload_patch(payload),
                 patch(
                     "controllers.console.tag.tags.TagService.update_tags",
                     return_value=tag,
-                ),
+                ) as update_tags_mock,
                 patch(
                     "controllers.console.tag.tags.TagService.get_tag_binding_count",
                     return_value=3,
                 ),
             ):
-                result, status = method(api, "tag-1")
+                result, status = method(api, admin_user, "tag-1")
 
         assert status == 200
+        update_payload, tag_id = update_tags_mock.call_args.args
+        assert update_payload == UpdateTagPayload(name="updated")
+        assert tag_id == "tag-1"
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -178,25 +174,17 @@ class TestTagUpdateDeleteApi:
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(readonly_user, None),
-                ),
                 payload_patch(payload),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, "tag-1")
+                    method(api, readonly_user, "tag-1")
 
-    def test_delete_success(self, app, admin_user):
+    def test_delete_success(self, app: Flask, admin_user):
         api = TagUpdateDeleteApi()
         method = unwrap(api.delete)
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.tag.tags.current_account_with_tenant",
-                return_value=(admin_user, "tenant-1"),
-            ),
             patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
         ):
             result, status = method(api, "tag-1")
@@ -206,7 +194,7 @@ class TestTagUpdateDeleteApi:
 
 
 class TestTagBindingCollectionApi:
-    def test_create_success(self, app, admin_user, payload_patch):
+    def test_create_success(self, app: Flask, admin_user, payload_patch):
         api = TagBindingCollectionApi()
         method = unwrap(api.post)
 
@@ -218,14 +206,10 @@ class TestTagBindingCollectionApi:
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api)
+                result, status = method(api, admin_user)
 
         save_mock.assert_called_once()
         assert status == 200
@@ -237,18 +221,14 @@ class TestTagBindingCollectionApi:
 
         with app.test_request_context("/", json={}):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(readonly_user, None),
-                ),
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api)
+                    method(api, readonly_user)
 
 
 class TestTagBindingRemoveApi:
-    def test_remove_success(self, app, admin_user, payload_patch):
+    def test_remove_success(self, app: Flask, admin_user, payload_patch):
         api = TagBindingRemoveApi()
         method = unwrap(api.post)
 
@@ -260,14 +240,10 @@ class TestTagBindingRemoveApi:
 
         with app.test_request_context("/", json=payload):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.delete_tag_binding") as delete_mock,
             ):
-                result, status = method(api)
+                result, status = method(api, admin_user)
 
         delete_mock.assert_called_once()
         delete_payload = delete_mock.call_args.args[0]
@@ -281,14 +257,10 @@ class TestTagBindingRemoveApi:
 
         with app.test_request_context("/", json={}):
             with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(readonly_user, None),
-                ),
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api)
+                    method(api, readonly_user)
 
 
 class TestTagResponseModel:

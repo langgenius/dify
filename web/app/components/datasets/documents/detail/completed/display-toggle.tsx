@@ -30,8 +30,8 @@ const DisplayToggle: FC<DisplayToggleProps> = ({
           >
             {
               isCollapsed
-                ? <RiLineHeight className="h-4 w-4 text-components-button-secondary-text" />
-                : <Collapse className="h-4 w-4 text-components-button-secondary-text" />
+                ? <RiLineHeight className="size-4 text-components-button-secondary-text" />
+                : <Collapse className="size-4 text-components-button-secondary-text" />
             }
           </button>
         )}

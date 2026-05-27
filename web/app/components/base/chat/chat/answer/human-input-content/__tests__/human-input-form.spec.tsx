@@ -50,7 +50,7 @@ describe('HumanInputForm', () => {
     expect(contentItems[1])!.toHaveTextContent('{{#$output.field1#}}')
     expect(contentItems[2])!.toHaveTextContent('Part 2')
 
-    const buttons = screen.getAllByTestId('action-button')
+    const buttons = screen.getAllByRole('button').filter(button => button.textContent !== 'Update')
     expect(buttons).toHaveLength(4)
     expect(buttons[0])!.toHaveTextContent('Submit')
     expect(buttons[1])!.toHaveTextContent('Cancel')

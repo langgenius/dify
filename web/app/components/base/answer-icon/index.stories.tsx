@@ -32,7 +32,7 @@ const StoryWrapper = (children: ReactNode) => (
 
 export const Default: Story = {
   render: args => StoryWrapper(
-    <div className="h-16 w-16">
+    <div className="size-16">
       <AnswerIcon {...args} />
     </div>,
   ),
@@ -53,10 +53,10 @@ export const Default: Story = {
 export const CustomEmoji: Story = {
   render: args => StoryWrapper(
     <>
-      <div className="h-16 w-16">
+      <div className="size-16">
         <AnswerIcon {...args} icon="🧠" background="#FEE4E2" />
       </div>
-      <div className="h-16 w-16">
+      <div className="size-16">
         <AnswerIcon {...args} icon="🛠️" background="#EEF2FF" />
       </div>
     </>,
@@ -82,7 +82,7 @@ export const CustomEmoji: Story = {
 
 export const ImageIcon: Story = {
   render: args => StoryWrapper(
-    <div className="h-16 w-16">
+    <div className="size-16">
       <AnswerIcon
         {...args}
         iconType="image"

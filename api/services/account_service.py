@@ -7,8 +7,9 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, TypedDict, cast
 
-from pydantic import BaseModel, TypeAdapter
-from sqlalchemy import delete, func, select, update
+from pydantic import BaseModel, TypeAdapter, ValidationError
+from sqlalchemy import Row, delete, func, select, update
+from sqlalchemy.orm import Session, scoped_session
 
 from core.db.session_factory import session_factory
 
@@ -29,6 +30,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
+from libs.helper import timezone as validate_timezone
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -45,6 +47,12 @@ from models.account import (
 )
 from models.model import DifySetup
 from services.billing_service import BillingService
+from services.entities.auth_entities import (
+    ChangeEmailNewEmailToken,
+    ChangeEmailOldEmailToken,
+    ChangeEmailPhase,
+    ChangeEmailTokenData,
+)
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -83,6 +91,8 @@ from tasks.mail_reset_password_task import (
 
 logger = logging.getLogger(__name__)
 
+_change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
+
 
 class InvitationDetailDict(TypedDict):
     account: Account
@@ -112,13 +122,10 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
-    # Phase-bound token metadata for the change-email flow. Tokens carry the
-    # current phase so that downstream endpoints can enforce proper progression
-    CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
-    CHANGE_EMAIL_PHASE_OLD = "old_email"
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
-    CHANGE_EMAIL_PHASE_NEW = "new_email"
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_EMAIL_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
@@ -156,6 +163,41 @@ class AccountService:
     def _delete_refresh_token(refresh_token: str, account_id: str):
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
+
+    @staticmethod
+    def get_account_by_email(session: Session | scoped_session, email: str) -> Account | None:
+        """Plain ``Account`` getter keyed by email. Case-sensitive — use
+        :meth:`has_active_account_with_email` for the case-insensitive
+        existence check that backs the SSO collision rule.
+        """
+        return session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+
+    @staticmethod
+    def has_active_account_with_email(session: Session | scoped_session, email: str) -> bool:
+        if not email:
+            return False
+        normalized = email.strip().lower()
+        if not normalized:
+            return False
+        row = session.execute(
+            select(Account.id).where(
+                func.lower(Account.email) == normalized,
+                Account.status == AccountStatus.ACTIVE,
+            )
+        ).scalar_one_or_none()
+        return row is not None
+
+    @staticmethod
+    def get_account_by_id(session: Session | scoped_session, account_id: str) -> Account | None:
+        """Plain ``Account`` getter — no banned check, no tenant rotation,
+        no ``last_active_at`` write. Use this from read-only identity
+        endpoints (``/openapi/v1/account``) where ``load_user``'s
+        side-effects (current-tenant assignment, commit) are unwanted.
+
+        ``session`` is injected by the caller so this service stays free
+        of the Flask-scoped ``db.session`` import.
+        """
+        return session.get(Account, account_id)
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
@@ -271,8 +313,9 @@ class AccountService:
         password: str | None = None,
         interface_theme: str = "light",
         is_setup: bool | None = False,
+        timezone: str | None = None,
     ) -> Account:
-        """create account"""
+        """Create an account, preferring explicit user timezone over language-derived defaults."""
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
             from controllers.console.error import AccountNotFound
 
@@ -302,6 +345,10 @@ class AccountService:
             password_to_set = base64_password_hashed
             salt_to_set = base64_salt
 
+        resolved_timezone = language_timezone_mapping.get(interface_language, "UTC")
+        if timezone is not None:
+            resolved_timezone = validate_timezone(timezone)
+
         account = Account(
             name=name,
             email=email,
@@ -309,7 +356,7 @@ class AccountService:
             password_salt=salt_to_set,
             interface_language=interface_language,
             interface_theme=interface_theme,
-            timezone=language_timezone_mapping.get(interface_language, "UTC"),
+            timezone=resolved_timezone,
         )
 
         db.session.add(account)
@@ -318,11 +365,15 @@ class AccountService:
 
     @staticmethod
     def create_account_and_tenant(
-        email: str, name: str, interface_language: str, password: str | None = None
+        email: str, name: str, interface_language: str, password: str | None = None, timezone: str | None = None
     ) -> Account:
-        """create account"""
+        """Create an account and owner workspace."""
         account = AccountService.create_account(
-            email=email, name=name, interface_language=interface_language, password=password
+            email=email,
+            name=name,
+            interface_language=interface_language,
+            password=password,
+            timezone=timezone,
         )
 
         try:
@@ -573,31 +624,42 @@ class AccountService:
     @classmethod
     def send_change_email_email(
         cls,
-        account: Account | None = None,
+        account: Account,
         email: str | None = None,
         old_email: str | None = None,
         language: str = "en-US",
         phase: str | None = None,
     ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
+        account_email = email if email is not None else account.email
         if not phase:
             raise ValueError("phase must be provided.")
         if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
             raise ValueError("phase must be one of old_email or new_email.")
+        if old_email is None:
+            raise ValueError("old_email must be provided.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_change_email_token(
-            account_email,
-            account,
-            old_email=old_email,
-            additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
-        )
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        token_data: ChangeEmailTokenData
+        if phase == cls.CHANGE_EMAIL_PHASE_OLD:
+            token_data = ChangeEmailOldEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        else:
+            token_data = ChangeEmailNewEmailToken(
+                account_id=account.id,
+                email=account_email,
+                old_email=old_email,
+                code=code,
+            )
+        token = cls.generate_change_email_token(token_data, account)
 
         send_change_mail_task.delay(
             language=language,
@@ -725,20 +787,16 @@ class AccountService:
     @classmethod
     def generate_change_email_token(
         cls,
-        email: str,
-        account: Account | None = None,
-        code: str | None = None,
-        old_email: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        additional_data["old_email"] = old_email
+        token_data: ChangeEmailTokenData,
+        account: Account,
+    ) -> str:
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="change_email", additional_data=additional_data
+            account=account,
+            email=token_data.email,
+            token_type="change_email",
+            additional_data=token_data.to_token_manager_payload(),
         )
-        return code, token
+        return token
 
     @classmethod
     def generate_owner_transfer_token(
@@ -781,8 +839,15 @@ class AccountService:
         return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
-    def get_change_email_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "change_email")
+    def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
+        token_data = TokenManager.get_token_data(token, "change_email")
+        if token_data is None:
+            return None
+        try:
+            return _change_email_token_adapter.validate_python(token_data)
+        except ValidationError:
+            logger.warning("change_email token %s has invalid payload", token, exc_info=True)
+            return None
 
     @classmethod
     def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
@@ -1154,6 +1219,155 @@ class TenantService:
         )
 
     @staticmethod
+    def get_account_memberships(
+        session: Session | scoped_session,
+        account_id: str,
+    ) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
+        """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
+        the account belongs to. Unlike :meth:`get_join_tenants` this keeps
+        the join row so callers can read ``role``/``current`` alongside the
+        tenant — used by ``/openapi/v1/account`` to render workspace
+        membership + pick the default workspace.
+
+        ``session`` is injected by the caller so this service stays free
+        of the Flask-scoped ``db.session`` import.
+
+        No tenant-status filter: parity with the legacy controller query
+        (the openapi identity endpoint listed all joined tenants).
+        """
+        return (
+            session.query(TenantAccountJoin, Tenant)
+            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+            .filter(TenantAccountJoin.account_id == account_id)
+            .all()
+        )
+
+    @staticmethod
+    def get_workspaces_for_account(
+        session: Session | scoped_session,
+        account_id: str,
+    ) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
+        """``(Tenant, TenantAccountJoin)`` rows for every workspace the
+        account belongs to, ordered by ``Tenant.created_at`` ASC — the
+        canonical ordering for ``/openapi/v1/workspaces``.
+
+        Distinct from :meth:`get_account_memberships`: tuple order is
+        flipped (tenant first) and rows are sorted, so the workspace
+        listing is stable across requests.
+        """
+        return list(
+            session.execute(
+                select(Tenant, TenantAccountJoin)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == account_id)
+                .order_by(Tenant.created_at.asc())
+            ).all()
+        )
+
+    @staticmethod
+    def account_belongs_to_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> bool:
+        """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
+        Backs the CE-deployment membership fallback in
+        ``controllers.openapi.auth.strategies.MembershipStrategy``.
+
+        ``None``/empty ``account_id`` short-circuits to ``False`` so SSO
+        bearers (no account) and missing identity collapse cleanly.
+        """
+        if not account_id:
+            return False
+        row = session.execute(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return row is not None
+
+    @staticmethod
+    def get_account_role_in_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> TenantAccountRole | None:
+        """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
+
+        Backs ``controllers.openapi.auth.role_gate.require_workspace_role``:
+        the gate maps ``None`` to 404 (non-member — no cross-tenant ID leak)
+        and an out-of-set role to 403, so it never touches the ORM itself.
+
+        ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
+        bearers (no account) collapse to the non-member path. Mirrors the
+        session-injection style of :meth:`account_belongs_to_tenant` rather
+        than :meth:`get_user_role`, which loads full ``Account``/``Tenant``
+        objects against the Flask-scoped ``db.session``.
+        """
+        if not account_id:
+            return None
+        role = session.execute(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return TenantAccountRole(role) if role is not None else None
+
+    @staticmethod
+    def get_tenant_by_id(session: Session | scoped_session, tenant_id: str) -> Tenant | None:
+        """Plain ``session.get(Tenant, tenant_id)`` — no status filter.
+        Callers map ``status == ARCHIVE`` to their own error code (the
+        openapi auth pipeline raises 403 ``workspace unavailable``).
+        """
+        return session.get(Tenant, tenant_id)
+
+    @staticmethod
+    def get_tenants_by_ids(
+        session: Session | scoped_session,
+        tenant_ids: list[str],
+    ) -> list[Tenant]:
+        """Bulk ``Tenant`` fetch by primary-key list. Order is unspecified
+        — callers index by ``tenant.id`` (e.g. for cross-tenant denorm
+        in ``/openapi/v1/permitted-external-apps``).
+
+        Empty input short-circuits to ``[]`` to avoid emitting an
+        ``IN ()`` SQL fragment.
+        """
+        if not tenant_ids:
+            return []
+        return list(session.execute(select(Tenant).where(Tenant.id.in_(tenant_ids))).scalars().all())
+
+    @staticmethod
+    def get_tenant_name(session: Session | scoped_session, tenant_id: str) -> str | None:
+        """Single-column tenant name read. Used by openapi list endpoints
+        to denormalize ``workspace_name`` onto each row without dragging
+        the full ``Tenant`` ORM entity through.
+        """
+        return session.execute(select(Tenant.name).where(Tenant.id == tenant_id)).scalar_one_or_none()
+
+    @staticmethod
+    def find_workspace_for_account(
+        session: Session | scoped_session,
+        account_id: str,
+        workspace_id: str,
+    ) -> Row[tuple[Tenant, TenantAccountJoin]] | None:
+        """Single ``(Tenant, TenantAccountJoin)`` row scoped to the
+        account's membership in ``workspace_id``. ``None`` on non-member
+        — the caller maps that to 404 (not 403) so workspace IDs don't
+        leak across tenants via response codes.
+        """
+        return session.execute(
+            select(Tenant, TenantAccountJoin)
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(
+                Tenant.id == workspace_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).first()
+
+    @staticmethod
     def get_current_tenant_by_account(account: Account):
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
@@ -1280,8 +1494,8 @@ class TenantService:
         """Check member permission"""
         perms = {
             "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "remove": [TenantAccountRole.OWNER],
-            "update": [TenantAccountRole.OWNER],
+            "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            "update": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
         }
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
@@ -1298,6 +1512,15 @@ class TenantService:
 
         if not ta_operator or ta_operator.role not in perms[action]:
             raise NoPermissionError(f"No permission to {action} member.")
+
+        if action == "remove" and ta_operator.role == TenantAccountRole.ADMIN and member:
+            ta_member = db.session.scalar(
+                select(TenantAccountJoin)
+                .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == member.id)
+                .limit(1)
+            )
+            if ta_member and ta_member.role == TenantAccountRole.OWNER:
+                raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
@@ -1370,6 +1593,7 @@ class TenantService:
     def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
         """Update member role"""
         TenantService.check_member_permission(tenant, operator, member, "update")
+        new_tenant_role = TenantAccountRole(new_role)
 
         target_member_join = db.session.scalar(
             select(TenantAccountJoin)
@@ -1379,6 +1603,11 @@ class TenantService:
 
         if not target_member_join:
             raise MemberNotInTenantError("Member not in tenant.")
+
+        operator_role = TenantService.get_user_role(operator, tenant)
+        target_role = TenantAccountRole(target_member_join.role)
+        if operator_role == TenantAccountRole.ADMIN and (TenantAccountRole.OWNER in {target_role, new_tenant_role}):
+            raise NoPermissionError("No permission to update member.")
 
         if target_member_join.role == new_role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
@@ -1394,7 +1623,7 @@ class TenantService:
                 current_owner_join.role = TenantAccountRole.ADMIN
 
         # Update the role of the target member
-        target_member_join.role = TenantAccountRole(new_role)
+        target_member_join.role = new_tenant_role
         db.session.commit()
 
     @staticmethod
@@ -1459,8 +1688,8 @@ class RegisterService:
     @classmethod
     def register(
         cls,
-        email,
-        name,
+        email: str,
+        name: str,
         password: str | None = None,
         open_id: str | None = None,
         provider: str | None = None,
@@ -1468,16 +1697,19 @@ class RegisterService:
         status: AccountStatus | None = None,
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
+        timezone: str | None = None,
     ) -> Account:
-        db.session.begin_nested()
         """Register account"""
+        db.session.begin_nested()
         try:
+            interface_language = get_valid_language(language)
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=get_valid_language(language),
+                interface_language=interface_language,
                 password=password,
                 is_setup=is_setup,
+                timezone=timezone,
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()

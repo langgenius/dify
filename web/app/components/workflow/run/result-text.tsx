@@ -41,11 +41,17 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
-          <ImageIndentLeft className="h-6 w-6 text-gray-400" />
+          <ImageIndentLeft className="size-6 text-gray-400" />
           <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
           <div>
             {t('resultEmpty.tipLeft', { ns: 'runLog' })}
-            <span onClick={onClick} className="cursor-pointer text-primary-600">{t('resultEmpty.link', { ns: 'runLog' })}</span>
+            <button
+              type="button"
+              onClick={onClick}
+              className="inline cursor-pointer border-none bg-transparent p-0 text-left text-primary-600"
+            >
+              {t('resultEmpty.link', { ns: 'runLog' })}
+            </button>
             {t('resultEmpty.tipRight', { ns: 'runLog' })}
           </div>
         </div>

@@ -136,7 +136,7 @@ describe('InviteModal', () => {
     const user = userEvent.setup()
     renderModal()
 
-    await user.click(screen.getByTestId('invite-modal-close'))
+    await user.click(screen.getByRole('button', { name: /Close|operation.close/ }))
 
     expect(mockOnCancel).toHaveBeenCalled()
   })
@@ -161,7 +161,7 @@ describe('InviteModal', () => {
 
     expect(screen.getByText('user@example.com')).toBeInTheDocument()
 
-    const removeBtn = screen.getByTestId('remove-email-btn')
+    const removeBtn = screen.getByRole('button', { name: /operation\.remove.*user@example\.com/i })
     await user.click(removeBtn)
 
     expect(screen.queryByText('user@example.com')).not.toBeInTheDocument()

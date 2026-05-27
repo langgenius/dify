@@ -243,7 +243,7 @@ class TestDatasourceProviderService:
             assert service.get_datasource_credentials("t1", "prov", "org/plug") == {}
 
     def test_should_refresh_oauth_tokens_when_expired(self, service, mock_db_session, mock_user):
-        """Expired OAuth credential (expires_at near zero) triggers a silent refresh."""
+        """Expired OAuth credential (expires_at near zero) triggers a refresh."""
         p = MagicMock(spec=DatasourceProvider)
         p.auth_type = "oauth2"
         p.expires_at = 0  # expired
@@ -255,6 +255,24 @@ class TestDatasourceProviderService:
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             service.get_datasource_credentials("t1", "prov", "org/plug")
+
+    def test_should_include_provider_name_when_refresh_fails(self, service, mock_db_session, mock_user):
+        p = MagicMock(spec=DatasourceProvider)
+        p.id = "cred-id"
+        p.name = "Credential"
+        p.auth_type = "oauth2"
+        p.expires_at = 0
+        p.encrypted_credentials = {"tok": "x"}
+        mock_db_session.scalar.return_value = p
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.datasource_provider_service.OAuthHandler") as oauth_handler,
+            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
+        ):
+            oauth_handler.return_value.refresh_credentials.side_effect = RuntimeError("token endpoint failed")
+            with pytest.raises(ValueError, match="provider prov"):
+                service.get_datasource_credentials("t1", "prov", "org/plug")
 
     def test_should_return_decrypted_credentials_when_api_key_not_expired(self, service, mock_db_session, mock_user):
         """API key credentials with expires_at=-1 skip refresh and return directly."""
@@ -306,6 +324,51 @@ class TestDatasourceProviderService:
         ):
             result = service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug")
         assert len(result) == 1
+
+    def test_should_skip_failed_provider_when_refreshing_all_credentials(
+        self, service, mock_db_session, mock_user, caplog
+    ):
+        failed_provider = MagicMock(spec=DatasourceProvider)
+        failed_provider.id = "failed-cred"
+        failed_provider.name = "Failed"
+        failed_provider.auth_type = "oauth2"
+        failed_provider.expires_at = 0
+        working_provider = MagicMock(spec=DatasourceProvider)
+        working_provider.id = "working-cred"
+        working_provider.name = "Working"
+        working_provider.auth_type = "oauth2"
+        working_provider.expires_at = 0
+        mock_db_session.scalars.return_value.all.return_value = [failed_provider, working_provider]
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(
+                service,
+                "_refresh_datasource_credentials",
+                side_effect=[ValueError("refresh failed"), ({"t": "enc"}, 9999)],
+            ) as refresh_credentials,
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
+        ):
+            result = service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug")
+        assert result == [{"t": "plain"}]
+        assert refresh_credentials.call_count == 2
+        assert "Skipping datasource credentials for provider prov" in caplog.text
+
+    def test_should_return_valid_credentials_without_refresh_when_getting_all_credentials(
+        self, service, mock_db_session, mock_user
+    ):
+        p = MagicMock(spec=DatasourceProvider)
+        p.auth_type = "oauth2"
+        p.expires_at = -1
+        p.encrypted_credentials = {"t": "x"}
+        mock_db_session.scalars.return_value.all.return_value = [p]
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "_refresh_datasource_credentials") as refresh_credentials,
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
+        ):
+            result = service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug")
+        assert result == [{"t": "plain"}]
+        refresh_credentials.assert_not_called()
 
     # -----------------------------------------------------------------------
     # update_datasource_provider_name (lines 236-303)

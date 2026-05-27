@@ -186,3 +186,114 @@ class TestWorkflowAppGeneratorGenerate:
         )
 
         assert result == {"ok": True}
+
+
+class TestWorkflowAppGeneratorResume:
+    def test_resume_restores_trace_manager_when_missing(self, monkeypatch: pytest.MonkeyPatch):
+        generator = WorkflowAppGenerator()
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+            task_id="task",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user",
+            stream=False,
+            invoke_from=InvokeFrom.WEB_APP,
+            extras={},
+            trace_manager=None,
+            workflow_execution_id="run-id",
+            call_depth=0,
+        )
+        DummyTraceQueueManager = type(
+            "_DummyTraceQueueManager",
+            (TraceQueueManager,),
+            {
+                "__init__": lambda self, app_id=None, user_id=None: (
+                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                )
+            },
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.app_generator.TraceQueueManager",
+            DummyTraceQueueManager,
+        )
+        captured_entity: WorkflowAppGenerateEntity | None = None
+
+        def _fake_generate(**kwargs):
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
+
+        monkeypatch.setattr(generator, "_generate", _fake_generate)
+
+        result = generator.resume(
+            app_model=SimpleNamespace(id="app-id"),
+            workflow=SimpleNamespace(),
+            user=SimpleNamespace(id="end-user-id", session_id="session-id"),
+            application_generate_entity=application_generate_entity,
+            graph_runtime_state=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+        )
+
+        assert result.ok is True
+        assert captured_entity is not None
+        trace_manager = captured_entity.trace_manager
+        assert isinstance(trace_manager, DummyTraceQueueManager)
+        assert trace_manager.app_id == "app-id"
+        assert trace_manager.user_id == "session-id"
+
+    def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch):
+        generator = WorkflowAppGenerator()
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
+        application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+            task_id="task",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user",
+            stream=False,
+            invoke_from=InvokeFrom.WEB_APP,
+            extras={},
+            trace_manager=existing_trace_manager,
+            workflow_execution_id="run-id",
+            call_depth=0,
+        )
+        captured_entity: WorkflowAppGenerateEntity | None = None
+
+        def _fake_generate(**kwargs):
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
+
+        monkeypatch.setattr(generator, "_generate", _fake_generate)
+
+        result = generator.resume(
+            app_model=SimpleNamespace(id="app-id"),
+            workflow=SimpleNamespace(),
+            user=SimpleNamespace(id="end-user-id", session_id="session-id"),
+            application_generate_entity=application_generate_entity,
+            graph_runtime_state=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+        )
+
+        assert result.ok is True
+        assert captured_entity is not None
+        assert captured_entity.trace_manager is existing_trace_manager

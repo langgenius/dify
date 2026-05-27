@@ -59,7 +59,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       disablePointerDismissal
     >
       <DialogContent
-        className={`inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
+        className={`inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
         backdropClassName="bg-transparent!"
       >
         <div
@@ -95,10 +95,10 @@ const PdfPreview: FC<PdfPreviewProps> = ({
               <button
                 type="button"
                 aria-label={zoomOutLabel}
-                className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
-                <RiZoomOutLine className="h-4 w-4 text-gray-500" />
+                <RiZoomOutLine className="size-4 text-gray-500" />
               </button>
             )}
           />
@@ -112,10 +112,10 @@ const PdfPreview: FC<PdfPreviewProps> = ({
               <button
                 type="button"
                 aria-label={zoomInLabel}
-                className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
-                <RiZoomInLine className="h-4 w-4 text-gray-500" />
+                <RiZoomInLine className="size-4 text-gray-500" />
               </button>
             )}
           />
@@ -132,7 +132,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
-                <RiCloseLine className="h-4 w-4 text-gray-500" />
+                <RiCloseLine className="size-4 text-gray-500" />
               </button>
             )}
           />

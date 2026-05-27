@@ -37,9 +37,9 @@ describe('FeaturePanelDrawer', () => {
       )
 
       const drawer = screen.getByRole('dialog')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:!top-[112px]')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:!rounded-l-2xl')
-      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:!rounded-2xl')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:top-[112px]!')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:rounded-l-2xl!')
+      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:rounded-2xl!')
     })
 
     it('should apply non-workflow styles when inWorkflow is false', () => {
@@ -54,11 +54,11 @@ describe('FeaturePanelDrawer', () => {
 
       expect(layoutContainer).toBeInTheDocument()
 
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:!top-[64px]')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:!right-2')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:!rounded-2xl')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:!border-[0.5px]')
-      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:!rounded-l-2xl')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:top-[64px]!')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:right-2!')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:rounded-2xl!')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:border-[0.5px]!')
+      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:rounded-l-2xl!')
     })
 
     it('should accept custom className', () => {

@@ -656,7 +656,7 @@ describe('loop path', () => {
         />,
       )
 
-      fireEvent.click(container.querySelector('.mr-4.flex.h-5.w-5.cursor-pointer.items-center.justify-center') as HTMLElement)
+      fireEvent.click(container.querySelector('.mr-4.flex.size-5.cursor-pointer.items-center.justify-center') as HTMLElement)
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '8' } })
 
       expect(handleAddLoopVariable).toHaveBeenCalled()

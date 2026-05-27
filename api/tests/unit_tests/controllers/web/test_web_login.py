@@ -44,7 +44,7 @@ class TestEmailCodeLoginSendEmailApi:
         self,
         mock_get_user,
         mock_send_email,
-        app,
+        app: Flask,
     ):
         mock_account = MagicMock()
         mock_get_user.return_value = mock_account
@@ -75,7 +75,7 @@ class TestEmailCodeLoginApi:
         mock_get_user,
         mock_login,
         mock_reset_login_rate,
-        app,
+        app: Flask,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
         mock_get_user.return_value = MagicMock()

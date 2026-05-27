@@ -42,7 +42,6 @@ from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetPro
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
-from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -282,8 +281,7 @@ class IndexingRunner:
         Estimate the indexing for the document.
         """
         # check document limit
-        features = FeatureService.get_features(tenant_id)
-        if features.billing.enabled:
+        if dify_config.BILLING_ENABLED:
             count = len(extract_settings)
             batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
             if count > batch_upload_limit:
@@ -324,9 +322,10 @@ class IndexingRunner:
         # one extract_setting is one source document
         for extract_setting in extract_settings:
             # extract
-            processing_rule = DatasetProcessRule(
-                mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
-            )
+            processing_rule = {
+                "mode": tmp_processing_rule["mode"],
+                "rules": tmp_processing_rule.get("rules"),
+            }
             # Extract document content
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
             # Cleaning and segmentation
@@ -334,7 +333,7 @@ class IndexingRunner:
                 text_docs,
                 current_user=None,
                 embedding_model_instance=embedding_model_instance,
-                process_rule=processing_rule.to_dict(),
+                process_rule=processing_rule,
                 tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,

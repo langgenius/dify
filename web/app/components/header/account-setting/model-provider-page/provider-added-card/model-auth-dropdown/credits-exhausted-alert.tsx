@@ -54,7 +54,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             {t('modelProvider.card.usageLabel', { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
-            <CreditsCoin className="h-3 w-3" />
+            <CreditsCoin className="size-3" />
             <span>
               {formatNumber(usedCredits)}
               /

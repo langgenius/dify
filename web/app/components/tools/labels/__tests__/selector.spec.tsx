@@ -224,10 +224,10 @@ describe('LabelSelector', () => {
       })
 
       // Find the label item in the dropdown list and click it
-      // Use getAllByTitle and select the one in the dropdown (with text-sm class)
+      // Use getAllByTitle and select the one in the dropdown.
       const agentElements = screen.getAllByTitle('Agent')
       const dropdownItem = agentElements.find(el =>
-        el.classList.contains('text-sm'),
+        el.classList.contains('text-sm/5'),
       )
 
       await act(async () => {
@@ -265,9 +265,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      // Checkboxes should be visible in the dropdown
-      const checkboxes = document.querySelectorAll('[data-testid^="checkbox"]')
-      expect(checkboxes.length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0)
     })
   })
 

@@ -7,18 +7,18 @@ paused human input forms in workflow/chatflow runs.
 
 import json
 import logging
-from datetime import datetime
 
 from flask import Response
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
+from libs.helper import to_timestamp
 from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
@@ -28,30 +28,14 @@ logger = logging.getLogger(__name__)
 register_schema_models(service_api_ns, HumanInputFormSubmitPayload)
 
 
-def _stringify_default_values(values: dict[str, object]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    for key, value in values.items():
-        if value is None:
-            result[key] = ""
-        elif isinstance(value, (dict, list)):
-            result[key] = json.dumps(value, ensure_ascii=False)
-        else:
-            result[key] = str(value)
-    return result
-
-
-def _to_timestamp(value: datetime) -> int:
-    return int(value.timestamp())
-
-
 def _jsonify_form_definition(form: Form) -> Response:
     definition_payload = form.get_definition().model_dump()
     payload = {
         "form_content": definition_payload["rendered_content"],
         "inputs": definition_payload["inputs"],
-        "resolved_default_values": _stringify_default_values(definition_payload["default_values"]),
+        "resolved_default_values": stringify_form_default_values(definition_payload["default_values"]),
         "user_actions": definition_payload["user_actions"],
-        "expiration_time": _to_timestamp(form.expiration_time),
+        "expiration_time": to_timestamp(form.expiration_time),
     }
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 

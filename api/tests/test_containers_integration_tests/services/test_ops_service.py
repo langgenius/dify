@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from core.ops.entities.config_entity import TracingProviderEnum
 from models.model import TraceAppConfig
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from services.ops_service import OpsService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -57,14 +57,14 @@ class TestOpsService:
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
-            {
-                "name": fake.company(),
-                "description": fake.text(max_nb_chars=100),
-                "mode": "chat",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FF6B6B",
-            },
+            CreateAppParams(
+                name=fake.company(),
+                description=fake.text(max_nb_chars=100),
+                mode="chat",
+                icon_type="emoji",
+                icon="🤖",
+                icon_background="#FF6B6B",
+            ),
             account,
         )
         return app, account

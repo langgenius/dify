@@ -50,7 +50,7 @@ const Button = ({
         {!isPlanDisabled && <span className="i-ri-arrow-right-line size-5 shrink-0" />}
       </button>
       {warningText && (
-        <div className="absolute top-full right-0 left-0 mt-1.5 text-left system-2xs-medium text-text-tertiary">
+        <div className="absolute inset-x-0 top-full mt-1.5 text-left system-2xs-medium text-text-tertiary">
           {warningText}
         </div>
       )}

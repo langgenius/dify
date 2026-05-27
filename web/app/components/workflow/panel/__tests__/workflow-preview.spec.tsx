@@ -153,7 +153,7 @@ describe('WorkflowPreview', () => {
 
   it('should keep the input tab active, switch to result after running, and close the preview panel', async () => {
     const user = userEvent.setup()
-    const { container } = renderWorkflowComponent(
+    renderWorkflowComponent(
       <WorkflowPreview />,
       {
         initialStoreState: {
@@ -169,7 +169,7 @@ describe('WorkflowPreview', () => {
     await user.click(screen.getByRole('button', { name: 'run-inputs' }))
     expect(screen.getByTestId('result-text')).toBeInTheDocument()
 
-    await user.click(container.querySelector('.flex.items-center.justify-between .cursor-pointer.p-1') as HTMLElement)
+    await user.click(screen.getByRole('button', { name: /operation\.close/ }))
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
   })
 

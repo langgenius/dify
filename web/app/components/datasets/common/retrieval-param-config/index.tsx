@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -153,7 +154,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
                 {showMultiModalTip && (
                   <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                    <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
@@ -207,13 +208,17 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className="mb-4 flex gap-2">
+            <RadioGroup<RerankingModeEnum>
+              aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
+              value={value.reranking_mode}
+              onValueChange={handleChangeRerankMode}
+              className="mb-4 flex gap-2"
+            >
               {
                 rerankingModeOptions.map(option => (
                   <RadioCard
                     key={option.value}
-                    isChosen={value.reranking_mode === option.value}
-                    onChosen={() => handleChangeRerankMode(option.value)}
+                    value={option.value}
                     icon={(
                       <img
                         src={
@@ -230,7 +235,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                 ))
               }
-            </div>
+            </RadioGroup>
             {
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
                 <WeightedScore
@@ -277,7 +282,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                   {showMultiModalTip && (
                     <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                      <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>

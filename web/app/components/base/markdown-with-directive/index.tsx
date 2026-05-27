@@ -1,5 +1,5 @@
 'use client'
-import type { ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ClassAttributes, ReactNode } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import DOMPurify from 'dompurify'
 import remarkDirective from 'remark-directive'
@@ -241,10 +241,25 @@ function directivePlugin() {
   }
 }
 
-const directiveComponents = {
+const directiveComponents: Components = {
+  a: (props) => {
+    const { children, href } = props as ClassAttributes<HTMLAnchorElement> & AnchorHTMLAttributes<HTMLAnchorElement>
+
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-text-accent"
+        style={{ textDecoration: 'none' }}
+      >
+        {children}
+      </a>
+    )
+  },
   withiconcardlist: WithIconCardListAdapter,
   withiconcarditem: WithIconCardItemAdapter,
-} satisfies Components
+}
 
 type MarkdownWithDirectiveProps = {
   markdown: string

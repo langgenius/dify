@@ -171,9 +171,9 @@ class ProviderConfiguration(BaseModel):
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
             if current_credential_id:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                check_credential_policy_compliance(
+                runtime_check_credential_policy_compliance(
                     credential_id=current_credential_id,
                     provider=self.provider.provider,
                     credential_type=PluginCredentialType.MODEL,
@@ -182,9 +182,9 @@ class ProviderConfiguration(BaseModel):
                 # no current credential id, check all available credentials
                 if self.custom_configuration.provider:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
-                        from core.helper.credential_utils import check_credential_policy_compliance
+                        from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                        check_credential_policy_compliance(
+                        runtime_check_credential_policy_compliance(
                             credential_id=credential_configuration.credential_id,
                             provider=self.provider.provider,
                             credential_type=PluginCredentialType.MODEL,

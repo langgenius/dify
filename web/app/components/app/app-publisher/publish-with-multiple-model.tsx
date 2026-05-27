@@ -68,7 +68,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       >
         <>
           {t('operation.applyConfig', { ns: 'appDebug' })}
-          <RiArrowDownSLine className="ml-0.5 h-3 w-3" />
+          <RiArrowDownSLine className="ml-0.5 size-3" />
         </>
       </DropdownMenuTrigger>
       <DropdownMenuContent

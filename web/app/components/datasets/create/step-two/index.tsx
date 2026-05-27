@@ -195,7 +195,7 @@ const StepTwo: FC<StepTwoProps> = ({
   const showParentChildOption = (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild) || isUploadInEmptyDataset || isInInit
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex size-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
         <div className="mb-1 system-md-semibold text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
         {showGeneralOption && (

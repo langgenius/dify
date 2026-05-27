@@ -480,7 +480,9 @@ describe('publisher', () => {
       it('should show publish as knowledge pipeline modal when permitted', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -495,7 +497,9 @@ describe('publisher', () => {
       it('should close publish as knowledge pipeline modal when cancel is clicked', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -516,7 +520,9 @@ describe('publisher', () => {
       it('should call publishAsCustomizedPipeline when confirm is clicked in modal', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -532,6 +538,35 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
             pipelineId: 'test-pipeline-id',
+            name: 'Test Pipeline',
+            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+            description: 'Test description',
+          })
+        })
+      })
+
+      it('should publish as template with empty pipeline id fallback', async () => {
+        mockPublishedAt.mockReturnValue(1700000000)
+        mockPipelineId.mockReturnValue(undefined as unknown as string)
+        mockPublishAsCustomizedPipeline.mockResolvedValue({})
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        const publishAsButton = screen.getAllByRole('button').find(btn =>
+          btn.textContent?.includes('pipeline.common.publishAs'),
+        )
+        fireEvent.click(publishAsButton!)
+
+        await waitFor(() => {
+          expect(screen.getByTestId('publish-as-knowledge-pipeline-modal')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByTestId('modal-confirm'))
+
+        await waitFor(() => {
+          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
+            pipelineId: '',
             name: 'Test Pipeline',
             icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
             description: 'Test description',
@@ -607,7 +642,9 @@ describe('publisher', () => {
       it('should show success notification for publish as template', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -633,7 +670,9 @@ describe('publisher', () => {
       it('should invalidate customized template list after publish as template', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -686,7 +725,9 @@ describe('publisher', () => {
       it('should show error notification when publish as template fails', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockRejectedValue(new Error('Template publish failed'))
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -710,7 +751,9 @@ describe('publisher', () => {
       it('should close modal after publish as template error', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockPublishAsCustomizedPipeline.mockRejectedValue(new Error('Template publish failed'))
-        renderWithQueryClient(<Popup />)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         const publishAsButton = screen.getAllByRole('button').find(btn =>
           btn.textContent?.includes('pipeline.common.publishAs'),
@@ -1051,7 +1094,9 @@ describe('publisher', () => {
     it('should complete full publish as template flow', async () => {
       mockPublishedAt.mockReturnValue(1700000000)
       mockPublishAsCustomizedPipeline.mockResolvedValue({})
-      renderWithQueryClient(<Popup />)
+      renderWithQueryClient(<Publisher />)
+
+      fireEvent.click(screen.getByText('workflow.common.publish'))
 
       const publishAsButton = screen.getAllByRole('button').find(btn =>
         btn.textContent?.includes('pipeline.common.publishAs'),

@@ -2,13 +2,13 @@ import type {
   DataSourceCredential,
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Indicator from '@/app/components/header/indicator'
 import Operator from './operator'
 
 type ItemProps = {
@@ -75,8 +75,8 @@ const Item = ({
         )
       }
       <div className="flex shrink-0 items-center">
-        <div className="mr-1 flex h-3 w-3 items-center justify-center">
-          <Indicator color="green" />
+        <div className="mr-1 flex size-3 items-center justify-center">
+          <StatusDot status="success" />
         </div>
         <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
           connected

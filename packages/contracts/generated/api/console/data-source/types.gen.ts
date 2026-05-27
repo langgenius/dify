@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type GetDataSourceIntegratesData = {
   body?: never
   path?: never
@@ -28,9 +32,7 @@ export type PatchDataSourceIntegratesData = {
 }
 
 export type PatchDataSourceIntegratesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDataSourceIntegratesResponse
@@ -39,8 +41,8 @@ export type PatchDataSourceIntegratesResponse
 export type GetDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
-    binding_id: string
     action: string
+    binding_id: string
   }
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'
@@ -58,17 +60,15 @@ export type GetDataSourceIntegratesByBindingIdByActionResponse
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
-    binding_id: string
     action: string
+    binding_id: string
   }
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionResponse

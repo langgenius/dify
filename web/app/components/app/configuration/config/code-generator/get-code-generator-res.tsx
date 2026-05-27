@@ -209,9 +209,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           onClose()
       }}
     >
-      <DialogContent className="max-h-none w-full min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
 
-        <div className="relative flex h-[680px] flex-wrap">
+        <div className="relative flex h-full min-h-0 flex-wrap">
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
@@ -254,7 +254,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="h-4 w-4" />
+                  <Generator className="size-4" />
                   <span className="text-xs font-semibold">{t('codegen.generate', { ns: 'appDebug' })}</span>
                 </Button>
               </div>

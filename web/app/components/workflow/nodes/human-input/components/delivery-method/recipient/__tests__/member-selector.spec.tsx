@@ -1,59 +1,7 @@
 import type { Member } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import MemberSelector from '../member-selector'
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: import('react').ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled)
-        setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return (
-      <PopoverContext.Provider value={{ open, setOpen }}>
-        {children}
-      </PopoverContext.Provider>
-    )
-  }
-
-  const PopoverTrigger = ({ render }: { render: import('react').ReactNode }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
-    return (
-      <div onClick={() => setOpen(!open)}>
-        {render}
-      </div>
-    )
-  }
-
-  const PopoverContent = ({ children }: { children: import('react').ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
-    return open ? <div data-testid="popover-content">{children}</div> : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
 
 const mockMemberList = vi.hoisted(() => vi.fn())
 
@@ -87,7 +35,9 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
     vi.clearAllMocks()
   })
 
-  it('should toggle the member list and forward selection props', () => {
+  it('should toggle the member list and forward selection props', async () => {
+    const user = userEvent.setup()
+
     render(
       <MemberSelector
         value={[{ type: 'member', user_id: 'member-1' }]}
@@ -103,16 +53,17 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
 
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
 
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(screen.getByTestId('member-list')).toBeInTheDocument()
-    expect(trigger).toHaveClass('bg-state-accent-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
+    expect(trigger).toHaveClass('data-popup-open:bg-state-accent-hover')
     expect(mockMemberList).toHaveBeenCalledWith(expect.objectContaining({
       searchValue: '',
       list: members,
       email: 'owner@example.com',
     }))
 
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
   })
 })

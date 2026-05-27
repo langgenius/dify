@@ -8,7 +8,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console import console_ns
@@ -57,6 +59,12 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from models.model import AppMode
+from tests.test_containers_integration_tests.controllers.console.helpers import (
+    authenticate_console_client,
+    create_console_account_and_tenant,
+    create_console_app,
+)
 
 
 def _unwrap(func):
@@ -270,6 +278,35 @@ class TestOpsTraceEndpoints:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
+    @pytest.mark.parametrize(
+        "path_template",
+        [
+            "/console/api/apps/{app_id}/trace-config?tracing_provider=langfuse",
+            "/console/api/apps/{app_id}/trace",
+        ],
+    )
+    def test_trace_endpoints_hide_apps_from_other_tenants(
+        self,
+        db_session_with_containers: Session,
+        test_client_with_containers: FlaskClient,
+        path_template: str,
+    ):
+        account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+        foreign_account, foreign_tenant = create_console_account_and_tenant(db_session_with_containers)
+        foreign_app = create_console_app(
+            db_session_with_containers,
+            tenant_id=foreign_tenant.id,
+            account_id=foreign_account.id,
+            mode=AppMode.CHAT,
+        )
+
+        response = test_client_with_containers.get(
+            path_template.format(app_id=foreign_app.id),
+            headers=authenticate_console_client(test_client_with_containers, account),
+        )
+
+        assert response.status_code == 404
+
     def test_ops_trace_query_basic(self):
         query = TraceProviderQuery(tracing_provider="langfuse")
         assert query.tracing_provider == "langfuse"
@@ -289,7 +326,7 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(app_id="app-1")
+            result = method(app_model=MagicMock(id="app-1"))
 
         assert result == {"has_not_configured": True}
 
@@ -308,7 +345,7 @@ class TestOpsTraceEndpoints:
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
             with pytest.raises(BadRequest):
-                method(app_id="app-1")
+                method(app_model=MagicMock(id="app-1"))
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
@@ -322,7 +359,7 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(app_id="app-1")
+                method(app_model=MagicMock(id="app-1"))
 
 
 class TestSiteEndpoints:

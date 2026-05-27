@@ -4,6 +4,7 @@ from typing import override
 
 import contextlib
 import logging
+from typing import override
 
 import flask
 

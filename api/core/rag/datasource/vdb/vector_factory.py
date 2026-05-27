@@ -88,9 +88,11 @@ class _LazyEmbeddings(Embeddings):
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         return self._ensure().embed_multimodal_query(multimodel_document)
 
+    @override
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         return await self._ensure().aembed_documents(texts)
 
+    @override
     async def aembed_query(self, text: str) -> list[float]:
         return await self._ensure().aembed_query(text)
 

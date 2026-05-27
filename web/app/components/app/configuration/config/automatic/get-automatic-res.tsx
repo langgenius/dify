@@ -72,7 +72,7 @@ const TryLabel: FC<{
       className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
-      <Icon className="h-4 w-4 text-text-tertiary"></Icon>
+      <Icon className="size-4 text-text-tertiary"></Icon>
       <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
     </div>
   )
@@ -289,9 +289,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           onClose()
       }}
     >
-      <DialogContent className="max-h-none w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
 
-        <div className="flex h-[680px] flex-wrap">
+        <div className="flex h-full min-h-0 flex-wrap">
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
@@ -375,7 +375,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="h-4 w-4" />
+                  <Generator className="size-4" />
                   <span className="text-xs font-semibold">{t('generate.generate', { ns: 'appDebug' })}</span>
                 </Button>
               </div>

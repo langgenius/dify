@@ -2,7 +2,7 @@ import json
 from typing import Any, TypedDict
 
 import chromadb
-from chromadb import QueryResult, Settings  # pyright: ignore[reportPrivateImportUsage]
+from chromadb import QueryResult, Settings
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -166,8 +166,8 @@ class ChromaVectorFactory(AbstractVectorFactory):
             config=ChromaConfig(
                 host=dify_config.CHROMA_HOST or "",
                 port=dify_config.CHROMA_PORT,
-                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,  # pyright: ignore[reportPrivateImportUsage]
-                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,  # pyright: ignore[reportPrivateImportUsage]
+                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
+                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,
                 auth_provider=dify_config.CHROMA_AUTH_PROVIDER,
                 auth_credentials=dify_config.CHROMA_AUTH_CREDENTIALS,
             ),

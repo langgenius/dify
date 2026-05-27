@@ -43,7 +43,7 @@ export default function LocaleMenu<T extends string>({
                 />
               )}
             >
-              <span className="mr-1 i-heroicons-globe-alt h-5 w-5" aria-hidden="true" />
+              <span className="mr-1 i-heroicons-globe-alt size-5" aria-hidden="true" />
               {selectedItem?.name}
             </DropdownMenuTrigger>
           </div>

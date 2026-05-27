@@ -32,7 +32,7 @@ const EmailItem = ({
       onClick={e => e.stopPropagation()}
     >
       {isError && (
-        <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+        <RiErrorWarningFill className="size-4 text-text-destructive" />
       )}
       {!isError && <Avatar avatar={data.avatar_url} size="xxs" name={data.name || data.email} />}
       <div title={data.email} className="max-w-[500px] truncate system-xs-regular text-text-primary">
@@ -41,7 +41,7 @@ const EmailItem = ({
       </div>
       {!disabled && (
         <RiCloseCircleFill
-          className="h-4 w-4 cursor-pointer text-text-quaternary hover:text-text-tertiary"
+          className="size-4 cursor-pointer text-text-quaternary hover:text-text-tertiary"
           onClick={() => onDelete(data as unknown as RecipientItem)}
         />
       )}

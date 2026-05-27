@@ -226,16 +226,15 @@ describe('code/panel', () => {
     expect(screen.getByText('editor:editable')).toBeInTheDocument()
     expect(screen.getByText('language:javascript')).toBeInTheDocument()
 
-    const addButtons = screen.getAllByTestId('add-button')
-    await user.click(addButtons[0]!)
-    await user.click(screen.getByTestId('sync-button'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' }))
     await user.click(screen.getByRole('button', { name: 'change-code' }))
     await user.click(screen.getByRole('button', { name: 'generate-code' }))
     await user.click(screen.getByRole('button', { name: 'language:javascript' }))
     await user.click(screen.getByRole('button', { name: 'change-var-list' }))
     await user.click(screen.getByRole('button', { name: 'change-output-list' }))
     await user.click(screen.getByRole('button', { name: 'remove-output' }))
-    await user.click(addButtons[1]!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }))
     await user.click(screen.getByRole('button', { name: 'cancel-remove' }))
     await user.click(screen.getByRole('button', { name: 'confirm-remove' }))
 
@@ -285,8 +284,9 @@ describe('code/panel', () => {
 
     renderPanel()
 
-    expect(screen.queryByTestId('sync-button')).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('add-button')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' })).toBeInTheDocument()
     expect(screen.getByText('editor:readonly')).toBeInTheDocument()
     expect(screen.getByText('var-list:readonly')).toBeInTheDocument()
     expect(screen.getByText('output-list:readonly')).toBeInTheDocument()

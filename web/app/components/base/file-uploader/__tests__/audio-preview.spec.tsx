@@ -25,16 +25,14 @@ describe('AudioPreview', () => {
   it('should render close button with icon', () => {
     render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
-    const closeIcon = screen.getByTestId('close-btn')
-    expect(closeIcon).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
   })
 
   it('should call onCancel when close button is clicked', () => {
     const onCancel = vi.fn()
     render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
 
-    const closeIcon = screen.getByTestId('close-btn')
-    fireEvent.click(closeIcon.parentElement!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onCancel).toHaveBeenCalled()
   })

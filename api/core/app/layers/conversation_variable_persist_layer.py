@@ -10,6 +10,7 @@ scope updates that matter to chat applications.
 from typing import override
 
 import logging
+from typing import override
 
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID

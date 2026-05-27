@@ -20,7 +20,7 @@ const NoData: FC<INoDataProps> = ({
   return (
     <div className="rounded-xl bg-background-section-burn p-6">
       <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-xs">
-        <RiBookmark3Line className="h-4 w-4 text-text-accent" />
+        <RiBookmark3Line className="size-4 text-text-accent" />
       </div>
       <div className="mt-3">
         <span className="system-xl-semibold text-text-secondary">{t('generation.savedNoData.title', { ns: 'share' })}</span>
@@ -33,7 +33,7 @@ const NoData: FC<INoDataProps> = ({
         className="mt-3"
         onClick={onStartCreateContent}
       >
-        <RiAddLine className="mr-1 h-4 w-4" />
+        <RiAddLine className="mr-1 size-4" />
         <span>{t('generation.savedNoData.startCreateContent', { ns: 'share' })}</span>
       </Button>
     </div>

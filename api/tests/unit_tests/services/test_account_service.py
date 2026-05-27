@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -13,6 +13,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    NoPermissionError,
 )
 
 
@@ -259,7 +260,7 @@ class TestAccountService:
         assert result.interface_theme == "light"
         assert result.password is not None
         assert result.password_salt is not None
-        assert result.timezone is not None
+        assert result.timezone == "America/New_York"
 
         # Verify database operations
         mock_db_dependencies["db"].session.add.assert_called_once()
@@ -270,7 +271,28 @@ class TestAccountService:
         assert added_account.interface_theme == "light"
         assert added_account.password is not None
         assert added_account.password_salt is not None
-        assert added_account.timezone is not None
+        assert added_account.timezone == "America/New_York"
+        self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_create_account_uses_explicit_timezone(
+        self, mock_db_dependencies, mock_password_dependencies, mock_external_service_dependencies
+    ):
+        """Test account creation prefers explicit browser timezone."""
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+        mock_password_dependencies["hash_password"].return_value = b"hashed_password"
+
+        result = AccountService.create_account(
+            email="test@example.com",
+            name="Test User",
+            interface_language="en-US",
+            password="password123",
+            timezone="Asia/Shanghai",
+        )
+
+        assert result.timezone == "Asia/Shanghai"
+        added_account = mock_db_dependencies["db"].session.add.call_args[0][0]
+        assert added_account.timezone == "Asia/Shanghai"
         self._assert_database_operations_called(mock_db_dependencies["db"])
 
     def test_create_account_registration_disabled(self, mock_external_service_dependencies):
@@ -545,6 +567,52 @@ class TestTenantService:
         with pytest.raises(exception_type):
             callable_func(*args, **kwargs)
 
+    # ==================== get_account_role_in_tenant Tests ====================
+    # Backs `require_workspace_role`: None => non-member (gate maps to 404),
+    # otherwise the caller's role (gate maps an out-of-set role to 403).
+
+    def test_get_account_role_in_tenant_returns_role_for_member(self):
+        """A row in TenantAccountJoin yields the caller's role."""
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.ADMIN
+
+        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+
+        assert role == TenantAccountRole.ADMIN
+
+    def test_get_account_role_in_tenant_returns_none_for_non_member(self):
+        """No join row => None, so the gate cannot leak the workspace's existence."""
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+
+        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+
+        assert role is None
+
+    def test_get_account_role_in_tenant_short_circuits_empty_account_id(self):
+        """None/empty account_id (SSO bearer, missing identity) returns None
+        without ever touching the session."""
+        mock_session = MagicMock()
+
+        assert TenantService.get_account_role_in_tenant(mock_session, None, "tenant-1") is None
+        mock_session.execute.assert_not_called()
+
+    def test_get_account_role_in_tenant_query_is_scoped(self):
+        """The lookup must filter on BOTH tenant_id and account_id — otherwise
+        a member of workspace A could read their role for workspace B. Compile
+        the statement and assert both identifiers appear in the WHERE clause."""
+        account_id = "11111111-1111-1111-1111-111111111111"
+        tenant_id = "22222222-2222-2222-2222-222222222222"
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.NORMAL
+
+        TenantService.get_account_role_in_tenant(mock_session, account_id, tenant_id)
+
+        stmt = mock_session.execute.call_args.args[0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert account_id in compiled
+        assert tenant_id in compiled
+
     # ==================== Tenant Creation Tests ====================
 
     def test_create_owner_tenant_if_not_exist_new_user(
@@ -817,8 +885,8 @@ class TestTenantService:
 
         # Mock the database queries in update_member_role method
         with patch("services.account_service.db") as mock_db:
-            # scalar calls: permission check, target member lookup
-            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join]
+            # scalar calls: permission check, target member lookup, operator role lookup
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
 
             # Execute test
             TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator)
@@ -826,6 +894,65 @@ class TestTenantService:
             # Verify role was updated
             assert mock_target_join.role == "admin"
             self._assert_database_operations_called(mock_db)
+
+    def test_admin_can_update_admin_member_role(self):
+        """Test admin can update another non-owner member, including an admin."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+            TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator)
+
+            assert mock_target_join.role == "editor"
+            self._assert_database_operations_called(mock_db)
+
+    def test_admin_cannot_update_owner_member_role(self):
+        """Test admin cannot update an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="owner"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+            with pytest.raises(NoPermissionError):
+                TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator)
+
+    def test_admin_cannot_promote_member_to_owner(self):
+        """Test admin cannot promote a non-owner member to owner."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+            with pytest.raises(NoPermissionError):
+                TenantService.update_member_role(mock_tenant, mock_member, "owner", mock_operator)
 
     # ==================== Permission Check Tests ====================
 
@@ -863,6 +990,39 @@ class TestTenantService:
             mock_operator,  # Same as operator
             "add",
         )
+
+    def test_admin_can_remove_non_owner_member(self, mock_db_dependencies):
+        """Test admin can remove a non-owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+        mock_member_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
+
+        TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_admin_cannot_remove_owner_member(self, mock_db_dependencies):
+        """Test admin cannot remove an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+        mock_member_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="owner"
+        )
+        mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
+
+        with pytest.raises(NoPermissionError):
+            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
 
 
 class TestRegisterService:
@@ -1128,6 +1288,7 @@ class TestRegisterService:
                     interface_language="en-US",
                     password="password123",
                     is_setup=False,
+                    timezone=None,
                 )
                 mock_create_tenant.assert_called_once_with("Test User's Workspace")
                 mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
@@ -1874,3 +2035,162 @@ class TestRegisterService:
 
         # Verify results
         assert result is None
+
+
+class TestSessionInjectedGetters:
+    """Coverage for the session-injected getters used by the openapi
+    surface. These methods bypass the Flask-scoped ``db.session``
+    proxy: callers (controllers) pass a session in. The tests simply
+    verify the delegation contract — that the method routes the call
+    through the *passed* session, not through ``db.session``.
+    """
+
+    def test_get_account_by_id_uses_passed_session_no_side_effects(self):
+        """``get_account_by_id`` must be a plain delegation to
+        ``session.get(Account, ...)`` — no banned-status raise, no
+        commit (those are the side-effects of ``load_user`` we
+        explicitly want to skip).
+        """
+        mock_session = MagicMock()
+        sentinel_account = MagicMock(spec=Account)
+        mock_session.get.return_value = sentinel_account
+
+        result = AccountService.get_account_by_id(mock_session, "user-123")
+
+        assert result is sentinel_account
+        mock_session.get.assert_called_once_with(Account, "user-123")
+        mock_session.commit.assert_not_called()
+
+    def test_get_account_by_id_returns_none_for_unknown_account(self):
+        mock_session = MagicMock()
+        mock_session.get.return_value = None
+
+        assert AccountService.get_account_by_id(mock_session, "missing") is None
+
+    def test_get_account_by_email_returns_scalar_or_none(self):
+        """Plain getter — case-sensitive equality (callers needing the
+        case-insensitive existence check use
+        :meth:`has_active_account_with_email`).
+        """
+        mock_session = MagicMock()
+        sentinel = MagicMock(spec=Account)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = sentinel
+
+        assert AccountService.get_account_by_email(mock_session, "alice@example.com") is sentinel
+
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        assert AccountService.get_account_by_email(mock_session, "ghost@example.com") is None
+
+    def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self):
+        """SSO bearers with no ``account_id`` (and any other falsy id)
+        must collapse to ``False`` without a DB round-trip — that's the
+        contract :class:`MembershipStrategy` relies on.
+        """
+        mock_session = MagicMock()
+
+        assert TenantService.account_belongs_to_tenant(mock_session, None, "tenant-1") is False
+        assert TenantService.account_belongs_to_tenant(mock_session, "", "tenant-1") is False
+        mock_session.execute.assert_not_called()
+
+    def test_account_belongs_to_tenant_true_when_join_row_exists(self):
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = "join-id"
+
+        assert TenantService.account_belongs_to_tenant(mock_session, "user-1", "tenant-1") is True
+        mock_session.execute.assert_called_once()
+
+    def test_account_belongs_to_tenant_false_when_no_join(self):
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+
+        assert TenantService.account_belongs_to_tenant(mock_session, "user-1", "tenant-1") is False
+
+    def test_get_account_memberships_returns_join_tenant_pairs(self):
+        """Returns whatever ``session.query(...).join(...).filter(...).all()``
+        produces — ordering unspecified, callers pick the default
+        workspace from the join row.
+        """
+        mock_session = MagicMock()
+        rows = [(MagicMock(), MagicMock()), (MagicMock(), MagicMock())]
+        mock_session.query.return_value.join.return_value.filter.return_value.all.return_value = rows
+
+        out = TenantService.get_account_memberships(mock_session, "user-123")
+
+        assert out == rows
+        # No fall-through to the global db.session proxy.
+        assert mock_session.query.called
+
+    def test_get_workspaces_for_account_uses_session_execute(self):
+        """The list endpoint orders by ``Tenant.created_at``; the helper
+        passes the ordered query through ``session.execute(...).all()``.
+        """
+        mock_session = MagicMock()
+        rows = [(MagicMock(), MagicMock())]
+        mock_session.execute.return_value.all.return_value = rows
+
+        out = TenantService.get_workspaces_for_account(mock_session, "user-123")
+
+        assert out == rows
+        assert mock_session.execute.called
+
+    def test_get_tenant_by_id_is_plain_session_get(self):
+        """``get_tenant_by_id`` must NOT apply a status filter — the
+        openapi auth pipeline needs to map ``status == ARCHIVE`` to a
+        403, distinct from a 404 for "missing".
+        """
+        from models import Tenant
+
+        mock_session = MagicMock()
+        sentinel = MagicMock(spec=Tenant)
+        mock_session.get.return_value = sentinel
+
+        assert TenantService.get_tenant_by_id(mock_session, "tenant-1") is sentinel
+        mock_session.get.assert_called_once_with(Tenant, "tenant-1")
+
+    def test_get_tenant_by_id_returns_none_when_missing(self):
+        mock_session = MagicMock()
+        mock_session.get.return_value = None
+
+        assert TenantService.get_tenant_by_id(mock_session, "missing") is None
+
+    def test_get_tenants_by_ids_short_circuits_on_empty_input(self):
+        """Empty id list must not emit ``WHERE id IN ()``."""
+        mock_session = MagicMock()
+
+        assert TenantService.get_tenants_by_ids(mock_session, []) == []
+        mock_session.execute.assert_not_called()
+
+    def test_get_tenants_by_ids_returns_scalars(self):
+        mock_session = MagicMock()
+        tenants = [MagicMock(), MagicMock()]
+        mock_session.execute.return_value.scalars.return_value.all.return_value = tenants
+
+        assert TenantService.get_tenants_by_ids(mock_session, ["t1", "t2"]) == tenants
+        mock_session.execute.assert_called_once()
+
+    def test_get_tenant_name_returns_scalar_or_none(self):
+        """Single-column lookup: ``session.execute(...).scalar_one_or_none()``
+        — used by openapi list endpoints to denormalise
+        ``workspace_name`` onto each row.
+        """
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = "Acme Inc."
+
+        assert TenantService.get_tenant_name(mock_session, "tenant-1") == "Acme Inc."
+
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        assert TenantService.get_tenant_name(mock_session, "missing") is None
+
+    def test_find_workspace_for_account_returns_first_row_or_none(self):
+        """Per-id read returns ``session.execute(...).first()`` directly;
+        callers map ``None`` → 404 to avoid leaking workspace IDs across
+        tenants.
+        """
+        mock_session = MagicMock()
+        sentinel_row = (MagicMock(), MagicMock())
+        mock_session.execute.return_value.first.return_value = sentinel_row
+
+        assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is sentinel_row
+
+        mock_session.execute.return_value.first.return_value = None
+        assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is None

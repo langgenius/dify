@@ -100,13 +100,12 @@ describe('TagManagementModal', () => {
 
     it('should render the close button', () => {
       render(<TagManagementModal {...defaultProps} />)
-      const closeIcon = screen.getByTestId('tag-management-modal-close-button')
-      expect(closeIcon).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
     })
 
     it('should render the new tag input with placeholder', () => {
       render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByPlaceholderText(i18n.addNew)).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: i18n.addNew })).toBeInTheDocument()
     })
 
     it('should fallback to empty placeholder when translation returns empty', () => {
@@ -142,7 +141,7 @@ describe('TagManagementModal', () => {
       const onClose = vi.fn()
       render(<TagManagementModal {...defaultProps} onClose={onClose} />)
 
-      await user.click(screen.getByTestId('tag-management-modal-close-button'))
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -151,7 +150,7 @@ describe('TagManagementModal', () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'NewTag')
 
       expect(input).toHaveValue('NewTag')
@@ -161,7 +160,7 @@ describe('TagManagementModal', () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'NewTag')
       await user.keyboard('{Enter}')
 
@@ -174,7 +173,7 @@ describe('TagManagementModal', () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'NewTag')
       await user.keyboard('{Enter}')
 
@@ -190,7 +189,7 @@ describe('TagManagementModal', () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'NewTag')
       await user.keyboard('{Enter}')
 
@@ -203,7 +202,7 @@ describe('TagManagementModal', () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'NewTag')
       // Click outside to trigger blur
       await user.click(document.body)
@@ -219,7 +218,7 @@ describe('TagManagementModal', () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       // Focus and press Enter without typing
       await user.click(input)
       await user.keyboard('{Enter}')
@@ -233,7 +232,7 @@ describe('TagManagementModal', () => {
 
       render(<TagManagementModal {...defaultProps} />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'FailTag')
       await user.keyboard('{Enter}')
 
@@ -253,7 +252,7 @@ describe('TagManagementModal', () => {
       render(<TagManagementModal {...defaultProps} />)
 
       // Should still render the input
-      expect(screen.getByPlaceholderText(i18n.addNew)).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: i18n.addNew })).toBeInTheDocument()
     })
 
     it('should handle tag creation with knowledge type', async () => {
@@ -262,7 +261,7 @@ describe('TagManagementModal', () => {
 
       render(<TagManagementModal {...defaultProps} type="knowledge" />)
 
-      const input = screen.getByPlaceholderText(i18n.addNew)
+      const input = screen.getByRole('textbox', { name: i18n.addNew })
       await user.type(input, 'KnowledgeTag')
       await user.keyboard('{Enter}')
 

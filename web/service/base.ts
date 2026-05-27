@@ -808,6 +808,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // /device is the device-flow chooser; logged-out is a valid state
+      // there. Redirecting to /signin loses the user_code context and
+      // the post-login flow lands on /apps instead of returning here.
+      if (location.pathname === `${basePath}/device`)
+        return Promise.reject(err)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
@@ -830,6 +835,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
 }
 
 // request methods
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
@@ -844,6 +855,12 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
   return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
 }
@@ -857,10 +874,22 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
@@ -869,6 +898,12 @@ export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }

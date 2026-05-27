@@ -464,7 +464,7 @@ const Flowchart = (props: FlowchartProps) => {
       'text-red-500': currentTheme === Theme.light,
       'text-red-400': currentTheme === Theme.dark,
     }),
-    errorIcon: cn('h-6 w-6', {
+    errorIcon: cn('size-6', {
       'text-red-500': currentTheme === Theme.light,
       'text-red-400': currentTheme === Theme.dark,
     }),
@@ -472,7 +472,7 @@ const Flowchart = (props: FlowchartProps) => {
       'text-gray-700': currentTheme === Theme.light,
       'text-gray-300': currentTheme === Theme.dark,
     }),
-    themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-xs transition-all duration-300', {
+    themeToggle: cn('flex size-10 items-center justify-center rounded-full shadow-md backdrop-blur-xs transition-all duration-300', {
       'border border-gray-200 bg-white/80 text-gray-700 hover:bg-white hover:shadow-lg': currentTheme === Theme.light,
       'border border-slate-600 bg-slate-800/80 text-yellow-300 hover:bg-slate-700 hover:shadow-lg': currentTheme === Theme.dark,
     }),
@@ -551,7 +551,7 @@ const Flowchart = (props: FlowchartProps) => {
               title={themeToggleTitleByTheme[currentTheme] || ''}
               style={{ transform: 'translate3d(0, 0, 0)' }}
             >
-              {currentTheme === Theme.light ? <span className="i-heroicons-moon-solid h-5 w-5" /> : <span className="i-heroicons-sun-solid h-5 w-5" />}
+              {currentTheme === Theme.light ? <span className="i-heroicons-moon-solid size-5" /> : <span className="i-heroicons-sun-solid size-5" />}
             </button>
           </div>
 

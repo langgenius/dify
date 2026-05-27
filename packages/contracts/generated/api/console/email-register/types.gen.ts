@@ -4,6 +4,17 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
 export type PostEmailRegisterData = {
   body?: never
   path?: never
@@ -27,9 +38,7 @@ export type PostEmailRegisterSendEmailData = {
 }
 
 export type PostEmailRegisterSendEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostEmailRegisterSendEmailResponse
@@ -43,9 +52,7 @@ export type PostEmailRegisterValidityData = {
 }
 
 export type PostEmailRegisterValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostEmailRegisterValidityResponse
