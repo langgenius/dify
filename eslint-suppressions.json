@@ -3032,20 +3032,12 @@
       "count": 2
     }
   },
-  "web/app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 4
     },

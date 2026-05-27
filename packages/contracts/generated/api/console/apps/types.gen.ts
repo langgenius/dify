@@ -1430,9 +1430,7 @@ export type AgentSoulToolsConfig = {
   cli_tools?: Array<{
     [key: string]: unknown
   }>
-  dify_tools?: Array<{
-    [key: string]: unknown
-  }>
+  dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
 export type DeclaredOutputConfig = {
@@ -1525,6 +1523,22 @@ export type AgentSoulModelCredentialRef = {
   type: string
 }
 
+export type AgentSoulDifyToolConfig = {
+  credential_ref?: AgentSoulDifyToolCredentialRef
+  credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  plugin_id?: string | null
+  provider?: string | null
+  provider_id?: string | null
+  provider_type?: string
+  runtime_parameters?: {
+    [key: string]: unknown
+  }
+  tool_name: string
+}
+
 export type DeclaredArrayItem = {
   description?: string | null
   type: DeclaredOutputType
@@ -1561,6 +1575,12 @@ export type UserActionConfig = {
 }
 
 export type FormInputConfig = unknown
+
+export type AgentSoulDifyToolCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type?: 'provider' | 'tool'
+}
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 
