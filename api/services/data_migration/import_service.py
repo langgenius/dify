@@ -7,6 +7,7 @@ report items and can decide how to render them.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -635,6 +636,7 @@ class MigrationImportService:
                 db.session.commit()
                 status = "updated"
                 identifier = existing.id
+                provider = existing
             else:
                 service.create_provider(
                     tenant_id=target.tenant_id,
@@ -649,10 +651,42 @@ class MigrationImportService:
                     configuration=configuration,
                     authentication=authentication,
                 )
-                db.session.commit()
+                provider = self._find_existing_mcp_tool(target.tenant_id, provider_id, server_identifier)
+                if provider is None:
+                    raise MigrationDataError(f"MCP provider was not created: {name}")
                 status = "created"
-                identifier = provider_id or server_identifier
+                identifier = provider.id
+            self._restore_mcp_provider_tools(provider, mcp_data)
+            db.session.commit()
             report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, identifier, name, status))
+
+    def _restore_mcp_provider_tools(self, provider: MCPToolProvider, mcp_data: dict[str, object]) -> None:
+        tools = mcp_data.get("tools")
+        if not isinstance(tools, list):
+            return
+        provider.tools = json.dumps(tools)
+        provider.authed = True
+
+    def _find_existing_mcp_tool(
+        self, tenant_id: str, provider_id: str | None, server_identifier: str
+    ) -> MCPToolProvider | None:
+        predicates = [MCPToolProvider.server_identifier == server_identifier]
+        if self._is_uuid_string(provider_id):
+            predicates.append(MCPToolProvider.id == provider_id)
+        return db.session.scalar(
+            sa.select(MCPToolProvider)
+            .where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates))
+            .limit(1)
+        )
+
+    def _is_uuid_string(self, value: str | None) -> bool:
+        if not value:
+            return False
+        try:
+            UUID(value)
+        except ValueError:
+            return False
+        return True
 
     def _find_existing_workflow_tool(
         self, tenant_id: str, workflow_tool_id: str | None, tool_name: str, app_id: str

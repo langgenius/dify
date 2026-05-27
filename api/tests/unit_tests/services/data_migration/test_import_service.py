@@ -305,6 +305,59 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
     assert events == [("published", "workflow-app-1"), ("created", "workflow-app-1")]
 
 
+def test_mcp_tool_import_restores_exported_tool_list(monkeypatch):
+    provider = type("Provider", (), {"id": "target-provider-id", "tools": "[]", "authed": False})()
+    report_items = []
+
+    class StubSession:
+        def scalar(self, statement):
+            return provider
+
+        def commit(self):
+            return None
+
+    class StubMCPToolManageService:
+        def __init__(self, session):
+            self.session = session
+
+        def update_provider(self, **kwargs):
+            return None
+
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+    monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
+
+    MigrationImportService()._import_mcp_tools(
+        MigrationPackage.from_mapping(
+            {
+                "metadata": {"version": "1", "source_scope": "single"},
+                "mcp_tools": [
+                    {
+                        "id": "source-provider-id",
+                        "name": "my-test-mcp",
+                        "server_identifier": "my-test-mcp",
+                        "server_url": "http://localhost:3000/mcp",
+                        "configuration": {},
+                        "tools": [{"name": "echo"}],
+                    }
+                ],
+            }
+        ),
+        ImportTarget(
+            tenant_id="tenant-1",
+            tenant_name="target",
+            operator_id="account-1",
+            operator_email="owner@example.com",
+        ),
+        ImportOptions(conflict_strategy=ConflictStrategy.UPDATE),
+        report_items,
+    )
+
+    assert provider.tools == '[{"name": "echo"}]'
+    assert provider.authed is True
+
+
 def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
     events = []
 
