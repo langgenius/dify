@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections.abc import Generator, Iterable, Sequence
-from threading import Lock
 from typing import IO, Any, Literal, cast, overload, override
 
 from pydantic import ValidationError
