@@ -149,19 +149,28 @@ class InstalledAppsListApi(Resource):
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
-        installed_app_list: list[dict[str, Any]] = [
-            {
-                "id": installed_app.id,
-                "app": installed_app.app,
-                "app_owner_tenant_id": installed_app.app_owner_tenant_id,
-                "is_pinned": installed_app.is_pinned,
-                "last_used_at": installed_app.last_used_at,
-                "editable": current_user.role in {"owner", "admin"},
-                "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
-            }
-            for installed_app in installed_apps
-            if installed_app.app is not None
-        ]
+
+        app_ids = [installed_app.app_id for installed_app in installed_apps]
+        apps = db.session.scalars(select(App).where(App.id.in_(app_ids))).all() if app_ids else []
+        apps_by_id = {app.id: app for app in apps}
+
+        installed_app_list: list[dict[str, Any]] = []
+        for installed_app in installed_apps:
+            app_model = apps_by_id.get(installed_app.app_id)
+            if app_model is None:
+                continue
+
+            installed_app_list.append(
+                {
+                    "id": installed_app.id,
+                    "app": app_model,
+                    "app_owner_tenant_id": installed_app.app_owner_tenant_id,
+                    "is_pinned": installed_app.is_pinned,
+                    "last_used_at": installed_app.last_used_at,
+                    "editable": current_user.role in {"owner", "admin"},
+                    "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
+                }
+            )
 
         # filter out apps that user doesn't have access to
         if FeatureService.get_system_features().webapp_auth.enabled:
