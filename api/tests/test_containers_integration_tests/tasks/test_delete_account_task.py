@@ -58,9 +58,7 @@ def test_billing_disabled_account_exists_sends_email_only(
     mail_task.delay.assert_called_once_with(account.email)
 
 
-def test_billing_enabled_account_not_found_calls_billing_no_email(
-    mock_external_dependencies, mocker, caplog
-) -> None:
+def test_billing_enabled_account_not_found_calls_billing_no_email(mock_external_dependencies, mocker, caplog) -> None:
     billing_service, mail_task = mock_external_dependencies
     account_id = str(uuid4())
     mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
