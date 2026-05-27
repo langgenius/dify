@@ -6,9 +6,6 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from clients.agent_backend import AgentBackendRunRequestBuilder
-from clients.agent_backend.factory import create_agent_backend_run_client
-from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -30,8 +27,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
-from core.workflow.nodes.agent_v2.session_cleanup_layer import WorkflowAgentSessionCleanupLayer
-from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
+from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -244,17 +240,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(
-            WorkflowAgentSessionCleanupLayer(
-                session_store=WorkflowAgentRuntimeSessionStore(),
-                request_builder=AgentBackendRunRequestBuilder(),
-                agent_backend_client=create_agent_backend_run_client(
-                    base_url=dify_config.AGENT_BACKEND_BASE_URL,
-                    use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
-                    fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
-                ),
-            )
-        )
+        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
         conversation_variable_layer = ConversationVariablePersistenceLayer(
             ConversationVariableUpdater(session_factory.get_session_maker())
         )

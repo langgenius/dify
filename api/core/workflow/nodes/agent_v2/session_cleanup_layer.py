@@ -4,6 +4,8 @@ import logging
 from typing import override
 
 from clients.agent_backend import AgentBackendError, AgentBackendRunClient, AgentBackendRunRequestBuilder
+from clients.agent_backend.factory import create_agent_backend_run_client
+from configs import dify_config
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -76,7 +78,7 @@ class WorkflowAgentSessionCleanupLayer(GraphEngineLayer):
         *,
         session_store: WorkflowAgentRuntimeSessionStore,
         request_builder: AgentBackendRunRequestBuilder,
-        agent_backend_client: AgentBackendRunClient,
+        agent_backend_client: AgentBackendRunClient | None,
         cleanup_wait_timeout_seconds: float = _CLEANUP_WAIT_TIMEOUT_SECONDS,
     ) -> None:
         super().__init__()
@@ -126,6 +128,20 @@ class WorkflowAgentSessionCleanupLayer(GraphEngineLayer):
                 stored_session.backend_run_id,
             )
             self._session_store.mark_cleaned(scope=scope, backend_run_id=stored_session.backend_run_id)
+            return
+
+        if self._agent_backend_client is None:
+            # HTTP cleanup was enabled by the caller but no client was wired
+            # in (e.g. the API runs without AGENT_BACKEND_BASE_URL configured).
+            # Leave the row ACTIVE so an operator restart with proper config
+            # can drive the cleanup; do not silently retire it.
+            logger.warning(
+                "Skipping Agent backend cleanup: HTTP cleanup is enabled but no agent "
+                "backend client is wired in. workflow_run_id=%s node_id=%s agent_id=%s",
+                scope.workflow_run_id,
+                scope.node_id,
+                scope.agent_id,
+            )
             return
 
         if not stored_session.composition_layer_specs:
@@ -201,3 +217,31 @@ class WorkflowAgentSessionCleanupLayer(GraphEngineLayer):
             return
 
         self._session_store.mark_cleaned(scope=scope, backend_run_id=response.run_id)
+
+
+def build_workflow_agent_session_cleanup_layer() -> WorkflowAgentSessionCleanupLayer:
+    """Wire the cleanup layer with the standard production dependencies.
+
+    The agent backend client is constructed only when ``AGENT_BACKEND_BASE_URL``
+    is configured (or the deterministic fake is explicitly enabled). When
+    neither is set — for example unit tests that bring up the workflow runner
+    without an Agent node — we pass ``None`` so the layer stays harmless. With
+    ``_HTTP_CLEANUP_SUPPORTED = False`` the local-retire branch never touches
+    the client anyway, but keeping it ``None`` avoids importing httpx and lets
+    test harnesses skip backend configuration.
+    """
+    agent_backend_client: AgentBackendRunClient | None
+    if dify_config.AGENT_BACKEND_USE_FAKE or dify_config.AGENT_BACKEND_BASE_URL:
+        agent_backend_client = create_agent_backend_run_client(
+            base_url=dify_config.AGENT_BACKEND_BASE_URL,
+            use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+            fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+        )
+    else:
+        agent_backend_client = None
+
+    return WorkflowAgentSessionCleanupLayer(
+        session_store=WorkflowAgentRuntimeSessionStore(),
+        request_builder=AgentBackendRunRequestBuilder(),
+        agent_backend_client=agent_backend_client,
+    )
