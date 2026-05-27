@@ -1,0 +1,191 @@
+name: CLI E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      dify_version:
+        description: "Dify image tag to test against (e.g. 1.7.0)"
+        type: string
+        required: true
+      cli_ref:
+        description: "Git ref to build the CLI from (default: current branch)"
+        type: string
+        required: false
+      test_scope:
+        description: "Test scope to run"
+        type: choice
+        required: false
+        default: smoke
+        options:
+          - smoke      # [P0] cases only — fast
+          - full       # all cases
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E — difyctl (${{ inputs.dify_version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # ── Checkout ───────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      # ── Runtime setup ──────────────────────────────────────────────────────
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install CLI dependencies
+        working-directory: cli
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate command tree
+        working-directory: cli
+        run: pnpm tree:gen
+
+      # ── Start Dify stack ───────────────────────────────────────────────────
+      - name: Start middleware (PostgreSQL, Redis, Sandbox…)
+        run: bun e2e/scripts/setup.ts middleware-up
+
+      - name: Start Dify API + Worker
+        env:
+          DIFY_VERSION: ${{ inputs.dify_version }}
+          INIT_PASSWORD: dify-e2e-pass
+          SECRET_KEY: e2e-secret-key-for-ci-only-32chars!
+        run: |
+          cd docker
+          cp .env.example .env
+          sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" .env
+          sed -i "s|^INIT_PASSWORD=.*|INIT_PASSWORD=${INIT_PASSWORD}|" .env
+          DIFY_API_IMAGE_TAG="${DIFY_VERSION}" \
+          DIFY_WEB_IMAGE_TAG="${DIFY_VERSION}" \
+          docker compose up -d api worker
+          echo "Waiting for Dify API..."
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost/health >/dev/null 2>&1; then
+              echo "Dify API ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Timeout waiting for Dify API" >&2
+          docker compose logs api --tail=50
+          exit 1
+
+      # ── Provision test fixtures ────────────────────────────────────────────
+      - name: Provision admin account and test apps
+        id: provision
+        env:
+          DIFY_HOST: http://localhost
+          ADMIN_EMAIL: e2e@dify.ai
+          ADMIN_PASSWORD: dify-e2e-pass
+        run: |
+          B64_PASS=$(echo -n "${ADMIN_PASSWORD}" | base64)
+
+          # Register admin
+          curl -fsS "${DIFY_HOST}/console/api/setup" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${ADMIN_EMAIL}\",\"name\":\"E2E Admin\",\"password\":\"${B64_PASS}\"}"
+
+          # Console login → session cookie + CSRF token
+          curl -fsS -c /tmp/e2e-cookies.txt \
+            "${DIFY_HOST}/console/api/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${B64_PASS}\",\"remember_me\":false}"
+
+          CSRF=$(grep csrf_token /tmp/e2e-cookies.txt | awk '{print $NF}')
+
+          # Mint dfoa_ token via device flow
+          DEVICE=$(curl -fsS "${DIFY_HOST}/openapi/v1/oauth/device/code" \
+            -H "Content-Type: application/json" \
+            -d '{"client_id":"difyctl","device_label":"ci-e2e"}')
+          USER_CODE=$(echo "$DEVICE" | python3 -c "import sys,json; print(json.load(sys.stdin)['user_code'])")
+          DEVICE_CODE=$(echo "$DEVICE" | python3 -c "import sys,json; print(json.load(sys.stdin)['device_code'])")
+
+          curl -fsS -b /tmp/e2e-cookies.txt \
+            -H "X-CSRFToken: ${CSRF}" \
+            -H "Content-Type: application/json" \
+            "${DIFY_HOST}/openapi/v1/oauth/device/approve" \
+            -d "{\"user_code\":\"${USER_CODE}\"}"
+
+          TOKEN=$(curl -fsS "${DIFY_HOST}/openapi/v1/oauth/device/token" \
+            -H "Content-Type: application/json" \
+            -d "{\"device_code\":\"${DEVICE_CODE}\",\"client_id\":\"difyctl\"}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+
+          # Get workspace ID
+          WS_ID=$(curl -fsS "${DIFY_HOST}/openapi/v1/workspaces" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['id'])")
+
+          # Create echo-chat app
+          CHAT_APP_ID=$(curl -fsS "${DIFY_HOST}/console/api/apps" \
+            -b /tmp/e2e-cookies.txt \
+            -H "X-CSRFToken: ${CSRF}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"E2E Echo Chat","mode":"chat","icon_type":"emoji","icon":"🤖","icon_background":"#FFEAD5"}' \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+          # Create echo-workflow app
+          WORKFLOW_APP_ID=$(curl -fsS "${DIFY_HOST}/console/api/apps" \
+            -b /tmp/e2e-cookies.txt \
+            -H "X-CSRFToken: ${CSRF}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"E2E Echo Workflow","mode":"workflow","icon_type":"emoji","icon":"⚙️","icon_background":"#E4FBCC"}' \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+          # Mask token before exporting
+          echo "::add-mask::${TOKEN}"
+          echo "token=${TOKEN}"               >> "$GITHUB_OUTPUT"
+          echo "workspace_id=${WS_ID}"        >> "$GITHUB_OUTPUT"
+          echo "chat_app_id=${CHAT_APP_ID}"   >> "$GITHUB_OUTPUT"
+          echo "workflow_app_id=${WORKFLOW_APP_ID}" >> "$GITHUB_OUTPUT"
+          echo "admin_email=${ADMIN_EMAIL}"   >> "$GITHUB_OUTPUT"
+          echo "admin_password=${ADMIN_PASSWORD}" >> "$GITHUB_OUTPUT"
+
+      # ── Run E2E tests ──────────────────────────────────────────────────────
+      - name: Run E2E tests (${{ inputs.test_scope || 'smoke' }})
+        working-directory: cli
+        env:
+          DIFY_E2E_HOST:            http://localhost
+          DIFY_E2E_TOKEN:           ${{ steps.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID:    ${{ steps.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME:  E2E Workspace
+          DIFY_E2E_CHAT_APP_ID:     ${{ steps.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID: ${{ steps.provision.outputs.workflow_app_id }}
+          DIFY_E2E_EMAIL:           ${{ steps.provision.outputs.admin_email }}
+          DIFY_E2E_PASSWORD:        ${{ steps.provision.outputs.admin_password }}
+        run: |
+          if [ "${{ inputs.test_scope }}" = "full" ]; then
+            pnpm test:e2e
+          else
+            pnpm test:e2e:smoke
+          fi
+
+      # ── Debug & cleanup ────────────────────────────────────────────────────
+      - name: Dump Dify logs on failure
+        if: failure()
+        run: |
+          cd docker
+          docker compose logs api worker --tail=100
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ github.run_id }}
+          path: cli/test-results/
+          retention-days: 3
