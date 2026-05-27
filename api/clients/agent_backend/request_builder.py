@@ -11,7 +11,7 @@ composition-driven.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
@@ -93,7 +93,11 @@ def extract_cleanup_layer_specs(composition: RunComposition) -> list[CleanupLaye
         if isinstance(layer.config, BaseModel):
             config_value = layer.config.model_dump(mode="json", warnings=False)
         else:
-            config_value = layer.config
+            # ``RunLayerSpec.config`` is typed as ``LayerConfigInput`` which
+            # includes ``Mapping[str, object] | bytes``. In the cleanup-replay
+            # pipeline our builder only emits BaseModel-derived configs or
+            # ``None``, so the wider input alias narrows safely here.
+            config_value = cast(JsonValue, layer.config)
         specs.append(
             CleanupLayerSpec(
                 name=layer.name,

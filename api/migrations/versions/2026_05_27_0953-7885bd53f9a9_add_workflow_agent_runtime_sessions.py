@@ -1,18 +1,18 @@
 """add workflow agent runtime sessions
 
-Revision ID: a7b9c8d1e2f3
+Revision ID: 7885bd53f9a9
 Revises: d4a5e1f3c9b7
-Create Date: 2026-05-27 11:00:00.000000
+Create Date: 2026-05-27 09:53:54.711805
 
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-import models
+import models as models
 
 # revision identifiers, used by Alembic.
-revision = "a7b9c8d1e2f3"
+revision = "7885bd53f9a9"
 down_revision = "d4a5e1f3c9b7"
 branch_labels = None
 depends_on = None
@@ -23,13 +23,15 @@ def _is_pg() -> bool:
 
 
 def _uuid_column(name: str, *, nullable: bool = False, primary_key: bool = False) -> sa.Column:
-    kwargs = {"nullable": nullable, "primary_key": primary_key}
+    """Match the ``uuidv7()`` default that other tables on Postgres rely on,
+    while staying portable on MySQL where the ORM supplies the id."""
+    kwargs: dict[str, object] = {"nullable": nullable, "primary_key": primary_key}
     if primary_key and _is_pg():
         kwargs["server_default"] = sa.text("uuidv7()")
     return sa.Column(name, models.types.StringUUID(), **kwargs)
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "workflow_agent_runtime_sessions",
         _uuid_column("id", primary_key=True),
@@ -44,13 +46,17 @@ def upgrade():
         sa.Column("agent_config_snapshot_id", models.types.StringUUID(), nullable=False),
         sa.Column("backend_run_id", sa.String(length=255), nullable=True),
         sa.Column("session_snapshot", models.types.LongText(), nullable=False),
+        # MySQL rejects ``server_default`` on TEXT/BLOB columns. The JSON
+        # payload is always populated at the ORM layer via
+        # ``WorkflowAgentRuntimeSessionStore.save_active_snapshot`` so the
+        # missing DB-level default cannot leave new rows uninitialized.
+        sa.Column("composition_layer_specs", models.types.LongText(), nullable=False),
         sa.Column(
-            "composition_layer_specs",
-            models.types.LongText(),
+            "status",
+            sa.String(length=32),
+            server_default=sa.text("'active'"),
             nullable=False,
-            server_default=sa.text("'[]'"),
         ),
-        sa.Column("status", sa.String(length=32), server_default=sa.text("'active'"), nullable=False),
         sa.Column("cleaned_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
@@ -64,19 +70,21 @@ def upgrade():
             name=op.f("workflow_agent_runtime_session_scope_unique"),
         ),
     )
-    op.create_index(
-        "workflow_agent_runtime_session_lookup_idx",
-        "workflow_agent_runtime_sessions",
-        ["tenant_id", "workflow_run_id", "node_id", "status"],
-    )
-    op.create_index(
-        "workflow_agent_runtime_session_backend_run_idx",
-        "workflow_agent_runtime_sessions",
-        ["backend_run_id"],
-    )
+    with op.batch_alter_table("workflow_agent_runtime_sessions", schema=None) as batch_op:
+        batch_op.create_index(
+            "workflow_agent_runtime_session_lookup_idx",
+            ["tenant_id", "workflow_run_id", "node_id", "status"],
+            unique=False,
+        )
+        batch_op.create_index(
+            "workflow_agent_runtime_session_backend_run_idx",
+            ["backend_run_id"],
+            unique=False,
+        )
 
 
-def downgrade():
-    op.drop_index("workflow_agent_runtime_session_backend_run_idx", table_name="workflow_agent_runtime_sessions")
-    op.drop_index("workflow_agent_runtime_session_lookup_idx", table_name="workflow_agent_runtime_sessions")
+def downgrade() -> None:
+    with op.batch_alter_table("workflow_agent_runtime_sessions", schema=None) as batch_op:
+        batch_op.drop_index("workflow_agent_runtime_session_backend_run_idx")
+        batch_op.drop_index("workflow_agent_runtime_session_lookup_idx")
     op.drop_table("workflow_agent_runtime_sessions")
