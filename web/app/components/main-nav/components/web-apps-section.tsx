@@ -10,17 +10,48 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMemo, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { usePathname } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 
+const appNavItemHeight = 32
+const appNavItemGap = 2
+const virtualizationThreshold = 50
+const webAppSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
+const webAppSkeletonWidths = ['w-24', 'w-32', 'w-20', 'w-28', 'w-36']
+
+function WebAppsSkeleton() {
+  return (
+    <div aria-hidden="true" data-testid="web-apps-skeleton" className="space-y-0.5 pb-2">
+      {webAppSkeletonWidths.map((width, index) => (
+        <div key={index} className="flex h-8 items-center gap-2 rounded-lg py-0.5 pr-0.5 pl-2">
+          <div className={cn(webAppSkeletonClassName, 'size-5 shrink-0 rounded-md')} />
+          <div className="min-w-0 flex-1 py-1 pr-1">
+            <div className={cn(webAppSkeletonClassName, 'h-3', width)} />
+          </div>
+          <div className={cn(webAppSkeletonClassName, 'mr-1 h-3 w-3 shrink-0')} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const WebAppsSection = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
+  const scrollRef = useRef<HTMLDivElement>(null)
   const { data, isPending } = useGetInstalledApps()
   const installedApps = useMemo(() => data?.installed_apps ?? [], [data?.installed_apps])
   const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
@@ -38,6 +69,18 @@ const WebAppsSection = () => {
 
     return installedApps.filter(item => item.app.name.toLowerCase().includes(normalizedSearch))
   }, [installedApps, searchText])
+  const shouldVirtualize = filteredApps.length > virtualizationThreshold
+
+  const rowVirtualizer = useVirtualizer({
+    count: filteredApps.length,
+    estimateSize: () => appNavItemHeight,
+    gap: appNavItemGap,
+    getItemKey: index => filteredApps[index]?.id ?? index,
+    getScrollElement: () => scrollRef.current,
+    overscan: 6,
+    paddingEnd: 8,
+  })
+  const virtualRows = rowVirtualizer.getVirtualItems()
 
   const handleDelete = async () => {
     await uninstallApp(currentId)
@@ -49,6 +92,30 @@ const WebAppsSection = () => {
     await updatePinStatus({ appId: id, isPinned })
     toast.success(t('api.success', { ns: 'common' }))
   }
+
+  const renderAppNavItem = ({ id, is_pinned, uninstallable, app }: (typeof filteredApps)[number]) => (
+    <AppNavItem
+      key={id}
+      variant="mainNav"
+      isMobile={false}
+      name={app.name}
+      icon_type={app.icon_type}
+      icon={app.icon}
+      icon_background={app.icon_background}
+      icon_url={app.icon_url}
+      id={id}
+      isSelected={pathname.endsWith(`/installed/${id}`)}
+      isPinned={is_pinned}
+      togglePin={() => {
+        void handleUpdatePinStatus(id, !is_pinned)
+      }}
+      uninstallable={uninstallable}
+      onDelete={(id) => {
+        setCurrentId(id)
+        setShowConfirm(true)
+      }}
+    />
+  )
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -88,39 +155,59 @@ const WebAppsSection = () => {
         </div>
       )}
       {appsExpanded && (
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto px-2 pb-2">
-          {isPending && (
-            <div className="text-components-main-nav-text px-2 py-1 system-xs-regular">{t('loading', { ns: 'common' })}</div>
-          )}
-          {!isPending && filteredApps.length === 0 && (
-            <div className="text-components-main-nav-text px-2 py-1 system-xs-regular">
-              {searchText ? t('mainNav.webApps.noResults', { ns: 'common' }) : t('sidebar.noApps.title', { ns: 'explore' })}
-            </div>
-          )}
-          {filteredApps.map(({ id, is_pinned, uninstallable, app }) => (
-            <AppNavItem
-              key={id}
-              variant="mainNav"
-              isMobile={false}
-              name={app.name}
-              icon_type={app.icon_type}
-              icon={app.icon}
-              icon_background={app.icon_background}
-              icon_url={app.icon_url}
-              id={id}
-              isSelected={pathname.endsWith(`/installed/${id}`)}
-              isPinned={is_pinned}
-              togglePin={() => {
-                void handleUpdatePinStatus(id, !is_pinned)
-              }}
-              uninstallable={uninstallable}
-              onDelete={(id) => {
-                setCurrentId(id)
-                setShowConfirm(true)
-              }}
-            />
-          ))}
-        </div>
+        <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden overscroll-contain">
+          <ScrollAreaViewport
+            ref={scrollRef}
+            aria-busy={isPending}
+            aria-label={t('sidebar.webApps', { ns: 'explore' })}
+            className="overflow-x-hidden"
+            role="region"
+          >
+            <ScrollAreaContent className="min-w-0 px-2">
+              {isPending && (
+                <WebAppsSkeleton />
+              )}
+              {!isPending && filteredApps.length === 0 && (
+                <div className="px-2 py-1 system-xs-regular">
+                  {searchText ? t('mainNav.webApps.noResults', { ns: 'common' }) : t('sidebar.noApps.title', { ns: 'explore' })}
+                </div>
+              )}
+              {!isPending && filteredApps.length > 0 && !shouldVirtualize && (
+                <div className="space-y-0.5 pb-2">
+                  {filteredApps.map(renderAppNavItem)}
+                </div>
+              )}
+              {!isPending && shouldVirtualize && (
+                <div
+                  className="relative w-full"
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                  }}
+                >
+                  {virtualRows.map((virtualRow) => {
+                    const installedApp = filteredApps[virtualRow.index]!
+
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        className="absolute top-0 left-0 w-full"
+                        style={{
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        {renderAppNavItem(installedApp)}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollAreaRoot>
       )}
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>

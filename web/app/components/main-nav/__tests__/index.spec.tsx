@@ -111,6 +111,7 @@ const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledApp[] = []
+let mockInstalledAppsPending = false
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'installed-1',
@@ -180,6 +181,7 @@ describe('MainNav', () => {
     localStorage.clear()
     mockPathname = '/apps'
     mockInstalledApps = []
+    mockInstalledAppsPending = false
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
     ;(useRouter as Mock).mockReturnValue({
@@ -209,7 +211,7 @@ describe('MainNav', () => {
       ],
     })
     ;(useGetInstalledApps as Mock).mockImplementation(() => ({
-      isPending: false,
+      isPending: mockInstalledAppsPending,
       data: { installed_apps: mockInstalledApps },
     }))
     ;(useUninstallApp as Mock).mockReturnValue({
@@ -544,6 +546,42 @@ describe('MainNav', () => {
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Beta Tool'))
     expect(mockPush).toHaveBeenCalledWith('/explore/installed/installed-2')
+  })
+
+  it('renders web app skeleton rows while installed apps are loading', () => {
+    mockInstalledAppsPending = true
+
+    renderMainNav()
+
+    expect(screen.getByTestId('web-apps-skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+  })
+
+  it('virtualizes large installed web app lists', async () => {
+    const offsetHeightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(320)
+    const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(240)
+    mockInstalledApps = Array.from({ length: 100 }, (_, index) => (
+      createInstalledApp({
+        id: `installed-${index}`,
+        app: {
+          ...createInstalledApp().app,
+          id: `app-${index}`,
+          name: `Web App ${index}`,
+        },
+      })
+    ))
+
+    try {
+      renderMainNav()
+
+      expect(await screen.findByText('Web App 0')).toBeInTheDocument()
+      expect(screen.queryByText('Web App 99')).not.toBeInTheDocument()
+    }
+    finally {
+      offsetHeightSpy.mockRestore()
+      offsetWidthSpy.mockRestore()
+    }
   })
 
   it('collapses and expands installed web apps from the section arrow', () => {
