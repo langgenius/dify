@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
 import type { RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import {
   Autocomplete,
   AutocompleteClear,
@@ -159,6 +159,29 @@ const virtualizedSuggestions: Suggestion[] = Array.from({ length: 1000 }, (_, in
 
 const getSuggestionLabel = (item: Suggestion) => item.label
 
+async function searchSuggestions(
+  suggestions: Suggestion[],
+  query: string,
+  filter: (item: string, query: string) => boolean,
+): Promise<{ items: Suggestion[], error: string | null }> {
+  await new Promise(resolve => window.setTimeout(resolve, 500))
+
+  if (query === 'will_error') {
+    return {
+      items: [],
+      error: 'Failed to load suggestions. Please try again.',
+    }
+  }
+
+  return {
+    items: suggestions.filter(item => (
+      filter(item.label, query)
+      || (item.description ? filter(item.description, query) : false)
+    )),
+    error: null,
+  }
+}
+
 const SuggestionItem = ({
   item,
   dense,
@@ -227,6 +250,7 @@ const BasicTagAutocomplete = ({
   <Autocomplete
     items={tagSuggestions}
     itemToStringValue={getSuggestionLabel}
+    mode="list"
     openOnInputClick
   >
     <AutocompleteInputGroup size={size}>
@@ -311,32 +335,64 @@ const LimitedStatus = ({
 }
 
 const AsyncSearchDemo = () => {
-  const [value, setValue] = useState('agent')
-  const [loading, setLoading] = useState(false)
-  const [items, setItems] = useState(remoteSuggestions)
+  const [searchValue, setSearchValue] = useState('')
+  const [searchResults, setSearchResults] = useState<Suggestion[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const { contains } = useAutocompleteFilter()
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  useEffect(() => {
-    setLoading(true)
-    const timeout = window.setTimeout(() => {
-      setItems(
-        value.trim()
-          ? remoteSuggestions.filter(item => item.label.toLowerCase().includes(value.trim().toLowerCase()))
-          : remoteSuggestions,
-      )
-      setLoading(false)
-    }, 500)
+  const status = (() => {
+    if (isPending)
+      return 'Searching remote suggestions…'
 
-    return () => window.clearTimeout(timeout)
-  }, [value])
+    if (error)
+      return error
+
+    if (searchValue === '')
+      return null
+
+    if (searchResults.length === 0)
+      return `No remote suggestion matches "${searchValue}".`
+
+    return `${searchResults.length} remote suggestion${searchResults.length === 1 ? '' : 's'} found`
+  })()
 
   return (
     <div className={inputWidth}>
       <Autocomplete
-        items={items}
-        value={value}
-        onValueChange={setValue}
+        items={searchResults}
+        value={searchValue}
+        onValueChange={(nextSearchValue) => {
+          setSearchValue(nextSearchValue)
+
+          const controller = new AbortController()
+          abortControllerRef.current?.abort()
+          abortControllerRef.current = controller
+
+          if (nextSearchValue === '') {
+            setSearchResults([])
+            setError(null)
+            return
+          }
+
+          startTransition(async () => {
+            setError(null)
+
+            const result = await searchSuggestions(remoteSuggestions, nextSearchValue, contains)
+
+            if (controller.signal.aborted)
+              return
+
+            startTransition(() => {
+              setSearchResults(result.items)
+              setError(result.error)
+            })
+          })
+        }}
         itemToStringValue={getSuggestionLabel}
-        openOnInputClick
+        filter={null}
+        mode="list"
       >
         <AutocompleteInputGroup>
           <span className="i-ri-cloud-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
@@ -344,16 +400,15 @@ const AsyncSearchDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
+        <AutocompleteContent portalProps={{ hidden: !status }} popupProps={{ 'aria-busy': isPending || undefined }}>
           <AutocompleteStatus>
-            {loading ? 'Loading suggestions…' : `${items.length} remote suggestions`}
+            {status}
           </AutocompleteStatus>
           <AutocompleteList>
             {(item: Suggestion) => (
               <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
-          <AutocompleteEmpty>No remote suggestion. Keep the typed query.</AutocompleteEmpty>
         </AutocompleteContent>
       </Autocomplete>
     </div>
@@ -467,6 +522,7 @@ const FuzzyMatchingDemo = () => {
         onValueChange={setValue}
         filter={contains}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -567,6 +623,7 @@ export const GroupedSuggestions: Story = {
       <Autocomplete
         items={groupedSuggestions}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -595,6 +652,7 @@ export const LimitResults: Story = {
         items={workflowSuggestions}
         itemToStringValue={getSuggestionLabel}
         limit={5}
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -627,6 +685,7 @@ export const CommandPalette: Story = {
         inline
         items={commandGroups}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         autoHighlight="always"
         keepHighlight
       >
@@ -649,6 +708,7 @@ const VirtualizedLongSuggestionsDemo = () => {
       <Autocomplete
         items={virtualizedSuggestions}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         virtualized
         openOnInputClick
         onItemHighlighted={(item, details) => {
@@ -686,6 +746,7 @@ export const Empty: Story = {
         items={tagSuggestions}
         itemToStringValue={getSuggestionLabel}
         defaultValue="private-release-note"
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -710,7 +771,7 @@ export const Empty: Story = {
 export const DisabledAndReadOnly: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
-      <Autocomplete items={tagSuggestions} itemToStringValue={getSuggestionLabel} defaultValue="feature" disabled>
+      <Autocomplete items={tagSuggestions} itemToStringValue={getSuggestionLabel} defaultValue="feature" mode="list" disabled>
         <AutocompleteInputGroup>
           <AutocompleteInput aria-label="Disabled tag autocomplete" />
           <AutocompleteClear />
@@ -724,7 +785,7 @@ export const DisabledAndReadOnly: Story = {
           </AutocompleteList>
         </AutocompleteContent>
       </Autocomplete>
-      <Autocomplete items={promptCompletions} itemToStringValue={getSuggestionLabel} defaultValue="summarize this conversation" readOnly>
+      <Autocomplete items={promptCompletions} itemToStringValue={getSuggestionLabel} defaultValue="summarize this conversation" mode="both" readOnly>
         <AutocompleteInputGroup>
           <AutocompleteInput aria-label="Read-only prompt autocomplete" />
           <AutocompleteClear />
