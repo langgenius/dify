@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from typing import Any
+from uuid import UUID
 
 import sqlalchemy as sa
 import yaml
@@ -361,19 +362,22 @@ class MigrationExportService:
                 )
 
     def _get_mcp_provider(self, tenant_id: str, provider_id: str) -> MCPToolProvider:
+        predicates = [MCPToolProvider.server_identifier == provider_id]
+        if self._is_uuid_string(provider_id):
+            predicates.append(MCPToolProvider.id == provider_id)
         provider = db.session.scalar(
-            sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
+            sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, sa.or_(*predicates))
         )
-        if provider is None:
-            provider = db.session.scalar(
-                sa.select(MCPToolProvider).where(
-                    MCPToolProvider.tenant_id == tenant_id,
-                    MCPToolProvider.server_identifier == provider_id,
-                )
-            )
         if provider is None:
             raise MigrationDataError(f"MCP provider not found: {provider_id}")
         return provider
+
+    def _is_uuid_string(self, value: str) -> bool:
+        try:
+            UUID(value)
+        except ValueError:
+            return False
+        return True
 
     def _serialize_mcp_provider(self, provider: MCPToolProvider) -> dict[str, Any]:
         provider_entity = provider.to_entity()

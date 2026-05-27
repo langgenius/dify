@@ -181,8 +181,13 @@ def test_resolve_mcp_tool_names_does_not_compare_non_uuid_identifier_to_uuid_id(
 
 def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch):
     output_lines = []
+    confirm_prompts = []
 
-    monkeypatch.setattr("commands.data_migration.click.confirm", lambda *args, **kwargs: False)
+    def capture_confirm(prompt, **kwargs):
+        confirm_prompts.append((prompt, kwargs))
+        return False
+
+    monkeypatch.setattr("commands.data_migration.click.confirm", capture_confirm)
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
 
     selected = _prompt_additional_tools(
@@ -195,6 +200,9 @@ def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch
     )
 
     assert selected == {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
+    assert confirm_prompts == [
+        ("Export additional tools manually? Enter y or n. Default: no", {"default": False, "show_default": True})
+    ]
     assert "Final tools to export:" in output_lines
     assert "- [auto] weather: 3bac3aa9-dd87-4351-9459-a7099137b028" in output_lines
 
@@ -234,9 +242,13 @@ def test_prompt_output_file_rejects_yes_no_typo(monkeypatch):
 
 def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
     output_lines = []
+    confirm_prompts = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
-    monkeypatch.setattr("commands.data_migration.click.confirm", lambda *args, **kwargs: True)
+    monkeypatch.setattr(
+        "commands.data_migration.click.confirm",
+        lambda prompt, **kwargs: confirm_prompts.append((prompt, kwargs)) or True,
+    )
 
     _confirm_wizard_summary(
         tenant_name="admin's Workspace",
@@ -250,3 +262,6 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
     )
 
     assert "conflict strategy: fail" in output_lines
+    assert confirm_prompts == [
+        ("Write migration package? Enter y or n. Default: yes", {"default": True, "show_default": True})
+    ]
