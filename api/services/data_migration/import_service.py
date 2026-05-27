@@ -168,6 +168,7 @@ class MigrationImportService:
             id_mapping,
             self._source_api_provider_ids_by_name(request.package),
         )
+        self._import_mcp_tools(request.package, target, options, report_items)
         workflow_tool_app_ids = self._workflow_tool_source_app_ids(request.package)
         imported_workflow_ids: set[str] = set()
         if workflow_tool_app_ids:
@@ -190,7 +191,6 @@ class MigrationImportService:
             imported_workflow_ids=imported_workflow_ids,
             skip_app_ids=imported_workflow_ids,
         )
-        self._import_mcp_tools(request.package, target, options, report_items)
         self._report_dependency_only_mcp(request.package, report_items)
         return ImportResult(
             report_items=report_items,

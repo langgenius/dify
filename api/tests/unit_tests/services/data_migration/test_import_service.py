@@ -327,7 +327,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             id_mapping,
             source_provider_ids_by_name,
         ):
-            return None
+            events.append(("api_tools", "imported"))
 
         def _import_workflows(
             self,
@@ -358,7 +358,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             events.append(("workflow_tool", package.workflow_tools[0]["id"]))
 
         def _import_mcp_tools(self, package, target, options, report_items):
-            return None
+            events.append(("mcp_tools", "imported"))
 
     package = MigrationPackage.from_mapping(
         {
@@ -374,6 +374,8 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
     OrderedImportService(target_resolver=StubResolver()).import_package(ImportRequest(package=package))
 
     assert events == [
+        ("api_tools", "imported"),
+        ("mcp_tools", "imported"),
         ("workflow", "provider-app"),
         ("workflow_tool", "workflow-tool"),
         ("workflow", "consumer-app"),
