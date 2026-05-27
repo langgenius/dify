@@ -39,7 +39,7 @@ export const useSnippetPublish = ({
         old => old ? { ...old, is_published: true } : old,
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-      toast.success(t('publishSuccess'))
+      toast.success(t('saveSuccess'))
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('publishFailed'))
