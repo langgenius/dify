@@ -18,8 +18,10 @@ from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
+    DifyPluginToolsLayerConfig,
 )
 from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
@@ -41,6 +43,7 @@ AGENT_SOUL_PROMPT_LAYER_ID = "agent_soul_prompt"
 WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
+DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 
 
 class AgentBackendModelConfig(BaseModel):
@@ -81,6 +84,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     purpose: RunPurpose = "workflow_node"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
+    tools: DifyPluginToolsLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
     suspend_on_exit: bool = False
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -146,6 +150,17 @@ class AgentBackendRunRequestBuilder:
                 ),
             ]
         )
+
+        if run_input.tools is not None and run_input.tools.tools:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_PLUGIN_TOOLS_LAYER_ID,
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.tools,
+                )
+            )
 
         if run_input.output is not None:
             layers.append(

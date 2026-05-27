@@ -15,6 +15,8 @@ import {
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
   WEB_RESTRICTED_IMPORT_PATTERNS,
+  WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+  WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
@@ -160,6 +162,20 @@ export default antfu(
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
+    name: 'dify/service-base-restricted-imports',
+    files: ['service/**/*.ts', 'service/**/*.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...WEB_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+        ],
       }],
     },
   },
