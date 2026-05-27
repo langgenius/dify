@@ -228,6 +228,10 @@ export type DeleteAppInstanceReply = {
   [key: string]: unknown
 }
 
+export type DeleteReleaseReply = {
+  [key: string]: unknown
+}
+
 export type DeployReq = {
   appInstanceId?: string
   environmentId?: string
@@ -2105,6 +2109,22 @@ export type ReleaseServiceCreateReleaseFromSourceAppResponses = {
 
 export type ReleaseServiceCreateReleaseFromSourceAppResponse
   = ReleaseServiceCreateReleaseFromSourceAppResponses[keyof ReleaseServiceCreateReleaseFromSourceAppResponses]
+
+export type ReleaseServiceDeleteReleaseData = {
+  body?: never
+  path: {
+    releaseId: string
+  }
+  query?: never
+  url: '/enterprise/app-deploy/releases/{releaseId}'
+}
+
+export type ReleaseServiceDeleteReleaseResponses = {
+  200: DeleteReleaseReply
+}
+
+export type ReleaseServiceDeleteReleaseResponse
+  = ReleaseServiceDeleteReleaseResponses[keyof ReleaseServiceDeleteReleaseResponses]
 
 export type ReleaseServiceGetReleaseData = {
   body?: never

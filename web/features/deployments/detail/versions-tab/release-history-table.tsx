@@ -118,12 +118,13 @@ function ReleaseHistoryTableSkeleton() {
   )
 }
 
-function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError }: {
+function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError, onReleaseDeleted }: {
   appInstanceId: string
   releaseRows: ReleaseRowWithId[]
   deploymentRows: EnvironmentDeployment[]
   deployedToLoading?: boolean
   deployedToHasError?: boolean
+  onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
 
@@ -167,7 +168,12 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
                   </div>
                 </div>
                 <div className="flex shrink-0 justify-end gap-1">
-                  <DeployReleaseMenu releaseId={release.id} appInstanceId={appInstanceId} releaseRows={releaseRows} />
+                  <DeployReleaseMenu
+                    releaseId={release.id}
+                    appInstanceId={appInstanceId}
+                    releaseRows={releaseRows}
+                    onDeleted={onReleaseDeleted}
+                  />
                 </div>
               </div>
               {hasDeployments && (
@@ -278,12 +284,13 @@ function SourceAppCell({ sourceAppId }: {
   )
 }
 
-function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError }: {
+function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deployedToLoading, deployedToHasError, onReleaseDeleted }: {
   appInstanceId: string
   releaseRows: ReleaseRowWithId[]
   deploymentRows: EnvironmentDeployment[]
   deployedToLoading?: boolean
   deployedToHasError?: boolean
+  onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
 
@@ -295,6 +302,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
         deploymentRows={deploymentRows}
         deployedToLoading={deployedToLoading}
         deployedToHasError={deployedToHasError}
+        onReleaseDeleted={onReleaseDeleted}
       />
       <div className="hidden pc:block">
         <DetailTable className="min-w-[840px]">
@@ -350,7 +358,12 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                   </DetailTableCell>
                   <DetailTableCell>
                     <div className="flex justify-end">
-                      <DeployReleaseMenu releaseId={release.id} appInstanceId={appInstanceId} releaseRows={releaseRows} />
+                      <DeployReleaseMenu
+                        releaseId={release.id}
+                        appInstanceId={appInstanceId}
+                        releaseRows={releaseRows}
+                        onDeleted={onReleaseDeleted}
+                      />
                     </div>
                   </DetailTableCell>
                 </DetailTableRow>
@@ -392,6 +405,10 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   const deployedToLoading = shouldLoadRuntimeInstances && environmentDeploymentsQuery.isLoading
   const deployedToHasError = shouldLoadRuntimeInstances && environmentDeploymentsQuery.isError
   const deploymentRows = environmentDeploymentsQuery.data?.data?.filter(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? []
+  const handleReleaseDeleted = () => {
+    if (releaseRows.length === 1 && currentPage > 0)
+      setCurrentPage(page => Math.max(page - 1, 0))
+  }
 
   if (isLoading) {
     return <ReleaseHistoryTableSkeleton />
@@ -421,6 +438,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
         deploymentRows={deploymentRows}
         deployedToLoading={deployedToLoading}
         deployedToHasError={deployedToHasError}
+        onReleaseDeleted={handleReleaseDeleted}
       />
       {totalReleases > RELEASE_HISTORY_PAGE_SIZE && (
         <Pagination

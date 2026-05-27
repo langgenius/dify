@@ -67,6 +67,8 @@ import {
   zReleaseServiceCreateReleaseFromDslResponse,
   zReleaseServiceCreateReleaseFromSourceAppBody,
   zReleaseServiceCreateReleaseFromSourceAppResponse,
+  zReleaseServiceDeleteReleasePath,
+  zReleaseServiceDeleteReleaseResponse,
   zReleaseServiceGetDeploymentOptionsFromDslBody,
   zReleaseServiceGetDeploymentOptionsFromDslResponse,
   zReleaseServiceGetDeploymentOptionsFromSourceAppBody,
@@ -456,6 +458,17 @@ export const createReleaseFromSourceApp = oc
   .input(z.object({ body: zReleaseServiceCreateReleaseFromSourceAppBody }))
   .output(zReleaseServiceCreateReleaseFromSourceAppResponse)
 
+export const deleteRelease = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'ReleaseService_DeleteRelease',
+    path: '/enterprise/app-deploy/releases/{releaseId}',
+    tags: ['ReleaseService'],
+  })
+  .input(z.object({ params: zReleaseServiceDeleteReleasePath }))
+  .output(zReleaseServiceDeleteReleaseResponse)
+
 export const getRelease = oc
   .route({
     inputStructure: 'detailed',
@@ -497,6 +510,7 @@ export const releaseService = {
   getDeploymentOptionsFromSourceApp,
   createReleaseFromDsl,
   createReleaseFromSourceApp,
+  deleteRelease,
   getRelease,
   updateRelease,
   listReleaseCredentialCandidates,

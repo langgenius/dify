@@ -211,6 +211,8 @@ export const zDeleteApiKeyReply = z.record(z.string(), z.unknown())
 
 export const zDeleteAppInstanceReply = z.record(z.string(), z.unknown())
 
+export const zDeleteReleaseReply = z.record(z.string(), z.unknown())
+
 export const zDeploymentOptionsAppInstanceDefaults = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
@@ -2240,6 +2242,15 @@ export const zReleaseServiceCreateReleaseFromSourceAppBody = zCreateReleaseFromS
  * OK
  */
 export const zReleaseServiceCreateReleaseFromSourceAppResponse = zCreateReleaseReply
+
+export const zReleaseServiceDeleteReleasePath = z.object({
+  releaseId: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zReleaseServiceDeleteReleaseResponse = zDeleteReleaseReply
 
 export const zReleaseServiceGetReleasePath = z.object({
   releaseId: z.string(),
