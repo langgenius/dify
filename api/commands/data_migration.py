@@ -153,6 +153,7 @@ def migration_data_wizard() -> None:
             default=True,
         )
         auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
+        auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
         include_secrets = click.confirm(
@@ -293,6 +294,57 @@ def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> Wiz
     return auto_tools
 
 
+def _resolve_auto_tool_names(tenant_id: str, auto_tools: WizardToolMap) -> WizardToolMap:
+    return {
+        "api_tools": _resolve_api_tool_names(tenant_id, auto_tools["api_tools"]),
+        "workflow_tools": _resolve_workflow_tool_names(tenant_id, auto_tools["workflow_tools"]),
+        "mcp_tools": _resolve_mcp_tool_names(tenant_id, auto_tools["mcp_tools"]),
+    }
+
+
+def _resolve_api_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dict[str, str | None]:
+    resolved: dict[str, str | None] = {}
+    for name, identifier in tools.items():
+        provider = db.session.scalar(
+            sa.select(ApiToolProvider).where(
+                ApiToolProvider.tenant_id == tenant_id,
+                sa.or_(ApiToolProvider.id == identifier, ApiToolProvider.name == name),
+            )
+        )
+        resolved[provider.name if provider else name] = provider.id if provider else identifier
+    return resolved
+
+
+def _resolve_workflow_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dict[str, str | None]:
+    resolved: dict[str, str | None] = {}
+    for name, identifier in tools.items():
+        provider = db.session.scalar(
+            sa.select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id,
+                sa.or_(WorkflowToolProvider.id == identifier, WorkflowToolProvider.name == name),
+            )
+        )
+        resolved[provider.name if provider else name] = provider.id if provider else identifier
+    return resolved
+
+
+def _resolve_mcp_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dict[str, str | None]:
+    resolved: dict[str, str | None] = {}
+    for name, identifier in tools.items():
+        provider = db.session.scalar(
+            sa.select(MCPToolProvider).where(
+                MCPToolProvider.tenant_id == tenant_id,
+                sa.or_(
+                    MCPToolProvider.id == identifier,
+                    MCPToolProvider.name == name,
+                    MCPToolProvider.server_identifier == identifier,
+                ),
+            )
+        )
+        resolved[provider.name if provider else name] = provider.id if provider else identifier
+    return resolved
+
+
 def _print_auto_tools(auto_tools: WizardToolMap) -> None:
     click.echo("Automatically discovered tools:")
     _print_auto_tool_category("Custom API tools", auto_tools["api_tools"])
@@ -327,7 +379,7 @@ def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> Wizar
     selections["workflow_tools"] = _prompt_tool_category(
         "Workflow tools",
         [
-            (tool.id, tool.name, tool.app_id)
+            (tool.id, tool.name, tool.id)
             for tool in db.session.scalars(
                 sa.select(WorkflowToolProvider)
                 .where(WorkflowToolProvider.tenant_id == tenant_id)
@@ -370,7 +422,7 @@ def _prompt_tool_category(
 
 
 def _is_auto_tool(value: str, name: str, detail: str, auto_tools: dict[str, str | None]) -> bool:
-    return name in auto_tools or value in auto_tools or detail in auto_tools.values()
+    return name in auto_tools or value in auto_tools or value in auto_tools.values() or detail in auto_tools.values()
 
 
 def _print_final_tool_selection(auto_tools: WizardToolMap, additional_tools: WizardToolSelection) -> None:

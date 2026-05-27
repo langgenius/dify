@@ -44,6 +44,28 @@ def test_prompt_tool_category_marks_auto_by_detail_and_supports_multi_select(mon
     assert selected == ["tool-1", "tool-2"]
 
 
+def test_prompt_tool_category_marks_auto_by_value():
+    output_lines = []
+
+    from commands import data_migration
+
+    original_echo = data_migration.click.echo
+    original_prompt = data_migration.click.prompt
+    data_migration.click.echo = output_lines.append
+    data_migration.click.prompt = lambda *args, **kwargs: ""
+    try:
+        _prompt_tool_category(
+            "Workflow tools",
+            [("tool-1", "embedded_workflow_as_tool", "tool-1")],
+            auto_tools={"embedded_workflow_as_tool": "tool-1"},
+        )
+    finally:
+        data_migration.click.echo = original_echo
+        data_migration.click.prompt = original_prompt
+
+    assert "1. [auto] embedded_workflow_as_tool (tool-1)" in output_lines
+
+
 def test_print_auto_tools_lists_each_category(monkeypatch):
     output_lines = []
 
