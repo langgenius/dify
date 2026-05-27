@@ -1,9 +1,4 @@
-"""GET /openapi/v1/apps and per-app reads.
-
-Decorator order: `method_decorators` is innermost-first. `validate_bearer`
-is last → outermost → publishes the auth ContextVar before `require_scope`
-reads it.
-"""
+"""GET /openapi/v1/apps and per-app reads."""
 
 from __future__ import annotations
 
@@ -28,30 +23,16 @@ from controllers.openapi._models import (
     AppListRow,
     TagItem,
 )
-from controllers.openapi.auth.surface_gate import accept_subjects
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_database import db
-from libs.oauth_bearer import (
-    ACCEPT_USER_ANY,
-    AuthContext,
-    Scope,
-    SubjectType,
-    get_auth_ctx,
-    require_scope,
-    require_workspace_member,
-    validate_bearer,
-)
+from libs.oauth_bearer import Scope, TokenType
 from models import App
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 from services.tag_service import TagService
-
-_APPS_READ_DECORATORS = [
-    require_scope(Scope.APPS_READ),
-    accept_subjects(SubjectType.ACCOUNT),
-    validate_bearer(accept=ACCEPT_USER_ANY),
-]
 
 _ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
 
@@ -66,13 +47,9 @@ _EMPTY_PARAMETERS: dict[str, Any] = {
 
 
 class AppReadResource(Resource):
-    """Base for per-app read endpoints; subclasses call `_load()` for SSO/membership/exists checks."""
+    """Base for per-app read endpoints; subclasses call `_load()` for membership/exists checks."""
 
-    method_decorators = _APPS_READ_DECORATORS
-
-    def _load(self, app_id: str, workspace_id: str | None = None) -> tuple[App, AuthContext]:
-        ctx: AuthContext = get_auth_ctx()
-
+    def _load(self, app_id: str, workspace_id: str | None = None) -> App:
         try:
             parsed_uuid = _uuid.UUID(app_id)
             is_uuid = True
@@ -99,8 +76,7 @@ class AppReadResource(Resource):
                 raise Conflict("".join(lines))
             app = matches[0]
 
-        require_workspace_member(ctx, str(app.tenant_id))
-        return app, ctx
+        return app
 
 
 def parameters_payload(app: App) -> dict:
@@ -114,13 +90,14 @@ def parameters_payload(app: App) -> dict:
 class AppDescribeApi(AppReadResource):
     @openapi_ns.doc(params=query_params_from_model(AppDescribeQuery))
     @openapi_ns.response(200, "App description", openapi_ns.models[AppDescribeResponse.__name__])
-    def get(self, app_id: str):
+    @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, app_id: str, *, auth_data: AuthData):
         try:
             query = AppDescribeQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
-        app, _ = self._load(app_id, workspace_id=query.workspace_id)
+        app = self._load(app_id, workspace_id=query.workspace_id)
 
         requested = query.fields
         want_info = requested is None or "info" in requested
@@ -168,20 +145,16 @@ class AppDescribeApi(AppReadResource):
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
-    method_decorators = _APPS_READ_DECORATORS
-
     @openapi_ns.doc(params=query_params_from_model(AppListQuery))
     @openapi_ns.response(200, "App list", openapi_ns.models[AppListResponse.__name__])
-    def get(self):
-        ctx: AuthContext = get_auth_ctx()
-
+    @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, *, auth_data: AuthData):
         try:
             query: AppListQuery = AppListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
         workspace_id = query.workspace_id
-        require_workspace_member(ctx, workspace_id)
 
         empty = (
             AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[]).model_dump(
@@ -237,7 +210,7 @@ class AppListApi(Resource):
             openapi_visible=True,
         )
 
-        pagination = AppService().get_paginate_apps(str(ctx.account_id), workspace_id, params)
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params)
         if pagination is None:
             return empty
 
