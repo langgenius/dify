@@ -212,13 +212,22 @@ class TestAccessPolicies:
 
 class TestResourceAccess:
     def test_app_matrix(self, mock_send: MagicMock):
-        mock_send.return_value = {"app_id": "app-1", "items": []}
+        mock_send.return_value = {"resource_id": "app-1", "items": []}
         out = svc.RBACService.AppAccess.matrix("tenant-1", "acct-1", "app-1")
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/apps/access-policy"
         assert call.params == {"app_id": "app-1"}
         assert out.app_id == "app-1"
+
+    def test_dataset_matrix(self, mock_send: MagicMock):
+        mock_send.return_value = {"resource_id": "dataset-1", "items": []}
+        out = svc.RBACService.DatasetAccess.matrix("tenant-1", "acct-1", "dataset-1")
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/access-policy"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.dataset_id == "dataset-1"
 
     def test_app_role_bindings_preserve_role_name(self, mock_send: MagicMock):
         mock_send.return_value = {

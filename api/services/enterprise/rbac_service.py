@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
 from sqlalchemy import select
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -143,12 +143,12 @@ class AccessMatrixItem(_RBACModel):
 
 
 class AppAccessMatrix(_RBACModel):
-    app_id: str = ""
+    app_id: str = Field(default="", validation_alias=AliasChoices("app_id", "resource_id"))
     items: list[AccessMatrixItem] = Field(default_factory=list)
 
 
 class DatasetAccessMatrix(_RBACModel):
-    dataset_id: str = ""
+    dataset_id: str = Field(default="", validation_alias=AliasChoices("dataset_id", "resource_id"))
     items: list[AccessMatrixItem] = Field(default_factory=list)
 
 
