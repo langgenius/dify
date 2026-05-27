@@ -13,5 +13,9 @@ class MessageNotExistsError(BaseServiceError):
     pass
 
 
+class MessageBranchMismatchError(BaseServiceError):
+    pass
+
+
 class SuggestedQuestionsAfterAnswerDisabledError(BaseServiceError):
     pass

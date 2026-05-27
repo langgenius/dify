@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from constants import UUID_NIL
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -91,6 +92,66 @@ class TestChatAppGenerator:
             result = generator.generate(app_model, user, args, InvokeFrom.DEBUGGER, streaming=False)
 
         assert result == {"ok": True}
+
+    @pytest.mark.parametrize(
+        ("extra_args", "expected_internal_parent"),
+        [
+            ({}, "active-message-id"),
+            ({"_regenerate_parent_message_id": None}, None),
+        ],
+    )
+    def test_generate_service_api_sets_internal_parent(
+        self, extra_args: dict[str, object], expected_internal_parent: str | None
+    ):
+        generator = ChatAppGenerator()
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        user = SimpleNamespace(id="user-1", session_id="session-1")
+        active_conversation = SimpleNamespace(id="conversation-id", active_message_id="active-message-id")
+        args = {
+            "query": "hi",
+            "inputs": {},
+            "conversation_id": "conversation-id",
+            "parent_message_id": "external-parent-id",
+            **extra_args,
+        }
+        init_generate_records = Mock(
+            return_value=(SimpleNamespace(id="conversation-id", mode="chat"), SimpleNamespace(id="message-id"))
+        )
+
+        with (
+            patch(
+                "core.app.apps.chat.app_generator.ConversationService.get_conversation",
+                return_value=active_conversation,
+            ),
+            patch(
+                "core.app.apps.chat.app_generator.ChatAppConfigManager.get_app_config",
+                return_value=SimpleNamespace(
+                    variables=[], external_data_variables=[], app_model_config_dict={}, app_mode=AppMode.CHAT
+                ),
+            ),
+            patch("core.app.apps.chat.app_generator.ModelConfigConverter.convert", return_value=SimpleNamespace()),
+            patch("core.app.apps.chat.app_generator.FileUploadConfigManager.convert", return_value=None),
+            patch("core.app.apps.chat.app_generator.ChatAppGenerateEntity", DummyGenerateEntity),
+            patch("core.app.apps.chat.app_generator.TraceQueueManager", return_value=SimpleNamespace()),
+            patch("core.app.apps.chat.app_generator.MessageBasedAppQueueManager", DummyQueueManager),
+            patch(
+                "core.app.apps.chat.app_generator.ChatAppGenerateResponseConverter.convert", return_value={"ok": True}
+            ),
+            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=SimpleNamespace(to_dict=lambda: {})),
+            patch.object(ChatAppGenerator, "_prepare_user_inputs", return_value={}),
+            patch.object(ChatAppGenerator, "_init_generate_records", init_generate_records),
+            patch.object(ChatAppGenerator, "_handle_response", return_value={"response": True}),
+            patch("core.app.apps.chat.app_generator.copy_current_request_context", side_effect=lambda f: f),
+            patch("core.app.apps.chat.app_generator.threading.Thread") as mock_thread,
+        ):
+            mock_thread.return_value.start.return_value = None
+            result = generator.generate(app_model, user, args, InvokeFrom.SERVICE_API, streaming=False)
+
+        assert result == {"ok": True}
+        application_generate_entity = init_generate_records.call_args.args[0]
+        assert application_generate_entity.parent_message_id == UUID_NIL
+        assert application_generate_entity.internal_parent_message_id == expected_internal_parent
+        assert application_generate_entity.use_internal_parent_message_id is True
 
     def test_generate_rejects_model_config_override_for_non_debugger(self):
         generator = ChatAppGenerator()

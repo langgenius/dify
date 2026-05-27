@@ -245,6 +245,65 @@ Supports conversation management and both blocking and streaming response modes.
 | 429 | Rate limit exceeded |
 | 500 | Internal server error |
 
+### /chat-messages/{message_id}/regenerate
+
+#### POST
+##### Summary
+
+Regenerate an answer variant for the latest active chat message
+
+##### Description
+
+Regenerate an answer variant for the latest active chat message.
+Only the latest active answer returned by `/messages` with `can_regenerate=true` can be regenerated. The request payload contains the input for this regeneration and does not include the previous answer output. The regenerated answer becomes the active answer for future chat turns.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ChatRequestPayload](#chatrequestpayload) |
+| message_id | path | Latest active answer message ID to regenerate from | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Message regenerated successfully |
+| 400 | Bad request - invalid parameters, workflow issues, or inactive message branch |
+| 401 | Unauthorized - invalid API token |
+| 404 | Message, conversation, or workflow not found |
+| 429 | Rate limit exceeded |
+| 500 | Internal server error |
+
+### /chat-messages/{message_id}/switch
+
+#### POST
+##### Summary
+
+Switch the active answer variant for a chat message
+
+##### Description
+
+Switch the active answer variant for the latest answer group. `message_id` is the current latest active answer ID, and `target_message_id` is another candidate answer ID in the same latest answer group. After switching, future chat turns continue from the returned `active_message_id`.
+
+Only the latest answer group can be switched. Once the user sends the next chat turn, previous answer groups are locked and can no longer be switched.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [MessageSwitchPayload](#messageswitchpayload) |
+| message_id | path | Current answer message ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Active answer switched successfully | [MessageSwitchResponse](#messageswitchresponse) |
+| 400 | Target answer is not in the current active answer branch |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Message not found |  |
+
 ### /chat-messages/{task_id}/stop
 
 #### POST
@@ -1797,6 +1856,7 @@ List messages in a conversation
 
 List messages in a conversation
 Retrieves messages with pagination support using first_id.
+Message items include answer branch metadata: `is_active` marks the active answer used by future chat turns, `is_in_active_thread` marks whether the message is in the current backend context branch, `can_switch` marks candidates in the latest switchable answer group, and `can_regenerate` marks the latest active answer that can be regenerated.
 
 ##### Parameters
 
@@ -2750,6 +2810,20 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | conversation_id | string | Conversation UUID | Yes |
 | first_id | string | First message ID for pagination | No |
 | limit | integer | Number of messages to return (1-100) | No |
+
+#### MessageSwitchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| target_message_id | string | Target answer message ID | Yes |
+| user | string | End-user identifier | Yes |
+
+#### MessageSwitchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_message_id | string | Active answer message ID after switching | Yes |
+| result | string |  | Yes |
 
 #### MetadataArgs
 

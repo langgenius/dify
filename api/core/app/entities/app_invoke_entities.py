@@ -167,6 +167,16 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
             "It needs to be set to UUID_NIL so that the subsequent processing will treat it as legacy messages."
         ),
     )
+    internal_parent_message_id: str | None = Field(
+        default=None,
+        exclude=True,
+        description="Internal branch parent used by service/openapi generation without exposing parent_message_id.",
+    )
+    use_internal_parent_message_id: bool = Field(
+        default=False,
+        exclude=True,
+        description="Whether internal_parent_message_id was explicitly resolved and should override parent_message_id.",
+    )
 
     @field_validator("parent_message_id")
     @classmethod

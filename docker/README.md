@@ -32,6 +32,18 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
    docker compose up -d
    ```
 
+   For a normal restart with the images that already exist locally, `docker compose up -d` is enough. If you changed backend or frontend source code, rebuild the affected images first; `docker compose up -d` alone does not rebuild them.
+
+   From the repository root, rebuild the local images used by this compose file and recreate the changed services:
+
+   ```bash
+   docker build -f api/Dockerfile -t dify-api:regenerate-answer .
+   docker build -f web/Dockerfile -t langgenius/dify-web:1.14.3 .
+   docker compose -f docker/docker-compose.yaml up -d --force-recreate api worker worker_beat web
+   ```
+
+   The API image is shared by the `api`, `api_websocket`, `worker`, and `worker_beat` services. If you use the collaboration profile, recreate `api_websocket` as well. Database migrations run during API startup when `MIGRATION_ENABLED=true`, which is the default in `.env.example`.
+
 4. **SSL Certificate Setup**:
    - Refer to `docker/certbot/README.md` to set up SSL certificates using Certbot.
 5. **OpenTelemetry Collector Setup**:

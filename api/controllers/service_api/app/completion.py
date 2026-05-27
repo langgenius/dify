@@ -37,6 +37,8 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.errors.message import MessageBranchMismatchError, MessageNotExistsError
+from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +217,91 @@ class ChatApi(Resource):
             )
 
             return helper.compact_generate_response(response)
+        except WorkflowNotFoundError as ex:
+            raise NotFound(str(ex))
+        except IsDraftWorkflowError as ex:
+            raise BadRequest(str(ex))
+        except WorkflowIdFormatError as ex:
+            raise BadRequest(str(ex))
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except services.errors.app_model_config.AppModelConfigBrokenError:
+            logger.exception("App model config broken.")
+            raise AppUnavailableError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except ValueError as e:
+            raise e
+        except Exception:
+            logger.exception("internal server error.")
+            raise InternalServerError()
+
+
+@service_api_ns.route("/chat-messages/<uuid:message_id>/regenerate")
+class ChatRegenerateApi(Resource):
+    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__])
+    @service_api_ns.doc("regenerate_chat_message")
+    @service_api_ns.doc(description="Regenerate an answer variant for the latest active chat message")
+    @service_api_ns.doc(params={"message_id": "Latest active answer message ID to regenerate from"})
+    @service_api_ns.doc(
+        responses={
+            200: "Message regenerated successfully",
+            400: "Bad request - invalid parameters, workflow issues, or inactive message branch",
+            401: "Unauthorized - invalid API token",
+            404: "Message, conversation, or workflow not found",
+            429: "Rate limit exceeded",
+            500: "Internal server error",
+        }
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+        """Regenerate the latest active answer variant for chat, agent chat, and advanced chat applications."""
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
+
+        external_trace_id = get_external_trace_id(request)
+        args = payload.model_dump(exclude_none=True)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
+
+        streaming = payload.response_mode == "streaming"
+
+        try:
+            source_message = MessageService.get_regenerate_source_message(
+                app_model=app_model,
+                user=end_user,
+                message_id=str(message_id),
+                conversation_id=payload.conversation_id,
+            )
+            args["conversation_id"] = source_message.conversation_id
+            args["_regenerate_parent_message_id"] = source_message.parent_message_id
+
+            response = AppGenerateService.generate(
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
+            )
+
+            return helper.compact_generate_response(response)
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+        except MessageBranchMismatchError:
+            raise BadRequest("Message branch mismatch.")
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
         except IsDraftWorkflowError as ex:

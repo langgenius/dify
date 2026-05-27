@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Callable, Generator, Mapping
-from typing import Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,6 +44,22 @@ logger = logging.getLogger(__name__)
 
 
 class MessageBasedAppGenerator(BaseAppGenerator):
+    def _get_internal_parent_message_id(
+        self,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        conversation: Conversation | None,
+    ) -> tuple[bool, str | None]:
+        if "_regenerate_parent_message_id" in args:
+            return True, cast(str | None, args["_regenerate_parent_message_id"])
+
+        if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI} and conversation is not None:
+            active_message_id = getattr(conversation, "active_message_id", None)
+            if active_message_id:
+                return True, active_message_id
+
+        return False, None
+
     def _handle_response(
         self,
         application_generate_entity: Union[
@@ -189,6 +205,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             else:
                 conversation.updated_at = naive_utc_now()
 
+            parent_message_id = getattr(application_generate_entity, "parent_message_id", None)
+            if (
+                isinstance(application_generate_entity, ConversationAppGenerateEntity)
+                and application_generate_entity.use_internal_parent_message_id
+            ):
+                parent_message_id = application_generate_entity.internal_parent_message_id
+
             message = Message(
                 app_id=app_config.app_id,
                 model_provider=model_provider,
@@ -205,7 +228,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 answer_tokens=0,
                 answer_unit_price=0,
                 answer_price_unit=0,
-                parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
+                parent_message_id=parent_message_id,
                 provider_response_latency=0,
                 total_price=0,
                 currency="USD",
@@ -219,6 +242,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             db.session.add(message)
             db.session.flush()
             db.session.refresh(message)
+            if isinstance(application_generate_entity, ConversationAppGenerateEntity):
+                conversation.active_message_id = message.id
 
             message_files = []
             for file in application_generate_entity.files:

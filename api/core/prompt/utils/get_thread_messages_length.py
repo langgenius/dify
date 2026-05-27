@@ -5,7 +5,7 @@ from extensions.ext_database import db
 from models.model import Message
 
 
-def get_thread_messages_length(conversation_id: str) -> int:
+def get_thread_messages_length(conversation_id: str, active_message_id: str | None = None) -> int:
     """
     Get the number of thread messages based on the parent message id.
     """
@@ -15,7 +15,7 @@ def get_thread_messages_length(conversation_id: str) -> int:
     messages = db.session.scalars(stmt).all()
 
     # Extract thread messages
-    thread_messages = extract_thread_messages(messages)
+    thread_messages = extract_thread_messages(messages, active_message_id=active_message_id)
 
     # Exclude the newly created message with an empty answer
     if thread_messages and not thread_messages[0].answer:

@@ -31,12 +31,15 @@ from controllers.service_api.app.message import (
     MessageListApi,
     MessageListQuery,
     MessageSuggestedApi,
+    MessageSwitchApi,
+    MessageSwitchPayload,
 )
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
+    MessageBranchMismatchError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
@@ -429,6 +432,40 @@ class TestMessageListApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user)
 
+    def test_success_includes_active_marker(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        message = SimpleNamespace(
+            id="00000000-0000-0000-0000-000000000002",
+            conversation_id="00000000-0000-0000-0000-000000000001",
+            parent_message_id=None,
+            inputs={},
+            query="hello",
+            re_sign_file_url_answer="answer",
+            user_feedback=None,
+            retriever_resources=[],
+            created_at=None,
+            agent_thoughts=[],
+            message_files=[],
+            status="normal",
+            error=None,
+            extra_contents=[],
+            is_active=True,
+        )
+        pagination = SimpleNamespace(data=[message], limit=20, has_more=False)
+        monkeypatch.setattr(MessageService, "pagination_by_first_id", lambda *_args, **_kwargs: pagination)
+
+        api = MessageListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
+            method="GET",
+        ):
+            response = handler(api, app_model=app_model, end_user=end_user)
+
+        assert response["data"][0]["is_active"] is True
+
 
 class TestMessageFeedbackApi:
     def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -450,6 +487,122 @@ class TestMessageFeedbackApi:
         ):
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+
+class TestMessageSwitchPayload:
+    def test_payload_accepts_target_message_id(self) -> None:
+        target_message_id = str(uuid.uuid4())
+
+        payload = MessageSwitchPayload(target_message_id=target_message_id, user="end-user-1")
+
+        assert str(payload.target_message_id) == target_message_id
+
+    def test_payload_accepts_user_for_service_api_context(self) -> None:
+        target_message_id = str(uuid.uuid4())
+
+        payload = MessageSwitchPayload(target_message_id=target_message_id, user="end-user-1")
+
+        assert str(payload.target_message_id) == target_message_id
+        assert payload.user == "end-user-1"
+
+
+class TestMessageSwitchApi:
+    def test_not_chat_app(self, app: Flask) -> None:
+        api = MessageSwitchApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/chat-messages/m1/switch",
+            method="POST",
+            json={"target_message_id": "m2", "user": "end-user-1"},
+        ):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user, message_id=uuid.uuid4())
+
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        message_id = str(uuid.uuid4())
+        target_message_id = str(uuid.uuid4())
+        calls = []
+
+        def fake_switch_active_message(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(id=target_message_id)
+
+        monkeypatch.setattr(MessageService, "switch_active_message", fake_switch_active_message)
+
+        api = MessageSwitchApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            f"/chat-messages/{message_id}/switch",
+            method="POST",
+            json={"target_message_id": target_message_id, "user": "end-user-1"},
+        ):
+            response = handler(api, app_model=app_model, end_user=end_user, message_id=uuid.UUID(message_id))
+
+        assert response == {"result": "success", "active_message_id": target_message_id}
+        assert calls == [
+            {
+                "app_model": app_model,
+                "user": end_user,
+                "message_id": message_id,
+                "target_message_id": target_message_id,
+            }
+        ]
+
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "switch_active_message",
+            lambda **_kwargs: (_ for _ in ()).throw(MessageNotExistsError()),
+        )
+
+        api = MessageSwitchApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/chat-messages/00000000-0000-0000-0000-000000000001/switch",
+            method="POST",
+            json={"target_message_id": "00000000-0000-0000-0000-000000000002", "user": "end-user-1"},
+        ):
+            with pytest.raises(NotFound):
+                handler(
+                    api,
+                    app_model=app_model,
+                    end_user=end_user,
+                    message_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                )
+
+    def test_branch_mismatch(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "switch_active_message",
+            lambda **_kwargs: (_ for _ in ()).throw(MessageBranchMismatchError()),
+        )
+
+        api = MessageSwitchApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/chat-messages/00000000-0000-0000-0000-000000000001/switch",
+            method="POST",
+            json={"target_message_id": "00000000-0000-0000-0000-000000000002", "user": "end-user-1"},
+        ):
+            with pytest.raises(BadRequest):
+                handler(
+                    api,
+                    app_model=app_model,
+                    end_user=end_user,
+                    message_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                )
 
 
 class TestAppGetFeedbacksApi:

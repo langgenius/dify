@@ -51,6 +51,35 @@ def test_extract_thread_messages_branched_thread():
     assert [msg["id"] for msg in result] == [id4, id2, id1]
 
 
+def test_extract_thread_messages_starts_from_active_message():
+    id1, id2, id3, id4 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
+    messages = [
+        MockMessage(id4, id2),
+        MockMessage(id3, id2),
+        MockMessage(id2, id1),
+        MockMessage(id1, UUID_NIL),
+    ]
+
+    result = extract_thread_messages(messages, active_message_id=id3)
+
+    assert len(result) == 3
+    assert [msg["id"] for msg in result] == [id3, id2, id1]
+
+
+def test_extract_thread_messages_active_root_variant_excludes_sibling_roots():
+    original_id, regenerated_id, followup_id = str(uuid4()), str(uuid4()), str(uuid4())
+    messages = [
+        MockMessage(followup_id, regenerated_id),
+        MockMessage(regenerated_id, UUID_NIL),
+        MockMessage(original_id, UUID_NIL),
+    ]
+
+    result = extract_thread_messages(messages, active_message_id=followup_id)
+
+    assert len(result) == 2
+    assert [msg["id"] for msg in result] == [followup_id, regenerated_id]
+
+
 def test_extract_thread_messages_empty_list():
     messages = []
     result = extract_thread_messages(messages)
@@ -134,3 +163,20 @@ def test_get_thread_messages_length_keeps_non_empty_latest_answer(mocker: Mocker
     length = get_thread_messages_length("conversation-2")
 
     assert length == 2
+
+
+def test_get_thread_messages_length_uses_active_message(mocker: MockerFixture):
+    id1, id2, id3, id4 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
+    messages = [
+        MockMessage(id4, id2),
+        MockMessage(id3, id2),
+        MockMessage(id2, id1),
+        MockMessage(id1, UUID_NIL),
+    ]
+
+    mock_scalars = mocker.patch("core.prompt.utils.get_thread_messages_length.db.session.scalars")
+    mock_scalars.return_value.all.return_value = messages
+
+    length = get_thread_messages_length("conversation-3", active_message_id=id3)
+
+    assert length == 3

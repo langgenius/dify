@@ -260,6 +260,7 @@ class ConversationDict(TypedDict):
     id: str
     app_id: str
     app_model_config_id: str | None
+    active_message_id: str | None
     model_provider: str | None
     override_model_configs: str | None
     model_id: str | None
@@ -1058,11 +1059,13 @@ class Conversation(Base):
             sa.text("updated_at DESC"),
             postgresql_where=sa.text("is_deleted IS false"),
         ),
+        sa.Index("conversation_active_message_idx", "active_message_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
+    active_message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(LongText)
     model_id = mapped_column(String(255), nullable=True)
@@ -1367,6 +1370,7 @@ class Conversation(Base):
             "id": self.id,
             "app_id": self.app_id,
             "app_model_config_id": self.app_model_config_id,
+            "active_message_id": self.active_message_id,
             "model_provider": self.model_provider,
             "override_model_configs": self.override_model_configs,
             "model_id": self.model_id,

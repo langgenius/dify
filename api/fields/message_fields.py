@@ -47,6 +47,10 @@ class MessageListItem(ResponseModel):
     id: str
     conversation_id: str
     parent_message_id: str | None = None
+    is_active: bool = False
+    is_in_active_thread: bool = False
+    can_switch: bool = False
+    can_regenerate: bool = False
     inputs: dict[str, JSONValueType]
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")

@@ -11,6 +11,7 @@ Focus on:
 - Error types and their mappings
 """
 
+import sys
 import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -23,6 +24,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 import services
 from controllers.service_api.app.completion import (
     ChatApi,
+    ChatRegenerateApi,
     ChatRequestPayload,
     ChatStopApi,
     CompletionApi,
@@ -34,6 +36,7 @@ from controllers.service_api.app.error import (
     ConversationCompletedError,
     NotChatAppError,
 )
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
@@ -42,6 +45,8 @@ from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from services.errors.message import MessageBranchMismatchError, MessageNotExistsError
+from services.message_service import MessageService
 
 
 def _unwrap(func):
@@ -511,6 +516,124 @@ class TestChatApiController:
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(BadRequest):
                 handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestChatRegenerateApiController:
+    def test_wrong_mode(self, app: Flask) -> None:
+        api = ChatRegenerateApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/chat-messages/m1/regenerate", method="POST", json={"inputs": {}, "query": "hi"}
+        ):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user, message_id=uuid.uuid4())
+
+    def test_success_uses_source_parent_as_internal_regenerate_parent(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        message_id = str(uuid.uuid4())
+        conversation_id = str(uuid.uuid4())
+        parent_message_id = str(uuid.uuid4())
+        source_message = SimpleNamespace(conversation_id=conversation_id, parent_message_id=parent_message_id)
+        generate_calls = []
+
+        monkeypatch.setattr(MessageService, "get_regenerate_source_message", lambda **_kwargs: source_message)
+
+        def fake_generate(**kwargs):
+            generate_calls.append(kwargs)
+            return {"answer": "new answer"}
+
+        monkeypatch.setattr(AppGenerateService, "generate", fake_generate)
+        completion_module = sys.modules[ChatRegenerateApi.__module__]
+        monkeypatch.setattr(
+            completion_module.helper,
+            "compact_generate_response",
+            lambda response: {"compacted": response["answer"]},
+        )
+
+        api = ChatRegenerateApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            f"/chat-messages/{message_id}/regenerate",
+            method="POST",
+            json={"inputs": {"topic": "x"}, "query": "retry", "response_mode": "blocking"},
+        ):
+            response = handler(api, app_model=app_model, end_user=end_user, message_id=uuid.UUID(message_id))
+
+        assert response == {"compacted": "new answer"}
+        assert generate_calls == [
+            {
+                "app_model": app_model,
+                "user": end_user,
+                "args": {
+                    "inputs": {"topic": "x"},
+                    "query": "retry",
+                    "response_mode": "blocking",
+                    "retriever_from": "dev",
+                    "auto_generate_name": True,
+                    "conversation_id": conversation_id,
+                    "_regenerate_parent_message_id": parent_message_id,
+                },
+                "invoke_from": InvokeFrom.SERVICE_API,
+                "streaming": False,
+            }
+        ]
+
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_regenerate_source_message",
+            lambda **_kwargs: (_ for _ in ()).throw(MessageNotExistsError()),
+        )
+
+        api = ChatRegenerateApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/chat-messages/00000000-0000-0000-0000-000000000001/regenerate",
+            method="POST",
+            json={"inputs": {}, "query": "hi"},
+        ):
+            with pytest.raises(NotFound):
+                handler(
+                    api,
+                    app_model=app_model,
+                    end_user=end_user,
+                    message_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                )
+
+    def test_conversation_mismatch(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_regenerate_source_message",
+            lambda **_kwargs: (_ for _ in ()).throw(MessageBranchMismatchError()),
+        )
+
+        api = ChatRegenerateApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/chat-messages/00000000-0000-0000-0000-000000000001/regenerate",
+            method="POST",
+            json={"inputs": {}, "query": "hi", "conversation_id": "00000000-0000-0000-0000-000000000002"},
+        ):
+            with pytest.raises(BadRequest):
+                handler(
+                    api,
+                    app_model=app_model,
+                    end_user=end_user,
+                    message_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                )
 
 
 class TestChatStopApiController:

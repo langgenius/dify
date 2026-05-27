@@ -145,7 +145,10 @@ class TokenBufferMemory:
 
         # instead of all messages from the conversation, we only need to extract messages
         # that belong to the thread of last message
-        thread_messages = extract_thread_messages(messages)
+        active_message_id = getattr(self.conversation, "active_message_id", None)
+        if not isinstance(active_message_id, str):
+            active_message_id = None
+        thread_messages = extract_thread_messages(messages, active_message_id=active_message_id)
 
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
         if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:

@@ -182,6 +182,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             trace_manager = TraceQueueManager(
                 app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
             )
+            use_internal_parent_message_id, internal_parent_message_id = self._get_internal_parent_message_id(
+                args=args,
+                invoke_from=invoke_from,
+                conversation=conversation,
+            )
 
             if invoke_from == InvokeFrom.DEBUGGER:
                 # always enable retriever resource in debugger mode
@@ -203,6 +208,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
                     else UUID_NIL
                 ),
+                internal_parent_message_id=internal_parent_message_id,
+                use_internal_parent_message_id=use_internal_parent_message_id,
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
@@ -512,7 +519,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # get conversation dialogue count
             # NOTE: dialogue_count should not start from 0,
             # because during the first conversation, dialogue_count should be 1.
-            self._dialogue_count = get_thread_messages_length(conversation.id) + 1
+            self._dialogue_count = get_thread_messages_length(
+                conversation.id,
+                active_message_id=conversation.active_message_id,
+            ) + 1
 
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(

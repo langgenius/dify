@@ -148,6 +148,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             trace_manager = TraceQueueManager(
                 app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
             )
+            use_internal_parent_message_id, internal_parent_message_id = self._get_internal_parent_message_id(
+                args=args,
+                invoke_from=invoke_from,
+                conversation=conversation,
+            )
 
             # init application generate entity
             application_generate_entity = ChatAppGenerateEntity(
@@ -166,6 +171,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                     if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
                     else UUID_NIL
                 ),
+                internal_parent_message_id=internal_parent_message_id,
+                use_internal_parent_message_id=use_internal_parent_message_id,
                 user_id=user.id,
                 invoke_from=invoke_from,
                 extras=extras,

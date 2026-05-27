@@ -11,6 +11,7 @@ from models.model import App, AppMode, EndUser, Message
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
+    MessageBranchMismatchError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
@@ -48,17 +49,20 @@ class TestMessageServiceFactory:
     def create_conversation_mock(
         conversation_id: str = "conv-001",
         app_id: str = "app-123",
+        active_message_id: str | None = None,
     ) -> MagicMock:
         """Create a mock Conversation object."""
         conversation = MagicMock()
         conversation.id = conversation_id
         conversation.app_id = app_id
+        conversation.active_message_id = active_message_id
         return conversation
 
     @staticmethod
     def create_message_mock(
         message_id: str = "msg-001",
         conversation_id: str = "conv-001",
+        parent_message_id: str | None = None,
         query: str = "What is AI?",
         answer: str = "AI stands for Artificial Intelligence.",
         created_at: datetime | None = None,
@@ -67,6 +71,7 @@ class TestMessageServiceFactory:
         message = MagicMock(spec=Message)
         message.id = message_id
         message.conversation_id = conversation_id
+        message.parent_message_id = parent_message_id
         message.query = query
         message.answer = answer
         message.created_at = created_at or datetime.now()
@@ -351,6 +356,108 @@ class TestMessageServicePaginationByFirstId:
         assert len(result.data) == 0
         assert result.has_more is False
         assert result.limit == 10
+
+    @patch("services.message_service._create_execution_extra_content_repository")
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
+    def test_pagination_by_first_id_marks_active_message(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory
+    ):
+        """Test pagination marks the active answer in the returned candidates."""
+        # Arrange
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        conversation = factory.create_conversation_mock(active_message_id="msg-active")
+        mock_conversation_service.get_conversation.return_value = conversation
+        messages = [
+            factory.create_message_mock(message_id="msg-other"),
+            factory.create_message_mock(message_id="msg-active"),
+        ]
+        mock_db.session.scalars.return_value.all.return_value = messages
+
+        # Act
+        result = MessageService.pagination_by_first_id(
+            app_model=app,
+            user=user,
+            conversation_id="conv-001",
+            first_id=None,
+            limit=10,
+        )
+
+        # Assert
+        active_by_id = {message.id: getattr(message, "is_active", None) for message in result.data}
+        assert active_by_id == {"msg-other": False, "msg-active": True}
+
+    @patch("services.message_service._create_execution_extra_content_repository")
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
+    def test_pagination_by_first_id_marks_active_thread_and_last_round_actions(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory
+    ):
+        """Test pagination marks the active branch and only exposes actions for the active leaf group."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        conversation = factory.create_conversation_mock(active_message_id="msg-b2")
+        mock_conversation_service.get_conversation.return_value = conversation
+        messages = [
+            factory.create_message_mock(message_id="msg-b2", parent_message_id="msg-a2"),
+            factory.create_message_mock(message_id="msg-b1", parent_message_id="msg-a2"),
+            factory.create_message_mock(message_id="msg-a2", parent_message_id="00000000-0000-0000-0000-000000000000"),
+            factory.create_message_mock(message_id="msg-a1", parent_message_id="00000000-0000-0000-0000-000000000000"),
+        ]
+        mock_db.session.scalars.return_value.all.return_value = messages
+
+        result = MessageService.pagination_by_first_id(
+            app_model=app,
+            user=user,
+            conversation_id="conv-001",
+            first_id=None,
+            limit=10,
+            order="desc",
+        )
+
+        flags_by_id = {
+            message.id: (
+                getattr(message, "is_in_active_thread", None),
+                getattr(message, "can_switch", None),
+                getattr(message, "can_regenerate", None),
+            )
+            for message in result.data
+        }
+        assert flags_by_id == {
+            "msg-a1": (False, False, False),
+            "msg-a2": (True, False, False),
+            "msg-b1": (False, True, False),
+            "msg-b2": (True, True, True),
+        }
+
+    @patch("services.message_service._create_execution_extra_content_repository")
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
+    def test_pagination_by_first_id_does_not_allow_switch_for_single_latest_answer(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory
+    ):
+        """Test a latest answer with no returned alternatives is not marked switchable."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        conversation = factory.create_conversation_mock(active_message_id="msg-active")
+        mock_conversation_service.get_conversation.return_value = conversation
+        messages = [factory.create_message_mock(message_id="msg-active", parent_message_id="parent-1")]
+        mock_db.session.scalars.return_value.all.return_value = messages
+
+        result = MessageService.pagination_by_first_id(
+            app_model=app,
+            user=user,
+            conversation_id="conv-001",
+            first_id=None,
+            limit=10,
+        )
+
+        message = result.data[0]
+        assert message.is_active is True
+        assert message.is_in_active_thread is True
+        assert message.can_switch is False
+        assert message.can_regenerate is True
 
 
 class TestMessageServicePaginationByLastId:
@@ -707,6 +814,164 @@ class TestMessageServiceGetMessage:
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
             MessageService.get_message(app_model=app, user=user, message_id="msg-123")
+
+
+class TestMessageServiceSwitchActiveMessage:
+    """Unit tests for MessageService.switch_active_message method."""
+
+    @pytest.fixture
+    def factory(self):
+        """Provide test data factory."""
+        return TestMessageServiceFactory()
+
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
+    @patch.object(MessageService, "get_message")
+    def test_switch_active_message_updates_conversation_pointer(
+        self, mock_get_message, mock_conversation_service, mock_db, factory
+    ):
+        """Test switching active answer updates the conversation pointer."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        source = factory.create_message_mock(message_id="msg-source", parent_message_id="parent-1")
+        target = factory.create_message_mock(message_id="msg-target", parent_message_id="parent-1")
+        conversation = factory.create_conversation_mock(active_message_id="msg-source")
+        mock_get_message.side_effect = [source, target]
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        result = MessageService.switch_active_message(
+            app_model=app,
+            user=user,
+            message_id="msg-source",
+            target_message_id="msg-target",
+        )
+
+        assert result == target
+        assert conversation.active_message_id == "msg-target"
+        mock_db.session.commit.assert_called_once()
+
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
+    @patch.object(MessageService, "get_message")
+    def test_switch_active_message_rejects_different_parent_group(
+        self, mock_get_message, mock_conversation_service, mock_db, factory
+    ):
+        """Test switching to a non-sibling answer is rejected."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        source = factory.create_message_mock(message_id="msg-source", parent_message_id="parent-1")
+        target = factory.create_message_mock(message_id="msg-target", parent_message_id="parent-2")
+        mock_get_message.side_effect = [source, target]
+
+        with pytest.raises(MessageBranchMismatchError):
+            MessageService.switch_active_message(
+                app_model=app,
+                user=user,
+                message_id="msg-source",
+                target_message_id="msg-target",
+            )
+
+        mock_conversation_service.get_conversation.assert_not_called()
+        mock_db.session.commit.assert_not_called()
+
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
+    @patch.object(MessageService, "get_message")
+    def test_switch_active_message_rejects_locked_previous_round(
+        self, mock_get_message, mock_conversation_service, mock_db, factory
+    ):
+        """Test switching an older answer group is rejected after a later answer becomes active."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        source = factory.create_message_mock(
+            message_id="msg-a2",
+            parent_message_id="00000000-0000-0000-0000-000000000000",
+        )
+        target = factory.create_message_mock(
+            message_id="msg-a1",
+            parent_message_id="00000000-0000-0000-0000-000000000000",
+        )
+        conversation = factory.create_conversation_mock(active_message_id="msg-b1")
+        mock_get_message.side_effect = [source, target]
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        with pytest.raises(MessageBranchMismatchError):
+            MessageService.switch_active_message(
+                app_model=app,
+                user=user,
+                message_id="msg-a2",
+                target_message_id="msg-a1",
+            )
+
+        mock_db.session.commit.assert_not_called()
+
+
+class TestMessageServiceGetRegenerateSourceMessage:
+    """Unit tests for MessageService.get_regenerate_source_message method."""
+
+    @pytest.fixture
+    def factory(self):
+        """Provide test data factory."""
+        return TestMessageServiceFactory()
+
+    @patch("services.message_service.ConversationService")
+    @patch.object(MessageService, "get_message")
+    def test_get_regenerate_source_message_returns_active_target_message(
+        self, mock_get_message, mock_conversation_service, factory
+    ):
+        """Test regenerate source lookup returns the active leaf answer message."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        message = factory.create_message_mock(message_id="msg-source", conversation_id="conv-001")
+        conversation = factory.create_conversation_mock(conversation_id="conv-001", active_message_id="msg-source")
+        mock_get_message.return_value = message
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        result = MessageService.get_regenerate_source_message(
+            app_model=app,
+            user=user,
+            message_id="msg-source",
+            conversation_id="conv-001",
+        )
+
+        assert result == message
+
+    @patch.object(MessageService, "get_message")
+    def test_get_regenerate_source_message_rejects_different_conversation(self, mock_get_message, factory):
+        """Test regenerate source lookup rejects mismatched conversation IDs."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        message = factory.create_message_mock(message_id="msg-source", conversation_id="conv-001")
+        mock_get_message.return_value = message
+
+        with pytest.raises(MessageBranchMismatchError):
+            MessageService.get_regenerate_source_message(
+                app_model=app,
+                user=user,
+                message_id="msg-source",
+                conversation_id="conv-other",
+            )
+
+    @patch("services.message_service.ConversationService")
+    @patch.object(MessageService, "get_message")
+    def test_get_regenerate_source_message_rejects_locked_previous_round(
+        self, mock_get_message, mock_conversation_service, factory
+    ):
+        """Test regenerate source lookup rejects a non-active answer after later turns exist."""
+        app = factory.create_app_mock()
+        user = factory.create_end_user_mock()
+        message = factory.create_message_mock(message_id="msg-a2", conversation_id="conv-001")
+        conversation = factory.create_conversation_mock(conversation_id="conv-001", active_message_id="msg-b1")
+        mock_get_message.return_value = message
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        with pytest.raises(MessageBranchMismatchError):
+            MessageService.get_regenerate_source_message(
+                app_model=app,
+                user=user,
+                message_id="msg-a2",
+                conversation_id="conv-001",
+            )
 
 
 class TestMessageServiceFeedback:

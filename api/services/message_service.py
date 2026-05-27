@@ -35,6 +35,7 @@ from services.conversation_service import ConversationService
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
+    MessageBranchMismatchError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
@@ -61,6 +62,37 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
 
 
 class MessageService:
+    @staticmethod
+    def _apply_message_activity_flags(messages: Sequence[Message], active_message_id: str | None) -> None:
+        active_id = active_message_id if isinstance(active_message_id, str) else None
+        message_by_id = {message.id: message for message in messages}
+        active_message = message_by_id.get(active_id) if active_id else None
+
+        active_thread_ids: set[str] = set()
+        current_message = active_message
+        while current_message and current_message.id not in active_thread_ids:
+            active_thread_ids.add(current_message.id)
+            parent_message_id = current_message.parent_message_id
+            if not parent_message_id:
+                break
+            current_message = message_by_id.get(parent_message_id)
+
+        active_parent_message_id = active_message.parent_message_id if active_message else None
+        active_group_size = sum(
+            1
+            for message in messages
+            if active_message is not None and message.parent_message_id == active_parent_message_id
+        )
+        for message in messages:
+            message.is_active = active_id == message.id
+            message.is_in_active_thread = message.id in active_thread_ids
+            message.can_switch = (
+                active_message is not None
+                and active_group_size > 1
+                and message.parent_message_id == active_parent_message_id
+            )
+            message.can_regenerate = active_id == message.id
+
     @classmethod
     def pagination_by_first_id(
         cls,
@@ -118,6 +150,7 @@ class MessageService:
             history_messages = list(reversed(history_messages))
 
         attach_message_extra_contents(history_messages)
+        cls._apply_message_activity_flags(history_messages, getattr(conversation, "active_message_id", None))
 
         return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 
@@ -244,6 +277,66 @@ class MessageService:
 
         if not message:
             raise MessageNotExistsError()
+
+        return message
+
+    @classmethod
+    def switch_active_message(
+        cls,
+        *,
+        app_model: App,
+        user: Account | EndUser | None,
+        message_id: str,
+        target_message_id: str,
+    ) -> Message:
+        if not user:
+            raise ValueError("user cannot be None")
+
+        source_message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
+        target_message = cls.get_message(app_model=app_model, user=user, message_id=target_message_id)
+
+        if (
+            source_message.conversation_id != target_message.conversation_id
+            or source_message.parent_message_id != target_message.parent_message_id
+        ):
+            raise MessageBranchMismatchError()
+
+        conversation = ConversationService.get_conversation(
+            app_model=app_model,
+            user=user,
+            conversation_id=source_message.conversation_id,
+        )
+        if getattr(conversation, "active_message_id", None) != source_message.id:
+            raise MessageBranchMismatchError()
+
+        conversation.active_message_id = target_message.id
+        db.session.commit()
+
+        return target_message
+
+    @classmethod
+    def get_regenerate_source_message(
+        cls,
+        *,
+        app_model: App,
+        user: Account | EndUser | None,
+        message_id: str,
+        conversation_id: str | None,
+    ) -> Message:
+        if not user:
+            raise ValueError("user cannot be None")
+
+        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
+        if conversation_id is not None and message.conversation_id != conversation_id:
+            raise MessageBranchMismatchError()
+
+        conversation = ConversationService.get_conversation(
+            app_model=app_model,
+            user=user,
+            conversation_id=message.conversation_id,
+        )
+        if getattr(conversation, "active_message_id", None) != message.id:
+            raise MessageBranchMismatchError()
 
         return message
 

@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
+from constants import UUID_NIL
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -210,6 +211,85 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
+
+    def test_generate_service_api_uses_active_message_as_internal_parent(self, generator, mocker: MockerFixture):
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
+        app_model_config = mocker.MagicMock(id="cfg1")
+        app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
+
+        user = DummyAccount("user")
+        active_conversation = mocker.MagicMock(id="conv", active_message_id="active-message-id")
+
+        generator._get_app_model_config = mocker.MagicMock(return_value=app_model_config)
+        generator._prepare_user_inputs = mocker.MagicMock(return_value={"x": 1})
+        generator._init_generate_records = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="conv", mode="agent-chat"), mocker.MagicMock(id="msg"))
+        )
+        generator._handle_response = mocker.MagicMock(return_value="response")
+
+        app_config = mocker.MagicMock(variables={}, prompt_template=mocker.MagicMock(), external_data_variables=[])
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
+            return_value=app_config,
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
+            return_value=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert",
+            return_value=None,
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.ConversationService.get_conversation",
+            return_value=active_conversation,
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
+            return_value=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager",
+            return_value=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.threading.Thread",
+            return_value=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
+            return_value={"result": "ok"},
+        )
+
+        captured = {}
+
+        def _build_entity(**kwargs):
+            entity = mocker.MagicMock(**kwargs)
+            for key, value in kwargs.items():
+                setattr(entity, key, value)
+            captured["entity"] = entity
+            return entity
+
+        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppGenerateEntity", side_effect=_build_entity)
+
+        result = generator.generate(
+            app_model=app_model,
+            user=user,
+            args={
+                "query": "hello",
+                "inputs": {"name": "world"},
+                "conversation_id": "conv",
+                "parent_message_id": "external-parent-id",
+            },
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=True,
+        )
+
+        assert result == {"result": "ok"}
+        application_generate_entity = captured["entity"]
+        assert application_generate_entity.parent_message_id == UUID_NIL
+        assert application_generate_entity.internal_parent_message_id == "active-message-id"
+        assert application_generate_entity.use_internal_parent_message_id is True
 
 
 class TestAgentChatAppGeneratorWorker:

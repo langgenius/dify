@@ -512,6 +512,22 @@ class TestGetHistoryPromptMessages:
             result = mem.get_history_prompt_messages()
         assert result == []
 
+    def test_uses_active_message_when_extracting_thread(self):
+        mem = self._make_memory()
+        active_message_id = str(uuid4())
+        mem.conversation.active_message_id = active_message_id
+
+        with (
+            patch("core.memory.token_buffer_memory.db") as mock_db,
+            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[]) as mock_extract,
+        ):
+            mock_db.session.scalars.return_value.all.return_value = []
+
+            result = mem.get_history_prompt_messages()
+
+        assert result == []
+        mock_extract.assert_called_once_with([], active_message_id=active_message_id)
+
     def test_skips_first_message_without_answer(self):
         """The newest message (index 0 after extraction) without answer and tokens==0 is skipped."""
         mem = self._make_memory()

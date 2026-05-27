@@ -84,6 +84,15 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
     )
 
 
+def _make_internal_parent_chat_generate_entity(
+    app_config: EasyUIBasedAppConfig, internal_parent_message_id: str | None
+) -> ChatAppGenerateEntity:
+    entity = _make_chat_generate_entity(app_config)
+    object.__setattr__(entity, "internal_parent_message_id", internal_parent_message_id)
+    object.__setattr__(entity, "use_internal_parent_message_id", True)
+    return entity
+
+
 @pytest.fixture(autouse=True)
 def _mock_db_session(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
@@ -127,6 +136,30 @@ def test_init_generate_records_sets_conversation_fields_for_chat_entity():
     assert entity.conversation_id == "generated-conversation-id"
     assert entity.is_new_conversation is True
     assert conversation.id == "generated-conversation-id"
+
+
+def test_init_generate_records_uses_internal_parent_message_id_and_marks_active_message():
+    app_config = _make_app_config(AppMode.CHAT)
+    entity = _make_internal_parent_chat_generate_entity(app_config, internal_parent_message_id="root-parent-id")
+
+    generator = MessageBasedAppGenerator()
+
+    conversation, message = generator._init_generate_records(entity, conversation=None)
+
+    assert message.parent_message_id == "root-parent-id"
+    assert conversation.active_message_id == "generated-message-id"
+
+
+def test_init_generate_records_preserves_explicit_internal_parent_none():
+    app_config = _make_app_config(AppMode.CHAT)
+    entity = _make_internal_parent_chat_generate_entity(app_config, internal_parent_message_id=None)
+    entity.parent_message_id = "ignored-parent-id"
+
+    generator = MessageBasedAppGenerator()
+
+    _, message = generator._init_generate_records(entity, conversation=None)
+
+    assert message.parent_message_id is None
 
 
 class TestMessageBasedAppGeneratorExtras:

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -14,12 +14,14 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.base import ResponseModel
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
+    MessageBranchMismatchError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
@@ -33,8 +35,27 @@ class FeedbackListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=101, description="Number of feedbacks per page")
 
 
-register_schema_models(service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery)
-register_response_schema_models(service_api_ns, ResultResponse, SimpleResultStringListResponse)
+class MessageSwitchPayload(BaseModel):
+    target_message_id: UUID = Field(description="Target answer message ID")
+    user: str = Field(description="End-user identifier")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MessageSwitchResponse(ResponseModel):
+    result: str = "success"
+    active_message_id: str
+
+
+register_schema_models(
+    service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery, MessageSwitchPayload
+)
+register_response_schema_models(
+    service_api_ns,
+    ResultResponse,
+    SimpleResultStringListResponse,
+    MessageSwitchResponse,
+)
 
 
 @service_api_ns.route("/messages")
@@ -116,6 +137,49 @@ class MessageFeedbackApi(Resource):
             raise NotFound("Message Not Exists.")
 
         return ResultResponse(result="success").model_dump(mode="json")
+
+
+@service_api_ns.route("/chat-messages/<uuid:message_id>/switch")
+class MessageSwitchApi(Resource):
+    @service_api_ns.expect(service_api_ns.models[MessageSwitchPayload.__name__])
+    @service_api_ns.response(
+        200,
+        "Active answer switched successfully",
+        service_api_ns.models[MessageSwitchResponse.__name__],
+    )
+    @service_api_ns.doc("switch_chat_message_answer")
+    @service_api_ns.doc(description="Switch the active answer variant for a chat message")
+    @service_api_ns.doc(params={"message_id": "Current answer message ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Active answer switched successfully",
+            400: "Target answer is not in the current active answer branch",
+            401: "Unauthorized - invalid API token",
+            404: "Message not found",
+        }
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+        """Switch the latest active answer variant used by future chat turns."""
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        payload = MessageSwitchPayload.model_validate(service_api_ns.payload or {})
+
+        try:
+            target_message = MessageService.switch_active_message(
+                app_model=app_model,
+                user=end_user,
+                message_id=str(message_id),
+                target_message_id=str(payload.target_message_id),
+            )
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+        except MessageBranchMismatchError:
+            raise BadRequest("Message branch mismatch.")
+
+        return MessageSwitchResponse(active_message_id=target_message.id).model_dump(mode="json")
 
 
 @service_api_ns.route("/app/feedbacks")

@@ -843,6 +843,186 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+### 答案分支、重新生成与切换行为
+
+工作流编排对话型应用的 Service API 支持对当前答案重新生成，并在同一轮的首次答案、重新生成答案、第 n 次生成答案之间切换。
+
+- `POST /chat-messages/:message_id/regenerate`：基于当前最新生效答案重新生成一个新的答案分支。请求只需要传入本次重新生成使用的输入和会话信息，不需要传入原答案输出内容。
+- `POST /chat-messages/:message_id/switch`：切换当前最新答案组的生效答案。`message_id` 传当前最新生效答案 ID，`target_message_id` 传要切换到的同组候选答案 ID。
+- `GET /messages` 会返回 `is_active`、`is_in_active_thread`、`can_switch`、`can_regenerate`，用于前端判断当前展示、历史上下文分支和按钮状态。
+
+交互行为采用“仅最新一轮可操作”的设计：用户发送下一轮问题后，上一轮的首次答案和重新生成答案会被锁定，不再支持切换或重新生成。后续对话的历史上下文沿 `conversation.active_message_id` 指向的生效答案链路组织；前端可用 `is_in_active_thread` 判断哪些消息属于当前后端上下文分支，用 `can_switch` 展示答案切换按钮，用 `can_regenerate` 展示重新生成按钮。
+
+<Heading
+  url='/chat-messages/:message_id/regenerate'
+  method='POST'
+  title='重新生成答案'
+  name='#Regenerate-Chat-Message'
+/>
+<Row>
+  <Col>
+    基于当前最新生效答案消息重新生成一个新的答案分支。
+
+    该接口不会要求传入被重新生成的原输出内容；只需传入本次重新生成使用的输入，历史会话上下文会根据当前生效答案链路定位。新生成的答案会成为当前会话的生效答案，后续对话会从该答案继续。
+
+    仅 `GET /messages` 返回 `can_regenerate: true` 的消息可以调用该接口。用户发送下一轮问题后，上一轮的首次答案/重新生成答案会被锁定，不能再重新生成。
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        当前最新生效答案消息 ID，对应 `GET /messages` 返回 `can_regenerate: true` 的消息。
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='query' type='string' key='query'>
+        本次重新生成使用的用户输入/提问内容。
+      </Property>
+      <Property name='inputs' type='object' key='inputs'>
+        允许传入 App 定义的各变量值，格式同发送对话消息接口。默认 `{}`。
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        - `streaming` 流式模式（推荐）。
+        - `blocking` 阻塞模式，等待执行完毕后返回结果。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        （选填）会话 ID。传入时必须与 `message_id` 所属会话一致。
+      </Property>
+      <Property name='files' type='array[object]' key='files'>
+        文件列表，格式同发送对话消息接口。
+      </Property>
+      <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
+        （选填）自动生成标题，默认 `true`。
+      </Property>
+      <Property name='workflow_id' type='string' key='workflow_id'>
+        （选填）工作流 ID，用于指定特定版本。如果不提供则使用默认的已发布版本。
+      </Property>
+    </Properties>
+
+    ### Response
+    返回内容同发送对话消息接口，`response_mode` 为 `blocking` 时返回 ChatCompletionResponse object，`response_mode` 为 `streaming` 时返回 ChunkChatCompletionResponse object 流式序列。
+
+    ### Errors
+    - 404，对话或消息不存在
+    - 400，`invalid_param`，传入参数异常
+    - 400，消息不是当前最新生效答案，或不属于当前会话分支
+    - 400，`completion_request_error`，文本生成失败
+    - 500，服务内部异常
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/chat-messages/:message_id/regenerate"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/{message_id}/regenerate' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": {},
+    "query": "请重新回答这个问题",
+    "response_mode": "blocking",
+    "conversation_id": "{conversation_id}",
+    "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "event": "message",
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88",
+        "id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
+        "mode": "advanced-chat",
+        "answer": "这是重新生成后的答案。",
+        "metadata": {
+            "usage": null,
+            "retriever_resources": []
+        },
+        "created_at": 1705407629
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/chat-messages/:message_id/switch'
+  method='POST'
+  title='切换答案'
+  name='#Switch-Chat-Message'
+/>
+<Row>
+  <Col>
+    切换当前会话最新一轮的生效答案，用于在首次答案、重新生成答案、第 n 次生成答案之间切换。切换后，后续对话会从返回的 `active_message_id` 对应答案继续。
+
+    仅支持切换当前最新答案组。用户发送下一轮问题后，上一轮的答案组会被锁定，不再支持切换。前端应使用 `GET /messages` 返回的 `can_switch` 判断是否展示答案切换按钮；同一答案组至少存在两个候选答案时才会返回 `can_switch: true`。
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        当前最新生效答案消息 ID，对应 `GET /messages` 返回 `is_active: true` 的消息。
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='target_message_id' type='string' key='target_message_id'>
+        要切换为生效答案的目标消息 ID。该消息必须与 `message_id` 属于同一会话、同一轮答案组；通常从 `GET /messages` 返回 `can_switch: true` 的候选答案中选择。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+
+    ### Response
+    - `result` (string) 固定返回 `success`
+    - `active_message_id` (string) 切换后的生效答案消息 ID
+
+    ### Errors
+    - 404，对话或消息不存在
+    - 400，`invalid_param`，传入参数异常
+    - 400，目标答案不在当前最新答案组，或 `message_id` 不是当前最新生效答案
+    - 500，服务内部异常
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/chat-messages/:message_id/switch"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/{message_id}/switch' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "target_message_id": "{target_message_id}",
+    "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "result": "success",
+        "active_message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 ---
 
 <Heading
@@ -1299,6 +1479,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `url` (string) 文件预览地址，使用文件预览 API (`/files/{file_id}/preview`) 访问文件
         - `belongs_to` (string) 文件归属方，user 或 assistant
       - `answer` (string)  回答消息内容
+      - `is_active` (bool) 当前会话中是否为生效答案。重新生成或切换答案后，后续对话会从生效答案继续。
+      - `is_in_active_thread` (bool) 是否在当前后端历史会话分支中。后续对话的历史上下文会沿这条分支组织。
+      - `can_switch` (bool) 是否属于当前最新可切换答案组；同组至少存在两个候选答案时为 `true`。前端可据此展示答案切换按钮。
+      - `can_regenerate` (bool) 是否可作为重新生成源。仅当前最新生效答案为 `true`。
       - `created_at`  (timestamp) 创建时间
       - `feedback` (object) 反馈信息
         - `rating` (string) 点赞 like / 点踩 dislike
@@ -1331,6 +1515,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
             },
             "query": "iphone 13 pro",
             "answer": "The iPhone 13 Pro, released on September 24, 2021, features a 6.1-inch display with a resolution of 1170 x 2532. It is equipped with a Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard) processor, 6 GB of RAM, and offers storage options of 128 GB, 256 GB, 512 GB, and 1 TB. The camera is 12 MP, the battery capacity is 3095 mAh, and it runs on iOS 15.",
+            "is_active": true,
+            "is_in_active_thread": true,
+            "can_switch": false,
+            "can_regenerate": true,
             "message_files": [],
             "feedback": null,
             "retriever_resources": [
@@ -1365,6 +1553,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
             "inputs": {},
             "query": "draw a cat",
             "answer": "I have generated an image of a cat for you. Please check your messages to view the image.",
+            "is_active": true,
+            "is_in_active_thread": true,
+            "can_switch": false,
+            "can_regenerate": true,
             "message_files": [
                 {
                     "id": "976990d2-5294-47e6-8f14-7356ba9d2d76",

@@ -377,7 +377,12 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         workflow = SimpleNamespace(id="wf-1", tenant_id="tenant", features={"feature": True}, features_dict={})
-        conversation = SimpleNamespace(id="conv-1", mode=AppMode.ADVANCED_CHAT, override_model_configs=None)
+        conversation = SimpleNamespace(
+            id="conv-1",
+            mode=AppMode.ADVANCED_CHAT,
+            override_model_configs=None,
+            active_message_id="active-message-id",
+        )
         message = SimpleNamespace(
             id="msg-1",
             query="hello",
@@ -388,9 +393,17 @@ class TestAdvancedChatAppGeneratorInternals:
         db_session = SimpleNamespace(commit=MagicMock(), refresh=MagicMock(), close=MagicMock())
         captured: dict[str, object] = {}
         thread_data: dict[str, object] = {}
+        thread_length_calls: list[tuple[str, str | None]] = []
+
+        def _get_thread_messages_length(conversation_id: str, active_message_id: str | None = None) -> int:
+            thread_length_calls.append((conversation_id, active_message_id))
+            return 2
 
         monkeypatch.setattr(generator, "_init_generate_records", lambda *args: (conversation, message))
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.get_thread_messages_length", lambda _: 2)
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.get_thread_messages_length",
+            _get_thread_messages_length,
+        )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.MessageBasedAppQueueManager",
             lambda **kwargs: SimpleNamespace(**kwargs),
@@ -447,6 +460,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["started"] is True
         assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
         assert generator._dialogue_count == 3
+        assert thread_length_calls == [("conv-1", "active-message-id")]
         db_session.commit.assert_called_once()
         db_session.refresh.assert_called_once_with(conversation)
         db_session.close.assert_called_once()
@@ -475,7 +489,12 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         workflow = SimpleNamespace(id="wf-2", tenant_id="tenant", features={}, features_dict={})
-        conversation = SimpleNamespace(id="conv-2", mode=AppMode.ADVANCED_CHAT, override_model_configs=None)
+        conversation = SimpleNamespace(
+            id="conv-2",
+            mode=AppMode.ADVANCED_CHAT,
+            override_model_configs=None,
+            active_message_id="existing-active-message-id",
+        )
         message = SimpleNamespace(
             id="msg-2",
             query="hello",
@@ -486,9 +505,17 @@ class TestAdvancedChatAppGeneratorInternals:
         db_session = SimpleNamespace(close=MagicMock(), commit=MagicMock(), refresh=MagicMock())
         init_records = MagicMock()
         thread_data: dict[str, object] = {}
+        thread_length_calls: list[tuple[str, str | None]] = []
+
+        def _get_thread_messages_length(conversation_id: str, active_message_id: str | None = None) -> int:
+            thread_length_calls.append((conversation_id, active_message_id))
+            return 0
 
         monkeypatch.setattr(generator, "_init_generate_records", init_records)
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.get_thread_messages_length", lambda _: 0)
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.get_thread_messages_length",
+            _get_thread_messages_length,
+        )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.MessageBasedAppQueueManager",
             lambda **kwargs: SimpleNamespace(**kwargs),
@@ -537,6 +564,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert response == {"raw": True}
         init_records.assert_not_called()
         assert thread_data["started"] is True
+        assert thread_length_calls == [("conv-2", "existing-active-message-id")]
         db_session.commit.assert_not_called()
         db_session.refresh.assert_not_called()
         db_session.close.assert_called_once()
@@ -1223,6 +1251,12 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: SimpleNamespace(),
         )
 
+        active_conversation = SimpleNamespace(id="conversation-id", active_message_id="active-message-id")
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
+            lambda **kwargs: active_conversation,
+        )
+
         captured = {}
 
         def _fake_generate(**kwargs):
@@ -1242,13 +1276,21 @@ class TestAdvancedChatAppGeneratorInternals:
             app_model=app_model,
             workflow=workflow,
             user=user,
-            args={"query": "hello", "inputs": {}, "parent_message_id": "p1"},
+            args={
+                "query": "hello",
+                "inputs": {},
+                "conversation_id": "conversation-id",
+                "parent_message_id": "p1",
+            },
             invoke_from=InvokeFrom.SERVICE_API,
             workflow_run_id="run-id",
             streaming=False,
         )
 
-        assert captured["application_generate_entity"].parent_message_id == UUID_NIL
+        application_generate_entity = captured["application_generate_entity"]
+        assert application_generate_entity.parent_message_id == UUID_NIL
+        assert application_generate_entity.internal_parent_message_id == "active-message-id"
+        assert application_generate_entity.use_internal_parent_message_id is True
 
 
 class TestAdvancedChatAppGeneratorResume:
