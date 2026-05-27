@@ -1,4 +1,5 @@
 import { act, fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -268,8 +269,9 @@ type AppListInfiniteOptions = {
   getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
 }
 
-const openAppTypeSelect = () => {
-  fireEvent.click(screen.getByRole('combobox', { name: 'app.types.label' }))
+const openAppTypeSelect = async (user = userEvent.setup()) => {
+  await user.click(screen.getByRole('combobox', { name: /^app\.types\./ }))
+  return user
 }
 
 describe('List', () => {
@@ -297,19 +299,19 @@ describe('List', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderList()
-      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
     })
 
     it('should render app type select with all app types', async () => {
       renderList()
-      openAppTypeSelect()
+      await openAppTypeSelect()
 
-      expect(await screen.findByText('app.types.all'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.agent'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.completion'))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.advanced' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.agent' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.completion' }))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
@@ -362,7 +364,7 @@ describe('List', () => {
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.description'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
-      expect(screen.queryByText('app.types.label')).not.toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: /^app\.types\./ })).not.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
@@ -374,7 +376,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
     })
 
     it('should render first empty state when emptyAppList URL preview is enabled', () => {
@@ -384,7 +386,7 @@ describe('List', () => {
 
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
-      expect(screen.queryByText('app.types.label')).not.toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: /^app\.types\./ })).not.toBeInTheDocument()
       expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
     })
 
@@ -395,7 +397,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
@@ -426,21 +428,31 @@ describe('List', () => {
   })
 
   describe('App Type Select', () => {
-    it('should update category when workflow option is selected', async () => {
-      renderList()
-      openAppTypeSelect()
+    it('should render selected category in the trigger', () => {
+      mockQueryState.category = AppModeEnum.WORKFLOW
 
-      fireEvent.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
+      renderList()
+
+      expect(screen.getByRole('combobox', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+    })
+
+    it('should update category when workflow option is selected', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await openAppTypeSelect(user)
+
+      await user.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
     it('should update category when all option is selected', async () => {
+      const user = userEvent.setup()
       mockQueryState.category = AppModeEnum.WORKFLOW
       renderList()
-      openAppTypeSelect()
+      await openAppTypeSelect(user)
 
-      fireEvent.click(await screen.findByRole('option', { name: 'app.types.all' }))
+      await user.click(await screen.findByRole('option', { name: 'app.types.all' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -614,11 +626,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByText('app.types.label'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -653,14 +665,14 @@ describe('List', () => {
   describe('App Type Select Options', () => {
     it('should render all app type options', async () => {
       renderList()
-      openAppTypeSelect()
+      await openAppTypeSelect()
 
-      expect(await screen.findByText('app.types.all'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.agent'))!.toBeInTheDocument()
-      expect(await screen.findByText('app.types.completion'))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.all' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.advanced' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.agent' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.completion' }))!.toBeInTheDocument()
     })
 
     it('should update category for each app type option click', async () => {
@@ -673,10 +685,11 @@ describe('List', () => {
       ]
 
       for (const { mode, text } of appTypeTexts) {
+        const user = userEvent.setup()
         const { unmount } = renderList()
-        openAppTypeSelect()
+        await openAppTypeSelect(user)
         mockSetCategory.mockClear()
-        fireEvent.click(await screen.findByRole('option', { name: text }))
+        await user.click(await screen.findByRole('option', { name: text }))
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
         unmount()
       }

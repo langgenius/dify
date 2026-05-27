@@ -307,6 +307,5 @@
   "types.basic": "Basic",
   "types.chatbot": "Chatbot",
   "types.completion": "Completion",
-  "types.label": "Types",
   "types.workflow": "Workflow"
 }
