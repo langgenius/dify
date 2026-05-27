@@ -93,6 +93,7 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
                 file.remote_url = file.generate_url()
     return _convert_values_to_json_serializable_object(value)
 
+
 def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     value_type = workflow_draft_var.value_type
     return str(value_type.exposed_type())
