@@ -2,18 +2,17 @@ import { Popover } from '@langgenius/dify-ui/popover'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DatasetACLPermission } from '@/utils/permission'
 
 import Card from '../card'
 import ServiceApi from '../index'
 
 // Mock Setup
 
-let mockDatasetPermissionKeys: string[] = [DatasetACLPermission.Edit]
+let mockWorkspacePermissionKeys: string[] = ['dataset.api_key.manage']
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: { permission_keys: string[] } }) => unknown) =>
-    selector({ dataset: { permission_keys: mockDatasetPermissionKeys } }),
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -57,7 +56,7 @@ const renderCard = (ui: React.ReactElement) =>
 describe('ServiceApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
+    mockWorkspacePermissionKeys = ['dataset.api_key.manage']
   })
 
   describe('Rendering', () => {
@@ -201,13 +200,20 @@ describe('Card (service-api)', () => {
     it('should call onOpenSecretKeyModal when API Key button is clicked', async () => {
       const user = userEvent.setup()
 
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} canManageSecretKey />)
 
       const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
       if (apiKeyButton)
         await user.click(apiKeyButton)
 
       expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
+    })
+
+    it('should disable API Key button when secret key management is not allowed', () => {
+      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} canManageSecretKey={false} />)
+
+      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+      expect(apiKeyButton).toBeDisabled()
     })
 
     it('should have correct href for API Reference link', () => {
@@ -254,7 +260,7 @@ describe('ServiceApi Integration', () => {
     })
   })
 
-  it('should pass dataset edit permission to secret key modal', async () => {
+  it('should pass workspace API key management permission to secret key modal', async () => {
     const user = userEvent.setup()
 
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
@@ -276,9 +282,9 @@ describe('ServiceApi Integration', () => {
     })
   })
 
-  it('should pass false to secret key modal without dataset edit permission', async () => {
+  it('should keep API key button disabled without workspace API key management permission', async () => {
     const user = userEvent.setup()
-    mockDatasetPermissionKeys = [DatasetACLPermission.Readonly]
+    mockWorkspacePermissionKeys = []
 
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
@@ -291,11 +297,10 @@ describe('ServiceApi Integration', () => {
     })
 
     const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+    expect(apiKeyButton).toBeDisabled()
     if (apiKeyButton)
       await user.click(apiKeyButton)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('secret-key-modal-can-manage')).toHaveTextContent('false')
-    })
+    expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
   })
 })

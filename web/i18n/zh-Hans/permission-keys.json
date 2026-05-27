@@ -31,6 +31,7 @@
   "dataset.acl.readonly": "知识库只读",
   "dataset.acl.retrieval_recall": "知识库检索召回",
   "dataset.acl.use": "知识库使用",
+  "dataset.api_key.manage": "管理知识库 API Key",
   "dataset.create_and_management": "创建和管理自己创建的知识库",
   "dataset.external.connect": "连接外部知识库",
   "dataset.tag.manage": "管理知识库标签",

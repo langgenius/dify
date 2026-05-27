@@ -19,12 +19,14 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 // Mock app context
+let mockWorkspacePermissionKeys = ['dataset.external.connect']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: { role: 'admin' },
     isCurrentWorkspaceOwner: true,
   }),
-  useSelector: () => true,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
 }))
 
 // Mock external api panel context
@@ -136,6 +138,7 @@ describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBrandingEnabled = false
+    mockWorkspacePermissionKeys = ['dataset.external.connect']
   })
 
   describe('Rendering', () => {
@@ -157,6 +160,11 @@ describe('List', () => {
     it('should render external API panel button', () => {
       render(<List />)
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
+    })
+
+    it('should render service API entry without requiring workspace manager role', () => {
+      render(<List />)
+      expect(screen.getByText(/serviceApi\.title/)).toBeInTheDocument()
     })
 
     it('should render dataset footer when branding is disabled', () => {
@@ -242,7 +250,8 @@ describe('List', () => {
           currentWorkspace: { role: 'normal' },
           isCurrentWorkspaceOwner: false,
         }),
-        useSelector: () => true,
+        useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+          selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
       }))
 
       // Clear module cache and re-import
@@ -329,7 +338,8 @@ describe('List', () => {
           currentWorkspace: { role: 'editor' },
           isCurrentWorkspaceOwner: false,
         }),
-        useSelector: () => true,
+        useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+          selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
       }))
 
       vi.resetModules()

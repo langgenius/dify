@@ -13,7 +13,7 @@ type ApiServerProps = {
 const ApiServer: FC<ApiServerProps> = ({
   apiBaseUrl,
   appId,
-  canManageApiKey = true,
+  canManageApiKey = false,
 }) => {
   const { t } = useTranslation()
 

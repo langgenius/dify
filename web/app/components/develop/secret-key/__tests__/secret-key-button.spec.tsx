@@ -139,6 +139,20 @@ describe('SecretKeyButton', () => {
       expect(screen.getByTestId('modal-can-manage')).toHaveTextContent('true')
     })
 
+    it('should disable the button and keep modal closed when canManage is false', async () => {
+      const user = userEvent.setup()
+      render(<SecretKeyButton appId="app-123" canManage={false} />)
+
+      const button = screen.getByRole('button')
+      expect(button).toBeDisabled()
+
+      await act(async () => {
+        await user.click(button)
+      })
+
+      expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
+    })
+
     it('should apply custom textCls', () => {
       render(<SecretKeyButton textCls="custom-text-class" />)
       const text = screen.getByText('appApi.apiKey')

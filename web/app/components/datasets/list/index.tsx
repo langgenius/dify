@@ -52,7 +52,6 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
@@ -80,11 +79,7 @@ const List = () => {
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
-          {
-            isCurrentWorkspaceManager && (
-              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
-            )
-          }
+          <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
           {canConnectExternalDataset && (
             <>
               <div className="h-4 w-px bg-divider-regular" />

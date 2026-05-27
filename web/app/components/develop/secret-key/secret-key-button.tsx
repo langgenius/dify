@@ -14,8 +14,6 @@ type ISecretKeyButtonProps = {
 const SecretKeyButton = ({ className, appId, textCls, canManage = true }: ISecretKeyButtonProps) => {
   const [isVisible, setIsVisible] = useState(false)
   const { t } = useTranslation()
-  if (!canManage)
-    return null
 
   return (
     <>
@@ -24,6 +22,7 @@ const SecretKeyButton = ({ className, appId, textCls, canManage = true }: ISecre
         onClick={() => setIsVisible(true)}
         size="small"
         variant="ghost"
+        disabled={!canManage}
       >
         <div className="flex size-3.5 items-center justify-center">
           <span className="i-ri-key-2-line size-3.5 text-text-tertiary" />

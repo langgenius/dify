@@ -2,12 +2,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { getDatasetACLCapabilities } from '@/utils/permission'
+import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -20,17 +19,8 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageSecretKey = useMemo(
-    () => getDatasetACLCapabilities(dataset?.permission_keys, {
-      currentUserId,
-      resourceCreatedBy: dataset?.created_by,
-      workspacePermissionKeys,
-    }).canEdit,
-    [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
-  )
+  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)
@@ -74,6 +64,7 @@ const ServiceApi = ({
           <Card
             apiBaseUrl={apiBaseUrl}
             onOpenSecretKeyModal={handleOpenSecretKeyModal}
+            canManageSecretKey={canManageSecretKey}
           />
         </PopoverContent>
       </Popover>
