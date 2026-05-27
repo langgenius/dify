@@ -1363,11 +1363,11 @@ Tests retrieval performance for the specified dataset.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Hit testing results |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Hit testing results | [HitTestingResponse](#hittestingresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/metadata
 
@@ -1614,11 +1614,11 @@ Tests retrieval performance for the specified dataset.
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Hit testing results |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Hit testing results | [HitTestingResponse](#hittestingresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/tags
 
@@ -2338,9 +2338,9 @@ Condition detail
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -2351,7 +2351,7 @@ Condition detail
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -2378,9 +2378,9 @@ Condition detail
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -2392,7 +2392,7 @@ Condition detail
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -2412,10 +2412,10 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | Yes |
-| external_knowledge_api_id | string |  | Yes |
-| external_knowledge_api_name | string |  | Yes |
-| external_knowledge_id | string |  | Yes |
+| external_knowledge_api_endpoint | string |  | No |
+| external_knowledge_api_id | string |  | No |
+| external_knowledge_api_name | string |  | No |
+| external_knowledge_id | string |  | No |
 
 #### DatasetExternalRetrievalModelResponse
 
@@ -2429,16 +2429,16 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon | string |  | Yes |
+| icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | Yes |
+| icon_type | string |  | No |
 | icon_url | string |  | No |
 
 #### DatasetKeywordSettingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | Yes |
+| keyword_weight | number |  | No |
 
 #### DatasetListQuery
 
@@ -2522,7 +2522,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | Yes |
 | reranking_mode | string |  | No |
-| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | Yes |
+| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | string |  | Yes |
@@ -2566,9 +2566,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | Yes |
-| embedding_provider_name | string |  | Yes |
-| vector_weight | number |  | Yes |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
+| vector_weight | number |  | No |
 
 #### DatasetWeightedScoreResponse
 
@@ -2691,6 +2691,36 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### HitTestingChildChunk
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| score | number |  | Yes |
+
+#### HitTestingDocument
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data_source_type | string |  | Yes |
+| doc_metadata |  |  | Yes |
+| doc_type | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### HitTestingFile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
 #### HitTestingPayload
 
 | Name | Type | Description | Required |
@@ -2699,6 +2729,58 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | external_retrieval_model | object |  | No |
 | query | string |  | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+
+#### HitTestingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+
+#### HitTestingRecord
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
+| files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
+| score | number |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| summary | string |  | Yes |
+| tsne_position |  |  | Yes |
+
+#### HitTestingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
+
+#### HitTestingSegment
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| tokens | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### HumanInputFormSubmitPayload
 

@@ -149,7 +149,7 @@ export function Slider({
       step={step}
       disabled={disabled}
       name={name}
-      thumbAlignment="edge-client-only"
+      thumbAlignment="center"
       className={cn(sliderRootClassName, className)}
     >
       <SliderControl className={slotClassNames?.control}>

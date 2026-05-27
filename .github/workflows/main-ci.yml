@@ -42,6 +42,7 @@ jobs:
     runs-on: depot-ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
+      cli-changed: ${{ steps.changes.outputs.cli }}
       e2e-changed: ${{ steps.changes.outputs.e2e }}
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
@@ -62,6 +63,18 @@ jobs:
               - 'docker/generate_docker_compose'
               - 'docker/ssrf_proxy/**'
               - 'docker/volumes/sandbox/conf/**'
+            cli:
+              - 'cli/**'
+              - 'packages/tsconfig/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - '.npmrc'
+              - '.nvmrc'
+              - '.github/workflows/cli-tests.yml'
+              - '.github/workflows/cli-docker-build.yml'
+              - '.github/actions/setup-web/**'
             web:
               - 'web/**'
               - 'packages/**'
@@ -182,6 +195,66 @@ jobs:
           fi
 
           echo "API tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  cli-tests-run:
+    name: Run CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed == 'true'
+    uses: ./.github/workflows/cli-tests.yml
+    secrets: inherit
+
+  cli-tests-skip:
+    name: Skip CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped CLI tests
+        run: echo "No CLI-related changes detected; skipping CLI tests."
+
+  cli-tests:
+    name: CLI Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - cli-tests-run
+      - cli-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize CLI Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.cli-changed }}
+          RUN_RESULT: ${{ needs.cli-tests-run.result }}
+          SKIP_RESULT: ${{ needs.cli-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "CLI tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "CLI tests ran successfully."
+              exit 0
+            fi
+
+            echo "CLI tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "CLI tests were skipped because no CLI-related files changed."
+            exit 0
+          fi
+
+          echo "CLI tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
           exit 1
 
   web-tests-run:

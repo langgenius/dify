@@ -174,11 +174,11 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @validate_app_token
     @edit_permission_required
-    def put(self, app_model: App, annotation_id: str):
+    def put(self, app_model: App, annotation_id: UUID):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, annotation_id)
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id))
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
@@ -195,7 +195,7 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @validate_app_token
     @edit_permission_required
-    def delete(self, app_model: App, annotation_id: str):
+    def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id))
         return "", 204

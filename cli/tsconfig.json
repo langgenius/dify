@@ -1,0 +1,22 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "~@/*": [
+        "./*"
+      ]
+    },
+    "types": ["node"],
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false,
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "**/*.test.ts"]
+}

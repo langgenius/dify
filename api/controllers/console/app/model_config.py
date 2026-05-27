@@ -16,7 +16,7 @@ from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
-from models.model import AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
 
@@ -52,7 +52,7 @@ class ModelConfigResource(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Modify app model config"""
         current_user, current_tenant_id = current_account_with_tenant()
         # validate config

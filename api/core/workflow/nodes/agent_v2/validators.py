@@ -126,6 +126,7 @@ class WorkflowAgentNodeValidator:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} requires Agent Soul model config."
             )
+        cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -147,14 +148,15 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate output name {output.name}."
                 )
             output_names.add(output.name)
-            for check in output.checks:
-                if check.benchmark_file_ref is not None:
-                    cls._validate_file_ref(
-                        session=session,
-                        binding=binding,
-                        file_ref=check.benchmark_file_ref,
-                        ref_context=f"output {output.name} benchmark file",
-                    )
+            # Stage 4 §4.3: declared output carries a single optional check, gated by
+            # ``check.enabled``. Only enabled checks need their benchmark file resolved.
+            if output.check is not None and output.check.enabled and output.check.benchmark_file_ref is not None:
+                cls._validate_file_ref(
+                    session=session,
+                    binding=binding,
+                    file_ref=output.check.benchmark_file_ref,
+                    ref_context=f"output {output.name} benchmark file",
+                )
 
         for ref in node_job.previous_node_output_refs:
             selector = cls.selector_from_ref(ref)
@@ -278,6 +280,26 @@ class WorkflowAgentNodeValidator:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} references unsupported human contact channel {channel}."
             )
+
+    @classmethod
+    def _validate_agent_soul_tools(
+        cls,
+        *,
+        binding: WorkflowAgentNodeBinding,
+        agent_soul: AgentSoulConfig,
+    ) -> None:
+        exposed_names: set[str] = set()
+        for tool in agent_soul.tools.dify_tools:
+            if not tool.enabled:
+                continue
+            exposed_name = tool.tool_name
+            if exposed_name in exposed_names:
+                raise WorkflowAgentNodeValidationError(
+                    f"Workflow Agent node {binding.node_id} has duplicate Dify Plugin Tool name {exposed_name}."
+                )
+            exposed_names.add(exposed_name)
+        # CLI tools remain saved-but-not-executed. They are allowed at publish
+        # time so existing Agent Soul drafts are not blocked by a reserved field.
 
     @staticmethod
     def _validate_file_ref(

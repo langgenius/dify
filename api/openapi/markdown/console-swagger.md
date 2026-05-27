@@ -3447,6 +3447,89 @@ Run draft workflow
 | 200 | Draft workflow run started successfully |
 | 403 | Permission denied |
 
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
+
+#### GET
+##### Description
+
+Snapshot of every node's declared outputs for a draft workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run not found |
+
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
+
+#### GET
+##### Description
+
+Server-Sent Events stream of inspector deltas for a draft workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run not found |
+
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
+
+#### GET
+##### Description
+
+One node's declared outputs for a draft workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | path | Node ID inside the workflow graph | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run / node not found |
+
+### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
+
+#### GET
+##### Description
+
+Full value for one declared output, including signed download URL for files.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | path | Node ID inside the workflow graph | Yes | string |
+| output_name | path | Declared output name as exposed by Composer | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run / node / output not found |
+
 ### /apps/{app_id}/workflows/draft/system-variables
 
 #### GET
@@ -3683,6 +3766,89 @@ Publish workflow
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
+
+#### GET
+##### Description
+
+Snapshot of every node's declared outputs for a published workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run not found |
+
+### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
+
+#### GET
+##### Description
+
+Server-Sent Events stream of inspector deltas for a published workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run not found |
+
+### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
+
+#### GET
+##### Description
+
+One node's declared outputs for a published workflow run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | path | Node ID inside the workflow graph | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run / node not found |
+
+### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
+
+#### GET
+##### Description
+
+Full value for one declared output of a published run.
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | path | Node ID inside the workflow graph | Yes | string |
+| output_name | path | Declared output name as exposed by Composer | Yes | string |
+| run_id | path | Workflow run ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 404 | Workflow run / node / output not found |
 
 ### /apps/{app_id}/workflows/triggers/webhook
 
@@ -10539,6 +10705,43 @@ Supported icon storage formats for Agent roster entries.
 | skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
 | tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
 
+#### AgentSoulDifyToolConfig
+
+One Dify Plugin Tool configured on Agent Soul.
+
+The API backend prepares this persisted product shape into
+``DifyPluginToolConfig`` before sending a run request to Agent backend.
+``provider_id`` keeps compatibility with existing Agent tool config payloads;
+new callers should send ``plugin_id`` + ``provider`` when available.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_ref | [AgentSoulDifyToolCredentialRef](#agentsouldifytoolcredentialref) |  | No |
+| credential_type | string | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
+| description | string |  | No |
+| enabled | boolean |  | No |
+| name | string |  | No |
+| plugin_id | string |  | No |
+| provider | string |  | No |
+| provider_id | string |  | No |
+| provider_type | string |  | No |
+| runtime_parameters | object |  | No |
+| tool_name | string |  | Yes |
+
+#### AgentSoulDifyToolCredentialRef
+
+Reference to a stored Dify Plugin Tool credential.
+
+Secret values are resolved only at runtime. The legacy ``credential_id``
+field is accepted by :class:`AgentSoulDifyToolConfig` and normalized here so
+old Agent tool payloads can be read while new payloads stay explicit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| provider | string |  | No |
+| type | string | *Enum:* `"provider"`, `"tool"` | No |
+
 #### AgentSoulEnvConfig
 
 | Name | Type | Description | Required |
@@ -10616,7 +10819,7 @@ Reference to model credentials resolved only at runtime.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cli_tools | [ object ] |  | No |
-| dify_tools | [ object ] |  | No |
+| dify_tools | [ [AgentSoulDifyToolConfig](#agentsouldifytoolconfig) ] |  | No |
 
 #### AgentThought
 
@@ -11708,9 +11911,9 @@ Condition detail
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -11721,7 +11924,7 @@ Condition detail
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -11748,9 +11951,9 @@ Condition detail
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -11762,7 +11965,7 @@ Condition detail
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -11790,10 +11993,10 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | Yes |
-| external_knowledge_api_id | string |  | Yes |
-| external_knowledge_api_name | string |  | Yes |
-| external_knowledge_id | string |  | Yes |
+| external_knowledge_api_endpoint | string |  | No |
+| external_knowledge_api_id | string |  | No |
+| external_knowledge_api_name | string |  | No |
+| external_knowledge_id | string |  | No |
 
 #### DatasetExternalRetrievalModelResponse
 
@@ -11816,9 +12019,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon | string |  | Yes |
+| icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | Yes |
+| icon_type | string |  | No |
 | icon_url | string |  | No |
 
 #### DatasetKeywordSetting
@@ -11831,7 +12034,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | Yes |
+| keyword_weight | number |  | No |
 
 #### DatasetListItemResponse
 
@@ -11852,9 +12055,9 @@ Condition detail
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | Yes |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | Yes |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -11866,7 +12069,7 @@ Condition detail
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | Yes |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -12014,7 +12217,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | Yes |
 | reranking_mode | string |  | No |
-| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | Yes |
+| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | string |  | Yes |
@@ -12069,9 +12272,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | Yes |
-| embedding_provider_name | string |  | Yes |
-| vector_weight | number |  | Yes |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
+| vector_weight | number |  | No |
 
 #### DatasetWeightedScore
 
@@ -12153,19 +12356,44 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | DebugPermission | string |  |  |
 
+#### DeclaredArrayItem
+
+Per-item shape for an ``array``-typed declared output.
+
+PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+are rejected so the runtime type checker and JSON Schema stay easy to reason
+about. Stage 4 §4.2.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
+
 #### DeclaredOutputCheckConfig
+
+File-output content check via a model-based comparison against a benchmark file.
+
+Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | benchmark_file_ref | object |  | No |
+| enabled | boolean |  | No |
+| model_ref | object |  | No |
 | prompt | string |  | No |
-| type | string |  | Yes |
 
 #### DeclaredOutputConfig
 
+One declared output of a Workflow Agent Node.
+
+Stage 4 normalizes the shape: ``check`` is singular (was ``checks: list`` in
+stage 3), and ``failure_strategy`` defaults to a populated value so runtime
+code can call ``output.failure_strategy.on_failure`` without None-guards.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| checks | [ [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) ] |  | No |
+| array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
+| check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |
@@ -12176,18 +12404,35 @@ Condition detail
 
 #### DeclaredOutputFailureStrategy
 
+Per-output failure handling.
+
+A single strategy applies to both ``type_check`` and ``output_check`` failures
+(PRD does not distinguish them at the UX level). Stage 4 §4.4.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| max_retries | integer |  | No |
-| on_output_check_failed | string |  | No |
-| on_type_check_failed | string |  | No |
+| default_value |  |  | No |
+| on_failure | [OutputErrorStrategy](#outputerrorstrategy) |  | No |
+| retry | [DeclaredOutputRetryConfig](#declaredoutputretryconfig) |  | No |
 
 #### DeclaredOutputFileConfig
+
+File-type output metadata. Both lists empty means "any file accepted".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | extensions | [ string ] |  | No |
 | mime_types | [ string ] |  | No |
+
+#### DeclaredOutputRetryConfig
+
+Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| max_retries | integer |  | No |
+| retry_interval_ms | integer |  | No |
 
 #### DeclaredOutputType
 
@@ -12806,31 +13051,31 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| id | string |  | No |
-| position | integer |  | No |
-| score | number |  | No |
+| content | string |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| score | number |  | Yes |
 
 #### HitTestingDocument
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source_type | string |  | No |
-| doc_metadata |  |  | No |
-| doc_type | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
+| data_source_type | string |  | Yes |
+| doc_metadata |  |  | Yes |
+| doc_type | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### HitTestingFile
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
 
 #### HitTestingPayload
 
@@ -12841,51 +13086,57 @@ Request payload for bulk downloading documents as a zip archive.
 | query | string |  | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 
+#### HitTestingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+
 #### HitTestingRecord
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | No |
-| files | [ [HitTestingFile](#hittestingfile) ] |  | No |
-| score | number |  | No |
-| segment | [HitTestingSegment](#hittestingsegment) |  | No |
-| summary | string |  | No |
-| tsne_position |  |  | No |
+| child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
+| files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
+| score | number |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| summary | string |  | Yes |
+| tsne_position |  |  | Yes |
 
 #### HitTestingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| query | string |  | Yes |
-| records | [ [HitTestingRecord](#hittestingrecord) ] |  | No |
+| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
 
 #### HitTestingSegment
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
-| completed_at | integer |  | No |
-| content | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| disabled_at | integer |  | No |
-| disabled_by | string |  | No |
-| document | [HitTestingDocument](#hittestingdocument) |  | No |
-| document_id | string |  | No |
-| enabled | boolean |  | No |
-| error | string |  | No |
-| hit_count | integer |  | No |
-| id | string |  | No |
-| index_node_hash | string |  | No |
-| index_node_id | string |  | No |
-| indexing_at | integer |  | No |
-| keywords | [ string ] |  | No |
-| position | integer |  | No |
-| sign_content | string |  | No |
-| status | string |  | No |
-| stopped_at | integer |  | No |
-| tokens | integer |  | No |
-| word_count | integer |  | No |
+| answer | string |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| tokens | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### HumanInputContent
 
@@ -13583,6 +13834,18 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
+
+#### OutputErrorStrategy
+
+Per-output failure handling strategy.
+
+Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of
+a Workflow Agent Node. The runtime applies the strategy after type check or
+output check fails and any configured retry attempts have been exhausted.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OutputErrorStrategy | string | Per-output failure handling strategy.  Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of a Workflow Agent Node. The runtime applies the strategy after type check or output check fails and any configured retry attempts have been exhausted. |  |
 
 #### OwnerTransferCheckPayload
 
