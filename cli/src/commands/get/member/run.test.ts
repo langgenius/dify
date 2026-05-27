@@ -2,7 +2,7 @@ import type { MemberListResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../io/streams.js'
+import { bufferStreams } from '../../../sys/io/streams.js'
 import { runGetMember } from './run.js'
 
 function bundle(): HostsBundle {

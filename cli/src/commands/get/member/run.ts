@@ -1,10 +1,10 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../io/streams.js'
+import type { IOStreams } from '../../../sys/io/streams.js'
 import { MembersClient } from '../../../api/members.js'
-import { runWithSpinner } from '../../../io/spinner.js'
-import { nullStreams } from '../../../io/streams.js'
 import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
+import { runWithSpinner } from '../../../sys/io/spinner.js'
+import { nullStreams } from '../../../sys/io/streams.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { MemberListOutput, MemberRow } from './handlers.js'
 
