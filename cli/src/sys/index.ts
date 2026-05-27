@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -47,68 +48,73 @@ export type Platform = {
   id: () => NodeJS.Platform
   configDir: () => string
   cacheDir: () => string
+  atomicReplace: (src: string, dst: string) => void
 }
 
 export const SUBDIR = 'difyctl'
 export const ENV_XDG_CONFIG_HOME = 'XDG_CONFIG_HOME'
 export const ENV_XDG_CACHE_HOME = 'XDG_CACHE_HOME'
 
-export type ConfigEnvironment = {
-  readonly getEnv: (name: string) => string | undefined
-  readonly homeDir: () => string
-  readonly platform: () => NodeJS.Platform
-  readonly appData: () => string | undefined
+
+function appDataDir(): string | undefined {
+  return getEnv('APPDATA') ?? getEnv('LOCALAPPDATA')
 }
 
-export const realEnvironment: ConfigEnvironment = {
-  getEnv,
-  homeDir: () => homedir(),
-  platform: () => platform(),
-  appData: () => getEnv('APPDATA') ?? getEnv('LOCALAPPDATA'),
+type PlatformFactory = () => Platform
+
+function posixAtomicReplace(src: string, dst: string): void {
+  fs.renameSync(src, dst)
 }
 
-type PlatformFactory = (env: ConfigEnvironment) => Platform
+function win32AtomicReplace(src: string, dst: string): void {
+  try { fs.unlinkSync(dst) } catch { }
+  fs.renameSync(src, dst)
+}
 
 const platformImpls: Partial<Record<NodeJS.Platform, PlatformFactory>> = {
-  linux: env => ({
+  linux: () => ({
     id: () => 'linux',
     configDir: () => {
-      const xdg = env.getEnv(ENV_XDG_CONFIG_HOME)
+      const xdg = getEnv(ENV_XDG_CONFIG_HOME)
       return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(env.homeDir(), '.config', SUBDIR)
     },
     cacheDir: () => {
-      const xdg = env.getEnv(ENV_XDG_CACHE_HOME)
+      const xdg = getEnv(ENV_XDG_CACHE_HOME)
       return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(env.homeDir(), '.cache', SUBDIR)
     },
+    atomicReplace: posixAtomicReplace,
   }),
-  darwin: env => ({
+  darwin: () => ({
     id: () => 'darwin',
-    configDir: () => join(env.homeDir(), '.config', SUBDIR),
-    cacheDir: () => join(env.homeDir(), 'Library', 'Caches', SUBDIR),
+    configDir: () => join(homedir(), '.config', SUBDIR),
+    cacheDir: () => join(homedir(), 'Library', 'Caches', SUBDIR),
+    atomicReplace: posixAtomicReplace,
   }),
-  win32: env => ({
+  win32: () => ({
     id: () => 'win32',
     configDir: () => {
-      const appData = env.appData()
+      const appData = appDataDir()
       if (appData === undefined || appData === '')
         throw new Error('cannot resolve %APPDATA% on Windows')
       return join(appData, SUBDIR)
     },
     cacheDir: () => {
-      const appData = env.appData()
+      const appData = appDataDir()
       if (appData === undefined || appData === '')
         throw new Error('cannot resolve %LOCALAPPDATA% on Windows')
       return join(appData, SUBDIR)
     },
+    atomicReplace: win32AtomicReplace,
   }),
 }
 
-const defaultPlatformFactory: PlatformFactory = env => ({
-  id: () => env.platform(),
-  configDir: () => join(env.homeDir(), '.config', SUBDIR),
-  cacheDir: () => join(env.homeDir(), '.cache', SUBDIR),
+const defaultPlatformFactory: PlatformFactory = () => ({
+  id: () => platform(),
+  configDir: () => join(homedir(), '.config', SUBDIR),
+  cacheDir: () => join(homedir(), '.cache', SUBDIR),
+  atomicReplace: posixAtomicReplace,
 })
 
-export function resolvePlatform(env: ConfigEnvironment): Platform {
-  return (platformImpls[env.platform()] ?? defaultPlatformFactory)(env)
+export function resolvePlatform(): Platform {
+  return (platformImpls[platform()] ?? defaultPlatformFactory)()
 }

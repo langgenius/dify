@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import { dirname } from 'node:path'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
-import { pid } from '../sys'
+import { type Platform, pid, resolvePlatform } from '../sys'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
@@ -20,9 +20,11 @@ export type Store = {
 abstract class FileBasedStore implements Store {
   file_path: string
   raw_content: string | undefined
+  private readonly platform: Platform
 
   constructor(file_path: string) {
     this.file_path = file_path
+    this.platform = resolvePlatform()
   }
 
   protected unlock(): void {
@@ -37,7 +39,7 @@ abstract class FileBasedStore implements Store {
       const tmp = `${this.file_path}.tmp.${pid()}.${Date.now()}`
       try {
         fs.writeFileSync(tmp, this.raw_content, { mode: FILE_PERM })
-        fs.renameSync(tmp, this.file_path)
+        this.platform.atomicReplace(tmp, this.file_path)
       }
       catch (err) {
         try {
