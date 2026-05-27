@@ -2,9 +2,15 @@ import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { loadConfig } from './loader.js'
-import { emptyConfig, FILE_NAME } from './schema.js'
-import { saveConfig } from './writer.js'
+import { loadConfig } from '../config/config-loader'
+import { emptyConfig, FILE_NAME } from '../config/schema'
+import { platform } from '../sys'
+import { saveConfig } from './config-writer'
+import { YamlStore } from './store'
+
+function makeStore(dir: string): YamlStore {
+  return new YamlStore(join(dir, FILE_NAME))
+}
 
 describe('saveConfig', () => {
   let dir: string
@@ -14,26 +20,26 @@ describe('saveConfig', () => {
   })
 
   it('writes config.yml in the target dir', async () => {
-    await saveConfig(dir, { ...emptyConfig(), schema_version: 1 })
+    saveConfig(makeStore(dir), { ...emptyConfig(), schema_version: 1 })
     const stats = await stat(join(dir, FILE_NAME))
     expect(stats.isFile()).toBe(true)
   })
 
-  it('stamps schema_version=1 even if caller passed 0', async () => {
-    await saveConfig(dir, { ...emptyConfig() })
-    const r = await loadConfig(dir)
+  it('stamps schema_version=1 even if caller passed 0', () => {
+    saveConfig(makeStore(dir), { ...emptyConfig() })
+    const r = loadConfig(makeStore(dir))
     expect(r.found).toBe(true)
     if (r.found)
       expect(r.config.schema_version).toBe(1)
   })
 
-  it('round-trips defaults + state through YAML', async () => {
-    await saveConfig(dir, {
+  it('round-trips defaults + state through YAML', () => {
+    saveConfig(makeStore(dir), {
       schema_version: 1,
       defaults: { format: 'wide', limit: 75 },
       state: { current_app: 'app-xyz' },
     })
-    const r = await loadConfig(dir)
+    const r = loadConfig(makeStore(dir))
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).toBe('wide')
@@ -43,32 +49,32 @@ describe('saveConfig', () => {
   })
 
   it('writes file with mode 0o600 (POSIX)', async () => {
-    if (process.platform === 'win32')
+    if (platform() === 'win32')
       return
-    await saveConfig(dir, emptyConfig())
+    saveConfig(makeStore(dir), emptyConfig())
     const s = await stat(join(dir, FILE_NAME))
     expect(s.mode & 0o777).toBe(0o600)
   })
 
   it('does not leave a tmp file on success', async () => {
-    await saveConfig(dir, emptyConfig())
+    saveConfig(makeStore(dir), emptyConfig())
     const entries = await readdir(dir)
     expect(entries.filter(f => f.endsWith('.tmp'))).toHaveLength(0)
     expect(entries.filter(f => f.includes('.tmp.'))).toHaveLength(0)
   })
 
   it('creates parent dir at 0o700 if absent', async () => {
-    if (process.platform === 'win32')
+    if (platform() === 'win32')
       return
     const nested = join(dir, 'nested', 'sub')
-    await saveConfig(nested, emptyConfig())
+    saveConfig(makeStore(nested), emptyConfig())
     const s = await stat(nested)
     expect(s.isDirectory()).toBe(true)
     expect(s.mode & 0o777).toBe(0o700)
   })
 
   it('emits parseable YAML (round-trip via fs.readFile + js-yaml)', async () => {
-    await saveConfig(dir, {
+    saveConfig(makeStore(dir), {
       schema_version: 1,
       defaults: { format: 'json' },
       state: {},

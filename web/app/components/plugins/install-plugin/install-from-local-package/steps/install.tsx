@@ -116,7 +116,7 @@ const Installed: FC<Props> = ({
 
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           <p>
