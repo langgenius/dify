@@ -91,7 +91,7 @@ function DeleteInstanceButton({
   return (
     <>
       <Button
-        variant="primary"
+        variant="secondary"
         tone="destructive"
         disabled={deleteInstance.isPending}
         onClick={() => setShowDeleteConfirm(true)}
@@ -108,6 +108,21 @@ function DeleteInstanceButton({
             <AlertDialogDescription className="system-md-regular text-text-tertiary">
               {t('settings.deleteConfirmDesc', { name: appName })}
             </AlertDialogDescription>
+            <div className="rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 px-3 py-3">
+              <div className="system-xs-semibold-uppercase text-util-colors-red-red-700">
+                {t('settings.deleteImpactTitle')}
+              </div>
+              <dl className="mt-2 grid gap-1.5 system-sm-regular">
+                <div className="flex min-w-0 justify-between gap-3">
+                  <dt className="shrink-0 text-util-colors-red-red-600">{t('createGuide.review.instance')}</dt>
+                  <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{appName}</dd>
+                </div>
+                <div className="flex min-w-0 justify-between gap-3">
+                  <dt className="shrink-0 text-util-colors-red-red-600">{t('settings.deleteImpact')}</dt>
+                  <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{t('settings.deleteImpactValue')}</dd>
+                </div>
+              </dl>
+            </div>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton variant="secondary">

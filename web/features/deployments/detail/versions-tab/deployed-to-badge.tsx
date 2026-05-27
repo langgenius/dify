@@ -32,7 +32,9 @@ export function DeployedToBadge({ item }: {
               : item.state === 'failed'
                 ? <span className="i-ri-alert-line size-3.5" />
                 : <span className="size-1.5 rounded-full bg-current" />}
-            {item.environmentName}
+            <span>{item.environmentName}</span>
+            <span className="opacity-70">·</span>
+            <span>{statusLabel}</span>
           </span>
         )}
       />

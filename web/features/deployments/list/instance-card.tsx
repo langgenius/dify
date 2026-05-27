@@ -18,6 +18,8 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { EnvironmentDeploymentBadge } from '../deployment-ui'
+import { deploymentStatusLabelKey } from '../deployment-ui-utils'
 import { CreateReleaseControl } from '../detail/versions-tab/create-release-control'
 import { environmentName } from '../environment'
 import { formatDate, releaseLabel } from '../release'
@@ -41,61 +43,6 @@ function hasEnvironment(row: EnvironmentDeployment) {
 
 function isActiveDeployment(row: EnvironmentDeployment) {
   return hasEnvironment(row) && !isUndeployedDeploymentRow(row)
-}
-
-function deploymentChipClasses(row: EnvironmentDeployment) {
-  const status = deploymentStatus(row)
-  if (status === 'deploy_failed') {
-    return {
-      container: 'bg-util-colors-red-red-50 text-util-colors-red-red-700',
-      dot: 'bg-util-colors-red-red-500',
-    }
-  }
-  if (status === 'deploying') {
-    return {
-      container: 'bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
-      dot: 'bg-util-colors-warning-warning-500 animate-pulse',
-    }
-  }
-  if (status === 'drifted') {
-    return {
-      container: 'bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
-      dot: 'bg-util-colors-warning-warning-500',
-    }
-  }
-  if (status === 'invalid') {
-    return {
-      container: 'bg-util-colors-red-red-50 text-util-colors-red-red-700',
-      dot: 'bg-util-colors-red-red-500',
-    }
-  }
-  if (status === 'ready') {
-    return {
-      container: 'bg-util-colors-green-green-50 text-util-colors-green-green-700',
-      dot: 'bg-util-colors-green-green-500',
-    }
-  }
-  return {
-    container: 'bg-background-section-burn text-text-tertiary',
-    dot: 'bg-text-quaternary',
-  }
-}
-
-function statusLabel(row: EnvironmentDeployment, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
-  const status = deploymentStatus(row)
-  if (status === 'deploy_failed')
-    return t('status.deployFailed')
-  if (status === 'deploying')
-    return t('status.deploying')
-  if (status === 'ready')
-    return t('status.ready')
-  if (status === 'drifted')
-    return t('status.drifted')
-  if (status === 'invalid')
-    return t('status.invalid')
-  if (status === 'not_deployed')
-    return t('status.notDeployed')
-  return t('status.unknown')
 }
 
 function pickLatestRelease(rows: Release[]): Release | undefined {
@@ -160,29 +107,20 @@ function EnvironmentChip({ row }: {
 }) {
   const { t } = useTranslation('deployments')
   const name = environmentName(row.environment)
-  const classes = deploymentChipClasses(row)
+  const status = deploymentStatus(row)
 
   return (
     <Tooltip>
       <TooltipTrigger
         render={(
-          <span
-            className={cn(
-              'inline-flex h-5 max-w-32 cursor-default items-center gap-1 rounded-md px-1.5 system-xs-medium',
-              classes.container,
-            )}
-            title={name}
-          >
-            <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', classes.dot)} />
-            <span className="truncate">{name}</span>
-          </span>
+          <EnvironmentDeploymentBadge row={row} className="max-w-44" />
         )}
       />
       <TooltipContent>
         <div className="flex min-w-40 flex-col gap-1">
           <div className="flex justify-between gap-3">
             <span className="truncate text-text-secondary">{name}</span>
-            <span className="shrink-0">{statusLabel(row, t)}</span>
+            <span className="shrink-0">{t(deploymentStatusLabelKey(status))}</span>
           </div>
           {row.currentRelease?.id && (
             <div className="flex justify-between gap-3 text-text-tertiary">
@@ -215,7 +153,7 @@ function EnvironmentOverflow({ rows }: {
           {rows.map(row => (
             <div key={row.environment?.id} className="flex justify-between gap-3">
               <span className="truncate text-text-secondary">{environmentName(row.environment)}</span>
-              <span className="shrink-0">{statusLabel(row, t)}</span>
+              <span className="shrink-0">{t(deploymentStatusLabelKey(deploymentStatus(row)))}</span>
             </div>
           ))}
         </div>
@@ -402,7 +340,7 @@ export function InstanceCard({ app }: {
 
   return (
     <div
-      className="group relative col-span-1 inline-flex h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:shadow-lg"
+      className="group relative col-span-1 inline-flex min-h-44 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <Link
@@ -433,7 +371,7 @@ export function InstanceCard({ app }: {
               )}
         </Link>
 
-        <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-7 px-4 pt-1">
+        <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-8 px-4 pt-2">
           <DeploymentStatusContent
             rows={activeDeploymentRows}
             isLoading={statusIsLoading}
@@ -453,7 +391,7 @@ export function InstanceCard({ app }: {
           />
         </div>
 
-        <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
+        <div className="mt-auto flex min-h-11 min-w-0 items-center gap-3 border-t border-divider-subtle px-4 py-2">
           {showFooterCreateReleaseAction
             ? (
                 <div className="-ml-2 flex min-w-0 grow items-center">
@@ -469,7 +407,7 @@ export function InstanceCard({ app }: {
           <ReleaseMetaTooltip release={latestRelease} deployed={latestReleaseDeployed}>
             <Link
               href={latestRelease ? getInstanceTabHref(appInstanceId, 'releases') : getInstanceTabHref(appInstanceId, 'instances')}
-              className="min-w-0 shrink-0 truncate text-right system-xs-regular text-text-tertiary hover:text-text-secondary"
+              className="min-w-0 shrink truncate text-right system-xs-medium text-text-secondary hover:text-text-primary"
             >
               {releaseMeta}
             </Link>

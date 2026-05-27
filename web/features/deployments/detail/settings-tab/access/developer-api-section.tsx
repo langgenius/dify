@@ -134,6 +134,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
 export function DeveloperApiHeaderSwitch({ appInstanceId }: {
   appInstanceId: string
 }) {
+  const { t } = useTranslation('deployments')
   const {
     apiEnabled,
     isLoading,
@@ -144,11 +145,16 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
     return <SwitchSkeleton />
 
   return (
-    <DeveloperApiSwitch
-      appInstanceId={appInstanceId}
-      checked={apiEnabled}
-      disabled={isError}
-    />
+    <div className="flex items-center gap-2">
+      <span className="system-xs-medium text-text-tertiary">
+        {apiEnabled ? t('overview.enabled') : t('overview.disabled')}
+      </span>
+      <DeveloperApiSwitch
+        appInstanceId={appInstanceId}
+        checked={apiEnabled}
+        disabled={isError}
+      />
+    </div>
   )
 }
 
@@ -207,7 +213,7 @@ function CurlExample({ apiUrl, token }: {
           <span className={cn(copied ? 'i-ri-check-line' : 'i-ri-file-copy-line', 'size-3.5')} />
         </button>
       </div>
-      <pre className="max-h-40 overflow-auto whitespace-pre py-3 px-3 font-mono system-xs-regular text-text-secondary">
+      <pre className="max-h-40 overflow-auto px-3 py-3 font-mono system-xs-regular whitespace-pre text-text-secondary">
         <code>{curlExample}</code>
       </pre>
     </div>
@@ -389,9 +395,21 @@ export function DeveloperApiSection({
                   {apiKeys.length === 0
                     ? (
                         <SectionState>
-                          {environments.length === 0
-                            ? t('access.api.empty')
-                            : t('access.api.noKeys')}
+                          <div className="flex flex-col items-center gap-3">
+                            <span>
+                              {environments.length === 0
+                                ? t('access.api.empty')
+                                : t('access.api.noKeys')}
+                            </span>
+                            {environments.length > 0 && (
+                              <ApiKeyGenerateMenu
+                                appInstanceId={appInstanceId}
+                                environments={environments}
+                                apiKeys={apiKeys}
+                                onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+                              />
+                            )}
+                          </div>
                         </SectionState>
                       )
                     : (

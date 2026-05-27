@@ -143,11 +143,16 @@ export function AccessChannelsSection({
         isLoading
           ? <SwitchSkeleton />
           : (
-              <AccessChannelsSwitch
-                appInstanceId={appInstanceId}
-                checked={runEnabled}
-                disabled={isError}
-              />
+              <div className="flex items-center gap-2">
+                <span className="system-xs-medium text-text-tertiary">
+                  {runEnabled ? t('overview.enabled') : t('overview.disabled')}
+                </span>
+                <AccessChannelsSwitch
+                  appInstanceId={appInstanceId}
+                  checked={runEnabled}
+                  disabled={isError}
+                />
+              </div>
             )
       )}
     >

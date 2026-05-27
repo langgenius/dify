@@ -3,7 +3,15 @@ import type { Release } from '@dify/contracts/enterprise/types.gen'
 export function formatDate(value?: string) {
   if (!value)
     return '—'
-  return value.replace('T', ' ').replace(/\.\d+Z?$/, '').replace(/Z$/, '').slice(0, 16)
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()))
+    return value.replace('T', ' ').replace(/\.\d+Z?$/, '').replace(/Z$/, '').slice(0, 16)
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
 }
 
 export function releaseLabel(release?: Release) {

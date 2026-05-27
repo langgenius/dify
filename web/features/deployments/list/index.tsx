@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
@@ -15,13 +16,13 @@ import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
 import { InstanceCard } from './instance-card'
 import {
+  ALL_ENVIRONMENTS_FILTER_VALUE,
   envFilterQueryState,
   environmentIdFromFilterValue,
   keywordsQueryState,
 } from './query-state'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
-const EMPTY_INSTANCE_CARD_KEYS = Array.from({ length: 36 }, (_, index) => `empty-instance-card-${index}`)
 
 function DeploymentsListState({ children }: {
   children: ReactNode
@@ -35,21 +36,38 @@ function DeploymentsListState({ children }: {
 
 function DeploymentsListEmpty() {
   const { t } = useTranslation('deployments')
+  const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
+  const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
+  const hasFilter = Boolean(keywords.trim()) || envFilter !== ALL_ENVIRONMENTS_FILTER_VALUE
+
+  function clearFilters() {
+    void setKeywords(null)
+    void setEnvFilter(ALL_ENVIRONMENTS_FILTER_VALUE)
+  }
 
   return (
-    <>
-      {EMPTY_INSTANCE_CARD_KEYS.map(key => (
-        <div
-          key={key}
-          className="inline-flex h-40 rounded-xl bg-background-default-lighter"
-        />
-      ))}
-      <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-linear-to-t from-background-body to-transparent">
-        <span className="system-md-medium text-text-tertiary">
-          {t('list.empty')}
+    <div className="col-span-full flex min-h-80 items-center justify-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur px-6 py-12 text-center">
+      <div className="flex max-w-100 flex-col items-center gap-4">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary">
+          <span className="i-ri-rocket-line size-5" aria-hidden="true" />
         </span>
+        <div className="flex flex-col gap-1">
+          <h2 className="system-md-semibold text-text-primary">
+            {hasFilter ? t('list.emptyFilteredTitle') : t('list.emptyTitle')}
+          </h2>
+          <p className="system-sm-regular text-text-tertiary">
+            {hasFilter ? t('list.emptyFilteredDescription') : t('list.emptyDescription')}
+          </p>
+        </div>
+        {hasFilter
+          ? (
+              <Button variant="secondary" size="small" onClick={clearFilters}>
+                {t('list.clearFilters')}
+              </Button>
+            )
+          : <CreateDeploymentButton />}
       </div>
-    </>
+    </div>
   )
 }
 
@@ -125,8 +143,8 @@ function DeploymentsSearchInput() {
 
 function DeploymentsListControls() {
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 bg-background-body px-12 pt-7 pb-5">
-      <div className="flex items-center gap-2">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 bg-background-body px-4 pt-5 pb-4 sm:px-6 lg:px-12 lg:pt-7 lg:pb-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <EnvironmentFilter />
         <DeploymentsSearchInput />
       </div>
@@ -200,7 +218,7 @@ export function DeploymentsList() {
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         <DeploymentsListControls />
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5',
+          'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 2k:grid-cols-6 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-12 xl:grid-cols-4 2xl:grid-cols-5',
           showEmptyState && 'overflow-hidden',
         )}
         >

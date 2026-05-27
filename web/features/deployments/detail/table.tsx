@@ -9,11 +9,11 @@ export function DetailTable({ className, containerClassName, ...props }: DetailT
   return (
     <div
       data-slot="deployment-detail-table-container"
-      className={cn('relative w-full overflow-x-auto', containerClassName)}
+      className={cn('relative w-full pc:overflow-x-auto', containerClassName)}
     >
       <table
         data-slot="deployment-detail-table"
-        className={cn('w-full max-w-full min-w-[700px] caption-bottom border-collapse border-0 text-sm', className)}
+        className={cn('w-full max-w-full min-w-0 caption-bottom border-collapse border-0 text-sm pc:min-w-[700px]', className)}
         {...props}
       />
     </div>

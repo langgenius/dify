@@ -1,6 +1,10 @@
 'use client'
 
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+} from '@langgenius/dify-ui/dialog'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
@@ -26,18 +30,20 @@ export function DeployDrawer() {
       open={open}
       onOpenChange={next => !next && closeDeployDrawer()}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-140 max-w-[90vw] overflow-hidden">
-        <DialogCloseButton />
-        {!drawerAppInstanceId
-          ? <div className="p-4 text-text-tertiary">{t('deployDrawer.notFound')}</div>
-          : (
-              <DeployForm
-                key={formKey}
-                appInstanceId={drawerAppInstanceId}
-                lockedEnvId={drawerEnvironmentId}
-                presetReleaseId={drawerReleaseId}
-              />
-            )}
+      <DialogContent className="w-140 max-w-[calc(100vw-32px)] overflow-hidden p-0">
+        <DialogCloseButton aria-label={t('deployDrawer.close')} />
+        <div className="max-h-[calc(100vh-120px)] overflow-y-auto p-5 sm:p-6">
+          {!drawerAppInstanceId
+            ? <div className="p-4 text-text-tertiary">{t('deployDrawer.notFound')}</div>
+            : (
+                <DeployForm
+                  key={formKey}
+                  appInstanceId={drawerAppInstanceId}
+                  lockedEnvId={drawerEnvironmentId}
+                  presetReleaseId={drawerReleaseId}
+                />
+              )}
+        </div>
       </DialogContent>
     </Dialog>
   )

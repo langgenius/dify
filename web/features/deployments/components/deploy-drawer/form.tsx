@@ -19,7 +19,7 @@ import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
 import { environmentBackend, environmentId, environmentMode, environmentName } from '../../environment'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
-import { releaseCommit, releaseLabel } from '../../release'
+import { formatDate, releaseCommit, releaseLabel } from '../../release'
 import { releaseDeploymentAction } from '../../release-action'
 import { hasRuntimeInstanceDeployment, isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
@@ -277,7 +277,7 @@ function DeployReadyForm({
                     <span className="shrink-0 system-xs-regular text-text-tertiary">·</span>
                     <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">{releaseCommit(displayedRelease)}</span>
                   </div>
-                  <span className="shrink-0 system-xs-regular text-text-quaternary">{displayedRelease.createdAt}</span>
+                  <span className="shrink-0 system-xs-regular text-text-quaternary">{formatDate(displayedRelease.createdAt)}</span>
                 </div>
                 <span className="system-xs-regular text-text-tertiary">
                   {t('deployDrawer.existingReleaseHint')}
