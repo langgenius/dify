@@ -30,6 +30,8 @@ from services.data_migration.report_service import MigrationReportService
 ID_STRATEGY_CHOICES = ["preserve-id", "generate-new-id", "map-id"]
 CONFLICT_STRATEGY_CHOICES = ["fail", "skip", "update", "replace"]
 SUPPORTED_WIZARD_APP_MODES = ["workflow", "advanced-chat"]
+WizardToolMap = dict[str, dict[str, str | None]]
+WizardToolSelection = dict[str, list[str]]
 
 
 @click.command("export-migration-data", help="Export workflow migration data to a versioned JSON package.")
@@ -270,8 +272,8 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
     return app_ids
 
 
-def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> dict[str, set[str]]:
-    auto_tools = {"api_tools": set(), "workflow_tools": set(), "mcp_tools": set()}
+def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> WizardToolMap:
+    auto_tools: WizardToolMap = {"api_tools": {}, "workflow_tools": {}, "mcp_tools": {}}
     if not include_referenced_tools:
         return auto_tools
     discovery_service = DependencyDiscoveryService()
@@ -281,39 +283,36 @@ def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> dic
         dsl = raw_dsl if isinstance(raw_dsl, dict) else {}
         for dependency in discovery_service.discover_from_dsl(dsl):
             if dependency.kind == DependencyKind.API_TOOL:
-                auto_tools["api_tools"].add(dependency.provider_id)
-                if dependency.provider_name:
-                    auto_tools["api_tools"].add(dependency.provider_name)
+                auto_tools["api_tools"][dependency.provider_name or dependency.provider_id] = dependency.provider_id
             elif dependency.kind == DependencyKind.WORKFLOW_TOOL:
-                auto_tools["workflow_tools"].add(dependency.provider_id)
-                if dependency.provider_name:
-                    auto_tools["workflow_tools"].add(dependency.provider_name)
+                auto_tools["workflow_tools"][
+                    dependency.provider_name or dependency.provider_id
+                ] = dependency.provider_id
             elif dependency.kind == DependencyKind.MCP_TOOL:
-                auto_tools["mcp_tools"].add(dependency.provider_id)
-                if dependency.provider_name:
-                    auto_tools["mcp_tools"].add(dependency.provider_name)
+                auto_tools["mcp_tools"][dependency.provider_name or dependency.provider_id] = dependency.provider_id
     return auto_tools
 
 
-def _print_auto_tools(auto_tools: dict[str, set[str]]) -> None:
+def _print_auto_tools(auto_tools: WizardToolMap) -> None:
     click.echo("Automatically discovered tools:")
     _print_auto_tool_category("Custom API tools", auto_tools["api_tools"])
     _print_auto_tool_category("Workflow tools", auto_tools["workflow_tools"])
     _print_auto_tool_category("MCP tools", auto_tools["mcp_tools"])
 
 
-def _print_auto_tool_category(label: str, values: set[str]) -> None:
+def _print_auto_tool_category(label: str, values: dict[str, str | None]) -> None:
     click.echo(label)
     if not values:
         click.echo("- none")
         return
-    for value in sorted(values):
-        click.echo(f"- {value}")
+    for name, identifier in sorted(values.items()):
+        click.echo(f"- {_format_tool_name_id(name, identifier)}")
 
 
-def _prompt_additional_tools(tenant_id: str, auto_tools: dict[str, set[str]]) -> dict[str, list[str]]:
+def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> WizardToolSelection:
     selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
     if not click.confirm("Export additional tools manually?", default=False):
+        _print_final_tool_selection(auto_tools, selections)
         return selections
     selections["api_tools"] = _prompt_tool_category(
         "Custom API tools",
@@ -323,7 +322,7 @@ def _prompt_additional_tools(tenant_id: str, auto_tools: dict[str, set[str]]) ->
                 sa.select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).order_by(ApiToolProvider.name)
             ).all()
         ],
-        auto_values=auto_tools["api_tools"],
+        auto_tools=auto_tools["api_tools"],
     )
     selections["workflow_tools"] = _prompt_tool_category(
         "Workflow tools",
@@ -335,7 +334,7 @@ def _prompt_additional_tools(tenant_id: str, auto_tools: dict[str, set[str]]) ->
                 .order_by(WorkflowToolProvider.name)
             ).all()
         ],
-        auto_values=auto_tools["workflow_tools"],
+        auto_tools=auto_tools["workflow_tools"],
     )
     selections["mcp_tools"] = _prompt_tool_category(
         "MCP tools",
@@ -345,23 +344,57 @@ def _prompt_additional_tools(tenant_id: str, auto_tools: dict[str, set[str]]) ->
                 sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
             ).all()
         ],
-        auto_values=auto_tools["mcp_tools"],
+        auto_tools=auto_tools["mcp_tools"],
     )
+    _print_final_tool_selection(auto_tools, selections)
     return selections
 
 
-def _prompt_tool_category(label: str, options: list[tuple[str, str, str]], *, auto_values: set[str]) -> list[str]:
+def _prompt_tool_category(
+    label: str,
+    options: list[tuple[str, str, str]],
+    *,
+    auto_tools: dict[str, str | None],
+) -> list[str]:
     if not options:
         click.echo(f"{label}: none")
         return []
     click.echo(label)
     for index, (value, name, detail) in enumerate(options, 1):
-        marker = "[auto]" if value in auto_values or detail in auto_values else "[ ]"
+        marker = "[auto]" if _is_auto_tool(value, name, detail, auto_tools) else "[ ]"
         click.echo(f"{index}. {marker} {name} ({detail})")
     raw = click.prompt(f"Select {label.lower()} by number, all, or empty", default="", show_default=False)
     if not raw.strip():
         return []
     return parse_index_selection(raw, [value for value, _, _ in options])
+
+
+def _is_auto_tool(value: str, name: str, detail: str, auto_tools: dict[str, str | None]) -> bool:
+    return name in auto_tools or value in auto_tools or detail in auto_tools.values()
+
+
+def _print_final_tool_selection(auto_tools: WizardToolMap, additional_tools: WizardToolSelection) -> None:
+    click.echo("Final tools to export:")
+    _print_final_tool_category("Custom API tools", auto_tools["api_tools"], additional_tools["api_tools"])
+    _print_final_tool_category("Workflow tools", auto_tools["workflow_tools"], additional_tools["workflow_tools"])
+    _print_final_tool_category("MCP tools", auto_tools["mcp_tools"], additional_tools["mcp_tools"])
+
+
+def _print_final_tool_category(label: str, auto_tools: dict[str, str | None], manual_values: list[str]) -> None:
+    click.echo(label)
+    lines = [f"- [auto] {_format_tool_name_id(name, identifier)}" for name, identifier in sorted(auto_tools.items())]
+    lines.extend(f"- [manual] {value}" for value in manual_values if value not in auto_tools)
+    if not lines:
+        click.echo("- none")
+        return
+    for line in lines:
+        click.echo(line)
+
+
+def _format_tool_name_id(name: str, identifier: str | None) -> str:
+    if identifier and identifier != name:
+        return f"{name}: {identifier}"
+    return name
 
 
 def _confirm_wizard_summary(
