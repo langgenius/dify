@@ -12,7 +12,7 @@ from controllers.openapi.auth.prepare import (
     load_tenant,
     resolve_external_user,
 )
-from libs.oauth_bearer import Scope, TokenType
+from libs.oauth_bearer import TokenType
 
 
 def _make_auth_data(**kwargs) -> AuthData:
