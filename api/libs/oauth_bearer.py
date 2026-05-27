@@ -61,6 +61,7 @@ class Scope(StrEnum):
     APPS_READ_PERMITTED_EXTERNAL = "apps:read:permitted-external"
     APPS_RUN = "apps:run"
     WORKSPACE_READ = "workspace:read"
+    WORKSPACE_WRITE = "workspace:write"
 
 
 class Accepts(StrEnum):

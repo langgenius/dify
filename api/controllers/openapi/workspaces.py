@@ -38,16 +38,8 @@ from controllers.openapi._models import (
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.role_gate import require_workspace_role
-from controllers.openapi.auth.surface_gate import accept_subjects
 from extensions.ext_database import db
-from libs.oauth_bearer import (
-    ACCEPT_USER_ANY,
-    Scope,
-    SubjectType,
-    TokenType,
-    get_auth_ctx,
-    validate_bearer,
-)
+from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -160,21 +152,17 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role()
-    def post(self, workspace_id: str):
-        ctx = get_auth_ctx()
-        account = _load_account(ctx.account_id)
+    def post(self, workspace_id: str, *, auth_data: AuthData):
+        account = _load_account(auth_data.account_id)
 
         try:
             TenantService.switch_tenant(account, workspace_id)
         except AccountNotLinkTenantError:
-            # Membership existed at gate time but Tenant.status != NORMAL or
-            # the row was just removed — treat as not-found.
             raise NotFound("workspace not found")
 
-        row = TenantService.find_workspace_for_account(db.session, str(ctx.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
@@ -191,20 +179,15 @@ class WorkspaceMembersApi(Resource):
 
     @openapi_ns.doc(params=query_params_from_model(MemberListQuery))
     @openapi_ns.response(200, "Member list", openapi_ns.models[MemberListResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role()
-    def get(self, workspace_id: str):
+    def get(self, workspace_id: str, *, auth_data: AuthData):
         try:
             query = MemberListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise BadRequest(str(exc))
 
         tenant = _load_tenant(workspace_id)
-        # Members per workspace are bounded by SaaS plan caps (≤50) or EE
-        # license seats (low thousands worst-case), so we materialize and
-        # slice in-memory rather than push pagination into the service —
-        # matches how the rest of the service exposes member lists.
         members = TenantService.get_tenant_members(tenant)
         total = len(members)
         start = (query.page - 1) * query.limit
@@ -219,13 +202,11 @@ class WorkspaceMembersApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[MemberInvitePayload.__name__])
     @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
-    def post(self, workspace_id: str):
+    def post(self, workspace_id: str, *, auth_data: AuthData):
         payload = _validate_body(MemberInvitePayload)
-        ctx = get_auth_ctx()
-        inviter = _load_account(ctx.account_id)
+        inviter = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
 
         _check_member_invite_quota(str(tenant.id))
@@ -272,12 +253,10 @@ class WorkspaceMemberApi(Resource):
     """
 
     @openapi_ns.response(200, "Member removed", openapi_ns.models[MemberActionResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
-    def delete(self, workspace_id: str, member_id: str):
-        ctx = get_auth_ctx()
-        operator = _load_account(ctx.account_id)
+    def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
+        operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
@@ -305,13 +284,11 @@ class WorkspaceMemberRoleApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[MemberRoleUpdatePayload.__name__])
     @openapi_ns.response(200, "Role updated", openapi_ns.models[MemberActionResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
-    def put(self, workspace_id: str, member_id: str):
+    def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         payload = _validate_body(MemberRoleUpdatePayload)
-        ctx = get_auth_ctx()
-        operator = _load_account(ctx.account_id)
+        operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
