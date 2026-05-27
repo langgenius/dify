@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { isUndeployedDeploymentRow } from '../runtime-status'
 import { Section, SectionState } from './common'
 
 type AppInstanceWithId = AppInstance & { id: string }
@@ -49,32 +48,23 @@ function SettingsFormSkeleton() {
 
 function DeleteInstanceSkeleton() {
   return (
-    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
-      <SkeletonRectangle className="h-3 w-3/5 animate-pulse" />
-      <SkeletonRow className="items-center justify-between gap-2">
-        <SkeletonRectangle className="h-3 w-48 animate-pulse" />
-        <SkeletonRectangle className="my-0 h-8 w-18 animate-pulse rounded-lg" />
-      </SkeletonRow>
+    <div className="flex min-h-9 items-center">
+      <SkeletonRectangle className="my-0 h-8 w-18 animate-pulse rounded-lg" />
     </div>
   )
 }
 
-type DeleteInstanceControlProps = {
-  app: AppInstanceWithId
-  hasDeployments: boolean
-}
-
 function DeleteInstanceButton({
   app,
-  hasDeployments,
-}: DeleteInstanceControlProps) {
+}: {
+  app: AppInstanceWithId
+}) {
   const { t } = useTranslation('deployments')
   const router = useRouter()
   const deleteInstance = useMutation(consoleQuery.enterprise.appInstanceService.deleteAppInstance.mutationOptions())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const appInstanceId = app.id
   const appName = app.name ?? appInstanceId
-  const canDelete = !hasDeployments
 
   const handleDelete = () => {
     deleteInstance.mutate(
@@ -103,7 +93,7 @@ function DeleteInstanceButton({
       <Button
         variant="primary"
         tone="destructive"
-        disabled={!canDelete || deleteInstance.isPending}
+        disabled={deleteInstance.isPending}
         onClick={() => setShowDeleteConfirm(true)}
       >
         {t('settings.delete')}
@@ -130,27 +120,6 @@ function DeleteInstanceButton({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
-}
-
-function DeleteInstanceControl({
-  app,
-  hasDeployments,
-}: DeleteInstanceControlProps) {
-  const { t } = useTranslation('deployments')
-
-  return (
-    <div className="flex min-h-9 flex-col gap-3 sm:flex-row sm:items-center sm:gap-x-3">
-      <div className="system-xs-regular text-text-secondary">
-        {hasDeployments
-          ? t('settings.undeployFirst')
-          : t('settings.safeToDelete')}
-      </div>
-      <DeleteInstanceButton
-        app={app}
-        hasDeployments={hasDeployments}
-      />
-    </div>
   )
 }
 
@@ -335,13 +304,9 @@ function DeleteInstanceControlSection({ appInstanceId }: {
   const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: appInput,
   }))
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: appInput,
-  }))
-  const environmentDeployments = environmentDeploymentsQuery.data
   const app = instanceQuery.data?.appInstance
 
-  if (instanceQuery.isLoading || environmentDeploymentsQuery.isLoading) {
+  if (instanceQuery.isLoading) {
     return (
       <DangerSection>
         <DeleteInstanceSkeleton />
@@ -349,7 +314,7 @@ function DeleteInstanceControlSection({ appInstanceId }: {
     )
   }
 
-  if (instanceQuery.isError || environmentDeploymentsQuery.isError) {
+  if (instanceQuery.isError) {
     return (
       <DangerSection>
         <SectionState>{t('common.loadFailed')}</SectionState>
@@ -365,7 +330,6 @@ function DeleteInstanceControlSection({ appInstanceId }: {
     )
   }
 
-  const hasDeployments = environmentDeployments?.data?.some(row => Boolean(row.environment?.id) && !isUndeployedDeploymentRow(row)) ?? false
   const appWithId = {
     ...app,
     id: app.id,
@@ -373,9 +337,8 @@ function DeleteInstanceControlSection({ appInstanceId }: {
 
   return (
     <DangerSection>
-      <DeleteInstanceControl
+      <DeleteInstanceButton
         app={appWithId}
-        hasDeployments={hasDeployments}
       />
     </DangerSection>
   )
