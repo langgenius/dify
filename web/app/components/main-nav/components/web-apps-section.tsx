@@ -1,5 +1,6 @@
 'use client'
 
+import type { InstalledApp } from '@/models/explore'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -19,8 +20,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 import SearchInput from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { usePathname } from '@/next/navigation'
@@ -28,6 +30,7 @@ import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/s
 
 const appNavItemHeight = 32
 const appNavItemGap = 2
+const appNavSeparatorHeight = 17
 const virtualizationThreshold = 50
 const webAppSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const webAppSkeletonWidths = ['w-24', 'w-32', 'w-20', 'w-28', 'w-36']
@@ -47,6 +50,17 @@ function WebAppsSkeleton() {
     </div>
   )
 }
+
+type WebAppListRow
+  = | {
+    key: string
+    kind: 'app'
+    app: InstalledApp
+  }
+  | {
+    key: string
+    kind: 'separator'
+  }
 
 const WebAppsSection = () => {
   const { t } = useTranslation()
@@ -69,13 +83,35 @@ const WebAppsSection = () => {
 
     return installedApps.filter(item => item.app.name.toLowerCase().includes(normalizedSearch))
   }, [installedApps, searchText])
-  const shouldVirtualize = filteredApps.length > virtualizationThreshold
+  const webAppRows = useMemo<WebAppListRow[]>(() => {
+    const pinnedAppsCount = filteredApps.filter(({ is_pinned }) => is_pinned).length
+
+    return filteredApps.flatMap((app, index) => {
+      const rows: WebAppListRow[] = [
+        {
+          key: app.id,
+          kind: 'app',
+          app,
+        },
+      ]
+
+      if (index === pinnedAppsCount - 1 && index !== filteredApps.length - 1) {
+        rows.push({
+          key: `${app.id}-separator`,
+          kind: 'separator',
+        })
+      }
+
+      return rows
+    })
+  }, [filteredApps])
+  const shouldVirtualize = webAppRows.length > virtualizationThreshold
 
   const rowVirtualizer = useVirtualizer({
-    count: filteredApps.length,
-    estimateSize: () => appNavItemHeight,
+    count: webAppRows.length,
+    estimateSize: index => webAppRows[index]?.kind === 'separator' ? appNavSeparatorHeight : appNavItemHeight,
     gap: appNavItemGap,
-    getItemKey: index => filteredApps[index]?.id ?? index,
+    getItemKey: index => webAppRows[index]?.key ?? index,
     getScrollElement: () => scrollRef.current,
     overscan: 6,
     paddingEnd: 8,
@@ -116,6 +152,12 @@ const WebAppsSection = () => {
       }}
     />
   )
+  const renderRow = (row: WebAppListRow) => {
+    if (row.kind === 'separator')
+      return <Divider />
+
+    return renderAppNavItem(row.app)
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -163,7 +205,7 @@ const WebAppsSection = () => {
             className="overflow-x-hidden"
             role="region"
           >
-            <ScrollAreaContent className="min-w-0 px-2">
+            <ScrollAreaContent className="w-full max-w-full min-w-0! px-2">
               {isPending && (
                 <WebAppsSkeleton />
               )}
@@ -172,9 +214,13 @@ const WebAppsSection = () => {
                   {searchText ? t('mainNav.webApps.noResults', { ns: 'common' }) : t('sidebar.noApps.title', { ns: 'explore' })}
                 </div>
               )}
-              {!isPending && filteredApps.length > 0 && !shouldVirtualize && (
+              {!isPending && webAppRows.length > 0 && !shouldVirtualize && (
                 <div className="space-y-0.5 pb-2">
-                  {filteredApps.map(renderAppNavItem)}
+                  {webAppRows.map(row => (
+                    <Fragment key={row.key}>
+                      {renderRow(row)}
+                    </Fragment>
+                  ))}
                 </div>
               )}
               {!isPending && shouldVirtualize && (
@@ -185,7 +231,7 @@ const WebAppsSection = () => {
                   }}
                 >
                   {virtualRows.map((virtualRow) => {
-                    const installedApp = filteredApps[virtualRow.index]!
+                    const row = webAppRows[virtualRow.index]!
 
                     return (
                       <div
@@ -196,7 +242,7 @@ const WebAppsSection = () => {
                           transform: `translateY(${virtualRow.start}px)`,
                         }}
                       >
-                        {renderAppNavItem(installedApp)}
+                        {renderRow(row)}
                       </div>
                     )
                   })}

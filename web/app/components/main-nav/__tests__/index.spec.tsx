@@ -558,6 +558,31 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
   })
 
+  it('separates pinned and unpinned installed web apps', () => {
+    mockInstalledApps = [
+      createInstalledApp({ id: 'installed-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned App' } }),
+      createInstalledApp({ id: 'installed-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned App' } }),
+    ]
+
+    renderMainNav()
+
+    expect(screen.getByText('Pinned App')).toBeInTheDocument()
+    expect(screen.getByText('Unpinned App')).toBeInTheDocument()
+    expect(screen.getByTestId('divider')).toBeInTheDocument()
+  })
+
+  it('keeps long installed web app names truncated in the main nav item', () => {
+    const longName = 'A very long installed web app name that should stay on one line and truncate'
+    mockInstalledApps = [
+      createInstalledApp({ id: 'installed-1', app: { ...createInstalledApp().app, name: longName } }),
+    ]
+
+    renderMainNav()
+
+    expect(screen.getByText(longName)).toHaveClass('truncate')
+    expect(screen.getByTitle(longName)).toBeInTheDocument()
+  })
+
   it('virtualizes large installed web app lists', async () => {
     const offsetHeightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(320)
     const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(240)
