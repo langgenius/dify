@@ -554,6 +554,95 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * HitTestingChildChunk
+ */
+export const zHitTestingChildChunk = z.object({
+  content: z.string(),
+  id: z.string(),
+  position: z.int(),
+  score: z.number(),
+})
+
+/**
+ * HitTestingDocument
+ */
+export const zHitTestingDocument = z.object({
+  data_source_type: z.string(),
+  doc_metadata: z.unknown(),
+  doc_type: z.string().nullable(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * HitTestingFile
+ */
+export const zHitTestingFile = z.object({
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string(),
+  name: z.string(),
+  size: z.int(),
+  source_url: z.string(),
+})
+
+/**
+ * HitTestingQuery
+ */
+export const zHitTestingQuery = z.object({
+  content: z.string(),
+})
+
+/**
+ * HitTestingSegment
+ */
+export const zHitTestingSegment = z.object({
+  answer: z.string().nullable(),
+  completed_at: z.int().nullable(),
+  content: z.string(),
+  created_at: z.int(),
+  created_by: z.string(),
+  disabled_at: z.int().nullable(),
+  disabled_by: z.string().nullable(),
+  document: zHitTestingDocument,
+  document_id: z.string(),
+  enabled: z.boolean(),
+  error: z.string().nullable(),
+  hit_count: z.int(),
+  id: z.string(),
+  index_node_hash: z.string().nullable(),
+  index_node_id: z.string().nullable(),
+  indexing_at: z.int().nullable(),
+  keywords: z.array(z.string()),
+  position: z.int(),
+  sign_content: z.string().nullable(),
+  status: z.string(),
+  stopped_at: z.int().nullable(),
+  tokens: z.int(),
+  word_count: z.int(),
+})
+
+/**
+ * HitTestingRecord
+ */
+export const zHitTestingRecord = z.object({
+  child_chunks: z.array(zHitTestingChildChunk),
+  files: z.array(zHitTestingFile),
+  score: z.number().nullable(),
+  segment: zHitTestingSegment,
+  summary: z.string().nullable(),
+  tsne_position: z.unknown(),
+})
+
+/**
+ * HitTestingResponse
+ */
+export const zHitTestingResponse = z.object({
+  query: zHitTestingQuery,
+  records: z.array(zHitTestingRecord),
+})
+
+/**
  * IndexInfoResponse
  */
 export const zIndexInfoResponse = z.object({
@@ -1720,7 +1809,7 @@ export const zPostDatasetsByDatasetIdHitTestingPath = z.object({
 /**
  * Hit testing results
  */
-export const zPostDatasetsByDatasetIdHitTestingResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdHitTestingResponse = zHitTestingResponse
 
 export const zGetDatasetsByDatasetIdMetadataPath = z.object({
   dataset_id: z.string(),
@@ -1834,7 +1923,7 @@ export const zPostDatasetsByDatasetIdRetrievePath = z.object({
 /**
  * Hit testing results
  */
-export const zPostDatasetsByDatasetIdRetrieveResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdRetrieveResponse = zHitTestingResponse
 
 export const zGetDatasetsByDatasetIdTagsPath = z.object({
   dataset_id: z.string(),

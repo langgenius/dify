@@ -1,7 +1,7 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../io/streams.js'
+import { bufferStreams } from '../../../sys/io/streams'
 import { runSetMember } from './run.js'
 
 function bundle(): HostsBundle {

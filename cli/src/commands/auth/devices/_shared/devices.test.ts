@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { startMock } from '../../../../../test/fixtures/dify-mock/server.js'
 import { saveHosts } from '../../../../auth/hosts.js'
 import { createClient } from '../../../../http/client.js'
-import { bufferStreams } from '../../../../io/streams.js'
+import { bufferStreams } from '../../../../sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
 class MemStore implements TokenStore {
