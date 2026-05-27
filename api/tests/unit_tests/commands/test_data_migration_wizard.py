@@ -201,7 +201,7 @@ def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch
 
     assert selected == {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
     assert confirm_prompts == [
-        ("Export additional tools manually? Enter y or n. Default: no", {"default": False, "show_default": True})
+        ("Export additional tools manually? [y/n, default: n]", {"default": False, "show_default": False})
     ]
     assert "Final tools to export:" in output_lines
     assert "- [auto] weather: 3bac3aa9-dd87-4351-9459-a7099137b028" in output_lines
@@ -263,5 +263,5 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
 
     assert "conflict strategy: fail" in output_lines
     assert confirm_prompts == [
-        ("Write migration package? Enter y or n. Default: yes", {"default": True, "show_default": True})
+        ("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})
     ]

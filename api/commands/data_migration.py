@@ -156,9 +156,9 @@ def migration_data_wizard() -> None:
         app_ids = _prompt_app_ids(apps)
         _print_wizard_step("Referenced Tools")
         include_referenced_tools = click.confirm(
-            "Automatically export tools referenced by selected apps? Enter y or n. Default: yes",
+            "Automatically export tools referenced by selected apps? [y/n, default: y]",
             default=True,
-            show_default=True,
+            show_default=False,
         )
         auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
@@ -166,14 +166,14 @@ def migration_data_wizard() -> None:
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
         _print_wizard_step("Import Options")
         include_secrets = click.confirm(
-            "Include secrets in output JSON? Enter y or n. Default: no. The file will contain sensitive data.",
+            "Include secrets in output JSON? [y/n, default: n]. The file will contain sensitive data.",
             default=False,
-            show_default=True,
+            show_default=False,
         )
         create_tokens = click.confirm(
-            "Create or reuse app API tokens during import? Enter y or n. Default: no",
+            "Create or reuse app API tokens during import? [y/n, default: n]",
             default=False,
-            show_default=True,
+            show_default=False,
         )
         conflict_strategy = click.prompt(
             "Import conflict strategy. Enter one of: fail, skip, update, replace",
@@ -411,9 +411,9 @@ def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> Wizar
     selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
     _print_wizard_step("Additional Tools")
     if not click.confirm(
-        "Export additional tools manually? Enter y or n. Default: no",
+        "Export additional tools manually? [y/n, default: n]",
         default=False,
-        show_default=True,
+        show_default=False,
     ):
         _print_final_tool_selection(auto_tools, selections, {})
         return selections
@@ -566,7 +566,7 @@ def _confirm_wizard_summary(
     click.echo(f"create app api token on import: {str(create_tokens).lower()}")
     click.echo(f"conflict strategy: {conflict_strategy}")
     click.echo(f"output path: {output_file}")
-    if not click.confirm("Write migration package? Enter y or n. Default: yes", default=True, show_default=True):
+    if not click.confirm("Write migration package? [y/n, default: y]", default=True, show_default=False):
         raise click.Abort()
 
 
@@ -578,9 +578,9 @@ def _prompt_output_file() -> tuple[str, bool]:
     overwrite = False
     if Path(output_file).exists():
         overwrite = click.confirm(
-            "Output file exists. Overwrite? Enter y or n. Default: no",
+            "Output file exists. Overwrite? [y/n, default: n]",
             default=False,
-            show_default=True,
+            show_default=False,
         )
         if not overwrite:
             raise click.ClickException(f"Output file already exists: {output_file}")
