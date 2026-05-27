@@ -138,6 +138,24 @@ class PluginAutoUpgradeSettingsPayload(BaseModel):
     include_plugins: list[str] = Field(default_factory=list)
 
 
+class PluginAutoUpgradeChangeResponse(ResponseModel):
+    success: bool
+    message: str | None = None
+
+
+class PluginAutoUpgradeSettingsResponseModel(ResponseModel):
+    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    upgrade_time_of_day: int
+    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    exclude_plugins: list[str]
+    include_plugins: list[str]
+
+
+class PluginAutoUpgradeFetchResponse(ResponseModel):
+    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    auto_upgrade: PluginAutoUpgradeSettingsResponseModel
+
+
 class ParserAutoUpgradeChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -191,7 +209,14 @@ register_schema_models(
     ParserExcludePlugin,
     ParserReadme,
 )
-register_response_schema_models(console_ns, PluginDebuggingKeyResponse, SuccessResponse)
+register_response_schema_models(
+    console_ns,
+    PluginAutoUpgradeChangeResponse,
+    PluginAutoUpgradeFetchResponse,
+    PluginAutoUpgradeSettingsResponseModel,
+    PluginDebuggingKeyResponse,
+    SuccessResponse,
+)
 
 register_enum_models(
     console_ns,
@@ -777,6 +802,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/change")
 class PluginChangeAutoUpgradeApi(Resource):
     @console_ns.expect(console_ns.models[ParserAutoUpgradeChange.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginAutoUpgradeChangeResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -806,6 +832,7 @@ class PluginChangeAutoUpgradeApi(Resource):
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/fetch")
 class PluginFetchAutoUpgradeApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserAutoUpgradeFetch))
+    @console_ns.response(200, "Success", console_ns.models[PluginAutoUpgradeFetchResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -831,6 +858,7 @@ class PluginFetchAutoUpgradeApi(Resource):
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/exclude")
 class PluginAutoUpgradeExcludePluginApi(Resource):
     @console_ns.expect(console_ns.models[ParserExcludePlugin.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

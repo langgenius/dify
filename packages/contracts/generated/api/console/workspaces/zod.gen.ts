@@ -210,6 +210,21 @@ export const zWorkspacePermissionResponse = z.object({
 })
 
 /**
+ * PluginAutoUpgradeChangeResponse
+ */
+export const zPluginAutoUpgradeChangeResponse = z.object({
+  message: z.string().nullish(),
+  success: z.boolean(),
+})
+
+/**
+ * SuccessResponse
+ */
+export const zSuccessResponse = z.object({
+  success: z.boolean(),
+})
+
+/**
  * PluginDebuggingKeyResponse
  */
 export const zPluginDebuggingKeyResponse = z.object({
@@ -252,13 +267,6 @@ export const zParserDynamicOptionsWithCredentials = z.object({
   parameter: z.string(),
   plugin_id: z.string(),
   provider: z.string(),
-})
-
-/**
- * SuccessResponse
- */
-export const zSuccessResponse = z.object({
-  success: z.boolean(),
 })
 
 /**
@@ -729,6 +737,25 @@ export const zPluginAutoUpgradeSettingsPayload = z.object({
  */
 export const zParserAutoUpgradeChange = z.object({
   auto_upgrade: zPluginAutoUpgradeSettingsPayload,
+  category: zPluginCategory,
+})
+
+/**
+ * PluginAutoUpgradeSettingsResponseModel
+ */
+export const zPluginAutoUpgradeSettingsResponseModel = z.object({
+  exclude_plugins: z.array(z.string()),
+  include_plugins: z.array(z.string()),
+  strategy_setting: zStrategySetting,
+  upgrade_mode: zUpgradeMode,
+  upgrade_time_of_day: z.int(),
+})
+
+/**
+ * PluginAutoUpgradeFetchResponse
+ */
+export const zPluginAutoUpgradeFetchResponse = z.object({
+  auto_upgrade: zPluginAutoUpgradeSettingsResponseModel,
   category: zPluginCategory,
 })
 
@@ -1328,20 +1355,15 @@ export const zPostWorkspacesCurrentPluginAutoUpgradeChangeBody = zParserAutoUpgr
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse
+  = zPluginAutoUpgradeChangeResponse
 
 export const zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody = zParserExcludePlugin
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse = zSuccessResponse
 
 export const zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery = z.object({
   category: z.string(),
@@ -1350,7 +1372,7 @@ export const zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse = zPluginAutoUpgradeFetchResponse
 
 /**
  * Success

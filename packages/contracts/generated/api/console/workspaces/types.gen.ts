@@ -230,9 +230,23 @@ export type ParserAutoUpgradeChange = {
   category: PluginCategory
 }
 
+export type PluginAutoUpgradeChangeResponse = {
+  message?: string | null
+  success: boolean
+}
+
 export type ParserExcludePlugin = {
   category: PluginCategory
   plugin_id: string
+}
+
+export type SuccessResponse = {
+  success: boolean
+}
+
+export type PluginAutoUpgradeFetchResponse = {
+  auto_upgrade: PluginAutoUpgradeSettingsResponseModel
+  category: PluginCategory
 }
 
 export type PluginDebuggingKeyResponse = {
@@ -270,10 +284,6 @@ export type ParserDynamicOptionsWithCredentials = {
 export type ParserPermissionChange = {
   debug_permission?: DebugPermission
   install_permission?: InstallPermission
-}
-
-export type SuccessResponse = {
-  success: boolean
 }
 
 export type ParserUninstall = {
@@ -545,6 +555,14 @@ export type PluginCategory
     | 'model'
     | 'tool'
     | 'trigger'
+
+export type PluginAutoUpgradeSettingsResponseModel = {
+  exclude_plugins: Array<string>
+  include_plugins: Array<string>
+  strategy_setting: StrategySetting
+  upgrade_mode: UpgradeMode
+  upgrade_time_of_day: number
+}
 
 export type DebugPermission = 'admins' | 'everyone' | 'noone'
 
@@ -1487,9 +1505,7 @@ export type PostWorkspacesCurrentPluginAutoUpgradeChangeData = {
 }
 
 export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginAutoUpgradeChangeResponse
 }
 
 export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponse
@@ -1503,9 +1519,7 @@ export type PostWorkspacesCurrentPluginAutoUpgradeExcludeData = {
 }
 
 export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponse
@@ -1521,9 +1535,7 @@ export type GetWorkspacesCurrentPluginAutoUpgradeFetchData = {
 }
 
 export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginAutoUpgradeFetchResponse
 }
 
 export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponse
