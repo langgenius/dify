@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadHosts, saveHosts } from '../../../auth/hosts.js'
-import { bufferStreams } from '../../../io/streams.js'
+import { bufferStreams } from '../../../sys/io/streams.js'
 import { runUseWorkspace } from './use.js'
 
 function bundle(): HostsBundle {
