@@ -1,11 +1,11 @@
 /**
- * E2E: difyctl auth whoami + 外部 SSO 登录行为验证
+ * E2E: difyctl auth whoami + external SSO session behaviour
  *
- * 用例来源：飞书文档《Dify CLI Enhanced》
- *   - Dify CLI/Auth/外部 SSO 登录（19 条，可测试部分）
+ * Test cases sourced from: Dify CLI Enhanced spec
+ *   - Dify CLI/Auth/External SSO Login (19 cases, testable subset)
  *
- * 注：交互式登录（Device Flow browser） 和 Headless 认证需要真实浏览器，
- *     E2E 层通过 injectAuth 跳过 Device Flow，专注验证 session 状态和命令行为。
+ * Note: interactive login (Device Flow browser) and Headless auth require a real browser;
+ *       E2E layer bypasses Device Flow via injectAuth, focusing on session state and CLI behaviour.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -72,16 +72,16 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
   }
 
-  // ── auth whoami — 内部用户 ────────────────────────────────────────────────
+  // ── auth whoami — internal user ──────────────────────────────────────────────
 
-  it('[P0] 内部用户 auth whoami 输出 email', async () => {
+  it('[P0] internal user auth whoami outputs email', async () => {
     await withInternalAuth()
     const result = await r(['auth', 'whoami'])
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/@/)
   })
 
-  it('[P0] auth whoami --json 输出合法 JSON，包含 email', async () => {
+  it('[P0] auth whoami --json outputs valid JSON containing email', async () => {
     await withInternalAuth()
     const result = await r(['auth', 'whoami', '--json'])
     assertExitCode(result, 0)
@@ -90,63 +90,63 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     expect(parsed.email).toMatch(/@/)
   })
 
-  it('[P0] 未登录 auth whoami 返回认证错误（exit code 4）', async () => {
+  it('[P0] unauthenticated auth whoami returns auth error (exit code 4)', async () => {
     const result = await r(['auth', 'whoami'])
     assertExitCode(result, 4)
   })
 
-  // ── 外部 SSO 用户行为 ─────────────────────────────────────────────────────
+  // ── External SSO user behaviour ──────────────────────────────────────────────
 
-  it('[P0] 外部 SSO 用户 auth status 显示 apps:run only 限制', async () => {
-    // 文档用例：auth status 显示 apps:run only 限制
+  it('[P0] external SSO user auth status displays apps:run-only restriction', async () => {
+    // Spec: auth status displays apps:run-only restriction
     await withSSOAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/apps:run|SSO/i)
   })
 
-  it('[P0] 外部 SSO 用户 auth status 不显示 workspace 信息', async () => {
-    // 文档用例：auth status 不显示 workspace 信息
+  it('[P0] external SSO user auth status does not display workspace info', async () => {
+    // Spec: auth status does not display workspace information
     await withSSOAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
-    // SSO 用户没有 workspace
+    // SSO users have no workspace
     expect(result.stdout).not.toMatch(/^ {2}Workspace:/m)
   })
 
-  it('[P0] 外部 SSO 用户 auth status 显示 issuer URL', async () => {
-    // 文档用例：auth status 显示 External SSO Session + issuer URL
+  it('[P0] external SSO user auth status displays issuer URL', async () => {
+    // Spec: auth status displays External SSO Session + issuer URL
     await withSSOAuth('https://idp.enterprise.com')
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
     expect(result.stdout).toContain('idp.enterprise.com')
   })
 
-  it('[P0] 外部用户执行 auth use 返回错误（external SSO subjects have no workspaces）', async () => {
-    // 文档用例：外部用户执行 auth use 返回错误
+  it('[P0] external user gets an error executing auth use (external SSO subjects have no workspaces)', async () => {
+    // Spec: external user gets an error when executing auth use
     await withSSOAuth()
     const result = await r(['auth', 'use', 'any-ws-id'])
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toMatch(/external SSO|workspace/i)
   })
 
-  it('[P0] 外部用户 get workspace 返回空列表或 insufficient_scope', async () => {
-    // 文档用例：外部用户 get workspace 返回空列表
+  it('[P0] external user get workspace returns empty list or insufficient_scope', async () => {
+    // Spec: external user get workspace returns an empty list
     await withSSOAuth()
     const result = await r(['get', 'workspace'])
-    // SSO token 无 workspace 权限
+    // SSO token has no workspace scope
     expect(result.exitCode).not.toBe(0)
   })
 
-  it('[P0] 外部用户 get app 返回 insufficient_scope 错误', async () => {
-    // 文档用例：外部用户 get app 返回 insufficient_scope
+  it('[P0] external user get app returns insufficient_scope error', async () => {
+    // Spec: external user get app returns insufficient_scope
     await withSSOAuth()
     const result = await r(['get', 'app'])
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toMatch(/insufficient|scope|workspace|SSO/i)
   })
 
-  it('[P0] 外部用户 whoami 输出 SSO email', async () => {
+  it('[P0] external user whoami outputs SSO email', async () => {
     await withSSOAuth()
     const result = await r(['auth', 'whoami'])
     assertExitCode(result, 0)
@@ -155,7 +155,7 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
 
   const itWithSso = optionalIt(Boolean(E.ssoToken))
 
-  itWithSso('[P0] 外部用户可执行 run app（使用 SSO token）', async () => {
+  itWithSso('[P0] external user can execute run app using SSO token', async () => {
     await mkdir(configDir, { recursive: true })
     const hostsYml = `${[
       `current_host: ${E.host}`,

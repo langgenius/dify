@@ -48,6 +48,14 @@ jobs:
         with:
           bun-version: latest
 
+      # Re-initialise pnpm to match the CLI's packageManager (pnpm@11.x).
+      # setup-web installs pnpm@9 via setup-vp; this step overrides it so
+      # the CLI workspace uses the correct version declared in cli/package.json.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          package_json_field: packageManager
+          run_install: false
+
       - name: Install CLI dependencies
         working-directory: cli
         run: pnpm install --frozen-lockfile

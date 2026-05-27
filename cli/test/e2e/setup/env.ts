@@ -51,13 +51,13 @@ export type E2ECapabilities = {
   tokenValid: boolean
   tokenId?: string
   /**
-   * A freshly minted dfoa_ token created by global-setup via the device flow
-   * API using DIFY_E2E_EMAIL + DIFY_E2E_PASSWORD.  Intended for logout tests
-   * that need to actually revoke a session without invalidating the shared
-   * DIFY_E2E_TOKEN used by all other suites.
-   * Empty string when email/password are not configured.
+   * Per-suite dedicated tokens minted by global-setup via the device flow.
+   * Each destructive suite (logout, devices) gets its own fresh dfoa_ token so
+   * that revoking it never invalidates DIFY_E2E_TOKEN used by other suites.
+   * Empty string when DIFY_E2E_EMAIL/PASSWORD are not configured.
    */
-  disposableToken: string
+  logoutToken: string
+  devicesToken: string
 }
 
 let _cached: E2EEnv | undefined

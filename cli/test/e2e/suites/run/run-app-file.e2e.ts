@@ -1,11 +1,11 @@
 /**
- * E2E: difyctl run app --file — 文件输入专项
+ * E2E: difyctl run app --file — file input specialisation
  *
- * 用例来源：飞书文档《Dify CLI Enhanced》— Dify CLI/Run/文件输入（31 条）
+ * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Run/File Input (31 cases)
  *
- * 前置条件：
- *   DIFY_E2E_FILE_APP_ID — workflow app，doc 文件变量（required）
- *   如果未配置，所有文件相关用例会被跳过。
+ * Prerequisites:
+ *   DIFY_E2E_FILE_APP_ID — workflow app with a required 'doc' file variable
+ *   All file-related cases are skipped when this variable is not configured.
  */
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -53,16 +53,16 @@ describeSuite('E2E / difyctl run app --file', () => {
 
   const itLocalUpload = optionalIt(supportsLocalUpload)
 
-  itLocalUpload('[P0] run app 支持单文件上传（key=@path），app 正常执行', async () => {
-    // 文档用例：run app 支持单文件上传 + 上传文件后 app 正常执行
+  itLocalUpload('[P0] run app supports single file upload (key=@path) — app executes correctly', async () => {
+    // Spec: run app supports single file upload + app executes correctly after upload
     const filePath = join(fileDir, 'test.txt')
     await writeFile(filePath, 'E2E test file content — single upload')
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`])
     assertExitCode(result, 0)
   })
 
-  itLocalUpload('[P0] file input 参数名正确映射（key 绑定到正确 input 字段）', async () => {
-    // 文档用例：file input 参数名正确映射
+  itLocalUpload('[P0] file input argument name maps correctly (key binds to correct input field)', async () => {
+    // Spec: file input argument name maps correctly
     const filePath = join(fileDir, 'mapping.txt')
     await writeFile(filePath, 'mapping test content')
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`, '-o', 'json'])
@@ -71,16 +71,16 @@ describeSuite('E2E / difyctl run app --file', () => {
     expect(parsed).toBeDefined()
   })
 
-  itLocalUpload('[P0] run app --file 语法为 key=@path（本地文件上传）', async () => {
-    // 文档用例：run app --file 语法为 key=@path
+  itLocalUpload('[P0] run app --file syntax is key=@path (local file upload)', async () => {
+    // Spec: run app --file syntax is key=@path
     const filePath = join(fileDir, 'syntax.txt')
     await writeFile(filePath, 'syntax verification')
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`])
     assertExitCode(result, 0)
   })
 
-  it('[P0] --file 远程 URL 语法（key=https://...）无需本地上传', async () => {
-    // 文档用例：run app --file 传入文件 workflow 正常执行
+  it('[P0] --file remote URL syntax (key=https://...) requires no local upload', async () => {
+    // Spec: run app --file with remote URL executes the workflow correctly
     const result = await r([
       'run',
       'app',
@@ -91,8 +91,8 @@ describeSuite('E2E / difyctl run app --file', () => {
     assertExitCode(result, 0)
   })
 
-  it('[P0] 文件不存在时返回错误', async () => {
-    // 文档用例：文件不存在时返回错误
+  it('[P0] non-existent file path returns an error', async () => {
+    // Spec: non-existent file path returns an error
     const result = await r([
       'run',
       'app',
@@ -104,8 +104,8 @@ describeSuite('E2E / difyctl run app --file', () => {
     expect(result.stderr).toMatch(/failed|not.?found|upload/i)
   })
 
-  it('[P1] file 参数格式错误返回 usage error（exit code 2）', async () => {
-    // 文档用例：file 参数格式错误返回 usage error
+  it('[P1] malformed --file argument returns usage error (exit code 2)', async () => {
+    // Spec: malformed --file argument returns a usage error
     const result = await r([
       'run',
       'app',
@@ -118,32 +118,32 @@ describeSuite('E2E / difyctl run app --file', () => {
     expect(result.stderr).toMatch(/--file must be key=@path/i)
   })
 
-  itLocalUpload('[P1] 文件路径包含空格可正常上传', async () => {
-    // 文档用例：文件路径包含空格可正常上传
+  itLocalUpload('[P1] file path containing spaces can be uploaded correctly', async () => {
+    // Spec: file path containing spaces can be uploaded correctly
     const filePath = join(fileDir, 'file with spaces.txt')
     await writeFile(filePath, 'space in name test')
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`])
     assertExitCode(result, 0)
   })
 
-  itLocalUpload('[P1] 支持 txt 文件上传', async () => {
-    // 文档用例：支持 txt 文件上传
+  itLocalUpload('[P1] txt file upload is supported', async () => {
+    // Spec: txt file upload is supported
     const f = join(fileDir, 'note.txt')
     await writeFile(f, 'plain text content')
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${f}`])
     assertExitCode(result, 0)
   })
 
-  itLocalUpload('[P1] --file 与 --stream 组合使用', async () => {
-    // 文档用例：run app --file 与 --stream 组合使用
+  itLocalUpload('[P1] --file combined with --stream works correctly', async () => {
+    // Spec: run app --file combined with --stream
     const f = join(fileDir, 'stream.txt')
     await writeFile(f, 'stream + file test')
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${f}`, '--stream'])
     assertExitCode(result, 0)
   })
 
-  it('[P0] 未登录执行 file upload 返回认证错误（exit code 4）', async () => {
-    // 文档用例：未登录执行 file upload 返回认证错误
+  it('[P0] unauthenticated file upload returns auth error (exit code 4)', async () => {
+    // Spec: unauthenticated file upload returns an auth error
     const unauthTmp = await withTempConfig()
     try {
       const f = join(fileDir, 'unauth.txt')

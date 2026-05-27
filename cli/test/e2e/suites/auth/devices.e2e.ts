@@ -1,7 +1,7 @@
 /**
- * E2E: difyctl auth devices — 多设备 Session 管理
+ * E2E: difyctl auth devices — multi-device session management
  *
- * 用例来源：飞书文档《Dify CLI Enhanced》— Dify CLI/Auth/多设备 Session 管理（21 条）
+ * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Auth/Multi-device Session Management (21 cases)
  */
 
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
@@ -40,26 +40,26 @@ describe('E2E / difyctl auth devices', () => {
     return run(argv, { configDir })
   }
 
-  // ── devices list ──────────────────────────────────────────────────────────
+  // ── devices list ─────────────────────────────────────────────────────────────
 
   const itSessions = optionalIt(tokenValid)
 
-  itSessions('[P0] 已登录用户可查看 devices 列表', async () => {
-    // 文档用例：已登录用户可查看 devices 列表
+  itSessions('[P0] logged-in user can view the devices list', async () => {
+    // Spec: logged-in user can view the devices list
     const result = await r(['auth', 'devices', 'list'])
     assertExitCode(result, 0)
     expect(result.stdout.length).toBeGreaterThan(0)
   })
 
-  itSessions('[P0] devices list 显示 device id', async () => {
-    // 文档用例：devices list 显示 device id
+  itSessions('[P0] devices list displays device IDs', async () => {
+    // Spec: devices list displays device IDs
     const result = await r(['auth', 'devices', 'list'])
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/tok-|id|device/i)
   })
 
-  itSessions('[P0] devices list 支持 JSON 输出，返回合法 JSON', async () => {
-    // 文档用例：devices list 支持 JSON 输出
+  itSessions('[P0] devices list supports JSON output and returns valid JSON', async () => {
+    // Spec: devices list supports JSON output
     const result = await r(['auth', 'devices', 'list', '--json'])
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: unknown[], total: number }>(result)
@@ -67,8 +67,8 @@ describe('E2E / difyctl auth devices', () => {
     expect(Array.isArray(parsed.data)).toBe(true)
   })
 
-  itSessions('[P1] devices list JSON schema 稳定（含 data、total 字段）', async () => {
-    // 文档用例：devices list JSON schema 稳定
+  itSessions('[P1] devices list JSON schema is stable (contains data and total fields)', async () => {
+    // Spec: devices list JSON schema is stable
     const result = await r(['auth', 'devices', 'list', '--json'])
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: unknown[], total: number, page: number, limit: number }>(result)
@@ -77,8 +77,8 @@ describe('E2E / difyctl auth devices', () => {
     expect(parsed).toHaveProperty('limit')
   })
 
-  it('[P0] 未登录执行 devices list 返回认证错误（exit code 4）', async () => {
-    // 文档用例：未登录执行 devices list 返回认证错误 + exit code 4
+  it('[P0] unauthenticated devices list returns auth error (exit code 4)', async () => {
+    // Spec: unauthenticated devices list returns auth error + exit code 4
     const unauthTmp = await withTempConfig()
     try {
       const result = await run(['auth', 'devices', 'list'], { configDir: unauthTmp.configDir })
@@ -90,10 +90,10 @@ describe('E2E / difyctl auth devices', () => {
     }
   })
 
-  // ── devices revoke ────────────────────────────────────────────────────────
+  // ── devices revoke ───────────────────────────────────────────────────────────
 
-  itSessions('[P0] revoke 指定 device 成功（exit code 0）', async () => {
-    // 文档用例：revoke 指定 device 成功
+  itSessions('[P0] revoking a specified device succeeds (exit code 0)', async () => {
+    // Spec: revoking a specified device succeeds
     // Mint a fresh token on demand so this test only revokes its own session,
     // never the shared E.token or the global-setup disposableToken.
     const freshToken = await mintFreshToken(E.host, E.email, E.password)

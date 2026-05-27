@@ -1,11 +1,11 @@
 /**
- * E2E: difyctl run app + difyctl resume app — HITL 人工介入专项
+ * E2E: difyctl run app + difyctl resume app — HITL human-in-the-loop specialisation
  *
- * 用例来源：飞书文档《Dify CLI Enhanced》— Dify CLI/Run/HITL 人工介入（19 条）
+ * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Run/HITL Human Intervention (19 cases)
  *
- * 前置条件：
- *   DIFY_E2E_HITL_APP_ID — workflow app，包含 Human Input 节点，display_in_ui=true
- *   如果未配置，所有 HITL 用例会被跳过。
+ * Prerequisites:
+ *   DIFY_E2E_HITL_APP_ID — workflow app containing a Human Input node with display_in_ui=true
+ *   All HITL cases are skipped when this variable is not configured.
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
@@ -19,7 +19,7 @@ const E = loadE2EEnv()
 
 const describeSuite = optionalDescribe(Boolean(E.hitlAppId))
 
-describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
+describeSuite('E2E / difyctl run app — HITL human intervention', () => {
   let fx: AuthFixture
 
   beforeEach(async () => {
@@ -29,8 +29,8 @@ describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
     await fx.cleanup()
   })
 
-  it('[P0] workflow 触发 HITL 暂停时 stdout 输出 pause block，exit code 为 0', async () => {
-    // 文档用例：workflow 触发 HITL 暂停时输出 pause block + exit code 为 0
+  it('[P0] workflow HITL pause outputs a pause block on stdout — exit code 0', async () => {
+    // Spec: workflow HITL pause outputs a pause block + exit code 0
     const result = await fx.r([
       'run',
       'app',
@@ -42,8 +42,8 @@ describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
     expect(result.stdout).toMatch(/Workflow paused|pause/i)
   })
 
-  it('[P0] HITL pause JSON 包含所有必需字段', async () => {
-    // 文档用例：HITL pause JSON 输出包含所有必需字段
+  it('[P0] HITL pause JSON contains all required fields', async () => {
+    // Spec: HITL pause JSON output contains all required fields
     const result = await fx.r([
       'run',
       'app',
@@ -63,8 +63,8 @@ describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
     expect(p).toHaveProperty('actions')
   })
 
-  it('[P0] HITL pause hint 包含完整 resume 命令', async () => {
-    // 文档用例：HITL pause 时 hint 包含完整 resume 命令
+  it('[P0] HITL pause hint contains the full resume command', async () => {
+    // Spec: HITL pause hint contains the full resume command
     const result = await fx.r([
       'run',
       'app',
@@ -77,9 +77,9 @@ describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
     assertStderrContains(result, '--workflow-run-id')
   })
 
-  it('[P0] AI Agent 自动化：从 JSON 提取 form_token，自动 resume', async () => {
-    // 文档用例：AI Agent 自动化：jq 提取 form_token 自动 resume
-    // Step 1: run → pause，获取 JSON envelope
+  it('[P0] AI Agent automation — extract form_token from JSON and auto-resume', async () => {
+    // Spec: AI Agent automation — extract form_token via jq and auto-resume
+    // Step 1: run → pause, obtain JSON envelope
     const pauseResult = await fx.r([
       'run',
       'app',
@@ -90,11 +90,18 @@ describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
       'json',
     ])
     assertExitCode(pauseResult, 0)
-    const envelope = assertJson<{ form_token: string, workflow_run_id: string, app_id?: string }>(pauseResult)
+    const envelope = assertJson<{
+      form_token: string
+      workflow_run_id: string
+      app_id?: string
+      actions?: Array<{ id: string }>
+    }>(pauseResult)
     expect(envelope.form_token).toBeTruthy()
     expect(envelope.workflow_run_id).toBeTruthy()
 
-    // Step 2: resume using extracted tokens
+    // Step 2: resume — use the first action id from the pause response so
+    // the test is not coupled to any specific action label.
+    const actionId = envelope.actions?.[0]?.id ?? 'submit'
     const resumeResult = await fx.r([
       'resume',
       'app',
@@ -103,13 +110,13 @@ describeSuite('E2E / difyctl run app — HITL 人工介入', () => {
       '--workflow-run-id',
       envelope.workflow_run_id,
       '--action',
-      'submit',
+      actionId,
     ])
     assertExitCode(resumeResult, 0)
   })
 
-  it('[P0] resume app 单 action 时自动选择，workflow 继续执行', async () => {
-    // 文档用例：resume app 单 action 时自动选择无需 --action
+  it('[P0] resume app auto-selects the single action — workflow continues execution', async () => {
+    // Spec: resume app auto-selects the single action without requiring --action
     const pause = await fx.r([
       'run',
       'app',

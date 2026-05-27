@@ -9,7 +9,7 @@
  */
 
 import { Buffer } from 'node:buffer'
-import { spawn } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -22,7 +22,6 @@ export const BIN = resolve(__dirname, '../../../bin/dev.js')
  * Priority: PATH → ~/.bun/bin/bun → /usr/local/bin/bun
  */
 function resolveBun(): string {
-  const { execSync } = await import('node:child_process')
   const candidates = [
     // Respect PATH first
     'bun',

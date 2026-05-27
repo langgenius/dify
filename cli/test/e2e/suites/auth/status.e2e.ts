@@ -1,7 +1,7 @@
 /**
  * E2E: difyctl auth status — Auth Status
  *
- * 用例来源：飞书文档《Dify CLI Enhanced》— Dify CLI/Auth/Auth Status（12 条）
+ * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Auth/Auth Status (12 cases)
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -76,10 +76,10 @@ describe('E2E / difyctl auth status', () => {
     await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
   }
 
-  // ── 基础状态显示 ─────────────────────────────────────────────────────────
+  // ── Basic status display ─────────────────────────────────────────────────────
 
-  it('[P0] 内部用户 auth status 显示 host、email、workspace 信息', async () => {
-    // 文档用例：内部用户 auth status 显示 host 信息
+  it('[P0] internal user auth status displays host, email, and workspace info', async () => {
+    // Spec: internal user auth status displays host information
     await withAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
@@ -87,8 +87,8 @@ describe('E2E / difyctl auth status', () => {
     expect(result.stdout).toContain(E.workspaceName)
   })
 
-  it('[P0] auth status --json 输出合法 JSON schema', async () => {
-    // 文档用例：auth status --json 输出可解析 schema
+  it('[P0] auth status --json outputs a valid JSON schema', async () => {
+    // Spec: auth status --json output is a parseable schema
     await withAuth()
     const result = await r(['auth', 'status', '--json'])
     assertExitCode(result, 0)
@@ -98,8 +98,8 @@ describe('E2E / difyctl auth status', () => {
     expect(parsed).toHaveProperty('account')
   })
 
-  it('[P1] auth status -v 显示 workspace role 和 storage 信息', async () => {
-    // 文档用例：auth status -v 显示 workspace role
+  it('[P1] auth status -v displays workspace role and storage info', async () => {
+    // Spec: auth status -v displays workspace role
     await withAuth()
     const result = await r(['auth', 'status', '-v'])
     assertExitCode(result, 0)
@@ -107,71 +107,71 @@ describe('E2E / difyctl auth status', () => {
     expect(result.stdout).toMatch(/file|keychain/)
   })
 
-  // ── 未登录场景 ────────────────────────────────────────────────────────────
+  // ── Unauthenticated scenario ─────────────────────────────────────────────────
 
-  it('[P0] 未登录执行 auth status 返回 "Not logged in"，exit code 为 4', async () => {
-    // 文档用例：未登录执行 auth status 返回错误 + exit code 4
-    // configDir 为空（无 hosts.yml）
+  it('[P0] unauthenticated auth status returns "Not logged in" — exit code 4', async () => {
+    // Spec: unauthenticated auth status returns error + exit code 4
+    // configDir is empty (no hosts.yml)
     const result = await r(['auth', 'status'])
     assertExitCode(result, 4)
     expect(result.stdout).toMatch(/not logged in/i)
   })
 
-  // ── 外部 SSO 用户 ─────────────────────────────────────────────────────────
+  // ── External SSO user ────────────────────────────────────────────────────────
 
-  it('[P0] 外部 SSO 用户 auth status 不显示 workspace 行', async () => {
-    // 文档用例：外部 SSO 用户 auth status 不显示 workspace
+  it('[P0] external SSO user auth status does not display workspace row', async () => {
+    // Spec: external SSO user auth status does not show workspace
     await withSSOAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
     expect(result.stdout).not.toMatch(/workspace/i)
   })
 
-  it('[P0] 外部 SSO 用户 auth status 显示 issuer URL', async () => {
-    // 文档用例：外部 SSO 用户 auth status 显示 issuer URL
+  it('[P0] external SSO user auth status displays issuer URL', async () => {
+    // Spec: external SSO user auth status displays issuer URL
     await withSSOAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
     expect(result.stdout).toContain('issuer.example.com')
   })
 
-  it('[P0] 外部 SSO 用户 auth status 显示 External SSO session 信息', async () => {
-    // 文档用例：外部 SSO 用户 auth status 显示 External SSO Session
+  it('[P0] external SSO user auth status displays External SSO session info', async () => {
+    // Spec: external SSO user auth status displays External SSO Session info
     await withSSOAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/SSO|apps:run/i)
   })
 
-  // ── 错误场景 ──────────────────────────────────────────────────────────────
+  // ── Error scenarios ──────────────────────────────────────────────────────────
 
-  it('[P0] token 失效（401）后 auth status 返回认证错误', async () => {
-    // 文档用例：token 失效后 auth status 返回认证错误
-    // 注入一个格式合法但实际已失效的 token
+  it('[P0] auth status returns auth error when token is expired (401)', async () => {
+    // Spec: auth status returns auth error after token expires
+    // Inject a syntactically valid but actually expired token
     await injectAuth(configDir, {
       host: E.host,
       bearer: 'dfoa_invalid_expired_token_xyz',
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
     })
-    // auth status 只读本地 hosts.yml，不访问网络，所以本地 token 存在就显示状态
-    // 真实的 token 失效检测发生在执行 get app / run app 等命令时
+    // auth status reads only the local hosts.yml (no network); status is shown as long as a token exists.
+    // Real token-expiry detection happens when commands like get app / run app are executed.
     const result = await r(['auth', 'status'])
-    // 有 token 就显示状态，不报 401（status 不做网络请求）
+    // A token present → show status without a 401 (status makes no network request)
     assertExitCode(result, 0)
   })
 
-  it('[P1] auth status 在 JSON 模式下错误输出 JSON error envelope', async () => {
-    // 文档用例：auth status 在 JSON 模式下错误输出为 JSON
+  it('[P1] auth status outputs JSON error envelope in JSON mode', async () => {
+    // Spec: auth status outputs JSON error in JSON mode
     const result = await r(['auth', 'status', '--json'])
-    // 未登录时 --json 模式应输出 JSON 而不是纯文本
+    // When not logged in, --json mode should output JSON rather than plain text
     expect(result.exitCode).toBe(4)
-    // stdout 应含 JSON（not logged in 状态）
+    // stdout should contain JSON (not-logged-in state)
     const parsed = JSON.parse(result.stdout) as { logged_in: boolean }
     expect(parsed.logged_in).toBe(false)
   })
 
-  it('[P0] auth status 输出无 ANSI color（非 TTY）', async () => {
+  it('[P0] auth status output contains no ANSI colour (non-TTY)', async () => {
     await withAuth()
     const result = await r(['auth', 'status'])
     assertExitCode(result, 0)
