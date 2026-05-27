@@ -12,7 +12,7 @@ import { AppACLPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 
 let mockWebappAuthEnabled = false
-let mockWorkspacePermissionKeys: string[] = ['app.create']
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -356,7 +356,7 @@ describe('AppCard', () => {
     vi.clearAllMocks()
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
-    mockWorkspacePermissionKeys = ['app.create']
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDeleteMutationPending = false
   })
 
@@ -526,7 +526,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should hide duplicate option without app.create permission', async () => {
+    it('should hide duplicate option without app.create_and_management permission', async () => {
       mockWorkspacePermissionKeys = []
       render(<AppCard app={mockApp} />)
 

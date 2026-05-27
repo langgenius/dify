@@ -29,7 +29,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname()
   const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
   const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
-  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create')
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const shouldRedirectToApps = !isLoadingAccess
     && !!currentWorkspaceId

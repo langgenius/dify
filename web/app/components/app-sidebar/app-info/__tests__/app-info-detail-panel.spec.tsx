@@ -7,7 +7,7 @@ import { AppACLPermission } from '@/utils/permission'
 import AppInfoDetailPanel from '../app-info-detail-panel'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
-  value: ['app.create'] as string[],
+  value: ['app.create_and_management'] as string[],
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -108,7 +108,7 @@ describe('AppInfoDetailPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys.value = ['app.create']
+    mockWorkspacePermissionKeys.value = ['app.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -186,7 +186,7 @@ describe('AppInfoDetailPanel', () => {
       expect(defaultProps.openModal).toHaveBeenCalledWith('duplicate')
     })
 
-    it('should hide duplicate operation when app.create permission is missing', () => {
+    it('should hide duplicate operation when app.create_and_management permission is missing', () => {
       mockWorkspacePermissionKeys.value = []
 
       render(<AppInfoDetailPanel {...defaultProps} />)

@@ -1,6 +1,7 @@
 import type { MockedFunction } from 'vitest'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -8,8 +9,10 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { defaultSystemFeatures } from '@/types/feature'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
 
@@ -68,13 +71,17 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => {
     throw new Error('legacy workspace dataset_operator state should not be used by SettingsModal')
   },
-  useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
+  useSelector: <T,>(selector: (value: {
+    userProfile: { id: string, name: string, email: string, avatar_url: string }
+    workspacePermissionKeys: string[]
+  }) => T) => selector({
     userProfile: {
       id: 'user-1',
       name: 'User One',
       email: 'user@example.com',
       avatar_url: 'avatar.png',
     },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -201,12 +208,19 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 }
 
 const renderWithProviders = (dataset: DataSet) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, defaultSystemFeatures)
+
   return render(
-    <SettingsModal
-      currentDataset={dataset}
-      onCancel={mockOnCancel}
-      onSave={mockOnSave}
-    />,
+    <QueryClientProvider client={queryClient}>
+      <SettingsModal
+        currentDataset={dataset}
+        onCancel={mockOnCancel}
+        onSave={mockOnSave}
+      />
+    </QueryClientProvider>,
 
   )
 }

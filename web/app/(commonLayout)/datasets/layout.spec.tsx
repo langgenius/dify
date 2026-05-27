@@ -101,7 +101,7 @@ describe('DatasetsLayout', () => {
     setAppContext({
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceDatasetOperator: true,
-      workspacePermissionKeys: ['dataset.create', 'dataset.external.connect'],
+      workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     })
 
     render((
@@ -136,7 +136,7 @@ describe('DatasetsLayout', () => {
   it.each([
     '/datasets/create',
     '/datasets/create-from-pipeline',
-  ])('should redirect direct dataset creation route to /datasets without dataset.create: %s', async (pathname) => {
+  ])('should redirect direct dataset creation route to /datasets without dataset.create_and_management: %s', async (pathname) => {
     mockPathname = pathname
     setAppContext({
       workspacePermissionKeys: ['page.datasets.access'],
@@ -154,10 +154,10 @@ describe('DatasetsLayout', () => {
     })
   })
 
-  it('should render direct dataset creation route when workspace has dataset.create', () => {
+  it('should render direct dataset creation route when workspace has dataset.create_and_management', () => {
     mockPathname = '/datasets/create'
     setAppContext({
-      workspacePermissionKeys: ['page.datasets.access', 'dataset.create'],
+      workspacePermissionKeys: ['page.datasets.access', 'dataset.create_and_management'],
     })
 
     render((

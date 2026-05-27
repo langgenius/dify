@@ -6,6 +6,7 @@ import {
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import {
@@ -28,10 +29,16 @@ const RagPipelineMain = ({
   viewport,
 }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
-  const datasetPermissionKeys = useDatasetDetailContextWithSelector(s => s.dataset?.permission_keys)
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(datasetPermissionKeys),
-    [datasetPermissionKeys],
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: dataset?.created_by,
+      workspacePermissionKeys,
+    }),
+    [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {

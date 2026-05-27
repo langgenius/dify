@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
@@ -30,8 +31,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isFreePlan = plan.type === 'sandbox'
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const embeddingAvailable = !!dataset?.embedding_available
-  const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys)
+  const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: dataset?.created_by,
+    workspacePermissionKeys,
+  })
 
   // Use custom hook for page state management
   const {

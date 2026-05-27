@@ -1,3 +1,4 @@
+import type { CreatorPermissionOptions } from '@/utils/permission'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -9,8 +10,9 @@ type AppRedirectionTarget = {
 
 export const getRedirectionPath = (
   app: AppRedirectionTarget,
+  creatorPermissionOptions?: CreatorPermissionOptions,
 ) => {
-  const appACLCapabilities = getAppACLCapabilities(app.permission_keys)
+  const appACLCapabilities = getAppACLCapabilities(app.permission_keys, creatorPermissionOptions)
 
   if (!appACLCapabilities.canAccessLayout) {
     return `/app/${app.id}/overview`
@@ -26,7 +28,8 @@ export const getRedirectionPath = (
 export const getRedirection = (
   app: AppRedirectionTarget,
   redirectionFunc: (href: string) => void,
+  creatorPermissionOptions?: CreatorPermissionOptions,
 ) => {
-  const redirectionPath = getRedirectionPath(app)
+  const redirectionPath = getRedirectionPath(app, creatorPermissionOptions)
   redirectionFunc(redirectionPath)
 }

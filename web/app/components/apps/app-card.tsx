@@ -108,9 +108,14 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
   const { push } = useRouter()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
-  const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create')
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: app.created_by || app.workflow?.created_by,
+    workspacePermissionKeys,
+  }), [app.created_by, app.permission_keys, app.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
     e.stopPropagation()
@@ -238,9 +243,24 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
 const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys), [app.permission_keys])
-  const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create')
+  const appCreatedBy = app.created_by || app.workflow?.created_by
+  const appCreatorPermissionOptions = useMemo(
+    () => appCreatedBy
+      ? ({
+          currentUserId,
+          resourceCreatedBy: appCreatedBy,
+          workspacePermissionKeys,
+        })
+      : undefined,
+    [appCreatedBy, currentUserId, workspacePermissionKeys],
+  )
+  const appACLCapabilities = useMemo(
+    () => getAppACLCapabilities(app.permission_keys, appCreatorPermissionOptions),
+    [app.permission_keys, appCreatorPermissionOptions],
+  )
+  const canDuplicateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const canShowOperations = appACLCapabilities.canEdit
     || appACLCapabilities.canImportExportDSL
     || appACLCapabilities.canDelete
@@ -458,7 +478,10 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       <div
         onClick={(e) => {
           e.preventDefault()
-          getRedirection(app, push)
+          if (appCreatorPermissionOptions)
+            getRedirection(app, push, appCreatorPermissionOptions)
+          else
+            getRedirection(app, push)
         }}
         className="group relative col-span-1 inline-flex h-40 cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >

@@ -18,6 +18,7 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -39,7 +40,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
-  const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys).canEdit, [appDetail?.permission_keys])
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    workspacePermissionKeys,
+  }).canEdit, [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys])
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel

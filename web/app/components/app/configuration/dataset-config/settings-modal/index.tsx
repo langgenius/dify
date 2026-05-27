@@ -19,6 +19,7 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
@@ -53,11 +54,17 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
   const { setShowAccountSettingModal } = useModalContext()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const [loading, setLoading] = useState(false)
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const canEditDatasetSettings = useMemo(
-    () => getDatasetACLCapabilities(currentDataset.permission_keys).canEdit,
-    [currentDataset.permission_keys],
+    () => getDatasetACLCapabilities(currentDataset.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: currentDataset.created_by,
+      workspacePermissionKeys,
+    }).canEdit,
+    [currentDataset.created_by, currentDataset.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)

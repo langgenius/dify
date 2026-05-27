@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import {
@@ -78,7 +79,13 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
-  const canEditApp = React.useMemo(() => getAppACLCapabilities(appInfo.permission_keys).canEdit, [appInfo.permission_keys])
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canEditApp = React.useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+    workspacePermissionKeys,
+  }).canEdit, [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys])
   const { data: triggersResponse, isLoading } = useAppTriggers(appId)
   const { mutateAsync: updateTriggerStatus } = useUpdateTriggerStatus()
   const invalidateAppTriggers = useInvalidateAppTriggers()

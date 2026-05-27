@@ -41,7 +41,7 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -109,7 +109,8 @@ export type ConfigurationViewModel = {
 
 export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const { setShowAccountSettingModal } = useModalContext()
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
@@ -119,8 +120,12 @@ export const useConfiguration = (): ConfigurationViewModel => {
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
   const appACLCapabilities = useMemo(
-    () => getAppACLCapabilities(appDetail?.permission_keys),
-    [appDetail?.permission_keys],
+    () => getAppACLCapabilities(appDetail?.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+      workspacePermissionKeys,
+    }),
+    [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys],
   )
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()

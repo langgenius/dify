@@ -11,6 +11,7 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
@@ -48,10 +49,16 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isMobile = media === MediaType.mobile
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(dataset?.permission_keys),
-    [dataset?.permission_keys],
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: dataset?.created_by,
+      workspacePermissionKeys,
+    }),
+    [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditDocument = datasetACLCapabilities.canEdit
   const [showMetadata, setShowMetadata] = useState(!isMobile)

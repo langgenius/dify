@@ -135,7 +135,7 @@ const mockWorkspacePermissions = (canCreateApp: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: canCreateApp
-      ? ['app_library.access', 'app.create']
+      ? ['app_library.access', 'app.create_and_management']
       : ['app_library.access'],
   })
 }

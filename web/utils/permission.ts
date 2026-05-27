@@ -29,6 +29,12 @@ export const DatasetACLPermission = {
 type AppACLPermissionKey = typeof AppACLPermission[keyof typeof AppACLPermission]
 type DatasetACLPermissionKey = typeof DatasetACLPermission[keyof typeof DatasetACLPermission]
 
+export type CreatorPermissionOptions = {
+  currentUserId?: string | null
+  resourceCreatedBy?: string | null
+  workspacePermissionKeys?: readonly PermissionKey[] | null
+}
+
 type AppACLCapabilities = {
   canViewLayout: boolean
   canTestAndRun: boolean
@@ -85,10 +91,31 @@ export const hasPermission = (permissionKeys: readonly PermissionKey[] | null | 
   return permissionKeys.includes(singlePermissionKey)
 }
 
-export const getAppACLCapabilities = (permissionKeys: readonly PermissionKey[] | null | undefined): AppACLCapabilities => {
-  const canViewLayout = hasPermission(permissionKeys, AppACLPermission.ViewLayout)
-  const canTestAndRun = hasPermission(permissionKeys, AppACLPermission.TestAndRun)
-  const canEdit = hasPermission(permissionKeys, AppACLPermission.Edit)
+const shouldGrantCreatorPermissions = (
+  options: CreatorPermissionOptions | undefined,
+  createPermissionKey: PermissionKey,
+) => {
+  if (!options?.currentUserId || !options?.resourceCreatedBy)
+    return false
+
+  return options.currentUserId === options.resourceCreatedBy
+    && hasPermission(options.workspacePermissionKeys, createPermissionKey)
+}
+
+const hasResourcePermission = (
+  permissionKeys: readonly PermissionKey[] | null | undefined,
+  permissionKey: PermissionKey,
+  hasCreatorPermissions: boolean,
+) => hasCreatorPermissions || hasPermission(permissionKeys, permissionKey)
+
+export const getAppACLCapabilities = (
+  permissionKeys: readonly PermissionKey[] | null | undefined,
+  options?: CreatorPermissionOptions,
+): AppACLCapabilities => {
+  const hasCreatorPermissions = shouldGrantCreatorPermissions(options, 'app.create_and_management')
+  const canViewLayout = hasResourcePermission(permissionKeys, AppACLPermission.ViewLayout, hasCreatorPermissions)
+  const canTestAndRun = hasResourcePermission(permissionKeys, AppACLPermission.TestAndRun, hasCreatorPermissions)
+  const canEdit = hasResourcePermission(permissionKeys, AppACLPermission.Edit, hasCreatorPermissions)
 
   return {
     canViewLayout,
@@ -97,27 +124,34 @@ export const getAppACLCapabilities = (permissionKeys: readonly PermissionKey[] |
     canAccessLayout: canViewLayout || canTestAndRun || canEdit,
     canComment: canViewLayout || canTestAndRun || canEdit,
     canPreviewApp: canViewLayout || canTestAndRun,
-    canImportExportDSL: hasPermission(permissionKeys, AppACLPermission.ImportExportDSL),
-    canDelete: hasPermission(permissionKeys, AppACLPermission.Delete),
-    canReleaseAndVersion: hasPermission(permissionKeys, AppACLPermission.ReleaseAndVersion),
-    canMonitor: hasPermission(permissionKeys, AppACLPermission.Monitor),
-    canAccessConfig: hasPermission(permissionKeys, AppACLPermission.AccessConfig),
+    canImportExportDSL: hasResourcePermission(permissionKeys, AppACLPermission.ImportExportDSL, hasCreatorPermissions),
+    canDelete: hasResourcePermission(permissionKeys, AppACLPermission.Delete, hasCreatorPermissions),
+    canReleaseAndVersion: hasResourcePermission(permissionKeys, AppACLPermission.ReleaseAndVersion, hasCreatorPermissions),
+    canMonitor: hasResourcePermission(permissionKeys, AppACLPermission.Monitor, hasCreatorPermissions),
+    canAccessConfig: hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasCreatorPermissions),
   }
 }
 
-export const getDatasetACLCapabilities = (permissionKeys: readonly PermissionKey[] | null | undefined): DatasetACLCapabilities => ({
-  canReadonly: hasPermission(permissionKeys, DatasetACLPermission.Readonly),
-  canEdit: hasPermission(permissionKeys, DatasetACLPermission.Edit),
-  canImportExportDSL: hasPermission(permissionKeys, DatasetACLPermission.ImportExportDSL),
-  canPipelineTest: hasPermission(permissionKeys, DatasetACLPermission.PipelineTest),
-  canDocumentDownload: hasPermission(permissionKeys, DatasetACLPermission.DocumentDownload),
-  canRetrievalRecall: hasPermission(permissionKeys, DatasetACLPermission.RetrievalRecall),
-  canUse: hasPermission(permissionKeys, DatasetACLPermission.Use),
-  canDeleteFile: hasPermission(permissionKeys, DatasetACLPermission.DeleteFile),
-  canPipelineRelease: hasPermission(permissionKeys, DatasetACLPermission.PipelineRelease),
-  canDelete: hasPermission(permissionKeys, DatasetACLPermission.Delete),
-  canAccessConfig: hasPermission(permissionKeys, DatasetACLPermission.AccessConfig),
-})
+export const getDatasetACLCapabilities = (
+  permissionKeys: readonly PermissionKey[] | null | undefined,
+  options?: CreatorPermissionOptions,
+): DatasetACLCapabilities => {
+  const hasCreatorPermissions = shouldGrantCreatorPermissions(options, 'dataset.create_and_management')
+
+  return {
+    canReadonly: hasResourcePermission(permissionKeys, DatasetACLPermission.Readonly, hasCreatorPermissions),
+    canEdit: hasResourcePermission(permissionKeys, DatasetACLPermission.Edit, hasCreatorPermissions),
+    canImportExportDSL: hasResourcePermission(permissionKeys, DatasetACLPermission.ImportExportDSL, hasCreatorPermissions),
+    canPipelineTest: hasResourcePermission(permissionKeys, DatasetACLPermission.PipelineTest, hasCreatorPermissions),
+    canDocumentDownload: hasResourcePermission(permissionKeys, DatasetACLPermission.DocumentDownload, hasCreatorPermissions),
+    canRetrievalRecall: hasResourcePermission(permissionKeys, DatasetACLPermission.RetrievalRecall, hasCreatorPermissions),
+    canUse: hasResourcePermission(permissionKeys, DatasetACLPermission.Use, hasCreatorPermissions),
+    canDeleteFile: hasResourcePermission(permissionKeys, DatasetACLPermission.DeleteFile, hasCreatorPermissions),
+    canPipelineRelease: hasResourcePermission(permissionKeys, DatasetACLPermission.PipelineRelease, hasCreatorPermissions),
+    canDelete: hasResourcePermission(permissionKeys, DatasetACLPermission.Delete, hasCreatorPermissions),
+    canAccessConfig: hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasCreatorPermissions),
+  }
+}
 
 export const hasAppACLPermission = (
   permissionKeys: readonly PermissionKey[] | null | undefined,

@@ -38,9 +38,14 @@ const AppInfoDetailPanel = ({
   exportCheck,
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys), [appDetail.permission_keys])
-  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create')
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appDetail.created_by || appDetail.workflow?.created_by,
+    workspacePermissionKeys,
+  }), [appDetail.created_by, appDetail.permission_keys, appDetail.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const primaryOperations = useMemo<Operation[]>(() => [
     ...(appACLCapabilities.canEdit

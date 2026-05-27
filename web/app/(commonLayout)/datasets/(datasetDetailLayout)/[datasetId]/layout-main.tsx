@@ -20,6 +20,7 @@ import { useStore } from '@/app/components/app/store'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -59,6 +60,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
 
   eventEmitter?.useSubscription((v: any) => {
     if (v?.type === 'workflow-canvas-maximize')
@@ -69,9 +72,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
+  const datasetCreatorPermissionOptions = useMemo(
+    () => ({
+      currentUserId,
+      resourceCreatedBy: datasetRes?.created_by,
+      workspacePermissionKeys,
+    }),
+    [datasetRes?.created_by, currentUserId, workspacePermissionKeys],
+  )
   const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(datasetRes?.permission_keys),
-    [datasetRes?.permission_keys],
+    () => getDatasetACLCapabilities(datasetRes?.permission_keys, datasetCreatorPermissionOptions),
+    [datasetCreatorPermissionOptions, datasetRes?.permission_keys],
   )
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })

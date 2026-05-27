@@ -56,6 +56,16 @@ describe('app-redirection', () => {
       expect(getRedirectionPath(app1)).toBe('/app/abc-123/overview')
       expect(getRedirectionPath(app2)).toBe('/app/xyz-789/workflow')
     })
+
+    it('returns layout path when the app creator has app.create_and_management permission without app ACL keys', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+
+      expect(getRedirectionPath(app, {
+        currentUserId: 'user-1',
+        resourceCreatedBy: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+      })).toBe('/app/app-123/configuration')
+    })
   })
 
   /**

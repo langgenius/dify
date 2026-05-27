@@ -18,6 +18,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
@@ -64,7 +65,13 @@ const DropDown = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys), [dataset?.permission_keys])
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: dataset?.created_by,
+    workspacePermissionKeys,
+  }), [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canDelete

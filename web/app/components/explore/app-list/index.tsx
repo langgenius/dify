@@ -44,7 +44,7 @@ const Apps = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
   const canAccessAppLibrary = hasPermission(workspacePermissionKeys, 'app_library.access')
-  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create')
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')

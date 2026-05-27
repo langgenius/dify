@@ -1,6 +1,7 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import { useMemo } from 'react'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -26,6 +27,17 @@ const DatasetCard = ({
   onOpenTagManagement = () => {},
 }: DatasetCardProps) => {
   const { push } = useRouter()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+
+  const datasetCreatorPermissionOptions = useMemo(
+    () => ({
+      currentUserId,
+      resourceCreatedBy: dataset.created_by,
+      workspacePermissionKeys,
+    }),
+    [dataset.created_by, currentUserId, workspacePermissionKeys],
+  )
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -45,8 +57,8 @@ const DatasetCard = ({
     return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   }, [dataset.runtime_mode, dataset.is_published])
   const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(dataset.permission_keys),
-    [dataset.permission_keys],
+    () => getDatasetACLCapabilities(dataset.permission_keys, datasetCreatorPermissionOptions),
+    [dataset.permission_keys, datasetCreatorPermissionOptions],
   )
 
   const handleCardClick = (e: React.MouseEvent) => {

@@ -3,6 +3,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import ApiServer from '@/app/components/develop/ApiServer'
 import Doc from '@/app/components/develop/doc'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 type IDevelopMainProps = {
@@ -11,7 +12,13 @@ type IDevelopMainProps = {
 
 const DevelopMain = ({ appId }: IDevelopMainProps) => {
   const appDetail = useAppStore(state => state.appDetail)
-  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    workspacePermissionKeys,
+  })
 
   if (!appDetail) {
     return (

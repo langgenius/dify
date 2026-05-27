@@ -25,7 +25,7 @@ import { AppInfoDetailLayer } from '@/app/components/app-sidebar/app-info'
 import { useAppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -50,6 +50,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const { isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -65,9 +66,18 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     selectedIcon: NavIcon
   }>>([])
 
+  const appCreatedBy = appDetailRes?.created_by || appDetailRes?.workflow?.created_by
+  const appCreatorPermissionOptions = React.useMemo(
+    () => ({
+      currentUserId,
+      resourceCreatedBy: appCreatedBy,
+      workspacePermissionKeys,
+    }),
+    [appCreatedBy, currentUserId, workspacePermissionKeys],
+  )
   const appACLCapabilities = React.useMemo(
-    () => getAppACLCapabilities(appDetailRes?.permission_keys),
-    [appDetailRes?.permission_keys],
+    () => getAppACLCapabilities(appDetailRes?.permission_keys, appCreatorPermissionOptions),
+    [appCreatorPermissionOptions, appDetailRes?.permission_keys],
   )
   const canAccessMonitor = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.access')
   const canAccessLog = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.log.access')
@@ -187,7 +197,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail({ ...res, enable_sso: false })
       setNavigation(getNavigationConfig(appId, res.mode))
     }
-  }, [appDetailRes, appACLCapabilities, appId, canAccessLog, canAccessMonitor, currentWorkspace.id, getNavigationConfig, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
+  }, [appACLCapabilities, appDetailRes, appId, canAccessLog, canAccessMonitor, currentWorkspace.id, getNavigationConfig, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()

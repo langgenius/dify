@@ -151,7 +151,7 @@ const renderAppList = (
 ) => {
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockWorkspacePermissions(
-    options.workspacePermissionKeys ?? (canCreateApp ? ['app_library.access', 'app.create'] : ['app_library.access']),
+    options.workspacePermissionKeys ?? (canCreateApp ? ['app_library.access', 'app.create_and_management'] : ['app_library.access']),
   )
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
     systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
@@ -488,7 +488,7 @@ describe('AppList', () => {
       }
 
       renderAppList(false, undefined, undefined, {
-        workspacePermissionKeys: ['app_library.access', 'app.create'],
+        workspacePermissionKeys: ['app_library.access', 'app.create_and_management'],
       })
 
       expect(screen.getByText('explore.appCard.addToWorkspace')).toBeInTheDocument()
@@ -502,7 +502,7 @@ describe('AppList', () => {
       })
 
       const { container } = renderAppList(true, undefined, undefined, {
-        workspacePermissionKeys: ['app.create'],
+        workspacePermissionKeys: ['app.create_and_management'],
       })
 
       expect(mockUseExploreAppList).toHaveBeenCalledWith({ enabled: false })

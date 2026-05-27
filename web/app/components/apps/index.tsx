@@ -27,7 +27,7 @@ const Apps = () => {
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create')
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
 

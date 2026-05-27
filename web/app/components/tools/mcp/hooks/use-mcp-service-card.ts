@@ -4,6 +4,7 @@ import type { AppSSO } from '@/types/app'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
@@ -35,10 +36,16 @@ export const useMCPServiceCardState = (
   const { mutateAsync: updateMCPServer } = useUpdateMCPServer()
   const { mutateAsync: refreshMCPServerCode, isPending: genLoading } = useRefreshMCPServerCode()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
 
   const canManageMCP = useMemo(
-    () => getAppACLCapabilities(appInfo.permission_keys).canEdit,
-    [appInfo.permission_keys],
+    () => getAppACLCapabilities(appInfo.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+      workspacePermissionKeys,
+    }).canEdit,
+    [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys],
   )
 
   // UI state

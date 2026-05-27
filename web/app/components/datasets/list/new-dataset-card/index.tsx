@@ -3,7 +3,6 @@ import {
   RiAddLine,
   RiFunctionAddLine,
 } from '@remixicon/react'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
@@ -13,7 +12,7 @@ import Option from './option'
 const CreateAppCard = () => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canAddDataset = hasPermission(workspacePermissionKeys, 'dataset.create')
+  const canAddDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
 
   return (

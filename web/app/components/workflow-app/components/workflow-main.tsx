@@ -20,6 +20,7 @@ import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import {
@@ -74,9 +75,15 @@ const WorkflowMain = ({
   const filteredCursors = Object.fromEntries(
     Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(
-    () => getAppACLCapabilities(appDetail?.permission_keys),
-    [appDetail?.permission_keys],
+    () => getAppACLCapabilities(appDetail?.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+      workspacePermissionKeys,
+    }),
+    [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys],
   )
 
   useEffect(() => {

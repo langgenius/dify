@@ -3,7 +3,14 @@ import { DatasetPermission } from '@/models/datasets'
  * Test suite for permission utility functions
  * Tests dataset edit permission logic based on user roles and dataset settings
  */
-import { AppACLPermission, getAppACLCapabilities, hasEditPermissionForDataset, hasPermission } from './permission'
+import {
+  AppACLPermission,
+  DatasetACLPermission,
+  getAppACLCapabilities,
+  getDatasetACLCapabilities,
+  hasEditPermissionForDataset,
+  hasPermission,
+} from './permission'
 
 describe('permission', () => {
   /**
@@ -122,6 +129,75 @@ describe('permission', () => {
       expect(capabilities.canAccessLayout).toBe(true)
       expect(capabilities.canComment).toBe(true)
       expect(capabilities.canTestAndRun).toBe(false)
+    })
+  })
+
+  describe('app creator capabilities', () => {
+    it('grants all app ACL capabilities without injecting app ACL permission keys', () => {
+      const permissionKeys: string[] = []
+      const capabilities = getAppACLCapabilities(permissionKeys, {
+        currentUserId: 'user-1',
+        resourceCreatedBy: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+      })
+
+      expect(capabilities.canViewLayout).toBe(true)
+      expect(capabilities.canTestAndRun).toBe(true)
+      expect(capabilities.canEdit).toBe(true)
+      expect(capabilities.canImportExportDSL).toBe(true)
+      expect(capabilities.canDelete).toBe(true)
+      expect(capabilities.canReleaseAndVersion).toBe(true)
+      expect(capabilities.canMonitor).toBe(true)
+      expect(capabilities.canAccessConfig).toBe(true)
+      expect(permissionKeys).toEqual([])
+    })
+
+    it('keeps app ACL capabilities unchanged when the creator lacks app.create_and_management permission', () => {
+      const capabilities = getAppACLCapabilities([AppACLPermission.ViewLayout], {
+        currentUserId: 'user-1',
+        resourceCreatedBy: 'user-1',
+        workspacePermissionKeys: [],
+      })
+
+      expect(capabilities.canViewLayout).toBe(true)
+      expect(capabilities.canEdit).toBe(false)
+      expect(capabilities.canDelete).toBe(false)
+    })
+  })
+
+  describe('dataset creator capabilities', () => {
+    it('grants all dataset ACL capabilities without injecting dataset ACL permission keys', () => {
+      const permissionKeys: string[] = []
+      const capabilities = getDatasetACLCapabilities(permissionKeys, {
+        currentUserId: 'user-1',
+        resourceCreatedBy: 'user-1',
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      })
+
+      expect(capabilities.canReadonly).toBe(true)
+      expect(capabilities.canEdit).toBe(true)
+      expect(capabilities.canImportExportDSL).toBe(true)
+      expect(capabilities.canPipelineTest).toBe(true)
+      expect(capabilities.canDocumentDownload).toBe(true)
+      expect(capabilities.canRetrievalRecall).toBe(true)
+      expect(capabilities.canUse).toBe(true)
+      expect(capabilities.canDeleteFile).toBe(true)
+      expect(capabilities.canPipelineRelease).toBe(true)
+      expect(capabilities.canDelete).toBe(true)
+      expect(capabilities.canAccessConfig).toBe(true)
+      expect(permissionKeys).toEqual([])
+    })
+
+    it('keeps dataset ACL capabilities unchanged when the current user is not the creator', () => {
+      const capabilities = getDatasetACLCapabilities([DatasetACLPermission.Readonly], {
+        currentUserId: 'user-1',
+        resourceCreatedBy: 'user-2',
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      })
+
+      expect(capabilities.canReadonly).toBe(true)
+      expect(capabilities.canEdit).toBe(false)
+      expect(capabilities.canDelete).toBe(false)
     })
   })
 })

@@ -39,9 +39,14 @@ const Panel: FC = () => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const appPermissionKeys = useAppStore(s => s.appDetail?.permission_keys)
-  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appPermissionKeys), [appPermissionKeys])
+  const appDetail = useAppStore(s => s.appDetail)
+  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    workspacePermissionKeys,
+  }), [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys])
   const canConfigTracing = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.tracking_config')
   const readOnly = !canConfigTracing
 

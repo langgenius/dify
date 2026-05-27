@@ -22,6 +22,9 @@ vi.mock('@/context/app-context', () => ({
     isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
+  useSelector: <T,>(selector: (state: { userProfile: { id: string } }) => T) => selector({
+    userProfile: { id: 'user-1' },
+  }),
 }))
 
 const mockSetAppDetail = vi.fn()

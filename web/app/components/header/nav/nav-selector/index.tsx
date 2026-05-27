@@ -113,7 +113,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
   const router = useRouter()
   const { workspacePermissionKeys } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
-  const canCreate = hasPermission(workspacePermissionKeys, isApp ? 'app.create' : 'dataset.create')
+  const canCreate = hasPermission(workspacePermissionKeys, isApp ? 'app.create_and_management' : 'dataset.create_and_management')
 
   const handleScroll = useCallback(debounce((e) => {
     if (typeof onLoadMore === 'function') {

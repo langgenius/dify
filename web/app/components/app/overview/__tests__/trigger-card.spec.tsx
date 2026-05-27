@@ -18,6 +18,10 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
   }),
+  useSelector: <T,>(selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({

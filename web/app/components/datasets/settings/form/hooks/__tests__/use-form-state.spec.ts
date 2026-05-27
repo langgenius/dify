@@ -17,9 +17,10 @@ const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: () => {
-    throw new Error('legacy workspace role selector should not be used by useFormState')
-  },
+  useSelector: <T>(selector: (value: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
 }))
 
 const createDefaultMockDataset = (): DataSet => ({

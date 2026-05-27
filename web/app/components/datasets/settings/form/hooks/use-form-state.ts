@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -29,9 +30,15 @@ export const useFormState = () => {
   const { t } = useTranslation()
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(currentDataset?.permission_keys),
-    [currentDataset?.permission_keys],
+    () => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: currentDataset?.created_by,
+      workspacePermissionKeys,
+    }),
+    [currentDataset?.created_by, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditSettings = datasetACLCapabilities.canEdit
 

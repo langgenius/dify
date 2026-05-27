@@ -27,6 +27,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { IS_CE_EDITION } from '@/config'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -73,8 +74,14 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   const { mutateAsync: generateSummary } = useDocumentSummary()
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
-  const datasetPermissionKeys = useDatasetDetailContextWithSelector(s => s.dataset?.permission_keys)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetPermissionKeys), [datasetPermissionKeys])
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: dataset?.created_by,
+    workspacePermissionKeys,
+  }), [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canViewDocumentSettings = datasetACLCapabilities.canEdit
   const canEditDocument = datasetACLCapabilities.canEdit
   const canDownloadDocument = datasetACLCapabilities.canDocumentDownload

@@ -115,7 +115,7 @@ describe('Header', () => {
     vi.clearAllMocks()
     mockIsWorkspaceEditor = false
     mockIsDatasetOperator = false
-    mockWorkspacePermissionKeys = ['page.explore.access', 'page.datasets.access', 'page.tool.access']
+    mockWorkspacePermissionKeys = ['page.explore.access', 'page.apps.access', 'page.datasets.access', 'page.tool.access']
     mockMedia = 'desktop'
     mockEnableBilling = false
     mockPlanType = 'sandbox'
@@ -211,7 +211,7 @@ describe('Header', () => {
   })
 
   it('should show dataset nav when workspace has dataset page access', () => {
-    mockWorkspacePermissionKeys = ['page.datasets.access']
+    mockWorkspacePermissionKeys = ['page.apps.access', 'page.datasets.access']
 
     renderHeader()
 
@@ -220,7 +220,7 @@ describe('Header', () => {
   })
 
   it('should hide dataset nav when workspace only has dataset mutation permissions', () => {
-    mockWorkspacePermissionKeys = ['dataset.create', 'dataset.tag.manage', 'dataset.external.connect']
+    mockWorkspacePermissionKeys = ['dataset.create_and_management', 'dataset.tag.manage', 'dataset.external.connect']
 
     renderHeader()
 

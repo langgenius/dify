@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
@@ -25,7 +26,13 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys), [dataset.permission_keys])
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: dataset.created_by,
+    workspacePermissionKeys,
+  }), [dataset.created_by, dataset.permission_keys, currentUserId, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canAccessConfig

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -68,7 +69,13 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys), [appInfo.permission_keys])
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+    workspacePermissionKeys,
+  }), [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys])
   const canEditApp = appACLCapabilities.canEdit
   const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')

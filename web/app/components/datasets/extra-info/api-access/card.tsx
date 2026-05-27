@@ -4,6 +4,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
@@ -19,14 +20,20 @@ const Card = ({
 }: CardProps) => {
   const { t } = useTranslation()
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
-  const datasetPermissionKeys = useDatasetDetailContextWithSelector(state => state.dataset?.permission_keys)
+  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 
   const datasetACLCapabilities = React.useMemo(
-    () => getDatasetACLCapabilities(datasetPermissionKeys),
-    [datasetPermissionKeys],
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceCreatedBy: dataset?.created_by,
+      workspacePermissionKeys,
+    }),
+    [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canManageApiAccess = datasetACLCapabilities.canEdit
 

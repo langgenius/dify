@@ -45,7 +45,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { workspacePermissionKeys } = useAppContext()
-  const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create')
+  const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
   const allCategoriesEn = AppCategories.RECOMMENDED
 

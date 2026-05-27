@@ -6,6 +6,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import dynamic from '@/next/dynamic'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -37,6 +38,8 @@ const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
   const appDetail = useAppStore(state => state.appDetail)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
@@ -87,9 +90,13 @@ const AppNav = () => {
       icon_url: app.icon_url,
       name: appDetail?.id === app.id ? appDetail.name : app.name,
       mode: app.mode,
-      link: getAppLink(getAppACLCapabilities(app.permission_keys).canAccessLayout, app.id, app.mode),
+      link: getAppLink(getAppACLCapabilities(app.permission_keys, {
+        currentUserId,
+        resourceCreatedBy: app.created_by || app.workflow?.created_by,
+        workspacePermissionKeys,
+      }).canAccessLayout, app.id, app.mode),
     }))
-  }, [appDetail?.id, appDetail?.name, appsData?.pages])
+  }, [appDetail?.id, appDetail?.name, appsData?.pages, currentUserId, workspacePermissionKeys])
 
   return (
     <>
