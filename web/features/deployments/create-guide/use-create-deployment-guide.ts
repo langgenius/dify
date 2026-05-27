@@ -148,10 +148,10 @@ export function useCreateDeploymentGuide() {
     : method === 'bindApp'
       ? effectiveSelectedApp?.name ?? ''
       : ''
-  const displayedInstanceName = instanceName.trim() || sourceName
   const defaultedReleaseName = t('createGuide.release.defaultName')
-  const displayedReleaseName = releaseName.trim() || defaultedReleaseName
-  const displayedReleaseDescription = releaseDescription.trim()
+  const submittedInstanceName = instanceName.trim()
+  const submittedReleaseName = releaseName.trim()
+  const submittedReleaseDescription = releaseDescription.trim()
   const showTargetConfiguration = Boolean(method && step === 'target')
 
   function selectMethod(nextMethod: GuideMethod) {
@@ -207,8 +207,8 @@ export function useCreateDeploymentGuide() {
       return Boolean(
         method
         && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id)
-        && displayedInstanceName.trim()
-        && displayedReleaseName.trim(),
+        && submittedInstanceName
+        && submittedReleaseName,
       )
     }
     if (step === 'target') {
@@ -220,7 +220,9 @@ export function useCreateDeploymentGuide() {
       return Boolean(
         selectedEnvironment?.id
         && deploymentTargetReady
-        && requiredBindingsReady,
+        && requiredBindingsReady
+        && submittedInstanceName
+        && submittedReleaseName,
       )
     }
     return false
@@ -260,6 +262,9 @@ export function useCreateDeploymentGuide() {
       return
 
     try {
+      if (!submittedInstanceName || !submittedReleaseName)
+        throw new Error('Missing required release fields.')
+
       const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
@@ -270,10 +275,10 @@ export function useCreateDeploymentGuide() {
             body: {
               dsl: encodedDslContent,
               environmentId: selectedEnvironment.id,
-              appInstanceName: displayedInstanceName.trim(),
+              appInstanceName: submittedInstanceName,
               appInstanceDescription: instanceDescription.trim() || undefined,
-              releaseName: displayedReleaseName.trim(),
-              releaseDescription: displayedReleaseDescription.trim() || undefined,
+              releaseName: submittedReleaseName,
+              releaseDescription: submittedReleaseDescription || undefined,
               credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
               idempotencyKey,
               expectedDslDigest: deploymentOptions?.dslDigest,
@@ -284,10 +289,10 @@ export function useCreateDeploymentGuide() {
               body: {
                 sourceAppId: effectiveSelectedApp.id,
                 environmentId: selectedEnvironment.id,
-                appInstanceName: displayedInstanceName.trim(),
+                appInstanceName: submittedInstanceName,
                 appInstanceDescription: instanceDescription.trim() || undefined,
-                releaseName: displayedReleaseName.trim(),
-                releaseDescription: displayedReleaseDescription.trim() || undefined,
+                releaseName: submittedReleaseName,
+                releaseDescription: submittedReleaseDescription || undefined,
                 credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
                 idempotencyKey,
                 expectedDslDigest: deploymentOptions?.dslDigest,
