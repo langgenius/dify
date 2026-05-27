@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next'
 
 type AgentDetailPageProps = {
-  section: 'configure' | 'access' | 'logs' | 'annotation' | 'monitoring'
+  section: 'configure' | 'access' | 'logs' | 'monitoring'
 }
 
 export function AgentDetailPage({

@@ -35,7 +35,7 @@ describe('Agent detail navigation', () => {
     expect(screen.getByRole('link', { name: 'agentV2.agentDetail.sections.configure' })).toHaveAttribute('href', '/roster/agent-1/configure')
     expect(screen.getByRole('link', { name: 'agentV2.agentDetail.sections.access' })).toHaveAttribute('href', '/roster/agent-1/access')
     expect(screen.getByRole('link', { name: 'agentV2.agentDetail.sections.logs' })).toHaveAttribute('href', '/roster/agent-1/logs')
-    expect(screen.getByRole('link', { name: 'agentV2.agentDetail.sections.annotation' })).toHaveAttribute('href', '/roster/agent-1/annotation')
+    expect(screen.queryByRole('link', { name: 'agentV2.agentDetail.sections.annotation' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'agentV2.agentDetail.sections.monitoring' })).toHaveAttribute('href', '/roster/agent-1/monitoring')
   })
 })

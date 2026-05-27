@@ -6,8 +6,10 @@ import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
 
+type AgentDetailSectionKey = 'configure' | 'access' | 'logs' | 'monitoring'
+
 type AgentDetailNavItem = {
-  labelKey: string
+  labelKey: `agentDetail.sections.${AgentDetailSectionKey}`
   href: string
   icon: string
   activeIcon: string
@@ -40,12 +42,6 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
     href: `/roster/${agentId}/logs`,
     icon: 'i-ri-list-check-2',
     activeIcon: 'i-ri-list-check-2',
-  },
-  {
-    labelKey: 'agentDetail.sections.annotation',
-    href: `/roster/${agentId}/annotation`,
-    icon: 'i-ri-chat-quote-line',
-    activeIcon: 'i-ri-chat-quote-fill',
   },
   {
     labelKey: 'agentDetail.sections.monitoring',
