@@ -600,6 +600,7 @@ def _with_output_path(context: ReportContext | None, output_path: str) -> Report
         app_api_tokens_created=context.app_api_tokens_created,
         app_api_tokens_reused=context.app_api_tokens_reused,
         id_mapping_count=context.id_mapping_count,
+        id_mappings=context.id_mappings,
     )
 
 

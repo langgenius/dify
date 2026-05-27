@@ -226,3 +226,4 @@ class ReportContext:
     app_api_tokens_created: int = 0
     app_api_tokens_reused: int = 0
     id_mapping_count: int = 0
+    id_mappings: dict[str, str] = field(default_factory=dict)

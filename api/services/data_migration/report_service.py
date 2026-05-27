@@ -45,6 +45,11 @@ class MigrationReportService:
                 f"app api tokens: {context.app_api_tokens_created} created, "
                 f"{context.app_api_tokens_reused} reused"
             )
-        if context.id_mapping_count:
-            lines.append(f"id mappings: {context.id_mapping_count}")
+        if context.id_mappings:
+            lines.append(f"resource references resolved: {len(context.id_mappings)}")
+            lines.extend(
+                f"- {source_id} -> {target_id}" for source_id, target_id in sorted(context.id_mappings.items())
+            )
+        elif context.id_mapping_count:
+            lines.append(f"resource references resolved: {context.id_mapping_count}")
         return lines

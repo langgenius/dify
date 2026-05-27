@@ -61,6 +61,7 @@ def test_report_includes_export_and_import_context():
             app_api_tokens_created=1,
             app_api_tokens_reused=2,
             id_mapping_count=3,
+            id_mappings={"source-app": "target-app", "source-tool": "target-tool"},
         ),
     )
 
@@ -71,4 +72,6 @@ def test_report_includes_export_and_import_context():
     assert "target tenant: prod" in lines
     assert "operator: admin@example.com" in lines
     assert "app api tokens: 1 created, 2 reused" in lines
-    assert "id mappings: 3" in lines
+    assert "resource references resolved: 2" in lines
+    assert "- source-app -> target-app" in lines
+    assert "- source-tool -> target-tool" in lines

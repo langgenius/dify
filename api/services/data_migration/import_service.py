@@ -200,6 +200,7 @@ class MigrationImportService:
                 target_tenant=target.tenant_name,
                 operator_email=target.operator_email,
                 id_mapping_count=len(id_mapping),
+                id_mappings=dict(id_mapping),
             ),
         )
 
