@@ -11,7 +11,7 @@ import { startMock } from '../../../../../test/fixtures/dify-mock/server.js'
 import { saveHosts } from '../../../../auth/hosts.js'
 import { createClient } from '../../../../http/client.js'
 import { bufferStreams } from '../../../../sys/io/streams'
-import { runDevicesList, runDevicesRevoke } from './devices.js'
+import { runDevicesList, runDevicesRevoke, listAllSessions } from './devices.js'
 
 class MemStore implements TokenStore {
   readonly entries = new Map<string, string>()

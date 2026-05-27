@@ -1,12 +1,12 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle, Workspace } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../io/streams.js'
+import type { IOStreams } from '../../../sys/io/streams.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
 import { saveHosts } from '../../../auth/hosts.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../io/color.js'
-import { runWithSpinner } from '../../../io/spinner.js'
+import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import { runWithSpinner } from '../../../sys/io/spinner.js'
 
 export type UseWorkspaceOptions = {
   readonly workspaceId: string
