@@ -13,6 +13,7 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
 import { useAppContext } from '@/context/app-context'
+import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/navigation/agent-detail-navigation'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -41,6 +42,12 @@ const isDatasetDetailPathname = (pathname: string) => {
   return true
 }
 
+const isAgentDetailPathname = (pathname: string) => {
+  const [section, agentId] = pathname.split('/').filter(Boolean)
+
+  return section === 'roster' && !!agentId
+}
+
 const MainNav = ({
   className,
 }: MainNavProps) => {
@@ -51,7 +58,8 @@ const MainNav = ({
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
-  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation
+  const showAgentDetailNavigation = !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation
   const navItems = useMemo<MainNavItem[]>(() => [
     ...(!isCurrentWorkspaceDatasetOperator
       ? [
@@ -136,7 +144,7 @@ const MainNav = ({
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {showDetailNavigation
-          ? showAppDetailNavigation ? <AppDetailTop /> : <DatasetDetailTop />
+          ? showAppDetailNavigation ? <AppDetailTop /> : showAgentDetailNavigation ? <AgentDetailTop /> : <DatasetDetailTop />
           : (
               <>
                 <div className="flex items-center justify-between px-2 pt-4 pb-2">
@@ -149,7 +157,7 @@ const MainNav = ({
               </>
             )}
         {showDetailNavigation
-          ? showAppDetailNavigation ? <AppDetailSection /> : <DatasetDetailSection />
+          ? showAppDetailNavigation ? <AppDetailSection /> : showAgentDetailNavigation ? <AgentDetailSection /> : <DatasetDetailSection />
           : (
               <>
                 <nav className="space-y-1 p-2">

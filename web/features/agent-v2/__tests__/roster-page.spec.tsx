@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import RosterPage from '../roster-page'
+import RosterPage from '../pages/roster-page'
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
@@ -15,5 +15,6 @@ describe('RosterPage', () => {
     expect(screen.getByPlaceholderText('agentV2.roster.searchPlaceholder')).toBeInTheDocument()
     expect(screen.getByText('Iris - Clarification Drafter')).toBeInTheDocument()
     expect(screen.getByText('Aiko - Document Translator')).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /agentV2\.roster\.editAgent/ })[0]).toHaveAttribute('href', '/roster/iris/configure')
   })
 })

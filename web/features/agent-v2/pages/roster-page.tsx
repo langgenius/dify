@@ -1,8 +1,10 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 
 const rosterItems = [
   {
@@ -89,7 +91,7 @@ export default function RosterPage() {
                 type="button"
                 aria-current={active ? 'page' : undefined}
                 className={[
-                  'flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left transition-colors',
+                  'flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   active
                     ? 'bg-state-accent-hover text-text-accent'
                     : 'text-text-secondary hover:bg-state-base-hover',
@@ -130,7 +132,7 @@ export default function RosterPage() {
               href="https://docs.dify.ai/"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 system-xs-semibold text-text-accent hover:underline"
+              className="inline-flex items-center gap-1 rounded-md system-xs-semibold text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               {tAgentV2('roster.learnMore')}
               <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
@@ -146,8 +148,11 @@ export default function RosterPage() {
             <span className="sr-only">{tAgentV2('roster.searchLabel')}</span>
             <span aria-hidden className="pointer-events-none absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
             <input
+              type="search"
+              name="agent-search"
+              autoComplete="off"
               readOnly
-              className="h-9 w-full rounded-lg border border-components-panel-border bg-components-input-bg-normal pr-3 pl-9 system-sm-regular text-text-secondary outline-hidden"
+              className="h-9 w-full rounded-lg border border-components-panel-border bg-components-input-bg-normal pr-3 pl-9 system-sm-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               placeholder={tAgentV2('roster.searchPlaceholder')}
             />
           </label>
@@ -156,8 +161,9 @@ export default function RosterPage() {
               <button
                 key={filter}
                 type="button"
+                aria-pressed={index === 0}
                 className={[
-                  'h-8 rounded-md px-3 system-sm-semibold transition-colors',
+                  'h-8 rounded-md px-3 system-sm-semibold transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   index === 0
                     ? 'bg-state-base-hover text-text-secondary shadow-xs'
                     : 'text-text-tertiary hover:text-text-secondary',
@@ -238,15 +244,29 @@ export default function RosterPage() {
                 <div>{tAgentV2('roster.updated', { time: item.updatedAt })}</div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Button size="small" className="gap-1" disabled>
+                <Link
+                  href={`/roster/${item.id}/configure`}
+                  aria-label={tAgentV2('roster.editAgent', { name: item.name })}
+                  className={cn(
+                    'inline-flex h-6 items-center justify-center gap-1 rounded-md border border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs font-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px]',
+                    'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
+                    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  )}
+                >
                   <span aria-hidden className="i-ri-edit-line size-3.5" />
                   {t('operation.edit', { ns: 'common' })}
-                </Button>
-                <Button size="small" variant="secondary-accent" className="gap-1" disabled>
+                </Link>
+                <Button
+                  size="small"
+                  variant="secondary-accent"
+                  className="gap-1"
+                  aria-label={tAgentV2('roster.inviteAgent', { name: item.name })}
+                  disabled
+                >
                   <span aria-hidden className="i-ri-add-circle-fill size-3.5" />
                   {tAgentV2('roster.invite')}
                 </Button>
-                <Button size="small" className="px-1.5" aria-label={t('operation.more', { ns: 'common' })}>
+                <Button size="small" className="px-1.5" aria-label={tAgentV2('roster.moreActions', { name: item.name })}>
                   <span aria-hidden className="i-ri-more-fill size-4" />
                 </Button>
               </div>

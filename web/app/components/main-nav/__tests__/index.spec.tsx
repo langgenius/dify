@@ -91,6 +91,11 @@ vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
   default: () => <div data-testid="dataset-detail-top" />,
 }))
 
+vi.mock('@/features/agent-v2/navigation/agent-detail-navigation', () => ({
+  AgentDetailSection: () => <div data-testid="agent-detail-section" />,
+  AgentDetailTop: () => <div data-testid="agent-detail-top" />,
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -359,6 +364,18 @@ describe('MainNav', () => {
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
+  })
+
+  it('replaces global navigation with agent detail navigation on roster detail routes', () => {
+    mockPathname = '/roster/agent-1/configure'
+
+    renderMainNav()
+
+    expect(screen.getByTestId('agent-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('agent-detail-section')).toBeInTheDocument()
+    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
   })
 
   it.each([
