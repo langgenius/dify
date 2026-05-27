@@ -4,6 +4,6 @@ import type {
 import type { RuntimeCredentialBindingSelections } from '../components/runtime-credential-bindings-utils'
 
 export type GuideMethod = 'bindApp' | 'importDsl'
-export type GuideStep = 'method' | 'source' | 'release' | 'target' | 'done'
+export type GuideStep = 'source' | 'release' | 'target'
 export type EnvironmentOption = Environment & { id: string }
 export type BindingSelections = RuntimeCredentialBindingSelections

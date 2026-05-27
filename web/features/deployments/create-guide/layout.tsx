@@ -44,11 +44,13 @@ function GuideProgress({ activeStep }: {
   activeStep: GuideStep
 }) {
   const { t } = useTranslation('deployments')
+  const activeIndex = GUIDE_PROGRESS_STEPS.indexOf(activeStep)
 
   return (
-    <ol className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-      {GUIDE_PROGRESS_STEPS.map((step) => {
+    <ol className="grid grid-cols-3 gap-1.5">
+      {GUIDE_PROGRESS_STEPS.map((step, index) => {
         const isActive = step === activeStep
+        const isComplete = index < activeIndex
         const label = t(`createGuide.steps.${step}`)
 
         return (
@@ -57,20 +59,26 @@ function GuideProgress({ activeStep }: {
             aria-current={isActive ? 'step' : undefined}
             title={label}
             className={cn(
-              'flex min-w-0 items-center gap-2 px-2 py-1.5 system-xs-medium',
-              isActive ? 'text-text-primary' : 'text-text-quaternary',
+              'flex min-w-0 items-start gap-1.5 px-1 py-1.5 system-xs-medium sm:items-center sm:gap-2 sm:px-2',
+              isActive
+                ? 'text-text-primary'
+                : isComplete
+                  ? 'text-text-secondary'
+                  : 'text-text-quaternary',
             )}
           >
             <span
               aria-hidden
               className={cn(
-                'size-2 shrink-0 rounded-full border-[1.5px]',
+                'mt-1 size-2 shrink-0 rounded-full border-[1.5px] sm:mt-0',
                 isActive
                   ? 'border-text-primary bg-text-primary'
-                  : 'border-text-quaternary bg-transparent',
+                  : isComplete
+                    ? 'border-text-secondary bg-text-secondary'
+                    : 'border-text-quaternary bg-transparent',
               )}
             />
-            <span className="truncate">{label}</span>
+            <span className="line-clamp-2 min-w-0 leading-4">{label}</span>
           </li>
         )
       })}
@@ -173,18 +181,14 @@ export function GuideFrame({ activeStep, children }: {
           <div className="h-5 sm:h-8 lg:h-12" />
           <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
             <h1 className="title-2xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
-            {activeStep !== 'done' && (
-              <div className="hidden w-[148px] shrink-0 min-[1120px]:block">
-                <GuideProgressSummary activeStep={activeStep} />
-              </div>
-            )}
+            <div className="hidden w-[148px] shrink-0 min-[1120px]:block">
+              <GuideProgressSummary activeStep={activeStep} />
+            </div>
           </div>
           <GuideStepIntro activeStep={activeStep} />
-          {activeStep !== 'done' && (
-            <div className="mb-6 lg:hidden">
-              <GuideProgress activeStep={activeStep} />
-            </div>
-          )}
+          <div className="mb-6 lg:hidden">
+            <GuideProgress activeStep={activeStep} />
+          </div>
           {children}
         </section>
       </div>
@@ -211,9 +215,6 @@ export function GuideActions({
     : step === 'release' && isDeploying
       ? t('createGuide.actions.creating')
       : t('createGuide.actions.next')
-
-  if (step === 'method' || step === 'done')
-    return null
 
   return (
     <div className="sticky bottom-0 z-10 -mx-5 mt-auto flex items-center justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle/95 px-5 py-4 backdrop-blur-sm sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">

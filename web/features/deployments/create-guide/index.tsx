@@ -2,7 +2,6 @@
 
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { DoneStep } from './done-step'
 import { GuideActions, GuideCard, GuideFrame } from './layout'
 import { CreationSections } from './source-release-sections'
 import { TargetReviewSections } from './target-step'
@@ -13,11 +12,9 @@ export function CreateDeploymentGuide() {
   const {
     canContinue,
     creationSectionsProps,
-    deployedEnvironmentName,
     handleBack,
     handlePrimaryAction,
     isDeploying,
-    selectedTargetEnvironmentName,
     showTargetConfiguration,
     step,
     targetReviewSectionsProps,
@@ -25,25 +22,21 @@ export function CreateDeploymentGuide() {
 
   const guideContent = (
     <>
-      {step === 'done'
+      {showTargetConfiguration
         ? (
-            <DoneStep environmentName={deployedEnvironmentName || selectedTargetEnvironmentName} />
+            <div className="flex flex-col gap-7 pb-4">
+              <TargetReviewSections {...targetReviewSectionsProps} />
+            </div>
           )
-        : showTargetConfiguration
-          ? (
-              <div className="flex flex-col gap-7 pb-4">
-                <TargetReviewSections {...targetReviewSectionsProps} />
-              </div>
-            )
-          : (
-              <CreationSections {...creationSectionsProps} />
-            )}
+        : (
+            <CreationSections {...creationSectionsProps} />
+          )}
     </>
   )
 
   return (
     <div className="fixed inset-0 z-50 bg-background-overlay-backdrop p-4 backdrop-blur-[6px]">
-      <div className="h-full w-full overflow-hidden rounded-2xl border border-effects-highlight bg-background-default-subtle">
+      <div className="mx-auto h-full w-full max-w-[1120px] overflow-hidden rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <main className="relative flex h-full min-w-0 grow flex-col overflow-hidden">
           <Link
             href="/deployments"

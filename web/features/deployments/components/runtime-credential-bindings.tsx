@@ -33,6 +33,7 @@ type RuntimeCredentialBindingsPanelProps = {
   noCredentialCandidatesLabel: string
   selectCredentialLabel: string
   missingRequiredLabel: string
+  bindingCountLabel?: string
   onChange: (slotKey: string, value: string) => void
   className?: string
   listClassName?: string
@@ -66,7 +67,7 @@ function RuntimeCredentialSelect({
       <SelectTrigger
         aria-label={ariaLabel}
         className={cn(
-          'h-8 min-w-0 border border-components-input-border-active px-2 text-left system-sm-medium',
+          'h-8 min-w-0 border border-divider-subtle px-2 text-left system-sm-medium hover:border-components-input-border-hover focus:border-components-input-border-active',
           !selectedOption && 'text-text-quaternary',
         )}
       >
@@ -94,6 +95,7 @@ export function RuntimeCredentialBindingsPanel({
   noCredentialCandidatesLabel,
   selectCredentialLabel,
   missingRequiredLabel,
+  bindingCountLabel,
   onChange,
   className,
   listClassName,
@@ -107,7 +109,7 @@ export function RuntimeCredentialBindingsPanel({
           <div className="system-xs-medium-uppercase text-text-tertiary">{title}</div>
           {slots.length > 0 && (
             <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium text-text-quaternary">
-              {slots.length}
+              {bindingCountLabel ?? slots.length}
             </span>
           )}
         </div>

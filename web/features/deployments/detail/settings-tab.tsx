@@ -114,7 +114,7 @@ function DeleteInstanceButton({
               </div>
               <dl className="mt-2 grid gap-1.5 system-sm-regular">
                 <div className="flex min-w-0 justify-between gap-3">
-                  <dt className="shrink-0 text-util-colors-red-red-600">{t('createGuide.review.instance')}</dt>
+                  <dt className="shrink-0 text-util-colors-red-red-600">{t('settings.deleteImpactInstance')}</dt>
                   <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{appName}</dd>
                 </div>
                 <div className="flex min-w-0 justify-between gap-3">

@@ -24,7 +24,6 @@ import {
   selectedRuntimeCredentialSelections,
 } from '../components/runtime-credential-bindings-utils'
 import { SOURCE_APPS_PAGE_SIZE } from '../data'
-import { environmentName } from '../environment'
 import { createDeploymentIdempotencyKey } from '../idempotency'
 
 type DslMetadata = {
@@ -81,7 +80,6 @@ export function useCreateDeploymentGuide() {
   const [releaseDescription, setReleaseDescription] = useState('')
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('')
   const [manualBindingSelections, setManualBindingSelections] = useState<BindingSelections>({})
-  const [deployedEnvironmentName, setDeployedEnvironmentName] = useState('')
   const dslReadTokenRef = useRef(0)
 
   const sourceAppsQuery = useInfiniteQuery({
@@ -140,7 +138,6 @@ export function useCreateDeploymentGuide() {
     : []
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
-  const selectedTargetEnvironmentName = selectedEnvironment ? environmentName(selectedEnvironment) : ''
   const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
@@ -157,13 +154,8 @@ export function useCreateDeploymentGuide() {
   const displayedReleaseDescription = releaseDescription.trim()
   const showTargetConfiguration = Boolean(method && step === 'target')
 
-  function resetCreatedArtifacts() {
-    setDeployedEnvironmentName('')
-  }
-
   function selectMethod(nextMethod: GuideMethod) {
     setMethod(nextMethod)
-    resetCreatedArtifacts()
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
   }
@@ -177,7 +169,6 @@ export function useCreateDeploymentGuide() {
     setDslReadError(false)
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
-    resetCreatedArtifacts()
 
     if (!file) {
       setIsReadingDsl(false)
@@ -210,8 +201,6 @@ export function useCreateDeploymentGuide() {
   }
 
   function canContinueCurrentStep() {
-    if (step === 'method')
-      return Boolean(method)
     if (step === 'source')
       return Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
     if (step === 'release') {
@@ -254,7 +243,6 @@ export function useCreateDeploymentGuide() {
 
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
-    setDeployedEnvironmentName('')
     setStep('target')
   }
 
@@ -310,8 +298,6 @@ export function useCreateDeploymentGuide() {
       if (!appInstanceId)
         throw new Error('Create initial deployment did not return an app instance.')
 
-      setSelectedEnvironmentId(selectedEnvironment.id)
-      setDeployedEnvironmentName(environmentName(selectedEnvironment))
       router.push(`/deployments/${appInstanceId}/overview`)
     }
     catch {
@@ -323,10 +309,6 @@ export function useCreateDeploymentGuide() {
     if (!canContinueCurrentStep())
       return
 
-    if (step === 'method') {
-      setStep('source')
-      return
-    }
     if (step === 'source') {
       if (method === 'bindApp' && effectiveSelectedApp)
         setSelectedApp(effectiveSelectedApp)
@@ -358,29 +340,24 @@ export function useCreateDeploymentGuide() {
       onDslFileChange: handleDslFileChange,
       onInstanceDescriptionChange: (value: string) => {
         setInstanceDescription(value)
-        resetCreatedArtifacts()
         setStep('release')
       },
       onInstanceNameChange: (value: string) => {
         setInstanceName(value)
-        resetCreatedArtifacts()
         setStep('release')
       },
       onReleaseDescriptionChange: (value: string) => {
         setReleaseDescription(value)
-        resetCreatedArtifacts()
         setStep('release')
       },
       onReleaseNameChange: (value: string) => {
         setReleaseName(value)
-        resetCreatedArtifacts()
         setStep('release')
       },
       onSearchTextChange: setSourceSearchText,
       onSelectMethod: handleSelectMethod,
       onSelectSourceApp: (app: App) => {
         setSelectedApp(app)
-        resetCreatedArtifacts()
       },
       releaseDescription,
       releaseName,
@@ -391,11 +368,9 @@ export function useCreateDeploymentGuide() {
       sourceSearchText,
       stage: step === 'release' ? 'release' as const : 'source' as const,
     },
-    deployedEnvironmentName,
     handleBack,
     handlePrimaryAction,
     isDeploying,
-    selectedTargetEnvironmentName,
     showTargetConfiguration,
     step,
     targetReviewSectionsProps: {

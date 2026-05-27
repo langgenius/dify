@@ -50,14 +50,18 @@ export function ReleaseStep({
           />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-instance-description">
-            {t('createGuide.release.instanceDescription')}
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-instance-description">
+              {t('createGuide.release.instanceDescription')}
+            </label>
+            <span className="system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
+          </div>
           <textarea
             id="create-guide-instance-description"
             value={instanceDescription}
             onChange={event => onInstanceDescriptionChange(event.target.value)}
-            className="min-h-20 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            placeholder={t('createGuide.release.instanceDescriptionPlaceholder')}
+            className="min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           />
         </div>
         <div className="flex flex-col gap-2">
@@ -74,14 +78,18 @@ export function ReleaseStep({
           />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-description">
-            {t('createGuide.release.releaseDescription')}
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-description">
+              {t('createGuide.release.releaseDescription')}
+            </label>
+            <span className="system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
+          </div>
           <textarea
             id="create-guide-release-description"
             value={releaseDescription}
             onChange={event => onReleaseDescriptionChange(event.target.value)}
-            className="min-h-20 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            placeholder={t('createGuide.release.releaseDescriptionPlaceholder')}
+            className="min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           />
         </div>
       </div>

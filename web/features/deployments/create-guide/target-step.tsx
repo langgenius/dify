@@ -169,6 +169,7 @@ function TargetStep({
                 noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
                 selectCredentialLabel={t('createGuide.target.selectCredential')}
                 missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
+                bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
                 onChange={onSelectBinding}
                 className="border-components-option-card-option-border bg-components-option-card-option-bg"
               />
