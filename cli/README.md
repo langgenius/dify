@@ -40,6 +40,8 @@ Background docs: `difyctl help account`, `difyctl help external`, `difyctl help 
 Run `difyctl --help` for the full list of commands.
 Run `difyctl <cmd> --help` for per-command reference.
 
+For agents (and scripting), every help surface is machine-readable: `difyctl help -o json` dumps the whole command tree plus the global contract (exit codes, output formats, error envelope, HITL protocol), and `difyctl <cmd> --help -o json` returns one command's descriptor.
+
 ## Output formats
 
 | Flag      | Behavior                                               |

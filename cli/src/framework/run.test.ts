@@ -396,4 +396,21 @@ describe('run() help routing', () => {
     expect(result.stdout).toContain('environment')
     expect(result.stdout).toContain('external')
   })
+
+  it('emits a JSON site map for `help -o json`', async () => {
+    const result = await captureRun(tree, ['help', '-o', 'json'])
+    const obj = JSON.parse(result.stdout)
+    expect(obj.bin).toBe('difyctl')
+    expect(obj.contract.exitCodes).toBeDefined()
+    expect(obj.commands.some((c: { command: string }) => c.command === 'get app')).toBe(true)
+    expect(obj.topics.some((t: { name: string }) => t.name === 'account')).toBe(true)
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('emits a JSON descriptor for `help <cmd> -o json`', async () => {
+    const result = await captureRun(tree, ['help', 'get', 'app', '-o', 'json'])
+    const obj = JSON.parse(result.stdout)
+    expect(obj.command).toBe('get app')
+    expect(Array.isArray(obj.flags)).toBe(true)
+  })
 })

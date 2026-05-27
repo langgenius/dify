@@ -2,19 +2,31 @@ import type { CommandTree } from './registry'
 import { BaseError } from '@/errors/base'
 import { formatErrorForCli } from '@/errors/format'
 import { findTopic, TOPICS } from '@/help/topics'
-import { formatHelp } from './help'
+import { formatHelp, formatTopic, formatTopLevelHelp } from './help'
 import { stringifyOutput } from './output'
 import { findSuggestions, resolveCommand } from './registry'
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help') || argv.includes('-h')) {
-    const helpArgv = argv.filter(a => a !== '--help' && a !== '-h' && a !== 'help')
+    const format = sniffOutputFormat(argv)
+    // The command/topic path is the leading positional run; stop at the first
+    // flag so output flags like `-o json` never leak into resolution.
+    const helpArgv: string[] = []
+
+    for (const a of argv) {
+      if (a === 'help' || a === '--help' || a === '-h')
+        continue
+      if (a.startsWith('-'))
+        break
+      helpArgv.push(a)
+    }
 
     if (helpArgv.length > 0) {
       const resolved = resolveCommand(tree, helpArgv)
 
       if (resolved) {
-        process.stdout.write(`${formatHelp(resolved.command, resolved.path.join(' '))}\n`)
+        const out = formatHelp(resolved.command, resolved.path.join(' '), format)
+        process.stdout.write(isStructuredFormat(format) ? out : `${out}\n`)
 
         return
       }
@@ -25,7 +37,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
         const topic = findTopic(first)
 
         if (topic) {
-          process.stdout.write(topic.render())
+          process.stdout.write(formatTopic(topic, format))
 
           return
         }
@@ -44,7 +56,10 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       process.exit(1)
     }
 
-    printTopLevelHelp(tree)
+    if (isStructuredFormat(format))
+      process.stdout.write(formatTopLevelHelp(tree, format))
+    else
+      printTopLevelHelp(tree)
 
     return
   }
@@ -116,6 +131,10 @@ export function sniffOutputFormat(argv: readonly string[]): string {
       return t.slice('-o='.length)
   }
   return ''
+}
+
+function isStructuredFormat(format: string): boolean {
+  return format === 'json' || format === 'yaml'
 }
 
 function printTopLevelHelp(tree: CommandTree): void {

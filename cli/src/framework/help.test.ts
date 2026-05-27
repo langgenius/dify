@@ -1,7 +1,8 @@
 import type { CommandConstructor } from './command'
+import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vitest'
 import { Args, Flags } from './flags'
-import { formatHelp } from './help'
+import { formatHelp, formatTopLevelHelp } from './help'
 
 function makeCmd(opts: {
   description?: string
@@ -132,5 +133,52 @@ describe('formatHelp', () => {
   it('omits agentGuide when absent', () => {
     const ctor = makeCmd({})
     expect(formatHelp(ctor, 'run app')).not.toContain('WORKFLOW')
+  })
+
+  it('renders aliases comma-separated and the type after a space', () => {
+    const ctor = makeCmd({
+      flags: { output: Flags.string({ description: 'fmt', char: 'o' }) },
+    })
+    const out = formatHelp(ctor, 'get app')
+    expect(out).toContain('-o, --output <string>')
+    expect(out).not.toContain('--output, <string>')
+  })
+})
+
+describe('formatHelp structured output', () => {
+  it('emits a JSON descriptor under json format', () => {
+    const ctor = makeCmd({
+      description: 'Lists apps',
+      flags: { output: Flags.string({ description: 'fmt', char: 'o' }) },
+      args: { id: Args.string({ description: 'app id', required: true }) },
+      examples: ['<%= config.bin %> get app'],
+      agentGuide: 'WORKFLOW',
+    })
+    const obj = JSON.parse(formatHelp(ctor, 'get app', 'json'))
+    expect(obj.command).toBe('get app')
+    expect(obj.description).toBe('Lists apps')
+    expect(obj.flags[0]).toMatchObject({ name: 'output', char: 'o', type: 'string' })
+    expect(obj.args[0]).toMatchObject({ name: 'id', required: true })
+    expect(obj.examples).toEqual(['difyctl get app'])
+    expect(obj.agentGuide).toBe('WORKFLOW')
+  })
+
+  it('sets agentGuide to null when absent', () => {
+    const obj = JSON.parse(formatHelp(makeCmd({}), 'get app', 'json'))
+    expect(obj.agentGuide).toBeNull()
+  })
+})
+
+describe('formatTopLevelHelp', () => {
+  it('emits bin, contract, commands and topics as a JSON site map', () => {
+    const tree: CommandTree = {
+      get: { subcommands: { app: { command: makeCmd({ description: 'apps' }), subcommands: {} } } },
+    }
+    const obj = JSON.parse(formatTopLevelHelp(tree, 'json'))
+    expect(obj.bin).toBe('difyctl')
+    expect(obj.contract.exitCodes['0']).toBeDefined()
+    expect(obj.contract.outputFormats).toContain('json')
+    expect(obj.commands.some((c: { command: string }) => c.command === 'get app')).toBe(true)
+    expect(obj.topics.map((t: { name: string }) => t.name)).toContain('account')
   })
 })
