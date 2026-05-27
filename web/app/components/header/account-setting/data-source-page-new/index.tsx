@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
+import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -18,6 +19,36 @@ type DataSourcePageProps = {
   stickyToolbar?: boolean
 }
 
+function DataSourceCardSkeleton() {
+  return (
+    <div className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs">
+      <SkeletonContainer className="h-20">
+        <SkeletonRow>
+          <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
+          <div className="flex flex-1 flex-col gap-1">
+            <SkeletonRectangle className="h-4 w-2/5 animate-pulse" />
+            <SkeletonRectangle className="h-3 w-3/5 animate-pulse" />
+          </div>
+          <SkeletonRectangle className="h-8 w-20 animate-pulse rounded-lg" />
+        </SkeletonRow>
+        <SkeletonRectangle className="mt-4 h-3 w-4/5 animate-pulse" />
+      </SkeletonContainer>
+    </div>
+  )
+}
+
+function DataSourceListSkeleton() {
+  const { t } = useTranslation()
+
+  return (
+    <div role="status" aria-label={t('loading', { ns: 'common' })} className="space-y-2">
+      {Array.from({ length: 2 }, (_, index) => (
+        <DataSourceCardSkeleton key={index} />
+      ))}
+    </div>
+  )
+}
+
 const DataSourcePage = ({
   stickyToolbar,
 }: DataSourcePageProps) => {
@@ -31,7 +62,7 @@ const DataSourcePage = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { data } = useGetDataSourceListAuth()
+  const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
   const { data: installedPluginList } = useInstalledPluginList()
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -82,7 +113,8 @@ const DataSourcePage = ({
           />
         )}
       </div>
-      {!dataSources.length && (
+      {isDataSourceListLoading && <DataSourceListSkeleton />}
+      {!isDataSourceListLoading && !dataSources.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
             <span className="i-ri-database-2-line h-5 w-5 text-text-primary" />
@@ -101,7 +133,7 @@ const DataSourcePage = ({
           </div>
         </div>
       )}
-      {!!filteredDataSources.length && (
+      {!isDataSourceListLoading && !!filteredDataSources.length && (
         <div className="space-y-2">
           {
             filteredDataSources.map((item) => {
@@ -120,7 +152,7 @@ const DataSourcePage = ({
         </div>
       )}
       {
-        enable_marketplace && (
+        !isDataSourceListLoading && enable_marketplace && (
           <InstallFromMarketplace
             providers={dataSources}
             searchText={searchText}

@@ -104,37 +104,7 @@ describe('ApiBasedExtensionPage', () => {
       render(<ApiBasedExtensionPage />)
 
       // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
+      expect(screen.getByRole('status', { name: 'common.loading' }))!.toBeInTheDocument()
       expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.add'))!.toBeInTheDocument()
     })

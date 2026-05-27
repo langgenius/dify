@@ -38,6 +38,12 @@ const { mockReferenceSetting } = vi.hoisted(() => ({
   } as MockReferenceSetting,
 }))
 
+const { mockProviderContextState } = vi.hoisted(() => ({
+  mockProviderContextState: {
+    isLoadingModelProviders: false,
+  },
+}))
+
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
   quota_unit: QuotaUnitEnum.times,
@@ -98,6 +104,7 @@ const mockProviders = [
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: mockProviders,
+    isLoadingModelProviders: mockProviderContextState.isLoadingModelProviders,
   }),
 }))
 
@@ -243,6 +250,7 @@ describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    mockProviderContextState.isLoadingModelProviders = false
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
       upgrade_time_of_day: 0,
@@ -362,6 +370,18 @@ describe('ModelProviderPage', () => {
     expect(screen.getByText('openai')).toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
     expect(screen.getByText('anthropic')).toBeInTheDocument()
+  })
+
+  it('should show provider placeholders while model providers are loading', () => {
+    mockProviderContextState.isLoadingModelProviders = true
+
+    renderModelProviderPage()
+
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByTestId('provider-card')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.emptyProviderTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
   })
 
   it('should filter providers based on search text', () => {
