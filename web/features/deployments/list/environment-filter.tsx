@@ -35,7 +35,9 @@ function EnvironmentOptionIcon() {
   return <span className="i-ri-server-line size-[14px]" />
 }
 
-export function EnvironmentFilter() {
+export function EnvironmentFilter({ className }: {
+  className?: string
+}) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
@@ -74,8 +76,9 @@ export function EnvironmentFilter() {
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         className={cn(
-          'flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-transparent bg-components-input-bg-normal px-2 text-left select-none',
+          'flex h-8 max-w-full cursor-pointer items-center gap-1 rounded-lg border border-transparent bg-components-input-bg-normal px-2 text-left select-none',
           open && 'shadow-xs',
+          className,
         )}
       >
         <div className="p-px text-text-tertiary">

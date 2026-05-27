@@ -1,6 +1,6 @@
 'use client'
 
-import type { Environment } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels, Environment } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -18,9 +18,10 @@ const ACCESS_CHANNEL_SKELETON_SECTIONS = [
   { key: 'cli' },
 ]
 
-function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
+function AccessChannelsSwitch({ appInstanceId, checked, accessChannels, disabled }: {
   appInstanceId: string
   checked: boolean
+  accessChannels?: AccessChannels
   disabled?: boolean
 }) {
   const toggleAccessChannel = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
@@ -33,7 +34,11 @@ function AccessChannelsSwitch({ appInstanceId, checked, disabled }: {
       onCheckedChange={(enabled) => {
         toggleAccessChannel.mutate({
           params: { appInstanceId },
-          body: { appInstanceId, webAppEnabled: enabled },
+          body: {
+            appInstanceId,
+            webAppEnabled: enabled,
+            developerApiEnabled: accessChannels?.developerApiEnabled ?? false,
+          },
         })
       }}
     />
@@ -150,6 +155,7 @@ export function AccessChannelsSection({
                 <AccessChannelsSwitch
                   appInstanceId={appInstanceId}
                   checked={runEnabled}
+                  accessChannels={accessChannels}
                   disabled={isError}
                 />
               </div>

@@ -143,12 +143,13 @@ function DeploymentsSearchInput({ className }: {
 function DeploymentsListControls() {
   return (
     <div className="sticky top-0 z-10 flex flex-col gap-3 bg-background-body px-4 pt-5 pb-4 sm:px-6 lg:px-12 lg:pt-7 lg:pb-5">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <EnvironmentFilter />
-          <DeploymentsSearchInput className="min-w-0 flex-1 sm:w-50 sm:flex-none" />
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start">
+          <EnvironmentFilter className="min-w-0" />
+          <CreateDeploymentButton className="shrink-0 sm:hidden" />
         </div>
-        <CreateDeploymentButton className="shrink-0" />
+        <DeploymentsSearchInput className="w-full sm:w-50 sm:shrink-0" />
+        <CreateDeploymentButton className="hidden shrink-0 sm:ml-auto sm:inline-flex" />
       </div>
     </div>
   )
@@ -219,7 +220,7 @@ export function DeploymentsList() {
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         <DeploymentsListControls />
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-4 pt-2 2k:grid-cols-6 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-12 xl:grid-cols-4 2xl:grid-cols-5',
+          'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-4 pt-2 sm:px-6 lg:px-12',
           showEmptyState && 'overflow-hidden',
         )}
         >

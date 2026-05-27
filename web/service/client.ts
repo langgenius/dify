@@ -551,6 +551,9 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               const appInstanceId = variables.params.appInstanceId
               return Promise.all([
                 context.client.invalidateQueries({
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+                }),
+                context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
                     type: 'query',
                     input: { params: { appInstanceId } },

@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  AccessChannels,
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
@@ -60,10 +61,12 @@ function useDeveloperApiStatus(appInstanceId: string) {
       params: { appInstanceId },
     },
   }))
-  const apiEnabled = accessChannelsQuery.data?.accessChannels?.developerApiEnabled ?? false
+  const accessChannels = accessChannelsQuery.data?.accessChannels
+  const apiEnabled = accessChannels?.developerApiEnabled ?? false
 
   return {
     apiEnabled,
+    accessChannels,
     isLoading: accessChannelsQuery.isLoading,
     isError: accessChannelsQuery.isError,
   }
@@ -109,9 +112,10 @@ function useDeveloperApiResources(appInstanceId: string) {
   }
 }
 
-function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
+function DeveloperApiSwitch({ appInstanceId, checked, accessChannels, disabled }: {
   appInstanceId: string
   checked: boolean
+  accessChannels?: AccessChannels
   disabled?: boolean
 }) {
   const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
@@ -124,7 +128,11 @@ function DeveloperApiSwitch({ appInstanceId, checked, disabled }: {
       onCheckedChange={(enabled) => {
         toggleDeveloperAPI.mutate({
           params: { appInstanceId },
-          body: { appInstanceId, developerApiEnabled: enabled },
+          body: {
+            appInstanceId,
+            webAppEnabled: accessChannels?.webAppEnabled ?? false,
+            developerApiEnabled: enabled,
+          },
         })
       }}
     />
@@ -137,6 +145,7 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
   const { t } = useTranslation('deployments')
   const {
     apiEnabled,
+    accessChannels,
     isLoading,
     isError,
   } = useDeveloperApiStatus(appInstanceId)
@@ -152,6 +161,7 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
       <DeveloperApiSwitch
         appInstanceId={appInstanceId}
         checked={apiEnabled}
+        accessChannels={accessChannels}
         disabled={isError}
       />
     </div>

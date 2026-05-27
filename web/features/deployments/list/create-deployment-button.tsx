@@ -13,7 +13,7 @@ export function CreateDeploymentButton({ className }: {
     <Link
       href="/deployments/create"
       className={cn(
-        'inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary-600 px-3 system-sm-medium text-text-primary-on-surface hover:bg-primary-700',
+        'inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary-600 px-3 system-sm-medium whitespace-nowrap text-text-primary-on-surface hover:bg-primary-700',
         className,
       )}
     >
