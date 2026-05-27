@@ -2,6 +2,14 @@
 
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 
@@ -17,6 +25,10 @@ export function AgentDetailLayout({
   const { t } = useTranslation('agentV2')
 
   useDocumentTitle(t('agentDetail.documentTitle'))
+
+  const handlePublishMenuAction = () => {
+    toast.success(t('api.success', { ns: 'common' }))
+  }
 
   return (
     <main className="flex h-full min-w-0 flex-col overflow-hidden bg-components-panel-bg-blur">
@@ -35,10 +47,46 @@ export function AgentDetailLayout({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button variant="primary" className="gap-1.5" disabled>
-            {t('agentDetail.publish')}
-            <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={(
+                <Button variant="primary" className="min-w-40 gap-1.5">
+                  <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
+                  {t('agentDetail.publish')}
+                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+                </Button>
+              )}
+            />
+            <DropdownMenuContent
+              placement="bottom-end"
+              sideOffset={6}
+              popupClassName="w-[260px] p-1"
+            >
+              <DropdownMenuItem className="h-auto items-start gap-2 px-2 py-2" onClick={handlePublishMenuAction}>
+                <span aria-hidden className="mt-0.5 i-ri-upload-cloud-2-line size-4 shrink-0 text-text-accent" />
+                <span className="flex min-w-0 flex-col gap-0.5 text-left">
+                  <span className="system-sm-semibold text-text-primary">
+                    {t('agentDetail.publishMenu.publishUpdate')}
+                  </span>
+                  <span className="system-xs-regular text-text-tertiary">
+                    {t('agentDetail.publishMenu.publishUpdateDescription')}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="mx-2 my-1" />
+              <DropdownMenuItem className="h-auto items-start gap-2 px-2 py-2" onClick={handlePublishMenuAction}>
+                <span aria-hidden className="mt-0.5 i-ri-user-add-line size-4 shrink-0 text-text-accent" />
+                <span className="flex min-w-0 flex-col gap-0.5 text-left">
+                  <span className="system-sm-semibold text-text-primary">
+                    {t('agentDetail.publishMenu.saveAsNewAgent')}
+                  </span>
+                  <span className="system-xs-regular text-text-tertiary">
+                    {t('agentDetail.publishMenu.saveAsNewAgentDescription')}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button className="px-2.5" aria-label={t('agentDetail.history')}>
             <span aria-hidden className="i-ri-history-line size-4" />
           </Button>
