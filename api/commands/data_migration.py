@@ -364,42 +364,54 @@ def _print_auto_tool_category(label: str, values: dict[str, str | None]) -> None
 def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> WizardToolSelection:
     selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
     if not click.confirm("Export additional tools manually?", default=False):
-        _print_final_tool_selection(auto_tools, selections)
+        _print_final_tool_selection(auto_tools, selections, {})
         return selections
+    manual_labels: dict[str, str] = {}
+    api_tool_options = [
+        (tool.name, tool.name, tool.id)
+        for tool in db.session.scalars(
+            sa.select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).order_by(ApiToolProvider.name)
+        ).all()
+    ]
     selections["api_tools"] = _prompt_tool_category(
         "Custom API tools",
-        [
-            (tool.name, tool.name, tool.id)
-            for tool in db.session.scalars(
-                sa.select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).order_by(ApiToolProvider.name)
-            ).all()
-        ],
+        api_tool_options,
         auto_tools=auto_tools["api_tools"],
     )
+    manual_labels.update(_selected_tool_labels(api_tool_options, selections["api_tools"]))
+    workflow_tool_options = [
+        (tool.id, tool.name, tool.id)
+        for tool in db.session.scalars(
+            sa.select(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == tenant_id)
+            .order_by(WorkflowToolProvider.name)
+        ).all()
+    ]
     selections["workflow_tools"] = _prompt_tool_category(
         "Workflow tools",
-        [
-            (tool.id, tool.name, tool.id)
-            for tool in db.session.scalars(
-                sa.select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id)
-                .order_by(WorkflowToolProvider.name)
-            ).all()
-        ],
+        workflow_tool_options,
         auto_tools=auto_tools["workflow_tools"],
     )
+    manual_labels.update(_selected_tool_labels(workflow_tool_options, selections["workflow_tools"]))
+    mcp_tool_options = [
+        (tool.id, tool.name, tool.server_identifier)
+        for tool in db.session.scalars(
+            sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
+        ).all()
+    ]
     selections["mcp_tools"] = _prompt_tool_category(
         "MCP tools",
-        [
-            (tool.id, tool.name, tool.server_identifier)
-            for tool in db.session.scalars(
-                sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
-            ).all()
-        ],
+        mcp_tool_options,
         auto_tools=auto_tools["mcp_tools"],
     )
-    _print_final_tool_selection(auto_tools, selections)
+    manual_labels.update(_selected_tool_labels(mcp_tool_options, selections["mcp_tools"]))
+    _print_final_tool_selection(auto_tools, selections, manual_labels)
     return selections
+
+
+def _selected_tool_labels(options: list[tuple[str, str, str]], selected_values: list[str]) -> dict[str, str]:
+    selected = set(selected_values)
+    return {value: _format_tool_name_id(name, detail) for value, name, detail in options if value in selected}
 
 
 def _prompt_tool_category(
@@ -425,17 +437,41 @@ def _is_auto_tool(value: str, name: str, detail: str, auto_tools: dict[str, str 
     return name in auto_tools or value in auto_tools or value in auto_tools.values() or detail in auto_tools.values()
 
 
-def _print_final_tool_selection(auto_tools: WizardToolMap, additional_tools: WizardToolSelection) -> None:
+def _print_final_tool_selection(
+    auto_tools: WizardToolMap,
+    additional_tools: WizardToolSelection,
+    manual_labels: dict[str, str],
+) -> None:
     click.echo("Final tools to export:")
-    _print_final_tool_category("Custom API tools", auto_tools["api_tools"], additional_tools["api_tools"])
-    _print_final_tool_category("Workflow tools", auto_tools["workflow_tools"], additional_tools["workflow_tools"])
-    _print_final_tool_category("MCP tools", auto_tools["mcp_tools"], additional_tools["mcp_tools"])
+    _print_final_tool_category(
+        "Custom API tools",
+        auto_tools["api_tools"],
+        additional_tools["api_tools"],
+        manual_labels,
+    )
+    _print_final_tool_category(
+        "Workflow tools",
+        auto_tools["workflow_tools"],
+        additional_tools["workflow_tools"],
+        manual_labels,
+    )
+    _print_final_tool_category("MCP tools", auto_tools["mcp_tools"], additional_tools["mcp_tools"], manual_labels)
 
 
-def _print_final_tool_category(label: str, auto_tools: dict[str, str | None], manual_values: list[str]) -> None:
+def _print_final_tool_category(
+    label: str,
+    auto_tools: dict[str, str | None],
+    manual_values: list[str],
+    manual_labels: dict[str, str],
+) -> None:
     click.echo(label)
     lines = [f"- [auto] {_format_tool_name_id(name, identifier)}" for name, identifier in sorted(auto_tools.items())]
-    lines.extend(f"- [manual] {value}" for value in manual_values if value not in auto_tools)
+    auto_identifiers = {identifier for identifier in auto_tools.values() if identifier}
+    lines.extend(
+        f"- [manual] {manual_labels.get(value, value)}"
+        for value in manual_values
+        if value not in auto_tools and value not in auto_identifiers
+    )
     if not lines:
         click.echo("- none")
         return
@@ -478,6 +514,8 @@ def _confirm_wizard_summary(
 def _prompt_output_file() -> tuple[str, bool]:
     default_output = f"migration-data-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
     output_file = click.prompt("Output path", default=default_output)
+    if output_file.lower() in {"y", "yes", "n", "no"}:
+        raise click.ClickException("Output path must be a file path. Press Enter to use the default path.")
     overwrite = False
     if Path(output_file).exists():
         overwrite = click.confirm("Output file exists. Overwrite?", default=False)
