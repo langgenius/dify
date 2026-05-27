@@ -351,3 +351,49 @@ describe('deprecated commands', () => {
     expect(result.stderr).toBe('')
   })
 })
+
+describe('run() help routing', () => {
+  class GetApp extends Command {
+    static override description = 'List or get apps'
+    async run() {}
+  }
+
+  const tree: CommandTree = {
+    get: { subcommands: { app: { command: GetApp, subcommands: {} } } },
+  }
+
+  it('renders a concept guide for `help <topic>`', async () => {
+    const result = await captureRun(tree, ['help', 'account'])
+    expect(result.stdout).toContain('account-bearer onboarding')
+    expect(result.stdout).toContain('difyctl auth login')
+    expect(result.stdout).not.toContain('COMMANDS')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('renders the environment guide for `help environment`', async () => {
+    const result = await captureRun(tree, ['help', 'environment'])
+    expect(result.stdout).toContain('ENVIRONMENT VARIABLES')
+  })
+
+  it('renders per-command help for `help <cmd...>`', async () => {
+    const result = await captureRun(tree, ['help', 'get', 'app'])
+    expect(result.stdout).toContain('List or get apps')
+    expect(result.stdout).toContain('USAGE')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('suggests and exits non-zero for an unknown help topic', async () => {
+    const result = await captureRun(tree, ['help', 'xyz'])
+    expect(result.stderr).toContain('unknown help topic: xyz')
+    expect(result.exit).toBe(1)
+  })
+
+  it('lists a GUIDES section in the top-level overview', async () => {
+    const result = await captureRun(tree, ['help'])
+    expect(result.stdout).toContain('COMMANDS')
+    expect(result.stdout).toContain('GUIDES')
+    expect(result.stdout).toContain('account')
+    expect(result.stdout).toContain('environment')
+    expect(result.stdout).toContain('external')
+  })
+})

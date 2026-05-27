@@ -1,6 +1,7 @@
 import type { CommandTree } from './registry'
 import { BaseError } from '@/errors/base'
 import { formatErrorForCli } from '@/errors/format'
+import { findTopic, TOPICS } from '@/help/topics'
 import { formatHelp } from './help'
 import { stringifyOutput } from './output'
 import { findSuggestions, resolveCommand } from './registry'
@@ -17,6 +18,30 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
 
         return
       }
+
+      const first = helpArgv[0]
+
+      if (helpArgv.length === 1 && first !== undefined) {
+        const topic = findTopic(first)
+
+        if (topic) {
+          process.stdout.write(topic.render())
+
+          return
+        }
+      }
+
+      process.stderr.write(`unknown help topic: ${helpArgv.join(' ')}\n`)
+      const suggestions = findSuggestions(tree, helpArgv)
+
+      if (suggestions.length > 0) {
+        process.stderr.write('\nDid you mean:\n')
+
+        for (const s of suggestions.slice(0, 5))
+          process.stderr.write(`  ${s}\n`)
+      }
+
+      process.exit(1)
     }
 
     printTopLevelHelp(tree)
@@ -116,6 +141,11 @@ function printTopLevelHelp(tree: CommandTree): void {
       process.stdout.write(`    ${verb}  ${desc}\n`)
     }
   }
+
+  process.stdout.write('\nGUIDES\n')
+
+  for (const topic of TOPICS)
+    process.stdout.write(`  ${topic.name}  ${topic.summary}\n`)
 
   process.stdout.write('\n')
 }

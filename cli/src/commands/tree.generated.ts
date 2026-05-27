@@ -20,9 +20,6 @@ import EnvList from '@/commands/env/list/index'
 import GetApp from '@/commands/get/app/index'
 import GetMember from '@/commands/get/member/index'
 import GetWorkspace from '@/commands/get/workspace/index'
-import HelpAccount from '@/commands/help/account/index'
-import HelpEnvironment from '@/commands/help/environment/index'
-import HelpExternal from '@/commands/help/external/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 import SetMember from '@/commands/set/member/index'
@@ -80,13 +77,6 @@ export const commandTree: CommandTree = {
       app: { command: GetApp, subcommands: {} },
       member: { command: GetMember, subcommands: {} },
       workspace: { command: GetWorkspace, subcommands: {} },
-    },
-  },
-  help: {
-    subcommands: {
-      account: { command: HelpAccount, subcommands: {} },
-      environment: { command: HelpEnvironment, subcommands: {} },
-      external: { command: HelpExternal, subcommands: {} },
     },
   },
   resume: {
