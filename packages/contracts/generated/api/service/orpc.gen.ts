@@ -878,11 +878,17 @@ export const post13 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
- * Create a new document by uploading a file
+ * Deprecated legacy alias for creating a new document by uploading a file. Use /datasets/{dataset_id}/document/create-by-file instead.
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post14 = oc
   .route({
-    description: 'Create a new document by uploading a file',
+    deprecated: true,
+    description:
+      'Deprecated legacy alias for creating a new document by uploading a file. Use /datasets/{dataset_id}/document/create-by-file instead.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',

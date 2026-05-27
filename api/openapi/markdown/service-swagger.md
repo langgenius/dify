@@ -790,9 +790,10 @@ Create a new document by providing text content
 ### /datasets/{dataset_id}/document/create_by_file
 
 #### POST
+***DEPRECATED***
 ##### Description
 
-Create a new document by uploading a file
+Deprecated legacy alias for creating a new document by uploading a file. Use /datasets/{dataset_id}/document/create-by-file instead.
 
 ##### Parameters
 
