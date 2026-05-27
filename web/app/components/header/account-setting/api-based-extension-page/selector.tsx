@@ -53,32 +53,32 @@ export function ApiBasedExtensionSelector({
             >
               {currentItem
                 ? (
-                  <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
-                    <div className="text-sm text-text-primary">
-                      {currentItem.name}
-                    </div>
-                    <div className="flex items-center">
-                      <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
-                        {currentItem.api_endpoint}
+                    <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
+                      <div className="text-sm text-text-primary">
+                        {currentItem.name}
                       </div>
+                      <div className="flex items-center">
+                        <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
+                          {currentItem.api_endpoint}
+                        </div>
+                        <span
+                          className={`i-ri-arrow-down-s-line size-4 text-text-secondary ${!open && 'opacity-60'}`}
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </div>
+                  )
+                : (
+                    <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
+                      {t('apiBasedExtension.selector.placeholder', {
+                        ns: 'common',
+                      })}
                       <span
-                        className={`i-ri-arrow-down-s-line size-4 text-text-secondary ${!open && 'opacity-60'}`}
+                        className={`i-ri-arrow-down-s-line h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}
                         aria-hidden="true"
                       />
                     </div>
-                  </div>
-                )
-                : (
-                  <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
-                    {t('apiBasedExtension.selector.placeholder', {
-                      ns: 'common',
-                    })}
-                    <span
-                      className={`i-ri-arrow-down-s-line h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}
-                      aria-hidden="true"
-                    />
-                  </div>
-                )}
+                  )}
             </button>
           )}
         />

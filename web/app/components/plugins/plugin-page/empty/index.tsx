@@ -167,14 +167,14 @@ const Empty = ({
             >
               {isIntegrationsCategory
                 ? (
-                  <span className="text-text-tertiary">
-                    {isIntegrationsAgentStrategy
-                      ? <AgentStrategyEmptyIcon />
-                      : isIntegrationsExtension
-                        ? <ExtensionEmptyIcon />
-                        : <TriggerEmptyIcon />}
-                  </span>
-                )
+                    <span className="text-text-tertiary">
+                      {isIntegrationsAgentStrategy
+                        ? <AgentStrategyEmptyIcon />
+                        : isIntegrationsExtension
+                          ? <ExtensionEmptyIcon />
+                          : <TriggerEmptyIcon />}
+                    </span>
+                  )
                 : <Group className="size-5 text-text-tertiary" />}
               {!isIntegrationsCategory && (
                 <>
