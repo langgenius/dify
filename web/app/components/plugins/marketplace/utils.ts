@@ -205,7 +205,7 @@ export const getMarketplaceTemplateCollectionsAndTemplates = async (
       try {
         const templatesRes = await marketplaceClient.templateCollections.getTemplates({
           params: { collectionName: collection.name },
-          body: { limit: 20 },
+          body: { limit: 100 },
         }, { signal: options?.signal })
         const templatesData = templatesRes.data?.templates || []
         templateCollectionTemplatesMap[collection.name] = templatesData.map(mapTemplateDetailToTemplate)
