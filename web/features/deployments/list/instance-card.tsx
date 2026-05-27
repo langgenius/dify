@@ -254,8 +254,14 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
       : undefined,
   ].filter((link): link is { key: string, href: string, label: string, icon: string } => Boolean(link))
 
-  if (links.length === 0)
-    return <div role="group" aria-label={t('overview.accessStatus')} className="min-w-0 grow" />
+  if (links.length === 0) {
+    return (
+      <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-1.5 text-text-quaternary">
+        <span aria-hidden className="i-ri-link-unlink size-3.5 shrink-0" />
+        <span className="truncate system-xs-regular">{t('card.access.none')}</span>
+      </div>
+    )
+  }
 
   return (
     <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-2">
@@ -340,7 +346,7 @@ export function InstanceCard({ app }: {
 
   return (
     <div
-      className="group relative col-span-1 inline-flex min-h-44 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
+      className="group relative col-span-1 inline-flex min-h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <Link
@@ -352,26 +358,29 @@ export function InstanceCard({ app }: {
           </h3>
           {instanceQuery.isLoading
             ? (
-                <div className="mt-2 flex min-h-9 flex-col gap-1.5">
+                <div className="mt-2 flex flex-col gap-1.5">
                   <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
-                  <SkeletonRectangle className="my-0 h-3 w-3/5 animate-pulse" />
                 </div>
               )
             : (
                 description
                   ? (
                       <p
-                        className="mt-2 line-clamp-2 min-h-9 system-xs-regular text-text-tertiary"
+                        className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary"
                         title={description}
                       >
                         {description}
                       </p>
                     )
-                  : <div className="mt-2 min-h-9" />
+                  : (
+                      <p className="mt-2 truncate system-xs-regular text-text-quaternary">
+                        {t('card.noDescription')}
+                      </p>
+                    )
               )}
         </Link>
 
-        <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-8 px-4 pt-2">
+        <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-8 px-4 pt-4 pb-3">
           <DeploymentStatusContent
             rows={activeDeploymentRows}
             isLoading={statusIsLoading}

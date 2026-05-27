@@ -100,6 +100,7 @@
   "appMode.workflow": "工作流",
   "card.access.api": "API 令牌",
   "card.access.cli": "CLI",
+  "card.access.none": "未开启接入",
   "card.access.webApp": "WebApp",
   "card.createFirstRelease": "创建首个发布版本",
   "card.deploy": "部署",

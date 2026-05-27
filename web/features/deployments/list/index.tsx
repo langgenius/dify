@@ -73,27 +73,24 @@ function DeploymentsListEmpty() {
 
 function InstanceCardSkeleton() {
   return (
-    <div className="col-span-1 inline-flex h-40 min-w-0 flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs">
+    <div className="col-span-1 inline-flex min-h-40 min-w-0 flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs">
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="min-w-0 px-4 pt-4">
           <SkeletonRectangle className="my-0 h-4 w-2/5 animate-pulse" />
-          <div className="mt-2 flex min-h-9 flex-col gap-1.5">
-            <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
-            <SkeletonRectangle className="my-0 h-3 w-3/5 animate-pulse" />
-          </div>
+          <SkeletonRectangle className="mt-2 h-3 w-3/5 animate-pulse" />
         </div>
 
-        <div className="min-h-7 px-4 pt-1">
+        <div className="min-h-8 px-4 pt-4">
           <div className="flex min-w-0 items-center gap-1.5">
             <SkeletonRectangle className="my-0 h-5 w-18 animate-pulse rounded-md" />
             <SkeletonRectangle className="my-0 h-5 w-22 animate-pulse rounded-md" />
           </div>
         </div>
 
-        <div className="mt-auto flex h-10.5 min-w-0 items-center border-t border-divider-subtle px-4">
+        <div className="mt-auto flex h-11 min-w-0 items-center border-t border-divider-subtle px-4">
           <div className="flex min-w-0 grow items-center gap-2">
-            <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
-            <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
+            <SkeletonRectangle className="my-0 size-3.5 animate-pulse rounded-sm" />
+            <SkeletonRectangle className="my-0 h-3 w-18 animate-pulse" />
           </div>
           <SkeletonRectangle className="my-0 h-3 w-24 animate-pulse" />
         </div>
@@ -108,7 +105,9 @@ function DeploymentsListSkeleton() {
   ))
 }
 
-function DeploymentsSearchInput() {
+function DeploymentsSearchInput({ className }: {
+  className?: string
+}) {
   const { t } = useTranslation('deployments')
   const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
 
@@ -119,7 +118,7 @@ function DeploymentsSearchInput() {
   }
 
   return (
-    <div className="relative w-50">
+    <div className={cn('relative w-50', className)}>
       <span aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
       <Input
         className="h-8 pr-8 pl-8"
@@ -143,12 +142,14 @@ function DeploymentsSearchInput() {
 
 function DeploymentsListControls() {
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 bg-background-body px-4 pt-5 pb-4 sm:px-6 lg:px-12 lg:pt-7 lg:pb-5">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <EnvironmentFilter />
-        <DeploymentsSearchInput />
+    <div className="sticky top-0 z-10 flex flex-col gap-3 bg-background-body px-4 pt-5 pb-4 sm:px-6 lg:px-12 lg:pt-7 lg:pb-5">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <EnvironmentFilter />
+          <DeploymentsSearchInput className="min-w-0 flex-1 sm:w-50 sm:flex-none" />
+        </div>
+        <CreateDeploymentButton className="shrink-0" />
       </div>
-      <CreateDeploymentButton />
     </div>
   )
 }

@@ -100,6 +100,7 @@
   "appMode.workflow": "Workflow",
   "card.access.api": "API Tokens",
   "card.access.cli": "CLI",
+  "card.access.none": "No access",
   "card.access.webApp": "Web app",
   "card.createFirstRelease": "Create first Release",
   "card.deploy": "Deploy",
