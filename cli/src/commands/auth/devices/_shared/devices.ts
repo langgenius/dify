@@ -9,9 +9,9 @@ import { AccountSessionsClient } from '../../../../api/account-sessions.js'
 import { HOSTS_FILE_NAME } from '../../../../auth/hosts.js'
 import { BaseError } from '../../../../errors/base.js'
 import { ErrorCode } from '../../../../errors/codes.js'
+import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '../../../../limit/limit.js'
 import { colorEnabled, colorScheme } from '../../../../sys/io/color.js'
 import { runWithSpinner } from '../../../../sys/io/spinner.js'
-import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '../../../../limit/limit.js'
 
 export type DevicesListOptions = {
   readonly io: IOStreams

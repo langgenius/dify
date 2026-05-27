@@ -4,7 +4,6 @@ import { dirname } from 'node:path'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '../sys'
-import { ca } from 'zod/locales'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
@@ -79,7 +78,8 @@ abstract class FileBasedStore implements Store {
   load(): void {
     try {
       this.raw_content = fs.readFileSync(this.file_path, 'utf8')
-    } catch (err) {
+    }
+    catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code !== 'ENOENT') {
         throw err
@@ -94,7 +94,8 @@ abstract class FileBasedStore implements Store {
     try {
       this.load()
       return body()
-    } finally {
+    }
+    finally {
       this.unlock()
     }
   }
@@ -105,7 +106,7 @@ abstract class FileBasedStore implements Store {
 
   set<T>(key: Key<T>, value: T) {
     this.withLock(() => {
-      this.doSet(key, value);
+      this.doSet(key, value)
       this.flush()
     })
   }
