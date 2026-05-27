@@ -19,13 +19,13 @@ import { useLearnDifyHiddenState } from '@/app/components/explore/learn-dify/sto
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
-import Support from '@/app/components/header/account-dropdown/support'
 import GithubStar from '@/app/components/header/github-star'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import SupportMenu from './support-menu'
 
 const HelpMenu = () => {
   const { t } = useTranslation()
@@ -79,7 +79,7 @@ const HelpMenu = () => {
                   onCheckedChange={checked => setLearnDifyHidden(!checked)}
                 />
               </div>
-              <Support closeAccountDropdown={() => setOpen(false)} />
+              <SupportMenu />
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />

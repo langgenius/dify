@@ -25,7 +25,6 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import GithubStar from '../github-star'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
-import Support from './support'
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -164,7 +163,6 @@ export function DefaultMenuContent({
               label={t('userProfile.helpCenter', { ns: 'common' })}
               trailing={<ExternalLinkIndicator />}
             />
-            <Support closeAccountDropdown={closeAccountDropdown} />
             {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
           </AccountMenuSection>
           <DropdownMenuSeparator className="my-0! bg-divider-subtle" />

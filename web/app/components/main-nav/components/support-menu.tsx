@@ -1,15 +1,21 @@
-import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
+import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
+import { mailToSupport } from '@/app/components/header/utils/util'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { mailToSupport } from '../utils/util'
-import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
-// Submenu-only: this component must be rendered within an existing DropdownMenu root.
-export default function Support() {
+export default function SupportMenu() {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { userProfile, langGeniusVersionInfo } = useAppContext()
@@ -18,7 +24,7 @@ export default function Support() {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-question-line"
           label={t('userProfile.support', { ns: 'common' })}
