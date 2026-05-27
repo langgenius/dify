@@ -202,7 +202,6 @@ catalog:
   react: 19.2.6
   react-dom: 19.2.6
   react-easy-crop: 5.5.7
-  react-hotkeys-hook: 5.3.2
   react-i18next: 16.6.6
   react-multi-email: 1.0.25
   react-papaparse: 4.4.0

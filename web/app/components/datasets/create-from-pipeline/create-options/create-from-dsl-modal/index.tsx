@@ -1,7 +1,6 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { useKeyPress } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import DSLConfirmModal from './dsl-confirm-modal'
@@ -50,14 +49,9 @@ const CreateFromDSLModal = ({
     onClose,
   })
 
-  useKeyPress('esc', () => {
-    if (show && !showConfirmModal)
-      onClose()
-  }, { target: () => document })
-
   return (
     <>
-      <Dialog open={show}>
+      <Dialog open={show} onOpenChange={open => !open && !showConfirmModal && onClose()}>
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
 
           <Header onClose={onClose} />

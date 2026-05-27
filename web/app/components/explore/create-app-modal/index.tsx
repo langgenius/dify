@@ -6,8 +6,8 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -104,9 +104,11 @@ const CreateAppModal = ({
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !(!isEditModal && isAppsFull) && name.trim())
-      handleSubmit()
+  useHotkey('Mod+Enter', () => {
+    handleSubmit()
+  }, {
+    enabled: show && !(!isEditModal && isAppsFull) && !!name.trim(),
+    ignoreInputs: false,
   })
 
   return (

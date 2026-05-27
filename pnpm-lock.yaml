@@ -477,9 +477,6 @@ catalogs:
     react-easy-crop:
       specifier: 5.5.7
       version: 5.5.7
-    react-hotkeys-hook:
-      specifier: 5.3.2
-      version: 5.3.2
     react-i18next:
       specifier: 16.6.6
       version: 16.6.6
@@ -1215,9 +1212,6 @@ importers:
       react-easy-crop:
         specifier: 'catalog:'
         version: 5.5.7(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      react-hotkeys-hook:
-        specifier: 'catalog:'
-        version: 5.3.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react-i18next:
         specifier: 'catalog:'
         version: 16.6.6(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
@@ -8098,12 +8092,6 @@ packages:
 
   react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
-
-  react-hotkeys-hook@5.3.2:
-    resolution: {integrity: sha512-DDDy9xK6mbTQ6aPlQvIl0dA/a90T/AWml4Rm21JXFDLlRHalIg4/Rv3equUQYs5xPTWq+oEl6RD7mi/nBpU3Uw==}
-    peerDependencies:
-      react: '>=16.8.0'
-      react-dom: '>=16.8.0'
 
   react-i18next@16.6.6:
     resolution: {integrity: sha512-ZgL2HUoW34UKUkOV7uSQFE1CDnRPD+tCR3ywSuWH7u2iapnz86U8Bi3Vrs620qNDzCf1F47NxglCEkchCTDOHw==}
@@ -16256,11 +16244,6 @@ snapshots:
 
   react-fast-compare@3.2.2: {}
 
-  react-hotkeys-hook@5.3.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
-    dependencies:
-      react: 19.2.6
-      react-dom: 19.2.6(react@19.2.6)
-
   react-i18next@16.6.6(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3):
     dependencies:
       '@babel/runtime': 7.29.2
@@ -17763,7 +17746,6 @@ time:
   qs@6.15.2: '2026-05-16T23:19:19.539Z'
   react-dom@19.2.6: '2026-05-06T16:16:56.080Z'
   react-easy-crop@5.5.7: '2026-03-24T09:41:01.114Z'
-  react-hotkeys-hook@5.3.2: '2026-05-05T13:01:00.987Z'
   react-i18next@16.6.6: '2026-03-24T15:35:20.832Z'
   react-multi-email@1.0.25: '2024-07-18T04:31:06.176Z'
   react-papaparse@4.4.0: '2023-10-13T10:27:07.978Z'
