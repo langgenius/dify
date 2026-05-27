@@ -42,10 +42,10 @@ function SourceAppOption({ app, selected, onSelect }: {
   return (
     <label
       className={cn(
-        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-b-divider-subtle px-3 py-2 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0',
+        'group flex min-h-14 cursor-pointer items-center gap-3 border-b border-l-2 border-b-divider-subtle px-3 py-2 transition-colors first:rounded-t-lg last:rounded-b-lg last:border-b-0',
         selected
-          ? 'bg-state-accent-hover hover:bg-state-accent-hover'
-          : 'bg-background-default hover:bg-state-base-hover',
+          ? 'border-l-state-accent-solid bg-background-default hover:bg-state-base-hover'
+          : 'border-l-transparent bg-background-default hover:bg-state-base-hover',
       )}
     >
       <AppIcon
@@ -57,7 +57,7 @@ function SourceAppOption({ app, selected, onSelect }: {
         imageUrl={app.icon_url}
       />
       <span className="flex min-w-0 grow flex-col gap-0.5">
-        <span className={cn('truncate system-sm-medium', selected ? 'text-text-accent' : 'text-text-primary')}>{app.name}</span>
+        <span className="truncate system-sm-medium text-text-primary">{app.name}</span>
         <span className={cn('truncate system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>{t(`appMode.${mode}`)}</span>
       </span>
       <input
@@ -70,7 +70,7 @@ function SourceAppOption({ app, selected, onSelect }: {
       <span
         className={cn(
           'flex size-5 shrink-0 items-center justify-center rounded-full',
-          selected ? 'bg-primary-600 text-text-primary-on-surface' : 'text-transparent',
+          selected ? 'bg-state-accent-active text-text-accent' : 'text-transparent',
         )}
         aria-hidden="true"
       >

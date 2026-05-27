@@ -148,8 +148,8 @@ export function GuideCard({ children, actions }: {
   actions: ReactNode
 }) {
   return (
-    <div className="flex w-full min-w-0 flex-col">
-      <div className="min-h-0">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1">
         {children}
       </div>
       {actions}
@@ -168,11 +168,16 @@ export function GuideFrame({ activeStep, children }: {
       <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-y-auto">
         <section
           aria-label={t('createGuide.title')}
-          className="w-full max-w-[840px] px-5 sm:px-8 lg:px-10"
+          className="flex h-full w-full max-w-[840px] flex-col px-5 sm:px-8 lg:px-10"
         >
           <div className="h-5 sm:h-8 lg:h-12" />
-          <div className="pt-1 pb-4">
+          <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
             <h1 className="title-2xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
+            {activeStep !== 'done' && (
+              <div className="hidden w-[148px] shrink-0 min-[1120px]:block">
+                <GuideProgressSummary activeStep={activeStep} />
+              </div>
+            )}
           </div>
           <GuideStepIntro activeStep={activeStep} />
           {activeStep !== 'done' && (
@@ -183,11 +188,6 @@ export function GuideFrame({ activeStep, children }: {
           {children}
         </section>
       </div>
-      {activeStep !== 'done' && (
-        <aside className="pointer-events-none absolute top-24 left-[calc(50%+390px)] hidden w-[148px] min-[1120px]:block">
-          <GuideProgressSummary activeStep={activeStep} />
-        </aside>
-      )}
     </div>
   )
 }
@@ -216,7 +216,7 @@ export function GuideActions({
     return null
 
   return (
-    <div className="flex items-center justify-end gap-2 pt-4 pb-8">
+    <div className="sticky bottom-0 z-10 -mx-5 mt-auto flex items-center justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle/95 px-5 py-4 backdrop-blur-sm sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
       {(step === 'release' || step === 'target') && (
         <Button type="button" variant="secondary" onClick={onBack} disabled={isDeploying}>
           {t('createGuide.actions.back')}

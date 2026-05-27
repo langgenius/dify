@@ -258,6 +258,15 @@ export function useCreateDeploymentGuide() {
     setStep('target')
   }
 
+  function applyReleaseDefaults() {
+    const nextInstanceName = sourceName.trim()
+
+    if (!instanceName.trim() && nextInstanceName)
+      setInstanceName(nextInstanceName)
+    if (!releaseName.trim())
+      setReleaseName(defaultedReleaseName)
+  }
+
   async function handleDeploy() {
     if (!selectedEnvironment?.id || isDeploying)
       return
@@ -321,6 +330,7 @@ export function useCreateDeploymentGuide() {
     if (step === 'source') {
       if (method === 'bindApp' && effectiveSelectedApp)
         setSelectedApp(effectiveSelectedApp)
+      applyReleaseDefaults()
       setStep('release')
       return
     }
