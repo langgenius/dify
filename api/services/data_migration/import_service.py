@@ -8,21 +8,27 @@ report items and can decide how to render them.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
+import yaml
 from sqlalchemy import or_
+from sqlalchemy.orm import sessionmaker
 
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models import Account, ApiToken, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ApiTokenType
 from models.model import App
 from models.tools import ApiToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.app_dsl_service import AppDslService
+from services.data_migration.dependency_discovery_service import DependencyDiscoveryService
 from services.data_migration.entities import (
     ConflictStrategy,
+    DependencyKind,
     IdStrategy,
     ImportOptions,
     ImportResult,
@@ -37,6 +43,7 @@ from services.entities.dsl_entities import ImportStatus
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.workflow_service import WorkflowService
 
 
 @dataclass(frozen=True)
@@ -153,7 +160,14 @@ class MigrationImportService:
         ]
         id_mapping: dict[str, str] = {}
 
-        self._import_api_tools(request.package, target, options, report_items)
+        self._import_api_tools(
+            request.package,
+            target,
+            options,
+            report_items,
+            id_mapping,
+            self._source_api_provider_ids_by_name(request.package),
+        )
         self._import_workflows(request.package, target, options, report_items, id_mapping)
         self._import_workflow_tools(request.package, target, options, id_mapping, report_items)
         self._import_mcp_tools(request.package, target, options, report_items)
@@ -186,7 +200,10 @@ class MigrationImportService:
 
         for workflow_data in package.workflows:
             app_id = self._optional_string(workflow_data.get("id"))
-            dsl_content = self._required_string(workflow_data, "dsl", "workflow")
+            dsl_content = self._rewrite_workflow_dsl_provider_ids(
+                self._required_string(workflow_data, "dsl", "workflow"),
+                id_mapping,
+            )
             existing_app = (
                 self._find_existing_app(app_id, target.tenant_id)
                 if options.id_strategy == IdStrategy.PRESERVE_ID
@@ -255,6 +272,68 @@ class MigrationImportService:
         db.session.commit()
         return import_result.app_id
 
+    def _rewrite_workflow_dsl_provider_ids(self, dsl_content: str, id_mapping: dict[str, str]) -> str:
+        if not id_mapping:
+            return dsl_content
+        parsed = yaml.safe_load(dsl_content) if dsl_content else {}
+        if not isinstance(parsed, dict):
+            return dsl_content
+        for node in self._workflow_nodes(parsed):
+            data = node.get("data") if isinstance(node, dict) else None
+            if not isinstance(data, dict):
+                continue
+            self._rewrite_tool_config_provider_id(data, id_mapping)
+            for tool_config in self._agent_tool_configs(data):
+                self._rewrite_tool_config_provider_id(tool_config, id_mapping)
+        return yaml.safe_dump(parsed, sort_keys=False, allow_unicode=True)
+
+    def _rewrite_tool_config_provider_id(self, tool_config: dict[str, Any], id_mapping: dict[str, str]) -> None:
+        provider_id = self._optional_string(tool_config.get("provider_id"))
+        if provider_id and provider_id in id_mapping:
+            tool_config["provider_id"] = id_mapping[provider_id]
+
+    def _source_api_provider_ids_by_name(self, package: MigrationPackage) -> dict[str, set[str]]:
+        provider_ids_by_name: dict[str, set[str]] = {}
+        discovery_service = DependencyDiscoveryService()
+        for workflow_data in package.workflows:
+            dsl_content = self._optional_string(workflow_data.get("dsl"))
+            if not dsl_content:
+                continue
+            parsed = yaml.safe_load(dsl_content) if dsl_content else {}
+            if not isinstance(parsed, dict):
+                continue
+            for dependency in discovery_service.discover_from_dsl(parsed):
+                if dependency.kind != DependencyKind.API_TOOL or not dependency.provider_name:
+                    continue
+                provider_ids_by_name.setdefault(dependency.provider_name, set()).add(dependency.provider_id)
+        return provider_ids_by_name
+
+    def _workflow_nodes(self, dsl: dict[str, Any]) -> list[dict[str, Any]]:
+        nodes: list[dict[str, Any]] = []
+        graph = dsl.get("graph")
+        if isinstance(graph, dict) and isinstance(graph.get("nodes"), list):
+            nodes.extend(node for node in graph["nodes"] if isinstance(node, dict))
+        workflow = dsl.get("workflow")
+        workflow_graph = workflow.get("graph") if isinstance(workflow, dict) else None
+        if isinstance(workflow_graph, dict) and isinstance(workflow_graph.get("nodes"), list):
+            nodes.extend(node for node in workflow_graph["nodes"] if isinstance(node, dict))
+        return nodes
+
+    def _agent_tool_configs(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+        configs = data.get("tools")
+        if isinstance(configs, list):
+            return [config for config in configs if isinstance(config, dict)]
+        agent_parameters = data.get("agent_parameters")
+        if not isinstance(agent_parameters, dict):
+            return []
+        tools_parameter = agent_parameters.get("tools")
+        if not isinstance(tools_parameter, dict):
+            return []
+        value = tools_parameter.get("value", [])
+        if not isinstance(value, list):
+            return []
+        return [config for config in value if isinstance(config, dict)]
+
     def _should_preserve_source_app_id(self, options: ImportOptions) -> bool:
         return options.id_strategy == IdStrategy.PRESERVE_ID
 
@@ -287,6 +366,8 @@ class MigrationImportService:
         target: ImportTarget,
         options: ImportOptions,
         report_items: list[ResourceReportItem],
+        id_mapping: dict[str, str],
+        source_provider_ids_by_name: dict[str, set[str]],
     ) -> None:
         for tool_data in package.tools:
             provider_name = self._required_string(tool_data, "provider_name", "api_tool")
@@ -341,7 +422,23 @@ class MigrationImportService:
                     icon=icon,
                 )
                 status = "created"
+            target_provider = self._find_api_tool_provider(target.tenant_id, provider_name)
+            if target_provider is not None:
+                source_ids = set(source_provider_ids_by_name.get(provider_name, set()))
+                source_id = self._optional_string(tool_data.get("id"))
+                if source_id:
+                    source_ids.add(source_id)
+                for source_provider_id in source_ids:
+                    id_mapping[source_provider_id] = target_provider.id
             report_items.append(ResourceReportItem(ResourceType.API_TOOL, provider_name, provider_name, status))
+
+    def _find_api_tool_provider(self, tenant_id: str, provider_name: str) -> ApiToolProvider | None:
+        return db.session.scalar(
+            sa.select(ApiToolProvider).where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == provider_name,
+            )
+        )
 
     def _import_workflow_tools(
         self,
@@ -367,6 +464,19 @@ class MigrationImportService:
                         self._optional_string(workflow_tool_data.get("name")),
                         "unresolved",
                         "Referenced workflow app was not found in the target tenant; workflow tool was skipped.",
+                    )
+                )
+                continue
+            try:
+                self._ensure_workflow_app_is_published(target, account, resolved_app_id)
+            except Exception as exc:
+                report_items.append(
+                    ResourceReportItem(
+                        ResourceType.WORKFLOW_TOOL,
+                        str(workflow_tool_data.get("id", workflow_tool_data.get("name", ""))),
+                        self._optional_string(workflow_tool_data.get("name")),
+                        "unresolved",
+                        f"Referenced workflow app could not be published: {exc}",
                     )
                 )
                 continue
@@ -410,6 +520,31 @@ class MigrationImportService:
                 status = "created"
                 identifier = workflow_tool_id or tool_name
             report_items.append(ResourceReportItem(ResourceType.WORKFLOW_TOOL, identifier, tool_name, status))
+
+    def _ensure_workflow_app_is_published(self, target: ImportTarget, account: Account, app_id: str) -> None:
+        app = self._find_existing_app(app_id, target.tenant_id)
+        if app is None:
+            raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
+        if app.workflow_id:
+            return
+        workflow_service = WorkflowService()
+        with sessionmaker(db.engine).begin() as session:
+            app_in_session = session.get(App, app_id)
+            account_in_session = session.get(Account, account.id)
+            if app_in_session is None:
+                raise MigrationDataError(f"Referenced workflow app was not found in target tenant: {app_id}")
+            if account_in_session is None:
+                raise MigrationDataError(f"Operator account not found: {account.id}")
+            workflow = workflow_service.publish_workflow(
+                session=session,
+                app_model=app_in_session,
+                account=account_in_session,
+                marked_name="Migration import",
+                marked_comment="Published automatically for workflow tool import.",
+            )
+            app_in_session.workflow_id = workflow.id
+            app_in_session.updated_by = account.id
+            app_in_session.updated_at = naive_utc_now()
 
     def _import_mcp_tools(
         self,

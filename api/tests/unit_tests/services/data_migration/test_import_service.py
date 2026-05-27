@@ -1,4 +1,5 @@
 import pytest
+import yaml
 
 from services.app_dsl_service import Import
 from services.data_migration.entities import (
@@ -162,3 +163,142 @@ def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(
     )
 
     assert imported_app_id == "imported-app-id"
+
+
+def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
+    dsl_content = yaml.safe_dump(
+        {
+            "app": {"mode": "workflow"},
+            "workflow": {
+                "graph": {
+                    "nodes": [
+                        {
+                            "data": {
+                                "type": "tool",
+                                "provider_id": "source-api-provider-id",
+                                "provider_name": "weather",
+                            }
+                        },
+                        {
+                            "data": {
+                                "type": "agent",
+                                "agent_parameters": {
+                                    "tools": {
+                                        "value": [
+                                            {
+                                                "provider_id": "source-agent-provider-id",
+                                                "provider_name": "agent_weather",
+                                            }
+                                        ]
+                                    }
+                                },
+                            }
+                        },
+                    ]
+                }
+            },
+        }
+    )
+
+    rewritten = MigrationImportService()._rewrite_workflow_dsl_provider_ids(
+        dsl_content,
+        {
+            "source-api-provider-id": "target-api-provider-id",
+            "source-agent-provider-id": "target-agent-provider-id",
+        },
+    )
+    graph = yaml.safe_load(rewritten)["workflow"]["graph"]
+
+    assert graph["nodes"][0]["data"]["provider_id"] == "target-api-provider-id"
+    assert (
+        graph["nodes"][1]["data"]["agent_parameters"]["tools"]["value"][0]["provider_id"]
+        == "target-agent-provider-id"
+    )
+
+
+def test_source_api_provider_ids_are_discovered_from_workflow_dsl():
+    package = MigrationPackage.from_mapping(
+        {
+            "metadata": {"version": "1", "source_scope": "single"},
+            "workflows": [
+                {
+                    "dsl": yaml.safe_dump(
+                        {
+                            "workflow": {
+                                "graph": {
+                                    "nodes": [
+                                        {
+                                            "data": {
+                                                "type": "tool",
+                                                "provider_id": "source-api-provider-id",
+                                                "provider_name": "weather",
+                                                "provider_type": "api",
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    )
+                }
+            ],
+        }
+    )
+
+    assert MigrationImportService()._source_api_provider_ids_by_name(package) == {
+        "weather": {"source-api-provider-id"}
+    }
+
+
+def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch):
+    events = []
+    account = type("Account", (), {"id": "account-1"})()
+
+    class StubSession:
+        def get(self, model, identifier):
+            return account
+
+    class PublishingImportService(MigrationImportService):
+        def _find_existing_app(self, app_id, tenant_id):
+            return object()
+
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id):
+            return None
+
+        def _ensure_workflow_app_is_published(self, target, account, app_id):
+            events.append(("published", app_id))
+
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+    monkeypatch.setattr(
+        import_service.WorkflowToolManageService,
+        "create_workflow_tool",
+        lambda **kwargs: events.append(("created", kwargs["workflow_app_id"])),
+    )
+
+    PublishingImportService()._import_workflow_tools(
+        MigrationPackage.from_mapping(
+            {
+                "metadata": {"version": "1", "source_scope": "single"},
+                "workflow_tools": [
+                    {
+                        "id": "workflow-tool-1",
+                        "name": "embedded_workflow_as_tool",
+                        "app_id": "workflow-app-1",
+                    }
+                ],
+            }
+        ),
+        ImportTarget(
+            tenant_id="tenant-1",
+            tenant_name="target",
+            operator_id="account-1",
+            operator_email="owner@example.com",
+        ),
+        ImportOptions(),
+        {},
+        [],
+    )
+
+    assert events == [("published", "workflow-app-1"), ("created", "workflow-app-1")]
