@@ -56,6 +56,8 @@ import {
   zGetWorkspacesCurrentPermissionResponse,
   zGetWorkspacesCurrentPluginAssetQuery,
   zGetWorkspacesCurrentPluginAssetResponse,
+  zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery,
+  zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse,
   zGetWorkspacesCurrentPluginDebuggingKeyResponse,
   zGetWorkspacesCurrentPluginFetchManifestQuery,
   zGetWorkspacesCurrentPluginFetchManifestResponse,
@@ -68,7 +70,6 @@ import {
   zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery,
   zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse,
   zGetWorkspacesCurrentPluginPermissionFetchResponse,
-  zGetWorkspacesCurrentPluginPreferencesFetchResponse,
   zGetWorkspacesCurrentPluginReadmeQuery,
   zGetWorkspacesCurrentPluginReadmeResponse,
   zGetWorkspacesCurrentPluginTasksByTaskIdPath,
@@ -184,6 +185,10 @@ import {
   zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeBody,
   zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypePath,
   zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse,
+  zPostWorkspacesCurrentPluginAutoUpgradeChangeBody,
+  zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse,
+  zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody,
+  zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse,
   zPostWorkspacesCurrentPluginInstallGithubBody,
   zPostWorkspacesCurrentPluginInstallGithubResponse,
   zPostWorkspacesCurrentPluginInstallMarketplaceBody,
@@ -198,10 +203,6 @@ import {
   zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse,
   zPostWorkspacesCurrentPluginPermissionChangeBody,
   zPostWorkspacesCurrentPluginPermissionChangeResponse,
-  zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeBody,
-  zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse,
-  zPostWorkspacesCurrentPluginPreferencesChangeBody,
-  zPostWorkspacesCurrentPluginPreferencesChangeResponse,
   zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath,
   zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse,
   zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath,
@@ -1444,66 +1445,6 @@ export const asset = {
   get: get16,
 }
 
-export const get17 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginDebuggingKey',
-    path: '/workspaces/current/plugin/debugging-key',
-    tags: ['console'],
-  })
-  .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
-
-export const debuggingKey = {
-  get: get17,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get18 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginFetchManifest',
-    path: '/workspaces/current/plugin/fetch-manifest',
-    tags: ['console'],
-  })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginFetchManifestQuery }))
-  .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
-
-export const fetchManifest = {
-  get: get18,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get19 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginIcon',
-    path: '/workspaces/current/plugin/icon',
-    tags: ['console'],
-  })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginIconQuery }))
-  .output(zGetWorkspacesCurrentPluginIconResponse)
-
-export const icon = {
-  get: get19,
-}
-
 /**
  * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
@@ -1516,14 +1457,14 @@ export const post22 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginInstallGithub',
-    path: '/workspaces/current/plugin/install/github',
+    operationId: 'postWorkspacesCurrentPluginAutoUpgradeChange',
+    path: '/workspaces/current/plugin/auto-upgrade/change',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginInstallGithubBody }))
-  .output(zPostWorkspacesCurrentPluginInstallGithubResponse)
+  .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeChangeBody }))
+  .output(zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse)
 
-export const github = {
+export const change = {
   post: post22,
 }
 
@@ -1539,14 +1480,14 @@ export const post23 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginInstallMarketplace',
-    path: '/workspaces/current/plugin/install/marketplace',
+    operationId: 'postWorkspacesCurrentPluginAutoUpgradeExclude',
+    path: '/workspaces/current/plugin/auto-upgrade/exclude',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginInstallMarketplaceBody }))
-  .output(zPostWorkspacesCurrentPluginInstallMarketplaceResponse)
+  .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody }))
+  .output(zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse)
 
-export const marketplace = {
+export const exclude = {
   post: post23,
 }
 
@@ -1555,28 +1496,42 @@ export const marketplace = {
  *
  * @deprecated
  */
-export const post24 = oc
+export const get17 = oc
   .route({
     deprecated: true,
     description:
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginInstallPkg',
-    path: '/workspaces/current/plugin/install/pkg',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginAutoUpgradeFetch',
+    path: '/workspaces/current/plugin/auto-upgrade/fetch',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginInstallPkgBody }))
-  .output(zPostWorkspacesCurrentPluginInstallPkgResponse)
+  .input(z.object({ query: zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery }))
+  .output(zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse)
 
-export const pkg = {
-  post: post24,
+export const fetch_ = {
+  get: get17,
 }
 
-export const install = {
-  github,
-  marketplace,
-  pkg,
+export const autoUpgrade = {
+  change,
+  exclude,
+  fetch: fetch_,
+}
+
+export const get18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginDebuggingKey',
+    path: '/workspaces/current/plugin/debugging-key',
+    tags: ['console'],
+  })
+  .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
+
+export const debuggingKey = {
+  get: get18,
 }
 
 /**
@@ -1584,49 +1539,22 @@ export const install = {
  *
  * @deprecated
  */
-export const post25 = oc
+export const get19 = oc
   .route({
     deprecated: true,
     description:
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginListInstallationsIds',
-    path: '/workspaces/current/plugin/list/installations/ids',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginFetchManifest',
+    path: '/workspaces/current/plugin/fetch-manifest',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginListInstallationsIdsBody }))
-  .output(zPostWorkspacesCurrentPluginListInstallationsIdsResponse)
+  .input(z.object({ query: zGetWorkspacesCurrentPluginFetchManifestQuery }))
+  .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
 
-export const ids = {
-  post: post25,
-}
-
-export const installations = {
-  ids,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post26 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginListLatestVersions',
-    path: '/workspaces/current/plugin/list/latest-versions',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginListLatestVersionsBody }))
-  .output(zPostWorkspacesCurrentPluginListLatestVersionsResponse)
-
-export const latestVersions = {
-  post: post26,
+export const fetchManifest = {
+  get: get19,
 }
 
 /**
@@ -1641,17 +1569,140 @@ export const get20 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginList',
-    path: '/workspaces/current/plugin/list',
+    operationId: 'getWorkspacesCurrentPluginIcon',
+    path: '/workspaces/current/plugin/icon',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
-  .output(zGetWorkspacesCurrentPluginListResponse)
+  .input(z.object({ query: zGetWorkspacesCurrentPluginIconQuery }))
+  .output(zGetWorkspacesCurrentPluginIconResponse)
 
-export const list2 = {
+export const icon = {
   get: get20,
-  installations,
-  latestVersions,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post24 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginInstallGithub',
+    path: '/workspaces/current/plugin/install/github',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginInstallGithubBody }))
+  .output(zPostWorkspacesCurrentPluginInstallGithubResponse)
+
+export const github = {
+  post: post24,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post25 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginInstallMarketplace',
+    path: '/workspaces/current/plugin/install/marketplace',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginInstallMarketplaceBody }))
+  .output(zPostWorkspacesCurrentPluginInstallMarketplaceResponse)
+
+export const marketplace = {
+  post: post25,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post26 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginInstallPkg',
+    path: '/workspaces/current/plugin/install/pkg',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginInstallPkgBody }))
+  .output(zPostWorkspacesCurrentPluginInstallPkgResponse)
+
+export const pkg = {
+  post: post26,
+}
+
+export const install = {
+  github,
+  marketplace,
+  pkg,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post27 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginListInstallationsIds',
+    path: '/workspaces/current/plugin/list/installations/ids',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginListInstallationsIdsBody }))
+  .output(zPostWorkspacesCurrentPluginListInstallationsIdsResponse)
+
+export const ids = {
+  post: post27,
+}
+
+export const installations = {
+  ids,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const post28 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginListLatestVersions',
+    path: '/workspaces/current/plugin/list/latest-versions',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginListLatestVersionsBody }))
+  .output(zPostWorkspacesCurrentPluginListLatestVersionsResponse)
+
+export const latestVersions = {
+  post: post28,
 }
 
 /**
@@ -1666,19 +1717,17 @@ export const get21 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginMarketplacePkg',
-    path: '/workspaces/current/plugin/marketplace/pkg',
+    operationId: 'getWorkspacesCurrentPluginList',
+    path: '/workspaces/current/plugin/list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginMarketplacePkgQuery }))
-  .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
+  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
+  .output(zGetWorkspacesCurrentPluginListResponse)
 
-export const pkg2 = {
+export const list2 = {
   get: get21,
-}
-
-export const marketplace2 = {
-  pkg: pkg2,
+  installations,
+  latestVersions,
 }
 
 /**
@@ -1693,6 +1742,33 @@ export const get22 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginMarketplacePkg',
+    path: '/workspaces/current/plugin/marketplace/pkg',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspacesCurrentPluginMarketplacePkgQuery }))
+  .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
+
+export const pkg2 = {
+  get: get22,
+}
+
+export const marketplace2 = {
+  pkg: pkg2,
+}
+
+/**
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
+ */
+export const get23 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getWorkspacesCurrentPluginParametersDynamicOptions',
     path: '/workspaces/current/plugin/parameters/dynamic-options',
     tags: ['console'],
@@ -1701,7 +1777,7 @@ export const get22 = oc
   .output(zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse)
 
 export const dynamicOptions = {
-  get: get22,
+  get: get23,
 }
 
 /**
@@ -1711,7 +1787,7 @@ export const dynamicOptions = {
  *
  * @deprecated
  */
-export const post27 = oc
+export const post29 = oc
   .route({
     deprecated: true,
     description:
@@ -1729,7 +1805,7 @@ export const post27 = oc
   .output(zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse)
 
 export const dynamicOptionsWithCredentials = {
-  post: post27,
+  post: post29,
 }
 
 export const parameters = {
@@ -1737,7 +1813,7 @@ export const parameters = {
   dynamicOptionsWithCredentials,
 }
 
-export const post28 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1747,83 +1823,6 @@ export const post28 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginPermissionChangeBody }))
   .output(zPostWorkspacesCurrentPluginPermissionChangeResponse)
-
-export const change = {
-  post: post28,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get23 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginPermissionFetch',
-    path: '/workspaces/current/plugin/permission/fetch',
-    tags: ['console'],
-  })
-  .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
-
-export const fetch_ = {
-  get: get23,
-}
-
-export const permission2 = {
-  change,
-  fetch: fetch_,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post29 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginPreferencesAutoupgradeExclude',
-    path: '/workspaces/current/plugin/preferences/autoupgrade/exclude',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeBody }))
-  .output(zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse)
-
-export const exclude = {
-  post: post29,
-}
-
-export const autoupgrade = {
-  exclude,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post30 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginPreferencesChange',
-    path: '/workspaces/current/plugin/preferences/change',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginPreferencesChangeBody }))
-  .output(zPostWorkspacesCurrentPluginPreferencesChangeResponse)
 
 export const change2 = {
   post: post30,
@@ -1841,18 +1840,17 @@ export const get24 = oc
       'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginPreferencesFetch',
-    path: '/workspaces/current/plugin/preferences/fetch',
+    operationId: 'getWorkspacesCurrentPluginPermissionFetch',
+    path: '/workspaces/current/plugin/permission/fetch',
     tags: ['console'],
   })
-  .output(zGetWorkspacesCurrentPluginPreferencesFetchResponse)
+  .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
 
 export const fetch2 = {
   get: get24,
 }
 
-export const preferences = {
-  autoupgrade,
+export const permission2 = {
   change: change2,
   fetch: fetch2,
 }
@@ -2115,6 +2113,7 @@ export const upload = {
 
 export const plugin2 = {
   asset,
+  autoUpgrade,
   debuggingKey,
   fetchManifest,
   icon,
@@ -2123,7 +2122,6 @@ export const plugin2 = {
   marketplace: marketplace2,
   parameters,
   permission: permission2,
-  preferences,
   readme,
   tasks,
   uninstall,

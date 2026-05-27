@@ -9105,6 +9105,51 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- |
 | 200 | Success |
 
+### /workspaces/current/plugin/auto-upgrade/change
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ParserAutoUpgradeChange](#parserautoupgradechange) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/plugin/auto-upgrade/exclude
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ParserExcludePlugin](#parserexcludeplugin) |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/plugin/auto-upgrade/fetch
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
 ### /workspaces/current/plugin/debugging-key
 
 #### GET
@@ -9299,45 +9344,6 @@ Fetch dynamic options using credentials directly (for edit mode)
 | 200 | Success | [SuccessResponse](#successresponse) |
 
 ### /workspaces/current/plugin/permission/fetch
-
-#### GET
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/plugin/preferences/autoupgrade/exclude
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserExcludePlugin](#parserexcludeplugin) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/plugin/preferences/change
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPreferencesChange](#parserpreferenceschange) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/plugin/preferences/fetch
 
 #### GET
 ##### Responses
@@ -13886,6 +13892,19 @@ Form input definition.
 | file_name | string |  | Yes |
 | plugin_unique_identifier | string |  | Yes |
 
+#### ParserAutoUpgradeChange
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
+| category | [PluginCategory](#plugincategory) |  | Yes |
+
+#### ParserAutoUpgradeFetch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) |  | Yes |
+
 #### ParserCreateCredential
 
 | Name | Type | Description | Required |
@@ -13982,6 +14001,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) |  | Yes |
 | plugin_id | string |  | Yes |
 
 #### ParserGetCredentials
@@ -14069,8 +14089,8 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | Yes |
-| install_permission | [InstallPermission](#installpermission) |  | Yes |
+| debug_permission | [DebugPermission](#debugpermission) |  | No |
+| install_permission | [InstallPermission](#installpermission) |  | No |
 
 #### ParserPluginIdentifierQuery
 
@@ -14099,13 +14119,6 @@ Form input definition.
 | load_balancing | [LoadBalancingPayload](#loadbalancingpayload) |  | No |
 | model | string |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
-
-#### ParserPreferencesChange
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
-| permission | [PluginPermissionSettingsPayload](#pluginpermissionsettingspayload) |  | Yes |
 
 #### ParserPreferredProviderType
 
@@ -14215,6 +14228,12 @@ Form input definition.
 | strategy_setting | [StrategySetting](#strategysetting) |  | No |
 | upgrade_mode | [UpgradeMode](#upgrademode) |  | No |
 | upgrade_time_of_day | integer |  | No |
+
+#### PluginCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginCategory | string |  |  |
 
 #### PluginDebuggingKeyResponse
 

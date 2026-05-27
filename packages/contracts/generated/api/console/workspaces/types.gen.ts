@@ -225,6 +225,16 @@ export type WorkspacePermissionResponse = {
   workspace_id: string
 }
 
+export type ParserAutoUpgradeChange = {
+  auto_upgrade: PluginAutoUpgradeSettingsPayload
+  category: PluginCategory
+}
+
+export type ParserExcludePlugin = {
+  category: PluginCategory
+  plugin_id: string
+}
+
 export type PluginDebuggingKeyResponse = {
   host: string
   key: string
@@ -258,21 +268,12 @@ export type ParserDynamicOptionsWithCredentials = {
 }
 
 export type ParserPermissionChange = {
-  debug_permission: DebugPermission
-  install_permission: InstallPermission
+  debug_permission?: DebugPermission
+  install_permission?: InstallPermission
 }
 
 export type SuccessResponse = {
   success: boolean
-}
-
-export type ParserExcludePlugin = {
-  plugin_id: string
-}
-
-export type ParserPreferencesChange = {
-  auto_upgrade: PluginAutoUpgradeSettingsPayload
-  permission: PluginPermissionSettingsPayload
 }
 
 export type ParserUninstall = {
@@ -529,10 +530,6 @@ export type LoadBalancingPayload = {
   enabled?: boolean | null
 }
 
-export type DebugPermission = 'admins' | 'everyone' | 'noone'
-
-export type InstallPermission = 'admins' | 'everyone' | 'noone'
-
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
   include_plugins?: Array<string>
@@ -541,10 +538,17 @@ export type PluginAutoUpgradeSettingsPayload = {
   upgrade_time_of_day?: number
 }
 
-export type PluginPermissionSettingsPayload = {
-  debug_permission?: DebugPermission
-  install_permission?: InstallPermission
-}
+export type PluginCategory
+  = | 'agent-strategy'
+    | 'datasource'
+    | 'extension'
+    | 'model'
+    | 'tool'
+    | 'trigger'
+
+export type DebugPermission = 'admins' | 'everyone' | 'noone'
+
+export type InstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
 
@@ -1475,6 +1479,56 @@ export type GetWorkspacesCurrentPluginAssetResponses = {
 export type GetWorkspacesCurrentPluginAssetResponse
   = GetWorkspacesCurrentPluginAssetResponses[keyof GetWorkspacesCurrentPluginAssetResponses]
 
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeData = {
+  body: ParserAutoUpgradeChange
+  path?: never
+  query?: never
+  url: '/workspaces/current/plugin/auto-upgrade/change'
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponse
+  = PostWorkspacesCurrentPluginAutoUpgradeChangeResponses[keyof PostWorkspacesCurrentPluginAutoUpgradeChangeResponses]
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeData = {
+  body: ParserExcludePlugin
+  path?: never
+  query?: never
+  url: '/workspaces/current/plugin/auto-upgrade/exclude'
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponse
+  = PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses[keyof PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses]
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchData = {
+  body?: never
+  path?: never
+  query: {
+    category: string
+  }
+  url: '/workspaces/current/plugin/auto-upgrade/fetch'
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponse
+  = GetWorkspacesCurrentPluginAutoUpgradeFetchResponses[keyof GetWorkspacesCurrentPluginAutoUpgradeFetchResponses]
+
 export type GetWorkspacesCurrentPluginDebuggingKeyData = {
   body?: never
   path?: never
@@ -1711,54 +1765,6 @@ export type GetWorkspacesCurrentPluginPermissionFetchResponses = {
 
 export type GetWorkspacesCurrentPluginPermissionFetchResponse
   = GetWorkspacesCurrentPluginPermissionFetchResponses[keyof GetWorkspacesCurrentPluginPermissionFetchResponses]
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeData = {
-  body: ParserExcludePlugin
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/autoupgrade/exclude'
-}
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse
-  = PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses[keyof PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses]
-
-export type PostWorkspacesCurrentPluginPreferencesChangeData = {
-  body: ParserPreferencesChange
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/change'
-}
-
-export type PostWorkspacesCurrentPluginPreferencesChangeResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostWorkspacesCurrentPluginPreferencesChangeResponse
-  = PostWorkspacesCurrentPluginPreferencesChangeResponses[keyof PostWorkspacesCurrentPluginPreferencesChangeResponses]
-
-export type GetWorkspacesCurrentPluginPreferencesFetchData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/fetch'
-}
-
-export type GetWorkspacesCurrentPluginPreferencesFetchResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type GetWorkspacesCurrentPluginPreferencesFetchResponse
-  = GetWorkspacesCurrentPluginPreferencesFetchResponses[keyof GetWorkspacesCurrentPluginPreferencesFetchResponses]
 
 export type GetWorkspacesCurrentPluginReadmeData = {
   body?: never
