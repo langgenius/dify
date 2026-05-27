@@ -63,4 +63,24 @@ describe('AgentDetailLayout', () => {
     expect(toast.success).toHaveBeenCalledTimes(2)
     expect(toast.success).toHaveBeenLastCalledWith('common.api.success')
   })
+
+  it('opens mock version history from the history button', () => {
+    render(
+      <AgentDetailLayout agentId="agent-1">
+        <section aria-label="content" />
+      </AgentDetailLayout>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.versionHistory' }))
+
+    expect(screen.getByText('workflow.versionHistory.title')).toBeInTheDocument()
+    expect(screen.getByText('workflow.versionHistory.currentDraft')).toBeInTheDocument()
+    expect(screen.getByText('v1.4.0 Handoff rules')).toBeInTheDocument()
+    expect(screen.getByText('Aligned escalation handoff rules and response boundaries.')).toBeInTheDocument()
+    expect(screen.getByText('workflow.versionHistory.latest')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(screen.queryByText('workflow.versionHistory.title')).not.toBeInTheDocument()
+  })
 })
