@@ -534,7 +534,9 @@ class ProviderManager:
         cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
         cache_result = redis_client.get(cache_key)
         if cache_result is None:
-            model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+            model_load_balancing_enabled = FeatureService.get_features(
+                tenant_id, exclude_vector_space=True
+            ).model_load_balancing_enabled
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
         else:
             cache_result = cache_result.decode("utf-8")

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
 import type { RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import {
   Autocomplete,
   AutocompleteClear,
@@ -159,13 +159,60 @@ const virtualizedSuggestions: Suggestion[] = Array.from({ length: 1000 }, (_, in
 
 const getSuggestionLabel = (item: Suggestion) => item.label
 
+async function searchSuggestions(
+  suggestions: Suggestion[],
+  query: string,
+  filter: (item: string, query: string) => boolean,
+): Promise<{ items: Suggestion[], error: string | null }> {
+  await new Promise(resolve => window.setTimeout(resolve, 500))
+
+  if (query === 'will_error') {
+    return {
+      items: [],
+      error: 'Failed to load suggestions. Please try again.',
+    }
+  }
+
+  return {
+    items: suggestions.filter(item => (
+      filter(item.label, query)
+      || (item.description ? filter(item.description, query) : false)
+    )),
+    error: null,
+  }
+}
+
 const SuggestionItem = ({
+  item,
+  dense,
+}: {
+  item: Suggestion
+  dense?: boolean
+}) => (
+  <AutocompleteItem value={item}>
+    {item.icon && <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />}
+    <div className="flex min-w-0 grow flex-col">
+      <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
+      {!dense && item.description && (
+        <span className="truncate system-xs-regular text-text-tertiary">{item.description}</span>
+      )}
+    </div>
+    {item.meta && (
+      <span className="shrink-0 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
+        {item.meta}
+      </span>
+    )}
+  </AutocompleteItem>
+)
+
+// Only virtualized items receive an explicit index; ordinary lists must let Base UI register items by DOM order for keyboard navigation.
+const VirtualizedSuggestionItem = ({
   item,
   index,
   dense,
 }: {
   item: Suggestion
-  index?: number
+  index: number
   dense?: boolean
 }) => (
   <AutocompleteItem value={item} index={index}>
@@ -186,12 +233,10 @@ const SuggestionItem = ({
 
 const TagSuggestionItem = ({
   item,
-  index,
 }: {
   item: Suggestion
-  index?: number
 }) => (
-  <AutocompleteItem value={item} index={index}>
+  <AutocompleteItem value={item}>
     <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
     {item.description && <span className="ml-auto max-w-36 truncate system-xs-regular text-text-tertiary">{item.description}</span>}
   </AutocompleteItem>
@@ -205,6 +250,7 @@ const BasicTagAutocomplete = ({
   <Autocomplete
     items={tagSuggestions}
     itemToStringValue={getSuggestionLabel}
+    mode="list"
     openOnInputClick
   >
     <AutocompleteInputGroup size={size}>
@@ -215,8 +261,8 @@ const BasicTagAutocomplete = ({
     </AutocompleteInputGroup>
     <AutocompleteContent>
       <AutocompleteList>
-        {(item: Suggestion, index: number) => (
-          <TagSuggestionItem key={item.value} item={item} index={index} />
+        {(item: Suggestion) => (
+          <TagSuggestionItem key={item.value} item={item} />
         )}
       </AutocompleteList>
       <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
@@ -289,32 +335,64 @@ const LimitedStatus = ({
 }
 
 const AsyncSearchDemo = () => {
-  const [value, setValue] = useState('agent')
-  const [loading, setLoading] = useState(false)
-  const [items, setItems] = useState(remoteSuggestions)
+  const [searchValue, setSearchValue] = useState('')
+  const [searchResults, setSearchResults] = useState<Suggestion[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const { contains } = useAutocompleteFilter()
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  useEffect(() => {
-    setLoading(true)
-    const timeout = window.setTimeout(() => {
-      setItems(
-        value.trim()
-          ? remoteSuggestions.filter(item => item.label.toLowerCase().includes(value.trim().toLowerCase()))
-          : remoteSuggestions,
-      )
-      setLoading(false)
-    }, 500)
+  const status = (() => {
+    if (isPending)
+      return 'Searching remote suggestions…'
 
-    return () => window.clearTimeout(timeout)
-  }, [value])
+    if (error)
+      return error
+
+    if (searchValue === '')
+      return null
+
+    if (searchResults.length === 0)
+      return `No remote suggestion matches "${searchValue}".`
+
+    return `${searchResults.length} remote suggestion${searchResults.length === 1 ? '' : 's'} found`
+  })()
 
   return (
     <div className={inputWidth}>
       <Autocomplete
-        items={items}
-        value={value}
-        onValueChange={setValue}
+        items={searchResults}
+        value={searchValue}
+        onValueChange={(nextSearchValue) => {
+          setSearchValue(nextSearchValue)
+
+          const controller = new AbortController()
+          abortControllerRef.current?.abort()
+          abortControllerRef.current = controller
+
+          if (nextSearchValue === '') {
+            setSearchResults([])
+            setError(null)
+            return
+          }
+
+          startTransition(async () => {
+            setError(null)
+
+            const result = await searchSuggestions(remoteSuggestions, nextSearchValue, contains)
+
+            if (controller.signal.aborted)
+              return
+
+            startTransition(() => {
+              setSearchResults(result.items)
+              setError(result.error)
+            })
+          })
+        }}
         itemToStringValue={getSuggestionLabel}
-        openOnInputClick
+        filter={null}
+        mode="list"
       >
         <AutocompleteInputGroup>
           <span className="i-ri-cloud-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
@@ -322,16 +400,15 @@ const AsyncSearchDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
+        <AutocompleteContent portalProps={{ hidden: !status }} popupProps={{ 'aria-busy': isPending || undefined }}>
           <AutocompleteStatus>
-            {loading ? 'Loading suggestions…' : `${items.length} remote suggestions`}
+            {status}
           </AutocompleteStatus>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
-          <AutocompleteEmpty>No remote suggestion. Keep the typed query.</AutocompleteEmpty>
         </AutocompleteContent>
       </Autocomplete>
     </div>
@@ -384,7 +461,7 @@ const VirtualizedSuggestionList = ({
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <SuggestionItem item={item} index={virtualItem.index} />
+              <VirtualizedSuggestionItem item={item} index={virtualItem.index} />
             </div>
           )
         })}
@@ -445,6 +522,7 @@ const FuzzyMatchingDemo = () => {
         onValueChange={setValue}
         filter={contains}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -455,8 +533,8 @@ const FuzzyMatchingDemo = () => {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <AutocompleteItem key={item.value} value={item} index={index}>
+            {(item: Suggestion) => (
+              <AutocompleteItem key={item.value} value={item}>
                 {item.icon && <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />}
                 <div className="min-w-0 grow">
                   <AutocompleteItemText className="block px-0">
@@ -528,8 +606,8 @@ export const InlineAutocomplete: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} dense />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} dense />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
@@ -545,6 +623,7 @@ export const GroupedSuggestions: Story = {
       <Autocomplete
         items={groupedSuggestions}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -573,6 +652,7 @@ export const LimitResults: Story = {
         items={workflowSuggestions}
         itemToStringValue={getSuggestionLabel}
         limit={5}
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -586,8 +666,8 @@ export const LimitResults: Story = {
             <LimitedStatus total={workflowSuggestions.length} />
           </AutocompleteStatus>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
@@ -605,6 +685,7 @@ export const CommandPalette: Story = {
         inline
         items={commandGroups}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         autoHighlight="always"
         keepHighlight
       >
@@ -627,6 +708,7 @@ const VirtualizedLongSuggestionsDemo = () => {
       <Autocomplete
         items={virtualizedSuggestions}
         itemToStringValue={getSuggestionLabel}
+        mode="list"
         virtualized
         openOnInputClick
         onItemHighlighted={(item, details) => {
@@ -664,6 +746,7 @@ export const Empty: Story = {
         items={tagSuggestions}
         itemToStringValue={getSuggestionLabel}
         defaultValue="private-release-note"
+        mode="list"
         openOnInputClick
       >
         <AutocompleteInputGroup>
@@ -674,8 +757,8 @@ export const Empty: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <TagSuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <TagSuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
           <AutocompleteEmpty>No tag suggestion. The custom text remains valid.</AutocompleteEmpty>
@@ -688,7 +771,7 @@ export const Empty: Story = {
 export const DisabledAndReadOnly: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
-      <Autocomplete items={tagSuggestions} itemToStringValue={getSuggestionLabel} defaultValue="feature" disabled>
+      <Autocomplete items={tagSuggestions} itemToStringValue={getSuggestionLabel} defaultValue="feature" mode="list" disabled>
         <AutocompleteInputGroup>
           <AutocompleteInput aria-label="Disabled tag autocomplete" />
           <AutocompleteClear />
@@ -696,13 +779,13 @@ export const DisabledAndReadOnly: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <TagSuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <TagSuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
         </AutocompleteContent>
       </Autocomplete>
-      <Autocomplete items={promptCompletions} itemToStringValue={getSuggestionLabel} defaultValue="summarize this conversation" readOnly>
+      <Autocomplete items={promptCompletions} itemToStringValue={getSuggestionLabel} defaultValue="summarize this conversation" mode="both" readOnly>
         <AutocompleteInputGroup>
           <AutocompleteInput aria-label="Read-only prompt autocomplete" />
           <AutocompleteClear />
@@ -710,8 +793,8 @@ export const DisabledAndReadOnly: Story = {
         </AutocompleteInputGroup>
         <AutocompleteContent>
           <AutocompleteList>
-            {(item: Suggestion, index: number) => (
-              <SuggestionItem key={item.value} item={item} index={index} />
+            {(item: Suggestion) => (
+              <SuggestionItem key={item.value} item={item} />
             )}
           </AutocompleteList>
         </AutocompleteContent>

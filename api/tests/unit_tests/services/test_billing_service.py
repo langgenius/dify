@@ -343,6 +343,37 @@ class TestBillingServiceSubscriptionInfo:
             params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
         )
 
+    def test_get_info_exclude_vector_space_normalizes_null_field(self, mock_send_request):
+        """When billing serializes skipped vector_space as null, get_info treats it as absent."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {
+            "enabled": True,
+            "subscription": {"plan": "professional", "interval": "month", "education": False},
+            "members": {"size": 1, "limit": 50},
+            "apps": {"size": 1, "limit": 200},
+            "vector_space": None,
+            "knowledge_rate_limit": {"limit": 1000},
+            "documents_upload_quota": {"size": 0, "limit": 1000},
+            "annotation_quota_limit": {"size": 0, "limit": 5000},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+        }
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
+
+        # Assert
+        assert "vector_space" not in result
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/info",
+            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
+        )
+
     def test_get_vector_space_success(self, mock_send_request):
         """Test successful retrieval of vector-space usage and limit."""
         # Arrange
