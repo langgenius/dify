@@ -54,13 +54,13 @@ export function EnvironmentDeploymentBadge({
   const name = environmentName(row.environment)
   const status = deploymentStatus(row)
   const toneClassNames = deploymentStatusToneClassNames(status)
-  const label = showStatus
-    ? `${name} · ${t(deploymentStatusLabelKey(status))}`
-    : name
+  const label = `${name} · ${t(deploymentStatusLabelKey(status))}`
+  const visibleLabel = showStatus ? label : name
 
   return (
     <span
       title={label}
+      aria-label={label}
       className={cn(
         'inline-flex h-6 max-w-full cursor-default items-center gap-1.5 rounded-md border px-2 system-xs-medium',
         toneClassNames.badge,
@@ -68,7 +68,7 @@ export function EnvironmentDeploymentBadge({
       )}
     >
       <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, status === 'deploying' && 'animate-pulse')} />
-      <span className="truncate">{label}</span>
+      <span className="truncate">{visibleLabel}</span>
     </span>
   )
 }

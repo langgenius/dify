@@ -116,7 +116,7 @@ function EnvironmentChip({ row }: {
     <Tooltip>
       <TooltipTrigger
         render={(
-          <EnvironmentDeploymentBadge row={row} className={cn('max-w-44', quietReadyStatusClassName)} />
+          <EnvironmentDeploymentBadge row={row} showStatus={false} className={cn('max-w-44', quietReadyStatusClassName)} />
         )}
       />
       <TooltipContent>
@@ -236,7 +236,6 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
           key: 'webapp',
           href: getInstanceTabHref(appInstanceId, 'access'),
           label: t('card.access.webApp'),
-          shortLabel: t('card.access.webAppShort'),
           icon: 'i-ri-global-line',
         }
       : undefined,
@@ -245,7 +244,6 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
           key: 'cli',
           href: getInstanceTabHref(appInstanceId, 'access'),
           label: t('card.access.cli'),
-          shortLabel: t('card.access.cliShort'),
           icon: 'i-ri-terminal-box-line',
         }
       : undefined,
@@ -254,11 +252,10 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
           key: 'api-tokens',
           href: getInstanceTabHref(appInstanceId, 'api-tokens'),
           label: t('card.access.api'),
-          shortLabel: t('card.access.apiShort'),
           icon: 'i-ri-code-s-slash-line',
         }
       : undefined,
-  ].filter((link): link is { key: string, href: string, label: string, shortLabel: string, icon: string } => Boolean(link))
+  ].filter((link): link is { key: string, href: string, label: string, icon: string } => Boolean(link))
 
   if (links.length === 0) {
     return (
@@ -280,13 +277,9 @@ function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
                 aria-label={link.label}
                 className={cn(
                   'inline-flex h-5 min-w-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                  'sm:gap-1 sm:px-1 sm:text-text-secondary',
                 )}
               >
                 <span aria-hidden className={cn('size-3.5', link.icon)} />
-                <span className="hidden system-xs-regular sm:inline">
-                  {links.length > 1 ? link.shortLabel : link.label}
-                </span>
               </Link>
             )}
           />
