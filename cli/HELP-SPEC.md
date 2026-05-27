@@ -7,7 +7,7 @@
 
 本文档定义一套统一、自洽的帮助系统，**同时服务人类与 Agent**，取代当前三套彼此割裂的机制。文档同时记录评审中达成的设计决策，使后续实现有一个固定的目标可对齐。
 
-> **实现进度：** 首个实现轮次（分支 `feat/help-please`）覆盖**阶段 1 + 2 + 4**；**阶段 3**（`agentGuide` 内容回填）与 **D3**（Agent skill 生成）推迟。决策 D1 = A、D2 = 注册表，已定（见 §7）。
+> **实现进度：** 分支 `feat/help-please` 已落地**阶段 1–4**（含阶段 3 的 `agent` topic 与 `run/resume/describe/get app`、`auth login` 的 `agentGuide` 回填）；仅 **D3**（Agent skill 生成）推迟。决策 D1 = A、D2 = 注册表，已定（见 §7）。
 
 ---
 

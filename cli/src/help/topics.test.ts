@@ -10,8 +10,8 @@ function render(name: string): string {
 }
 
 describe('topic registry', () => {
-  it('registers account, environment and external', () => {
-    expect(TOPICS.map(t => t.name)).toEqual(['account', 'environment', 'external'])
+  it('registers account, agent, environment and external', () => {
+    expect(TOPICS.map(t => t.name)).toEqual(['account', 'agent', 'environment', 'external'])
   })
 
   it('findTopic returns undefined for unknown names', () => {
@@ -35,6 +35,17 @@ describe('account topic', () => {
     const out = render('account')
     expect(out).toContain('--workspace')
     expect(out).toContain('difyctl env list')
+  })
+})
+
+describe('agent topic', () => {
+  it('covers output, exit codes, auth, errors and HITL', () => {
+    const out = render('agent')
+    expect(out).toContain('-o json')
+    expect(out).toContain('EXIT CODES')
+    expect(out).toContain('DIFY_TOKEN')
+    expect(out).toContain('difyctl help -o json')
+    expect(out).toContain('HUMAN-IN-THE-LOOP')
   })
 })
 

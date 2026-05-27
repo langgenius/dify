@@ -1,6 +1,7 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Flags } from '@/framework/flags'
 import { realStreams } from '@/sys/io/streams'
+import { agentGuide } from './guide'
 import { runLogin } from './login'
 
 export default class Login extends DifyCommand {
@@ -35,5 +36,9 @@ export default class Login extends DifyCommand {
       noBrowser: flags['no-browser'],
       insecure: flags.insecure,
     })
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

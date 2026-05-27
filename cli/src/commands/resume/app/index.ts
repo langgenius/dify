@@ -2,6 +2,7 @@ import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat } from '@/framework/output'
+import { agentGuide } from './guide'
 import { resumeApp } from './run'
 
 export default class ResumeApp extends DifyCommand {
@@ -51,5 +52,9 @@ export default class ResumeApp extends DifyCommand {
       },
       { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

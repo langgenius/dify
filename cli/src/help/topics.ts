@@ -1,4 +1,5 @@
 import { ENV_REGISTRY } from '@/env/registry'
+import { CONTRACT } from './contract'
 
 export type HelpTopic = {
   readonly name: string
@@ -60,11 +61,54 @@ function renderEnvironment(): string {
   return out
 }
 
+function renderAgent(): string {
+  const exitCodes = Object.entries(CONTRACT.exitCodes)
+    .map(([code, desc]) => `  ${code}  ${desc}`)
+    .join('\n')
+
+  return `difyctl: agent operating guide
+
+OUTPUT
+  Pass -o json (or -o yaml) on every command — the JSON shape is stable and
+  documented. Without it you get human tables meant for a terminal.
+
+DISCOVERY
+  difyctl help -o json        full command tree + this contract, machine-readable
+  difyctl get app -o json     list apps (ids + modes)
+  difyctl describe app <id>   one app's mode and input schema
+
+AUTH
+  Interactive:     difyctl auth login         (browser device flow)
+  Non-interactive: export DIFY_TOKEN=<bearer>  (read on every command)
+  Details:         difyctl help account / difyctl help external
+
+EXIT CODES
+${exitCodes}
+
+ERRORS
+  Under -o json/yaml a failure writes a structured envelope to stderr:
+    ${CONTRACT.errorEnvelope.shape}
+
+HUMAN-IN-THE-LOOP
+  ${CONTRACT.hitl.description}
+  Resume: ${CONTRACT.hitl.resume}
+
+RETRY
+  Idempotent GET/PUT/DELETE retry on transient errors (default 3); POST/PATCH
+  never. Override with --http-retry <n> or DIFYCTL_HTTP_RETRY.
+`
+}
+
 export const TOPICS: readonly HelpTopic[] = [
   {
     name: 'account',
     summary: 'Agent-onboarding text for account bearers (dfoa_)',
     render: () => ACCOUNT_HELP_TEXT,
+  },
+  {
+    name: 'agent',
+    summary: 'Cross-command contract for agents driving difyctl',
+    render: renderAgent,
   },
   {
     name: 'environment',
