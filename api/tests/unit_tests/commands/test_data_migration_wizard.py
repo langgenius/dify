@@ -6,6 +6,7 @@ from commands.data_migration import (
     _prompt_additional_tools,
     _prompt_output_file,
     _prompt_tool_category,
+    _resolve_mcp_tool_names,
     parse_index_selection,
 )
 
@@ -161,6 +162,21 @@ def test_print_auto_tools_lists_each_category(monkeypatch):
     assert "- embedded_workflow_as_tool: e6024578-41b7-4fb5-a81f-9201358e5835" in output_lines
     assert "MCP tools" in output_lines
     assert "- none" in output_lines
+
+
+def test_resolve_mcp_tool_names_does_not_compare_non_uuid_identifier_to_uuid_id(monkeypatch):
+    statements = []
+
+    def capture_scalar(statement):
+        statements.append(str(statement))
+
+    monkeypatch.setattr("commands.data_migration.db.session.scalar", capture_scalar)
+
+    assert _resolve_mcp_tool_names("49a99e46-bc2c-4885-91fa-47615f6192b5", {"my-test-mcp": "my-test-mcp"}) == {
+        "my-test-mcp": "my-test-mcp"
+    }
+    assert "tool_mcp_providers.id =" not in statements[0]
+    assert "tool_mcp_providers.server_identifier =" in statements[0]
 
 
 def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch):

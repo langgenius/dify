@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import click
 import sqlalchemy as sa
@@ -332,10 +333,13 @@ def _resolve_auto_tool_names(tenant_id: str, auto_tools: WizardToolMap) -> Wizar
 def _resolve_api_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dict[str, str | None]:
     resolved: dict[str, str | None] = {}
     for name, identifier in tools.items():
+        predicates = [ApiToolProvider.name == name]
+        if _is_uuid_string(identifier):
+            predicates.append(ApiToolProvider.id == identifier)
         provider = db.session.scalar(
             sa.select(ApiToolProvider).where(
                 ApiToolProvider.tenant_id == tenant_id,
-                sa.or_(ApiToolProvider.id == identifier, ApiToolProvider.name == name),
+                sa.or_(*predicates),
             )
         )
         resolved[provider.name if provider else name] = provider.id if provider else identifier
@@ -345,10 +349,13 @@ def _resolve_api_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dic
 def _resolve_workflow_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dict[str, str | None]:
     resolved: dict[str, str | None] = {}
     for name, identifier in tools.items():
+        predicates = [WorkflowToolProvider.name == name]
+        if _is_uuid_string(identifier):
+            predicates.append(WorkflowToolProvider.id == identifier)
         provider = db.session.scalar(
             sa.select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == tenant_id,
-                sa.or_(WorkflowToolProvider.id == identifier, WorkflowToolProvider.name == name),
+                sa.or_(*predicates),
             )
         )
         resolved[provider.name if provider else name] = provider.id if provider else identifier
@@ -358,18 +365,29 @@ def _resolve_workflow_tool_names(tenant_id: str, tools: dict[str, str | None]) -
 def _resolve_mcp_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dict[str, str | None]:
     resolved: dict[str, str | None] = {}
     for name, identifier in tools.items():
+        predicates = [MCPToolProvider.name == name]
+        if identifier:
+            predicates.append(MCPToolProvider.server_identifier == identifier)
+        if _is_uuid_string(identifier):
+            predicates.append(MCPToolProvider.id == identifier)
         provider = db.session.scalar(
             sa.select(MCPToolProvider).where(
                 MCPToolProvider.tenant_id == tenant_id,
-                sa.or_(
-                    MCPToolProvider.id == identifier,
-                    MCPToolProvider.name == name,
-                    MCPToolProvider.server_identifier == identifier,
-                ),
+                sa.or_(*predicates),
             )
         )
         resolved[provider.name if provider else name] = provider.id if provider else identifier
     return resolved
+
+
+def _is_uuid_string(value: str | None) -> bool:
+    if not value:
+        return False
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _print_auto_tools(auto_tools: WizardToolMap) -> None:
