@@ -5,37 +5,47 @@ import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
-import Input from '@/app/components/base/input'
-import Loading from '@/app/components/base/loading'
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
-import Category from '@/app/components/explore/category'
-import ContinueWork from '@/app/components/explore/continue-work'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import LearnDify from '@/app/components/explore/learn-dify'
+import { useLearnDifyHiddenState } from '@/app/components/explore/learn-dify/storage'
 import { useAppContext } from '@/context/app-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
+import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
-import { useExploreAppList } from '@/service/use-explore'
+import { useExploreAppList, useLearnDifyAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import TryApp from '../try-app'
+import { ExploreAppListHeader } from './explore-app-list-header'
+import { ExploreRecommendations } from './explore-recommendations'
+import { ExploreAppListSkeleton, ExploreHeaderSkeleton } from './loading-skeletons'
 import s from './style.module.css'
 
-type AppsProps = {
-  onSuccess?: () => void
+function useHomeContinueWorkApps() {
+  return useQuery(consoleQuery.apps.list.queryOptions({
+    input: {
+      query: {
+        page: 1,
+        limit: 8,
+        name: '',
+      },
+    },
+    staleTime: 0,
+    gcTime: 0,
+  }))
 }
 
-const Apps = ({ onSuccess }: AppsProps) => {
+const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(
@@ -66,13 +76,11 @@ const Apps = ({ onSuccess }: AppsProps) => {
   const [currCategory, setCurrCategory] = useQueryState('category', {
     defaultValue: allCategoriesEn,
   })
-  const handleResetFilter = useCallback(() => {
-    setKeywords('')
-    setSearchKeywords('')
-    setCurrCategory(allCategoriesEn)
-  }, [allCategoriesEn, setCurrCategory])
 
   const { data, isLoading, isError } = useExploreAppList()
+  const { isLoading: isContinueWorkLoading } = useHomeContinueWorkApps()
+  const { isLoading: isLearnDifyLoading } = useLearnDifyAppList()
+  const [isLearnDifyHidden] = useLearnDifyHiddenState()
 
   const filteredList = useMemo(() => {
     if (!data)
@@ -128,6 +136,18 @@ const Apps = ({ onSuccess }: AppsProps) => {
     }
     setIsShowCreateModal(true)
   }, [currentTryApp?.app, currentTryApp?.appId])
+  const handleCreateFromLearnDify = useCallback((app: App) => {
+    setCurrApp(app)
+    setIsShowCreateModal(true)
+  }, [])
+  const handleCreateFromAppList = useCallback((app: App) => {
+    currentCreateAppTrackingRef.current = {
+      source: 'explore_template_list',
+      templateId: app.app_id,
+    }
+    setCurrApp(app)
+    setIsShowCreateModal(true)
+  }, [])
   const trackCurrentCreateApp = useCallback(
     (appMode?: App['app']['mode'] | null) => {
       const currentCreateAppTracking = currentCreateAppTrackingRef.current
@@ -190,18 +210,10 @@ const Apps = ({ onSuccess }: AppsProps) => {
       || currCategory !== allCategoriesEn
       || searchFilteredList.length !== filteredList.length
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center">
-        <Loading type="area" />
-      </div>
-    )
-  }
-
-  if (isError || !data)
+  if (isError || (!isLoading && !data))
     return null
 
-  const { categories } = data
+  const categories = data?.categories ?? []
 
   return (
     <div
@@ -215,56 +227,29 @@ const Apps = ({ onSuccess }: AppsProps) => {
             <Banner />
           </div>
         )}
-        <ContinueWork className="mt-10" />
-        <LearnDify
+        <ExploreRecommendations
           canCreate={hasEditPermission}
-          className="mt-4"
-          onCreate={(app) => {
-            setCurrApp(app)
-            setIsShowCreateModal(true)
-          }}
+          isContinueWorkLoading={isContinueWorkLoading}
+          isLearnDifyHidden={isLearnDifyHidden}
+          isLearnDifyLoading={isLearnDifyLoading}
+          onCreate={handleCreateFromLearnDify}
           onTry={handleTryApp}
         />
 
-        <div className="sticky top-0 z-10 bg-background-body">
-          <div className="px-12 pt-4">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <div className="flex min-w-0 items-center">
-                <div className="grow truncate system-xl-medium text-text-primary">
-                  {!hasFilterCondition
-                    ? t('apps.title', { ns: 'explore' })
-                    : t('apps.resultNum', {
-                        num: searchFilteredList.length,
-                        ns: 'explore',
-                      })}
-                </div>
-              </div>
-              <p className="truncate system-xs-regular text-text-tertiary">
-                {t('apps.description', { ns: 'explore' })}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-end justify-between gap-4 px-12 pt-3 pb-3">
-            <Category
-              className="min-w-0"
-              list={categories}
-              value={currCategory}
-              onChange={setCurrCategory}
-              allCategoriesEn={allCategoriesEn}
-            />
-            <div className="flex shrink-0 items-center gap-3">
-              <Input
-                showLeftIcon
-                showClearIcon
-                wrapperClassName="w-[200px] shrink-0"
-                value={keywords}
-                onChange={e => handleKeywordsChange(e.target.value)}
-                onClear={handleResetFilter}
+        {isLoading
+          ? <ExploreHeaderSkeleton />
+          : (
+              <ExploreAppListHeader
+                allCategoriesEn={allCategoriesEn}
+                categories={categories}
+                currCategory={currCategory}
+                hasFilterCondition={hasFilterCondition}
+                keywords={keywords}
+                resultCount={searchFilteredList.length}
+                onCategoryChange={setCurrCategory}
+                onKeywordsChange={handleKeywordsChange}
               />
-            </div>
-          </div>
-        </div>
+            )}
 
         <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
           <nav
@@ -273,22 +258,17 @@ const Apps = ({ onSuccess }: AppsProps) => {
               'grid shrink-0 content-start gap-3 px-6 sm:px-12',
             )}
           >
-            {searchFilteredList.map(app => (
-              <AppCard
-                key={app.app_id}
-                app={app}
-                canCreate={hasEditPermission}
-                onCreate={() => {
-                  currentCreateAppTrackingRef.current = {
-                    source: 'explore_template_list',
-                    templateId: app.app_id,
-                  }
-                  setCurrApp(app)
-                  setIsShowCreateModal(true)
-                }}
-                onTry={handleTryApp}
-              />
-            ))}
+            {isLoading
+              ? <ExploreAppListSkeleton />
+              : searchFilteredList.map(app => (
+                  <AppCard
+                    key={app.app_id}
+                    app={app}
+                    canCreate={hasEditPermission}
+                    onCreate={() => handleCreateFromAppList(app)}
+                    onTry={handleTryApp}
+                  />
+                ))}
           </nav>
         </div>
       </div>
