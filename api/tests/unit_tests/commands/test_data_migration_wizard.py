@@ -17,6 +17,27 @@ def test_parse_index_selection_supports_comma_indexes():
     assert parse_index_selection("1, 3", ["a", "b", "c"]) == ["a", "c"]
 
 
+def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch):
+    from commands.data_migration import _prompt_app_ids
+
+    prompts = []
+    output_lines = []
+    apps = [
+        type("App", (), {"id": "app-1", "name": "embedded", "mode": "workflow"})(),
+        type("App", (), {"id": "app-2", "name": "main", "mode": "advanced-chat"})(),
+    ]
+
+    def capture_prompt(text, **kwargs):
+        prompts.append((text, kwargs))
+        return "1,2"
+
+    monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
+    monkeypatch.setattr("commands.data_migration.click.prompt", capture_prompt)
+
+    assert _prompt_app_ids(apps) == ["app-1", "app-2"]
+    assert prompts == [("Select apps by number, comma-separated numbers, or all", {"default": "all"})]
+
+
 def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch):
     output_lines = []
 
@@ -32,6 +53,45 @@ def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch):
     assert selected == []
     assert "1. [auto] weather (tool-id)" in output_lines
     assert "2. [ ] calendar (calendar-id)" in output_lines
+
+
+def test_prompt_tool_category_explains_comma_selection_and_default(monkeypatch):
+    prompts = []
+
+    def capture_prompt(text, **kwargs):
+        prompts.append((text, kwargs))
+        return ""
+
+    monkeypatch.setattr("commands.data_migration.click.echo", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("commands.data_migration.click.prompt", capture_prompt)
+
+    selected = _prompt_tool_category(
+        "Custom API tools",
+        [("weather", "weather", "tool-id")],
+        auto_tools={},
+    )
+
+    assert selected == []
+    assert prompts == [
+        (
+            "Select custom api tools by number, comma-separated numbers, all, or empty",
+            {"default": "", "show_default": "empty"},
+        )
+    ]
+
+
+def test_prompt_output_file_shows_default(monkeypatch):
+    prompts = []
+
+    def capture_prompt(text, **kwargs):
+        prompts.append((text, kwargs))
+        return "migration-data.json"
+
+    monkeypatch.setattr("commands.data_migration.click.prompt", capture_prompt)
+
+    assert _prompt_output_file() == ("migration-data.json", False)
+    assert prompts[0][0] == "Output path"
+    assert prompts[0][1]["show_default"] is True
 
 
 def test_prompt_tool_category_marks_auto_by_detail_and_supports_multi_select(monkeypatch):

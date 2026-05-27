@@ -149,22 +149,29 @@ def migration_data_wizard() -> None:
         apps = _eligible_apps_for_tenant(tenant.id)
         app_ids = _prompt_app_ids(apps)
         include_referenced_tools = click.confirm(
-            "Automatically export tools referenced by selected apps?",
+            "Automatically export tools referenced by selected apps? Enter y or n",
             default=True,
+            show_default=True,
         )
         auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
         include_secrets = click.confirm(
-            "Include secrets in output JSON? The file will contain sensitive data.",
+            "Include secrets in output JSON? Enter y or n. The file will contain sensitive data.",
             default=False,
+            show_default=True,
         )
-        create_tokens = click.confirm("Create or reuse app API tokens during import?", default=False)
+        create_tokens = click.confirm(
+            "Create or reuse app API tokens during import? Enter y or n",
+            default=False,
+            show_default=True,
+        )
         conflict_strategy = click.prompt(
-            "Import conflict strategy",
+            "Import conflict strategy. Enter one of: fail, skip, update, replace",
             type=click.Choice(CONFLICT_STRATEGY_CHOICES),
             default="fail",
+            show_default=True,
         )
         output_file, overwrite = _prompt_output_file()
 
@@ -247,7 +254,7 @@ def _prompt_source_tenant() -> Tenant:
     for index, tenant in enumerate(tenants, 1):
         click.echo(f"{index}. {tenant.name} ({tenant.id})")
 
-    tenant_index = click.prompt("Select one source tenant", type=int)
+    tenant_index = click.prompt("Select one source tenant by number", type=int, default=1, show_default=True)
     if tenant_index < 1 or tenant_index > len(tenants):
         raise click.ClickException(f"Selection index out of range: {tenant_index}")
     return tenants[tenant_index - 1]
@@ -272,7 +279,7 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
         mode = app.mode.value if hasattr(app.mode, "value") else app.mode
         click.echo(f"{index}. {app.name} [{mode}] ({app.id})")
     app_ids = parse_index_selection(
-        click.prompt("Select apps by number, or all", default="all"),
+        click.prompt("Select apps by number, comma-separated numbers, or all", default="all"),
         [app.id for app in apps],
     )
     selected_apps = [app for app in apps if app.id in set(app_ids)]
@@ -372,7 +379,7 @@ def _print_auto_tool_category(label: str, values: dict[str, str | None]) -> None
 
 def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> WizardToolSelection:
     selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
-    if not click.confirm("Export additional tools manually?", default=False):
+    if not click.confirm("Export additional tools manually? Enter y or n", default=False, show_default=True):
         _print_final_tool_selection(auto_tools, selections, {})
         return selections
     manual_labels: dict[str, str] = {}
@@ -436,7 +443,11 @@ def _prompt_tool_category(
     for index, (value, name, detail) in enumerate(options, 1):
         marker = "[auto]" if _is_auto_tool(value, name, detail, auto_tools) else "[ ]"
         click.echo(f"{index}. {marker} {name} ({detail})")
-    raw = click.prompt(f"Select {label.lower()} by number, all, or empty", default="", show_default=False)
+    raw = click.prompt(
+        f"Select {label.lower()} by number, comma-separated numbers, all, or empty",
+        default="",
+        show_default="empty",
+    )
     if not raw.strip():
         return []
     return parse_index_selection(raw, [value for value, _, _ in options])
@@ -518,18 +529,18 @@ def _confirm_wizard_summary(
     click.echo(f"create app api token on import: {str(create_tokens).lower()}")
     click.echo(f"conflict strategy: {conflict_strategy}")
     click.echo(f"output path: {output_file}")
-    if not click.confirm("Write migration package?", default=True):
+    if not click.confirm("Write migration package? Enter y or n", default=True, show_default=True):
         raise click.Abort()
 
 
 def _prompt_output_file() -> tuple[str, bool]:
     default_output = f"migration-data-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
-    output_file = click.prompt("Output path", default=default_output)
+    output_file = click.prompt("Output path", default=default_output, show_default=True)
     if output_file.lower() in {"y", "yes", "n", "no"}:
         raise click.ClickException("Output path must be a file path. Press Enter to use the default path.")
     overwrite = False
     if Path(output_file).exists():
-        overwrite = click.confirm("Output file exists. Overwrite?", default=False)
+        overwrite = click.confirm("Output file exists. Overwrite? Enter y or n", default=False, show_default=True)
         if not overwrite:
             raise click.ClickException(f"Output file already exists: {output_file}")
     return output_file, overwrite
