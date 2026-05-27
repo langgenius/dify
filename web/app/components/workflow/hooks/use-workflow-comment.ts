@@ -584,14 +584,14 @@ export const useWorkflowComment = () => {
     activeCommentIdRef.current = null
   }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
 
-  const handleCreateComment = useCallback((mousePosition: {
+  const handleCreateComment = useCallback((pointerPosition: {
     pageX: number
     pageY: number
     elementX: number
     elementY: number
   }) => {
     if (controlMode === ControlMode.Comment)
-      setPendingComment(mousePosition)
+      setPendingComment(pointerPosition)
   }, [controlMode, setPendingComment])
 
   return {

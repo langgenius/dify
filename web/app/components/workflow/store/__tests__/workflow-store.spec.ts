@@ -55,13 +55,24 @@ describe('createWorkflowStore', () => {
       ['clipboardEdges', 'setClipboardEdges', []],
       ['selection', 'setSelection', { x1: 0, y1: 0, x2: 100, y2: 100 }],
       ['bundleNodeSize', 'setBundleNodeSize', { width: 200, height: 100 }],
-      ['mousePosition', 'setMousePosition', { pageX: 10, pageY: 20, elementX: 5, elementY: 15 }],
       ['showConfirm', 'setShowConfirm', { title: 'Delete?', onConfirm: vi.fn() }],
       ['controlPromptEditorRerenderKey', 'setControlPromptEditorRerenderKey', 42],
       ['showImportDSLModal', 'setShowImportDSLModal', true],
       ['fileUploadConfig', 'setFileUploadConfig', { batch_count_limit: 5, image_file_batch_limit: 10, single_chunk_attachment_limit: 10, attachment_image_file_size_limit: 2, file_size_limit: 15, file_upload_limit: 5 }],
     ])('should update %s', (stateKey, setter, value) => {
       testSetter(setter, stateKey, value)
+    })
+
+    it('should update pointer coordinates without replacing workflow store state', () => {
+      const store = createStore()
+      const beforeState = store.getState()
+      const pointerPosition = { pageX: 10, pageY: 20, elementX: 5, elementY: 15 }
+
+      beforeState.setPointerPosition(pointerPosition)
+
+      expect(store.getState()).toBe(beforeState)
+      expect(store.getState().getPointerPosition()).toEqual(pointerPosition)
+      expect(store.getState().pointerPositionRef.current).toEqual(pointerPosition)
     })
 
     it('should persist controlMode to localStorage', () => {

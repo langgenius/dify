@@ -9,7 +9,6 @@ const mockUseEventListener = vi.hoisted(() => vi.fn())
 const mockUseStoreApi = vi.hoisted(() => vi.fn())
 const mockUseReactFlow = vi.hoisted(() => vi.fn())
 const mockUseViewport = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
 const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
 const mockUseHooks = vi.hoisted(() => vi.fn())
 const mockCustomNode = vi.hoisted(() => vi.fn())
@@ -32,12 +31,6 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { mousePosition: {
-    pageX: number
-    pageY: number
-    elementX: number
-    elementY: number
-  } }) => unknown) => mockUseStore(selector),
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
@@ -80,6 +73,7 @@ describe('CandidateNodeMain', () => {
   const mockHandleSyncWorkflowDraft = vi.fn()
   const mockAutoGenerateWebhookUrl = vi.fn()
   const mockWorkflowStoreSetState = vi.fn()
+  const mockSetPointerPosition = vi.fn()
   const createNodesInteractions = () => ({
     handleNodeSelect: mockHandleNodeSelect,
   })
@@ -90,7 +84,17 @@ describe('CandidateNodeMain', () => {
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   })
   const createAutoGenerateWebhookUrl = () => mockAutoGenerateWebhookUrl
-  const eventHandlers: Partial<Record<'click' | 'contextmenu', (event: { preventDefault: () => void }) => void>> = {}
+  type TestMouseEvent = {
+    preventDefault: () => void
+    clientX: number
+    clientY: number
+  }
+  const eventHandlers: Partial<Record<'click' | 'contextmenu' | 'mousemove', (event: TestMouseEvent) => void>> = {}
+  const createMouseEvent = (clientX = 100, clientY = 200): TestMouseEvent => ({
+    preventDefault: vi.fn(),
+    clientX,
+    clientY,
+  })
   let nodes = [createNode({ id: 'existing-node' })]
 
   beforeEach(() => {
@@ -98,8 +102,9 @@ describe('CandidateNodeMain', () => {
     nodes = [createNode({ id: 'existing-node' })]
     eventHandlers.click = undefined
     eventHandlers.contextmenu = undefined
+    eventHandlers.mousemove = undefined
 
-    mockUseEventListener.mockImplementation((event: 'click' | 'contextmenu', handler: (event: { preventDefault: () => void }) => void) => {
+    mockUseEventListener.mockImplementation((event: 'click' | 'contextmenu' | 'mousemove', handler: (event: TestMouseEvent) => void) => {
       eventHandlers[event] = handler
     })
     mockUseStoreApi.mockReturnValue({
@@ -112,22 +117,22 @@ describe('CandidateNodeMain', () => {
       screenToFlowPosition: ({ x, y }: { x: number, y: number }) => ({ x: x + 10, y: y + 20 }),
     })
     mockUseViewport.mockReturnValue({ zoom: 1.5 })
-    mockUseStore.mockImplementation((selector: (state: { mousePosition: {
-      pageX: number
-      pageY: number
-      elementX: number
-      elementY: number
-    } }) => unknown) => selector({
-      mousePosition: {
-        pageX: 100,
-        pageY: 200,
-        elementX: 30,
-        elementY: 40,
-      },
-    }))
     mockUseWorkflowStore.mockReturnValue({
       setState: mockWorkflowStoreSetState,
+      getState: () => ({
+        getPointerPosition: () => ({
+          pageX: 100,
+          pageY: 200,
+          elementX: 30,
+          elementY: 40,
+        }),
+        setPointerPosition: mockSetPointerPosition,
+      }),
     })
+    mockSetPointerPosition.mockClear()
+    mockSetPointerPosition.mockImplementation(() => {})
+    mockWorkflowStoreSetState.mockClear()
+    mockWorkflowStoreSetState.mockImplementation(() => {})
     mockUseHooks.mockReturnValue({
       useNodesInteractions: createNodesInteractions,
       useWorkflowHistory: createWorkflowHistory,
@@ -161,7 +166,7 @@ describe('CandidateNodeMain', () => {
       transform: 'scale(1.5)',
     })
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    eventHandlers.click?.(createMouseEvent())
 
     expect(mockSetNodes).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({ id: 'existing-node' }),
@@ -171,6 +176,12 @@ describe('CandidateNodeMain', () => {
         data: expect.objectContaining({ _isCandidate: false }),
       }),
     ]))
+    expect(mockSetPointerPosition).toHaveBeenCalledWith({
+      pageX: 100,
+      pageY: 200,
+      elementX: 100,
+      elementY: 200,
+    })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeAdd', { nodeId: 'candidate-webhook' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ candidateNode: undefined })
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true, expect.objectContaining({
@@ -195,7 +206,7 @@ describe('CandidateNodeMain', () => {
 
     expect(screen.getByTestId('candidate-note-node'))!.toHaveTextContent('candidate-note')
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    eventHandlers.click?.(createMouseEvent())
 
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('NoteAdd', { nodeId: 'candidate-note' })
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('candidate-note')
@@ -223,7 +234,7 @@ describe('CandidateNodeMain', () => {
 
     const { rerender } = render(<CandidateNodeMain candidateNode={iterationNode} />)
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    eventHandlers.click?.(createMouseEvent())
     expect(mockGetIterationStartNode).toHaveBeenCalledWith('candidate-iteration')
     expect(mockSetNodes.mock.calls[0]![0]).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'candidate-iteration' }),
@@ -231,7 +242,7 @@ describe('CandidateNodeMain', () => {
     ]))
 
     rerender(<CandidateNodeMain candidateNode={loopNode} />)
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    eventHandlers.click?.(createMouseEvent())
 
     expect(mockGetLoopStartNode).toHaveBeenCalledWith('candidate-loop')
     expect(mockSetNodes.mock.calls[1]![0]).toEqual(expect.arrayContaining([
@@ -253,7 +264,7 @@ describe('CandidateNodeMain', () => {
 
     render(<CandidateNodeMain candidateNode={candidateNode} />)
 
-    eventHandlers.contextmenu?.({ preventDefault: vi.fn() })
+    eventHandlers.contextmenu?.(createMouseEvent())
 
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ candidateNode: undefined })
   })

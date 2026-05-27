@@ -1,24 +1,27 @@
 import { useEventListener } from 'ahooks'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowStore } from './store'
+import { getPointerPositionFromEvent } from './utils/pointer-position'
 
 const CommentManager = () => {
   const workflowStore = useWorkflowStore()
   const { handleCreateComment, handleCommentCancel } = useWorkflowComment()
 
   useEventListener('click', (e) => {
-    const { controlMode, mousePosition, pendingComment, isCommentPlacing } = workflowStore.getState()
+    const { controlMode, pendingComment, isCommentPlacing, setPointerPosition } = workflowStore.getState()
     const target = e.target as HTMLElement
     const isInDropdown = target.closest('[data-mention-dropdown]')
     const isInCommentInput = target.closest('[data-comment-input]')
     const isOnCanvasPane = target.closest('.react-flow__pane')
+    const pointerPosition = getPointerPositionFromEvent(e, document.getElementById('workflow-container'))
+    setPointerPosition(pointerPosition)
 
     if (isCommentPlacing) {
       if (!isInDropdown && !isInCommentInput && isOnCanvasPane) {
         e.preventDefault()
         e.stopPropagation()
         workflowStore.setState({
-          pendingComment: mousePosition,
+          pendingComment: pointerPosition,
           isCommentPlacing: false,
         })
       }
@@ -34,7 +37,7 @@ const CommentManager = () => {
         if (pendingComment)
           handleCommentCancel()
         else
-          handleCreateComment(mousePosition)
+          handleCreateComment(pointerPosition)
       }
     }
   })

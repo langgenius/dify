@@ -13,6 +13,7 @@ import type {
   EnvironmentVariable,
   Node,
 } from './types'
+import type { PointerPosition } from './utils/pointer-position'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
@@ -118,6 +119,10 @@ import {
   WorkflowRunningStatus,
 } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
+import {
+  DEFAULT_POINTER_POSITION,
+  getPointerPositionFromEvent,
+} from './utils/pointer-position'
 import { WorkflowContextmenu } from './workflow-contextmenu'
 import 'reactflow/dist/style.css'
 import './style.css'
@@ -156,15 +161,16 @@ export type WorkflowProps = {
 }
 
 const CommentPlacementPreview = memo(({
+  position,
   onSubmit,
   onCancel,
 }: {
+  position: PointerPosition
   onSubmit: (content: string, mentionedUserIds: string[]) => void
   onCancel: () => void
 }) => {
   const isCommentPlacing = useStore(s => s.isCommentPlacing)
   const pendingComment = useStore(s => s.pendingComment)
-  const mousePosition = useStore(s => s.mousePosition)
 
   if (!isCommentPlacing || pendingComment)
     return null
@@ -172,8 +178,8 @@ const CommentPlacementPreview = memo(({
   return (
     <CommentInput
       position={{
-        x: mousePosition.elementX,
-        y: mousePosition.elementY,
+        x: position.elementX,
+        y: position.elementY,
       }}
       onSubmit={onSubmit}
       onCancel={onCancel}
@@ -201,6 +207,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const reactflow = useReactFlow()
   const store = useStoreApi()
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
+  const [commentPointerPosition, setCommentPointerPosition] = useState<PointerPosition>(DEFAULT_POINTER_POSITION)
+  const latestCommentPointerPositionRef = useRef<PointerPosition>(DEFAULT_POINTER_POSITION)
+  const commentPointerPositionFrameRef = useRef<number | undefined>(undefined)
+  const isMouseOverCanvasRef = useRef(false)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -217,6 +227,26 @@ export const Workflow: FC<WorkflowProps> = memo(({
       return '100%'
     return workflowCanvasHeight - bottomPanelHeight
   }, [workflowCanvasHeight, bottomPanelHeight])
+
+  const scheduleCommentPointerPositionUpdate = useCallback((position: PointerPosition) => {
+    latestCommentPointerPositionRef.current = position
+    if (commentPointerPositionFrameRef.current)
+      return
+
+    commentPointerPositionFrameRef.current = requestAnimationFrame(() => {
+      commentPointerPositionFrameRef.current = undefined
+      setCommentPointerPosition(latestCommentPointerPositionRef.current)
+    })
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (commentPointerPositionFrameRef.current) {
+        cancelAnimationFrame(commentPointerPositionFrameRef.current)
+        commentPointerPositionFrameRef.current = undefined
+      }
+    }
+  }, [])
 
   // update workflow Canvas width and height
   useEffect(() => {
@@ -339,6 +369,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const setPendingCommentState = useStore(s => s.setPendingComment)
   const isCommentInputActive = Boolean(pendingComment) || isCommentPlacing
+  const commentPointerPositionForRender = controlMode === ControlMode.Comment || isCommentPlacing
+    ? workflowStore.getState().getPointerPosition()
+    : commentPointerPosition
+
   const visibleComments = useMemo(() => {
     if (showResolvedComments)
       return comments
@@ -469,20 +503,27 @@ export const Workflow: FC<WorkflowProps> = memo(({
       e.preventDefault()
   })
   useEventListener('mousemove', (e) => {
-    const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
+    const container = workflowContainerRef.current
 
-    if (containerClientRect) {
-      workflowStore.setState({
-        mousePosition: {
-          pageX: e.clientX,
-          pageY: e.clientY,
-          elementX: e.clientX - containerClientRect.left,
-          elementY: e.clientY - containerClientRect.top,
-        },
-      })
+    if (container) {
+      const pointerPosition = getPointerPositionFromEvent(e, container)
+      workflowStore.getState().setPointerPosition(pointerPosition)
+
+      if (controlMode === ControlMode.Comment || isCommentPlacing)
+        scheduleCommentPointerPositionUpdate(pointerPosition)
+
       const target = e.target as HTMLElement
-      const onPane = !!target?.closest('.react-flow__pane')
-      setIsMouseOverCanvas(onPane)
+      if (controlMode === ControlMode.Comment) {
+        const onPane = !!target?.closest('.react-flow__pane')
+        if (isMouseOverCanvasRef.current !== onPane) {
+          isMouseOverCanvasRef.current = onPane
+          setIsMouseOverCanvas(onPane)
+        }
+      }
+      else if (isMouseOverCanvasRef.current) {
+        isMouseOverCanvasRef.current = false
+        setIsMouseOverCanvas(false)
+      }
     }
   })
 
@@ -652,9 +693,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
         </AlertDialogContent>
       </AlertDialog>
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
-        <CommentCursor />
+        <CommentCursor position={commentPointerPositionForRender} />
       )}
       <CommentPlacementPreview
+        position={commentPointerPositionForRender}
         onSubmit={handleCommentSubmit}
         onCancel={handleCommentPlacementCancel}
       />

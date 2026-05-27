@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { PointerPosition } from '../../utils/pointer-position'
 import type {
   Edge,
   Node,
@@ -6,19 +7,13 @@ import type {
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { DEFAULT_POINTER_POSITION } from '../../utils/pointer-position'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
   // human input form schema or data cached when node is in 'Paused' status
   extraContentAndFormData?: Record<string, any>
-}
-
-type MousePosition = {
-  pageX: number
-  pageY: number
-  elementX: number
-  elementY: number
 }
 
 export type WorkflowSliceShape = {
@@ -45,7 +40,7 @@ export type WorkflowSliceShape = {
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
   controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
-  pendingComment: MousePosition | null
+  pendingComment: PointerPosition | null
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
   isCommentPlacing: boolean
   setCommentPlacing: (isCommentPlacing: boolean) => void
@@ -53,8 +48,9 @@ export type WorkflowSliceShape = {
   setCommentQuickAdd: (isCommentQuickAdd: boolean) => void
   isCommentPreviewHovering: boolean
   setCommentPreviewHovering: (hovering: boolean) => void
-  mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number }
-  setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
+  pointerPositionRef: { current: PointerPosition }
+  getPointerPosition: () => PointerPosition
+  setPointerPosition: (pointerPosition: PointerPosition) => void
   showConfirm?: { title: string, desc?: string, onConfirm: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
@@ -65,60 +61,67 @@ export type WorkflowSliceShape = {
   setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
 }
 
-export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
-  workflowRunningData: undefined,
-  setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
-  isListening: false,
-  setIsListening: listening => set(() => ({ isListening: listening })),
-  listeningTriggerType: null,
-  setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
-  listeningTriggerNodeId: null,
-  setListeningTriggerNodeId: nodeId => set(() => ({ listeningTriggerNodeId: nodeId })),
-  listeningTriggerNodeIds: [],
-  setListeningTriggerNodeIds: nodeIds => set(() => ({ listeningTriggerNodeIds: nodeIds })),
-  listeningTriggerIsAll: false,
-  setListeningTriggerIsAll: isAll => set(() => ({ listeningTriggerIsAll: isAll })),
-  clipboardElements: [],
-  clipboardEdges: [],
-  setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
-  setClipboardEdges: clipboardEdges => set(() => ({ clipboardEdges })),
-  setClipboardData: ({ nodes, edges }) => {
-    set(() => ({
-      clipboardElements: nodes,
-      clipboardEdges: edges,
-    }))
-  },
-  selection: null,
-  setSelection: selection => set(() => ({ selection })),
-  bundleNodeSize: null,
-  setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-  controlMode: (() => {
-    const storedControlMode = localStorage.getItem('workflow-operation-mode')
-    if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
-      return storedControlMode
+export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => {
+  const pointerPositionRef = { current: DEFAULT_POINTER_POSITION }
 
-    return 'pointer'
-  })(),
-  setControlMode: (controlMode) => {
-    set(() => ({ controlMode }))
-    localStorage.setItem('workflow-operation-mode', controlMode)
-  },
-  pendingComment: null,
-  setPendingComment: pendingComment => set(() => ({ pendingComment })),
-  isCommentPlacing: false,
-  setCommentPlacing: isCommentPlacing => set(() => ({ isCommentPlacing })),
-  isCommentQuickAdd: false,
-  setCommentQuickAdd: isCommentQuickAdd => set(() => ({ isCommentQuickAdd })),
-  mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
-  setMousePosition: mousePosition => set(() => ({ mousePosition })),
-  isCommentPreviewHovering: false,
-  setCommentPreviewHovering: hovering => set(() => ({ isCommentPreviewHovering: hovering })),
-  showConfirm: undefined,
-  setShowConfirm: showConfirm => set(() => ({ showConfirm })),
-  controlPromptEditorRerenderKey: 0,
-  setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
-  showImportDSLModal: false,
-  setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
-  fileUploadConfig: undefined,
-  setFileUploadConfig: fileUploadConfig => set(() => ({ fileUploadConfig })),
-})
+  return {
+    workflowRunningData: undefined,
+    setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
+    isListening: false,
+    setIsListening: listening => set(() => ({ isListening: listening })),
+    listeningTriggerType: null,
+    setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
+    listeningTriggerNodeId: null,
+    setListeningTriggerNodeId: nodeId => set(() => ({ listeningTriggerNodeId: nodeId })),
+    listeningTriggerNodeIds: [],
+    setListeningTriggerNodeIds: nodeIds => set(() => ({ listeningTriggerNodeIds: nodeIds })),
+    listeningTriggerIsAll: false,
+    setListeningTriggerIsAll: isAll => set(() => ({ listeningTriggerIsAll: isAll })),
+    clipboardElements: [],
+    clipboardEdges: [],
+    setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
+    setClipboardEdges: clipboardEdges => set(() => ({ clipboardEdges })),
+    setClipboardData: ({ nodes, edges }) => {
+      set(() => ({
+        clipboardElements: nodes,
+        clipboardEdges: edges,
+      }))
+    },
+    selection: null,
+    setSelection: selection => set(() => ({ selection })),
+    bundleNodeSize: null,
+    setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
+    controlMode: (() => {
+      const storedControlMode = localStorage.getItem('workflow-operation-mode')
+      if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
+        return storedControlMode
+
+      return 'pointer'
+    })(),
+    setControlMode: (controlMode) => {
+      set(() => ({ controlMode }))
+      localStorage.setItem('workflow-operation-mode', controlMode)
+    },
+    pendingComment: null,
+    setPendingComment: pendingComment => set(() => ({ pendingComment })),
+    isCommentPlacing: false,
+    setCommentPlacing: isCommentPlacing => set(() => ({ isCommentPlacing })),
+    isCommentQuickAdd: false,
+    setCommentQuickAdd: isCommentQuickAdd => set(() => ({ isCommentQuickAdd })),
+    pointerPositionRef,
+    getPointerPosition: () => pointerPositionRef.current,
+    setPointerPosition: (pointerPosition) => {
+      pointerPositionRef.current = pointerPosition
+    },
+    isCommentPreviewHovering: false,
+    setCommentPreviewHovering: hovering => set(() => ({ isCommentPreviewHovering: hovering })),
+    showConfirm: undefined,
+    setShowConfirm: showConfirm => set(() => ({ showConfirm })),
+    controlPromptEditorRerenderKey: 0,
+    setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
+    showImportDSLModal: false,
+    setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
+    fileUploadConfig: undefined,
+    setFileUploadConfig: fileUploadConfig => set(() => ({ fileUploadConfig })),
+  }
+}

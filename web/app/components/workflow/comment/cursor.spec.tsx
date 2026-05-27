@@ -6,10 +6,13 @@ import { CommentCursor } from './cursor'
 const mockState = {
   controlMode: ControlMode.Pointer,
   isCommentPlacing: false,
-  mousePosition: {
-    elementX: 10,
-    elementY: 20,
-  },
+}
+
+const pointerPosition = {
+  pageX: 10,
+  pageY: 20,
+  elementX: 10,
+  elementY: 20,
 }
 
 vi.mock('@/app/components/base/icons/src/public/other', () => ({
@@ -28,7 +31,7 @@ describe('CommentCursor', () => {
   it('renders nothing when not in comment mode', () => {
     mockState.controlMode = ControlMode.Pointer
 
-    render(<CommentCursor />)
+    render(<CommentCursor position={pointerPosition} />)
 
     expect(screen.queryByTestId('comment-icon')).not.toBeInTheDocument()
   })
@@ -37,7 +40,7 @@ describe('CommentCursor', () => {
     mockState.controlMode = ControlMode.Comment
     mockState.isCommentPlacing = false
 
-    render(<CommentCursor />)
+    render(<CommentCursor position={pointerPosition} />)
 
     const icon = screen.getByTestId('comment-icon')
     const container = icon.parentElement as HTMLElement
@@ -49,7 +52,7 @@ describe('CommentCursor', () => {
     mockState.controlMode = ControlMode.Comment
     mockState.isCommentPlacing = true
 
-    render(<CommentCursor />)
+    render(<CommentCursor position={pointerPosition} />)
 
     expect(screen.queryByTestId('comment-icon')).not.toBeInTheDocument()
   })
