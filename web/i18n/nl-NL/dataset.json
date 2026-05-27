@@ -85,7 +85,7 @@
   "externalKnowledgeNamePlaceholder": "Please enter the name of the knowledge base",
   "externalTag": "External",
   "filterEmpty.noKnowledge": "Geen kennis hier",
-  "firstEmpty.pickHint": "Weet je niet wat je moet kiezen? Begin met <highlight>Kennis maken</highlight> - je kunt later altijd wisselen.",
+  "firstEmpty.pickHint": "Weet je niet wat je moet kiezen? Begin met Kennis maken - je kunt later altijd wisselen.",
   "imageUploader.browse": "Browse",
   "imageUploader.button": "Drag and drop file or folder, or",
   "imageUploader.fileSizeLimitExceeded": "File size exceeds the {{size}}MB limit",

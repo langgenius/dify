@@ -85,7 +85,7 @@
   "externalKnowledgeNamePlaceholder": "Bitte geben Sie den Namen der Wissensdatenbank ein.",
   "externalTag": "Äußerlich",
   "filterEmpty.noKnowledge": "Hier gibt es kein Wissen",
-  "firstEmpty.pickHint": "Nicht sicher, was du wählen sollst? Starte mit <highlight>Wissen erstellen</highlight> - du kannst später jederzeit wechseln.",
+  "firstEmpty.pickHint": "Nicht sicher, was du wählen sollst? Starte mit Wissen erstellen - du kannst später jederzeit wechseln.",
   "imageUploader.browse": "Durchsuchen",
   "imageUploader.button": "Datei oder Ordner ziehen und ablegen, oder",
   "imageUploader.fileSizeLimitExceeded": "Die Dateigröße überschreitet das Limit von {{size}} MB",

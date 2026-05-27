@@ -85,7 +85,7 @@
   "externalKnowledgeNamePlaceholder": "Lütfen bilgi bankasının adını giriniz",
   "externalTag": "Dış",
   "filterEmpty.noKnowledge": "Burada bilgi yok",
-  "firstEmpty.pickHint": "Hangisini seçeceğinizden emin değil misiniz? <highlight>Bilgi Oluştur</highlight> ile başlayın - daha sonra her zaman değiştirebilirsiniz.",
+  "firstEmpty.pickHint": "Hangisini seçeceğinizden emin değil misiniz? Bilgi Oluştur ile başlayın - daha sonra her zaman değiştirebilirsiniz.",
   "imageUploader.browse": "Gözat",
   "imageUploader.button": "Dosya veya klasörü sürükleyip bırakın, veya",
   "imageUploader.fileSizeLimitExceeded": "Dosya boyutu {{size}}MB sınırını aşıyor",

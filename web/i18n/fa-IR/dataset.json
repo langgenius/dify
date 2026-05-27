@@ -85,7 +85,7 @@
   "externalKnowledgeNamePlaceholder": "لطفا نام پایگاه دانش را وارد کنید",
   "externalTag": "خارجی",
   "filterEmpty.noKnowledge": "هیچ دانشی اینجا نیست",
-  "firstEmpty.pickHint": "مطمئن نیستید کدام را انتخاب کنید؟ با <highlight>ایجاد دانش</highlight> شروع کنید - بعدا همیشه می توانید تغییر دهید.",
+  "firstEmpty.pickHint": "مطمئن نیستید کدام را انتخاب کنید؟ با ایجاد دانش شروع کنید - بعدا همیشه می توانید تغییر دهید.",
   "imageUploader.browse": "مرور کردن",
   "imageUploader.button": "کشیدن و رها کردن فایل یا پوشه، یا",
   "imageUploader.fileSizeLimitExceeded": "حجم فایل از محدودیت {{size}} مگابایت تجاوز کرده است",

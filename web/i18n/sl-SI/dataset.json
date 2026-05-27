@@ -85,7 +85,7 @@
   "externalKnowledgeNamePlaceholder": "Prosimo, vnesite ime baze znanja",
   "externalTag": "Zunanje",
   "filterEmpty.noKnowledge": "Tukaj ni znanja",
-  "firstEmpty.pickHint": "Niste prepričani, kaj izbrati? Začnite z <highlight>Ustvari znanje</highlight> - pozneje lahko vedno preklopite.",
+  "firstEmpty.pickHint": "Niste prepričani, kaj izbrati? Začnite z Ustvari znanje - pozneje lahko vedno preklopite.",
   "imageUploader.browse": "Brskaj",
   "imageUploader.button": "Povlecite in spustite datoteko ali mapo, ali",
   "imageUploader.fileSizeLimitExceeded": "Velikost datoteke presega omejitev {{size}} MB",
