@@ -10705,6 +10705,43 @@ Supported icon storage formats for Agent roster entries.
 | skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
 | tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
 
+#### AgentSoulDifyToolConfig
+
+One Dify Plugin Tool configured on Agent Soul.
+
+The API backend prepares this persisted product shape into
+``DifyPluginToolConfig`` before sending a run request to Agent backend.
+``provider_id`` keeps compatibility with existing Agent tool config payloads;
+new callers should send ``plugin_id`` + ``provider`` when available.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_ref | [AgentSoulDifyToolCredentialRef](#agentsouldifytoolcredentialref) |  | No |
+| credential_type | string | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
+| description | string |  | No |
+| enabled | boolean |  | No |
+| name | string |  | No |
+| plugin_id | string |  | No |
+| provider | string |  | No |
+| provider_id | string |  | No |
+| provider_type | string |  | No |
+| runtime_parameters | object |  | No |
+| tool_name | string |  | Yes |
+
+#### AgentSoulDifyToolCredentialRef
+
+Reference to a stored Dify Plugin Tool credential.
+
+Secret values are resolved only at runtime. The legacy ``credential_id``
+field is accepted by :class:`AgentSoulDifyToolConfig` and normalized here so
+old Agent tool payloads can be read while new payloads stay explicit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| provider | string |  | No |
+| type | string | *Enum:* `"provider"`, `"tool"` | No |
+
 #### AgentSoulEnvConfig
 
 | Name | Type | Description | Required |
@@ -10782,7 +10819,7 @@ Reference to model credentials resolved only at runtime.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cli_tools | [ object ] |  | No |
-| dify_tools | [ object ] |  | No |
+| dify_tools | [ [AgentSoulDifyToolConfig](#agentsouldifytoolconfig) ] |  | No |
 
 #### AgentThought
 
