@@ -9,7 +9,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import {
   appendSnippetInputFieldVars,
-  isSnippetCanvas,
+  filterSnippetSystemVars,
 } from '@/app/components/workflow/nodes/_base/hooks/snippet-input-field-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -34,18 +34,6 @@ const getNodeInfo = (nodeId: string, nodes: Node[]) => {
     isInLoop,
     parentNode,
   }
-}
-
-const filterSystemVarsForSnippet = (availableVars: NodeOutPutVar[]) => {
-  if (!isSnippetCanvas())
-    return availableVars
-
-  return availableVars
-    .map(nodeVar => ({
-      ...nodeVar,
-      vars: nodeVar.vars.filter(variable => !variable.variable.startsWith('sys.')),
-    }))
-    .filter(nodeVar => nodeVar.vars.length > 0)
 }
 
 // TODO: loop type?
@@ -82,7 +70,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
       parentNode: iterationNode,
     } = getNodeInfo(nodeId, nodes)
 
-    const availableVars = filterSystemVarsForSnippet([
+    const availableVars = filterSnippetSystemVars([
       ...snippetInputFieldAvailability.availableVars,
       ...getNodeAvailableVars({
         parentNode: iterationNode,
@@ -136,7 +124,7 @@ export const useGetNodesAvailableVarList = () => {
         parentNode: iterationNode,
       } = getNodeInfo(nodeId, nodes)
 
-      const availableVars = filterSystemVarsForSnippet([
+      const availableVars = filterSnippetSystemVars([
         ...snippetInputFieldAvailability.availableVars,
         ...getNodeAvailableVars({
           parentNode: iterationNode,
