@@ -55,7 +55,6 @@ export const SUBDIR = 'difyctl'
 export const ENV_XDG_CONFIG_HOME = 'XDG_CONFIG_HOME'
 export const ENV_XDG_CACHE_HOME = 'XDG_CACHE_HOME'
 
-
 function appDataDir(): string | undefined {
   return getEnv('APPDATA') ?? getEnv('LOCALAPPDATA')
 }
@@ -67,7 +66,10 @@ function posixAtomicReplace(src: string, dst: string): void {
 }
 
 function win32AtomicReplace(src: string, dst: string): void {
-  try { fs.unlinkSync(dst) } catch { }
+  try {
+    fs.unlinkSync(dst)
+  }
+  catch { }
   fs.renameSync(src, dst)
 }
 

@@ -1,8 +1,9 @@
+import type { Platform } from '../sys'
 import fs from 'node:fs'
 import { dirname } from 'node:path'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
-import { type Platform, pid, resolvePlatform } from '../sys'
+import { pid, resolvePlatform } from '../sys'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
@@ -175,4 +176,3 @@ export class YamlStore extends FileBasedStore {
 function loadYaml(raw: string | undefined): Record<string, unknown> {
   return (yaml.load(raw ?? '') ?? {}) as Record<string, unknown>
 }
-
