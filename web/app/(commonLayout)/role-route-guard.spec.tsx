@@ -60,6 +60,7 @@ describe('RoleRouteGuard', () => {
   it.each([
     '/',
     '/apps',
+    '/roster',
     '/tools',
     '/integrations/model-provider',
   ])('should redirect dataset operator on guarded route %s', async (pathname) => {
