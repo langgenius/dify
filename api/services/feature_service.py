@@ -130,7 +130,7 @@ class FeatureModel(FeatureResponseModel):
     education: EducationModel = EducationModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
-    vector_space: LimitationModel = LimitationModel(size=0, limit=5)
+    vector_space: LimitationModel | None = LimitationModel(size=0, limit=5)
     knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
@@ -188,6 +188,8 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
         features = FeatureModel()
+        if exclude_vector_space:
+            features.vector_space = None
 
         cls._fulfill_params_from_env(features)
 
@@ -347,6 +349,7 @@ class FeatureService:
             features.apps.limit = billing_info["apps"]["limit"]
 
         if not exclude_vector_space:
+            assert features.vector_space is not None
             cls._fulfill_vector_space_from_billing_info(features.vector_space, billing_info)
 
         if "documents_upload_quota" in billing_info:

@@ -61,79 +61,20 @@ class TestRepack:
 
 
 class TestUpdatePromptTool:
-    def build_param(self, mocker: MockerFixture, **kwargs):
-        p = mocker.MagicMock()
-        p.form = kwargs.get("form")
-
-        mock_type = mocker.MagicMock()
-        mock_type.as_normal_type.return_value = "string"
-        p.type = mock_type
-
-        p.name = kwargs.get("name", "p1")
-        p.llm_description = "desc"
-        p.input_schema = kwargs.get("input_schema")
-        p.options = kwargs.get("options")
-        p.required = kwargs.get("required", False)
-        return p
-
-    def test_skip_non_llm(self, runner, mocker: MockerFixture):
+    def test_replaces_prompt_tool_parameters_with_tool_schema(self, runner, mocker: MockerFixture):
         tool = mocker.MagicMock()
-        param = self.build_param(mocker, form="NOT_LLM")
-        tool.get_runtime_parameters.return_value = [param]
+        schema = {
+            "type": "object",
+            "properties": {"p1": {"type": "string", "description": "desc"}},
+            "required": ["p1"],
+        }
+        tool.get_llm_parameters_json_schema.return_value = schema
 
         prompt_tool = mocker.MagicMock()
         prompt_tool.parameters = {"properties": {}, "required": []}
 
         result = runner.update_prompt_message_tool(tool, prompt_tool)
-        assert result.parameters["properties"] == {}
-
-    def test_enum_and_required(self, runner, mocker: MockerFixture):
-        option = mocker.MagicMock(value="opt1")
-        param = self.build_param(
-            mocker,
-            form=module.ToolParameter.ToolParameterForm.LLM,
-            options=[option],
-            required=True,
-        )
-
-        tool = mocker.MagicMock()
-        tool.get_runtime_parameters.return_value = [param]
-
-        prompt_tool = mocker.MagicMock()
-        prompt_tool.parameters = {"properties": {}, "required": []}
-
-        result = runner.update_prompt_message_tool(tool, prompt_tool)
-        assert "p1" in result.parameters["required"]
-
-    def test_skip_file_type_param(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock()
-        param = self.build_param(mocker, form=module.ToolParameter.ToolParameterForm.LLM)
-        param.type = module.ToolParameter.ToolParameterType.FILE
-        tool.get_runtime_parameters.return_value = [param]
-
-        prompt_tool = mocker.MagicMock()
-        prompt_tool.parameters = {"properties": {}, "required": []}
-
-        result = runner.update_prompt_message_tool(tool, prompt_tool)
-        assert result.parameters["properties"] == {}
-
-    def test_duplicate_required_not_duplicated(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock()
-
-        param = self.build_param(
-            mocker,
-            form=module.ToolParameter.ToolParameterForm.LLM,
-            required=True,
-        )
-
-        tool.get_runtime_parameters.return_value = [param]
-
-        prompt_tool = mocker.MagicMock()
-        prompt_tool.parameters = {"properties": {}, "required": ["p1"]}
-
-        result = runner.update_prompt_message_tool(tool, prompt_tool)
-
-        assert result.parameters["required"].count("p1") == 1
+        assert result.parameters == schema
 
 
 # ==========================================================
@@ -383,57 +324,21 @@ class TestConvertToolToPromptMessageTool:
     def test_basic_conversion(self, runner, mocker: MockerFixture):
         tool = mocker.MagicMock(tool_name="tool1")
 
-        runtime_param = mocker.MagicMock()
-        runtime_param.form = module.ToolParameter.ToolParameterForm.LLM
-        runtime_param.name = "param1"
-        runtime_param.llm_description = "desc"
-        runtime_param.required = True
-        runtime_param.input_schema = None
-        runtime_param.options = None
-
-        mock_type = mocker.MagicMock()
-        mock_type.as_normal_type.return_value = "string"
-        runtime_param.type = mock_type
-
         tool_entity = mocker.MagicMock()
         tool_entity.entity.description.llm = "desc"
-        tool_entity.get_merged_runtime_parameters.return_value = [runtime_param]
+        schema = {
+            "type": "object",
+            "properties": {"param1": {"type": "string", "description": "desc"}},
+            "required": ["param1"],
+        }
+        tool_entity.get_llm_parameters_json_schema.return_value = schema
 
         mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
         mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
 
         prompt_tool, entity = runner._convert_tool_to_prompt_message_tool(tool)
         assert entity == tool_entity
-
-    def test_full_conversion_multiple_params(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock(tool_name="tool1")
-
-        # LLM param with input_schema override
-        param1 = mocker.MagicMock()
-        param1.form = module.ToolParameter.ToolParameterForm.LLM
-        param1.name = "p1"
-        param1.llm_description = "desc"
-        param1.required = True
-        param1.input_schema = {"type": "integer"}
-        param1.options = None
-        param1.type = mocker.MagicMock()
-
-        # SYSTEM_FILES param should be skipped
-        param2 = mocker.MagicMock()
-        param2.form = module.ToolParameter.ToolParameterForm.LLM
-        param2.name = "file_param"
-        param2.type = module.ToolParameter.ToolParameterType.SYSTEM_FILES
-
-        tool_entity = mocker.MagicMock()
-        tool_entity.entity.description.llm = "desc"
-        tool_entity.get_merged_runtime_parameters.return_value = [param1, param2]
-
-        mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
-        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
-
-        prompt_tool, entity = runner._convert_tool_to_prompt_message_tool(tool)
-
-        assert entity == tool_entity
+        assert prompt_tool.parameters == schema
 
 
 # ==========================================================
@@ -465,29 +370,6 @@ class TestInitPromptToolsExtended:
 
 
 class TestAdditionalCoverage:
-    def test_update_prompt_with_input_schema(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock()
-
-        param = mocker.MagicMock()
-        param.form = module.ToolParameter.ToolParameterForm.LLM
-        param.name = "p1"
-        param.required = False
-        param.llm_description = "desc"
-        param.options = None
-        param.input_schema = {"type": "number"}
-
-        mock_type = mocker.MagicMock()
-        mock_type.as_normal_type.return_value = "string"
-        param.type = mock_type
-
-        tool.get_runtime_parameters.return_value = [param]
-
-        prompt_tool = mocker.MagicMock()
-        prompt_tool.parameters = {"properties": {}, "required": []}
-
-        result = runner.update_prompt_message_tool(tool, prompt_tool)
-        assert result.parameters["properties"]["p1"]["type"] == "number"
-
     def test_save_agent_thought_existing_labels(self, runner, mock_db_session, mocker: MockerFixture):
         agent = mocker.MagicMock()
         agent.tool = "tool1"
@@ -571,33 +453,6 @@ class TestAdditionalCoverage:
         result = runner.organize_agent_history([])
         assert isinstance(result, list)
 
-    # ================= Additional Surgical Coverage =================
-
-    def test_convert_tool_select_enum_branch(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock(tool_name="tool1")
-
-        param = mocker.MagicMock()
-        param.form = module.ToolParameter.ToolParameterForm.LLM
-        param.name = "select_param"
-        param.required = True
-        param.llm_description = "desc"
-        param.input_schema = None
-
-        option1 = mocker.MagicMock(value="A")
-        option2 = mocker.MagicMock(value="B")
-        param.options = [option1, option2]
-        param.type = module.ToolParameter.ToolParameterType.SELECT
-
-        tool_entity = mocker.MagicMock()
-        tool_entity.entity.description.llm = "desc"
-        tool_entity.get_merged_runtime_parameters.return_value = [param]
-
-        mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
-        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
-
-        prompt_tool, _ = runner._convert_tool_to_prompt_message_tool(tool)
-        assert prompt_tool is not None
-
 
 class TestConvertDatasetRetrieverTool:
     def test_required_param_added(self, runner, mocker: MockerFixture):
@@ -663,24 +518,6 @@ class TestBaseAgentRunnerInit:
 
 
 class TestBaseAgentRunnerCoverage:
-    def test_convert_tool_skips_non_llm_param(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock(tool_name="tool1")
-
-        param = mocker.MagicMock()
-        param.form = "NOT_LLM"
-        param.type = mocker.MagicMock()
-
-        tool_entity = mocker.MagicMock()
-        tool_entity.entity.description.llm = "desc"
-        tool_entity.get_merged_runtime_parameters.return_value = [param]
-
-        mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
-        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
-
-        prompt_tool, _ = runner._convert_tool_to_prompt_message_tool(tool)
-
-        assert prompt_tool.parameters["properties"] == {}
-
     def test_init_prompt_tools_adds_dataset_tools(self, runner, mocker: MockerFixture):
         dataset_tool = mocker.MagicMock()
         dataset_tool.entity.identity.name = "ds"
@@ -692,30 +529,6 @@ class TestBaseAgentRunnerCoverage:
 
         assert tools["ds"] == dataset_tool
         assert len(prompt_tools) == 1
-
-    def test_update_prompt_message_tool_select_enum(self, runner, mocker: MockerFixture):
-        tool = mocker.MagicMock()
-
-        option1 = mocker.MagicMock(value="A")
-        option2 = mocker.MagicMock(value="B")
-
-        param = mocker.MagicMock()
-        param.form = module.ToolParameter.ToolParameterForm.LLM
-        param.name = "select_param"
-        param.required = False
-        param.llm_description = "desc"
-        param.input_schema = None
-        param.options = [option1, option2]
-        param.type = module.ToolParameter.ToolParameterType.SELECT
-
-        tool.get_runtime_parameters.return_value = [param]
-
-        prompt_tool = mocker.MagicMock()
-        prompt_tool.parameters = {"properties": {}, "required": []}
-
-        result = runner.update_prompt_message_tool(tool, prompt_tool)
-
-        assert result.parameters["properties"]["select_param"]["enum"] == ["A", "B"]
 
     def test_save_agent_thought_json_dumps_fallbacks(self, runner, mock_db_session, mocker: MockerFixture):
         agent = mocker.MagicMock()

@@ -1,4 +1,4 @@
-from dify_agent.protocol import ExecutionContext
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -13,12 +13,11 @@ def _request():
     return AgentBackendRunRequestBuilder().build_for_workflow_node(
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
-                tenant_id="tenant-1",
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=ExecutionContext(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )
@@ -64,3 +63,25 @@ def test_fake_client_cancel_run_returns_cancelled_status():
 
     assert cancelled.run_id == "fake-run-1"
     assert cancelled.status == "cancelled"
+
+
+def test_fake_client_paused_scenario_returns_paused_status_and_event():
+    """The paused scenario exists for HITL-style flows; both ``wait_run`` and
+    the event stream must report the pause so consumers can branch on it."""
+    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
+
+    status = client.wait_run("fake-run-1")
+    events = list(client.stream_events("fake-run-1"))
+
+    assert status.status == "paused"
+    assert status.error is None
+    assert events[-1].type == "run_paused"
+    assert events[-1].data.reason == "human_input_required"
+
+
+def test_fake_client_success_wait_run_returns_succeeded_status():
+    """Covers the default SUCCESS branch of ``wait_run`` directly."""
+    status = FakeAgentBackendRunClient().wait_run("fake-run-1")
+
+    assert status.status == "succeeded"
+    assert status.error is None

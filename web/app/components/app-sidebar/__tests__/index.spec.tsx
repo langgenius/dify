@@ -28,7 +28,10 @@ let mockKeyPressCallback: ((e: { preventDefault: () => void }) => void) | null =
 
 vi.mock('ahooks', () => ({
   useHover: () => mockIsHovering,
-  useKeyPress: (_key: string, cb: (e: { preventDefault: () => void }) => void) => {
+}))
+
+vi.mock('@tanstack/react-hotkeys', () => ({
+  useHotkey: (_hotkey: string, cb: (e: { preventDefault: () => void }) => void) => {
     mockKeyPressCallback = cb
   },
 }))
@@ -50,10 +53,6 @@ vi.mock('@/context/event-emitter', () => ({
 
 vi.mock('../../base/divider', () => ({
   default: ({ className }: { className?: string }) => <hr data-testid="divider" className={className} />,
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
 }))
 
 vi.mock('../app-info', () => ({
@@ -110,6 +109,7 @@ describe('AppDetailNav', () => {
     mockAppSidebarExpand = 'expand'
     mockPathname = '/app/123/overview'
     mockIsHovering = true
+    mockKeyPressCallback = null
   })
 
   describe('Normal sidebar mode', () => {
@@ -279,7 +279,7 @@ describe('AppDetailNav', () => {
   })
 
   describe('Keyboard shortcut', () => {
-    it('should toggle sidebar on ctrl+b', () => {
+    it('should toggle sidebar on Mod+B', () => {
       render(<AppDetailNav navigation={navigation} />)
 
       const cb = mockKeyPressCallback

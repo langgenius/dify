@@ -58,7 +58,7 @@ def check_workspace_owner_transfer_permission(workspace_id: str) -> None:
     Raises:
         Forbidden: If either billing plan or workspace policy prohibits ownership transfer
     """
-    features = FeatureService.get_features(workspace_id)
+    features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
     if not features.is_allow_transfer_workspace:
         raise Forbidden("Your current plan does not allow workspace ownership transfer")
 
