@@ -882,6 +882,9 @@ class RecommendedApp(TypeBase):
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    is_learn_dify: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),

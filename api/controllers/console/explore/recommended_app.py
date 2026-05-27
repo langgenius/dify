@@ -64,13 +64,26 @@ class RecommendedAppListResponse(ResponseModel):
     categories: list[str]
 
 
+class LearnDifyAppListResponse(ResponseModel):
+    recommended_apps: list[RecommendedAppResponse]
+
+
 register_schema_models(
     console_ns,
     RecommendedAppsQuery,
     RecommendedAppInfoResponse,
     RecommendedAppResponse,
     RecommendedAppListResponse,
+    LearnDifyAppListResponse,
 )
+
+
+def _resolve_language(language: str | None) -> str:
+    if language and language in languages:
+        return language
+    if current_user and current_user.interface_language:
+        return current_user.interface_language
+    return languages[0]
 
 
 @console_ns.route("/explore/apps")
@@ -82,16 +95,26 @@ class RecommendedAppListApi(Resource):
     def get(self):
         # language args
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language = args.language
-        if language and language in languages:
-            language_prefix = language
-        elif current_user and current_user.interface_language:
-            language_prefix = current_user.interface_language
-        else:
-            language_prefix = languages[0]
+        language_prefix = _resolve_language(args.language)
 
         return RecommendedAppListResponse.model_validate(
             RecommendedAppService.get_recommended_apps_and_categories(language_prefix),
+            from_attributes=True,
+        ).model_dump(mode="json")
+
+
+@console_ns.route("/explore/apps/learn-dify")
+class LearnDifyAppListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
+    @console_ns.response(200, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
+    @login_required
+    @account_initialization_required
+    def get(self):
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
+        language_prefix = _resolve_language(args.language)
+
+        return LearnDifyAppListResponse.model_validate(
+            RecommendedAppService.get_learn_dify_apps(language_prefix),
             from_attributes=True,
         ).model_dump(mode="json")
 
