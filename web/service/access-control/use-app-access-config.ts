@@ -1,5 +1,7 @@
 import type { BindingsPayload, GetAppAccessPolicyByAppIdResponse } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/client'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { get, put } from '../base'
 
 const NAME_SPACE = 'app-access-config'
@@ -22,8 +24,12 @@ export const useUpdateAppAccessRuleBindings = () => {
         body: payload,
       })
     },
-    onSuccess: (_, { appId }) => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'app-access-rules', appId] })
+    onSuccess: async (_, { appId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'app-access-rules', appId] }),
+        queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appId] }),
+        queryClient.invalidateQueries({ queryKey: consoleQuery.apps.list.key() }),
+      ])
     },
   })
 }

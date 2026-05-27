@@ -1,5 +1,6 @@
 import type { BindingsPayload, GetAppAccessPolicyByAppIdResponse } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { datasetDetailQueryKeyPrefix, datasetListQueryKey } from '@/service/knowledge/use-dataset'
 import { get, put } from '../base'
 
 const NAME_SPACE = 'dataset-access-config'
@@ -22,8 +23,12 @@ export const useUpdateDatasetAccessRuleBindings = () => {
         body: payload,
       })
     },
-    onSuccess: (_, { datasetId }) => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'dataset-access-rules', datasetId] })
+    onSuccess: async (_, { datasetId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'dataset-access-rules', datasetId] }),
+        queryClient.invalidateQueries({ queryKey: [...datasetDetailQueryKeyPrefix, datasetId] }),
+        queryClient.invalidateQueries({ queryKey: datasetListQueryKey }),
+      ])
     },
   })
 }

@@ -6,7 +6,7 @@ import type { AppSSO } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,8 +18,8 @@ import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -69,6 +69,7 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const queryClient = useQueryClient()
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
@@ -81,7 +82,6 @@ function AppCard({
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
@@ -156,14 +156,13 @@ function AppCard({
       return
 
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appDetail.id] })
       setShowAccessControl(false)
     }
     catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
-  }, [appDetail, setAppDetail])
+  }, [appDetail, queryClient])
 
   const operationKeys = useMemo(() => getAppCardOperationKeys({
     cardType,

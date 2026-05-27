@@ -27,7 +27,7 @@ import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
 
-const datasetListQueryKey = [NAME_SPACE, 'list']
+export const datasetListQueryKey = [NAME_SPACE, 'list']
 
 const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> = {}) => {
   const {

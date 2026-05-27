@@ -15,6 +15,7 @@ const mockAppState = vi.hoisted(() => ({
 const mockUpdateAppSiteStatus = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteConfig = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteAccessToken = vi.hoisted(() => vi.fn())
+const mockInvalidateQueries = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: typeof mockAppState) => T): T => selector(mockAppState),
@@ -25,10 +26,15 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetail: vi.fn(),
   updateAppSiteStatus: (...args: unknown[]) => mockUpdateAppSiteStatus(...args),
   updateAppSiteConfig: (...args: unknown[]) => mockUpdateAppSiteConfig(...args),
   updateAppSiteAccessToken: (...args: unknown[]) => mockUpdateAppSiteAccessToken(...args),
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    invalidateQueries: mockInvalidateQueries,
+  }),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
@@ -98,6 +104,7 @@ describe('CardView ACL edit guards', () => {
     mockUpdateAppSiteStatus.mockResolvedValue(mockAppState.appDetail as App)
     mockUpdateAppSiteConfig.mockResolvedValue(mockAppState.appDetail as App)
     mockUpdateAppSiteAccessToken.mockResolvedValue({ code: 'token' })
+    mockInvalidateQueries.mockResolvedValue(undefined)
   })
 
   // User-facing card actions should not mutate app settings without app ACL edit permission.
@@ -146,6 +153,7 @@ describe('CardView ACL edit guards', () => {
       expect(mockUpdateAppSiteAccessToken).toHaveBeenCalledWith({
         url: '/apps/app-1/site/access-token-reset',
       })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
     })
   })
 })

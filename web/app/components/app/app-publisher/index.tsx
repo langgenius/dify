@@ -7,7 +7,7 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useKeyPress } from 'ahooks'
 import {
 
@@ -39,9 +39,10 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
+import { publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -128,7 +129,7 @@ const AppPublisher = ({
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
@@ -252,13 +253,12 @@ const AppPublisher = ({
     if (!appDetail)
       return
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appDetail.id] })
     }
     finally {
       setShowAppAccessControl(false)
     }
-  }, [appDetail, setAppDetail])
+  }, [appDetail, queryClient])
 
   const handleOpenWorkflowLaunchDialog = useCallback((targetUrl: string) => {
     setWorkflowLaunchValues(initialWorkflowLaunchValues)

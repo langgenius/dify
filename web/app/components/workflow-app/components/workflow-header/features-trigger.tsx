@@ -9,6 +9,7 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   memo,
   useCallback,
@@ -41,7 +42,7 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
@@ -52,7 +53,7 @@ const FeaturesTrigger = () => {
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const queryClient = useQueryClient()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const { plan, isFetchedPlan } = useProviderContext()
@@ -132,13 +133,12 @@ const FeaturesTrigger = () => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      setAppDetail({ ...res })
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appID!] })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID, queryClient])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()

@@ -6,7 +6,7 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
-import * as React from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppCard from '@/app/components/app/overview/app-card'
@@ -20,11 +20,11 @@ import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import {
-  fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -38,8 +38,8 @@ type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
@@ -86,13 +86,12 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      const res = await fetchAppDetail({ url: '/apps', id: appId })
-      setAppDetail({ ...res })
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appId] })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appId, setAppDetail])
+  }, [appId, queryClient])
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'

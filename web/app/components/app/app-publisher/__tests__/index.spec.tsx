@@ -18,7 +18,6 @@ const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
-const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
 const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
@@ -85,7 +84,6 @@ vi.mock('@/service/explore', () => ({
 const mockPublishToCreatorsPlatform = vi.fn()
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
   publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
 }))
 
@@ -200,10 +198,6 @@ describe('AppPublisher', () => {
     }
     mockFetchInstalledAppList.mockResolvedValue({
       installed_apps: [{ id: 'installed-1' }],
-    })
-    mockFetchAppDetailDirect.mockResolvedValue({
-      id: 'app-1',
-      access_mode: AccessMode.PUBLIC,
     })
     mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
       await resolver()
@@ -376,11 +370,12 @@ describe('AppPublisher', () => {
   })
 
   it('should refresh app detail after access control confirmation', async () => {
-    render(
+    const { queryClient } = render(
       <AppPublisher
         publishedAt={Date.now()}
       />,
     )
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
@@ -390,11 +385,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      })
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
     })
   })
 
@@ -617,18 +608,19 @@ describe('AppPublisher', () => {
   it('should keep access control open when app detail is unavailable during confirmation', async () => {
     mockAppDetail = null
 
-    render(
+    const { queryClient } = render(
       <AppPublisher
         publishedAt={Date.now()}
       />,
     )
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
+      expect(invalidateQueriesSpy).not.toHaveBeenCalled()
     })
     expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
   })

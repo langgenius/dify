@@ -13,7 +13,6 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: { enabled: true } },
 })
 
-const mockFetchAppDetailDirect = vi.fn()
 const mockPush = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
@@ -58,10 +57,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({
     data: mockAccessSubjects,
   }),
-}))
-
-vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
 vi.mock('@/app/components/develop/secret-key/secret-key-button', () => ({
@@ -130,10 +125,6 @@ describe('AppCard', () => {
       groups: [],
       members: [],
     }
-    mockFetchAppDetailDirect.mockResolvedValue({
-      id: 'app-1',
-      access_mode: AccessMode.PUBLIC,
-    })
   })
 
   it('should open the published webapp when launch is clicked', () => {
@@ -392,13 +383,14 @@ describe('AppCard', () => {
   })
 
   it('should refresh app detail after confirming access control changes', async () => {
-    render(
+    const { queryClient } = render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
         onGenerateCode={mockOnGenerateCode}
       />,
     )
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
     fireEvent.click(screen.getByText('publishApp.notSet'))
     expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
@@ -406,11 +398,7 @@ describe('AppCard', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      })
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
     })
   })
 
@@ -464,14 +452,14 @@ describe('AppCard', () => {
 
   it('should report refresh failures from access control updates', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
-    mockFetchAppDetailDirect.mockRejectedValueOnce(new Error('refresh failed'))
 
-    render(
+    const { queryClient } = render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
       />,
     )
+    vi.spyOn(queryClient, 'invalidateQueries').mockRejectedValueOnce(new Error('refresh failed'))
 
     fireEvent.click(screen.getByText('publishApp.notSet'))
     fireEvent.click(screen.getByText('confirm-access-control'))

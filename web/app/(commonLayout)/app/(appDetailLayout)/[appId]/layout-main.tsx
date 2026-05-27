@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDashboard2Fill,
@@ -17,7 +16,7 @@ import {
 } from '@remixicon/react'
 import { useUnmount } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppSideBar from '@/app/components/app-sidebar'
@@ -29,7 +28,7 @@ import { useAppContext, useSelector as useAppContextWithSelector } from '@/conte
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import s from './style.module.css'
@@ -37,6 +36,13 @@ import s from './style.module.css'
 type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
+}
+
+type NavigationItem = {
+  name: string
+  href: string
+  icon: NavIcon
+  selectedIcon: NavIcon
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -57,17 +63,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppDetail: state.setAppDetail,
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
-  const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
+  const {
+    data: appDetailRes,
+    error: appDetailError,
+    isLoading: isLoadingAppDetail,
+  } = useAppDetail(appId)
 
   const appCreatedBy = appDetailRes?.created_by || appDetailRes?.workflow?.created_by
-  const appCreatorPermissionOptions = React.useMemo(
+  const appCreatorPermissionOptions = useMemo(
     () => ({
       currentUserId,
       resourceCreatedBy: appCreatedBy,
@@ -75,14 +78,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }),
     [appCreatedBy, currentUserId, workspacePermissionKeys],
   )
-  const appACLCapabilities = React.useMemo(
+  const appACLCapabilities = useMemo(
     () => getAppACLCapabilities(appDetailRes?.permission_keys, appCreatorPermissionOptions),
     [appCreatorPermissionOptions, appDetailRes?.permission_keys],
   )
   const canAccessMonitor = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.access')
   const canAccessLog = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.log.access')
 
-  const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum) => {
+  const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum): NavigationItem[] => {
     const navConfig = [
       ...(appACLCapabilities.canAccessLayout
         ? [{
@@ -134,6 +137,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navConfig
   }, [appACLCapabilities, canAccessLog, canAccessMonitor, t])
 
+  const navigation = useMemo(() => {
+    if (!appDetailRes)
+      return []
+
+    return getNavigationConfig(appId, appDetailRes.mode)
+  }, [appDetailRes, appId, getNavigationConfig])
+
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
   useEffect(() => {
@@ -145,20 +155,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSidebarExpand('collapse')
     }
-  }, [appDetail, isMobile])
+  }, [appDetail, isMobile, setAppSidebarExpand])
 
   useEffect(() => {
     setAppDetail()
-    setIsLoadingAppDetail(true)
-    fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
-      setAppDetailRes(res)
-    }).catch((e: any) => {
-      if (e.status === 404)
-        router.replace('/apps')
-    }).finally(() => {
-      setIsLoadingAppDetail(false)
-    })
-  }, [appId, pathname])
+  }, [appId, setAppDetail])
+
+  useEffect(() => {
+    if ((appDetailError as { status?: number } | null)?.status === 404)
+      router.replace('/apps')
+  }, [appDetailError, router])
 
   useEffect(() => {
     if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
@@ -195,9 +201,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
     else {
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, res.mode))
     }
-  }, [appACLCapabilities, appDetailRes, appId, canAccessLog, canAccessMonitor, currentWorkspace.id, getNavigationConfig, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
+  }, [appACLCapabilities, appDetailRes, appId, canAccessLog, canAccessMonitor, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()
