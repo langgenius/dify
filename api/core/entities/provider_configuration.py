@@ -71,6 +71,11 @@ class ProviderConfiguration(BaseModel):
     nested schema and model lookups reuse the caller scope that was already
     resolved by the composition layer.
 
+    The ``provider`` field already contains the resolved provider schema that
+    was used to build this configuration. Reuse that schema for nested model
+    lookups instead of refetching the full provider catalog from the runtime on
+    every request-scoped lookup.
+
     TODO: lots of logic in a BaseModel entity should be separated, the exceptions should be classified
     """
 
@@ -108,16 +113,22 @@ class ProviderConfiguration(BaseModel):
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
         """Attach the already-composed runtime for request-bound call chains."""
         self._bound_model_runtime = model_runtime
-        self._cached_provider_schema = None
+        self._cached_provider_schema = self.provider
 
-    def _get_provider_schema(self, model_provider_factory: ModelProviderFactory | None = None) -> ProviderEntity:
-        """Cache the provider schema within the request-scoped configuration object."""
+    def _get_provider_schema(self) -> ProviderEntity:
+        """Reuse the provider schema captured during configuration assembly."""
         if self._cached_provider_schema is None:
-            if model_provider_factory is None:
-                model_provider_factory = self.get_model_provider_factory()
-            self._cached_provider_schema = model_provider_factory.get_provider_schema(provider=self.provider.provider)
+            self._cached_provider_schema = self.provider
 
         return self._cached_provider_schema
+
+    def _get_model_runtime(self) -> ModelRuntime:
+        """Return the runtime aligned with this request-scoped configuration."""
+        if self._bound_model_runtime is not None:
+            return self._bound_model_runtime
+
+        model_assembly = create_plugin_model_assembly(tenant_id=self.tenant_id)
+        return model_assembly.model_runtime
 
     def _get_runtime_and_provider_factory(self) -> tuple[ModelRuntime, ModelProviderFactory]:
         """Resolve a provider factory that stays aligned with the runtime used by the caller."""
@@ -1439,11 +1450,11 @@ class ProviderConfiguration(BaseModel):
         """
         started_at = time.perf_counter()
         runtime_factory_started_at = started_at
-        model_runtime, model_provider_factory = self._get_runtime_and_provider_factory()
+        model_runtime = self._get_model_runtime()
         runtime_factory_elapsed = time.perf_counter() - runtime_factory_started_at
 
         provider_schema_started_at = time.perf_counter()
-        provider_schema = self._get_provider_schema(model_provider_factory=model_provider_factory)
+        provider_schema = self._get_provider_schema()
         provider_schema_elapsed = time.perf_counter() - provider_schema_started_at
 
         model_type_instance_started_at = time.perf_counter()
@@ -1472,12 +1483,13 @@ class ProviderConfiguration(BaseModel):
     def get_model_schema(
         self, model_type: ModelType, model: str, credentials: dict[str, Any] | None
     ) -> AIModelEntity | None:
-        """
-        Get model schema
-        """
-        model_provider_factory = self.get_model_provider_factory()
-        return model_provider_factory.get_model_schema(
-            provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
+        """Get model schema with the request-bound runtime and canonical provider id."""
+        model_runtime = self._get_model_runtime()
+        return model_runtime.get_model_schema(
+            provider=self.provider.provider,
+            model_type=model_type,
+            model=model,
+            credentials=credentials or {},
         )
 
     def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):

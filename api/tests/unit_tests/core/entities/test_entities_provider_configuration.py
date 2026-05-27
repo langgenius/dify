@@ -433,10 +433,9 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     mock_model_type_instance = Mock()
     mock_schema = _build_ai_model("gpt-4o")
     mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = configuration.provider
-    mock_factory.get_model_schema.return_value = mock_schema
     mock_assembly = Mock()
     mock_assembly.model_runtime = Mock()
+    mock_assembly.model_runtime.get_model_schema.return_value = mock_schema
     mock_assembly.model_provider_factory = mock_factory
 
     with (
@@ -455,13 +454,12 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     assert model_type_instance is mock_model_type_instance
     assert model_schema is mock_schema
     assert mock_assembly_builder.call_count == 2
-    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
     mock_model_builder.assert_called_once_with(
         runtime=mock_assembly.model_runtime,
         provider_schema=configuration.provider,
         model_type=ModelType.LLM,
     )
-    mock_factory.get_model_schema.assert_called_once_with(
+    mock_assembly.model_runtime.get_model_schema.assert_called_once_with(
         provider="openai",
         model_type=ModelType.LLM,
         model="gpt-4o",
@@ -472,18 +470,13 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
 def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> None:
     configuration = _build_provider_configuration()
     bound_runtime = Mock()
+    bound_runtime.get_model_schema.return_value = _build_ai_model("gpt-4o")
     configuration.bind_model_runtime(bound_runtime)
 
     mock_model_type_instance = Mock()
-    mock_schema = _build_ai_model("gpt-4o")
-    mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = configuration.provider
-    mock_factory.get_model_schema.return_value = mock_schema
 
     with (
-        patch(
-            "core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory
-        ) as mock_factory_cls,
+        patch("core.entities.provider_configuration.ModelProviderFactory") as mock_factory_cls,
         patch("core.entities.provider_configuration.create_plugin_model_assembly") as mock_assembly_builder,
         patch(
             "core.entities.provider_configuration.create_model_type_instance",
@@ -494,15 +487,19 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
     assert model_type_instance is mock_model_type_instance
-    assert model_schema is mock_schema
-    assert mock_factory_cls.call_count == 2
-    mock_factory_cls.assert_called_with(runtime=bound_runtime)
+    assert model_schema == bound_runtime.get_model_schema.return_value
+    mock_factory_cls.assert_not_called()
     mock_assembly_builder.assert_not_called()
-    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
     mock_model_builder.assert_called_once_with(
         runtime=bound_runtime,
         provider_schema=configuration.provider,
         model_type=ModelType.LLM,
+    )
+    bound_runtime.get_model_schema.assert_called_once_with(
+        provider="openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o",
+        credentials={"api_key": "x"},
     )
 
 
@@ -735,17 +732,15 @@ def test_get_provider_models_reuses_cached_provider_schema() -> None:
         configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
         models=[_build_ai_model("a-model"), _build_ai_model("b-model")],
     )
-    mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = provider_schema
+    configuration.provider = provider_schema
 
     with patch(
         "core.entities.provider_configuration.create_plugin_model_assembly",
-        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-    ):
+    ) as mock_assembly_builder:
         configuration.get_provider_models(model_type=ModelType.LLM, model="a-model")
         configuration.get_provider_models(model_type=ModelType.LLM, model="b-model")
 
-    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
+    mock_assembly_builder.assert_not_called()
 
 
 def test_validator_adds_predefined_model_for_customizable_provider_with_restrictions() -> None:
