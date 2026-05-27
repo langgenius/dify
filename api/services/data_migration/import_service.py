@@ -168,8 +168,28 @@ class MigrationImportService:
             id_mapping,
             self._source_api_provider_ids_by_name(request.package),
         )
-        self._import_workflows(request.package, target, options, report_items, id_mapping)
+        workflow_tool_app_ids = self._workflow_tool_source_app_ids(request.package)
+        imported_workflow_ids: set[str] = set()
+        if workflow_tool_app_ids:
+            self._import_workflows(
+                request.package,
+                target,
+                options,
+                report_items,
+                id_mapping,
+                imported_workflow_ids=imported_workflow_ids,
+                only_app_ids=workflow_tool_app_ids,
+            )
         self._import_workflow_tools(request.package, target, options, id_mapping, report_items)
+        self._import_workflows(
+            request.package,
+            target,
+            options,
+            report_items,
+            id_mapping,
+            imported_workflow_ids=imported_workflow_ids,
+            skip_app_ids=imported_workflow_ids,
+        )
         self._import_mcp_tools(request.package, target, options, report_items)
         self._report_dependency_only_mcp(request.package, report_items)
         return ImportResult(
@@ -189,6 +209,9 @@ class MigrationImportService:
         options: ImportOptions,
         report_items: list[ResourceReportItem],
         id_mapping: dict[str, str],
+        imported_workflow_ids: set[str] | None = None,
+        only_app_ids: set[str] | None = None,
+        skip_app_ids: set[str] | None = None,
     ) -> None:
         account = db.session.get(Account, target.operator_id)
         tenant = db.session.get(Tenant, target.tenant_id)
@@ -200,6 +223,10 @@ class MigrationImportService:
 
         for workflow_data in package.workflows:
             app_id = self._optional_string(workflow_data.get("id"))
+            if only_app_ids and app_id not in only_app_ids:
+                continue
+            if skip_app_ids and app_id in skip_app_ids:
+                continue
             dsl_content = self._rewrite_workflow_dsl_provider_ids(
                 self._required_string(workflow_data, "dsl", "workflow"),
                 id_mapping,
@@ -227,6 +254,8 @@ class MigrationImportService:
             )
             if app_id:
                 id_mapping[app_id] = imported_app_id
+                if imported_workflow_ids is not None:
+                    imported_workflow_ids.add(app_id)
             if options.create_app_api_token_on_import:
                 self._create_or_reuse_app_api_token(imported_app_id, target.tenant_id)
             report_items.append(
@@ -237,6 +266,14 @@ class MigrationImportService:
                     "updated" if existing_app is not None else "created",
                 )
             )
+
+    def _workflow_tool_source_app_ids(self, package: MigrationPackage) -> set[str]:
+        app_ids: set[str] = set()
+        for workflow_tool_data in package.workflow_tools:
+            app_id = self._optional_string(workflow_tool_data.get("app_id"))
+            if app_id:
+                app_ids.add(app_id)
+        return app_ids
 
     def _import_workflow_app(
         self,
@@ -519,6 +556,8 @@ class MigrationImportService:
                 )
                 status = "created"
                 identifier = workflow_tool_id or tool_name
+            if workflow_tool_id:
+                id_mapping[workflow_tool_id] = identifier
             report_items.append(ResourceReportItem(ResourceType.WORKFLOW_TOOL, identifier, tool_name, status))
 
     def _ensure_workflow_app_is_published(self, target: ImportTarget, account: Account, app_id: str) -> None:

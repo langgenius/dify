@@ -106,6 +106,7 @@ def test_options_override_replaces_package_defaults():
             options: ImportOptions,
             report_items: list[ResourceReportItem],
             id_mapping: dict[str, str],
+            **kwargs,
         ) -> None:
             captured_options.append(options)
 
@@ -302,3 +303,78 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
     )
 
     assert events == [("published", "workflow-app-1"), ("created", "workflow-app-1")]
+
+
+def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
+    events = []
+
+    class StubResolver(ImportTargetResolver):
+        def resolve(self, request):
+            return ImportTarget(
+                tenant_id="tenant-1",
+                tenant_name="target",
+                operator_id="account-1",
+                operator_email="owner@example.com",
+            )
+
+    class OrderedImportService(MigrationImportService):
+        def _import_api_tools(
+            self,
+            package,
+            target,
+            options,
+            report_items,
+            id_mapping,
+            source_provider_ids_by_name,
+        ):
+            return None
+
+        def _import_workflows(
+            self,
+            package,
+            target,
+            options,
+            report_items,
+            id_mapping,
+            *,
+            imported_workflow_ids=None,
+            only_app_ids=None,
+            skip_app_ids=None,
+        ):
+            only_app_ids = set(only_app_ids or [])
+            skip_app_ids = set(skip_app_ids or [])
+            for workflow_data in package.workflows:
+                app_id = workflow_data["id"]
+                if only_app_ids and app_id not in only_app_ids:
+                    continue
+                if app_id in skip_app_ids:
+                    continue
+                events.append(("workflow", app_id))
+                id_mapping[app_id] = app_id
+                if imported_workflow_ids is not None:
+                    imported_workflow_ids.add(app_id)
+
+        def _import_workflow_tools(self, package, target, options, id_mapping, report_items):
+            events.append(("workflow_tool", package.workflow_tools[0]["id"]))
+
+        def _import_mcp_tools(self, package, target, options, report_items):
+            return None
+
+    package = MigrationPackage.from_mapping(
+        {
+            "metadata": {"version": "1", "source_scope": "single"},
+            "workflows": [
+                {"id": "provider-app", "name": "embedded", "dsl": "app:\n  mode: workflow\n"},
+                {"id": "consumer-app", "name": "main", "dsl": "app:\n  mode: advanced-chat\n"},
+            ],
+            "workflow_tools": [{"id": "workflow-tool", "name": "embedded_tool", "app_id": "provider-app"}],
+        }
+    )
+
+    OrderedImportService(target_resolver=StubResolver()).import_package(ImportRequest(package=package))
+
+    assert events == [
+        ("workflow", "provider-app"),
+        ("workflow_tool", "workflow-tool"),
+        ("workflow", "consumer-app"),
+    ]
