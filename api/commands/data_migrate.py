@@ -79,10 +79,14 @@ def data_migrate() -> None:
     multiple=True,
     type=str,
     help=(
-        "Limit model_type migration to specific tables. Accepts comma-separated values or repeated flags. "
+        "Limit migration to specific tables. Accepts comma-separated values or repeated flags.\n"
+        "\n"
+        "Options: load_balancing_model_configs, provider_model_credentials, "
+        "provider_model_settings, provider_models, tenant_default_models.\n\n"
         "When provider_model_credentials is selected, provider_models and "
-        "load_balancing_model_configs may also be updated for credential reference rewrites."
-        "Default to: "
+        "load_balancing_model_configs may also be updated for credential reference rewrites.\n"
+        "\n"
+        "If unspecified, all relevant tables are migrated."
     ),
 )
 @click.option(
@@ -91,8 +95,11 @@ def data_migrate() -> None:
     multiple=True,
     type=str,
     help=(
-        "Canonical model types to migrate. Accepts comma-separated values or repeated flags. "
-        "Defaults to: `llm,text-embedding,rerank`"
+        "Canonical model types to migrate. Accepts comma-separated values or repeated flags.\n"
+        "\n"
+        "Options: llm,text-embedding,rerank\n"
+        "\n"
+        "If unspecified, all relevant legacy model types are migrated."
     ),
 )
 @click.option(
@@ -103,7 +110,10 @@ def data_migrate() -> None:
 @click.option(
     "--output",
     type=click.Path(dir_okay=False, resolve_path=True, path_type=Path),
-    help="Optional file path for JSON lines event logs. Defaults to stdout.",
+    help=(
+        "Optional file path for JSON lines event logs. Defaults to stdout.\n"
+        "It's highly recommended to save the event logs to a file and preserve it for a period of time."
+    ),
 )
 @click.option(
     "--concurrency",
