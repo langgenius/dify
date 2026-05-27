@@ -34,6 +34,11 @@ export const zDifyEnterpriseApiEnterpriseEnvironment = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   runtimeEndpoint: z.string().optional(),
+  cpuCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zAccessChannels = z.object({
@@ -316,6 +321,11 @@ export const zEnvironment = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   runtimeEndpoint: z.string().optional(),
+  cpuCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 /**
@@ -1001,6 +1011,11 @@ export const zCreateEnvironmentReq = z.object({
     .optional(),
   k8s: zK8sEnvironmentConfig.optional(),
   external: zExternalAppRunnerConfig.optional(),
+  cpuCount: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zLimitConfig = z.object({
@@ -1343,6 +1358,7 @@ export const zLimitFields = z.object({
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
   workspaces: zResourceQuota.optional(),
+  appRunnerEnvCpus: zResourceQuota.optional(),
 })
 
 /**

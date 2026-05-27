@@ -24,6 +24,7 @@ export type DifyEnterpriseApiEnterpriseEnvironment = {
   createdAt?: string
   updatedAt?: string
   runtimeEndpoint?: string
+  cpuCount?: number
 }
 
 export type DifyEnterpriseApiEnterpriseEnvironmentError = {
@@ -303,6 +304,7 @@ export type Environment = {
   createdAt?: string
   updatedAt?: string
   runtimeEndpoint?: string
+  cpuCount?: number
 }
 
 export type EnvironmentDeployment = {
@@ -684,6 +686,7 @@ export type CreateEnvironmentReq = {
   backend?: 'RUNTIME_BACKEND_UNSPECIFIED' | 'RUNTIME_BACKEND_K8S' | 'RUNTIME_BACKEND_EXTERNAL'
   k8s?: K8sEnvironmentConfig
   external?: ExternalAppRunnerConfig
+  cpuCount?: number
 }
 
 export type CreateMemberReply = {
@@ -1048,6 +1051,7 @@ export type LimitConfig = {
 export type LimitFields = {
   workspaceMembers?: number
   workspaces?: ResourceQuota
+  appRunnerEnvCpus?: ResourceQuota
 }
 
 export type ListAccessSubjectsReply = {
