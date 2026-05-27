@@ -8,18 +8,18 @@ type RoleBadgeProps = {
   className?: string
 }
 
-const RoleBadge = ({ label, className }: RoleBadgeProps) => {
+const RoleBadge = memo(({ label, className }: RoleBadgeProps) => {
   return (
     <span
       className={cn(
-        'inline-flex h-5 max-w-full items-center rounded-md bg-background-body px-1.5 system-xs-medium text-text-secondary shadow-xs',
+        'inline-flex h-5 max-w-full shrink items-center overflow-hidden rounded-md bg-background-body px-1.5 system-xs-medium text-text-secondary shadow-xs',
         className,
       )}
     >
       <span className="truncate">{label}</span>
     </span>
   )
-}
+})
 
 export type RoleBadgesProps = {
   roleNames: string[]
@@ -35,13 +35,13 @@ const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
   const overflow = roleNames.slice(max)
 
   return (
-    <div className={cn('flex min-w-0 flex-wrap items-center gap-1', className)}>
+    <div className={cn('flex min-w-0 items-center gap-1', className)}>
       {visible.map(role => (
         <RoleBadge key={role} label={role} />
       ))}
       {overflow.length > 0 && (
         <span
-          className="inline-flex h-5 cursor-default items-center rounded-md bg-background-body px-1.5 system-xs-medium text-text-tertiary shadow-xs"
+          className="inline-flex h-5 shrink-0 cursor-default items-center rounded-md bg-background-body px-1.5 system-xs-medium text-text-tertiary shadow-xs"
         >
           {`+${overflow.length}`}
         </span>
