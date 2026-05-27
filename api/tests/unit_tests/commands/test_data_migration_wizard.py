@@ -1,4 +1,4 @@
-from commands.data_migration import _prompt_tool_category, parse_index_selection
+from commands.data_migration import _print_auto_tools, _prompt_tool_category, parse_index_selection
 
 
 def test_parse_index_selection_supports_all():
@@ -37,3 +37,25 @@ def test_prompt_tool_category_marks_auto_by_detail_and_supports_multi_select(mon
     )
 
     assert selected == ["tool-1", "tool-2"]
+
+
+def test_print_auto_tools_lists_each_category(monkeypatch):
+    output_lines = []
+
+    monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
+
+    _print_auto_tools(
+        {
+            "api_tools": {"weather"},
+            "workflow_tools": {"embedded_workflow_as_tool"},
+            "mcp_tools": set(),
+        }
+    )
+
+    assert "Automatically discovered tools:" in output_lines
+    assert "Custom API tools" in output_lines
+    assert "- weather" in output_lines
+    assert "Workflow tools" in output_lines
+    assert "- embedded_workflow_as_tool" in output_lines
+    assert "MCP tools" in output_lines
+    assert "- none" in output_lines

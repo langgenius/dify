@@ -151,6 +151,7 @@ def migration_data_wizard() -> None:
             default=True,
         )
         auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
+        _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
         include_secrets = click.confirm(
             "Include secrets in output JSON? The file will contain sensitive data.",
@@ -292,6 +293,22 @@ def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> dic
                 if dependency.provider_name:
                     auto_tools["mcp_tools"].add(dependency.provider_name)
     return auto_tools
+
+
+def _print_auto_tools(auto_tools: dict[str, set[str]]) -> None:
+    click.echo("Automatically discovered tools:")
+    _print_auto_tool_category("Custom API tools", auto_tools["api_tools"])
+    _print_auto_tool_category("Workflow tools", auto_tools["workflow_tools"])
+    _print_auto_tool_category("MCP tools", auto_tools["mcp_tools"])
+
+
+def _print_auto_tool_category(label: str, values: set[str]) -> None:
+    click.echo(label)
+    if not values:
+        click.echo("- none")
+        return
+    for value in sorted(values):
+        click.echo(f"- {value}")
 
 
 def _prompt_additional_tools(tenant_id: str, auto_tools: dict[str, set[str]]) -> dict[str, list[str]]:
