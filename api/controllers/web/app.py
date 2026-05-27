@@ -4,7 +4,7 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import BadRequest, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
@@ -58,6 +58,9 @@ class AppParameterApi(WebApiResource):
     )
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
+        if not app_model.enable_site:
+            raise BadRequest("Site is disabled.")
+
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:

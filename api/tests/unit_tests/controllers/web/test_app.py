@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from werkzeug.exceptions import BadRequest
 
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
 from controllers.web.error import AppUnavailableError
@@ -16,13 +17,20 @@ from controllers.web.error import AppUnavailableError
 # AppParameterApi
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
+    def test_disabled_web_app_raises(self, app: Flask) -> None:
+        app_model = SimpleNamespace(mode="chat", enable_site=False)
+
+        with app.test_request_context("/parameters"):
+            with pytest.raises(BadRequest, match="Site is disabled"):
+                AppParameterApi().get(app_model, SimpleNamespace())
+
     def test_advanced_chat_mode_uses_workflow(self, app: Flask) -> None:
         features_dict = {"opening_statement": "Hello"}
         workflow = SimpleNamespace(
             features_dict=features_dict,
             user_input_form=lambda to_old_structure=False: [],
         )
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=workflow)
+        app_model = SimpleNamespace(mode="advanced-chat", workflow=workflow, enable_site=True)
 
         with (
             app.test_request_context("/parameters"),
@@ -41,7 +49,7 @@ class TestAppParameterApi:
             features_dict=features_dict,
             user_input_form=lambda to_old_structure=False: [{"var": "x"}],
         )
-        app_model = SimpleNamespace(mode="workflow", workflow=workflow)
+        app_model = SimpleNamespace(mode="workflow", workflow=workflow, enable_site=True)
 
         with (
             app.test_request_context("/parameters"),
@@ -54,14 +62,14 @@ class TestAppParameterApi:
         mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[{"var": "x"}])
 
     def test_advanced_chat_mode_no_workflow_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=None)
+        app_model = SimpleNamespace(mode="advanced-chat", workflow=None, enable_site=True)
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
                 AppParameterApi().get(app_model, SimpleNamespace())
 
     def test_standard_mode_uses_app_model_config(self, app: Flask) -> None:
         config = SimpleNamespace(to_dict=lambda: {"user_input_form": [{"var": "y"}], "key": "val"})
-        app_model = SimpleNamespace(mode="chat", app_model_config=config)
+        app_model = SimpleNamespace(mode="chat", app_model_config=config, enable_site=True)
 
         with (
             app.test_request_context("/parameters"),
@@ -75,7 +83,7 @@ class TestAppParameterApi:
         assert call_kwargs.kwargs["user_input_form"] == [{"var": "y"}]
 
     def test_standard_mode_no_config_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="chat", app_model_config=None)
+        app_model = SimpleNamespace(mode="chat", app_model_config=None, enable_site=True)
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
                 AppParameterApi().get(app_model, SimpleNamespace())
