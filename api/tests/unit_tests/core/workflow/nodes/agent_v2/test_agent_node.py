@@ -232,6 +232,72 @@ def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
     assert not {spec.type for spec in saved_specs} & plugin_types
 
 
+def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_metadata():
+    """A DB-side write failure must not crash the node; it should set
+    ``session_snapshot_persist_error`` in the agent_backend metadata so the
+    incident is observable from the workflow_node_executions record."""
+
+    class _ExplodingSessionStore(FakeSessionStore):
+        def save_active_snapshot(self, **kwargs):  # type: ignore[override]
+            del kwargs
+            raise RuntimeError("simulated DB failure")
+
+    store = _ExplodingSessionStore()
+    events = list(_node(session_store=store)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["session_snapshot_persisted"] is False
+    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_runtime_session_store_error"
+
+
+def test_agent_node_failed_run_when_mark_cleaned_raises_records_cleanup_error_in_metadata():
+    """Same defensive pattern: a DB-side mark_cleaned failure must surface as
+    a ``session_snapshot_cleanup_error`` in metadata, not as a node crash."""
+
+    class _ExplodingMarkCleanedStore(FakeSessionStore):
+        def mark_cleaned(self, **kwargs):  # type: ignore[override]
+            del kwargs
+            raise RuntimeError("simulated DB failure")
+
+    store = _ExplodingMarkCleanedStore()
+    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["session_snapshot_cleaned_on_failure"] is False
+    assert agent_backend["session_snapshot_cleanup_error"] == "workflow_agent_runtime_session_store_error"
+
+
+def test_agent_node_success_run_without_session_store_skips_persistence():
+    """When ``session_store`` is None the node still completes successfully —
+    the lifecycle branch is a no-op and the run result is unaffected."""
+    events = list(_node(session_store=None)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    # No persistence metadata is attached when the store is missing.
+    assert "session_snapshot_persisted" not in agent_backend
+
+
+def test_agent_node_failed_run_without_session_store_skips_mark_cleaned():
+    """``session_store=None`` + failed terminal must remain a no-op for
+    the cleanup branch — the node failure path still surfaces correctly."""
+    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=None)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert "session_snapshot_cleaned_on_failure" not in agent_backend
+
+
 def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     store = FakeSessionStore()
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)

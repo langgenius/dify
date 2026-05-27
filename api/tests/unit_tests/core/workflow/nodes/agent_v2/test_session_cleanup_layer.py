@@ -313,3 +313,100 @@ def test_cleanup_layer_fans_out_to_every_active_session():
     # backend run id returned by the agent backend client.
     assert [entry[0] for entry in session_store.cleaned] == scopes
     assert {entry[1] for entry in session_store.cleaned} == {"cleanup-run-many"}
+
+
+def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog):
+    """The HTTP cleanup branch must defensively skip when no client was wired.
+
+    This is the deployment-misconfig path: ``_HTTP_CLEANUP_SUPPORTED`` was
+    flipped to ``True`` but ``AGENT_BACKEND_BASE_URL`` is unset, so the
+    factory returned ``None``. The layer must not crash and must not silently
+    retire the row — the warning surfaces the misconfig.
+    """
+    import logging
+
+    session_store = FakeSessionStore()
+    layer = WorkflowAgentSessionCleanupLayer(
+        session_store=cast(WorkflowAgentRuntimeSessionStore, session_store),
+        request_builder=AgentBackendRunRequestBuilder(),
+        agent_backend_client=None,
+    )
+    layer._HTTP_CLEANUP_SUPPORTED = True  # type: ignore[reportPrivateUsage]
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(workflow_execution_id="workflow-run-1"),
+        user_inputs={},
+        conversation_variables=[],
+    )
+    runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    layer.initialize(ReadOnlyGraphRuntimeStateWrapper(runtime_state), cast(CommandChannel, object()))
+
+    with caplog.at_level(logging.WARNING):
+        layer.on_event(GraphRunSucceededEvent(outputs={}))
+
+    assert session_store.cleaned == []
+    assert any("no agent backend client is wired in" in record.message for record in caplog.records)
+
+
+def test_cleanup_layer_skips_workflow_terminal_when_workflow_run_id_missing(caplog):
+    """``workflow_run_id`` is the keying field; without it the fanout cannot
+    target a row, so the layer logs a warning and bails."""
+    import logging
+
+    session_store = FakeSessionStore()
+    agent_backend_client = _WaitableFakeAgentBackendRunClient()
+    layer = WorkflowAgentSessionCleanupLayer(
+        session_store=cast(WorkflowAgentRuntimeSessionStore, session_store),
+        request_builder=AgentBackendRunRequestBuilder(),
+        agent_backend_client=agent_backend_client,
+    )
+    # Bootstrap *without* a workflow_execution_id system variable.
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(workflow_execution_id=""),
+        user_inputs={},
+        conversation_variables=[],
+    )
+    runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    layer.initialize(ReadOnlyGraphRuntimeStateWrapper(runtime_state), cast(CommandChannel, object()))
+
+    with caplog.at_level(logging.WARNING):
+        layer.on_event(GraphRunSucceededEvent(outputs={}))
+
+    assert session_store.list_calls == []
+    assert session_store.cleaned == []
+    assert any("workflow_run_id is missing" in record.message for record in caplog.records)
+
+
+def test_build_workflow_agent_session_cleanup_layer_returns_layer_without_client_when_unconfigured(
+    monkeypatch,
+):
+    """The production builder must pass ``None`` for the agent backend client
+    when neither AGENT_BACKEND_BASE_URL nor AGENT_BACKEND_USE_FAKE is set, so
+    that unit-test environments without backend config don't crash at runner
+    construction."""
+    from configs import dify_config
+    from core.workflow.nodes.agent_v2.session_cleanup_layer import (
+        build_workflow_agent_session_cleanup_layer,
+    )
+
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", None, raising=False)
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_USE_FAKE", False, raising=False)
+
+    layer = build_workflow_agent_session_cleanup_layer()
+    assert layer._agent_backend_client is None  # type: ignore[reportPrivateUsage]
+
+
+def test_build_workflow_agent_session_cleanup_layer_returns_layer_with_fake_client(monkeypatch):
+    """With ``AGENT_BACKEND_USE_FAKE`` enabled the helper wires in the
+    deterministic fake client without needing a base_url."""
+    from clients.agent_backend.fake_client import FakeAgentBackendRunClient
+    from configs import dify_config
+    from core.workflow.nodes.agent_v2.session_cleanup_layer import (
+        build_workflow_agent_session_cleanup_layer,
+    )
+
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", None, raising=False)
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_USE_FAKE", True, raising=False)
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_FAKE_SCENARIO", "success", raising=False)
+
+    layer = build_workflow_agent_session_cleanup_layer()
+    assert isinstance(layer._agent_backend_client, FakeAgentBackendRunClient)  # type: ignore[reportPrivateUsage]
