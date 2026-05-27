@@ -63,6 +63,13 @@ def test_package_target_tenant_id_can_be_used_without_name():
     assert ImportTargetResolver().select_target_tenant_name(ImportRequest(package=package)) == "tenant-id"
 
 
+def test_target_tenant_name_is_not_treated_as_uuid():
+    resolver = ImportTargetResolver()
+
+    assert resolver._is_uuid("admin's Workspace") is False
+    assert resolver._is_uuid("49a99e46-bc2c-4885-91fa-47615f6192b5") is True
+
+
 def test_options_override_replaces_package_defaults():
     package = MigrationPackage.from_mapping(
         {

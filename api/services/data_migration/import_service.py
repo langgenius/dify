@@ -8,6 +8,7 @@ report items and can decide how to render them.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy import or_
@@ -113,13 +114,21 @@ class ImportTargetResolver:
         )
 
     def _resolve_tenant_by_id_or_name(self, value: str) -> Tenant | None:
-        tenant = db.session.get(Tenant, value)
-        if tenant is not None:
-            return tenant
+        if self._is_uuid(value):
+            tenant = db.session.get(Tenant, value)
+            if tenant is not None:
+                return tenant
         tenants = list(db.session.scalars(sa.select(Tenant).where(Tenant.name == value)).all())
         if len(tenants) > 1:
             raise MigrationDataError(f"Target tenant name is ambiguous; use target_tenant.id: {value}")
         return tenants[0] if tenants else None
+
+    def _is_uuid(self, value: str) -> bool:
+        try:
+            UUID(value)
+        except ValueError:
+            return False
+        return True
 
 
 class MigrationImportService:
