@@ -1,12 +1,10 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../../context'
 
@@ -33,17 +31,17 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   const docForm = useDocumentContext(s => s.docForm)
   const parentMode = useDocumentContext(s => s.parentMode)
 
-  useKeyPress(['esc'], (e) => {
+  useHotkey('Escape', (e) => {
     e.preventDefault()
     handleCancel()
   })
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
+  useHotkey('Mod+S', (e) => {
     e.preventDefault()
     if (loading)
       return
     handleSave()
-  }, { exactMatch: true, useCapture: true })
+  })
 
   const isParentChildParagraphMode = useMemo(() => {
     return docForm === ChunkingMode.parentChild && parentMode === 'paragraph'

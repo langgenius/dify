@@ -62,7 +62,6 @@ let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
 let mockIsAllowPublishAsCustom = true
 const mockUseBoolean = vi.hoisted(() => vi.fn())
-const mockUseKeyPress = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
   useRouter: () => ({ push: mockPush }),
@@ -76,8 +75,15 @@ vi.mock('@/next/link', () => ({
 
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => mockUseBoolean(initial),
-  useKeyPress: (...args: unknown[]) => mockUseKeyPress(...args),
 }))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
@@ -128,10 +134,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
@@ -216,7 +218,6 @@ describe('Popup', () => {
       setFalse: vi.fn(),
       setTrue: vi.fn(),
     }])
-    mockUseKeyPress.mockImplementation(() => {})
   })
 
   afterEach(() => {

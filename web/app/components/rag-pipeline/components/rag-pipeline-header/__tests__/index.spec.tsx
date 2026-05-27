@@ -172,10 +172,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-}))
-
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => {
     let value = initial
@@ -188,7 +184,6 @@ vi.mock('ahooks', () => ({
       },
     ]
   },
-  useKeyPress: vi.fn(),
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({

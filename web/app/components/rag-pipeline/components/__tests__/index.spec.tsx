@@ -278,7 +278,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
 vi.mock('@/app/components/workflow/utils', () => ({
   initialNodes: vi.fn(nodes => nodes),
   initialEdges: vi.fn(edges => edges),
-  getKeyboardKeyCodeBySystem: (key: string) => key,
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({

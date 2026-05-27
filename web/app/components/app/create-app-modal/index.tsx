@@ -8,8 +8,8 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useDebounceFn } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -95,10 +95,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+  useHotkey('Mod+Enter', () => {
     if (isAppsFull)
       return
     handleCreateApp()
+  }, {
+    ignoreInputs: false,
   })
   return (
     <>
