@@ -134,7 +134,7 @@ describe('YamlStore persistence', () => {
     const s1 = new YamlStore(path)
     s1.raw_content = ''
     s1.doSet({ key: 'workspace', default: '' }, 'ws-123')
-    writeFileSync(path, s1.raw_content!)
+    writeFileSync(path, s1.raw_content ?? '')
 
     const s2 = new YamlStore(path)
     s2.raw_content = readFileSync(path, 'utf8')
@@ -148,7 +148,7 @@ describe('YamlStore persistence', () => {
     const s1 = new YamlStore(path)
     s1.raw_content = ''
     s1.doSet({ key: 'a.b.c', default: '' }, 'deep')
-    writeFileSync(path, s1.raw_content!)
+    writeFileSync(path, s1.raw_content ?? '')
 
     const s2 = new YamlStore(path)
     s2.raw_content = readFileSync(path, 'utf8')
@@ -162,12 +162,12 @@ describe('YamlStore persistence', () => {
     const s1 = new YamlStore(path)
     s1.raw_content = ''
     s1.doSet({ key: 'x', default: '' }, 'first')
-    writeFileSync(path, s1.raw_content!)
+    writeFileSync(path, s1.raw_content ?? '')
 
     const s2 = new YamlStore(path)
     s2.raw_content = readFileSync(path, 'utf8')
     s2.doSet({ key: 'y', default: '' }, 'second')
-    writeFileSync(path, s2.raw_content!)
+    writeFileSync(path, s2.raw_content ?? '')
 
     const s3 = new YamlStore(path)
     s3.raw_content = readFileSync(path, 'utf8')
