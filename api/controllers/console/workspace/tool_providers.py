@@ -69,15 +69,12 @@ class BuiltinToolAddPayload(BaseModel):
     name: str | None = Field(default=None, max_length=30)
     type: CredentialType
     visibility: str | None = None
-    partial_member_list: list[dict] | None = None
 
 
 class BuiltinToolUpdatePayload(BaseModel):
     credential_id: str
     credentials: dict[str, Any] | None = None
     name: str | None = Field(default=None, max_length=30)
-    visibility: str | None = None
-    partial_member_list: list[dict] | None = None
 
 
 class ApiToolProviderBasePayload(BaseModel):
@@ -341,7 +338,6 @@ class ToolBuiltinProviderAddApi(Resource):
             name=payload.name,
             api_type=CredentialType.of(payload.type),
             visibility=payload.visibility,
-            partial_member_list=payload.partial_member_list,
         )
 
 
@@ -365,8 +361,6 @@ class ToolBuiltinProviderUpdateApi(Resource):
             credential_id=payload.credential_id,
             credentials=payload.credentials,
             name=payload.name or "",
-            visibility=payload.visibility,
-            partial_member_list=payload.partial_member_list,
         )
         return result
 

@@ -149,8 +149,6 @@ class BuiltinToolManageService:
         credential_id: str,
         credentials: dict[str, Any] | None = None,
         name: str | None = None,
-        visibility: str | None = None,
-        partial_member_list: list[dict] | None = None,
     ):
         """
         update builtin tool provider
@@ -208,30 +206,8 @@ class BuiltinToolManageService:
 
                     db_provider.name = name
 
-                # update visibility — only the credential creator can change it
-                if visibility is not None:
-                    from models.credential_permission import CredentialType as CredPermType
-                    from models.enums import PermissionEnum
-                    from services.credential_permission_service import CredentialPermissionService
-
-                    if db_provider.user_id != user_id:
-                        raise ValueError("Only the credential creator can change visibility settings.")
-
-                    visibility_enum = PermissionEnum(visibility)
-                    db_provider.visibility = visibility_enum
-
-                    if visibility_enum == PermissionEnum.PARTIAL_TEAM and partial_member_list:
-                        CredentialPermissionService.update_partial_member_list(
-                            tenant_id=tenant_id,
-                            credential_id=credential_id,
-                            credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
-                            user_list=partial_member_list,
-                        )
-                    elif visibility_enum != PermissionEnum.PARTIAL_TEAM:
-                        CredentialPermissionService.clear_partial_member_list(
-                            credential_id=credential_id,
-                            credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
-                        )
+                # Visibility is immutable after creation — no update path. To change scope,
+                # create a new credential. partial-member access is handled by RBAC.
 
             except Exception as e:
                 raise ValueError(str(e))
@@ -247,7 +223,6 @@ class BuiltinToolManageService:
         expires_at: int = -1,
         name: str | None = None,
         visibility: str | None = None,
-        partial_member_list: list[dict] | None = None,
     ):
         """
         add builtin tool provider
@@ -306,11 +281,15 @@ class BuiltinToolManageService:
                         cache=NoOpProviderCredentialCache(),
                     )
 
-                    from models.credential_permission import CredentialType as CredPermType
                     from models.enums import PermissionEnum
-                    from services.credential_permission_service import CredentialPermissionService
 
                     visibility_enum = PermissionEnum(visibility) if visibility else PermissionEnum.ALL_TEAM
+                    # Plugin credentials only expose only_me / all_team_members at creation;
+                    # partial-member access is handled by workspace RBAC, not per-credential.
+                    if visibility_enum == PermissionEnum.PARTIAL_TEAM:
+                        raise ValueError(
+                            "partial_members visibility is no longer supported for plugin credentials"
+                        )
 
                     db_provider = BuiltinToolProvider(
                         tenant_id=tenant_id,
@@ -325,15 +304,6 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.flush()
-
-                    # Handle partial member list
-                    if visibility_enum == PermissionEnum.PARTIAL_TEAM and partial_member_list:
-                        CredentialPermissionService.update_partial_member_list(
-                            tenant_id=tenant_id,
-                            credential_id=db_provider.id,
-                            credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
-                            user_list=partial_member_list,
-                        )
             except Exception as e:
                 raise ValueError(str(e))
 
