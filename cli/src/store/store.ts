@@ -59,9 +59,6 @@ abstract class FileBasedStore implements Store {
     }
   }
 
-  /**
-   * lock and load the file into memory
-   */
   lock(): void {
     try {
       lockfile.lockSync(`${this.file_path}.lock`)
@@ -87,8 +84,6 @@ abstract class FileBasedStore implements Store {
     }
   }
 
-  // Locks runs `body`,
-  // and always releases via `release` so callers cannot deadlock.
   protected withLock<R>(body: () => R): R {
     this.lock()
     try {
@@ -120,10 +115,6 @@ export class YamlStore extends FileBasedStore {
     super(file_path)
   }
 
-  /**
-   * get a value from the yaml store and construct a typed value from it
-   * @param key path in the yaml
-   */
   doGet<T>(key: Key<T>): T {
     const data = loadYaml(this.raw_content)
     const parts = key.key.split('.')
@@ -136,10 +127,6 @@ export class YamlStore extends FileBasedStore {
     return (current as T) ?? key.default
   }
 
-  /**
-   * Read the whole YAML document and cast it to T. Returns null if the file
-   * does not exist yet.
-   */
   getTyped<T>(): T | null {
     return this.withLock(() => {
       this.load()
@@ -147,9 +134,6 @@ export class YamlStore extends FileBasedStore {
     })
   }
 
-  /**
-   * Atomically replace the whole YAML document with `data`.
-   */
   setTyped<T>(data: T): void {
     this.withLock(() => {
       this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
