@@ -2,6 +2,7 @@ from commands.data_migration import (
     _confirm_wizard_summary,
     _print_auto_tools,
     _print_final_tool_selection,
+    _print_wizard_step,
     _prompt_additional_tools,
     _prompt_output_file,
     _prompt_tool_category,
@@ -15,6 +16,16 @@ def test_parse_index_selection_supports_all():
 
 def test_parse_index_selection_supports_comma_indexes():
     assert parse_index_selection("1, 3", ["a", "b", "c"]) == ["a", "c"]
+
+
+def test_print_wizard_step_adds_separator(monkeypatch):
+    output_lines = []
+
+    monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
+
+    _print_wizard_step("App Selection")
+
+    assert output_lines == ["", "==== App Selection ===="]
 
 
 def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch):
@@ -53,6 +64,7 @@ def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch):
     assert selected == []
     assert "1. [auto] weather (tool-id)" in output_lines
     assert "2. [ ] calendar (calendar-id)" in output_lines
+    assert output_lines[:2] == ["", "==== Custom API tools ===="]
 
 
 def test_prompt_tool_category_explains_comma_selection_and_default(monkeypatch):

@@ -142,12 +142,18 @@ def parse_index_selection(raw: str, values: list[str]) -> list[str]:
     return list(dict.fromkeys(selected))
 
 
+def _print_wizard_step(title: str) -> None:
+    click.echo("")
+    click.echo(f"==== {title} ====")
+
+
 @click.command("migration-data-wizard", help="Interactively export workflow migration data.")
 def migration_data_wizard() -> None:
     try:
         tenant = _prompt_source_tenant()
         apps = _eligible_apps_for_tenant(tenant.id)
         app_ids = _prompt_app_ids(apps)
+        _print_wizard_step("Referenced Tools")
         include_referenced_tools = click.confirm(
             "Automatically export tools referenced by selected apps? Enter y or n",
             default=True,
@@ -157,6 +163,7 @@ def migration_data_wizard() -> None:
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
+        _print_wizard_step("Import Options")
         include_secrets = click.confirm(
             "Include secrets in output JSON? Enter y or n. The file will contain sensitive data.",
             default=False,
@@ -173,6 +180,7 @@ def migration_data_wizard() -> None:
             default="fail",
             show_default=True,
         )
+        _print_wizard_step("Output")
         output_file, overwrite = _prompt_output_file()
 
         selection = ExportConfigParser().parse(
@@ -201,6 +209,7 @@ def migration_data_wizard() -> None:
         result = MigrationExportService().export(selection)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
+        _print_wizard_step("Report")
         _render_report(result.report_items, context=_with_output_path(result.report_context, output_file))
     except MigrationDataError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -250,6 +259,7 @@ def _prompt_source_tenant() -> Tenant:
     if not tenants:
         raise MigrationDataError("No tenants found.")
 
+    _print_wizard_step("Source Tenant")
     click.echo("Source tenants:")
     for index, tenant in enumerate(tenants, 1):
         click.echo(f"{index}. {tenant.name} ({tenant.id})")
@@ -274,6 +284,7 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
     if not apps:
         raise MigrationDataError("No workflow or advanced-chat apps found for the selected tenant.")
 
+    _print_wizard_step("App Selection")
     click.echo("Workflow/chatflow apps:")
     for index, app in enumerate(apps, 1):
         mode = app.mode.value if hasattr(app.mode, "value") else app.mode
@@ -362,6 +373,7 @@ def _resolve_mcp_tool_names(tenant_id: str, tools: dict[str, str | None]) -> dic
 
 
 def _print_auto_tools(auto_tools: WizardToolMap) -> None:
+    _print_wizard_step("Automatically Discovered Tools")
     click.echo("Automatically discovered tools:")
     _print_auto_tool_category("Custom API tools", auto_tools["api_tools"])
     _print_auto_tool_category("Workflow tools", auto_tools["workflow_tools"])
@@ -379,6 +391,7 @@ def _print_auto_tool_category(label: str, values: dict[str, str | None]) -> None
 
 def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> WizardToolSelection:
     selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
+    _print_wizard_step("Additional Tools")
     if not click.confirm("Export additional tools manually? Enter y or n", default=False, show_default=True):
         _print_final_tool_selection(auto_tools, selections, {})
         return selections
@@ -439,7 +452,7 @@ def _prompt_tool_category(
     if not options:
         click.echo(f"{label}: none")
         return []
-    click.echo(label)
+    _print_wizard_step(label)
     for index, (value, name, detail) in enumerate(options, 1):
         marker = "[auto]" if _is_auto_tool(value, name, detail, auto_tools) else "[ ]"
         click.echo(f"{index}. {marker} {name} ({detail})")
@@ -462,6 +475,7 @@ def _print_final_tool_selection(
     additional_tools: WizardToolSelection,
     manual_labels: dict[str, str],
 ) -> None:
+    _print_wizard_step("Final Tool Selection")
     click.echo("Final tools to export:")
     _print_final_tool_category(
         "Custom API tools",
@@ -516,6 +530,7 @@ def _confirm_wizard_summary(
     conflict_strategy: str,
     output_file: str,
 ) -> None:
+    _print_wizard_step("Summary")
     click.echo("Migration export summary:")
     click.echo(f"source tenant: {tenant_name}")
     click.echo(f"selected apps: {len(app_names)}")
