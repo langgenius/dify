@@ -20,6 +20,9 @@ acl Safe_ports port 591		# filemaker
 acl Safe_ports port 777		# multiling http
 acl CONNECT method CONNECT
 acl allowed_domains dstdomain .marketplace.dify.ai
+acl freecad_api dstdomain host.docker.internal
+acl freecad_api_port port 5056
+http_access allow freecad_api freecad_api_port
 http_access allow allowed_domains
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
@@ -103,4 +106,3 @@ access_log daemon:/var/log/squid/access.log dify_log
 
 # Access log to track concurrent requests and timeouts
 logfile_rotate 10
-
