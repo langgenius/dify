@@ -71,6 +71,51 @@ describe('YamlStore.doSet', () => {
   })
 })
 
+describe('FileBasedStore.withLock concurrency', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'difyctl-yaml-store-'))
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('second get throws while first holds the lock, succeeds after release', async () => {
+    const path = join(dir, 'config.yml')
+    await writeFile(path, 'key: value\n')
+
+    const s1 = new YamlStore(path)
+    const s2 = new YamlStore(path)
+
+    s1.load()
+
+    expect(() => s2.get({ key: 'key', default: '' })).toThrow(`Another process is modifying the file ${path}`)
+
+    s1.flush()
+
+    expect(s2.get({ key: 'key', default: '' })).toBe('value')
+  })
+
+  it('second set throws while first holds the lock, succeeds after release', async () => {
+    const path = join(dir, 'config.yml')
+    await writeFile(path, 'key: original\n')
+
+    const s1 = new YamlStore(path)
+    const s2 = new YamlStore(path)
+
+    s1.load()
+
+    expect(() => s2.set({ key: 'key', default: '' }, 'blocked')).toThrow(`Another process is modifying the file ${path}`)
+
+    s1.flush()
+
+    s2.set({ key: 'key', default: '' }, 'written')
+    expect(s2.get({ key: 'key', default: '' })).toBe('written')
+  })
+})
+
 describe('YamlStore persistence', () => {
   let dir: string
 

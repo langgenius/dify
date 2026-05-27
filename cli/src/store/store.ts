@@ -66,7 +66,11 @@ abstract class FileBasedStore implements Store {
       this.load()
     }
     catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === 'EEXIST') {
+        throw new Error(`Another process is modifying the file ${this.file_path}`)
+      }
+      if (code !== 'ENOENT') {
         this.unlock()
         throw err
       }
@@ -169,3 +173,4 @@ export class YamlStore extends FileBasedStore {
 function loadYaml(raw: string | undefined): Record<string, unknown> {
   return (yaml.load(raw ?? '') ?? {}) as Record<string, unknown>
 }
+
