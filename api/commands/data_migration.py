@@ -171,7 +171,7 @@ def migration_data_wizard() -> None:
         )
         _confirm_wizard_summary(
             tenant_name=tenant.name,
-            app_count=len(app_ids),
+            app_names=[app.name for app in apps if app.id in set(app_ids)],
             additional_tools=additional_tools,
             include_referenced_tools=include_referenced_tools,
             include_secrets=include_secrets,
@@ -258,7 +258,15 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
     for index, app in enumerate(apps, 1):
         mode = app.mode.value if hasattr(app.mode, "value") else app.mode
         click.echo(f"{index}. {app.name} [{mode}] ({app.id})")
-    return parse_index_selection(click.prompt("Select apps by number, or all", default="all"), [app.id for app in apps])
+    app_ids = parse_index_selection(
+        click.prompt("Select apps by number, or all", default="all"),
+        [app.id for app in apps],
+    )
+    selected_apps = [app for app in apps if app.id in set(app_ids)]
+    click.echo("Selected apps:")
+    for app in selected_apps:
+        click.echo(f"- {app.name} ({app.id})")
+    return app_ids
 
 
 def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> dict[str, set[str]]:
@@ -342,7 +350,7 @@ def _prompt_tool_category(label: str, options: list[tuple[str, str, str]], *, au
 def _confirm_wizard_summary(
     *,
     tenant_name: str,
-    app_count: int,
+    app_names: list[str],
     additional_tools: dict[str, list[str]],
     include_referenced_tools: bool,
     include_secrets: bool,
@@ -351,7 +359,9 @@ def _confirm_wizard_summary(
 ) -> None:
     click.echo("Migration export summary:")
     click.echo(f"source tenant: {tenant_name}")
-    click.echo(f"selected apps: {app_count}")
+    click.echo(f"selected apps: {len(app_names)}")
+    for app_name in app_names:
+        click.echo(f"- {app_name}")
     click.echo(f"auto referenced tools: {str(include_referenced_tools).lower()}")
     click.echo(f"additional api tools: {len(additional_tools['api_tools'])}")
     click.echo(f"additional workflow tools: {len(additional_tools['workflow_tools'])}")
