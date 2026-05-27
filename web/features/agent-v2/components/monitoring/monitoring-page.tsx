@@ -64,7 +64,7 @@ export function AgentMonitoringPage() {
   return (
     <section
       aria-label={t('agentDetail.sections.monitoring')}
-      className="h-full min-w-0 flex-1 overflow-auto bg-chatbot-bg px-4 py-6 sm:px-12"
+      className="h-full min-w-0 flex-1 overflow-auto bg-components-panel-bg-blur px-4 py-6 sm:px-12"
     >
       <div className="mx-auto max-w-6xl">
         <header className="mb-4">

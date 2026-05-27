@@ -19,8 +19,8 @@ export function AgentDetailLayout({
   useDocumentTitle(t('agentDetail.documentTitle'))
 
   return (
-    <main className="flex h-full min-w-0 flex-col overflow-hidden bg-background-section">
-      <header className="flex h-20 shrink-0 items-center justify-between border-b border-divider-subtle bg-background-body px-6">
+    <main className="flex h-full min-w-0 flex-col overflow-hidden bg-components-panel-bg-blur">
+      <header className="flex h-20 shrink-0 items-center justify-between border-b border-divider-subtle bg-components-panel-bg-blur px-6">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-text-accent text-text-primary-on-surface shadow-xs">
             <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-5" />
