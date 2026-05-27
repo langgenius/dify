@@ -1,6 +1,5 @@
 import contextlib
 import logging
-import time
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
@@ -32,7 +31,6 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
-_SLOW_WORKFLOW_TASK_STAGE_LOG_SECONDS = 0.2
 
 WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_based_app_execution"
 
@@ -147,7 +145,6 @@ class _AppRunner:
 
     def run(self):
         exec_params = self._exec_params
-        task_run_started_at = time.perf_counter()
         with self._session() as session:
             workflow = session.get(Workflow, exec_params.workflow_id)
             if workflow is None:
@@ -164,19 +161,8 @@ class _AppRunner:
         )
 
         user = self._resolve_user()
-        resolve_elapsed = time.perf_counter() - task_run_started_at
-        if resolve_elapsed >= _SLOW_WORKFLOW_TASK_STAGE_LOG_SECONDS:
-            logger.info(
-                "Slow workflow task DB/user resolution before app run, "
-                "app_id=%s workflow_id=%s app_mode=%s elapsed=%.3fs",
-                exec_params.app_id,
-                exec_params.workflow_id,
-                exec_params.app_mode.value,
-                resolve_elapsed,
-            )
 
         with self._setup_flask_context(user):
-            app_run_started_at = time.perf_counter()
             try:
                 response = self._run_app(
                     app=app,
@@ -188,17 +174,6 @@ class _AppRunner:
                 if exec_params.streaming:
                     _publish_error_event(exc, exec_params.workflow_run_id, exec_params.app_mode)
                 raise
-            finally:
-                app_run_elapsed = time.perf_counter() - app_run_started_at
-                if app_run_elapsed >= _SLOW_WORKFLOW_TASK_STAGE_LOG_SECONDS:
-                    logger.info(
-                        "Slow workflow task app generator setup before stream publish, "
-                        "app_id=%s workflow_id=%s app_mode=%s elapsed=%.3fs",
-                        exec_params.app_id,
-                        exec_params.workflow_id,
-                        exec_params.app_mode.value,
-                        app_run_elapsed,
-                    )
             if not exec_params.streaming:
                 return response
 

@@ -1,4 +1,3 @@
-import logging
 import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
@@ -48,9 +47,6 @@ from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableUpdater
 
-logger = logging.getLogger(__name__)
-_SLOW_ADVANCED_CHAT_RUN_PREPARE_LOG_SECONDS = 0.2
-
 
 class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     """
@@ -93,7 +89,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
-        run_prepare_started_at = time.perf_counter()
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -146,7 +141,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             query = self.application_generate_entity.query
 
             # moderation
-            moderation_started_at = time.perf_counter()
             stop, new_inputs, new_query = self.handle_input_moderation(
                 app_record=self._app,
                 app_generate_entity=self.application_generate_entity,
@@ -154,15 +148,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 query=query,
                 message_id=self.message.id,
             )
-            moderation_elapsed = time.perf_counter() - moderation_started_at
-            if moderation_elapsed >= _SLOW_ADVANCED_CHAT_RUN_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat input moderation before workflow_started, "
-                    "app_id=%s workflow_id=%s elapsed=%.3fs",
-                    app_config.app_id,
-                    self._workflow.id,
-                    moderation_elapsed,
-                )
             if stop:
                 return
 
@@ -174,7 +159,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # annotation reply
-            annotation_started_at = time.perf_counter()
             if self.handle_annotation_reply(
                 app_record=self._app,
                 message=self.message,
@@ -182,29 +166,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 app_generate_entity=self.application_generate_entity,
             ):
                 return
-            annotation_elapsed = time.perf_counter() - annotation_started_at
-            if annotation_elapsed >= _SLOW_ADVANCED_CHAT_RUN_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat annotation reply lookup before workflow_started, "
-                    "app_id=%s workflow_id=%s elapsed=%.3fs",
-                    app_config.app_id,
-                    self._workflow.id,
-                    annotation_elapsed,
-                )
 
             # Initialize conversation variables
-            conversation_variables_started_at = time.perf_counter()
             conversation_variables = self._initialize_conversation_variables()
-            conversation_variables_elapsed = time.perf_counter() - conversation_variables_started_at
-            if conversation_variables_elapsed >= _SLOW_ADVANCED_CHAT_RUN_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat conversation variable initialization before workflow_started, "
-                    "app_id=%s workflow_id=%s conversation_id=%s elapsed=%.3fs",
-                    app_config.app_id,
-                    self._workflow.id,
-                    self.conversation.id,
-                    conversation_variables_elapsed,
-                )
 
             # Create a variable pool.
             # init variable pool
@@ -231,17 +195,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
-            )
-
-        run_prepare_elapsed = time.perf_counter() - run_prepare_started_at
-        if run_prepare_elapsed >= _SLOW_ADVANCED_CHAT_RUN_PREPARE_LOG_SECONDS:
-            logger.info(
-                "Slow advanced-chat runner preparation before workflow_started, "
-                "app_id=%s workflow_id=%s task_id=%s elapsed=%.3fs",
-                app_config.app_id,
-                self._workflow.id,
-                self.application_generate_entity.task_id,
-                run_prepare_elapsed,
             )
 
         db.session.close()

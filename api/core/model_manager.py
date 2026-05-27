@@ -1,5 +1,4 @@
 import logging
-import time
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
 from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload
@@ -29,7 +28,6 @@ from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
-_SLOW_MODEL_MANAGER_INTERNAL_LOG_SECONDS = 0.05
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -486,59 +484,22 @@ class ModelManager:
         if not provider:
             return self.get_default_model_instance(tenant_id, model_type)
 
-        started_at = time.perf_counter()
-        provider_bundle_started_at = started_at
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
-        provider_bundle_elapsed = time.perf_counter() - provider_bundle_started_at
 
         cred_cache_key = (tenant_id, provider, model_type.value, model)
 
         if cred_cache_key in self._credentials_cache:
-            model_instance_started_at = time.perf_counter()
-            model_instance = ModelInstance(
+            return ModelInstance(
                 provider_model_bundle,
                 model,
                 deepcopy(self._credentials_cache[cred_cache_key]),
             )
-            model_instance_elapsed = time.perf_counter() - model_instance_started_at
-            total_elapsed = time.perf_counter() - started_at
-            if total_elapsed >= _SLOW_MODEL_MANAGER_INTERNAL_LOG_SECONDS:
-                logger.info(
-                    "Slow model manager resolution during workflow startup, tenant_id=%s provider=%s "
-                    "model_type=%s model=%s credentials_cache_hit=true provider_bundle=%.3fs "
-                    "model_instance=%.3fs total=%.3fs",
-                    tenant_id,
-                    provider,
-                    model_type.value,
-                    model,
-                    provider_bundle_elapsed,
-                    model_instance_elapsed,
-                    total_elapsed,
-                )
-            return model_instance
 
-        model_instance_started_at = time.perf_counter()
         ret = ModelInstance(provider_model_bundle, model)
-        model_instance_elapsed = time.perf_counter() - model_instance_started_at
         if self._enable_credentials_cache:
             self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
-
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_MODEL_MANAGER_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow model manager resolution during workflow startup, tenant_id=%s provider=%s "
-                "model_type=%s model=%s credentials_cache_hit=false provider_bundle=%.3fs "
-                "model_instance=%.3fs total=%.3fs",
-                tenant_id,
-                provider,
-                model_type.value,
-                model,
-                provider_bundle_elapsed,
-                model_instance_elapsed,
-                total_elapsed,
-            )
         return ret
 
     def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:

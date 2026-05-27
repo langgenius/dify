@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import logging
-import time
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
@@ -61,8 +59,6 @@ if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
-logger = logging.getLogger(__name__)
-_SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS = 0.05
 
 
 class ProviderManager:
@@ -138,29 +134,17 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
-        started_at = time.perf_counter()
         cached_configurations = self._configurations_cache.get(tenant_id)
         if cached_configurations is not None:
-            elapsed = time.perf_counter() - started_at
-            if elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-                logger.info(
-                    "Slow provider configuration cache hit during workflow startup, tenant_id=%s elapsed=%.3fs",
-                    tenant_id,
-                    elapsed,
-                )
             return cached_configurations
- 
+
         # Get all provider records of the workspace
-        provider_records_started_at = time.perf_counter()
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
-        provider_records_elapsed = time.perf_counter() - provider_records_started_at
- 
+
         # Initialize trial provider records if not exist
-        init_trial_started_at = time.perf_counter()
         provider_name_to_provider_records_dict = self._init_trial_provider_records(
             tenant_id, provider_name_to_provider_records_dict
         )
-        init_trial_elapsed = time.perf_counter() - init_trial_started_at
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -172,9 +156,7 @@ class ProviderManager:
                 ]
 
         # Get all provider model records of the workspace
-        provider_models_started_at = time.perf_counter()
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
-        provider_models_elapsed = time.perf_counter() - provider_models_started_at
         for provider_name in list(provider_name_to_provider_model_records_dict.keys()):
             provider_id = ModelProviderID(provider_name)
             if str(provider_id) not in provider_name_to_provider_model_records_dict:
@@ -183,29 +165,11 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        provider_entities_started_at = time.perf_counter()
-        provider_factory_started_at = provider_entities_started_at
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_factory_elapsed = time.perf_counter() - provider_factory_started_at
-        provider_get_started_at = time.perf_counter()
         provider_entities = model_provider_factory.get_providers()
-        provider_get_elapsed = time.perf_counter() - provider_get_started_at
-        provider_entities_elapsed = time.perf_counter() - provider_entities_started_at
-        if provider_entities_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider entities resolution during workflow startup, tenant_id=%s "
-                "factory=%.3fs get_providers=%.3fs providers_count=%s total=%.3fs",
-                tenant_id,
-                provider_factory_elapsed,
-                provider_get_elapsed,
-                len(provider_entities),
-                provider_entities_elapsed,
-            )
 
         # Get All preferred provider types of the workspace
-        preferred_provider_started_at = time.perf_counter()
         provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
-        preferred_provider_elapsed = time.perf_counter() - preferred_provider_started_at
         # Ensure that both the original provider name and its ModelProviderID string representation
         # are present in the dictionary to handle cases where either form might be used
         for provider_name in list(provider_name_to_preferred_model_provider_records_dict.keys()):
@@ -217,28 +181,20 @@ class ProviderManager:
                 )
 
         # Get All provider model settings
-        model_settings_started_at = time.perf_counter()
         provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(tenant_id)
-        model_settings_elapsed = time.perf_counter() - model_settings_started_at
 
         # Get All load balancing configs
-        load_balancing_started_at = time.perf_counter()
         provider_name_to_provider_load_balancing_model_configs_dict = self._get_all_provider_load_balancing_configs(
             tenant_id
         )
-        load_balancing_elapsed = time.perf_counter() - load_balancing_started_at
 
         # Get All provider model credentials
-        model_credentials_started_at = time.perf_counter()
         provider_name_to_provider_model_credentials_dict = self._get_all_provider_model_credentials(tenant_id)
-        model_credentials_elapsed = time.perf_counter() - model_credentials_started_at
 
         provider_configurations = ProviderConfigurations(tenant_id=tenant_id)
 
         # Construct ProviderConfiguration objects for each provider
-        construct_started_at = time.perf_counter()
         for provider_entity in provider_entities:
-            provider_construct_started_at = time.perf_counter()
             # handle include, exclude
             if is_filtered(
                 include_set=dify_config.POSITION_PROVIDER_INCLUDES_SET,
@@ -249,7 +205,6 @@ class ProviderManager:
                 continue
 
             provider_name = provider_entity.provider
-            related_records_started_at = time.perf_counter()
             provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider, [])
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
             provider_id_entity = ModelProviderID(provider_name)
@@ -265,19 +220,14 @@ class ProviderManager:
                 provider_model_credentials.extend(
                     provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, [])
                 )
-            related_records_elapsed = time.perf_counter() - related_records_started_at
 
             # Convert to custom configuration
-            custom_configuration_started_at = time.perf_counter()
             custom_configuration = self._to_custom_configuration(
                 tenant_id, provider_entity, provider_records, provider_model_records, provider_model_credentials
             )
-            custom_configuration_elapsed = time.perf_counter() - custom_configuration_started_at
 
             # Convert to system configuration
-            system_configuration_started_at = time.perf_counter()
             system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
-            system_configuration_elapsed = time.perf_counter() - system_configuration_started_at
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
@@ -306,7 +256,6 @@ class ProviderManager:
                         using_provider_type = ProviderType.SYSTEM
 
             # Get provider load balancing configs
-            settings_sources_started_at = time.perf_counter()
             provider_model_settings = provider_name_to_provider_model_settings_dict.get(provider_name)
 
             # Get provider load balancing configs
@@ -327,19 +276,15 @@ class ProviderManager:
                             provider_id_entity.provider_name, []
                         )
                     )
-            settings_sources_elapsed = time.perf_counter() - settings_sources_started_at
 
             # Convert to model settings
-            model_settings_started_at = time.perf_counter()
             model_settings = self._to_model_settings(
                 tenant_id=tenant_id,
                 provider_entity=provider_entity,
                 provider_model_settings=provider_model_settings,
                 load_balancing_model_configs=provider_load_balancing_configs,
             )
-            model_settings_elapsed = time.perf_counter() - model_settings_started_at
 
-            provider_configuration_started_at = time.perf_counter()
             provider_configuration = ProviderConfiguration(
                 tenant_id=tenant_id,
                 provider=provider_entity,
@@ -350,54 +295,10 @@ class ProviderManager:
                 model_settings=model_settings,
             )
             provider_configuration.bind_model_runtime(self._model_runtime)
-            provider_configuration_elapsed = time.perf_counter() - provider_configuration_started_at
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
-            provider_construct_elapsed = time.perf_counter() - provider_construct_started_at
-            if provider_construct_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-                logger.info(
-                    "Slow single provider configuration construction during workflow startup, tenant_id=%s "
-                    "provider=%s related_records=%.3fs custom=%.3fs system=%.3fs settings_sources=%.3fs "
-                    "model_settings=%.3fs finalize=%.3fs provider_records=%s provider_models=%s "
-                    "model_credentials=%s provider_model_settings=%s load_balancing_configs=%s total=%.3fs",
-                    tenant_id,
-                    provider_name,
-                    related_records_elapsed,
-                    custom_configuration_elapsed,
-                    system_configuration_elapsed,
-                    settings_sources_elapsed,
-                    model_settings_elapsed,
-                    provider_configuration_elapsed,
-                    len(provider_records),
-                    len(provider_model_records),
-                    len(provider_model_credentials),
-                    len(provider_model_settings or []),
-                    len(provider_load_balancing_configs or []),
-                    provider_construct_elapsed,
-                )
-        construct_elapsed = time.perf_counter() - construct_started_at
 
         self._configurations_cache[tenant_id] = provider_configurations
-
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider configuration assembly during workflow startup, tenant_id=%s "
-                "providers=%.3fs init_trial=%.3fs provider_models=%.3fs provider_entities=%.3fs "
-                "preferred_provider=%.3fs model_settings=%.3fs load_balancing=%.3fs "
-                "model_credentials=%.3fs construct=%.3fs total=%.3fs",
-                tenant_id,
-                provider_records_elapsed,
-                init_trial_elapsed,
-                provider_models_elapsed,
-                provider_entities_elapsed,
-                preferred_provider_elapsed,
-                model_settings_elapsed,
-                load_balancing_elapsed,
-                model_credentials_elapsed,
-                construct_elapsed,
-                total_elapsed,
-            )
 
         # Return the encapsulated object
         return provider_configurations
@@ -410,35 +311,14 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        started_at = time.perf_counter()
-        provider_configurations_started_at = started_at
         provider_configurations = self.get_configurations(tenant_id)
-        provider_configurations_elapsed = time.perf_counter() - provider_configurations_started_at
 
         # get provider instance
-        provider_lookup_started_at = time.perf_counter()
         provider_configuration = provider_configurations.get(provider)
-        provider_lookup_elapsed = time.perf_counter() - provider_lookup_started_at
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        model_type_instance_started_at = time.perf_counter()
         model_type_instance = provider_configuration.get_model_type_instance(model_type)
-        model_type_instance_elapsed = time.perf_counter() - model_type_instance_started_at
-
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider model bundle resolution during workflow startup, tenant_id=%s provider=%s "
-                "model_type=%s configurations=%.3fs provider_lookup=%.3fs model_type_instance=%.3fs total=%.3fs",
-                tenant_id,
-                provider,
-                model_type.value,
-                provider_configurations_elapsed,
-                provider_lookup_elapsed,
-                model_type_instance_elapsed,
-                total_elapsed,
-            )
 
         return ProviderModelBundle(
             configuration=provider_configuration,
@@ -652,75 +532,28 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        started_at = time.perf_counter()
         cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
-        cache_get_started_at = started_at
         cache_result = redis_client.get(cache_key)
-        cache_get_elapsed = time.perf_counter() - cache_get_started_at
-        feature_lookup_elapsed = 0.0
-        cache_set_elapsed = 0.0
-        cache_decode_elapsed = 0.0
         if cache_result is None:
-            feature_lookup_started_at = time.perf_counter()
             model_load_balancing_enabled = FeatureService.get_features(
                 tenant_id, exclude_vector_space=True
             ).model_load_balancing_enabled
-            feature_lookup_elapsed = time.perf_counter() - feature_lookup_started_at
-            cache_set_started_at = time.perf_counter()
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
-            cache_set_elapsed = time.perf_counter() - cache_set_started_at
         else:
-            cache_decode_started_at = time.perf_counter()
             cache_result = cache_result.decode("utf-8")
             model_load_balancing_enabled = cache_result == "True"
-            cache_decode_elapsed = time.perf_counter() - cache_decode_started_at
 
         if not model_load_balancing_enabled:
-            total_elapsed = time.perf_counter() - started_at
-            if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-                logger.info(
-                    "Slow provider load balancing availability check during workflow startup, tenant_id=%s "
-                    "cache_get=%.3fs feature_lookup=%.3fs cache_set=%.3fs cache_decode=%.3fs "
-                    "enabled=%s total=%.3fs",
-                    tenant_id,
-                    cache_get_elapsed,
-                    feature_lookup_elapsed,
-                    cache_set_elapsed,
-                    cache_decode_elapsed,
-                    model_load_balancing_enabled,
-                    total_elapsed,
-                )
             return {}
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
-        db_collect_started_at = time.perf_counter()
-        config_count = 0
         with session_factory.create_session() as session:
             stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
             provider_load_balancing_configs = session.scalars(stmt)
             for provider_load_balancing_config in provider_load_balancing_configs:
-                config_count += 1
                 provider_name_to_provider_load_balancing_model_configs_dict[
                     provider_load_balancing_config.provider_name
                 ].append(provider_load_balancing_config)
-        db_collect_elapsed = time.perf_counter() - db_collect_started_at
-
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider load balancing configuration fetch during workflow startup, tenant_id=%s "
-                "cache_get=%.3fs feature_lookup=%.3fs cache_set=%.3fs cache_decode=%.3fs "
-                "db_collect=%.3fs providers=%s configs=%s total=%.3fs",
-                tenant_id,
-                cache_get_elapsed,
-                feature_lookup_elapsed,
-                cache_set_elapsed,
-                cache_decode_elapsed,
-                db_collect_elapsed,
-                len(provider_name_to_provider_load_balancing_model_configs_dict),
-                config_count,
-                total_elapsed,
-            )
 
         return provider_name_to_provider_load_balancing_model_configs_dict
 
@@ -1311,9 +1144,7 @@ class ProviderManager:
         :param load_balancing_model_configs: load balancing model configs
         :return:
         """
-        started_at = time.perf_counter()
         # Get provider model credential secret variables
-        secret_variables_started_at = started_at
         if ConfigurateMethod.PREDEFINED_MODEL in provider_entity.configurate_methods:
             model_credential_secret_variables = self._extract_secret_variables(
                 provider_entity.provider_credential_schema.credential_form_schemas
@@ -1326,26 +1157,14 @@ class ProviderManager:
                 if provider_entity.model_credential_schema
                 else []
             )
-        secret_variables_elapsed = time.perf_counter() - secret_variables_started_at
 
         model_settings: list[ModelSettings] = []
         if not provider_model_settings:
             return model_settings
 
-        load_balancing_scan_elapsed = 0.0
-        load_balancing_cache_get_elapsed = 0.0
-        load_balancing_json_parse_elapsed = 0.0
-        load_balancing_decrypt_setup_elapsed = 0.0
-        load_balancing_decrypt_elapsed = 0.0
-        load_balancing_cache_set_elapsed = 0.0
-        load_balancing_materialized_count = 0
-        load_balancing_cache_hits = 0
-        load_balancing_cache_misses = 0
-
         for provider_model_setting in provider_model_settings:
             load_balancing_configs = []
             if provider_model_setting.load_balancing_enabled and load_balancing_model_configs:
-                load_balancing_scan_started_at = time.perf_counter()
                 for load_balancing_model_config in load_balancing_model_configs:
                     if (
                         load_balancing_model_config.model_name == provider_model_setting.model_name
@@ -1372,34 +1191,22 @@ class ProviderManager:
                         )
 
                         # Get cached provider model credentials
-                        load_balancing_cache_get_started_at = time.perf_counter()
                         cached_provider_model_credentials = provider_model_credentials_cache.get()
-                        load_balancing_cache_get_elapsed += time.perf_counter() - load_balancing_cache_get_started_at
 
                         if not cached_provider_model_credentials:
-                            load_balancing_cache_misses += 1
                             try:
-                                load_balancing_json_parse_started_at = time.perf_counter()
                                 provider_model_credentials = _credentials_adapter.validate_json(
                                     load_balancing_model_config.encrypted_config
-                                )
-                                load_balancing_json_parse_elapsed += (
-                                    time.perf_counter() - load_balancing_json_parse_started_at
                                 )
                             except (ValueError, JSONDecodeError):
                                 continue
 
                             # Get decoding rsa key and cipher for decrypting credentials
                             if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                                load_balancing_decrypt_setup_started_at = time.perf_counter()
                                 self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(
                                     load_balancing_model_config.tenant_id
                                 )
-                                load_balancing_decrypt_setup_elapsed += (
-                                    time.perf_counter() - load_balancing_decrypt_setup_started_at
-                                )
 
-                            load_balancing_decrypt_started_at = time.perf_counter()
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
                                     try:
@@ -1410,14 +1217,10 @@ class ProviderManager:
                                         )
                                     except ValueError:
                                         pass
-                            load_balancing_decrypt_elapsed += time.perf_counter() - load_balancing_decrypt_started_at
 
                             # cache provider model credentials
-                            load_balancing_cache_set_started_at = time.perf_counter()
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)
-                            load_balancing_cache_set_elapsed += time.perf_counter() - load_balancing_cache_set_started_at
                         else:
-                            load_balancing_cache_hits += 1
                             provider_model_credentials = cached_provider_model_credentials
 
                         load_balancing_configs.append(
@@ -1429,8 +1232,6 @@ class ProviderManager:
                                 credential_id=load_balancing_model_config.credential_id,
                             )
                         )
-                        load_balancing_materialized_count += 1
-                load_balancing_scan_elapsed += time.perf_counter() - load_balancing_scan_started_at
 
             model_settings.append(
                 ModelSettings(
@@ -1440,31 +1241,6 @@ class ProviderManager:
                     load_balancing_enabled=provider_model_setting.load_balancing_enabled,
                     load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else [],
                 )
-            )
-
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_PROVIDER_MANAGER_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider model settings construction during workflow startup, tenant_id=%s provider=%s "
-                "provider_model_settings=%s load_balancing_records=%s materialized=%s cache_hits=%s "
-                "cache_misses=%s secret_vars=%.3fs lb_scan=%.3fs lb_cache_get=%.3fs "
-                "lb_json_parse=%.3fs lb_decrypt_setup=%.3fs lb_decrypt=%.3fs "
-                "lb_cache_set=%.3fs total=%.3fs",
-                tenant_id,
-                provider_entity.provider,
-                len(provider_model_settings),
-                len(load_balancing_model_configs or []),
-                load_balancing_materialized_count,
-                load_balancing_cache_hits,
-                load_balancing_cache_misses,
-                secret_variables_elapsed,
-                load_balancing_scan_elapsed,
-                load_balancing_cache_get_elapsed,
-                load_balancing_json_parse_elapsed,
-                load_balancing_decrypt_setup_elapsed,
-                load_balancing_decrypt_elapsed,
-                load_balancing_cache_set_elapsed,
-                total_elapsed,
             )
 
         return model_settings

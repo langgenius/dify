@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
@@ -51,7 +50,6 @@ from models.provider import (
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
-_SLOW_PROVIDER_CONFIGURATION_INTERNAL_LOG_SECONDS = 0.05
 
 original_provider_configurate_methods: dict[str, list[ConfigurateMethod]] = {}
 
@@ -151,7 +149,6 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        started_at = time.perf_counter()
         if self.model_settings:
             # check if model is disabled by admin
             for model_setting in self.model_settings:
@@ -178,19 +175,6 @@ class ProviderConfiguration(BaseModel):
                         and restrict_model.base_model_name
                     ):
                         copy_credentials["base_model_name"] = restrict_model.base_model_name
-
-            total_elapsed = time.perf_counter() - started_at
-            if total_elapsed >= _SLOW_PROVIDER_CONFIGURATION_INTERNAL_LOG_SECONDS:
-                logger.info(
-                    "Slow provider current credentials resolution during workflow startup, tenant_id=%s "
-                    "provider=%s model_type=%s model=%s using_provider_type=%s total=%.3fs",
-                    self.tenant_id,
-                    self.provider.provider,
-                    model_type.value,
-                    model,
-                    self.using_provider_type.value,
-                    total_elapsed,
-                )
             return copy_credentials
         else:
             credentials = None
@@ -226,19 +210,6 @@ class ProviderConfiguration(BaseModel):
                             provider=self.provider.provider,
                             credential_type=PluginCredentialType.MODEL,
                         )
-
-            total_elapsed = time.perf_counter() - started_at
-            if total_elapsed >= _SLOW_PROVIDER_CONFIGURATION_INTERNAL_LOG_SECONDS:
-                logger.info(
-                    "Slow provider current credentials resolution during workflow startup, tenant_id=%s "
-                    "provider=%s model_type=%s model=%s using_provider_type=%s total=%.3fs",
-                    self.tenant_id,
-                    self.provider.provider,
-                    model_type.value,
-                    model,
-                    self.using_provider_type.value,
-                    total_elapsed,
-                )
             return credentials
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
@@ -1448,37 +1419,13 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        started_at = time.perf_counter()
-        runtime_factory_started_at = started_at
         model_runtime = self._get_model_runtime()
-        runtime_factory_elapsed = time.perf_counter() - runtime_factory_started_at
-
-        provider_schema_started_at = time.perf_counter()
         provider_schema = self._get_provider_schema()
-        provider_schema_elapsed = time.perf_counter() - provider_schema_started_at
-
-        model_type_instance_started_at = time.perf_counter()
-        model_type_instance = create_model_type_instance(
+        return create_model_type_instance(
             runtime=model_runtime,
             provider_schema=provider_schema,
             model_type=model_type,
         )
-        model_type_instance_elapsed = time.perf_counter() - model_type_instance_started_at
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_PROVIDER_CONFIGURATION_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider model type instance resolution during workflow startup, tenant_id=%s "
-                "provider=%s model_type=%s runtime_factory=%.3fs provider_schema=%.3fs "
-                "model_type_instance=%.3fs total=%.3fs",
-                self.tenant_id,
-                self.provider.provider,
-                model_type.value,
-                runtime_factory_elapsed,
-                provider_schema_elapsed,
-                model_type_instance_elapsed,
-                total_elapsed,
-            )
-        return model_type_instance
 
     def get_model_schema(
         self, model_type: ModelType, model: str, credentials: dict[str, Any] | None
@@ -1571,37 +1518,12 @@ class ProviderConfiguration(BaseModel):
         :param only_active: return active model only
         :return:
         """
-        started_at = time.perf_counter()
         provider_models = self.get_provider_models(model_type, only_active, model)
 
         for provider_model in provider_models:
             if provider_model.model == model:
-                total_elapsed = time.perf_counter() - started_at
-                if total_elapsed >= _SLOW_PROVIDER_CONFIGURATION_INTERNAL_LOG_SECONDS:
-                    logger.info(
-                        "Slow provider model lookup during workflow startup, tenant_id=%s provider=%s "
-                        "model_type=%s model=%s only_active=%s total=%.3fs",
-                        self.tenant_id,
-                        self.provider.provider,
-                        model_type.value,
-                        model,
-                        only_active,
-                        total_elapsed,
-                    )
                 return provider_model
 
-        total_elapsed = time.perf_counter() - started_at
-        if total_elapsed >= _SLOW_PROVIDER_CONFIGURATION_INTERNAL_LOG_SECONDS:
-            logger.info(
-                "Slow provider model lookup during workflow startup, tenant_id=%s provider=%s "
-                "model_type=%s model=%s only_active=%s total=%.3fs",
-                self.tenant_id,
-                self.provider.provider,
-                model_type.value,
-                model,
-                only_active,
-                total_elapsed,
-            )
         return None
 
     def get_provider_models(

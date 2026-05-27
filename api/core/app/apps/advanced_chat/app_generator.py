@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextvars
 import logging
 import threading
-import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
@@ -63,7 +62,6 @@ from services.workflow_draft_variable_service import (
 )
 
 logger = logging.getLogger(__name__)
-_SLOW_ADVANCED_CHAT_PREPARE_LOG_SECONDS = 0.2
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
@@ -129,7 +127,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param streaming: is stream
         """
-        prepare_started_at = time.perf_counter()
         if not args.get("query"):
             raise ValueError("query is required")
 
@@ -149,7 +146,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
-            conversation_lookup_started_at = time.perf_counter()
             try:
                 conversation = ConversationService.get_conversation(
                     app_model=app_model, conversation_id=conversation_id, user=user
@@ -159,16 +155,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     conversation = None
                 else:
                     raise
-            conversation_lookup_elapsed = time.perf_counter() - conversation_lookup_started_at
-            if conversation_lookup_elapsed >= _SLOW_ADVANCED_CHAT_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat conversation lookup before workflow_started, "
-                    "app_id=%s workflow_id=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    invoke_from.value,
-                    conversation_lookup_elapsed,
-                )
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -179,7 +165,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args["files"] if args.get("files") else []
             file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-            file_parse_started_at = time.perf_counter()
             if file_extra_config:
                 file_objs = file_factory.build_from_mappings(
                     mappings=files,
@@ -189,31 +174,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
             else:
                 file_objs = []
-            file_parse_elapsed = time.perf_counter() - file_parse_started_at
-            if file_parse_elapsed >= _SLOW_ADVANCED_CHAT_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat file parsing before workflow_started, "
-                    "app_id=%s workflow_id=%s task_files=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    len(files),
-                    invoke_from.value,
-                    file_parse_elapsed,
-                )
 
             # convert to app config
-            app_config_started_at = time.perf_counter()
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
-            app_config_elapsed = time.perf_counter() - app_config_started_at
-            if app_config_elapsed >= _SLOW_ADVANCED_CHAT_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat app config build before workflow_started, "
-                    "app_id=%s workflow_id=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    invoke_from.value,
-                    app_config_elapsed,
-                )
 
             # get tracing instance
             trace_manager = TraceQueueManager(
@@ -225,7 +188,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app_config.additional_features.show_retrieve_source = True  # type: ignore
 
             # init application generate entity
-            prepare_inputs_started_at = time.perf_counter()
             application_generate_entity = AdvancedChatAppGenerateEntity(
                 task_id=str(uuid.uuid4()),
                 app_config=app_config,
@@ -248,16 +210,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 trace_manager=trace_manager,
                 workflow_run_id=str(workflow_run_id),
             )
-            prepare_inputs_elapsed = time.perf_counter() - prepare_inputs_started_at
-            if prepare_inputs_elapsed >= _SLOW_ADVANCED_CHAT_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat user input preparation before workflow_started, "
-                    "app_id=%s workflow_id=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    invoke_from.value,
-                    prepare_inputs_elapsed,
-                )
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -283,17 +235,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
-            prepare_elapsed = time.perf_counter() - prepare_started_at
-            if prepare_elapsed >= _SLOW_ADVANCED_CHAT_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow advanced-chat request preparation before worker start, "
-                    "app_id=%s workflow_id=%s task_id=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    application_generate_entity.task_id,
-                    invoke_from.value,
-                    prepare_elapsed,
-                )
 
             return self._generate(
                 workflow=workflow,

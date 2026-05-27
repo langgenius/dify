@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextvars
 import logging
 import threading
-import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
@@ -56,7 +55,6 @@ if TYPE_CHECKING:
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 
 logger = logging.getLogger(__name__)
-_SLOW_WORKFLOW_PREPARE_LOG_SECONDS = 0.2
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
@@ -135,7 +133,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
-            prepare_started_at = time.perf_counter()
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
             # parse files
@@ -145,7 +142,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             # For implementation reference, see the `_parse_file` function and
             # `DraftWorkflowNodeRunApi` class which handle this properly.
             file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-            file_parse_started_at = time.perf_counter()
             system_files = file_factory.build_from_mappings(
                 mappings=files,
                 tenant_id=app_model.tenant_id,
@@ -153,34 +149,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
                 access_controller=self._file_access_controller,
             )
-            file_parse_elapsed = time.perf_counter() - file_parse_started_at
-            if file_parse_elapsed >= _SLOW_WORKFLOW_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow workflow request file parsing before workflow_started, "
-                    "app_id=%s workflow_id=%s task_files=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    len(files),
-                    invoke_from.value,
-                    file_parse_elapsed,
-                )
 
             # convert to app config
-            app_config_started_at = time.perf_counter()
             app_config = WorkflowAppConfigManager.get_app_config(
                 app_model=app_model,
                 workflow=workflow,
             )
-            app_config_elapsed = time.perf_counter() - app_config_started_at
-            if app_config_elapsed >= _SLOW_WORKFLOW_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow workflow app config build before workflow_started, "
-                    "app_id=%s workflow_id=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    invoke_from.value,
-                    app_config_elapsed,
-                )
 
             # get tracing instance
             trace_manager = TraceQueueManager(
@@ -198,23 +172,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
             # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
             # trigger shouldn't prepare user inputs
             if self._should_prepare_user_inputs(args):
-                prepare_inputs_started_at = time.perf_counter()
                 inputs = self._prepare_user_inputs(
                     user_inputs=inputs,
                     variables=app_config.variables,
                     tenant_id=app_model.tenant_id,
                     strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
                 )
-                prepare_inputs_elapsed = time.perf_counter() - prepare_inputs_started_at
-                if prepare_inputs_elapsed >= _SLOW_WORKFLOW_PREPARE_LOG_SECONDS:
-                    logger.info(
-                        "Slow workflow user input preparation before workflow_started, "
-                        "app_id=%s workflow_id=%s invoke_from=%s elapsed=%.3fs",
-                        app_model.id,
-                        workflow.id,
-                        invoke_from.value,
-                        prepare_inputs_elapsed,
-                    )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
                 task_id=str(uuid.uuid4()),
@@ -259,18 +222,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
-
-            prepare_elapsed = time.perf_counter() - prepare_started_at
-            if prepare_elapsed >= _SLOW_WORKFLOW_PREPARE_LOG_SECONDS:
-                logger.info(
-                    "Slow workflow request preparation before worker start, "
-                    "app_id=%s workflow_id=%s task_id=%s invoke_from=%s elapsed=%.3fs",
-                    app_model.id,
-                    workflow.id,
-                    application_generate_entity.task_id,
-                    invoke_from.value,
-                    prepare_elapsed,
-                )
 
             return self._generate(
                 app_model=app_model,
