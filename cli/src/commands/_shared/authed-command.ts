@@ -12,7 +12,6 @@ import { BaseError } from '../../errors/base.js'
 import { ErrorCode } from '../../errors/codes.js'
 import { formatErrorForCli } from '../../errors/format.js'
 import { createClient } from '../../http/client.js'
-import { resolveConfigDir } from '../../store/dir.js'
 import { realStreams } from '../../sys/io/streams'
 import { hostWithScheme } from '../../util/host.js'
 import { versionInfo } from '../../version/info.js'
@@ -24,7 +23,6 @@ export type AuthedContext = {
   readonly http: KyInstance
   readonly host: string
   readonly io: IOStreams
-  readonly configDir: string
   readonly cache?: AppInfoCache
 }
 
@@ -38,9 +36,8 @@ export async function buildAuthedContext(
   cmd: Pick<Command, 'error'>,
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
-  const configDir = resolveConfigDir()
   const io = realStreams(opts.format ?? '')
-  const bundle = await loadHosts(configDir)
+  const bundle = loadHosts()
   if (bundle === undefined || bundle.tokens?.bearer === undefined || bundle.tokens.bearer === '') {
     const err = new BaseError({
       code: ErrorCode.NotLoggedIn,
@@ -61,7 +58,7 @@ export async function buildAuthedContext(
 
   await runCompatNudge({ host, io })
 
-  return { bundle, http, host, io, configDir, cache }
+  return { bundle, http, host, io, cache }
 }
 
 // Best-effort nudge: never throws, never blocks. Lives here so every authed

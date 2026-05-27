@@ -1,6 +1,6 @@
 import type { CodeResponse, PollSuccess } from '../../../api/oauth-device.js'
-import type { HostsBundle, StorageMode, Workspace } from '../../../auth/hosts.js'
-import type { TokenStore } from '../../../auth/store.js'
+import type { HostsBundle, Workspace } from '../../../auth/hosts.js'
+import type { StorageMode, Store } from '../../../store/store.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import type { BrowserEnv, BrowserOpener } from '../../../util/browser.js'
 import type { Clock } from './device-flow.js'
@@ -8,21 +8,20 @@ import * as os from 'node:os'
 import * as readline from 'node:readline'
 import { DeviceFlowApi } from '../../../api/oauth-device.js'
 import { saveHosts } from '../../../auth/hosts.js'
-import { selectStore } from '../../../auth/store.js'
 import { createClient } from '../../../http/client.js'
+import { getTokenStore, tokenKey } from '../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '../../../util/browser.js'
 import { bareHost, DEFAULT_HOST, resolveHost, validateVerificationURI } from '../../../util/host.js'
 import { awaitAuthorization, realClock } from './device-flow.js'
 
 export type LoginOptions = {
-  readonly configDir: string
   readonly io: IOStreams
   readonly host?: string
   readonly noBrowser?: boolean
   readonly insecure?: boolean
   readonly deviceLabel?: string
-  readonly store?: { readonly store: TokenStore, readonly mode: StorageMode }
+  readonly store?: { readonly store: Store, readonly mode: StorageMode }
   readonly api?: DeviceFlowApi
   readonly browserEnv?: BrowserEnv
   readonly browserOpener?: BrowserOpener
@@ -59,11 +58,11 @@ export async function runLogin(opts: LoginOptions): Promise<HostsBundle> {
 
   const success = await awaitAuthorization(api, code, { clock: opts.clock ?? realClock() })
 
-  const storeBundle = opts.store ?? await selectStore({ configDir: opts.configDir })
+  const storeBundle = opts.store ?? await getTokenStore()
   const bundle = bundleFromSuccess(host, success, storeBundle.mode)
 
-  await storeBundle.store.put(bundle.current_host, accountKey(bundle), success.token)
-  await saveHosts(opts.configDir, bundle)
+  storeBundle.store.set(tokenKey(bundle.current_host, accountKey(bundle)), success.token)
+  saveHosts(bundle)
 
   renderLoggedIn(opts.io.out, cs, host, success)
   return bundle

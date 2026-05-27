@@ -1,6 +1,7 @@
 import type { Platform } from '../sys'
 import fs from 'node:fs'
 import { dirname } from 'node:path'
+import { Entry } from '@napi-rs/keyring'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '../sys'
@@ -8,7 +9,7 @@ import { pid, resolvePlatform } from '../sys'
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
 
-type Key<T> = {
+export type Key<T> = {
   default: T
   key: string
 }
@@ -16,7 +17,10 @@ type Key<T> = {
 export type Store = {
   get: <T>(key: Key<T>) => T
   set: <T>(key: Key<T>, value: T) => void
+  unset: <T>(key: Key<T>) => void
 }
+
+export type StorageMode = 'keychain' | 'file'
 
 export class ConcurrentAccessError extends Error {
   constructor(filePath: string) {
@@ -106,8 +110,29 @@ abstract class FileBasedStore implements Store {
     })
   }
 
+  unset<T>(key: Key<T>): void {
+    this.withLock(() => {
+      this.doUnset(key)
+      this.flush()
+    })
+  }
+
+  /**
+   * Remove the underlying file of the store. No-op if file doesn't exist.
+   */
+  rm(): void {
+    try {
+      fs.unlinkSync(this.file_path)
+    }
+    catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
+        throw err
+    }
+  }
+
   abstract doGet<T>(key: Key<T>): T
   abstract doSet<T>(key: Key<T>, value: T): void
+  abstract doUnset<T>(key: Key<T>): void
 }
 
 export class YamlStore extends FileBasedStore {
@@ -156,10 +181,65 @@ export class YamlStore extends FileBasedStore {
     current[lastKey] = value
     this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
   }
+
+  doUnset<T>(key: Key<T>): void {
+    const data = loadYaml(this.raw_content) || {}
+    const parts = key.key.split('.')
+    const lastKey = parts.pop()
+    if (lastKey === undefined)
+      return
+    let current: Record<string, unknown> = data
+    for (const part of parts) {
+      const next = current[part]
+      if (next === null || next === undefined || typeof next !== 'object')
+        return
+      current = next as Record<string, unknown>
+    }
+    if (!(lastKey in current))
+      return
+    delete current[lastKey]
+    this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
+  }
 }
 
 function loadYaml(raw: string | undefined): Record<string, unknown> | null {
   if (raw === undefined)
     return null
   return (yaml.load(raw) ?? {}) as Record<string, unknown>
+}
+
+/**
+ * OS-keyring-based storage primitive. Sits at the same layer as
+ * `FileBasedStore`: implements `Store` with each `Key<T>` corresponding to a
+ * single keyring entry under the configured service. Values are JSON-encoded.
+ */
+export class KeyringBasedStore implements Store {
+  private readonly service: string
+
+  constructor(service: string) {
+    this.service = service
+  }
+
+  get<T>(key: Key<T>): T {
+    try {
+      const v = new Entry(this.service, key.key).getPassword()
+      if (v === null || v === undefined || v === '')
+        return key.default
+      return JSON.parse(v) as T
+    }
+    catch {
+      return key.default
+    }
+  }
+
+  set<T>(key: Key<T>, value: T): void {
+    new Entry(this.service, key.key).setPassword(JSON.stringify(value))
+  }
+
+  unset<T>(key: Key<T>): void {
+    try {
+      new Entry(this.service, key.key).deletePassword()
+    }
+    catch { /* missing entry is fine */ }
+  }
 }

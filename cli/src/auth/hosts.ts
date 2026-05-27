@@ -1,10 +1,5 @@
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import yaml from 'js-yaml'
 import { z } from 'zod'
-import { DIR_PERM, FILE_PERM } from '../store/dir.js'
-
-export const HOSTS_FILE_NAME = 'hosts.yml'
+import { getHostStore } from '../store/manager.js'
 
 const StorageModeSchema = z.enum(['keychain', 'file'])
 export type StorageMode = z.infer<typeof StorageModeSchema>
@@ -48,53 +43,14 @@ export const HostsBundleSchema = z.object({
 })
 export type HostsBundle = z.infer<typeof HostsBundleSchema>
 
-export async function loadHosts(dir: string): Promise<HostsBundle | undefined> {
-  const path = join(dir, HOSTS_FILE_NAME)
-  let raw: string
-  try {
-    raw = await readFile(path, 'utf8')
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT')
-      return undefined
-    throw err
-  }
-  const parsed = yaml.load(raw)
-  return HostsBundleSchema.parse(parsed ?? {})
+export function loadHosts(): HostsBundle | undefined {
+  const raw = getHostStore().getTyped<Record<string, unknown>>()
+  if (raw === null)
+    return undefined
+  return HostsBundleSchema.parse(raw)
 }
 
-export async function saveHosts(dir: string, bundle: HostsBundle): Promise<void> {
-  await mkdir(dir, { recursive: true, mode: DIR_PERM })
+export function saveHosts(bundle: HostsBundle): void {
   const validated = HostsBundleSchema.parse(bundle)
-  const body = yaml.dump(stripUndefined(validated), { lineWidth: -1, noRefs: true, sortKeys: false })
-  const target = join(dir, HOSTS_FILE_NAME)
-  const tmp = `${target}.tmp.${process.pid}.${Date.now()}`
-  try {
-    await writeFile(tmp, body, { mode: FILE_PERM })
-    await rename(tmp, target)
-  }
-  catch (err) {
-    try {
-      await unlink(tmp)
-    }
-    catch { /* tmp may not exist */ }
-    throw err
-  }
-  const { chmod, stat } = await import('node:fs/promises')
-  try {
-    const info = await stat(target)
-    if ((info.mode & 0o777) !== FILE_PERM)
-      await chmod(target, FILE_PERM)
-  }
-  catch { /* best-effort */ }
-}
-
-function stripUndefined<T extends Record<string, unknown>>(input: T): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(input)) {
-    if (v === undefined)
-      continue
-    out[k] = v
-  }
-  return out
+  getHostStore().setTyped(validated)
 }
