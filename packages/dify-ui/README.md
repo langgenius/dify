@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
 import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -46,6 +47,7 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
 | Actions          | `./button`                                                                                                                                                                     | Design-system CTA primitive with `cva` variants.       |
 | Controls         | `./segmented-control`                                                                                                                                                          | SegmentedControl for mode, filter, and view selection. |
+| Display          | `./kbd`                                                                                                                                                                        | Keyboard input and shortcut keycap primitives.         |
 | Feedback         | `./meter`, `./toast`                                                                                                                                                           | Meter is inline status; Toast owns the `z-60` layer.   |
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.   |
 | Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.        |
