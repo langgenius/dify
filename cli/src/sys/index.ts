@@ -24,7 +24,7 @@ export function io() {
 }
 
 export function handle(sig: string, handler: () => void) {
-  process.once('SIGINT', handler)
+  process.once(sig, handler)
 }
 
 export function platform(): NodeJS.Platform {
