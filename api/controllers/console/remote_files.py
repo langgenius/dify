@@ -18,7 +18,7 @@ from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from graphon.file import helpers as file_helpers
 from libs.login import login_required
-from models.account import Account
+from models import Account
 from services.file_service import FileService
 
 

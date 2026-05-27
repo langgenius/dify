@@ -10,6 +10,8 @@ import pytest
 
 from controllers.common.errors import FileTooLargeError, RemoteFileUploadError, UnsupportedFileTypeError
 from controllers.console import remote_files as remote_files_module
+from models import Account
+from models.account import AccountStatus, TenantAccountRole
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
@@ -18,6 +20,17 @@ def _unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def _make_account(account_id: str = "u1") -> Account:
+    account = Account(
+        name="Test User",
+        email=f"{account_id}@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = account_id
+    account.role = TenantAccountRole.OWNER
+    return account
 
 
 class _FakeResponse:
@@ -48,7 +61,6 @@ def _mock_upload_dependencies(
     *,
     file_size_within_limit: bool = True,
 ):
-    current_user = SimpleNamespace(id="u1")
     file_info = SimpleNamespace(
         filename="report.txt",
         extension=".txt",
@@ -64,6 +76,7 @@ def _mock_upload_dependencies(
     file_service_cls = MagicMock()
     file_service_cls.is_file_size_within_limit.return_value = file_size_within_limit
     monkeypatch.setattr(remote_files_module, "FileService", file_service_cls)
+    current_user = _make_account()
     monkeypatch.setattr(remote_files_module, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(
         remote_files_module.file_helpers,
@@ -226,7 +239,7 @@ def test_remote_file_upload_raises_when_fallback_get_still_not_ok(app, monkeypat
 
     with app.test_request_context(method="POST", json={"url": url}):
         with pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: bad gateway"):
-            handler(api, SimpleNamespace(id="u1"))
+            handler(api, _make_account())
 
 
 def test_remote_file_upload_raises_on_httpx_request_error(app, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -243,7 +256,7 @@ def test_remote_file_upload_raises_on_httpx_request_error(app, monkeypatch: pyte
 
     with app.test_request_context(method="POST", json={"url": url}):
         with pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: network down"):
-            handler(api, SimpleNamespace(id="u1"))
+            handler(api, _make_account())
 
 
 def test_remote_file_upload_rejects_oversized_file(app, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -27,7 +27,7 @@ from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfinite
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.enums import FeedbackRating
-from models.model import AppMode
+from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -81,7 +81,7 @@ class MessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -133,7 +133,7 @@ class MessageFeedbackApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
-    def post(self, app_model, end_user, message_id: UUID):
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
         message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})
@@ -167,7 +167,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id: UUID):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -223,7 +223,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id: UUID):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

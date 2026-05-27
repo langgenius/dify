@@ -92,6 +92,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             try:
                 if features.billing.enabled:
                     vector_space = features.vector_space
+                    assert vector_space is not None
                     count = len(document_ids)
                     if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                         raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
