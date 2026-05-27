@@ -161,6 +161,11 @@ def migration_data_wizard() -> None:
             default=False,
         )
         create_tokens = click.confirm("Create or reuse app API tokens during import?", default=False)
+        conflict_strategy = click.prompt(
+            "Import conflict strategy",
+            type=click.Choice(CONFLICT_STRATEGY_CHOICES),
+            default="fail",
+        )
         output_file, overwrite = _prompt_output_file()
 
         selection = ExportConfigParser().parse(
@@ -170,7 +175,10 @@ def migration_data_wizard() -> None:
                 "include_referenced_tools": include_referenced_tools,
                 "additional_tools": additional_tools,
                 "include_secrets": include_secrets,
-                "import_options": {"create_app_api_token_on_import": create_tokens},
+                "import_options": {
+                    "create_app_api_token_on_import": create_tokens,
+                    "conflict_strategy": conflict_strategy,
+                },
             }
         )
         _confirm_wizard_summary(
@@ -180,6 +188,7 @@ def migration_data_wizard() -> None:
             include_referenced_tools=include_referenced_tools,
             include_secrets=include_secrets,
             create_tokens=create_tokens,
+            conflict_strategy=conflict_strategy,
             output_file=output_file,
         )
         result = MigrationExportService().export(selection)
@@ -493,6 +502,7 @@ def _confirm_wizard_summary(
     include_referenced_tools: bool,
     include_secrets: bool,
     create_tokens: bool,
+    conflict_strategy: str,
     output_file: str,
 ) -> None:
     click.echo("Migration export summary:")
@@ -506,6 +516,7 @@ def _confirm_wizard_summary(
     click.echo(f"additional mcp tools: {len(additional_tools['mcp_tools'])}")
     click.echo(f"include secrets: {str(include_secrets).lower()}")
     click.echo(f"create app api token on import: {str(create_tokens).lower()}")
+    click.echo(f"conflict strategy: {conflict_strategy}")
     click.echo(f"output path: {output_file}")
     if not click.confirm("Write migration package?", default=True):
         raise click.Abort()

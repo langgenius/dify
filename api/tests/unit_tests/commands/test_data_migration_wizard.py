@@ -1,4 +1,5 @@
 from commands.data_migration import (
+    _confirm_wizard_summary,
     _print_auto_tools,
     _print_final_tool_selection,
     _prompt_additional_tools,
@@ -141,3 +142,23 @@ def test_prompt_output_file_rejects_yes_no_typo(monkeypatch):
 
     with pytest.raises(click.ClickException, match="Output path must be a file path"):
         _prompt_output_file()
+
+
+def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
+    output_lines = []
+
+    monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
+    monkeypatch.setattr("commands.data_migration.click.confirm", lambda *args, **kwargs: True)
+
+    _confirm_wizard_summary(
+        tenant_name="admin's Workspace",
+        app_names=["main_chatflow"],
+        additional_tools={"api_tools": [], "workflow_tools": [], "mcp_tools": []},
+        include_referenced_tools=True,
+        include_secrets=False,
+        create_tokens=True,
+        conflict_strategy="fail",
+        output_file="migration-data.json",
+    )
+
+    assert "conflict strategy: fail" in output_lines
