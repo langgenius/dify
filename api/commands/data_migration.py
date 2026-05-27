@@ -7,12 +7,21 @@ from typing import Any
 
 import click
 import sqlalchemy as sa
+import yaml
 
 from extensions.ext_database import db
 from models import Tenant
 from models.model import App
 from models.tools import ApiToolProvider, MCPToolProvider, WorkflowToolProvider
-from services.data_migration.entities import ImportOptions, MigrationDataError, ReportContext, ResourceReportItem
+from services.app_dsl_service import AppDslService
+from services.data_migration.dependency_discovery_service import DependencyDiscoveryService
+from services.data_migration.entities import (
+    DependencyKind,
+    ImportOptions,
+    MigrationDataError,
+    ReportContext,
+    ResourceReportItem,
+)
 from services.data_migration.export_service import ExportConfigParser, MigrationExportService
 from services.data_migration.import_service import ImportRequest, MigrationImportService
 from services.data_migration.package_service import MigrationPackageService
@@ -141,7 +150,8 @@ def migration_data_wizard() -> None:
             "Automatically export tools referenced by selected apps?",
             default=True,
         )
-        additional_tools = _prompt_additional_tools(tenant.id)
+        auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
+        additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
         include_secrets = click.confirm(
             "Include secrets in output JSON? The file will contain sensitive data.",
             default=False,
@@ -251,7 +261,26 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
     return parse_index_selection(click.prompt("Select apps by number, or all", default="all"), [app.id for app in apps])
 
 
-def _prompt_additional_tools(tenant_id: str) -> dict[str, list[str]]:
+def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> dict[str, set[str]]:
+    auto_tools = {"api_tools": set(), "workflow_tools": set(), "mcp_tools": set()}
+    if not include_referenced_tools:
+        return auto_tools
+    discovery_service = DependencyDiscoveryService()
+    for app in apps:
+        dsl_content = AppDslService.export_dsl(app_model=app, include_secret=False)
+        raw_dsl = yaml.safe_load(dsl_content) if dsl_content else {}
+        dsl = raw_dsl if isinstance(raw_dsl, dict) else {}
+        for dependency in discovery_service.discover_from_dsl(dsl):
+            if dependency.kind == DependencyKind.API_TOOL:
+                auto_tools["api_tools"].add(dependency.provider_id)
+            elif dependency.kind == DependencyKind.WORKFLOW_TOOL:
+                auto_tools["workflow_tools"].add(dependency.provider_id)
+            elif dependency.kind == DependencyKind.MCP_TOOL:
+                auto_tools["mcp_tools"].add(dependency.provider_id)
+    return auto_tools
+
+
+def _prompt_additional_tools(tenant_id: str, auto_tools: dict[str, set[str]]) -> dict[str, list[str]]:
     selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
     if not click.confirm("Export additional tools manually?", default=False):
         return selections
@@ -263,6 +292,7 @@ def _prompt_additional_tools(tenant_id: str) -> dict[str, list[str]]:
                 sa.select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).order_by(ApiToolProvider.name)
             ).all()
         ],
+        auto_values=auto_tools["api_tools"],
     )
     selections["workflow_tools"] = _prompt_tool_category(
         "Workflow tools",
@@ -274,6 +304,7 @@ def _prompt_additional_tools(tenant_id: str) -> dict[str, list[str]]:
                 .order_by(WorkflowToolProvider.name)
             ).all()
         ],
+        auto_values=auto_tools["workflow_tools"],
     )
     selections["mcp_tools"] = _prompt_tool_category(
         "MCP tools",
@@ -283,17 +314,19 @@ def _prompt_additional_tools(tenant_id: str) -> dict[str, list[str]]:
                 sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
             ).all()
         ],
+        auto_values=auto_tools["mcp_tools"],
     )
     return selections
 
 
-def _prompt_tool_category(label: str, options: list[tuple[str, str, str]]) -> list[str]:
+def _prompt_tool_category(label: str, options: list[tuple[str, str, str]], *, auto_values: set[str]) -> list[str]:
     if not options:
         click.echo(f"{label}: none")
         return []
     click.echo(label)
-    for index, (_, name, detail) in enumerate(options, 1):
-        click.echo(f"{index}. {name} ({detail})")
+    for index, (value, name, detail) in enumerate(options, 1):
+        marker = "[auto]" if value in auto_values or detail in auto_values else "[ ]"
+        click.echo(f"{index}. {marker} {name} ({detail})")
     raw = click.prompt(f"Select {label.lower()} by number, all, or empty", default="", show_default=False)
     if not raw.strip():
         return []
