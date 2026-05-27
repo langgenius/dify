@@ -129,6 +129,23 @@ describe('WorkspaceCard', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
   })
 
+  it('renders a stable skeleton while the current workspace is loading', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        id: '',
+        name: '',
+      },
+      isLoadingCurrentWorkspace: true,
+    })
+
+    renderWithSystemFeatures(<WorkspaceCard />)
+
+    expect(screen.getByTestId('workspace-card-skeleton')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+  })
+
   it('shows the license status instead of a billing plan when billing is disabled', () => {
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: false,

@@ -56,13 +56,50 @@ function WorkspaceMenuItemContent({
   return (
     <>
       <span aria-hidden className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>
-      <span className="min-w-0 grow truncate text-left system-md-regular text-text-secondary" title={labelTitle}>{label}</span>
-      {trailing}
+      <span className="min-w-0 flex-1 truncate text-left system-md-regular text-text-secondary" title={labelTitle}>{label}</span>
+      {trailing && <span className="flex h-4 w-4 shrink-0 items-center justify-center">{trailing}</span>}
     </>
   )
 }
 
 const workspaceMenuTriggerHeight = 36
+const workspaceCardSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
+
+function WorkspaceCardSkeleton({
+  showCloudBilling,
+  showPlanAction,
+}: {
+  showCloudBilling: boolean
+  showPlanAction: boolean
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="workspace-card-skeleton"
+      className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs"
+    >
+      <div className="flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5">
+        <div className={cn(workspaceCardSkeletonClassName, 'h-6 w-6 shrink-0 rounded-lg')} />
+        <div className="flex min-w-0 grow items-center">
+          <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-32 max-w-full')} />
+        </div>
+        <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-4 shrink-0')} />
+      </div>
+      {showCloudBilling && (
+        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
+            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-3 shrink-0')} />
+            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-16')} />
+            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-8')} />
+          </div>
+          {showPlanAction && (
+            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-14 shrink-0')} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function WorkspaceCardTrigger({
   open,
@@ -99,8 +136,8 @@ function WorkspaceCardTrigger({
         <WorkspaceIcon name={name} className="h-6 w-6 rounded-lg" />
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="max-w-30 truncate system-sm-medium text-text-primary" title={name}>{name}</span>
-            {status}
+            <span className="min-w-0 flex-1 truncate system-sm-medium text-text-primary" title={name}>{name}</span>
+            {status && <span className="flex shrink-0 items-center">{status}</span>}
           </div>
         </div>
         <span aria-hidden className="i-ri-expand-up-down-line h-4 w-4 shrink-0 text-text-tertiary" />
@@ -156,11 +193,11 @@ function WorkspaceMenuHeader({
     <DropdownMenuGroup className="p-1">
       <div className="rounded-xl border-[0.5px] border-components-panel-border bg-linear-to-b from-background-section-burn to-background-section pb-2">
         <div className="flex h-16 items-center gap-2 px-3">
-          <div className="flex min-w-0 grow flex-col items-start justify-center gap-1">
-            <div className="max-w-44 shrink-0 truncate text-base/5 font-medium text-text-primary" title={name}>{name}</div>
+          <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-1">
+            <div className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary" title={name}>{name}</div>
             {status}
           </div>
-          <WorkspaceIcon name={name} className="h-9 w-9" />
+          <WorkspaceIcon name={name} className="h-9 w-9 shrink-0" />
         </div>
         {showWorkspaceSettings && (
           <DropdownMenuItem
@@ -186,7 +223,7 @@ function WorkspaceMenuHeader({
 export function WorkspaceCard() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { currentWorkspace, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceManager } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceManager, isLoadingCurrentWorkspace } = useAppContext()
   const { workspaces } = useWorkspacesContext()
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
@@ -197,6 +234,7 @@ export function WorkspaceCard() {
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
   const showPlanAction = showCloudBilling
   const planActionLabel = t(isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain', { ns: 'billing' })
+  const isWorkspaceLoading = isLoadingCurrentWorkspace || !currentWorkspace.id
   const showWorkspaceSettings = !isCurrentWorkspaceDatasetOperator
   const showInviteMembers = showWorkspaceSettings && isCurrentWorkspaceManager
   const [open, setOpen] = useState(false)
@@ -214,6 +252,15 @@ export function WorkspaceCard() {
     catch {
       toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
+  }
+
+  if (isWorkspaceLoading) {
+    return (
+      <WorkspaceCardSkeleton
+        showCloudBilling={showCloudBilling}
+        showPlanAction={showPlanAction}
+      />
+    )
   }
 
   return (
