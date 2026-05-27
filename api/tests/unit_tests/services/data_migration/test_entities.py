@@ -51,6 +51,9 @@ def test_import_options_invalid_strategy_raises_domain_error():
     with pytest.raises(MigrationDataError, match="conflict_strategy"):
         ImportOptions.from_mapping({"conflict_strategy": "unknown"})
 
+    with pytest.raises(MigrationDataError, match="conflict_strategy"):
+        ImportOptions.from_mapping({"conflict_strategy": "replace"})
+
 
 def test_metadata_rejects_invalid_target_tenant_shape():
     with pytest.raises(MigrationDataError, match="target_tenant"):

@@ -29,7 +29,7 @@ from services.data_migration.package_service import MigrationPackageService
 from services.data_migration.report_service import MigrationReportService
 
 ID_STRATEGY_CHOICES = ["preserve-id", "generate-new-id", "map-id"]
-CONFLICT_STRATEGY_CHOICES = ["fail", "skip", "update", "replace"]
+CONFLICT_STRATEGY_CHOICES = ["fail", "skip", "update"]
 SUPPORTED_WIZARD_APP_MODES = ["workflow", "advanced-chat"]
 WizardToolMap = dict[str, dict[str, str | None]]
 WizardToolSelection = dict[str, list[str]]
@@ -164,23 +164,7 @@ def migration_data_wizard() -> None:
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
-        _print_wizard_step("Import Options")
-        include_secrets = click.confirm(
-            "Include secrets in output JSON? [y/n, default: n]. The file will contain sensitive data.",
-            default=False,
-            show_default=False,
-        )
-        create_tokens = click.confirm(
-            "Create or reuse app API tokens during import? [y/n, default: n]",
-            default=False,
-            show_default=False,
-        )
-        conflict_strategy = click.prompt(
-            "Import conflict strategy. Enter one of: fail, skip, update, replace",
-            type=click.Choice(CONFLICT_STRATEGY_CHOICES),
-            default="fail",
-            show_default=True,
-        )
+        include_secrets, create_tokens, conflict_strategy = _prompt_import_options()
         _print_wizard_step("Output")
         output_file, overwrite = _prompt_output_file()
 
@@ -286,6 +270,7 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
         raise MigrationDataError("No workflow or advanced-chat apps found for the selected tenant.")
 
     _print_wizard_step("App Selection")
+    click.echo("Currently supported app types: workflow and chatflow.")
     click.echo("Workflow/chatflow apps:")
     for index, app in enumerate(apps, 1):
         mode = app.mode.value if hasattr(app.mode, "value") else app.mode
@@ -299,6 +284,38 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
     for app in selected_apps:
         click.echo(f"- {app.name} ({app.id})")
     return app_ids
+
+
+def _prompt_import_options() -> tuple[bool, bool, str]:
+    _print_wizard_step("Import Options")
+    click.echo("Secrets include workflow/app DSL secret values, custom API tool credentials,")
+    click.echo("and full MCP provider connection data such as server URL, headers, authentication, and tool list.")
+    click.echo("If you choose no, credentials are omitted or masked,")
+    click.echo("and MCP providers are exported as dependency metadata only.")
+    click.echo("Treat the output JSON as sensitive if you choose yes.")
+    include_secrets = click.confirm(
+        "Include secrets in output JSON? [y/n, default: n]",
+        default=False,
+        show_default=False,
+    )
+    click.echo("When enabled, import will create an app API token if the imported app has none,")
+    click.echo("or reuse an existing app API token if one already exists.")
+    create_tokens = click.confirm(
+        "Create or reuse app API tokens during import? [y/n, default: n]",
+        default=False,
+        show_default=False,
+    )
+    click.echo("Conflict strategy controls what import does when a target resource already exists.")
+    click.echo("fail: stop at the first conflict; previously committed resources are not rolled back.")
+    click.echo("skip: keep the existing target resource and skip importing that resource.")
+    click.echo("update: update the existing target resource in place.")
+    conflict_strategy = click.prompt(
+        "Import conflict strategy. Enter one of: fail, skip, update",
+        type=click.Choice(CONFLICT_STRATEGY_CHOICES),
+        default="update",
+        show_default=True,
+    )
+    return include_secrets, create_tokens, conflict_strategy
 
 
 def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> WizardToolMap:

@@ -26,7 +26,6 @@ class ConflictStrategy(StrEnum):
     FAIL = "fail"
     SKIP = "skip"
     UPDATE = "update"
-    REPLACE = "replace"
 
 
 class ResourceType(StrEnum):

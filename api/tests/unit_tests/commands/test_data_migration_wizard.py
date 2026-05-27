@@ -1,4 +1,5 @@
 from commands.data_migration import (
+    CONFLICT_STRATEGY_CHOICES,
     _confirm_wizard_summary,
     _print_auto_tools,
     _print_final_tool_selection,
@@ -29,6 +30,10 @@ def test_print_wizard_step_adds_separator(monkeypatch):
     assert output_lines == ["", "==== App Selection ===="]
 
 
+def test_conflict_strategy_choices_exclude_replace():
+    assert CONFLICT_STRATEGY_CHOICES == ["fail", "skip", "update"]
+
+
 def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch):
     from commands.data_migration import _prompt_app_ids
 
@@ -48,6 +53,7 @@ def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch):
 
     assert _prompt_app_ids(apps) == ["app-1", "app-2"]
     assert prompts == [("Select apps by number, comma-separated numbers, or all", {"default": "all"})]
+    assert "Currently supported app types: workflow and chatflow." in output_lines
 
 
 def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch):
@@ -265,3 +271,45 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
     assert confirm_prompts == [
         ("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})
     ]
+
+
+def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch):
+    from commands.data_migration import _prompt_import_options
+
+    output_lines = []
+    confirm_prompts = []
+    prompt_calls = []
+
+    def capture_confirm(prompt, **kwargs):
+        confirm_prompts.append((prompt, kwargs))
+        return False
+
+    def capture_prompt(prompt, **kwargs):
+        prompt_calls.append((prompt, kwargs))
+        return kwargs["default"]
+
+    monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
+    monkeypatch.setattr("commands.data_migration.click.confirm", capture_confirm)
+    monkeypatch.setattr("commands.data_migration.click.prompt", capture_prompt)
+
+    include_secrets, create_tokens, conflict_strategy = _prompt_import_options()
+
+    assert include_secrets is False
+    assert create_tokens is False
+    assert conflict_strategy == "update"
+    assert "Secrets include workflow/app DSL secret values, custom API tool credentials," in output_lines
+    assert "If you choose no, credentials are omitted or masked," in output_lines
+    assert "When enabled, import will create an app API token if the imported app has none," in output_lines
+    assert "or reuse an existing app API token if one already exists." in output_lines
+    assert "Conflict strategy controls what import does when a target resource already exists." in output_lines
+    assert "fail: stop at the first conflict; previously committed resources are not rolled back." in output_lines
+    assert "skip: keep the existing target resource and skip importing that resource." in output_lines
+    assert "update: update the existing target resource in place." in output_lines
+    assert confirm_prompts == [
+        ("Include secrets in output JSON? [y/n, default: n]", {"default": False, "show_default": False}),
+        ("Create or reuse app API tokens during import? [y/n, default: n]", {"default": False, "show_default": False}),
+    ]
+    assert prompt_calls[0][0] == "Import conflict strategy. Enter one of: fail, skip, update"
+    assert prompt_calls[0][1]["default"] == "update"
+    assert prompt_calls[0][1]["show_default"] is True
+    assert prompt_calls[0][1]["type"].choices == CONFLICT_STRATEGY_CHOICES
