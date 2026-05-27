@@ -3,13 +3,28 @@
 from __future__ import annotations
 
 import sys
+import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from werkzeug.exceptions import NotFound
 
+from controllers.openapi.auth.data import AuthData
+from libs.oauth_bearer import Scope, TokenType
 from models.enums import CreatorUserRole
+
+
+def _make_auth_data(app_model, caller, caller_kind):
+    return AuthData.model_construct(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        account_id=uuid.uuid4(),
+        token_hash="test",
+        scopes=frozenset({Scope.FULL}),
+        app=app_model,
+        caller=caller,
+        caller_kind=caller_kind,
+    )
 
 
 def _make_workflow_run(
@@ -50,6 +65,7 @@ class TestOpenApiWorkflowEventsApi:
         from models.model import AppMode
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        caller = SimpleNamespace(id="acct-1")
 
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             with pytest.raises(NotFound):
@@ -57,9 +73,7 @@ class TestOpenApiWorkflowEventsApi:
                     api,
                     app_id="app-1",
                     task_id="wf-run-1",
-                    app_model=app_model,
-                    caller=SimpleNamespace(id="acct-1"),
-                    caller_kind="account",
+                    auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
     def test_not_found_when_run_belongs_to_different_app(self, app, bypass_pipeline, monkeypatch):
@@ -77,6 +91,7 @@ class TestOpenApiWorkflowEventsApi:
         from models.model import AppMode
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        caller = SimpleNamespace(id="acct-1")
 
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             with pytest.raises(NotFound):
@@ -84,9 +99,7 @@ class TestOpenApiWorkflowEventsApi:
                     api,
                     app_id="app-1",
                     task_id="wf-run-1",
-                    app_model=app_model,
-                    caller=SimpleNamespace(id="acct-1"),
-                    caller_kind="account",
+                    auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
     def test_account_caller_checks_created_by_account(self, app, bypass_pipeline, monkeypatch):
@@ -115,6 +128,7 @@ class TestOpenApiWorkflowEventsApi:
         from models.model import AppMode
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        caller = SimpleNamespace(id="acct-1")
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -123,9 +137,7 @@ class TestOpenApiWorkflowEventsApi:
                 api,
                 app_id="app-1",
                 task_id="wf-run-1",
-                app_model=app_model,
-                caller=SimpleNamespace(id="acct-1"),
-                caller_kind="account",
+                auth_data=_make_auth_data(app_model, caller, "account"),
             )
         assert resp.mimetype == "text/event-stream"
 
@@ -143,6 +155,7 @@ class TestOpenApiWorkflowEventsApi:
         from models.model import AppMode
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        caller = SimpleNamespace(id="acct-1")
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -151,9 +164,7 @@ class TestOpenApiWorkflowEventsApi:
                     api,
                     app_id="app-1",
                     task_id="wf-run-1",
-                    app_model=app_model,
-                    caller=SimpleNamespace(id="acct-1"),
-                    caller_kind="account",
+                    auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
     def test_end_user_caller_checks_created_by_end_user(self, app, bypass_pipeline, monkeypatch):
@@ -179,6 +190,7 @@ class TestOpenApiWorkflowEventsApi:
         from models.model import AppMode
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        caller = SimpleNamespace(id="eu-1")
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -186,9 +198,7 @@ class TestOpenApiWorkflowEventsApi:
                 api,
                 app_id="app-1",
                 task_id="wf-run-1",
-                app_model=app_model,
-                caller=SimpleNamespace(id="eu-1"),
-                caller_kind="end_user",
+                auth_data=_make_auth_data(app_model, caller, "end_user"),
             )
         assert resp.mimetype == "text/event-stream"
 
@@ -222,6 +232,7 @@ class TestOpenApiWorkflowEventsApi:
         from models.model import AppMode
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        caller = SimpleNamespace(id="acct-1")
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -229,9 +240,7 @@ class TestOpenApiWorkflowEventsApi:
                 api,
                 app_id="app-1",
                 task_id="wf-run-1",
-                app_model=app_model,
-                caller=SimpleNamespace(id="acct-1"),
-                caller_kind="account",
+                auth_data=_make_auth_data(app_model, caller, "account"),
             )
         assert resp.mimetype == "text/event-stream"
         chunks = list(resp.response)
