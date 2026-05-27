@@ -8,6 +8,7 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuSeparator,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
@@ -22,10 +23,8 @@ import { env } from '@/env'
 import Link from '@/next/link'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import GithubStar from '../github-star'
-import Indicator from '../indicator'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
-import Support from './support'
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -164,7 +163,6 @@ export function DefaultMenuContent({
               label={t('userProfile.helpCenter', { ns: 'common' })}
               trailing={<ExternalLinkIndicator />}
             />
-            <Support closeAccountDropdown={closeAccountDropdown} />
             {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
           </AccountMenuSection>
           <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
@@ -197,7 +195,7 @@ export function DefaultMenuContent({
                 trailing={(
                   <div className="flex shrink-0 items-center">
                     <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                    <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                    <StatusDot status={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'success' : 'warning'} />
                   </div>
                 )}
               />

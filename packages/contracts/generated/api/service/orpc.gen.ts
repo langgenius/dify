@@ -57,6 +57,7 @@ import {
   zGetDatasetsByDatasetIdResponse,
   zGetDatasetsByDatasetIdTagsPath,
   zGetDatasetsByDatasetIdTagsResponse,
+  zGetDatasetsQuery,
   zGetDatasetsResponse,
   zGetDatasetsTagsResponse,
   zGetEndUsersByEndUserIdPath,
@@ -793,16 +794,10 @@ export const delete3 = oc
  * Get all knowledge type tags
  *
  * Get all knowledge type tags
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get all knowledge type tags\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get all knowledge type tags',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsTags',
@@ -814,16 +809,10 @@ export const get7 = oc
 
 /**
  * Update a knowledge type tag
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch = oc
   .route({
-    deprecated: true,
-    description:
-      'Update a knowledge type tag\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update a knowledge type tag',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsTags',
@@ -837,16 +826,10 @@ export const patch = oc
  * Add a knowledge type tag
  *
  * Add a knowledge type tag
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post12 = oc
   .route({
-    deprecated: true,
-    description:
-      'Add a knowledge type tag\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Add a knowledge type tag',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsTags',
@@ -1634,16 +1617,10 @@ export const byAction3 = {
  * Get all built-in metadata fields
  *
  * Get all built-in metadata fields
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get all built-in metadata fields\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get all built-in metadata fields',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdMetadataBuiltIn',
@@ -1682,16 +1659,10 @@ export const delete7 = oc
  * Update metadata name
  *
  * Update metadata name
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update metadata name\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update metadata name',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdMetadataByMetadataId',
@@ -1716,16 +1687,10 @@ export const byMetadataId = {
  * Get all metadata for a dataset
  *
  * Get all metadata for a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get all metadata for a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get all metadata for a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdMetadata',
@@ -1740,16 +1705,10 @@ export const get16 = oc
  * Create metadata for a dataset
  *
  * Create metadata for a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post28 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create metadata for a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create metadata for a dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdMetadata',
@@ -1918,16 +1877,10 @@ export const retrieve = {
  * Get all knowledge type tags
  *
  * Get tags bound to a specific dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get18 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get tags bound to a specific dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get tags bound to a specific dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdTags',
@@ -1975,16 +1928,10 @@ export const delete8 = oc
 
 /**
  * Get a specific dataset by ID
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get19 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get a specific dataset by ID\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get a specific dataset by ID',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetId',
@@ -2032,16 +1979,10 @@ export const byDatasetId = {
  * Resource for getting datasets
  *
  * List all datasets
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get20 = oc
   .route({
-    deprecated: true,
-    description:
-      'List all datasets\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'List all datasets',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasets',
@@ -2049,6 +1990,7 @@ export const get20 = oc
     summary: 'Resource for getting datasets',
     tags: ['service_api'],
   })
+  .input(z.object({ query: zGetDatasetsQuery.optional() }))
   .output(zGetDatasetsResponse)
 
 /**

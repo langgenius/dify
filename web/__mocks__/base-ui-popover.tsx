@@ -99,6 +99,7 @@ export const PopoverTrigger = ({
       ...childProps,
       'data-testid': childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'popover-trigger',
       'data-popover-trigger': 'true',
+      'data-popup-open': open ? '' : undefined,
       'onClick': (event: React.MouseEvent<HTMLElement>) => {
         childProps.onClick?.(event)
         onClick?.(event)
@@ -113,6 +114,7 @@ export const PopoverTrigger = ({
     <div
       data-testid="popover-trigger"
       data-popover-trigger="true"
+      data-popup-open={open ? '' : undefined}
       onClick={(event) => {
         onClick?.(event)
         if (event.defaultPrevented)

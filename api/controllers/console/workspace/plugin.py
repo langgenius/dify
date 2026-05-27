@@ -1,20 +1,26 @@
 import io
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 from flask import request, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import SuccessResponse
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.plugin.plugin_service import PluginService
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
@@ -22,7 +28,14 @@ from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermissi
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
-from services.plugin.plugin_service import PluginService
+
+
+class AutoUpgradeSettingsResponse(TypedDict):
+    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    upgrade_time_of_day: int
+    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    exclude_plugins: list[str]
+    include_plugins: list[str]
 
 
 class ParserList(BaseModel):
@@ -88,8 +101,8 @@ class ParserUninstall(BaseModel):
 
 
 class ParserPermissionChange(BaseModel):
-    install_permission: TenantPluginPermission.InstallPermission
-    debug_permission: TenantPluginPermission.DebugPermission
+    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
+    debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
 
 
 class ParserDynamicOptions(BaseModel):
@@ -125,13 +138,40 @@ class PluginAutoUpgradeSettingsPayload(BaseModel):
     include_plugins: list[str] = Field(default_factory=list)
 
 
-class ParserPreferencesChange(BaseModel):
-    permission: PluginPermissionSettingsPayload
+class PluginAutoUpgradeChangeResponse(ResponseModel):
+    success: bool
+    message: str | None = None
+
+
+class PluginAutoUpgradeSettingsResponseModel(ResponseModel):
+    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    upgrade_time_of_day: int
+    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    exclude_plugins: list[str]
+    include_plugins: list[str]
+
+
+class PluginAutoUpgradeFetchResponse(ResponseModel):
+    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    auto_upgrade: PluginAutoUpgradeSettingsResponseModel
+
+
+class ParserAutoUpgradeChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: TenantPluginAutoUpgradeStrategy.PluginCategory
     auto_upgrade: PluginAutoUpgradeSettingsPayload
 
 
+class ParserAutoUpgradeFetch(BaseModel):
+    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+
+
 class ParserExcludePlugin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     plugin_id: str
+    category: TenantPluginAutoUpgradeStrategy.PluginCategory
 
 
 class ParserReadme(BaseModel):
@@ -164,19 +204,51 @@ register_schema_models(
     ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
-    ParserPreferencesChange,
+    ParserAutoUpgradeChange,
+    ParserAutoUpgradeFetch,
     ParserExcludePlugin,
     ParserReadme,
 )
-register_response_schema_models(console_ns, PluginDebuggingKeyResponse, SuccessResponse)
+register_response_schema_models(
+    console_ns,
+    PluginAutoUpgradeChangeResponse,
+    PluginAutoUpgradeFetchResponse,
+    PluginAutoUpgradeSettingsResponseModel,
+    PluginDebuggingKeyResponse,
+    SuccessResponse,
+)
 
 register_enum_models(
     console_ns,
     TenantPluginPermission.DebugPermission,
+    TenantPluginAutoUpgradeStrategy.PluginCategory,
     TenantPluginAutoUpgradeStrategy.UpgradeMode,
     TenantPluginAutoUpgradeStrategy.StrategySetting,
     TenantPluginPermission.InstallPermission,
 )
+
+
+def _default_auto_upgrade_settings(
+    tenant_id: str,
+    category: TenantPluginAutoUpgradeStrategy.PluginCategory,
+) -> AutoUpgradeSettingsResponse:
+    return {
+        "strategy_setting": PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+        "upgrade_time_of_day": PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id),
+        "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+        "exclude_plugins": [],
+        "include_plugins": [],
+    }
+
+
+def _auto_upgrade_settings_to_dict(strategy: TenantPluginAutoUpgradeStrategy) -> AutoUpgradeSettingsResponse:
+    return {
+        "strategy_setting": strategy.strategy_setting,
+        "upgrade_time_of_day": strategy.upgrade_time_of_day,
+        "upgrade_mode": strategy.upgrade_mode,
+        "exclude_plugins": strategy.exclude_plugins,
+        "include_plugins": strategy.include_plugins,
+    }
 
 
 def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
@@ -632,11 +704,13 @@ class PluginChangePermissionApi(Resource):
 
         tenant_id = current_tenant_id
 
-        return {
-            "success": PluginPermissionService.change_permission(
-                tenant_id, args.install_permission, args.debug_permission
-            )
-        }
+        set_permission_result = PluginPermissionService.change_permission(
+            tenant_id, args.install_permission, args.debug_permission
+        )
+        if not set_permission_result:
+            return jsonable_encoder({"success": False, "message": "Failed to set permission"})
+
+        return jsonable_encoder({"success": True})
 
 
 @console_ns.route("/workspaces/current/plugin/permission/fetch")
@@ -725,9 +799,10 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
         return jsonable_encoder({"options": options})
 
 
-@console_ns.route("/workspaces/current/plugin/preferences/change")
-class PluginChangePreferencesApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPreferencesChange.__name__])
+@console_ns.route("/workspaces/current/plugin/auto-upgrade/change")
+class PluginChangeAutoUpgradeApi(Resource):
+    @console_ns.expect(console_ns.models[ParserAutoUpgradeChange.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginAutoUpgradeChangeResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -736,38 +811,17 @@ class PluginChangePreferencesApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        args = ParserPreferencesChange.model_validate(console_ns.payload)
-
-        permission = args.permission
-
-        install_permission = permission.install_permission
-        debug_permission = permission.debug_permission
+        args = ParserAutoUpgradeChange.model_validate(console_ns.payload)
 
         auto_upgrade = args.auto_upgrade
-
-        strategy_setting = auto_upgrade.strategy_setting
-        upgrade_time_of_day = auto_upgrade.upgrade_time_of_day
-        upgrade_mode = auto_upgrade.upgrade_mode
-        exclude_plugins = auto_upgrade.exclude_plugins
-        include_plugins = auto_upgrade.include_plugins
-
-        # set permission
-        set_permission_result = PluginPermissionService.change_permission(
-            tenant_id,
-            install_permission,
-            debug_permission,
-        )
-        if not set_permission_result:
-            return jsonable_encoder({"success": False, "message": "Failed to set permission"})
-
-        # set auto upgrade strategy
         set_auto_upgrade_strategy_result = PluginAutoUpgradeService.change_strategy(
             tenant_id,
-            strategy_setting,
-            upgrade_time_of_day,
-            upgrade_mode,
-            exclude_plugins,
-            include_plugins,
+            auto_upgrade.strategy_setting,
+            auto_upgrade.upgrade_time_of_day,
+            auto_upgrade.upgrade_mode,
+            auto_upgrade.exclude_plugins,
+            auto_upgrade.include_plugins,
+            category=args.category,
         )
         if not set_auto_upgrade_strategy_result:
             return jsonable_encoder({"success": False, "message": "Failed to set auto upgrade strategy"})
@@ -775,48 +829,36 @@ class PluginChangePreferencesApi(Resource):
         return jsonable_encoder({"success": True})
 
 
-@console_ns.route("/workspaces/current/plugin/preferences/fetch")
-class PluginFetchPreferencesApi(Resource):
+@console_ns.route("/workspaces/current/plugin/auto-upgrade/fetch")
+class PluginFetchAutoUpgradeApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserAutoUpgradeFetch))
+    @console_ns.response(200, "Success", console_ns.models[PluginAutoUpgradeFetchResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        permission = PluginPermissionService.get_permission(tenant_id)
-        permission_dict = {
-            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
-        }
+        args = ParserAutoUpgradeFetch.model_validate(request.args.to_dict(flat=True))
+        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category)
+        auto_upgrade_dict = (
+            _auto_upgrade_settings_to_dict(auto_upgrade)
+            if auto_upgrade
+            else _default_auto_upgrade_settings(tenant_id, args.category)
+        )
 
-        if permission:
-            permission_dict["install_permission"] = permission.install_permission
-            permission_dict["debug_permission"] = permission.debug_permission
-
-        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id)
-        auto_upgrade_dict = {
-            "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
-            "upgrade_time_of_day": 0,
-            "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
-            "exclude_plugins": [],
-            "include_plugins": [],
-        }
-
-        if auto_upgrade:
-            auto_upgrade_dict = {
-                "strategy_setting": auto_upgrade.strategy_setting,
-                "upgrade_time_of_day": auto_upgrade.upgrade_time_of_day,
-                "upgrade_mode": auto_upgrade.upgrade_mode,
-                "exclude_plugins": auto_upgrade.exclude_plugins,
-                "include_plugins": auto_upgrade.include_plugins,
+        return jsonable_encoder(
+            {
+                "category": args.category,
+                "auto_upgrade": auto_upgrade_dict,
             }
+        )
 
-        return jsonable_encoder({"permission": permission_dict, "auto_upgrade": auto_upgrade_dict})
 
-
-@console_ns.route("/workspaces/current/plugin/preferences/autoupgrade/exclude")
+@console_ns.route("/workspaces/current/plugin/auto-upgrade/exclude")
 class PluginAutoUpgradeExcludePluginApi(Resource):
     @console_ns.expect(console_ns.models[ParserExcludePlugin.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -826,7 +868,9 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
 
         args = ParserExcludePlugin.model_validate(console_ns.payload)
 
-        return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args.plugin_id)})
+        return jsonable_encoder(
+            {"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args.plugin_id, args.category)}
+        )
 
 
 @console_ns.route("/workspaces/current/plugin/readme")

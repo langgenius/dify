@@ -15,8 +15,8 @@ vi.mock('../authorized', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div data-testid={`indicator-${color}`} />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div data-testid={`indicator-${status}`} />,
 }))
 
 vi.mock('@remixicon/react', () => ({
@@ -58,7 +58,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText('Key 1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
   })
 
   it('should render auth removed status when selected credential is not in list', () => {
@@ -73,7 +73,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText(/modelProvider.auth.authRemoved/))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-red'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
   })
 
   it('should render unavailable status when credentials list is empty', () => {
@@ -156,7 +156,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByTestId('indicator-red'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
     expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
   })
 
@@ -244,9 +244,9 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    // indicator-success shown (not authRemoved, not unavailable, not empty)
+    // indicator-success shown (not authRemoved, not unavailable, not empty)
+    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name

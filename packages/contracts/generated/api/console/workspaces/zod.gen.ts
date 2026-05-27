@@ -210,6 +210,21 @@ export const zWorkspacePermissionResponse = z.object({
 })
 
 /**
+ * PluginAutoUpgradeChangeResponse
+ */
+export const zPluginAutoUpgradeChangeResponse = z.object({
+  message: z.string().nullish(),
+  success: z.boolean(),
+})
+
+/**
+ * SuccessResponse
+ */
+export const zSuccessResponse = z.object({
+  success: z.boolean(),
+})
+
+/**
  * PluginDebuggingKeyResponse
  */
 export const zPluginDebuggingKeyResponse = z.object({
@@ -252,20 +267,6 @@ export const zParserDynamicOptionsWithCredentials = z.object({
   parameter: z.string(),
   plugin_id: z.string(),
   provider: z.string(),
-})
-
-/**
- * SuccessResponse
- */
-export const zSuccessResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * ParserExcludePlugin
- */
-export const zParserExcludePlugin = z.object({
-  plugin_id: z.string(),
 })
 
 /**
@@ -606,6 +607,26 @@ export const zParserPostModels = z.object({
 })
 
 /**
+ * PluginCategory
+ */
+export const zPluginCategory = z.enum([
+  'agent-strategy',
+  'datasource',
+  'extension',
+  'model',
+  'tool',
+  'trigger',
+])
+
+/**
+ * ParserExcludePlugin
+ */
+export const zParserExcludePlugin = z.object({
+  category: zPluginCategory,
+  plugin_id: z.string(),
+})
+
+/**
  * DebugPermission
  */
 export const zDebugPermission = z.enum(['admins', 'everyone', 'noone'])
@@ -619,14 +640,6 @@ export const zInstallPermission = z.enum(['admins', 'everyone', 'noone'])
  * ParserPermissionChange
  */
 export const zParserPermissionChange = z.object({
-  debug_permission: zDebugPermission,
-  install_permission: zInstallPermission,
-})
-
-/**
- * PluginPermissionSettingsPayload
- */
-export const zPluginPermissionSettingsPayload = z.object({
   debug_permission: zDebugPermission.optional(),
   install_permission: zInstallPermission.optional(),
 })
@@ -720,11 +733,30 @@ export const zPluginAutoUpgradeSettingsPayload = z.object({
 })
 
 /**
- * ParserPreferencesChange
+ * ParserAutoUpgradeChange
  */
-export const zParserPreferencesChange = z.object({
+export const zParserAutoUpgradeChange = z.object({
   auto_upgrade: zPluginAutoUpgradeSettingsPayload,
-  permission: zPluginPermissionSettingsPayload,
+  category: zPluginCategory,
+})
+
+/**
+ * PluginAutoUpgradeSettingsResponseModel
+ */
+export const zPluginAutoUpgradeSettingsResponseModel = z.object({
+  exclude_plugins: z.array(z.string()),
+  include_plugins: z.array(z.string()),
+  strategy_setting: zStrategySetting,
+  upgrade_mode: zUpgradeMode,
+  upgrade_time_of_day: z.int(),
+})
+
+/**
+ * PluginAutoUpgradeFetchResponse
+ */
+export const zPluginAutoUpgradeFetchResponse = z.object({
+  auto_upgrade: zPluginAutoUpgradeSettingsResponseModel,
+  category: zPluginCategory,
 })
 
 /**
@@ -1318,6 +1350,30 @@ export const zGetWorkspacesCurrentPluginAssetQuery = z.object({
  */
 export const zGetWorkspacesCurrentPluginAssetResponse = z.record(z.string(), z.unknown())
 
+export const zPostWorkspacesCurrentPluginAutoUpgradeChangeBody = zParserAutoUpgradeChange
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse
+  = zPluginAutoUpgradeChangeResponse
+
+export const zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody = zParserExcludePlugin
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse = zSuccessResponse
+
+export const zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery = z.object({
+  category: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse = zPluginAutoUpgradeFetchResponse
+
 /**
  * Success
  */
@@ -1444,31 +1500,6 @@ export const zPostWorkspacesCurrentPluginPermissionChangeResponse = zSuccessResp
  * Success
  */
 export const zGetWorkspacesCurrentPluginPermissionFetchResponse = z.record(z.string(), z.unknown())
-
-export const zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeBody = zParserExcludePlugin
-
-/**
- * Success
- */
-export const zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zPostWorkspacesCurrentPluginPreferencesChangeBody = zParserPreferencesChange
-
-/**
- * Success
- */
-export const zPostWorkspacesCurrentPluginPreferencesChangeResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-/**
- * Success
- */
-export const zGetWorkspacesCurrentPluginPreferencesFetchResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentPluginReadmeQuery = z.object({
   language: z.string().optional().default('en-US'),

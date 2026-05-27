@@ -7,8 +7,8 @@ import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { toast } from '@langgenius/dify-ui/toast'
-import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
 import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
@@ -267,7 +267,7 @@ const UpdateSettingPopover = ({
                     <div className={updateSettingFormLabelClassName}>
                       {t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
                     </div>
-                    <ToggleGroup<AUTO_UPDATE_STRATEGY>
+                    <SegmentedControl<AUTO_UPDATE_STRATEGY>
                       aria-label={t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
                       className="flex w-full"
                       value={[autoUpgrade.strategy_setting]}
@@ -278,15 +278,15 @@ const UpdateSettingPopover = ({
                       }}
                     >
                       {strategyOptions.map(option => (
-                        <ToggleGroupItem<AUTO_UPDATE_STRATEGY>
+                        <SegmentedControlItem<AUTO_UPDATE_STRATEGY>
                           key={option.value}
                           value={option.value}
                           className={updateSettingToggleItemClassName}
                         >
                           <span className="p-0.5 whitespace-nowrap">{option.label}</span>
-                        </ToggleGroupItem>
+                        </SegmentedControlItem>
                       ))}
-                    </ToggleGroup>
+                    </SegmentedControl>
                   </div>
                 </div>
                 {autoUpgrade.strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
@@ -326,7 +326,7 @@ const UpdateSettingPopover = ({
                         <div className={updateSettingFormLabelClassName}>
                           {t('autoUpdate.scope', { ns: 'plugin' })}
                         </div>
-                        <ToggleGroup<AUTO_UPDATE_MODE>
+                        <SegmentedControl<AUTO_UPDATE_MODE>
                           aria-label={t('autoUpdate.scope', { ns: 'plugin' })}
                           className="flex w-full"
                           value={[autoUpgrade.upgrade_mode]}
@@ -337,15 +337,15 @@ const UpdateSettingPopover = ({
                           }}
                         >
                           {scopeOptions.map(option => (
-                            <ToggleGroupItem<AUTO_UPDATE_MODE>
+                            <SegmentedControlItem<AUTO_UPDATE_MODE>
                               key={option.value}
                               value={option.value}
                               className={updateSettingToggleItemClassName}
                             >
                               <span className="p-0.5 whitespace-nowrap">{option.label}</span>
-                            </ToggleGroupItem>
+                            </SegmentedControlItem>
                           ))}
-                        </ToggleGroup>
+                        </SegmentedControl>
                         {autoUpgrade.upgrade_mode !== AUTO_UPDATE_MODE.update_all && (
                           <PluginsPicker
                             value={plugins}

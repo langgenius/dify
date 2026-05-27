@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import SearchInput from '@/app/components/base/search-input'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppModeEnum } from '@/types/app'
 
@@ -91,13 +91,10 @@ const AppListHeaderFilters: FC<AppListHeaderFiltersProps> = ({
           </SelectContent>
         </Select>
         <TagFilter type="app" value={tagIDs} onChange={onTagIDsChange} onOpenTagManagement={onOpenTagManagement} />
-        <Input
-          showLeftIcon
-          showClearIcon
-          wrapperClassName="w-[200px]"
+        <SearchInput
+          className="w-[200px]"
           value={keywords}
-          onChange={e => onKeywordsChange(e.target.value)}
-          onClear={() => onKeywordsChange('')}
+          onChange={onKeywordsChange}
         />
       </div>
       <div className="flex items-center gap-2">

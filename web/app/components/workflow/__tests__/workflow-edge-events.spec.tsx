@@ -302,14 +302,6 @@ vi.mock('../help-line', () => ({
   default: () => null,
 }))
 
-vi.mock('../edge-contextmenu', () => ({
-  default: () => null,
-}))
-
-vi.mock('../node-contextmenu', () => ({
-  NodeContextmenu: () => null,
-}))
-
 vi.mock('../nodes', () => ({
   default: ({ id }: { id: string }) => React.createElement('div', { 'data-testid': `workflow-node-${id}` }, `Workflow node ${id}`),
 }))
@@ -338,14 +330,6 @@ vi.mock('../operator/control', () => ({
   default: () => null,
 }))
 
-vi.mock('../panel-contextmenu', () => ({
-  default: () => null,
-}))
-
-vi.mock('../selection-contextmenu', () => ({
-  default: () => null,
-}))
-
 vi.mock('../simple-node', () => ({
   default: () => null,
 }))
@@ -367,6 +351,10 @@ vi.mock('../hooks', () => ({
     handleEdgeContextMenu: workflowHookMocks.handleEdgeContextMenu,
   }),
   useNodesInteractions: () => ({
+    handleNodesCopy: vi.fn(),
+    handleNodesDelete: vi.fn(),
+    handleNodesDuplicate: vi.fn(),
+    handleNodesPaste: vi.fn(),
     handleNodeDragStart: workflowHookMocks.handleNodeDragStart,
     handleNodeDrag: workflowHookMocks.handleNodeDrag,
     handleNodeDragStop: workflowHookMocks.handleNodeDragStop,
@@ -390,8 +378,11 @@ vi.mock('../hooks', () => ({
   }),
   usePanelInteractions: () => ({
     handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
-    handleEdgeContextmenuCancel: vi.fn(),
   }),
+  useDSL: () => ({
+    exportCheck: vi.fn(),
+  }),
+  useIsChatMode: () => false,
   useSelectionInteractions: () => ({
     handleSelectionStart: workflowHookMocks.handleSelectionStart,
     handleSelectionChange: workflowHookMocks.handleSelectionChange,
@@ -408,8 +399,15 @@ vi.mock('../hooks', () => ({
   useWorkflowReadOnly: () => ({
     workflowReadOnly: false,
   }),
+  useWorkflowMoveMode: () => ({
+    isCommentModeAvailable: false,
+  }),
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
+  }),
+  useWorkflowStartRun: () => ({
+    handleStartWorkflowRun: vi.fn(),
+    handleWorkflowStartRunInChatflow: vi.fn(),
   }),
 }))
 
@@ -551,14 +549,10 @@ describe('Workflow edge event wiring', () => {
     ]))
   })
 
-  it('should clear edgeMenu when workflow data updates remove the current edge', () => {
+  it('should clear context menu target when workflow data updates', () => {
     const { store } = renderSubject({
       initialStoreState: {
-        edgeMenu: {
-          clientX: 320,
-          clientY: 180,
-          edgeId: 'edge-1',
-        },
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       },
     })
 
@@ -572,7 +566,7 @@ describe('Workflow edge event wiring', () => {
       })
     })
 
-    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

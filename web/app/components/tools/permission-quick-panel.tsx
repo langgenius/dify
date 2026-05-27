@@ -1,7 +1,7 @@
 'use client'
 
 import type { Permissions } from '@/app/components/plugins/types'
-import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import { PermissionType } from '@/app/components/plugins/types'
 
@@ -52,7 +52,7 @@ export function PermissionQuickPanel({
               <div className="flex min-h-6 items-center system-sm-semibold whitespace-nowrap text-text-secondary">
                 {row.label}
               </div>
-              <ToggleGroup<PermissionType>
+              <SegmentedControl<PermissionType>
                 value={[row.value]}
                 onValueChange={(value) => {
                   const nextValue = value[0]
@@ -66,17 +66,17 @@ export function PermissionQuickPanel({
                   const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
 
                   return (
-                    <ToggleGroupItem
+                    <SegmentedControlItem
                       key={option}
                       value={option}
                       aria-label={`${row.label}: ${optionLabel}`}
                       className="shrink-0"
                     >
                       <span className="px-0.5 py-0.5">{optionLabel}</span>
-                    </ToggleGroupItem>
+                    </SegmentedControlItem>
                   )
                 })}
-              </ToggleGroup>
+              </SegmentedControl>
             </div>
           ))}
         </div>

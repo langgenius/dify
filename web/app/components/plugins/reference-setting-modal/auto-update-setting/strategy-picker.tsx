@@ -1,4 +1,4 @@
-import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import { AUTO_UPDATE_STRATEGY } from './types'
 
@@ -29,7 +29,7 @@ const StrategyPicker = ({
   ]
 
   return (
-    <ToggleGroup<AUTO_UPDATE_STRATEGY>
+    <SegmentedControl<AUTO_UPDATE_STRATEGY>
       aria-label={t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
       className="w-[326px]"
       value={[value]}
@@ -40,15 +40,15 @@ const StrategyPicker = ({
       }}
     >
       {options.map(option => (
-        <ToggleGroupItem<AUTO_UPDATE_STRATEGY>
+        <SegmentedControlItem<AUTO_UPDATE_STRATEGY>
           key={option.value}
           value={option.value}
           className="flex-1 hover:bg-state-base-hover-alt data-pressed:text-text-accent-light-mode-only data-pressed:hover:bg-components-segmented-control-item-active-bg"
         >
           <span className="p-0.5 whitespace-nowrap">{option.label}</span>
-        </ToggleGroupItem>
+        </SegmentedControlItem>
       ))}
-    </ToggleGroup>
+    </SegmentedControl>
   )
 }
 

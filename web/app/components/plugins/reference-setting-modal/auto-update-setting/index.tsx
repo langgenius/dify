@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
 import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -182,7 +182,7 @@ const AutoUpdateSetting: FC<Props> = ({
             </div>
             <div>
               <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })} />
-              <ToggleGroup<AUTO_UPDATE_MODE>
+              <SegmentedControl<AUTO_UPDATE_MODE>
                 aria-label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })}
                 className="mt-1 flex w-full"
                 value={[upgrade_mode]}
@@ -193,15 +193,15 @@ const AutoUpdateSetting: FC<Props> = ({
                 }}
               >
                 {scopeOptions.map(option => (
-                  <ToggleGroupItem<AUTO_UPDATE_MODE>
+                  <SegmentedControlItem<AUTO_UPDATE_MODE>
                     key={option.value}
                     value={option.value}
                     className="flex-1 hover:bg-state-base-hover-alt data-pressed:text-text-accent-light-mode-only data-pressed:hover:bg-components-segmented-control-item-active-bg"
                   >
                     <span className="p-0.5 whitespace-nowrap">{option.label}</span>
-                  </ToggleGroupItem>
+                  </SegmentedControlItem>
                 ))}
-              </ToggleGroup>
+              </SegmentedControl>
 
               {upgrade_mode !== AUTO_UPDATE_MODE.update_all && (
                 <PluginsPicker

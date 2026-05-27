@@ -12,7 +12,7 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Union, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.helper.trace_id_helper import ParentTraceContext
@@ -47,6 +47,12 @@ from graphon.graph_events import (
 )
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from services.workflow.inspector_events import (
+    publish_node_changed as _inspector_publish_node_changed,
+)
+from services.workflow.inspector_events import (
+    publish_workflow_completed as _inspector_publish_workflow_completed,
+)
 
 
 @dataclass(slots=True)
@@ -98,12 +104,14 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     # GraphEngineLayer lifecycle
     # ------------------------------------------------------------------
+    @override
     def on_graph_start(self) -> None:
         self._workflow_execution = None
         self._node_execution_cache.clear()
         self._node_snapshots.clear()
         self._node_sequence = 0
 
+    @override
     def on_event(self, event: GraphEngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
@@ -131,6 +139,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             case NodeRunPauseRequestedEvent():
                 self._handle_node_pause_requested(event)
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         return
 
@@ -160,6 +169,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution_repository.save(execution)
         self._enqueue_trace_task(execution)
+        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
     def _handle_graph_run_partial_succeeded(self, event: GraphRunPartialSucceededEvent) -> None:
         execution = self._get_workflow_execution()
@@ -170,6 +180,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution_repository.save(execution)
         self._enqueue_trace_task(execution)
+        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
     def _handle_graph_run_failed(self, event: GraphRunFailedEvent) -> None:
         execution = self._get_workflow_execution()
@@ -181,6 +192,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._fail_running_node_executions(error_message=event.error)
         self._workflow_execution_repository.save(execution)
         self._enqueue_trace_task(execution)
+        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
     def _handle_graph_run_aborted(self, event: GraphRunAbortedEvent) -> None:
         execution = self._get_workflow_execution()
@@ -191,6 +203,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._fail_running_node_executions(error_message=execution.error_message or "")
         self._workflow_execution_repository.save(execution)
         self._enqueue_trace_task(execution)
+        _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
 
     def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
         execution = self._get_workflow_execution()
@@ -238,6 +251,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             created_at=event.start_at,
         )
         self._node_snapshots[event.id] = snapshot
+        _inspector_publish_node_changed(workflow_run_id=execution.id_, node_id=event.node_id, status="running")
 
     def _handle_node_retry(self, event: NodeRunRetryEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -245,6 +259,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         domain_execution.error = event.error
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        _inspector_publish_node_changed(
+            workflow_run_id=self._get_workflow_execution().id_,
+            node_id=domain_execution.node_id,
+            status="retry",
+        )
 
     def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -253,6 +272,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             event.node_run_result,
             WorkflowNodeExecutionStatus.SUCCEEDED,
             finished_at=event.finished_at,
+        )
+        _inspector_publish_node_changed(
+            workflow_run_id=self._get_workflow_execution().id_,
+            node_id=domain_execution.node_id,
+            status="succeeded",
         )
 
     def _handle_node_failed(self, event: NodeRunFailedEvent) -> None:
@@ -264,6 +288,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             error=event.error,
             finished_at=event.finished_at,
         )
+        _inspector_publish_node_changed(
+            workflow_run_id=self._get_workflow_execution().id_,
+            node_id=domain_execution.node_id,
+            status="failed",
+        )
 
     def _handle_node_exception(self, event: NodeRunExceptionEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -273,6 +302,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             WorkflowNodeExecutionStatus.EXCEPTION,
             error=event.error,
             finished_at=event.finished_at,
+        )
+        _inspector_publish_node_changed(
+            workflow_run_id=self._get_workflow_execution().id_,
+            node_id=domain_execution.node_id,
+            status="exception",
         )
 
     def _handle_node_pause_requested(self, event: NodeRunPauseRequestedEvent) -> None:

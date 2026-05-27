@@ -12,7 +12,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
-from models.model import App, AppMode
+from models.model import App, AppMode, EndUser
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -56,7 +56,7 @@ class AppParameterApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model: App, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
@@ -92,7 +92,7 @@ class AppMeta(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model: App, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
         return AppService().get_app_meta(app_model)
 

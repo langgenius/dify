@@ -13,7 +13,8 @@ import {
   ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useDeferredValue, useState } from 'react'
+import { useDebounce } from 'ahooks'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Loading from '@/app/components/base/loading'
@@ -106,12 +107,12 @@ export function DocumentPicker({
 }: Props) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
-  const deferredSearchValue = useDeferredValue(searchValue)
+  const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
   const { data } = useDocumentList({
     datasetId,
     query: {
-      keyword: deferredSearchValue,
+      keyword: debouncedSearchValue,
       page: 1,
       limit: 20,
     },
@@ -153,7 +154,7 @@ export function DocumentPicker({
         aria-label={value?.name || t('operation.search', { ns: 'common' })}
         icon={false}
         className={cn(
-          'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-open:bg-state-base-hover',
+          'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-popup-open:bg-state-base-hover',
         )}
       >
         <ComboboxValue>
@@ -175,19 +176,16 @@ export function DocumentPicker({
             className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
           />
         </ComboboxInputGroup>
+        <DocumentList
+          className="mt-2 data-empty:mt-0"
+        />
         {data
           ? (
-              documentsList.length > 0
-                ? (
-                    <DocumentList
-                      className="mt-2"
-                    />
-                  )
-                : (
-                    <ComboboxEmpty className="mt-2 flex h-[100px] w-full items-center justify-center">
-                      {t('noData', { ns: 'common' })}
-                    </ComboboxEmpty>
-                  )
+              <ComboboxEmpty className="p-0">
+                <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
+                  {t('noData', { ns: 'common' })}
+                </div>
+              </ComboboxEmpty>
             )
           : (
               <ComboboxStatus className="mt-2 flex h-[100px] w-full items-center justify-center">

@@ -3,10 +3,9 @@ import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Radio } from '@langgenius/dify-ui/radio'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Radio from '@/app/components/base/radio/ui'
 
 type CrawledResultItemProps = {
   payload: CrawlResultItemType
@@ -28,10 +27,6 @@ const CrawledResultItem = ({
   isMultipleChoice = true,
 }: CrawledResultItemProps) => {
   const { t } = useTranslation()
-
-  const handleCheckChange = useCallback(() => {
-    onCheckChange(!isChecked)
-  }, [isChecked, onCheckChange])
 
   return (
     <div className={cn(
@@ -65,11 +60,10 @@ const CrawledResultItem = ({
               </label>
             )
           : (
-              <>
+              <label className="flex min-w-0 grow cursor-pointer gap-x-2">
                 <Radio
                   className="shrink-0"
-                  isChecked={isChecked}
-                  onCheck={handleCheckChange}
+                  value={payload.source_url}
                 />
                 <div className="flex min-w-0 grow flex-col gap-y-0.5">
                   <div
@@ -85,7 +79,7 @@ const CrawledResultItem = ({
                     {payload.source_url}
                   </div>
                 </div>
-              </>
+              </label>
             )
       }
       {showPreview && (

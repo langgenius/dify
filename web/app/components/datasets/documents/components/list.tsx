@@ -1,12 +1,11 @@
 'use client'
-import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Pagination from '@/app/components/base/pagination'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
@@ -18,6 +17,15 @@ import { useDocumentActions, useDocumentSelection, useDocumentSort } from './doc
 import RenameModal from './rename-modal'
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
+
+type PaginationProps = {
+  className?: string
+  current: number
+  total: number
+  limit?: number
+  onChange: (page: number) => void
+  onLimitChange?: (limit: number) => void
+}
 
 type DocumentListProps = {
   embeddingAvailable: boolean
@@ -48,6 +56,8 @@ const DocumentList = ({
   onSortChange,
 }: DocumentListProps) => {
   const { t } = useTranslation()
+  const pageSize = pagination.limit ?? 10
+  const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
@@ -198,8 +208,25 @@ const DocumentList = ({
 
       {!!pagination.total && (
         <Pagination
-          {...pagination}
-          className="w-full shrink-0"
+          className="shrink-0"
+          page={pagination.current + 1}
+          totalPages={totalPages}
+          onPageChange={page => pagination.onChange(page - 1)}
+          labels={{
+            previous: t('pagination.previous', { ns: 'common' }),
+            next: t('pagination.next', { ns: 'common' }),
+            editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+            pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+          }}
+          pageSize={pagination.onLimitChange
+            ? {
+                value: pageSize,
+                options: [10, 25, 50],
+                onValueChange: pagination.onLimitChange,
+                label: t('pagination.perPage', { ns: 'common' }),
+                ariaLabel: t('pagination.perPage', { ns: 'common' }),
+              }
+            : undefined}
         />
       )}
 

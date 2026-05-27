@@ -8,7 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import SearchInput from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
 import Card from '@/app/components/plugins/card'
@@ -22,6 +22,7 @@ import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
+import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
@@ -157,7 +158,7 @@ const ProviderList = ({
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
-  const { data: collectionList = [], refetch } = useAllToolProviders()
+  const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
   const filteredCollectionList = useMemo(() => {
     return collectionList.filter((collection) => {
       if (collection.type !== activeTab)
@@ -210,13 +211,10 @@ const ProviderList = ({
                 {showLabelFilter && (
                   <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
                 )}
-                <Input
-                  showLeftIcon
-                  showClearIcon
-                  wrapperClassName="w-[200px]"
+                <SearchInput
+                  className="w-[200px]"
                   value={keywords}
-                  onChange={e => handleKeywordsChange(e.target.value)}
-                  onClear={() => handleKeywordsChange('')}
+                  onChange={handleKeywordsChange}
                 />
               </div>
               {showToolsUpdateSetting && (
@@ -234,35 +232,41 @@ const ProviderList = ({
                 !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
               )}
             >
-              {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
-              {filteredCollectionList.map(collection => (
-                <div
-                  key={collection.id}
-                  onClick={() => setCurrentProviderId(collection.id)}
-                >
-                  <Card
-                    className={cn(
-                      'cursor-pointer',
-                      currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
-                    )}
-                    hideCornerMark
-                    payload={collectionToCardPayload(collection)}
-                    footer={(
-                      <CardMoreInfo
-                        tags={collection.labels?.map(label => getTagLabel(label)) || []}
-                      />
-                    )}
-                  />
-                </div>
-              ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && (
-                <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
-                  <WorkflowToolEmpty type={getToolType(activeTab)} />
-                </div>
-              )}
+              {isCollectionListLoading
+                ? <ToolCardSkeletonGrid />
+                : (
+                    <>
+                      {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+                      {filteredCollectionList.map(collection => (
+                        <div
+                          key={collection.id}
+                          onClick={() => setCurrentProviderId(collection.id)}
+                        >
+                          <Card
+                            className={cn(
+                              'cursor-pointer',
+                              currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
+                            )}
+                            hideCornerMark
+                            payload={collectionToCardPayload(collection)}
+                            footer={(
+                              <CardMoreInfo
+                                tags={collection.labels?.map(label => getTagLabel(label)) || []}
+                              />
+                            )}
+                          />
+                        </div>
+                      ))}
+                      {!filteredCollectionList.length && activeTab === 'workflow' && (
+                        <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
+                          <WorkflowToolEmpty type={getToolType(activeTab)} />
+                        </div>
+                      )}
+                    </>
+                  )}
             </div>
           )}
-          {!filteredCollectionList.length && activeTab === 'builtin' && (
+          {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
             <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
           )}
           {enable_marketplace && activeTab === 'builtin' && (

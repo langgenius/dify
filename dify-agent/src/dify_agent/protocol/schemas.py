@@ -17,7 +17,8 @@ public ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each
 ``type`` has a typed ``data`` model so OpenAPI, Redis replay, and clients parse
 the same payload contract. Model/provider selection is part of the submitted
 composition, not a top-level run field; the runtime reads the model layer named
-by ``DIFY_AGENT_MODEL_LAYER_ID`` and the optional structured output layer named
+by ``DIFY_AGENT_MODEL_LAYER_ID``, the optional history layer named by
+``DIFY_AGENT_HISTORY_LAYER_ID``, and the optional structured output layer named
 by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
@@ -42,10 +43,10 @@ from agenton.layers import ExitIntent
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
+DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
 RunStatus = Literal["running", "paused", "succeeded", "failed", "cancelled"]
 RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
-InvokeFrom = Literal["workflow_run", "single_step", "agent_app", "babysit", "fasten"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
@@ -104,45 +105,26 @@ class RunComposition(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class ExecutionContext(BaseModel):
-    """Dify-owned execution identifiers attached to one Agent backend run.
-
-    The Agent backend stores and replays this context for observability and
-    product correlation only. It must not use these identifiers as authorization
-    proof; API backend remains responsible for tenant and user access checks.
-    """
-
-    tenant_id: str
-    app_id: str | None = None
-    workflow_id: str | None = None
-    workflow_run_id: str | None = None
-    node_id: str | None = None
-    node_execution_id: str | None = None
-    conversation_id: str | None = None
-    agent_id: str | None = None
-    agent_config_version_id: str | None = None
-    invoke_from: InvokeFrom
-    trace_id: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
 class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
     Model/provider configuration must be supplied through the composition layer
-    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Structured output may be supplied
-    through the optional composition layer named by
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``. Optional persisted conversation
+    history may be supplied through the composition layer named by
+    ``DIFY_AGENT_HISTORY_LAYER_ID``. Structured output may be supplied through
+    the optional composition layer named by
     ``DIFY_AGENT_OUTPUT_LAYER_ID``. ``on_exit`` defaults every active layer to
     suspend so callers receive a resumable success snapshot unless they
     explicitly request delete for one or more layers. Session snapshots do not
     preserve output-layer config, so resume requests that rely on structured
     output must include the same ``output`` layer in ``composition.layers[]`` to
-    keep snapshot compatibility and rebuild the output schema.
+    keep snapshot compatibility and rebuild the output schema. Dify tenant,
+    user, and run-correlation identifiers must be submitted through a
+    ``dify.execution_context`` entry in ``composition.layers[]``; there is no
+    parallel top-level ``execution_context`` request field.
     """
 
     composition: RunComposition
-    execution_context: ExecutionContext | None = None
     purpose: RunPurpose = "workflow_node"
     idempotency_key: str | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -348,11 +330,10 @@ __all__ = [
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
-    "ExecutionContext",
-    "InvokeFrom",
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",

@@ -114,6 +114,8 @@ const List = () => {
                 hasNextPage={datasetListQuery.hasNextPage}
                 isFetching={datasetListQuery.isFetching}
                 isFetchingNextPage={datasetListQuery.isFetchingNextPage}
+                isLoading={datasetListQuery.isLoading}
+                isPlaceholderData={datasetListQuery.isPlaceholderData}
                 onOpenTagManagement={() => setShowTagManagementModal(true)}
               />
               {!systemFeatures.branding.enabled && <DatasetFooter />}

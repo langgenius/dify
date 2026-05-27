@@ -60,6 +60,9 @@ vi.mock('@/service/use-billing', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────

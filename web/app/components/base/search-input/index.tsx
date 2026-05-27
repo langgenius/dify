@@ -1,48 +1,51 @@
-import type { FC } from 'react'
+import type { InputProps } from '@langgenius/dify-ui/input'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
+import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type SearchInputProps = {
+type SearchInputProps = Omit<InputProps, 'className' | 'onChange' | 'size' | 'value'> & {
   placeholder?: string
   className?: string
+  inputClassName?: string
   value: string
   onChange: (v: string) => void
   white?: boolean
 }
 
-const SearchInput: FC<SearchInputProps> = ({
+function SearchInput({
   placeholder,
   className,
+  inputClassName,
   value,
   onChange,
   white,
-}) => {
+  ...props
+}: SearchInputProps) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [focus, setFocus] = useState<boolean>(false)
   const isComposing = useRef<boolean>(false)
   const [compositionValue, setCompositionValue] = useState<string>('')
 
   return (
     <div className={cn(
-      'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
-      focus && 'bg-components-input-bg-active!',
-      white && 'border-gray-300! bg-white! shadow-xs hover:border-gray-300! hover:bg-white!',
+      'relative w-full',
       className,
     )}
     >
-      <div className="pointer-events-none mr-1.5 flex size-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="size-4 text-components-input-text-placeholder" aria-hidden="true" />
-      </div>
-      <input
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-2 z-1 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+      />
+      <Input
         ref={inputRef}
         type="text"
         name="query"
         className={cn(
-          'caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-          white && 'bg-white! group-hover:bg-white! placeholder:text-gray-400! hover:bg-white!',
+          'h-8 pl-[26px]',
+          value ? 'pr-[26px]' : 'pr-2',
+          white && 'border-gray-300! bg-white! shadow-xs placeholder:text-gray-400! hover:border-gray-300! hover:bg-white! focus:border-gray-300! focus:bg-white!',
+          inputClassName,
         )}
         placeholder={placeholder || t('operation.search', { ns: 'common' })!}
         value={isComposing.current ? compositionValue : value}
@@ -62,21 +65,20 @@ const SearchInput: FC<SearchInputProps> = ({
           setCompositionValue('')
           onChange(e.currentTarget.value)
         }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
         autoComplete="off"
+        {...props}
       />
       {value && (
         <button
           type="button"
           aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear flex size-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+          className="group/clear absolute top-1/2 right-2 z-1 flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-transparent p-0"
           onClick={() => {
             onChange('')
             inputRef.current?.focus()
           }}
         >
-          <RiCloseCircleFill className="size-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
+          <span aria-hidden className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
         </button>
       )}
     </div>
