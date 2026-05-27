@@ -1,16 +1,18 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { useRouter } from '@/next/navigation'
+import { switchWorkspace } from '@/service/common'
 import { LicenseStatus } from '@/types/feature'
-import WorkspaceCard from '../workspace-card'
+import { WorkspaceCard } from '../workspace-card'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -85,6 +87,9 @@ const appContextValue: AppContextValue = {
   isValidatingCurrentWorkspace: false,
 }
 
+const mockSetShowPricingModal = vi.fn()
+const mockSetShowAccountSettingModal = vi.fn()
+
 describe('WorkspaceCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -97,8 +102,8 @@ describe('WorkspaceCard', () => {
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
     vi.mocked(useModalContext).mockReturnValue({
-      setShowPricingModal: vi.fn(),
-      setShowAccountSettingModal: vi.fn(),
+      setShowPricingModal: mockSetShowPricingModal,
+      setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
     vi.mocked(useRouter).mockReturnValue({
       push: vi.fn(),
@@ -111,6 +116,7 @@ describe('WorkspaceCard', () => {
     vi.mocked(useWorkspacesContext).mockReturnValue({
       workspaces: [
         { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
+        { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 0, current: false },
       ],
     })
   })
@@ -143,5 +149,52 @@ describe('WorkspaceCard', () => {
 
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
     expect(screen.queryByText(Plan.sandbox)).not.toBeInTheDocument()
+  })
+
+  it('opens workspace actions and switcher in a dropdown menu', async () => {
+    renderWithSystemFeatures(<WorkspaceCard />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'common.mainNav.workspace.inviteMembers' })).toBeInTheDocument()
+    expect(screen.getByText('common.mainNav.workspace.switchWorkspace')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Evan Workspace' })).toBeInTheDocument()
+  })
+
+  it('opens account settings from workspace menu actions', async () => {
+    renderWithSystemFeatures(<WorkspaceCard />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'common.mainNav.workspace.settings' }))
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
+  })
+
+  it('switches workspace from the dropdown item', async () => {
+    vi.mocked(switchWorkspace).mockReturnValue(new Promise(() => {}))
+    renderWithSystemFeatures(<WorkspaceCard />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Evan Workspace' }))
+
+    await waitFor(() => expect(switchWorkspace).toHaveBeenCalledWith({ url: '/workspaces/switch', body: { tenant_id: 'workspace-2' } }))
+  })
+
+  it('hides workspace management actions for dataset operators', async () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      ...appContextValue,
+      isCurrentWorkspaceDatasetOperator: true,
+      isCurrentWorkspaceManager: false,
+    })
+
+    renderWithSystemFeatures(<WorkspaceCard />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    expect(await screen.findByRole('menu')).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'common.mainNav.workspace.settings' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'common.mainNav.workspace.inviteMembers' })).not.toBeInTheDocument()
   })
 })

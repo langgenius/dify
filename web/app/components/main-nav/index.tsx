@@ -21,7 +21,7 @@ import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import MainNavSearchButton from './components/search-button'
 import WebAppsSection from './components/web-apps-section'
-import WorkspaceCard from './components/workspace-card'
+import { WorkspaceCard } from './components/workspace-card'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
