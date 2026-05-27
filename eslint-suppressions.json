@@ -103,14 +103,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
     "no-console": {
       "count": 19
@@ -134,11 +126,6 @@
   },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -632,22 +619,6 @@
     }
   },
   "web/app/components/app/workflow-log/trigger-by-display.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/apps/list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/apps/new-app-card.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2228,11 +2199,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2306,14 +2272,6 @@
   },
   "web/app/components/explore/app-list/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/explore/banner/banner-item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2828,11 +2786,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-page/empty/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/plugin-page/filter-management/category-filter.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3123,47 +3076,14 @@
       "count": 1
     }
   },
-  "web/app/components/tools/mcp/headers-input.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/modal.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
   "web/app/components/tools/mcp/provider-card.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/tools/mcp/sections/authentication-section.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/sections/configurations-section.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider/empty.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/tools/setting/build-in/config-credentials.tsx": {
@@ -5175,17 +5095,6 @@
   "web/service/use-plugins-auth.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/service/use-plugins.ts": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "web/service/use-tools.ts": {
