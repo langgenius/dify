@@ -11,7 +11,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
 from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
-from models.model import AppMode
+from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -46,7 +46,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
@@ -86,7 +86,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
@@ -126,7 +126,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
@@ -166,7 +166,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
