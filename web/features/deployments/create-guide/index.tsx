@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { DoneStep } from './done-step'
 import { GuideActions, GuideCard, GuideFrame } from './layout'
-import { DeploymentSummaryPreview, ReviewStep } from './review-step'
 import { CreationSections } from './source-release-sections'
 import { TargetReviewSections } from './target-step'
 import { useCreateDeploymentGuide } from './use-create-deployment-guide'
@@ -15,7 +14,6 @@ export function CreateDeploymentGuide() {
     canContinue,
     creationSectionsProps,
     deployedEnvironmentName,
-    deploymentPreviewProps,
     handleBack,
     handlePrimaryAction,
     isDeploying,
@@ -25,29 +23,21 @@ export function CreateDeploymentGuide() {
     targetReviewSectionsProps,
   } = useCreateDeploymentGuide()
 
-  const deploymentPreview = (
-    <DeploymentSummaryPreview {...deploymentPreviewProps} />
-  )
-
   const guideContent = (
     <>
       {step === 'done'
         ? (
             <DoneStep environmentName={deployedEnvironmentName || selectedTargetEnvironmentName} />
           )
-        : step === 'review'
+        : showTargetConfiguration
           ? (
-              <ReviewStep preview={deploymentPreview} />
+              <div className="flex flex-col gap-7 pb-4">
+                <TargetReviewSections {...targetReviewSectionsProps} />
+              </div>
             )
-          : showTargetConfiguration
-            ? (
-                <div className="flex flex-col gap-7 pb-4">
-                  <TargetReviewSections {...targetReviewSectionsProps} />
-                </div>
-              )
-            : (
-                <CreationSections {...creationSectionsProps} />
-              )}
+          : (
+              <CreationSections {...creationSectionsProps} />
+            )}
     </>
   )
 

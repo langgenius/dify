@@ -102,7 +102,7 @@ export function useCreateDeploymentGuide() {
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
   const hasDslContent = Boolean(dslContent.trim())
   const encodedDslContent = hasDslContent ? encodeUtf8Base64(dslContent) : ''
-  const shouldResolveDeploymentTarget = step === 'target' || step === 'review'
+  const shouldResolveDeploymentTarget = step === 'target'
   const shouldLoadSourceDeploymentTarget = method === 'bindApp' && Boolean(effectiveSelectedApp?.id) && shouldResolveDeploymentTarget
   const shouldLoadDslDeploymentTarget = method === 'importDsl' && hasDslContent && shouldResolveDeploymentTarget
   const shouldLoadDeploymentTarget = shouldLoadSourceDeploymentTarget || shouldLoadDslDeploymentTarget
@@ -234,17 +234,6 @@ export function useCreateDeploymentGuide() {
         && requiredBindingsReady,
       )
     }
-    if (step === 'review') {
-      return Boolean(
-        selectedEnvironment?.id
-        && shouldLoadDeploymentTarget
-        && !isEnvironmentLoading
-        && !deployableEnvironmentsQuery.isError
-        && !isBindingLoading
-        && !deploymentOptionsQuery.isError
-        && requiredBindingsReady,
-      )
-    }
     return false
   }
 
@@ -255,8 +244,6 @@ export function useCreateDeploymentGuide() {
       setStep('source')
     else if (step === 'target')
       setStep('release')
-    else if (step === 'review')
-      setStep('target')
   }
 
   async function createReleaseArtifactsAndContinue() {
@@ -344,10 +331,6 @@ export function useCreateDeploymentGuide() {
       return
     }
     if (step === 'target') {
-      setStep('review')
-      return
-    }
-    if (step === 'review') {
       void handleDeploy()
     }
   }
@@ -399,15 +382,6 @@ export function useCreateDeploymentGuide() {
       stage: step === 'release' ? 'release' as const : 'source' as const,
     },
     deployedEnvironmentName,
-    deploymentPreviewProps: {
-      bindingSelections,
-      bindingSlots,
-      instanceName: displayedInstanceName,
-      releaseDescription: displayedReleaseDescription,
-      releaseName: displayedReleaseName,
-      sourceName,
-      targetEnvironmentName: selectedTargetEnvironmentName,
-    },
     handleBack,
     handlePrimaryAction,
     isDeploying,
