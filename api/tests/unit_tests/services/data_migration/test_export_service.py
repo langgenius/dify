@@ -161,6 +161,19 @@ def test_dependency_ids_are_deduplicated_with_manual_selection_first():
     assert provider_ids == ["weather", "manual", "forecast"]
 
 
+def test_api_provider_ids_use_provider_name_from_discovered_dependencies():
+    service = MigrationExportService()
+    provider_ids = service._provider_ids(
+        manual_provider_ids=[],
+        discovered_dependencies=[
+            DiscoveredDependency(DependencyKind.API_TOOL, "api-provider-id", provider_name="weather"),
+        ],
+        kind=DependencyKind.API_TOOL,
+    )
+
+    assert provider_ids == ["weather"]
+
+
 def test_mcp_authentication_export_omits_runtime_header_shape():
     service = MigrationExportService()
 

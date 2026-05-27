@@ -446,8 +446,17 @@ class MigrationExportService:
         kind: DependencyKind,
     ) -> list[str]:
         provider_ids = list(manual_provider_ids)
-        provider_ids.extend(dependency.provider_id for dependency in discovered_dependencies if dependency.kind == kind)
+        provider_ids.extend(
+            self._provider_export_identifier(dependency)
+            for dependency in discovered_dependencies
+            if dependency.kind == kind
+        )
         return self._dedupe(provider_ids)
+
+    def _provider_export_identifier(self, dependency: DiscoveredDependency) -> str:
+        if dependency.kind == DependencyKind.API_TOOL and dependency.provider_name:
+            return dependency.provider_name
+        return dependency.provider_id
 
     def _dependencies_by_kind(
         self, discovered_dependencies: Iterable[DiscoveredDependency], kind: DependencyKind

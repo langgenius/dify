@@ -273,10 +273,16 @@ def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> dic
         for dependency in discovery_service.discover_from_dsl(dsl):
             if dependency.kind == DependencyKind.API_TOOL:
                 auto_tools["api_tools"].add(dependency.provider_id)
+                if dependency.provider_name:
+                    auto_tools["api_tools"].add(dependency.provider_name)
             elif dependency.kind == DependencyKind.WORKFLOW_TOOL:
                 auto_tools["workflow_tools"].add(dependency.provider_id)
+                if dependency.provider_name:
+                    auto_tools["workflow_tools"].add(dependency.provider_name)
             elif dependency.kind == DependencyKind.MCP_TOOL:
                 auto_tools["mcp_tools"].add(dependency.provider_id)
+                if dependency.provider_name:
+                    auto_tools["mcp_tools"].add(dependency.provider_name)
     return auto_tools
 
 
