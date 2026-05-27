@@ -78,11 +78,11 @@ const platformImpls: Partial<Record<NodeJS.Platform, PlatformFactory>> = {
     id: () => 'linux',
     configDir: () => {
       const xdg = getEnv(ENV_XDG_CONFIG_HOME)
-      return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(env.homeDir(), '.config', SUBDIR)
+      return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(homedir(), '.config', SUBDIR)
     },
     cacheDir: () => {
       const xdg = getEnv(ENV_XDG_CACHE_HOME)
-      return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(env.homeDir(), '.cache', SUBDIR)
+      return (xdg !== undefined && xdg !== '') ? join(xdg, SUBDIR) : join(homedir(), '.cache', SUBDIR)
     },
     atomicReplace: posixAtomicReplace,
   }),
