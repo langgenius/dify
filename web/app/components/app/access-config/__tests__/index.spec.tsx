@@ -52,7 +52,7 @@ describe('AppAccessConfigPage', () => {
     it('should render access config title and pass app id to the editor', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.accessConfig' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'common.settings.appAccessPermissions' })).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('app-1:false')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
     })

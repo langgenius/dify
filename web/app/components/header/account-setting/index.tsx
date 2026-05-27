@@ -90,7 +90,7 @@ export default function AccountSetting({
         },
         {
           key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
-          name: t('settings.accessRules', { ns: 'common' }),
+          name: t('settings.resourceAccess', { ns: 'common' }),
           icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
           activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
         },

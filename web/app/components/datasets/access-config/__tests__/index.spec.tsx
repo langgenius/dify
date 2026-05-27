@@ -52,7 +52,7 @@ describe('DatasetAccessConfigPage', () => {
     it('should render access config title and pass dataset id to the editor', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.accessConfig' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'common.settings.knowledgeBaseAccessPermissions' })).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('dataset-1:false')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
     })

@@ -105,7 +105,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
       },
       {
-        name: t('settings.accessConfig', { ns: 'common' }),
+        name: t('settings.knowledgeBaseAccess', { ns: 'common' }),
         href: `/datasets/${datasetId}/access-config`,
         icon: RiUserSettingsLine,
         selectedIcon: RiUserSettingsFill,
