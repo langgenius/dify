@@ -58,7 +58,7 @@ const MainNav = ({
           {
             href: '/',
             label: t('mainNav.home', { ns: 'common' }),
-            active: (path: string) => path === '/' || path.startsWith('/explore'),
+            active: (path: string) => path === '/' || path === '/explore/apps',
             icon: 'i-custom-vender-main-nav-home',
             activeIcon: 'i-custom-vender-main-nav-home-active',
           },

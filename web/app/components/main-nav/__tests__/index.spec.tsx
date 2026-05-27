@@ -402,6 +402,20 @@ describe('MainNav', () => {
     expect(homeLink.className).toContain('bg-[linear-gradient(98.077deg')
   })
 
+  it('keeps Home active on the legacy explore apps route only', () => {
+    mockPathname = '/explore/apps'
+
+    const { rerender } = renderMainNav()
+
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    expect(homeLink).toHaveAttribute('aria-current', 'page')
+
+    mockPathname = '/explore/installed/installed-1'
+    rerender(<MainNav />)
+
+    expect(homeLink).not.toHaveAttribute('aria-current')
+  })
+
   it('dispatches the goto anything open event from the search button', () => {
     const handleOpen = vi.fn()
     window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
