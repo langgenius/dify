@@ -11,21 +11,18 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-// Mock useFormatTimeFromNow hook
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (timestamp: number) => new Date(timestamp).toLocaleDateString(),
   }),
 }))
 
-// Mock useKnowledge hook
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: () => 'High Quality',
   }),
 }))
 
-// Mock service hooks - will be overridden in individual tests
 const mockFetchNextPage = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
@@ -45,16 +42,16 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
     hasNextPage: false,
     isFetching: false,
     isFetchingNextPage: false,
+    isLoading: false,
+    isPlaceholderData: false,
   })),
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-// Mock app context - will be overridden in tests
 vi.mock('@/context/app-context', () => ({
   useSelector: vi.fn(() => true),
 }))
 
-// Mock useDatasetCardState hook
 vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
     modalState: {
@@ -71,7 +68,6 @@ vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   }),
 }))
 
-// Mock RenameDatasetModal
 vi.mock('../../rename-modal', () => ({
   default: () => null,
 }))
@@ -121,13 +117,11 @@ function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {
   } as DataSet
 }
 
-// Store IntersectionObserver callbacks for testing
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 const mockUnobserve = vi.fn()
 
-// Custom IntersectionObserver mock
 class MockIntersectionObserver {
   constructor(callback: IntersectionObserverCallback) {
     intersectionObserverCallback = callback
@@ -169,14 +163,14 @@ describe('Datasets', () => {
     hasNextPage: false,
     isFetching: false,
     isFetchingNextPage: false,
+    isLoading: false,
+    isPlaceholderData: false,
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
     intersectionObserverCallback = null
     document.title = ''
-
-    // Setup IntersectionObserver mock
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
   })
 
@@ -249,11 +243,63 @@ describe('Datasets', () => {
   })
 
   describe('Loading States', () => {
+    it('should show dataset card skeletons while initial dataset list is loading', () => {
+      render(
+        <Datasets
+          {...defaultProps}
+          datasetList={undefined}
+          isFetching={true}
+          isLoading={true}
+        />,
+      )
+
+      expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
+      expect(screen.queryByText('Dataset 1')).not.toBeInTheDocument()
+    })
+
+    it('should not show dataset card skeletons after an empty dataset list has loaded', () => {
+      render(
+        <Datasets
+          {...defaultProps}
+          datasetList={createDatasetListData([{ data: [] }])}
+          emptyElement={<div data-testid="filtered-empty">No knowledge here</div>}
+        />,
+      )
+
+      expect(screen.queryByRole('status', { name: /common\.loading/ })).not.toBeInTheDocument()
+      expect(screen.getByTestId('filtered-empty')).toBeInTheDocument()
+    })
+
+    it('should show dataset card skeletons when placeholder data is empty and the next query is fetching', () => {
+      render(
+        <Datasets
+          {...defaultProps}
+          datasetList={createDatasetListData([{ data: [] }])}
+          isFetching={true}
+          isPlaceholderData={true}
+        />,
+      )
+
+      expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
+    })
+
+    it('should keep rendered dataset cards when placeholder data has results during refetch', () => {
+      render(
+        <Datasets
+          {...defaultProps}
+          datasetList={createDatasetListData([{ data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] }])}
+          isFetching={true}
+          isPlaceholderData={true}
+        />,
+      )
+
+      expect(screen.queryByRole('status', { name: /common\.loading/ })).not.toBeInTheDocument()
+      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
+    })
+
     it('should show Loading component when isFetchingNextPage is true', () => {
       render(<Datasets {...defaultProps} hasNextPage={true} isFetchingNextPage={true} />)
-      // Loading component renders a div with loading classes
-      const nav = screen.getByRole('navigation')
-      expect(nav).toBeInTheDocument()
+      expect(screen.getByRole('navigation')).toBeInTheDocument()
     })
 
     it('should NOT show Loading component when isFetchingNextPage is false', () => {
@@ -283,14 +329,12 @@ describe('Datasets', () => {
     it('should setup IntersectionObserver on mount', () => {
       render(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      // Should observe the anchor element
       expect(mockObserve).toHaveBeenCalled()
     })
 
     it('should call fetchNextPage when isIntersecting, hasNextPage, and not isFetching', () => {
       render(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      // Simulate intersection
       if (intersectionObserverCallback) {
         intersectionObserverCallback(
           [{ isIntersecting: true } as IntersectionObserverEntry],
@@ -340,13 +384,24 @@ describe('Datasets', () => {
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
+    it('should NOT call fetchNextPage when placeholder data is showing', () => {
+      render(<Datasets {...defaultProps} hasNextPage={true} isPlaceholderData={true} />)
+
+      if (intersectionObserverCallback) {
+        intersectionObserverCallback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
+      }
+
+      expect(mockFetchNextPage).not.toHaveBeenCalled()
+    })
+
     it('should disconnect observer on unmount', () => {
       const { unmount } = render(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      // Unmount the component
       unmount()
 
-      // disconnect should be called during cleanup
       expect(mockDisconnect).toHaveBeenCalled()
     })
   })
