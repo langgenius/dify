@@ -521,7 +521,7 @@ class AppAnnotationService:
                 )
 
             # Check annotation quota limit
-            features = FeatureService.get_features(current_tenant_id)
+            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 annotation_quota_limit = features.annotation_quota_limit
                 if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:

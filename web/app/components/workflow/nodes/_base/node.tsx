@@ -79,7 +79,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
   const controlMode = useStore(s => s.controlMode)
-  const isContextMenuTarget = useStore(s => s.nodeMenu?.nodeId === id)
+  const isContextMenuTarget = useStore(s => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id)
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''

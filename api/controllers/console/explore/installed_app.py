@@ -262,7 +262,7 @@ class InstalledAppApi(InstalledAppResource):
     """
 
     @console_ns.response(204, "App uninstalled successfully")
-    def delete(self, installed_app):
+    def delete(self, installed_app: InstalledApp):
         _, current_tenant_id = current_account_with_tenant()
         if installed_app.app_owner_tenant_id == current_tenant_id:
             raise BadRequest("You can't uninstall an app owned by the current tenant")
@@ -270,10 +270,10 @@ class InstalledAppApi(InstalledAppResource):
         db.session.delete(installed_app)
         db.session.commit()
 
-        return {"result": "success", "message": "App uninstalled successfully"}, 204
+        return "", 204
 
     @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
-    def patch(self, installed_app):
+    def patch(self, installed_app: InstalledApp):
         payload = InstalledAppUpdatePayload.model_validate(console_ns.payload or {})
 
         commit_args = False

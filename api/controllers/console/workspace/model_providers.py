@@ -194,7 +194,7 @@ class ModelProviderCredentialApi(Resource):
             tenant_id=current_tenant_id, provider=provider, credential_id=args.credential_id
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")

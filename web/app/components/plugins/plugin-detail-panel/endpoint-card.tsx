@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -18,7 +19,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
   useDeleteEndpoint,
@@ -199,13 +199,13 @@ const EndpointCard = ({
       <div className="flex items-center justify-between p-2 pl-3">
         {active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
-            <Indicator color="green" />
+            <StatusDot status="success" />
             {t('detailPanel.serviceOk', { ns: 'plugin' })}
           </div>
         )}
         {!active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary">
-            <Indicator color="gray" />
+            <StatusDot status="disabled" />
             {t('detailPanel.disabled', { ns: 'plugin' })}
           </div>
         )}

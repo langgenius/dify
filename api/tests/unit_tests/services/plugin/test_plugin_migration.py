@@ -61,6 +61,7 @@ class TestHandlePluginInstanceInstall:
             patch(f"{MIGRATION_MODULE}.dify_config") as mock_cfg,
             patch(f"{MIGRATION_MODULE}.marketplace") as mock_marketplace,
             patch(f"{MIGRATION_MODULE}.PluginInstaller") as mock_installer_cls,
+            patch(f"{MIGRATION_MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             mock_cfg.MARKETPLACE_ENABLED = True
             mock_marketplace.download_plugin_pkg.return_value = b"pkg_data"
@@ -73,4 +74,31 @@ class TestHandlePluginInstanceInstall:
             )
 
         mock_marketplace.download_plugin_pkg.assert_called_once()
+        invalidate_cache.assert_called_once_with("tenant1")
         assert "success" in result or "failed" in result
+
+    def test_install_plugins_invalidates_cache_after_direct_tenant_install(self, tmp_path) -> None:
+        extracted_plugins = tmp_path / "plugins.jsonl"
+        output_file = tmp_path / "output.json"
+        extracted_plugins.write_text('{"tenant_id":"tenant1","plugins":["langgenius/openai"]}\n')
+
+        with (
+            patch(
+                f"{MIGRATION_MODULE}.PluginMigration.extract_unique_plugins",
+                return_value={
+                    "plugins": {"langgenius/openai": "langgenius/openai:1.0.0@abc"},
+                    "plugin_not_exist": [],
+                },
+            ),
+            patch(f"{MIGRATION_MODULE}.PluginMigration.handle_plugin_instance_install", return_value={}),
+            patch(f"{MIGRATION_MODULE}.PluginInstaller") as mock_installer_cls,
+            patch(f"{MIGRATION_MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            mock_installer = MagicMock()
+            mock_installer.list_plugins.return_value = []
+            mock_installer_cls.return_value = mock_installer
+
+            PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
+
+        mock_installer.install_from_identifiers.assert_called_once()
+        invalidate_cache.assert_called_once_with("tenant1")

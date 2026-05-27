@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
@@ -34,6 +35,7 @@ const AgentSetting: FC<Props> = ({
   const [tempPayload, setTempPayload] = useState(payload)
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
+  const maximumIterationsLabel = t('agent.setting.maximumIterations.name', { ns: 'appDebug' })
 
   useClickAway(() => {
     if (mounted)
@@ -96,10 +98,11 @@ const AgentSetting: FC<Props> = ({
             icon={
               <Unblur className="h-4 w-4 text-[#FB6514]" />
             }
-            name={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
+            name={maximumIterationsLabel}
             description={t('agent.setting.maximumIterations.description', { ns: 'appDebug' })}
           >
-            <div className="flex items-center">
+            <FieldsetRoot className="flex items-center">
+              <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
               <Slider
                 className="mr-3 w-[156px]"
                 min={maxIterationsMin}
@@ -111,10 +114,11 @@ const AgentSetting: FC<Props> = ({
                     max_iteration: value,
                   })
                 }}
-                aria-label={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
+                aria-label={maximumIterationsLabel}
               />
 
               <input
+                aria-label={maximumIterationsLabel}
                 type="number"
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
@@ -134,7 +138,7 @@ const AgentSetting: FC<Props> = ({
                   })
                 }}
               />
-            </div>
+            </FieldsetRoot>
           </ItemPanel>
 
           {!isFunctionCall && (

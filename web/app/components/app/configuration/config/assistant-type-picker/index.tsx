@@ -2,11 +2,15 @@
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { Radio } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -15,7 +19,6 @@ import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
-import Radio from '@/app/components/base/radio/ui'
 import AgentSetting from '../agent/agent-setting'
 
 type Props = {
@@ -35,26 +38,26 @@ type ItemProps = {
   isChecked: boolean
   description: string
   Icon: any
-  onClick: (value: string) => void
 }
 
-const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, onClick, disabled }) => {
+const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, disabled }) => {
   return (
-    <div
-      className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-2 border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 rounded-xl bg-gray-25 p-3 pr-4 hover:bg-gray-50')}
-      onClick={() => !disabled && onClick(value)}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="mr-3 rounded-lg bg-indigo-50 p-1">
-            <Icon className="size-4 text-indigo-600" />
+    <FieldItem>
+      <FieldLabel
+        className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-2 border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 rounded-xl bg-gray-25 p-3 pr-4 hover:bg-gray-50')}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="mr-3 rounded-lg bg-indigo-50 p-1">
+              <Icon className="size-4 text-indigo-600" />
+            </div>
+            <div className="text-sm/5 font-medium text-gray-900">{text}</div>
           </div>
-          <div className="text-sm/5 font-medium text-gray-900">{text}</div>
+          <Radio value={value} disabled={disabled} />
         </div>
-        <Radio isChecked={isChecked} />
-      </div>
-      <div className="ml-9 text-xs leading-[18px] font-normal text-gray-500">{description}</div>
-    </div>
+        <div className="ml-9 text-xs leading-[18px] font-normal text-gray-500">{description}</div>
+      </FieldLabel>
+    </FieldItem>
   )
 }
 
@@ -127,25 +130,38 @@ const AssistantTypePicker: FC<Props> = ({
           alignOffset={-2}
           popupClassName="relative left-0.5 w-[480px] rounded-xl border border-black/8 bg-white p-6 shadow-lg"
         >
-          <div className="mb-2 text-sm/5 font-semibold text-gray-900">{t('assistantType.name', { ns: 'appDebug' })}</div>
-          <SelectItem
-            Icon={BubbleText}
-            value="chat"
-            disabled={disabled}
-            text={t('assistantType.chatAssistant.name', { ns: 'appDebug' })}
-            description={t('assistantType.chatAssistant.description', { ns: 'appDebug' })}
-            isChecked={!isAgent}
-            onClick={handleChange}
-          />
-          <SelectItem
-            Icon={CuteRobot}
-            value="agent"
-            disabled={disabled}
-            text={t('assistantType.agentAssistant.name', { ns: 'appDebug' })}
-            description={t('assistantType.agentAssistant.description', { ns: 'appDebug' })}
-            isChecked={isAgent}
-            onClick={handleChange}
-          />
+          <FieldRoot name="assistant_type" className="contents">
+            <FieldsetRoot
+              render={(
+                <RadioGroup
+                  value={isAgent ? 'agent' : 'chat'}
+                  onValueChange={handleChange}
+                  disabled={disabled}
+                  className="flex-col items-stretch gap-0"
+                />
+              )}
+            >
+              <FieldsetLegend className="mb-2 py-0 text-sm/5 font-semibold text-gray-900">
+                {t('assistantType.name', { ns: 'appDebug' })}
+              </FieldsetLegend>
+              <SelectItem
+                Icon={BubbleText}
+                value="chat"
+                disabled={disabled}
+                text={t('assistantType.chatAssistant.name', { ns: 'appDebug' })}
+                description={t('assistantType.chatAssistant.description', { ns: 'appDebug' })}
+                isChecked={!isAgent}
+              />
+              <SelectItem
+                Icon={CuteRobot}
+                value="agent"
+                disabled={disabled}
+                text={t('assistantType.agentAssistant.name', { ns: 'appDebug' })}
+                description={t('assistantType.agentAssistant.description', { ns: 'appDebug' })}
+                isChecked={isAgent}
+              />
+            </FieldsetRoot>
+          </FieldRoot>
           {!disabled && agentConfigUI}
         </PopoverContent>
       </Popover>

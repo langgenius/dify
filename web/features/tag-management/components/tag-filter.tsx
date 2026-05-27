@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag01'
 import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import { consoleQuery } from '@/service/client'
-import { TagPanel } from './tag-panel'
+import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
 const tagToString = (tag: Tag) => tag.name
@@ -74,7 +74,7 @@ export const TagFilter = ({
           aria-label={triggerLabel}
           icon={false}
           className={cn(
-            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-open:bg-components-input-bg-normal',
+            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
           )}
         >
@@ -114,7 +114,7 @@ export const TagFilter = ({
           sideOffset={4}
           popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
         >
-          <TagPanel
+          <TagSearchContent
             type={type}
             inputValue={inputValue}
             onInputValueChange={setInputValue}

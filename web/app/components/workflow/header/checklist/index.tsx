@@ -74,17 +74,17 @@ const WorkflowChecklist = ({
           <button
             type="button"
             className={cn(
-              'relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+              'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
               disabled && 'cursor-not-allowed opacity-50',
             )}
             disabled={disabled || undefined}
             aria-label={checklistLabel}
           >
             <span
-              className={cn('group flex size-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+              className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover"
             >
               <span
-                className={cn('i-ri-list-check-3 size-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
+                className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
                 aria-hidden="true"
               />
             </span>

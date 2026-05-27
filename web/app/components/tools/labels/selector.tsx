@@ -47,7 +47,7 @@ function LabelSelector({
         <PopoverTrigger
           className={cn(
             'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
-            open && 'bg-components-input-bg-hover hover:bg-components-input-bg-hover',
+            'data-popup-open:bg-components-input-bg-hover data-popup-open:hover:bg-components-input-bg-hover',
           )}
         >
           <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>

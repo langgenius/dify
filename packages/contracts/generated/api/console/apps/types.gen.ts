@@ -973,6 +973,7 @@ export type AgentSoulConfig = {
   misc_legacy?: {
     [key: string]: unknown
   }
+  model?: AgentSoulModelConfig
   prompt?: AgentSoulPromptConfig
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
@@ -1395,6 +1396,16 @@ export type AgentSoulMemoryConfig = {
   scope?: string | null
 }
 
+export type AgentSoulModelConfig = {
+  credential_ref?: AgentSoulModelCredentialRef
+  model: string
+  model_provider: string
+  model_settings?: {
+    [key: string]: unknown
+  }
+  plugin_id: string
+}
+
 export type AgentSoulPromptConfig = {
   system_prompt?: string
 }
@@ -1425,7 +1436,8 @@ export type AgentSoulToolsConfig = {
 }
 
 export type DeclaredOutputConfig = {
-  checks?: Array<DeclaredOutputCheckConfig>
+  array_item?: DeclaredArrayItem
+  check?: DeclaredOutputCheckConfig
   description?: string | null
   failure_strategy?: DeclaredOutputFailureStrategy
   file?: DeclaredOutputFileConfig
@@ -1507,18 +1519,32 @@ export type WorkflowRunForArchivedLogResponse = {
 
 export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
 
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
+
+export type DeclaredArrayItem = {
+  description?: string | null
+  type: DeclaredOutputType
+}
+
 export type DeclaredOutputCheckConfig = {
   benchmark_file_ref?: {
     [key: string]: unknown
   } | null
+  enabled?: boolean
+  model_ref?: {
+    [key: string]: unknown
+  } | null
   prompt?: string | null
-  type: string
 }
 
 export type DeclaredOutputFailureStrategy = {
-  max_retries?: number
-  on_output_check_failed?: string | null
-  on_type_check_failed?: string | null
+  default_value?: unknown
+  on_failure?: OutputErrorStrategy
+  retry?: DeclaredOutputRetryConfig
 }
 
 export type DeclaredOutputFileConfig = {
@@ -1535,6 +1561,14 @@ export type UserActionConfig = {
 }
 
 export type FormInputConfig = unknown
+
+export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
+
+export type DeclaredOutputRetryConfig = {
+  enabled?: boolean
+  max_retries?: number
+  retry_interval_ms?: number
+}
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
@@ -4716,6 +4750,122 @@ export type PostAppsByAppIdWorkflowsDraftRunResponses = {
 export type PostAppsByAppIdWorkflowsDraftRunResponse
   = PostAppsByAppIdWorkflowsDraftRunResponses[keyof PostAppsByAppIdWorkflowsDraftRunResponses]
 
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs'
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsError
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events'
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsError
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}'
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdError
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    output_name: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview'
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
+
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
   body?: never
   path: {
@@ -4971,6 +5121,124 @@ export type PostAppsByAppIdWorkflowsPublishResponses = {
 
 export type PostAppsByAppIdWorkflowsPublishResponse
   = PostAppsByAppIdWorkflowsPublishResponses[keyof PostAppsByAppIdWorkflowsPublishResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs'
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events'
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}'
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewData
+  = {
+    body?: never
+    path: {
+      app_id: string
+      node_id: string
+      output_name: string
+      run_id: string
+    }
+    query?: never
+    url: '/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview'
+  }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors
+  = {
+    404: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses]
 
 export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
   body?: never

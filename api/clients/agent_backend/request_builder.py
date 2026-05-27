@@ -4,7 +4,9 @@ This module is intentionally an adapter, not a wire DTO package. The emitted
 object is always ``dify_agent.protocol.CreateRunRequest`` so the Agent backend
 protocol has a single owner. API-only context such as Agent Soul vs workflow job
 prompt is preserved in layer names and metadata until the dedicated product
-schemas land in later phases.
+schemas land in later phases. Dify-owned execution identifiers are emitted as an
+explicit ``dify.execution_context`` layer so the run request stays fully
+composition-driven.
 """
 
 from __future__ import annotations
@@ -15,18 +17,19 @@ from agenton.compositor import CompositorSessionSnapshot
 from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
-    DifyPluginLayerConfig,
     DifyPluginLLMLayerConfig,
+)
+from dify_agent.layers.execution_context import (
+    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+    DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import (
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
-    ExecutionContext,
     LayerExitSignals,
     RunComposition,
     RunLayerSpec,
@@ -37,27 +40,30 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 AGENT_SOUL_PROMPT_LAYER_ID = "agent_soul_prompt"
 WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
-DIFY_PLUGIN_CONTEXT_LAYER_ID = "plugin"
+DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 
 
 class AgentBackendModelConfig(BaseModel):
     """API-side model/plugin selection before it is converted to Dify Agent layers."""
 
-    tenant_id: str
     plugin_id: str
     model_provider: str
     model: str
-    user_id: str | None = None
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
+    model_settings: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class AgentBackendOutputConfig(BaseModel):
-    """API-side structured output declaration for the conventional output layer."""
+    """API-side structured output declaration for the conventional output layer.
+
+    The structured-output tool name is fixed to ``final_output`` inside
+    ``dify_agent.layers.output`` so callers only control the JSON Schema plus
+    optional description/strictness metadata.
+    """
 
     json_schema: dict[str, JsonValue]
-    name: str = "final_result"
     description: str | None = None
     strict: bool | None = None
 
@@ -68,7 +74,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     """Inputs needed to build the first workflow-node-oriented Agent backend run request."""
 
     model: AgentBackendModelConfig
-    execution_context: ExecutionContext
+    execution_context: DifyExecutionContextLayerConfig
     workflow_node_job_prompt: str
     user_prompt: str
     agent_soul_prompt: str | None = None
@@ -120,24 +126,22 @@ class AgentBackendRunRequestBuilder:
                     config=PromptLayerConfig(user=run_input.user_prompt),
                 ),
                 RunLayerSpec(
-                    name=DIFY_PLUGIN_CONTEXT_LAYER_ID,
-                    type=DIFY_PLUGIN_LAYER_TYPE_ID,
+                    name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
-                    config=DifyPluginLayerConfig(
-                        tenant_id=run_input.model.tenant_id,
-                        plugin_id=run_input.model.plugin_id,
-                        user_id=run_input.model.user_id,
-                    ),
+                    config=run_input.execution_context,
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                    deps={"plugin": DIFY_PLUGIN_CONTEXT_LAYER_ID},
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=DifyPluginLLMLayerConfig(
+                        plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         credentials=run_input.model.credentials,
+                        model_settings=run_input.model.model_settings or None,
                     ),
                 ),
             ]
@@ -151,7 +155,6 @@ class AgentBackendRunRequestBuilder:
                     metadata=run_input.metadata,
                     config=DifyOutputLayerConfig(
                         json_schema=run_input.output.json_schema,
-                        name=run_input.output.name,
                         description=run_input.output.description,
                         strict=run_input.output.strict,
                     ),
@@ -160,7 +163,6 @@ class AgentBackendRunRequestBuilder:
 
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
-            execution_context=run_input.execution_context,
             purpose=run_input.purpose,
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,

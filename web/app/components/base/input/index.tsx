@@ -22,6 +22,11 @@ export const inputVariants = cva(
   },
 )
 
+/**
+ * @deprecated Use `@langgenius/dify-ui/input` for primitive inputs and
+ * `@langgenius/dify-ui/field` for form composition. Search inputs should use
+ * a dedicated composition built on the primitive input.
+ */
 export type InputProps = {
   showLeftIcon?: boolean
   showClearIcon?: boolean
@@ -36,6 +41,11 @@ export type InputProps = {
 
 const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
 
+/**
+ * @deprecated Use `@langgenius/dify-ui/input` for primitive inputs and
+ * `@langgenius/dify-ui/field` for form composition. Search inputs should use
+ * a dedicated composition built on the primitive input.
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   size,
   disabled,

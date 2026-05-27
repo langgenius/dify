@@ -4,13 +4,13 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -224,8 +224,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>
           <div className="w-full">
             <Textarea
+              aria-label={t('form.desc', { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
-              onChange={e => handleValueChange('description', e.target.value)}
+              onValueChange={value => handleValueChange('description', value)}
               className="resize-none"
               placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             />

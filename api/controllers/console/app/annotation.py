@@ -159,13 +159,15 @@ class AppAnnotationSettingUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id: UUID, annotation_setting_id):
-        annotation_setting_id = str(annotation_setting_id)
+    def post(self, app_id: UUID, annotation_setting_id: UUID):
+        annotation_setting_id_str = str(annotation_setting_id)
 
         args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
 
         setting_args: UpdateAnnotationSettingArgs = {"score_threshold": args.score_threshold}
-        result = AppAnnotationService.update_app_annotation_setting(str(app_id), annotation_setting_id, setting_args)
+        result = AppAnnotationService.update_app_annotation_setting(
+            str(app_id), annotation_setting_id_str, setting_args
+        )
         return result, 200
 
 
@@ -181,9 +183,9 @@ class AnnotationReplyActionStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    def get(self, app_id: UUID, job_id, action):
-        job_id = str(job_id)
-        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
+    def get(self, app_id: UUID, job_id: UUID, action: str):
+        job_id_str = str(job_id)
+        app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -191,10 +193,10 @@ class AnnotationReplyActionStatusApi(Resource):
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
+            app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
             error_msg = redis_client.get(app_annotation_error_key).decode()
 
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations")
@@ -269,12 +271,12 @@ class AnnotationApi(Resource):
                     "message": "annotation_ids are required if the parameter is provided.",
                 }, 400
 
-            result = AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
-            return result, 204
+            AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
+            return "", 204
         # If no annotation_ids are provided, handle clearing all annotations
         else:
             AppAnnotationService.clear_all_annotations(str(app_id))
-            return {"result": "success"}, 204
+            return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
@@ -335,7 +337,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def delete(self, app_id: UUID, annotation_id: UUID):
         AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")

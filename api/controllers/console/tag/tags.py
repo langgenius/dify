@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -8,9 +9,16 @@ from werkzeug.exceptions import Forbidden
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from fields.base import ResponseModel
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from models.enums import TagType
 from services.tag_service import (
     SaveTagPayload,
@@ -91,8 +99,8 @@ class TagListApi(Resource):
         params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
     )
     @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
-    def get(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         raw_args = request.args.to_dict()
         param = TagListQueryParam.model_validate(raw_args)
         tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
@@ -108,9 +116,9 @@ class TagListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        current_user, _ = current_account_with_tenant()
-        # The role of the current user in the ta table must be admin, owner, or editor
+    @with_current_user
+    def post(self, current_user: Account):
+        # Allow users with edit permission, or dataset editors (including dataset operators).
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
@@ -131,17 +139,17 @@ class TagUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, tag_id):
-        current_user, _ = current_account_with_tenant()
-        tag_id = str(tag_id)
+    @with_current_user
+    def patch(self, current_user: Account, tag_id: UUID):
+        tag_id_str = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str)
 
-        binding_count = TagService.get_tag_binding_count(tag_id)
+        binding_count = TagService.get_tag_binding_count(tag_id_str)
 
         response = TagResponse.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
@@ -154,28 +162,27 @@ class TagUpdateDeleteApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @console_ns.response(204, "Tag deleted successfully")
-    def delete(self, tag_id):
-        tag_id = str(tag_id)
+    def delete(self, tag_id: UUID):
+        tag_id_str = str(tag_id)
 
-        TagService.delete_tag(tag_id)
+        TagService.delete_tag(tag_id_str)
 
         return "", 204
 
 
-def _require_tag_binding_edit_permission() -> None:
+def _require_tag_binding_edit_permission(current_user: Account) -> None:
     """
     Ensure the current account can edit tag bindings.
 
     Tag binding operations are allowed for users who can edit resources (app/dataset) within the current tenant.
     """
-    current_user, _ = current_account_with_tenant()
     # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
     if not (current_user.has_edit_permission or current_user.is_dataset_editor):
         raise Forbidden()
 
 
-def _create_tag_bindings() -> tuple[dict[str, str], int]:
-    _require_tag_binding_edit_permission()
+def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
+    _require_tag_binding_edit_permission(current_user)
 
     payload = TagBindingPayload.model_validate(console_ns.payload or {})
     TagService.save_tag_binding(
@@ -188,8 +195,8 @@ def _create_tag_bindings() -> tuple[dict[str, str], int]:
     return {"result": "success"}, 200
 
 
-def _remove_tag_bindings() -> tuple[dict[str, str], int]:
-    _require_tag_binding_edit_permission()
+def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
+    _require_tag_binding_edit_permission(current_user)
 
     payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
     TagService.delete_tag_binding(
@@ -212,8 +219,9 @@ class TagBindingCollectionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        return _create_tag_bindings()
+    @with_current_user
+    def post(self, current_user: Account):
+        return _create_tag_bindings(current_user)
 
 
 @console_ns.route("/tag-bindings/remove")
@@ -227,5 +235,6 @@ class TagBindingRemoveApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        return _remove_tag_bindings()
+    @with_current_user
+    def post(self, current_user: Account):
+        return _remove_tag_bindings(current_user)

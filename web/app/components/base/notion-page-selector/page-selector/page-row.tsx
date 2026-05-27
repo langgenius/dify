@@ -2,11 +2,11 @@ import type { CSSProperties } from 'react'
 import type { NotionPageRow as NotionPageRowData, NotionPageSelectionMode } from './types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Radio } from '@langgenius/dify-ui/radio'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionIcon from '@/app/components/base/notion-icon'
-import Radio from '@/app/components/base/radio/ui'
 
 type NotionPageRowProps = {
   checked: boolean
@@ -58,9 +58,9 @@ const NotionPageRow = ({
         : (
             <Radio
               className="mr-2 shrink-0"
-              isChecked={checked}
+              value={pageId}
               disabled={disabled}
-              onCheck={() => onSelect(pageId)}
+              aria-label={row.page.page_name}
             />
           )}
       {!searchValue && row.hasChild && (

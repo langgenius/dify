@@ -19,6 +19,7 @@ vi.mock('@/next/navigation', () => ({
   }),
   usePathname: () => '/app/workflow-app-id',
   useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
 }))
 
 // Mock app context
@@ -66,15 +67,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
       { name: 'label2', label: 'Label 2' },
     ],
   }),
-}))
-
-// Mock EmojiPickerInner - simplified for testing
-vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
-  default: ({ onSelect }: { onSelect: (icon: string, background: string) => void }) => (
-    <div data-testid="emoji-picker">
-      <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#f0f0f0')}>Select Emoji</button>
-    </div>
-  ),
 }))
 
 // Mock AppIcon - simplified for testing
@@ -814,8 +806,9 @@ describe('WorkflowToolDrawer', () => {
       await user.click(iconButton)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
     })
 
     it('should update emoji on selection', async () => {
@@ -834,14 +827,19 @@ describe('WorkflowToolDrawer', () => {
       const iconButton = screen.getByTestId('app-icon')
       await user.click(iconButton)
 
-      // Select emoji
-      await user.click(screen.getByTestId('select-emoji'))
-      await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
 
       // Assert
       const updatedIcon = screen.getByTestId('app-icon')
-      expect(updatedIcon)!.toHaveAttribute('data-icon', '🚀')
-      expect(updatedIcon)!.toHaveAttribute('data-background', '#f0f0f0')
+      expect(updatedIcon)!.toHaveAttribute('data-icon', '🔧')
+      expect(updatedIcon)!.toHaveAttribute('data-background', '#E4FBCC')
     })
 
     it('should close emoji picker on close button', async () => {
@@ -859,43 +857,15 @@ describe('WorkflowToolDrawer', () => {
       const iconButton = screen.getByTestId('app-icon')
       await user.click(iconButton)
 
-      expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
 
-      await user.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
-
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
 
     it('should update labels when label selector changes', async () => {

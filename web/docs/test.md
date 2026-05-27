@@ -547,4 +547,4 @@ Test examples in the project:
 [Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
 [Vitest Documentation]: https://vitest.dev/guide
 [Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
-[index.spec.tsx]: ../app/components/base/radio/__tests__/index.spec.tsx
+[index.spec.tsx]: ../app/components/base/action-button/__tests__/index.spec.tsx

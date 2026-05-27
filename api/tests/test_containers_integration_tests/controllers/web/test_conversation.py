@@ -81,7 +81,7 @@ class TestConversationApi:
             result, status = ConversationApi().delete(_chat_app(), _end_user(), c_id)
 
         assert status == 204
-        assert result["result"] == "success"
+        assert result == ""
 
     @patch("controllers.web.conversation.ConversationService.delete", side_effect=ConversationNotExistsError())
     def test_delete_not_found(self, mock_delete: MagicMock, app: Flask) -> None:
