@@ -138,10 +138,10 @@ export function AgentDetailSection() {
               href={item.href}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex h-8 items-center rounded-lg pr-1 pl-3',
+                'flex h-8 items-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] pr-1 pl-3',
                 isActive
-                  ? 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
-                  : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
+                  ? 'border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
+                  : 'border-transparent system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
                 'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
               )}
             >
