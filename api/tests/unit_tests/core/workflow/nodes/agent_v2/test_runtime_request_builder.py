@@ -1,10 +1,14 @@
 from dataclasses import replace
+from typing import cast
 
 import pytest
+from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
 
 from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.workflow.nodes.agent_v2.plugin_tools_builder import WorkflowAgentPluginToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -24,6 +28,17 @@ class FakeCredentialsProvider:
     def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
         assert provider_name == "openai"
         assert model_name == "gpt-test"
+        return {"api_key": "secret-key"}
+
+
+class CapturingCredentialsProvider:
+    def __init__(self) -> None:
+        self.provider_name: str | None = None
+        self.model_name: str | None = None
+
+    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
+        self.provider_name = provider_name
+        self.model_name = model_name
         return {"api_key": "secret-key"}
 
 
@@ -136,7 +151,31 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Use the previous output."
     assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
-    assert result.redacted_request["composition"]["layers"][4]["config"]["credentials"] == "[REDACTED]"
+    assert DIFY_AGENT_HISTORY_LAYER_ID in layers
+    assert result.redacted_request["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={"system_prompt": "You are careful."},
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai/openai",
+            model_provider="langgenius/openai/openai",
+            model="gpt-test",
+        ),
+    )
+    credentials_provider = CapturingCredentialsProvider()
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=credentials_provider).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    model_config = layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]
+    assert credentials_provider.provider_name == "langgenius/openai/openai"
+    assert credentials_provider.model_name == "gpt-test"
+    assert model_config["plugin_id"] == "langgenius/openai"
+    assert model_config["model_provider"] == "openai"
 
 
 def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metadata():
@@ -187,7 +226,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
-    assert dumped["composition"]["layers"][4]["config"]["model_settings"] == {"temperature": 0.2}
+    assert dumped["composition"]["layers"][5]["config"]["model_settings"] == {"temperature": 0.2}
     assert result.metadata["runtime_support"]["reserved_status"]["tools.dify_tools"] == "supported_when_config_valid"
     assert result.metadata["runtime_support"]["reserved_status"]["tools.cli_tools"] == "reserved_not_executed"
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
@@ -224,7 +263,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     plugin_tools_builder = FakePluginToolsBuilder()
     result = WorkflowAgentRuntimeRequestBuilder(
         credentials_provider=FakeCredentialsProvider(),
-        plugin_tools_builder=plugin_tools_builder,
+        plugin_tools_builder=cast(WorkflowAgentPluginToolsBuilder, plugin_tools_builder),
     ).build(context)
 
     dumped = result.request.model_dump(mode="json")
@@ -242,6 +281,15 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     # quotas / rate limits / audit tags to the real call site instead of a
     # hard-coded ``VALIDATION`` placeholder.
     assert plugin_tools_builder.last_invoke_from == context.dify_context.invoke_from
+
+
+def test_build_passes_saved_session_snapshot_to_agent_backend_request():
+    session_snapshot = CompositorSessionSnapshot(layers=[])
+    context = replace(_context(), session_snapshot=session_snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert result.request.session_snapshot is session_snapshot
 
 
 def test_requires_agent_soul_model_config():
