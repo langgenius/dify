@@ -91,7 +91,6 @@ abstract class FileBasedStore implements Store {
   protected withLock<R>(body: () => R): R {
     this.lock()
     try {
-      this.load()
       return body()
     }
     finally {
@@ -100,11 +99,15 @@ abstract class FileBasedStore implements Store {
   }
 
   get<T>(key: Key<T>): T {
-    return this.withLock(() => this.doGet(key))
+    return this.withLock(() => {
+      this.load()
+      return this.doGet(key)
+    })
   }
 
   set<T>(key: Key<T>, value: T) {
     this.withLock(() => {
+      this.load()
       this.doSet(key, value)
       this.flush()
     })
@@ -112,6 +115,7 @@ abstract class FileBasedStore implements Store {
 
   unset<T>(key: Key<T>): void {
     this.withLock(() => {
+      this.load()
       this.doUnset(key)
       this.flush()
     })
@@ -161,6 +165,7 @@ export class YamlStore extends FileBasedStore {
 
   setTyped<T>(data: T): void {
     this.withLock(() => {
+      this.load()
       this.raw_content = yaml.dump(data, { lineWidth: -1, noRefs: true })
       this.flush()
     })
