@@ -3,6 +3,7 @@ CLI command modules extracted from `commands.py`.
 """
 
 from .account import create_tenant, reset_email, reset_password
+from .data_migrate import data_migrate, legacy_model_types
 from .plugin import (
     extract_plugins,
     extract_unique_plugins,
@@ -44,6 +45,7 @@ __all__ = [
     "clear_orphaned_file_records",
     "convert_to_agent_apps",
     "create_tenant",
+    "data_migrate",
     "delete_archived_workflow_runs",
     "export_app_messages",
     "extract_plugins",
@@ -52,6 +54,7 @@ __all__ = [
     "fix_app_site_missing",
     "install_plugins",
     "install_rag_pipeline_plugins",
+    "legacy_model_types",
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",
     "migrate_knowledge_vector_database",
