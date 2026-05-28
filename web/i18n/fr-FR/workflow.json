@@ -426,7 +426,7 @@
   "nodes.assigner.assignedVarsDescription": "Les variables affectées doivent être accessibles en écriture, telles que des variables de conversation.",
   "nodes.assigner.clear": "Effacer",
   "nodes.assigner.noAssignedVars": "Aucune variable affectée disponible",
-  "nodes.assigner.noVarTip": "Cliquez sur le bouton « + » pour ajouter des variables",
+  "nodes.assigner.noVarTip": "Cliquez sur le bouton « + » pour ajouter des variables",
   "nodes.assigner.operations.*=": "*=",
   "nodes.assigner.operations.+=": "+=",
   "nodes.assigner.operations.-=": "-=",
