@@ -48,6 +48,9 @@ def test_import_options_invalid_strategy_raises_domain_error():
     with pytest.raises(MigrationDataError, match="id_strategy"):
         ImportOptions.from_mapping({"id_strategy": "unknown"})
 
+    with pytest.raises(MigrationDataError, match="id_strategy"):
+        ImportOptions.from_mapping({"id_strategy": "map-id"})
+
     with pytest.raises(MigrationDataError, match="conflict_strategy"):
         ImportOptions.from_mapping({"conflict_strategy": "unknown"})
 

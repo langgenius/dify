@@ -28,7 +28,7 @@ from services.data_migration.import_service import ImportRequest, MigrationImpor
 from services.data_migration.package_service import MigrationPackageService
 from services.data_migration.report_service import MigrationReportService
 
-ID_STRATEGY_CHOICES = ["preserve-id", "generate-new-id", "map-id"]
+ID_STRATEGY_CHOICES = ["preserve-id", "generate-new-id"]
 CONFLICT_STRATEGY_CHOICES = ["fail", "skip", "update"]
 SUPPORTED_WIZARD_APP_MODES = ["workflow", "advanced-chat"]
 WizardToolMap = dict[str, dict[str, str | None]]

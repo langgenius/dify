@@ -19,7 +19,6 @@ class MigrationDataError(ValueError):
 class IdStrategy(StrEnum):
     PRESERVE_ID = "preserve-id"
     GENERATE_NEW_ID = "generate-new-id"
-    MAP_ID = "map-id"
 
 
 class ConflictStrategy(StrEnum):
