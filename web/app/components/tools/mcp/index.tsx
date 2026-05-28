@@ -20,12 +20,17 @@ const MCPList = ({
   const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
-  const filteredList = useMemo(() => {
-    return list.filter((collection) => {
-      if (searchText)
-        return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
-      return collection.type === 'mcp'
-    }) as ToolWithProvider[]
+  const filteredList = useMemo<ToolWithProvider[]>(() => {
+    return list.filter((collection): collection is ToolWithProvider => {
+      const isMcpType = collection.type === 'mcp'
+      if (searchText) {
+        const matchesSearch = Object.values(collection.name).some(value =>
+          (value as string).toLowerCase().includes(searchText.toLowerCase()),
+        )
+        return isMcpType && matchesSearch
+      }
+      return isMcpType
+    })
   }, [list, searchText])
 
   const [currentProviderID, setCurrentProviderID] = useState<string>()

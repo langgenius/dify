@@ -198,6 +198,18 @@ describe('MCPList', () => {
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
     })
 
+    it('should exclude non-MCP providers from search results', () => {
+      mockProviders = [
+        { id: '1', name: { 'en-US': 'Search MCP Tool' }, type: 'mcp' },
+        { id: '2', name: { 'en-US': 'Search API Tool' }, type: 'api' },
+      ]
+
+      render(<MCPList searchText="search" />)
+
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
+      expect(screen.queryByTestId('provider-card-2')).not.toBeInTheDocument()
+    })
+
     it('should show all MCP type providers when search is empty', () => {
       mockProviders = [
         { id: '1', name: 'Provider 1', type: 'mcp' },
