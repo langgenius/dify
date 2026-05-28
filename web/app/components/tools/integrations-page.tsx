@@ -116,11 +116,11 @@ export default function IntegrationsPage({
     <div className="flex h-full min-h-0 bg-components-panel-bg" style={sidebarWidthStyle}>
       <aside className={cn(
         'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
-        'w-[200px] items-end',
+        'w-50 items-end',
       )}
       >
         <div
-          className="flex min-h-0 w-[184px] flex-1 flex-col pb-4"
+          className="flex min-h-0 w-46 flex-1 flex-col pb-4"
         >
           <div
             className="flex h-8 shrink-0 items-center py-1"
@@ -225,7 +225,7 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+                  scrollbar: 'z-10 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer
