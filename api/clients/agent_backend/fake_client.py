@@ -20,6 +20,8 @@ from dify_agent.protocol import (
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
+    RunPausedEvent,
+    RunPausedEventData,
     RunStartedEvent,
     RunStatusResponse,
     RunSucceededEvent,
@@ -34,6 +36,7 @@ class FakeAgentBackendScenario(StrEnum):
 
     SUCCESS = "success"
     FAILED = "failed"
+    PAUSED = "paused"
 
 
 class FakeAgentBackendRunClient:
@@ -89,6 +92,13 @@ class FakeAgentBackendRunClient:
                     updated_at=_FIXED_TIME,
                     error="fake failure",
                 )
+            case FakeAgentBackendScenario.PAUSED:
+                return RunStatusResponse(
+                    run_id=run_id,
+                    status="paused",
+                    created_at=_FIXED_TIME,
+                    updated_at=_FIXED_TIME,
+                )
 
     def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         match self.scenario:
@@ -113,5 +123,19 @@ class FakeAgentBackendRunClient:
                         run_id=run_id,
                         created_at=_FIXED_TIME,
                         data=RunFailedEventData(error="fake failure", reason="unit_test"),
+                    ),
+                )
+            case FakeAgentBackendScenario.PAUSED:
+                return (
+                    RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+                    RunPausedEvent(
+                        id="2-0",
+                        run_id=run_id,
+                        created_at=_FIXED_TIME,
+                        data=RunPausedEventData(
+                            reason="human_input_required",
+                            message="Agent requested human input.",
+                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        ),
                     ),
                 )

@@ -26,6 +26,14 @@ vi.mock('@/service/use-snippets', () => ({
   useExportSnippetMutation: () => ({
     mutateAsync: vi.fn(),
   }),
+  useImportSnippetDSLMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useConfirmSnippetImportMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useInfiniteSnippetList: (params: unknown, options: unknown) => mockUseInfiniteSnippetList(params, options),
   useUpdateSnippetMutation: () => ({
     mutate: vi.fn(),

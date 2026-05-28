@@ -16,6 +16,11 @@ import {
 
 const triggerWidth = 'w-64'
 
+const cityItems = [
+  { label: 'Seattle', value: 'seattle' },
+  { label: 'New York', value: 'new-york' },
+]
+
 const meta = {
   title: 'Base/Form/Select',
   component: Select,
@@ -238,7 +243,7 @@ export const Disabled: Story = {
 export const ReadOnly: Story = {
   render: () => (
     <div className={triggerWidth}>
-      <Select defaultValue="seattle" readOnly>
+      <Select defaultValue="seattle" items={cityItems} readOnly>
         <SelectTrigger aria-label="City">
           <SelectValue />
         </SelectTrigger>

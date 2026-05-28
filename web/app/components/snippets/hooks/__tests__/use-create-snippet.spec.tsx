@@ -124,7 +124,7 @@ describe('useCreateSnippet', () => {
       expect(result.current.isCreatingSnippet).toBe(false)
     })
 
-    it('should show error toast when create fails', async () => {
+    it('should rely on API error handling when create fails', async () => {
       mockMutateAsync.mockRejectedValue(new Error('create failed'))
 
       const { result } = renderHook(() => useCreateSnippet())
@@ -142,7 +142,7 @@ describe('useCreateSnippet', () => {
         })
       })
 
-      expect(mockToastError).toHaveBeenCalledWith('create failed')
+      expect(mockToastError).not.toHaveBeenCalled()
       expect(result.current.isCreatingSnippet).toBe(false)
     })
   })

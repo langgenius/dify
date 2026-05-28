@@ -1,6 +1,8 @@
+import type { KbdColor } from '@langgenius/dify-ui/kbd'
 import type { FormatDisplayOptions, RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { WorkflowShortcutId } from './definitions'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { getWorkflowShortcutDisplayHotkey } from './definitions'
 
@@ -9,7 +11,7 @@ type ShortcutKbdProps = {
   hotkey?: RegisterableHotkey | (string & {})
   className?: string
   textColor?: 'default' | 'secondary'
-  bgColor?: 'gray' | 'white'
+  bgColor?: KbdColor
   platform?: FormatDisplayOptions['platform']
 }
 
@@ -44,27 +46,22 @@ export const ShortcutKbd = ({
   const displayKeys = getDisplayKeys(displayHotkey, platform)
 
   return (
-    <span
+    <KbdGroup
       className={cn(
-        'flex items-center gap-0.5',
         className,
       )}
     >
       {
         displayKeys.map((key, index) => (
-          <kbd
+          <Kbd
             key={`${key}-${index}`}
-            className={cn(
-              'flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-sans system-kbd capitalize not-italic',
-              bgColor === 'gray' && 'bg-components-kbd-bg-gray',
-              bgColor === 'white' && 'bg-components-kbd-bg-white text-text-primary-on-surface',
-              textColor === 'secondary' && 'text-text-tertiary',
-            )}
+            color={bgColor}
+            className={cn(textColor === 'secondary' && 'text-text-tertiary')}
           >
             {key}
-          </kbd>
+          </Kbd>
         ))
       }
-    </span>
+    </KbdGroup>
   )
 }

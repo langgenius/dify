@@ -12,11 +12,13 @@ from controllers.common.errors import (
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.wraps import with_current_user
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from graphon.file import helpers as file_helpers
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from services.file_service import FileService
 
 
@@ -49,7 +51,8 @@ class RemoteFileUpload(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @login_required
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
         url = payload.url
 
@@ -74,12 +77,11 @@ class RemoteFileUpload(Resource):
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 
         try:
-            user, _ = current_account_with_tenant()
             upload_file = FileService(db.engine).upload_file(
                 filename=file_info.filename,
                 content=content,
                 mimetype=file_info.mimetype,
-                user=user,
+                user=current_user,
                 source_url=url,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:

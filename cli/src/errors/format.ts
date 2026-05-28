@@ -1,5 +1,5 @@
 import type { BaseError } from './base.js'
-import { colorEnabled, colorScheme } from '../io/color.js'
+import { colorEnabled, colorScheme } from '../sys/io/color.js'
 import { renderEnvelope } from './envelope.js'
 
 export type FormatErrorOptions = {
