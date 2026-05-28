@@ -152,6 +152,8 @@ export function useCreateDeploymentGuide() {
   const submittedInstanceName = instanceName.trim()
   const submittedReleaseName = releaseName.trim()
   const submittedReleaseDescription = releaseDescription.trim()
+  const isSourceReady = Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
+  const isInitialReleaseReady = Boolean(isSourceReady && submittedInstanceName && submittedReleaseName)
   const showTargetConfiguration = Boolean(method && step === 'target')
 
   function selectMethod(nextMethod: GuideMethod) {
@@ -202,14 +204,9 @@ export function useCreateDeploymentGuide() {
 
   function canContinueCurrentStep() {
     if (step === 'source')
-      return Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
+      return isSourceReady
     if (step === 'release') {
-      return Boolean(
-        method
-        && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id)
-        && submittedInstanceName
-        && submittedReleaseName,
-      )
+      return isInitialReleaseReady
     }
     if (step === 'target') {
       const deploymentTargetReady = shouldLoadDeploymentTarget
@@ -221,8 +218,7 @@ export function useCreateDeploymentGuide() {
         selectedEnvironment?.id
         && deploymentTargetReady
         && requiredBindingsReady
-        && submittedInstanceName
-        && submittedReleaseName,
+        && isInitialReleaseReady,
       )
     }
     return false
@@ -257,45 +253,52 @@ export function useCreateDeploymentGuide() {
       setReleaseName(defaultedReleaseName)
   }
 
-  async function handleDeploy() {
-    if (!selectedEnvironment?.id || isDeploying)
+  async function createDeploymentAndRelease({ deployToEnvironment }: {
+    deployToEnvironment: boolean
+  }) {
+    if (isDeploying || !isInitialReleaseReady)
+      return
+    if (deployToEnvironment && !selectedEnvironment?.id)
+      return
+    if (method === 'bindApp' && !effectiveSelectedApp?.id)
+      return
+    if (method === 'importDsl' && !hasDslContent)
       return
 
     try {
-      if (!submittedInstanceName || !submittedReleaseName)
-        throw new Error('Missing required release fields.')
-
-      const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
-      if (missingRequiredBinding)
-        throw new Error('Missing required deployment binding.')
+      if (deployToEnvironment) {
+        const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
+        if (missingRequiredBinding)
+          throw new Error('Missing required deployment binding.')
+      }
 
       const idempotencyKey = createDeploymentIdempotencyKey()
       const response = method === 'importDsl'
         ? await createInitialDeploymentFromDsl.mutateAsync({
             body: {
               dsl: encodedDslContent,
-              environmentId: selectedEnvironment.id,
+              environmentId: deployToEnvironment ? selectedEnvironment?.id : undefined,
               appInstanceName: submittedInstanceName,
               appInstanceDescription: instanceDescription.trim() || undefined,
               releaseName: submittedReleaseName,
               releaseDescription: submittedReleaseDescription || undefined,
-              credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
+              credentials: deployToEnvironment ? selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections) : undefined,
               idempotencyKey,
-              expectedDslDigest: deploymentOptions?.dslDigest,
+              expectedDslDigest: deployToEnvironment ? deploymentOptions?.dslDigest : undefined,
             },
           })
         : effectiveSelectedApp?.id
           ? await createInitialDeploymentFromSourceApp.mutateAsync({
               body: {
                 sourceAppId: effectiveSelectedApp.id,
-                environmentId: selectedEnvironment.id,
+                environmentId: deployToEnvironment ? selectedEnvironment?.id : undefined,
                 appInstanceName: submittedInstanceName,
                 appInstanceDescription: instanceDescription.trim() || undefined,
                 releaseName: submittedReleaseName,
                 releaseDescription: submittedReleaseDescription || undefined,
-                credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
+                credentials: deployToEnvironment ? selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections) : undefined,
                 idempotencyKey,
-                expectedDslDigest: deploymentOptions?.dslDigest,
+                expectedDslDigest: deployToEnvironment ? deploymentOptions?.dslDigest : undefined,
               },
             })
           : undefined
@@ -306,8 +309,16 @@ export function useCreateDeploymentGuide() {
       router.push(`/deployments/${appInstanceId}/overview`)
     }
     catch {
-      toast.error(t('createGuide.errors.deployFailed'))
+      toast.error(t(deployToEnvironment ? 'createGuide.errors.deployFailed' : 'createGuide.errors.createReleaseFailed'))
     }
+  }
+
+  async function handleDeploy() {
+    await createDeploymentAndRelease({ deployToEnvironment: true })
+  }
+
+  async function handleSkipDeployment() {
+    await createDeploymentAndRelease({ deployToEnvironment: false })
   }
 
   function handlePrimaryAction() {
@@ -334,6 +345,7 @@ export function useCreateDeploymentGuide() {
 
   return {
     canContinue: canContinueCurrentStep(),
+    canSkipDeployment: Boolean(step === 'target' && isInitialReleaseReady),
     creationSectionsProps: {
       defaultedReleaseName,
       dslFile,
@@ -375,6 +387,7 @@ export function useCreateDeploymentGuide() {
     },
     handleBack,
     handlePrimaryAction,
+    handleSkipDeployment,
     isDeploying,
     showTargetConfiguration,
     step,

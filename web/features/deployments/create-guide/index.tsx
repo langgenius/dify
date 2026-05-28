@@ -11,9 +11,11 @@ export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
   const {
     canContinue,
+    canSkipDeployment,
     creationSectionsProps,
     handleBack,
     handlePrimaryAction,
+    handleSkipDeployment,
     isDeploying,
     showTargetConfiguration,
     step,
@@ -50,10 +52,12 @@ export function CreateDeploymentGuide() {
               actions={(
                 <GuideActions
                   canContinue={canContinue}
+                  canSkipDeployment={canSkipDeployment}
                   isDeploying={isDeploying}
                   step={step}
                   onBack={handleBack}
                   onPrimaryAction={handlePrimaryAction}
+                  onSkipDeployment={handleSkipDeployment}
                 />
               )}
             >

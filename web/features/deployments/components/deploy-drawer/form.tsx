@@ -3,7 +3,6 @@
 import type {
   CredentialSlot,
   Environment,
-  EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
@@ -17,11 +16,10 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
-import { environmentBackend, environmentId, environmentMode, environmentName } from '../../environment'
+import { environmentBackend, environmentMode, environmentName } from '../../environment'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
-import { releaseDeploymentAction } from '../../release-action'
-import { hasRuntimeInstanceDeployment, isAvailableDeploymentTarget } from '../../runtime-status'
+import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
 import {
   RuntimeCredentialBindingsPanel,
@@ -48,7 +46,6 @@ type DeployReadyFormProps = DeployFormProps & {
   environments: EnvironmentOption[]
   releases: Release[]
   defaultReleaseId?: string
-  runtimeRows: EnvironmentDeployment[]
 }
 
 type EnvironmentOption = Environment & { id: string }
@@ -151,7 +148,6 @@ function DeployReadyForm({
   defaultReleaseId,
   lockedEnvId,
   presetReleaseId,
-  runtimeRows,
 }: DeployReadyFormProps) {
   const { t } = useTranslation('deployments')
   const closeDeployDrawer = useSetAtom(closeDeployDrawerAtom)
@@ -170,20 +166,7 @@ function DeployReadyForm({
   )
   const selectedRelease = releases.find(release => release.id === selectedReleaseId)
   const targetReleaseId = displayedRelease?.id ?? selectedRelease?.id ?? selectedReleaseId
-  const targetRelease = displayedRelease ?? selectedRelease ?? (targetReleaseId ? { id: targetReleaseId } : undefined)
-  const deploymentRows = runtimeRows.filter(hasRuntimeInstanceDeployment)
-  const selectedDeploymentRow = deploymentRows.find(row => environmentId(row.environment) === selectedEnvironmentId)
   const hasSelectedEnvironment = Boolean(selectedEnvironmentId && selectedEnvironment)
-  const action = releaseDeploymentAction({
-    targetRelease,
-    currentRelease: selectedDeploymentRow?.currentRelease,
-    releaseRows: releases,
-    isExistingRelease,
-  })
-  const isRedeployExistingRelease = action === 'deployExistingRelease'
-    && isExistingRelease
-    && Boolean(targetReleaseId)
-    && selectedDeploymentRow?.currentRelease?.id === targetReleaseId
   const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
     input: {
       params: {
@@ -210,35 +193,9 @@ function DeployReadyForm({
   )
 
   const lockedEnv = lockedEnvId ? environments.find(e => e.id === lockedEnvId) : undefined
-  const actionTitle = isRedeployExistingRelease
-    ? t('deployDrawer.redeployTitle')
-    : action === 'rollback'
-      ? t('deployDrawer.rollbackTitle')
-      : action === 'promote'
-        ? t('deployDrawer.promoteTitle')
-        : action === 'deployExistingRelease'
-          ? t('deployDrawer.deployExistingReleaseTitle')
-          : t('deployDrawer.title')
-  const actionDescription = isRedeployExistingRelease
-    ? t('deployDrawer.redeployDescription')
-    : action === 'rollback'
-      ? t('deployDrawer.rollbackDescription')
-      : action === 'promote'
-        ? t('deployDrawer.promoteDescription')
-        : action === 'deployExistingRelease'
-          ? t('deployDrawer.deployExistingReleaseDescription')
-          : t('deployDrawer.description')
-  const submitLabel = isSubmitting
-    ? t('deployDrawer.deploying')
-    : isRedeployExistingRelease
-      ? t('deployDrawer.redeploy')
-      : action === 'rollback'
-        ? t('deployDrawer.rollback')
-        : action === 'promote'
-          ? t('deployDrawer.promote')
-          : action === 'deployExistingRelease'
-            ? t('deployDrawer.deployExistingRelease')
-            : t('deployDrawer.deploy')
+  const actionTitle = t('deployDrawer.title')
+  const actionDescription = t('deployDrawer.description')
+  const submitLabel = isSubmitting ? t('deployDrawer.deploying') : t('deployDrawer.deploy')
 
   const handleDeploy = () => {
     if (!canDeploy || !targetReleaseId)
@@ -294,7 +251,7 @@ function DeployReadyForm({
                   <span className="shrink-0 system-xs-regular text-text-quaternary">{formatDate(displayedRelease.createdAt)}</span>
                 </div>
                 <span className="system-xs-regular text-text-tertiary">
-                  {isRedeployExistingRelease ? t('deployDrawer.redeployExistingReleaseHint') : t('deployDrawer.existingReleaseHint')}
+                  {t('deployDrawer.existingReleaseHint')}
                 </span>
               </div>
             )
@@ -417,7 +374,6 @@ export function DeployForm({
       defaultReleaseId={defaultReleaseId}
       lockedEnvId={lockedEnvId}
       presetReleaseId={presetReleaseId}
-      runtimeRows={runtimeRows}
     />
   )
 }

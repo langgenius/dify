@@ -198,20 +198,24 @@ export function GuideFrame({ activeStep, children }: {
 
 export function GuideActions({
   canContinue,
+  canSkipDeployment,
   isDeploying,
   step,
   onBack,
   onPrimaryAction,
+  onSkipDeployment,
 }: {
   canContinue: boolean
+  canSkipDeployment: boolean
   isDeploying: boolean
   step: GuideStep
   onBack: () => void
   onPrimaryAction: () => void
+  onSkipDeployment: () => void
 }) {
   const { t } = useTranslation('deployments')
   const primaryLabel = step === 'target'
-    ? isDeploying ? t('createGuide.actions.deploying') : t('createGuide.actions.deploy')
+    ? isDeploying ? t('createGuide.actions.deploying') : t('createGuide.actions.createAndDeploy')
     : step === 'release' && isDeploying
       ? t('createGuide.actions.creating')
       : t('createGuide.actions.next')
@@ -221,6 +225,11 @@ export function GuideActions({
       {(step === 'release' || step === 'target') && (
         <Button type="button" variant="secondary" onClick={onBack} disabled={isDeploying}>
           {t('createGuide.actions.back')}
+        </Button>
+      )}
+      {step === 'target' && (
+        <Button type="button" variant="secondary" disabled={!canSkipDeployment || isDeploying} onClick={onSkipDeployment}>
+          {t('createGuide.actions.skipDeploy')}
         </Button>
       )}
       <Button type="button" variant="primary" disabled={!canContinue || isDeploying} onClick={onPrimaryAction}>
