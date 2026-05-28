@@ -149,7 +149,7 @@ export function AgentDetailLayout({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={6}
-              popupClassName="w-[260px] p-1"
+              popupClassName="w-65 p-1"
             >
               <DropdownMenuItem className="h-auto items-start gap-2 px-2 py-2" onClick={handlePublishMenuAction}>
                 <span aria-hidden className="mt-0.5 i-ri-upload-cloud-2-line size-4 shrink-0 text-text-accent" />
@@ -218,7 +218,7 @@ function AgentVersionHistoryPanel({
   const latestVersionId = versions.find(item => item.version !== WorkflowVersion.Draft)?.id ?? ''
 
   return (
-    <aside className="absolute top-20 right-0 bottom-0 flex w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+    <aside className="absolute top-20 right-0 bottom-0 flex w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
         <div className="flex-1 py-1 system-xl-semibold text-text-primary">
           {t('versionHistory.title', { ns: 'workflow' })}

@@ -156,7 +156,7 @@ function AccessSourceRow({
         <DropdownMenuContent
           placement="bottom-end"
           sideOffset={6}
-          popupClassName="w-[244px]"
+          popupClassName="w-61"
         >
           <DropdownMenuItem onClick={onNavigateToLogs}>
             {t('agentDetail.sections.logs')}

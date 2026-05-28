@@ -103,7 +103,7 @@ export function AgentLogsPage() {
           </p>
         </header>
 
-        <div className="flex max-h-[calc(100%-16px)] min-h-0 flex-1 flex-col py-4">
+        <div className="flex min-h-0 flex-1 flex-col py-4">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Select
               value={status}
