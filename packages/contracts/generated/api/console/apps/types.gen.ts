@@ -1579,6 +1579,8 @@ export type UserActionConfig = {
 
 export type FormInputConfig = unknown
 
+export type JsonValue2 = unknown
+
 export type AgentSoulDifyToolCredentialRef = {
   id?: string | null
   provider?: string | null

@@ -1804,6 +1804,20 @@ export const zDeclaredArrayItem = z.object({
 
 export const zFormInputConfig = z.unknown()
 
+export const zJsonValue2 = z.unknown()
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+})
+
 /**
  * AgentSoulDifyToolCredentialRef
  *
@@ -1954,22 +1968,6 @@ export const zComposerSavePayload = z.object({
   soul_lock: zComposerSoulLockPayload.optional(),
   variant: zComposerVariant,
   version_note: z.string().nullish(),
-})
-
-export const zFormInputConfig = z.unknown()
-
-export const zJsonValue2 = z.unknown()
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
 })
 
 /**
