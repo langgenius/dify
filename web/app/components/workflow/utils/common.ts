@@ -1,3 +1,16 @@
+const MAC_PLATFORM_PATTERN = /mac/i
+
+const specialKeysCodeMap: Record<string, string | undefined> = {
+  ctrl: 'meta',
+}
+
+export const getKeyboardKeyCodeBySystem = (key: string) => {
+  if (typeof navigator !== 'undefined' && MAC_PLATFORM_PATTERN.test(navigator.userAgent))
+    return specialKeysCodeMap[key] || key
+
+  return key
+}
+
 /**
  * Format workflow run identifier using finished_at timestamp
  * @param finishedAt - Unix timestamp in seconds
