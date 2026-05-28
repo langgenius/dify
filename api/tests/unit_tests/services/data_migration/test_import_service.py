@@ -285,8 +285,7 @@ def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
 
     assert graph["nodes"][0]["data"]["provider_id"] == "target-api-provider-id"
     assert (
-        graph["nodes"][1]["data"]["agent_parameters"]["tools"]["value"][0]["provider_id"]
-        == "target-agent-provider-id"
+        graph["nodes"][1]["data"]["agent_parameters"]["tools"]["value"][0]["provider_id"] == "target-agent-provider-id"
     )
 
 
@@ -319,9 +318,7 @@ def test_source_api_provider_ids_are_discovered_from_workflow_dsl():
         }
     )
 
-    assert MigrationImportService()._source_api_provider_ids_by_name(package) == {
-        "weather": {"source-api-provider-id"}
-    }
+    assert MigrationImportService()._source_api_provider_ids_by_name(package) == {"weather": {"source-api-provider-id"}}
 
 
 def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch):
@@ -549,9 +546,10 @@ def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
         "source-api-provider-id": "target-api-provider-id",
         "source-api-provider-id-from-dsl": "target-api-provider-id",
     }
-    assert ResourceIdMapping(
-        ResourceType.API_TOOL, "weather", "source-api-provider-id", "target-api-provider-id"
-    ) in id_mapping_details
+    assert (
+        ResourceIdMapping(ResourceType.API_TOOL, "weather", "source-api-provider-id", "target-api-provider-id")
+        in id_mapping_details
+    )
 
 
 def test_api_tool_create_records_id_mapping(monkeypatch):

@@ -402,9 +402,9 @@ def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> Wiz
             if dependency.kind == DependencyKind.API_TOOL:
                 auto_tools["api_tools"][dependency.provider_name or dependency.provider_id] = dependency.provider_id
             elif dependency.kind == DependencyKind.WORKFLOW_TOOL:
-                auto_tools["workflow_tools"][
-                    dependency.provider_name or dependency.provider_id
-                ] = dependency.provider_id
+                auto_tools["workflow_tools"][dependency.provider_name or dependency.provider_id] = (
+                    dependency.provider_id
+                )
             elif dependency.kind == DependencyKind.MCP_TOOL:
                 auto_tools["mcp_tools"][dependency.provider_name or dependency.provider_id] = dependency.provider_id
     return auto_tools

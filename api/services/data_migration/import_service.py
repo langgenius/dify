@@ -773,9 +773,7 @@ class MigrationImportService:
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
         return db.session.scalar(
-            sa.select(MCPToolProvider)
-            .where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates))
-            .limit(1)
+            sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates)).limit(1)
         )
 
     def _is_uuid_string(self, value: str | None) -> bool:
@@ -842,9 +840,7 @@ class MigrationImportService:
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
         return db.session.scalar(
-            sa.select(MCPToolProvider)
-            .where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates))
-            .limit(1)
+            sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates)).limit(1)
         )
 
     def _dependency_only_mcp_reference_summary(

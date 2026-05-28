@@ -273,9 +273,7 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
 
     assert "id strategy: preserve-id" in output_lines
     assert "conflict strategy: fail" in output_lines
-    assert confirm_prompts == [
-        ("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})
-    ]
+    assert confirm_prompts == [("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})]
 
 
 def test_confirm_wizard_summary_shows_final_deduplicated_tool_selection(monkeypatch):

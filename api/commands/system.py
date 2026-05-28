@@ -214,4 +214,3 @@ where sites.id is null limit 1000"""
                 break
 
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
-

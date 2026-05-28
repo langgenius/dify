@@ -12,10 +12,7 @@ class MigrationReportService:
         counts = Counter((item.resource_type.value, item.status) for item in items)
         lines = self._render_context(context)
         lines.extend(
-            [
-                f"{resource_type} {status}: {count}"
-                for (resource_type, status), count in sorted(counts.items())
-            ]
+            [f"{resource_type} {status}: {count}" for (resource_type, status), count in sorted(counts.items())]
         )
         actionable_items = [
             item for item in items if item.status in {"dependency-only", "skipped", "unresolved"} and item.message
@@ -42,8 +39,7 @@ class MigrationReportService:
             lines.append(f"operator: {context.operator_email}")
         if context.app_api_tokens_created or context.app_api_tokens_reused:
             lines.append(
-                f"app api tokens: {context.app_api_tokens_created} created, "
-                f"{context.app_api_tokens_reused} reused"
+                f"app api tokens: {context.app_api_tokens_created} created, {context.app_api_tokens_reused} reused"
             )
         if context.id_mappings:
             lines.append(f"resource references resolved: {len(context.id_mappings)}")
