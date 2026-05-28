@@ -58,7 +58,7 @@ export async function runLogin(opts: LoginOptions): Promise<HostsBundle> {
 
   const success = await awaitAuthorization(api, code, { clock: opts.clock ?? realClock() })
 
-  const storeBundle = opts.store ?? await getTokenStore()
+  const storeBundle = opts.store ?? getTokenStore()
   const bundle = bundleFromSuccess(host, success, storeBundle.mode)
 
   storeBundle.store.set(tokenKey(bundle.current_host, accountKey(bundle)), success.token)

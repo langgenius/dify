@@ -50,7 +50,7 @@ export type GetTokenStoreOptions = {
  * Business logic should always obtain the token store through this factory
  * rather than constructing one directly.
  */
-export async function getTokenStore(opts: GetTokenStoreOptions = {}): Promise<{ store: Store, mode: StorageMode }> {
+export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, mode: StorageMode } {
   const fileFactory = opts.factory?.file ?? (() => getStore(join(resolveConfigDir(), TOKENS_FILE)))
   const keyringFactory = opts.factory?.keyring ?? (() => new KeyringBasedStore(KEYRING_SERVICE))
   try {

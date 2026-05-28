@@ -103,7 +103,7 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
     await sessions.revoke(id)
 
   if (selfHit) {
-    const tokens = opts.store ?? (await getTokenStore()).store
+    const tokens = opts.store ?? getTokenStore().store
     clearLocal(b, tokens)
   }
 

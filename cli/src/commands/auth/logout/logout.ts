@@ -38,7 +38,7 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
     }
   }
 
-  const tokens = opts.store ?? (await getTokenStore()).store
+  const tokens = opts.store ?? getTokenStore().store
   clearLocal(bundle, tokens)
 
   if (revokeWarning !== '')
