@@ -176,6 +176,10 @@ function DeployReadyForm({
     releaseRows: releases,
     isExistingRelease,
   })
+  const isRedeployExistingRelease = action === 'deployExistingRelease'
+    && isExistingRelease
+    && Boolean(targetReleaseId)
+    && selectedDeploymentRow?.currentRelease?.id === targetReleaseId
   const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
     input: {
       params: {
@@ -202,29 +206,35 @@ function DeployReadyForm({
   )
 
   const lockedEnv = lockedEnvId ? environments.find(e => e.id === lockedEnvId) : undefined
-  const actionTitle = action === 'rollback'
-    ? t('deployDrawer.rollbackTitle')
-    : action === 'promote'
-      ? t('deployDrawer.promoteTitle')
-      : action === 'deployExistingRelease'
-        ? t('deployDrawer.deployExistingReleaseTitle')
-        : t('deployDrawer.title')
-  const actionDescription = action === 'rollback'
-    ? t('deployDrawer.rollbackDescription')
-    : action === 'promote'
-      ? t('deployDrawer.promoteDescription')
-      : action === 'deployExistingRelease'
-        ? t('deployDrawer.deployExistingReleaseDescription')
-        : t('deployDrawer.description')
+  const actionTitle = isRedeployExistingRelease
+    ? t('deployDrawer.redeployTitle')
+    : action === 'rollback'
+      ? t('deployDrawer.rollbackTitle')
+      : action === 'promote'
+        ? t('deployDrawer.promoteTitle')
+        : action === 'deployExistingRelease'
+          ? t('deployDrawer.deployExistingReleaseTitle')
+          : t('deployDrawer.title')
+  const actionDescription = isRedeployExistingRelease
+    ? t('deployDrawer.redeployDescription')
+    : action === 'rollback'
+      ? t('deployDrawer.rollbackDescription')
+      : action === 'promote'
+        ? t('deployDrawer.promoteDescription')
+        : action === 'deployExistingRelease'
+          ? t('deployDrawer.deployExistingReleaseDescription')
+          : t('deployDrawer.description')
   const submitLabel = isSubmitting
     ? t('deployDrawer.deploying')
-    : action === 'rollback'
-      ? t('deployDrawer.rollback')
-      : action === 'promote'
-        ? t('deployDrawer.promote')
-        : action === 'deployExistingRelease'
-          ? t('deployDrawer.deployExistingRelease')
-          : t('deployDrawer.deploy')
+    : isRedeployExistingRelease
+      ? t('deployDrawer.redeploy')
+      : action === 'rollback'
+        ? t('deployDrawer.rollback')
+        : action === 'promote'
+          ? t('deployDrawer.promote')
+          : action === 'deployExistingRelease'
+            ? t('deployDrawer.deployExistingRelease')
+            : t('deployDrawer.deploy')
 
   const handleDeploy = () => {
     if (!canDeploy || !targetReleaseId)
@@ -280,7 +290,7 @@ function DeployReadyForm({
                   <span className="shrink-0 system-xs-regular text-text-quaternary">{formatDate(displayedRelease.createdAt)}</span>
                 </div>
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('deployDrawer.existingReleaseHint')}
+                  {isRedeployExistingRelease ? t('deployDrawer.redeployExistingReleaseHint') : t('deployDrawer.existingReleaseHint')}
                 </span>
               </div>
             )

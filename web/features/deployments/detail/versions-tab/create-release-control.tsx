@@ -10,7 +10,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitl
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { toast } from '@langgenius/dify-ui/toast'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -56,6 +56,8 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const [dslContent, setDslContent] = useState('')
   const [isReadingDsl, setIsReadingDsl] = useState(false)
   const [dslReadError, setDslReadError] = useState(false)
+  const [releaseName, setReleaseName] = useState('')
+  const [releaseNameTouched, setReleaseNameTouched] = useState(false)
   const [description, setDescription] = useState('')
   const dslReadTokenRef = useRef(0)
 
@@ -70,12 +72,12 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     enabled: isCreating,
   }))
   const latestSourceAppId = latestReleaseQuery.data?.data?.[0]?.sourceAppId
+  const defaultSourceAppId = isCreating && latestSourceAppId && !sourceApp ? latestSourceAppId : ''
   const defaultSourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: isCreating && latestSourceAppId && !sourceApp
-      ? {
-          params: { app_id: latestSourceAppId },
-        }
-      : skipToken,
+    input: {
+      params: { app_id: defaultSourceAppId },
+    },
+    enabled: Boolean(defaultSourceAppId),
   }))
   const defaultSourceApp: SourceAppPickerValue | undefined = latestSourceAppId
     ? {
@@ -101,6 +103,8 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     setReleaseSourceMode(DEFAULT_RELEASE_SOURCE_MODE)
     setSourceApp(undefined)
     resetDslState()
+    setReleaseName('')
+    setReleaseNameTouched(false)
     setDescription('')
   }
 
@@ -149,18 +153,19 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     if (isCreatePending)
       return
 
-    const formData = new FormData(form)
-    const releaseName = String(formData.get('name') ?? '').trim()
+    const submittedReleaseName = releaseName.trim()
     const releaseDescription = description.trim()
-    if (!releaseName)
+    if (!submittedReleaseName) {
+      setReleaseNameTouched(true)
       return
+    }
 
     const handleSuccess = (response: CreateReleaseReply) => {
       if (!response.release?.id) {
         toast.error(t('versions.createFailed'))
         return
       }
-      const createdName = response.release.name ?? releaseName
+      const createdName = response.release.name ?? submittedReleaseName
       toast.success(t('versions.createSuccess', { name: createdName }))
       form.reset()
       closeDialog()
@@ -177,7 +182,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
         body: {
           appInstanceId,
           dsl: encodeUtf8Base64(dslContent),
-          name: releaseName,
+          name: submittedReleaseName,
           description: releaseDescription || undefined,
           createAppInstance: false,
         },
@@ -195,7 +200,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       body: {
         appInstanceId,
         sourceAppId: selectedSourceAppId,
-        name: releaseName,
+        name: submittedReleaseName,
         description: releaseDescription || undefined,
         createAppInstance: false,
       },
@@ -207,10 +212,12 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
 
   const descriptionLength = description.length
   const isNearLimit = descriptionLength >= DESCRIPTION_WARN_THRESHOLD
+  const hasReleaseName = Boolean(releaseName.trim())
+  const releaseNameRequired = releaseNameTouched && !hasReleaseName
   const hasDslContent = Boolean(dslContent.trim())
   const canCreateFromSourceApp = releaseSourceMode === 'sourceApp' && Boolean(selectedSourceAppId)
   const canCreateFromDsl = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError
-  const canCreate = Boolean(!isCreatePending && (canCreateFromSourceApp || canCreateFromDsl))
+  const canCreate = Boolean(hasReleaseName && !isCreatePending && (canCreateFromSourceApp || canCreateFromDsl))
 
   return (
     <>
@@ -237,6 +244,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
           <DialogCloseButton />
           {isCreating && (
             <form
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault()
                 handleCreateRelease(event.currentTarget)
@@ -322,10 +330,23 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                     name="name"
                     placeholder={t('versions.releaseNamePlaceholder')}
                     maxLength={128}
-                    required
+                    value={releaseName}
+                    aria-invalid={releaseNameRequired || undefined}
+                    aria-describedby={releaseNameRequired ? 'release-name-error' : undefined}
+                    onBlur={() => setReleaseNameTouched(true)}
+                    onChange={(event) => {
+                      setReleaseName(event.target.value)
+                      if (releaseNameTouched && event.target.value.trim())
+                        setReleaseNameTouched(false)
+                    }}
                     autoFocus
                     className="h-9"
                   />
+                  {releaseNameRequired && (
+                    <div id="release-name-error" role="alert" className="system-xs-regular text-text-destructive">
+                      {t('versions.releaseNameRequired')}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2">

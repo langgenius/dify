@@ -19,7 +19,7 @@ type AccessStatusItem = {
   icon: string
   label: string
   enabled: boolean
-  meta?: string
+  meta: string
 }
 
 const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli', 'api-tokens']
@@ -33,6 +33,7 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
       icon: 'i-ri-global-line',
       label: t('card.access.webApp'),
       enabled: Boolean(accessChannels?.webAppEnabled),
+      meta: t('overview.accessMeta.webApp'),
     },
     {
       key: 'cli',
@@ -40,6 +41,7 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
       icon: 'i-ri-terminal-box-line',
       label: t('card.access.cli'),
       enabled: Boolean(accessChannels?.webAppEnabled),
+      meta: t('overview.accessMeta.cli'),
     },
     {
       key: 'api-tokens',
@@ -49,7 +51,7 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
       enabled: Boolean(accessChannels?.developerApiEnabled),
       meta: accessChannels?.developerApiEnabled && apiKeyCount != null
         ? t('overview.apiKeysCount', { count: apiKeyCount })
-        : undefined,
+        : t('overview.accessMeta.apiTokens'),
     },
   ]
 
@@ -80,26 +82,32 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
                 <span className="truncate system-sm-medium text-text-primary">
                   {item.label}
                 </span>
-                <span
-                  className={cn(
-                    OVERVIEW_STATUS_BADGE_CLASS_NAME,
-                    item.enabled
-                      ? 'text-util-colors-green-green-700'
-                      : 'text-text-tertiary',
-                  )}
-                >
+                <span className="flex shrink-0 items-center gap-2">
+                  <span
+                    className={cn(
+                      OVERVIEW_STATUS_BADGE_CLASS_NAME,
+                      item.enabled
+                        ? 'text-util-colors-green-green-700'
+                        : 'text-text-tertiary',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'size-1.5 shrink-0 rounded-full',
+                        item.enabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
+                      )}
+                    />
+                    {item.enabled ? t('overview.enabled') : t('overview.disabled')}
+                  </span>
                   <span
                     aria-hidden
-                    className={cn(
-                      'size-1.5 shrink-0 rounded-full',
-                      item.enabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
-                    )}
+                    className="i-ri-arrow-right-line size-4 text-text-quaternary opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:translate-x-0.5 group-focus-visible:opacity-100"
                   />
-                  {item.enabled ? t('overview.enabled') : t('overview.disabled')}
                 </span>
               </span>
               <span className="truncate text-xs text-text-tertiary">
-                {item.meta || t('overview.notConfigured')}
+                {item.meta}
               </span>
             </span>
           </Link>

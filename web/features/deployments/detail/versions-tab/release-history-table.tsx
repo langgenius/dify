@@ -4,7 +4,7 @@ import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/
 import type { ReleaseDeployment } from './release-deployments'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -258,11 +258,10 @@ function SourceAppCell({ sourceAppId }: {
   sourceAppId?: string
 }) {
   const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: sourceAppId
-      ? {
-          params: { app_id: sourceAppId },
-        }
-      : skipToken,
+    input: {
+      params: { app_id: sourceAppId ?? '' },
+    },
+    enabled: Boolean(sourceAppId),
   }))
 
   if (!sourceAppId)

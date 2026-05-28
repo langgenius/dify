@@ -73,7 +73,7 @@ function RuntimeCredentialSelect({
       >
         {selectedOption?.label ?? placeholder}
       </SelectTrigger>
-      <SelectContent popupClassName="w-(--anchor-width)">
+      <SelectContent placement="top-start" popupClassName="w-(--anchor-width)">
         {options.map(option => (
           <SelectItem key={option.value} value={option.value} title={option.label}>
             <SelectItemText>{option.label}</SelectItemText>
