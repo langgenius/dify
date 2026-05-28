@@ -9,6 +9,7 @@ import type {
   RequestOptions,
   ResolvedOptions,
 } from './types.js'
+import { userAgent as defaultUserAgent } from '../version/info.js'
 import { buildBody } from './body.js'
 import { classifyResponse } from './error-mapper.js'
 import { classifyTransport, logRequest, logResponse, setBearer, setUserAgent } from './hooks.js'
@@ -47,8 +48,9 @@ function compileState(opts: ClientOptions): ClientState {
   const onRequestError: Hook[] = [classifyTransport]
   const onResponseError: Hook[] = []
 
-  if (opts.userAgent !== undefined)
-    onRequest.push(setUserAgent(opts.userAgent))
+  // Always pin a difyctl-shaped UA so server logs / WAF rules see the CLI's
+  // version + platform. Callers can override by passing `userAgent` explicitly.
+  onRequest.push(setUserAgent(opts.userAgent ?? defaultUserAgent()))
   if (opts.bearer !== undefined && opts.bearer !== '')
     onRequest.push(setBearer(opts.bearer))
   if (opts.logger !== undefined) {

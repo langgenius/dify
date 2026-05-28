@@ -17,6 +17,12 @@ export function joinURL(base: string, path: string): string {
   return base + path
 }
 
+// Only `undefined` is treated as "absent". Empty strings, 0, and false coerce
+// through `String(...)` and land on the wire — e.g. `{ name: '' }` becomes
+// `?name=`. API-client callers (see `apps.ts`, `account-sessions.ts`) collapse
+// empty-string filters to `undefined` at their own layer; this helper does NOT
+// do that for them, on purpose, so a caller that wants to send an explicit
+// empty value still can.
 export function appendSearchParams(url: string, params: Record<string, SearchParamValue> | undefined): string {
   if (params === undefined)
     return url

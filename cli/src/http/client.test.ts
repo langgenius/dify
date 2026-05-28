@@ -91,6 +91,23 @@ describe('http client', () => {
     expect(captured).toBe('difyctl/0.0.0-test (test; arm64; dev)')
   })
 
+  // Regression guard for F-2: every production createHttpClient call site omits
+  // `userAgent`, so the client itself must pin a difyctl-shaped default. Without
+  // it, requests leak out with Node's default UA and server-side telemetry / WAF
+  // rules lose the CLI version signal.
+  it('falls back to the difyctl default User-Agent when none is supplied', async () => {
+    let captured: string | null = null
+    const client = createHttpClient({
+      baseURL: base(mock.url),
+      bearer: 'dfoa_test',
+      hooks: {
+        onRequest: ({ request }) => { captured = request.headers.get('user-agent') },
+      },
+    })
+    await client.get('workspaces')
+    expect(captured).toMatch(/^difyctl\/\S+ \(.+; .+; .+\)$/)
+  })
+
   it('maps 401 to BaseError(auth_expired)', async () => {
     mock.setScenario('auth-expired')
     const client = createHttpClient({ baseURL: base(mock.url), bearer: 'dfoa_test' })
@@ -524,5 +541,25 @@ describe('hook semantics', () => {
     })
     await expect(client.get('workspaces')).rejects.toThrow('hook boom')
     expect(onResponseErrorRan).toBe(false)
+  })
+
+  // Symmetric to the onResponse-throws test above: a throw inside an
+  // onResponseError hook (the !res.ok branch) must propagate out of dispatch
+  // verbatim, replacing the classified BaseError. dispatch has no try/catch
+  // around the hook chain; this pins that intent so a future "swallow hook
+  // errors" change can't slip through.
+  it('onResponseError hook throw propagates and replaces the classified BaseError', async () => {
+    mock.setScenario('auth-expired')
+    const client = createHttpClient({
+      baseURL: openAPIBase(mock.url),
+      bearer: 'dfoa_test',
+      retryAttempts: 0,
+      hooks: {
+        onResponseError: () => {
+          throw new Error('hook boom on error')
+        },
+      },
+    })
+    await expect(client.get('workspaces')).rejects.toThrow('hook boom on error')
   })
 })

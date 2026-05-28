@@ -70,7 +70,7 @@ describe('runGetMember', () => {
       { page: 3, limitRaw: '50' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
