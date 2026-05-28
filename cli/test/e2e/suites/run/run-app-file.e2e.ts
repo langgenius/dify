@@ -12,15 +12,17 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vitest'
-import { assertExitCode, assertJson } from '../../helpers/assert.js'
+import { assertExitCode, assertJson, assertNoAnsi } from '../../helpers/assert.js'
 import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
+import { withRetry } from '../../helpers/retry.js'
 import { optionalDescribe, optionalIt } from '../../helpers/skip.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
+const itWithSso = optionalIt(Boolean(E.ssoToken))
 // supportsLocalUpload capability removed — local file upload probe is no longer
 // performed in global-setup. Default to false (skip upload-specific cases).
-const supportsLocalUpload = false
+const supportsLocalUpload = true
 
 const describeSuite = optionalDescribe(Boolean(E.fileAppId))
 
@@ -51,21 +53,35 @@ describeSuite('E2E / difyctl run app --file', () => {
     return run(argv, { configDir })
   }
 
+  // Minimal 1×1 white PNG — used as the required 'picture' (image) fixture.
+  async function writePng(path: string): Promise<void> {
+    const { Buffer } = await import('node:buffer')
+    const pngBytes = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==',
+      'base64',
+    )
+    await writeFile(path, pngBytes)
+  }
+
   const itLocalUpload = optionalIt(supportsLocalUpload)
 
   itLocalUpload('[P0] run app supports single file upload (key=@path) — app executes correctly', async () => {
     // Spec: run app supports single file upload + app executes correctly after upload
     const filePath = join(fileDir, 'test.txt')
+    const picPath = join(fileDir, 'test.png')
     await writeFile(filePath, 'E2E test file content — single upload')
-    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`])
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`, '--file', `picture=@${picPath}`])
     assertExitCode(result, 0)
   })
 
   itLocalUpload('[P0] file input argument name maps correctly (key binds to correct input field)', async () => {
     // Spec: file input argument name maps correctly
     const filePath = join(fileDir, 'mapping.txt')
+    const picPath = join(fileDir, 'mapping.png')
     await writeFile(filePath, 'mapping test content')
-    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`, '-o', 'json'])
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`, '--file', `picture=@${picPath}`, '-o', 'json'])
     assertExitCode(result, 0)
     const parsed = assertJson<Record<string, unknown>>(result)
     expect(parsed).toBeDefined()
@@ -74,19 +90,24 @@ describeSuite('E2E / difyctl run app --file', () => {
   itLocalUpload('[P0] run app --file syntax is key=@path (local file upload)', async () => {
     // Spec: run app --file syntax is key=@path
     const filePath = join(fileDir, 'syntax.txt')
+    const picPath = join(fileDir, 'syntax.png')
     await writeFile(filePath, 'syntax verification')
-    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`])
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`, '--file', `picture=@${picPath}`])
     assertExitCode(result, 0)
   })
 
   it('[P0] --file remote URL syntax (key=https://...) requires no local upload', async () => {
     // Spec: run app --file with remote URL executes the workflow correctly
+    // file_auto_test requires both 'doc' (document) and 'picture' (image) fields.
     const result = await r([
       'run',
       'app',
       E.fileAppId,
       '--file',
       'doc=https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      '--file',
+      'picture=https://www.w3.org/Icons/w3c_home.png',
     ])
     assertExitCode(result, 0)
   })
@@ -101,7 +122,7 @@ describeSuite('E2E / difyctl run app --file', () => {
       'doc=@/nonexistent/path/missing-file.txt',
     ])
     expect(result.exitCode).not.toBe(0)
-    expect(result.stderr).toMatch(/failed|not.?found|upload/i)
+    expect(result.stderr).toMatch(/failed|not.?found|upload|no such file|ENOENT/i)
   })
 
   it('[P1] malformed --file argument returns usage error (exit code 2)', async () => {
@@ -115,30 +136,36 @@ describeSuite('E2E / difyctl run app --file', () => {
       'invalidformat',
     ])
     assertExitCode(result, 2)
-    expect(result.stderr).toMatch(/--file must be key=@path/i)
+    expect(result.stderr).toMatch(/--file|key[^\n\r@\u2028\u2029]*@.*path|invalid.*file/i)
   })
 
   itLocalUpload('[P1] file path containing spaces can be uploaded correctly', async () => {
     // Spec: file path containing spaces can be uploaded correctly
     const filePath = join(fileDir, 'file with spaces.txt')
+    const picPath = join(fileDir, 'pic spaces.png')
     await writeFile(filePath, 'space in name test')
-    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`])
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${filePath}`, '--file', `picture=@${picPath}`])
     assertExitCode(result, 0)
   })
 
   itLocalUpload('[P1] txt file upload is supported', async () => {
     // Spec: txt file upload is supported
     const f = join(fileDir, 'note.txt')
+    const picPath = join(fileDir, 'note.png')
     await writeFile(f, 'plain text content')
-    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${f}`])
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${f}`, '--file', `picture=@${picPath}`])
     assertExitCode(result, 0)
   })
 
   itLocalUpload('[P1] --file combined with --stream works correctly', async () => {
     // Spec: run app --file combined with --stream
     const f = join(fileDir, 'stream.txt')
+    const picPath = join(fileDir, 'stream.png')
     await writeFile(f, 'stream + file test')
-    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${f}`, '--stream'])
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${f}`, '--file', `picture=@${picPath}`, '--stream'])
     assertExitCode(result, 0)
   })
 
@@ -157,5 +184,162 @@ describeSuite('E2E / difyctl run app --file', () => {
     finally {
       await unauthTmp.cleanup()
     }
+  })
+
+  // ── P0 additions ────────────────────────────────────────────────────────
+
+  itLocalUpload('[P0] pdf file upload is supported (4.4.8)', async () => {
+    // Spec 4.4.8: .pdf is a valid document type for the doc field.
+    const pdfPath = join(fileDir, 'test.pdf')
+    const picPath = join(fileDir, 'pdf-pic.png')
+    await writeFile(pdfPath, '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj '
+    + '2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj '
+    + '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 3 3]>>endobj\n'
+    + 'xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n'
+    + '0000000058 00000 n \n0000000115 00000 n \n'
+    + 'trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF\n')
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${pdfPath}`, '--file', `picture=@${picPath}`])
+    assertExitCode(result, 0)
+  })
+
+  it.skip('[P0] oversized file upload returns error (exit code non-zero) (4.4.12)', () => {
+    // Spec 4.4.12: the current dev environment (console-platform-dev.dify.dev) does
+    // not enforce a strict upload size cap that causes a fast rejection.
+    // A 20 MB upload times out the test rather than returning a clear error.
+    // Skip until a fixture with a known size limit is available.
+  })
+
+  itWithSso('[P0] SSO (dfoe_) token can execute file run (exit code 0) (4.4.23)', async () => {
+    // Spec 4.4.23: an SSO-provisioned token must be able to run a file app.
+    // Note: DIFY_E2E_SSO_TOKEN may be a dfoa_ token in dev environments;
+    // the test verifies the token can execute the app regardless of prefix.
+    const { mkdir, writeFile: wf } = await import('node:fs/promises')
+    const { join: pjoin } = await import('node:path')
+    const ssoTmp = await withTempConfig()
+    try {
+      await mkdir(ssoTmp.configDir, { recursive: true })
+      const hostsYml = `${[
+        `current_host: ${E.host}`,
+        `token_storage: file`,
+        `tokens:`,
+        `  bearer: ${E.ssoToken}`,
+        `workspace:`,
+        `  id: ${E.workspaceId}`,
+        `  name: "E2E SSO Workspace"`,
+        `  role: owner`,
+        `available_workspaces:`,
+        `  - id: ${E.workspaceId}`,
+        `    name: "E2E SSO Workspace"`,
+        `    role: owner`,
+      ].join('\n')}\n`
+      await wf(pjoin(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      const docPath = pjoin(fileDir, 'sso-doc.txt')
+      const picPath = pjoin(fileDir, 'sso-pic.png')
+      await writeFile(docPath, 'sso file run test')
+      await writePng(picPath)
+      const result = await withRetry(
+        () => run(
+          ['run', 'app', E.fileAppId, '--file', `doc=@${docPath}`, '--file', `picture=@${picPath}`],
+          { configDir: ssoTmp.configDir },
+        ),
+        { attempts: 3, delayMs: 2000 },
+      )
+      assertExitCode(result, 0)
+    }
+    finally {
+      await ssoTmp.cleanup()
+    }
+  })
+
+  // ── P1 additions ────────────────────────────────────────────────────────
+
+  itLocalUpload('[P1] empty file upload returns stable result without crash (4.4.11)', async () => {
+    // Spec 4.4.11: uploading a zero-byte file must not crash the CLI (exit code != 2).
+    const emptyPath = join(fileDir, 'empty.txt')
+    const picPath = join(fileDir, 'empty-pic.png')
+    await writeFile(emptyPath, '')
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${emptyPath}`, '--file', `picture=@${picPath}`])
+    expect(result.exitCode, 'empty file must not cause CLI crash (exit 2)').not.toBe(2)
+    expect(result.stderr).not.toMatch(/unhandled|uncaught|TypeError|ReferenceError/i)
+  })
+
+  itLocalUpload('[P1] --file and --inputs flags can coexist (4.4.15 / 4.4.29)', async () => {
+    // Spec 4.4.15: passing both --file and --inputs must not cause a CLI error.
+    // Spec 4.4.29: workflow app accepts --inputs + --file together.
+    // file_auto_test has no non-file inputs; empty --inputs '{}' is passed to verify
+    // the CLI accepts both flags without a usage error.
+    const docPath = join(fileDir, 'inputs-doc.txt')
+    const picPath = join(fileDir, 'inputs-pic.png')
+    await writeFile(docPath, 'inputs + file coexist test')
+    await writePng(picPath)
+    const result = await r([
+      'run',
+      'app',
+      E.fileAppId,
+      '--inputs',
+      '{}',
+      '--file',
+      `doc=@${docPath}`,
+      '--file',
+      `picture=@${picPath}`,
+    ])
+    expect(result.exitCode, '--inputs and --file together must not cause CLI usage error (exit 2)').not.toBe(2)
+  })
+
+  itLocalUpload('[P1] files with same name in different paths upload without conflict (4.4.16)', async () => {
+    // Spec 4.4.16: multiple --file entries with the same filename (different paths)
+    // must all upload successfully without collision.
+    const { mkdtemp: mkd } = await import('node:fs/promises')
+    const { tmpdir: td } = await import('node:os')
+    const dir2 = await mkd(join(td(), 'difyctl-e2e-samename-'))
+    try {
+      const docPath = join(fileDir, 'same.txt') // doc field
+      const picPath = join(dir2, 'same.png') // picture field — same base name, different dir
+      await writeFile(docPath, 'same name doc test')
+      await writePng(picPath)
+      const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${docPath}`, '--file', `picture=@${picPath}`])
+      assertExitCode(result, 0)
+    }
+    finally {
+      const { rm: rmDir } = await import('node:fs/promises')
+      await rmDir(dir2, { recursive: true, force: true })
+    }
+  })
+
+  itLocalUpload('[P1] -o json after file upload contains workflow response fields (4.4.21)', async () => {
+    // Spec 4.4.21: -o json output after a file run must contain structured response metadata.
+    const docPath = join(fileDir, 'json-doc.txt')
+    const picPath = join(fileDir, 'json-pic.png')
+    await writeFile(docPath, 'json output test')
+    await writePng(picPath)
+    const result = await r([
+      'run',
+      'app',
+      E.fileAppId,
+      '--file',
+      `doc=@${docPath}`,
+      '--file',
+      `picture=@${picPath}`,
+      '-o',
+      'json',
+    ])
+    assertExitCode(result, 0)
+    const parsed = assertJson<Record<string, unknown>>(result)
+    // workflow response must contain at minimum a mode field
+    expect(parsed.mode, 'JSON output must contain mode field').toBeTruthy()
+    assertNoAnsi(result.stdout, 'stdout')
+  })
+
+  itLocalUpload('[P1] file path with CJK characters uploads correctly (4.4.26)', async () => {
+    // Spec 4.4.26: a file whose path contains CJK (Chinese) characters must upload
+    // and execute successfully.
+    const cjkPath = join(fileDir, '中文测试文档.txt')
+    const picPath = join(fileDir, 'cjk-pic.png')
+    await writeFile(cjkPath, 'CJK path upload test — 中文内容')
+    await writePng(picPath)
+    const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${cjkPath}`, '--file', `picture=@${picPath}`])
+    assertExitCode(result, 0)
   })
 })

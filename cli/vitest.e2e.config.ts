@@ -65,6 +65,8 @@ export default defineConfig({
           'test/e2e/suites/auth/whoami.e2e.ts',
           // config (local, no network)
           'test/e2e/suites/config/**/*.e2e.ts',
+          // discovery (get app / describe app)
+          'test/e2e/suites/discovery/**/*.e2e.ts',
           // run tests (require valid token)
           'test/e2e/suites/run/**/*.e2e.ts',
           // devices + logout LAST — both can revoke tokens

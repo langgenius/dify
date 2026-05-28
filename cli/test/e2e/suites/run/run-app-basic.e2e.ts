@@ -1,12 +1,10 @@
 /**
- * E2E: difyctl run app — basic app execution + streaming + conversation
+ * E2E: difyctl run app — basic app execution
  *
- * Test cases sourced from: Dify CLI Enhanced spec
- *   - Dify CLI/Run/Basic App Execution (26 cases)
- *   - Dify CLI/Run/Streaming Output (subset; full coverage in run-app-streaming.e2e.ts)
- *   - Dify CLI/Run/Conversation Mode (subset)
- *   - Dify CLI/Error Handling/Exit Code (run-related)
- *   - Dify CLI/CLI Framework/Non-Interactive (run-related)
+ * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Run/Basic App Execution (4.1)
+ *
+ * Streaming output cases → run-app-streaming.e2e.ts
+ * Conversation mode cases → run-app-conversation.e2e.ts
  *
  * Staging app prerequisites (specified via DIFY_E2E_* env vars):
  *   echo-chat     — mode=chat, query variable, outputs "echo: {query}"
@@ -14,7 +12,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -23,15 +21,15 @@ import {
   assertJson,
   assertNoAnsi,
   assertPipeFriendlyJson,
-  assertStderrContains,
   assertStdoutContains,
 } from '../../helpers/assert.js'
-import { registerConversation } from '../../helpers/cleanup-registry.js'
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
+import { optionalIt } from '../../helpers/skip.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
+const itWithSso = optionalIt(Boolean(E.ssoToken))
 
 // ── Suite ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +58,8 @@ describe('E2E / difyctl run app', () => {
       })
       assertExitCode(result, 0)
       assertStdoutContains(result, 'echo:hello')
+      // Spec 4.1.4: default output has no ANSI colour codes (non-TTY; run() sets NO_COLOR=1)
+      assertNoAnsi(result.stdout, 'stdout')
     })
 
     it('[P0] run app invokes the execute endpoint (stdout has actual content)', async () => {
@@ -133,7 +133,7 @@ describe('E2E / difyctl run app', () => {
       // Spec: run app supports --inputs
       // withRetry: staging workflow execution may have transient 5xx
       const result = await withRetry(
-        () => fx.r(['run', 'app', E.workflowAppId, '--inputs', JSON.stringify({ x: 'workflow-val' })]),
+        () => fx.r(['run', 'app', E.workflowAppId, '--inputs', JSON.stringify({ x: 'workflow-val', num: 42, enum_var: 'A', paragraph: 'short text' })]),
         { attempts: 3, delayMs: 2000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
       )
       assertExitCode(result, 0)
@@ -147,7 +147,7 @@ describe('E2E / difyctl run app', () => {
         'app',
         E.workflowAppId,
         '--inputs',
-        JSON.stringify({ x: 'multi-test' }),
+        JSON.stringify({ x: 'multi-test', num: 42, enum_var: 'A', paragraph: 'short text' }),
       ])
       assertExitCode(result, 0)
     })
@@ -191,10 +191,99 @@ describe('E2E / difyctl run app', () => {
 
     it('[P0] --inputs-file reads JSON inputs from a file', async () => {
       const inputsFile = join(fx.configDir, 'wf-inputs.json')
-      await writeFile(inputsFile, JSON.stringify({ x: 'from-file' }))
+      await writeFile(inputsFile, JSON.stringify({ x: 'from-file', num: 42, enum_var: 'A', paragraph: 'short text' }))
       const result = await fx.r(['run', 'app', E.workflowAppId, '--inputs-file', inputsFile])
       assertExitCode(result, 0)
       assertStdoutContains(result, 'from-file')
+    })
+
+    it('[P0] required inputs missing causes execution failure (exit code non-zero)', async () => {
+      // Spec 4.1.11: workflow app fails when required inputs are not provided.
+      // Passing an empty object omits the required "x" field; the server
+      // returns a validation error and the CLI exits with a non-zero code.
+      const result = await fx.r(['run', 'app', E.workflowAppId, '--inputs', '{}'])
+      expect(result.exitCode).not.toBe(0)
+      expect(result.stderr.length).toBeGreaterThan(0)
+    })
+
+    it('[P0] paragraph input within limit succeeds; exceeding max_length returns error', async () => {
+      // Spec 4.1.19: paragraph input exceeding max_length (100) returns validation error
+      // App: basic_auto_test — variable "paragraph" (text-input, max_length=100, optional)
+
+      // ── Within limit: 50 chars ──────────────────────────────────────────
+      const shortResult = await fx.r([
+        'run',
+        'app',
+        E.workflowAppId,
+        '--inputs',
+        JSON.stringify({
+          x: 'hello',
+          num: 42,
+          enum_var: 'A',
+          paragraph: 'A'.repeat(50),
+        }),
+      ])
+      assertExitCode(shortResult, 0)
+
+      // ── Exceeding limit: 101 chars ──────────────────────────────────────
+      const longResult = await fx.r([
+        'run',
+        'app',
+        E.workflowAppId,
+        '--inputs',
+        JSON.stringify({
+          x: 'hello',
+          num: 42,
+          enum_var: 'A',
+          paragraph: 'A'.repeat(101),
+        }),
+      ])
+      expect(longResult.exitCode).not.toBe(0)
+      expect(longResult.stderr).toMatch(/paragraph.*less than 100|paragraph.*100 characters/i)
+    })
+
+    it('[P0] valid inputs of all types execute successfully; invalid typed/enum inputs return errors', async () => {
+      // Spec 4.1.17: non-typed input value returns a validation error
+      // Spec 4.1.18: invalid enum value returns a validation error
+      //
+      // App: basic_auto_test (DIFY_E2E_WORKFLOW_APP_ID)
+      // Input schema:
+      //   x         — text-input (required)
+      //   num       — number     (required, Spec 4.1.17)
+      //   enum_var  — select     (required, options: A/B/C, Spec 4.1.18)
+
+      // ── Happy path: all correct values ──────────────────────────────────
+      const happyResult = await fx.r([
+        'run',
+        'app',
+        E.workflowAppId,
+        '--inputs',
+        JSON.stringify({ x: 'hello', num: 42, enum_var: 'A', paragraph: 'short text' }),
+      ])
+      assertExitCode(happyResult, 0)
+      assertStdoutContains(happyResult, 'echo:hello')
+
+      // ── 4.1.17: number field receives a string value ─────────────────────
+      const typedResult = await fx.r([
+        'run',
+        'app',
+        E.workflowAppId,
+        '--inputs',
+        JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A' }),
+      ])
+      expect(typedResult.exitCode).not.toBe(0)
+      expect(typedResult.stderr).toMatch(/num.*number|must be a valid number/i)
+
+      // ── 4.1.18: enum field receives a value outside the allowed options ──
+      const enumResult = await fx.r([
+        'run',
+        'app',
+        E.workflowAppId,
+        '--inputs',
+        JSON.stringify({ x: 'hello', num: 42, enum_var: 'invalid' }),
+      ])
+      expect(enumResult.exitCode).not.toBe(0)
+      expect(enumResult.stderr).toMatch(/enum_var.*must be one of|one of the following/i)
     })
   })
 
@@ -204,7 +293,8 @@ describe('E2E / difyctl run app', () => {
 
   describe('Error scenarios', () => {
     it('[P0] non-existent app returns error — exit code 1', async () => {
-      // Spec: non-existent app returns app-not-found + exit code 1
+      // Spec 4.1.20: non-existent app returns an error with not-found message
+      // Spec 4.1.21: exit code is exactly 1
       const result = await fx.r(['run', 'app', 'app-id-does-not-exist-e2e-xyz', 'hello'])
       assertExitCode(result, 1)
       expect(result.stderr).toMatch(/not.?found/i)
@@ -219,7 +309,8 @@ describe('E2E / difyctl run app', () => {
     })
 
     it('[P0] unauthenticated run app returns auth error (exit code 4)', async () => {
-      // Spec: unauthenticated run app returns auth error + exit code 4
+      // Spec 4.1.22: unauthenticated run app returns auth error message
+      // Spec 4.1.23: exit code is exactly 4
       const unauthTmp = await withTempConfig()
       try {
         const result = await run(['run', 'app', E.chatAppId, 'hello'], {
@@ -232,175 +323,39 @@ describe('E2E / difyctl run app', () => {
         await unauthTmp.cleanup()
       }
     })
-  })
 
-  // =========================================================================
-  // Streaming output
-  // =========================================================================
-
-  describe('Streaming output', () => {
-    it('[P0] --stream receives streaming output correctly — stdout has content', async () => {
-      // Spec: run app --stream receives streaming output correctly
-      const result = await fx.r(['run', 'app', E.chatAppId, 'stream-test', '--stream'])
-      assertExitCode(result, 0)
-      assertStdoutContains(result, 'echo:stream-test')
-    })
-
-    it('[P0] exit code is 0 after streaming completes', async () => {
-      // Spec: streaming exits normally after completion
-      const result = await fx.r(['run', 'app', E.chatAppId, 'end-ok', '--stream'])
-      assertExitCode(result, 0)
-    })
-
-    it('[P1] stderr is not mixed into stdout in streaming mode', async () => {
-      // Spec: stderr is not mixed into stdout in streaming mode
-      const result = await fx.r(['run', 'app', E.chatAppId, 'sep', '--stream'])
-      assertExitCode(result, 0)
-      expect(result.stdout).not.toContain('hint:')
-      assertStderrContains(result, '--conversation')
-    })
-
-    it('[P1] --stream -o json outputs a valid JSON envelope', async () => {
-      // Spec: streaming mode produces valid JSON output
-      const result = await fx.r(['run', 'app', E.chatAppId, 'sjson', '--stream', '-o', 'json'])
-      assertExitCode(result, 0)
-      const parsed = assertJson<{ mode: string, answer: string }>(result)
-      expect(parsed.mode).toMatch(/chat/)
-    })
-
-    it('[P0] streaming with non-existent app returns error (exit code 1)', async () => {
-      // Spec: streaming with non-existent app returns an error
-      const result = await fx.r(['run', 'app', 'nonexistent-xyz-e2e', 'hi', '--stream'])
-      assertExitCode(result, 1)
-    })
-
-    it('[P0] unauthenticated streaming returns auth error (exit code 4)', async () => {
-      // Spec: unauthenticated streaming returns an auth error
-      const unauthTmp = await withTempConfig()
+    it('[P1] network error returns non-zero exit code and error message', async () => {
+      // Spec 4.1.26: when the host is unreachable the CLI returns a network error.
+      // Uses a local port that has nothing listening (127.0.0.1:19999) so the
+      // connection is refused immediately without waiting for DNS.
+      const networkTmp = await withTempConfig()
       try {
-        const result = await run(['run', 'app', E.chatAppId, 'hi', '--stream'], {
-          configDir: unauthTmp.configDir,
-        })
-        assertExitCode(result, 4)
+        await mkdir(networkTmp.configDir, { recursive: true })
+        const hostsYml = `${[
+          `current_host: http://127.0.0.1:19999`,
+          `token_storage: file`,
+          `tokens:`,
+          `  bearer: dfoa_fake_token_network_test`,
+          `workspace:`,
+          `  id: ${E.workspaceId}`,
+          `  name: "E2E Test Workspace"`,
+          `  role: owner`,
+          `available_workspaces:`,
+          `  - id: ${E.workspaceId}`,
+          `    name: "E2E Test Workspace"`,
+          `    role: owner`,
+        ].join('\n')}\n`
+        await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+        const result = await run(
+          ['run', 'app', E.chatAppId, 'hello'],
+          { configDir: networkTmp.configDir, timeout: 15_000 },
+        )
+        expect(result.exitCode).not.toBe(0)
+        expect(result.stderr.length).toBeGreaterThan(0)
       }
       finally {
-        await unauthTmp.cleanup()
+        await networkTmp.cleanup()
       }
-    })
-
-    it('[P1] streaming mode output supports piping (no ANSI, ends with \\n)', async () => {
-      // Spec: streaming mode output supports piping
-      const result = await fx.r(['run', 'app', E.chatAppId, 'pipe-s', '--stream'])
-      assertExitCode(result, 0)
-      assertNoAnsi(result.stdout, 'stdout')
-      expect(result.stdout.endsWith('\n')).toBe(true)
-    })
-
-    it('[P0] workflow streaming output contains succeeded status', async () => {
-      const result = await fx.r([
-        'run',
-        'app',
-        E.workflowAppId,
-        '--inputs',
-        JSON.stringify({ x: 'wf-stream-val' }),
-        '--stream',
-        '-o',
-        'json',
-      ])
-      assertExitCode(result, 0)
-      const parsed = assertJson<{ data?: { status?: string } }>(result)
-      expect(parsed.data?.status).toBe('succeeded')
-    })
-  })
-
-  // =========================================================================
-  // Conversation mode
-  // =========================================================================
-
-  describe('Conversation mode', () => {
-    it('[P0] chat app can create a new conversation — stderr contains hint', async () => {
-      // Spec: chat app can create a new conversation
-      const result = await fx.r(['run', 'app', E.chatAppId, 'start-conv'])
-      assertExitCode(result, 0)
-      assertStderrContains(result, '--conversation')
-    })
-
-    it('[P0] JSON output includes conversation_id', async () => {
-      // Spec: JSON output includes conversation_id
-      const result = await fx.r(['run', 'app', E.chatAppId, 'conv-json', '-o', 'json'])
-      assertExitCode(result, 0)
-      const parsed = assertJson<{ conversation_id: string }>(result)
-      expect(typeof parsed.conversation_id).toBe('string')
-      expect(parsed.conversation_id.length).toBeGreaterThan(0)
-      registerConversation(E.host, E.token, E.chatAppId, parsed.conversation_id)
-    })
-
-    it('[P0] --conversation flag works — conversation_id is reused in subsequent requests', async () => {
-      // Spec: --conversation flag works; conversation_id is reused in subsequent requests
-      const first = await fx.r(['run', 'app', E.chatAppId, 'first-msg', '-o', 'json'])
-      assertExitCode(first, 0)
-      const { conversation_id } = assertJson<{ conversation_id: string }>(first)
-      registerConversation(E.host, E.token, E.chatAppId, conversation_id)
-
-      const second = await fx.r([
-        'run',
-        'app',
-        E.chatAppId,
-        'second-msg',
-        '--conversation',
-        conversation_id,
-        '-o',
-        'json',
-      ])
-      assertExitCode(second, 0)
-      const secondParsed = assertJson<{ conversation_id: string }>(second)
-      expect(secondParsed.conversation_id).toBe(conversation_id)
-    })
-
-    it('[P0] a new session is auto-created when conversation_id is omitted', async () => {
-      // Spec: a new session is auto-created when conversation_id is omitted
-      const result = await fx.r(['run', 'app', E.chatAppId, 'new-conv', '-o', 'json'])
-      assertExitCode(result, 0)
-      const { conversation_id } = assertJson<{ conversation_id: string }>(result)
-      expect(conversation_id).toBeTruthy()
-    })
-
-    it('[P0] invalid conversation_id returns error (exit code 1)', async () => {
-      // Spec: invalid conversation_id returns an error
-      const result = await fx.r([
-        'run',
-        'app',
-        E.chatAppId,
-        'bad-conv',
-        '--conversation',
-        'invalid-conv-id-xyz-not-exist',
-      ])
-      assertNonZeroExit(result)
-    })
-
-    it('[P1] conversation mode supports streaming', async () => {
-      // Spec: conversation mode supports streaming
-      const first = await fx.r(['run', 'app', E.chatAppId, 'init', '-o', 'json'])
-      const { conversation_id } = assertJson<{ conversation_id: string }>(first)
-
-      const result = await fx.r([
-        'run',
-        'app',
-        E.chatAppId,
-        'continue',
-        '--conversation',
-        conversation_id,
-        '--stream',
-      ])
-      assertExitCode(result, 0)
-      assertStdoutContains(result, 'echo:')
-    })
-
-    it('[P1] conversation output supports piping (-o json pipe-friendly format)', async () => {
-      // Spec: conversation output supports piping
-      const result = await fx.r(['run', 'app', E.chatAppId, 'pipe-conv', '-o', 'json'])
-      assertExitCode(result, 0)
-      assertPipeFriendlyJson(result)
     })
   })
 
@@ -442,6 +397,45 @@ describe('E2E / difyctl run app', () => {
         E.workspaceId,
       ])
       assertExitCode(result, 0)
+    })
+
+    itWithSso('[P1] external SSO user: --workspace parameter is silently ignored', async () => {
+      // Spec 4.1.25: SSO subjects operate without workspace scoping.
+      // Passing --workspace must not change the outcome — the parameter
+      // should be ignored, so both calls produce the same exit code.
+      const ssoTmp = await withTempConfig()
+      try {
+        await mkdir(ssoTmp.configDir, { recursive: true })
+        const hostsYml = `${[
+          `current_host: ${E.host}`,
+          `token_storage: file`,
+          `tokens:`,
+          `  bearer: ${E.ssoToken}`,
+          `external_subject:`,
+          `  email: sso@example.com`,
+          `  issuer: https://issuer.example.com`,
+        ].join('\n')}\n`
+        await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+
+        // Run WITHOUT --workspace
+        const resultWithout = await run(
+          ['run', 'app', E.chatAppId, 'hello'],
+          { configDir: ssoTmp.configDir },
+        )
+
+        // Run WITH --workspace (should be ignored → same exit code)
+        const resultWith = await run(
+          ['run', 'app', E.chatAppId, 'hello', '--workspace', E.workspaceId],
+          { configDir: ssoTmp.configDir },
+        )
+
+        // If --workspace were honoured for SSO users it would change behaviour;
+        // identical exit codes confirm the parameter is silently ignored.
+        expect(resultWith.exitCode).toBe(resultWithout.exitCode)
+      }
+      finally {
+        await ssoTmp.cleanup()
+      }
     })
   })
 })
