@@ -159,7 +159,7 @@ export type DatasetCreatePayload = {
   external_knowledge_id?: string | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name: string
-  permission?: DatasetPermissionEnum
+  permission?: PermissionEnum
   provider?: string
   retrieval_model?: RetrievalModel
   summary_index_setting?: {
@@ -321,8 +321,6 @@ export type DatasetMetadataResponse = {
   type: string
 }
 
-export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
-
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
@@ -366,7 +364,7 @@ export type DatasetUpdatePayload = {
   partial_member_list?: Array<{
     [key: string]: string
   }> | null
-  permission?: DatasetPermissionEnum
+  permission?: PermissionEnum
   retrieval_model?: RetrievalModel
 }
 
@@ -604,6 +602,8 @@ export type MetadataOperationData = {
 export type MetadataUpdatePayload = {
   name: string
 }
+
+export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type PipelineRunApiEntity = {
   datasource_info_list: Array<{

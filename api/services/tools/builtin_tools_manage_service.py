@@ -287,9 +287,7 @@ class BuiltinToolManageService:
                     # Plugin credentials only expose only_me / all_team_members at creation;
                     # partial-member access is handled by workspace RBAC, not per-credential.
                     if visibility_enum == PermissionEnum.PARTIAL_TEAM:
-                        raise ValueError(
-                            "partial_members visibility is no longer supported for plugin credentials"
-                        )
+                        raise ValueError("partial_members visibility is no longer supported for plugin credentials")
 
                     db_provider = BuiltinToolProvider(
                         tenant_id=tenant_id,

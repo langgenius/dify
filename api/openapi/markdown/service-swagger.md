@@ -2314,7 +2314,7 @@ Condition detail
 | external_knowledge_id | string |  | No |
 | indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | No |
 | name | string |  | Yes |
-| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
+| permission | [PermissionEnum](#permissionenum) |  | No |
 | provider | string |  | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 | summary_index_setting | object |  | No |
@@ -2503,12 +2503,6 @@ Condition detail
 | name | string |  | Yes |
 | type | string |  | Yes |
 
-#### DatasetPermissionEnum
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasetPermissionEnum | string |  |  |
-
 #### DatasetRerankingModelResponse
 
 | Name | Type | Description | Required |
@@ -2559,7 +2553,7 @@ Condition detail
 | indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | No |
 | name | string |  | No |
 | partial_member_list | [ object ] |  | No |
-| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
+| permission | [PermissionEnum](#permissionenum) |  | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
 
 #### DatasetVectorSettingResponse
@@ -2870,6 +2864,14 @@ Metadata operation data
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
+
+#### PermissionEnum
+
+Shared permission levels for resources (datasets, credentials, etc.)
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
 #### PipelineRunApiEntity
 

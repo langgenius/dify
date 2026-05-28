@@ -356,6 +356,7 @@ export type BuiltinToolAddPayload = {
   }
   name?: string | null
   type: CredentialType
+  visibility?: string | null
 }
 
 export type BuiltinProviderDefaultCredentialPayload = {
