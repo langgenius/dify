@@ -174,6 +174,7 @@ class _AppRunner:
                 if exec_params.streaming:
                     _publish_error_event(exc, exec_params.workflow_run_id, exec_params.app_mode)
                 raise
+                
             if not exec_params.streaming:
                 return response
 

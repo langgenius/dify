@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
@@ -47,6 +48,8 @@ from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableUpdater
+
+logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppRunner(WorkflowBasedAppRunner):
