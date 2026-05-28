@@ -24,6 +24,8 @@ import { Section, SectionState } from './common'
 
 type AppInstanceWithId = AppInstance & { id: string }
 
+const SETTINGS_CONTENT_CLASS_NAME = 'w-full max-w-[640px]'
+
 const SETTINGS_FORM_SKELETON_FIELDS = [
   { key: 'name', inputClassName: 'my-0 h-8 w-full animate-pulse rounded-lg' },
   { key: 'description', inputClassName: 'my-0 h-24 w-full animate-pulse rounded-lg' },
@@ -31,14 +33,14 @@ const SETTINGS_FORM_SKELETON_FIELDS = [
 
 function SettingsFormSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className={`${SETTINGS_CONTENT_CLASS_NAME} flex flex-col gap-3`}>
       {SETTINGS_FORM_SKELETON_FIELDS.map(field => (
         <div key={field.key} className="flex flex-col gap-2">
           <SkeletonRectangle className="h-3 w-24 animate-pulse" />
           <SkeletonRectangle className={field.inputClassName} />
         </div>
       ))}
-      <SkeletonRow className="justify-end gap-2">
+      <SkeletonRow className="gap-2">
         <SkeletonRectangle className="my-0 h-8 w-18 animate-pulse rounded-lg" />
         <SkeletonRectangle className="my-0 h-8 w-16 animate-pulse rounded-lg" />
       </SkeletonRow>
@@ -48,7 +50,7 @@ function SettingsFormSkeleton() {
 
 function DeleteInstanceSkeleton() {
   return (
-    <div className="flex min-h-9 items-center">
+    <div className={`${SETTINGS_CONTENT_CLASS_NAME} flex min-h-9 items-center`}>
       <SkeletonRectangle className="my-0 h-8 w-18 animate-pulse rounded-lg" />
     </div>
   )
@@ -99,7 +101,13 @@ function DeleteInstanceButton({
         {t('settings.delete')}
       </Button>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open && !deleteInstance.isPending)
+            setShowDeleteConfirm(false)
+        }}
+      >
         <AlertDialogContent className="w-120">
           <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -110,10 +118,10 @@ function DeleteInstanceButton({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="pt-3">
-            <AlertDialogCancelButton variant="secondary">
+            <AlertDialogCancelButton variant="secondary" disabled={deleteInstance.isPending}>
               {t('createModal.cancel')}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleDelete}>
+            <AlertDialogConfirmButton loading={deleteInstance.isPending} onClick={handleDelete}>
               {t('settings.delete')}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
@@ -191,7 +199,7 @@ function SettingsForm({ app }: {
       description={t('settings.descriptionHelp')}
       layout="row"
     >
-      <div className="flex flex-col gap-3">
+      <div className={`${SETTINGS_CONTENT_CLASS_NAME} flex flex-col gap-3`}>
         <div className="flex flex-col gap-2">
           <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="settings-name">
             {t('settings.name')}
@@ -226,7 +234,12 @@ function SettingsForm({ app }: {
           >
             {t('settings.reset')}
           </Button>
-          <Button variant="primary" disabled={!canSave} onClick={handleSave}>
+          <Button
+            variant="primary"
+            disabled={!canSave}
+            loading={updateInstance.isPending}
+            onClick={handleSave}
+          >
             {t('settings.save')}
           </Button>
         </div>
