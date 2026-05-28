@@ -40,10 +40,5 @@ export function AgentDetailPage({
     )
   }
 
-  return (
-    <section
-      aria-label={t(`agentDetail.sections.${section}`)}
-      className="h-full min-w-0 flex-1 bg-components-panel-bg-blur"
-    />
-  )
+  return null
 }
