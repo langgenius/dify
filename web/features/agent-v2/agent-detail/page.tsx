@@ -1,15 +1,18 @@
 'use client'
 
+import type { AgentDetailSectionKey } from './section'
 import { useTranslation } from 'react-i18next'
-import { AgentAccessPage } from '../components/access/access-page'
-import { AgentLogsPage } from '../components/logs/logs-page'
-import { AgentMonitoringPage } from '../components/monitoring/monitoring-page'
+import { AgentAccessPage } from './access/page'
+import { AgentLogsPage } from './logs/page'
+import { AgentMonitoringPage } from './monitoring/page'
 
 type AgentDetailPageProps = {
-  section: 'configure' | 'access' | 'logs' | 'monitoring'
+  agentId: string
+  section: AgentDetailSectionKey
 }
 
 export function AgentDetailPage({
+  agentId,
   section,
 }: AgentDetailPageProps) {
   const { t } = useTranslation('agentV2')
@@ -21,7 +24,7 @@ export function AgentDetailPage({
     return <AgentLogsPage />
 
   if (section === 'access')
-    return <AgentAccessPage />
+    return <AgentAccessPage agentId={agentId} />
 
   return (
     <section

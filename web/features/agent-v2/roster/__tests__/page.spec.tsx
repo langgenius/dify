@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import RosterPage from '../pages/roster-page'
+import RosterPage from '../page'
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),

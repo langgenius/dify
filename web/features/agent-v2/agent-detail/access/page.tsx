@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentAccessSource } from '../../access-sources'
+import type { AgentAccessSource } from './access-sources'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -10,29 +10,22 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter } from '@/next/navigation'
-import { agentAccessSources } from '../../access-sources'
+import { useRouter } from '@/next/navigation'
+import { getAgentDetailPath } from '../routes'
+import { agentAccessSources } from './access-sources'
 
-const getAgentIdFromPathname = (pathname: string) => {
-  const [section, agentId] = pathname.split('/').filter(Boolean)
-
-  if (section !== 'roster')
-    return undefined
-
-  return agentId
+type AgentAccessPageProps = {
+  agentId: string
 }
 
-export function AgentAccessPage() {
+export function AgentAccessPage({
+  agentId,
+}: AgentAccessPageProps) {
   const { t } = useTranslation('agentV2')
-  const pathname = usePathname()
   const router = useRouter()
-  const agentId = getAgentIdFromPathname(pathname)
 
   const navigateToSection = (section: 'logs' | 'monitoring') => {
-    if (!agentId)
-      return
-
-    router.push(`/roster/${agentId}/${section}`)
+    router.push(getAgentDetailPath(agentId, section))
   }
 
   return (

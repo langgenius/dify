@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AgentDetailLayout } from '@/features/agent-v2/layouts/agent-detail-layout'
+import { AgentDetailLayout } from '@/features/agent-v2/agent-detail/layout'
 
 type LayoutProps = {
   children: ReactNode

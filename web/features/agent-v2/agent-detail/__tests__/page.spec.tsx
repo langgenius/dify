@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { usePathname, useRouter } from '@/next/navigation'
-import { AgentDetailPage } from '../pages/agent-detail-page'
+import { AgentDetailPage } from '../page'
 
 vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
@@ -22,7 +22,7 @@ describe('AgentDetailPage', () => {
   })
 
   it('renders the logs skeleton with filters and table rows', () => {
-    render(<AgentDetailPage section="logs" />)
+    render(<AgentDetailPage agentId="agent-1" section="logs" />)
 
     expect(screen.getByRole('region', { name: 'agentV2.agentDetail.sections.logs' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'agentV2.agentDetail.logs.title' })).toBeInTheDocument()
@@ -41,7 +41,7 @@ describe('AgentDetailPage', () => {
   })
 
   it('renders the monitoring layout with metric cards', () => {
-    render(<AgentDetailPage section="monitoring" />)
+    render(<AgentDetailPage agentId="agent-1" section="monitoring" />)
 
     expect(screen.getByRole('region', { name: 'agentV2.agentDetail.sections.monitoring' })).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.monitoring.title')).toBeInTheDocument()
@@ -57,7 +57,7 @@ describe('AgentDetailPage', () => {
   })
 
   it('routes access actions to the target tab', async () => {
-    render(<AgentDetailPage section="access" />)
+    render(<AgentDetailPage agentId="agent-1" section="access" />)
 
     expect(screen.getByRole('region', { name: 'agentV2.agentDetail.sections.access' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'agentV2.agentDetail.access.title' })).toBeInTheDocument()

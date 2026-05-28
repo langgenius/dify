@@ -1,5 +1,13 @@
-import { AgentDetailPage } from '@/features/agent-v2/pages/agent-detail-page'
+import { AgentDetailPage } from '@/features/agent-v2/agent-detail/page'
 
-export default function Page() {
-  return <AgentDetailPage section="logs" />
+type PageProps = {
+  params: Promise<{ agentId: string }>
+}
+
+export default async function Page({
+  params,
+}: PageProps) {
+  const { agentId } = await params
+
+  return <AgentDetailPage agentId={agentId} section="logs" />
 }

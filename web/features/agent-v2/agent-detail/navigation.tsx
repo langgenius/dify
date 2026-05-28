@@ -1,12 +1,12 @@
 'use client'
 
+import type { AgentDetailSectionKey } from './section'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-
-type AgentDetailSectionKey = 'configure' | 'access' | 'logs' | 'monitoring'
+import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 
 type AgentDetailNavItem = {
   labelKey: `agentDetail.sections.${AgentDetailSectionKey}`
@@ -15,37 +15,28 @@ type AgentDetailNavItem = {
   activeIcon: string
 }
 
-const getAgentIdFromPathname = (pathname: string) => {
-  const [section, agentId] = pathname.split('/').filter(Boolean)
-
-  if (section !== 'roster')
-    return undefined
-
-  return agentId
-}
-
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
-    href: `/roster/${agentId}/configure`,
+    href: getAgentDetailPath(agentId, 'configure'),
     icon: 'i-ri-node-tree',
     activeIcon: 'i-ri-node-tree',
   },
   {
     labelKey: 'agentDetail.sections.access',
-    href: `/roster/${agentId}/access`,
+    href: getAgentDetailPath(agentId, 'access'),
     icon: 'i-ri-share-forward-line',
     activeIcon: 'i-ri-share-forward-fill',
   },
   {
     labelKey: 'agentDetail.sections.logs',
-    href: `/roster/${agentId}/logs`,
+    href: getAgentDetailPath(agentId, 'logs'),
     icon: 'i-ri-list-check-2',
     activeIcon: 'i-ri-list-check-2',
   },
   {
     labelKey: 'agentDetail.sections.monitoring',
-    href: `/roster/${agentId}/monitoring`,
+    href: getAgentDetailPath(agentId, 'monitoring'),
     icon: 'i-ri-pulse-line',
     activeIcon: 'i-ri-pulse-fill',
   },

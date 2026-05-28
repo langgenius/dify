@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { usePathname, useRouter } from '@/next/navigation'
-import { AgentDetailSection, AgentDetailTop } from '../navigation/agent-detail-navigation'
+import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()

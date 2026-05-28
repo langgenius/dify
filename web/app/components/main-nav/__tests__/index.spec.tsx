@@ -118,7 +118,7 @@ vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
   default: () => <div data-testid="dataset-detail-top" />,
 }))
 
-vi.mock('@/features/agent-v2/navigation/agent-detail-navigation', () => ({
+vi.mock('@/features/agent-v2/agent-detail/navigation', () => ({
   AgentDetailSection: () => <div data-testid="agent-detail-section" />,
   AgentDetailTop: () => <div data-testid="agent-detail-top" />,
 }))

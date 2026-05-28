@@ -1,6 +1,6 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { AgentDetailLayout } from '../layouts/agent-detail-layout'
+import { AgentDetailLayout } from '../layout'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
