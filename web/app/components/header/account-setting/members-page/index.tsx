@@ -62,7 +62,6 @@ const MembersPage = () => {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
         refetch()
-        handleCloseDetails()
       },
     })
   }

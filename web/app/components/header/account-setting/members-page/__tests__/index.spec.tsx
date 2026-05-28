@@ -9,12 +9,14 @@ import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
 import MembersPage from '../index'
 
 vi.mock('@/context/app-context')
 vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
+vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/use-common')
 
 const renderMembersPage = () => renderWithSystemFeatures(<MembersPage />, {
@@ -94,11 +96,22 @@ vi.mock('../transfer-ownership-modal', () => ({
   ),
 }))
 vi.mock('../member-details-modal', () => ({
-  default: ({ member, onClose, canAssignRoles }: { member: Member, onClose: () => void, canAssignRoles?: boolean }) => (
+  default: ({
+    member,
+    onClose,
+    canAssignRoles,
+    onAssignSubmit,
+  }: {
+    member: Member
+    onClose: () => void
+    canAssignRoles?: boolean
+    onAssignSubmit?: (roleIds: string[]) => void
+  }) => (
     <div>
       <div>Member Details Modal</div>
       <div data-testid="details-member-name">{member.name}</div>
       <div data-testid="details-can-assign">{String(canAssignRoles)}</div>
+      <button onClick={() => onAssignSubmit?.(['role-next'])}>Submit Member Roles</button>
       <button onClick={onClose}>Close Member Details Modal</button>
     </div>
   ),
@@ -110,6 +123,7 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
 describe('MembersPage', () => {
   const mockRefetch = vi.fn()
   const mockFormatTimeFromNow = vi.fn(() => 'just now')
+  const mockUpdateRolesOfMember = vi.fn()
 
   const mockAccounts: Member[] = [
     {
@@ -155,6 +169,13 @@ describe('MembersPage', () => {
       data: { accounts: mockAccounts },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
+    mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
+      options?.onSuccess?.()
+      return Promise.resolve()
+    })
+    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
+      mutateAsync: mockUpdateRolesOfMember,
+    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
 
     vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
       enableBilling: false,
@@ -484,6 +505,23 @@ describe('MembersPage', () => {
     await user.click(screen.getByTestId('member-row-2'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+  })
+
+  it('should keep member details open after role assignment succeeds', async () => {
+    const user = userEvent.setup()
+
+    renderMembersPage()
+
+    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
+
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      memberId: '2',
+      roleIds: ['role-next'],
+    }, expect.any(Object))
+    expect(mockRefetch).toHaveBeenCalled()
+    expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
+    expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
   })
 
   it('should not open member details when clicking the member menu area', async () => {

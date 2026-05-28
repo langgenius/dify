@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { memo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -40,14 +40,16 @@ const MemberMenu = ({
   const canRemove = !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
 
-  const handleOpenAssignRoles = () => {
+  const selectedRoles = useMemo(() => member.roles?.map(role => role.id) || [], [member.roles])
+
+  const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
     setAssignModalOpen(true)
-  }
+  }, [])
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
-  const handleAssignRolesSubmit = (roleIds: string[]) => {
+  const handleAssignRolesSubmit = useCallback((roleIds: string[]) => {
     updateRolesOfMember({
       memberId: member.id,
       roleIds,
@@ -57,9 +59,9 @@ const MemberMenu = ({
         onOperate()
       },
     })
-  }
+  }, [member.id, onOperate, t, updateRolesOfMember])
 
-  const handleRemove = async () => {
+  const handleRemove = useCallback(async () => {
     setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
@@ -68,18 +70,27 @@ const MemberMenu = ({
     }
     catch {
     }
-  }
+  }, [member.id, onOperate, t])
 
-  const handleTransferOwnership = () => {
+  const handleTransferOwnership = useCallback(() => {
     setOpen(false)
     onTransferOwnership?.()
-  }
+  }, [onTransferOwnership])
+
+  const stopPropagationOnClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
+
+  const stopPropagationOnKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ')
+      e.stopPropagation()
+  }, [])
 
   if (!canAssignRoles && !canRemove && !showTransferOwnership)
     return null
 
   return (
-    <>
+    <div onClick={stopPropagationOnClick} onKeyDown={stopPropagationOnKeyDown}>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={(
@@ -129,12 +140,12 @@ const MemberMenu = ({
       </DropdownMenu>
       {assignModalOpen && (
         <AssignRolesModal
-          member={member}
+          selectedRoles={selectedRoles}
           onClose={() => setAssignModalOpen(false)}
           onSubmit={handleAssignRolesSubmit}
         />
       )}
-    </>
+    </div>
   )
 }
 

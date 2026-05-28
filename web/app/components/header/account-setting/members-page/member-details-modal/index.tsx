@@ -35,8 +35,9 @@ const MemberDetailsModal = ({
 
   const roles = useMemo(() => rolesOfMember?.roles ?? [], [rolesOfMember?.roles])
 
-  const builtinRoles = roles.filter(role => role.is_builtin)
-  const customRoles = roles.filter(role => !role.is_builtin)
+  const builtinRoles = useMemo(() => roles.filter(role => role.is_builtin), [roles])
+  const customRoles = useMemo(() => roles.filter(role => !role.is_builtin), [roles])
+  const selectedRoles = useMemo(() => roles.map(role => role.id), [roles])
 
   const handleClose = useCallback(() => {
     setAssignOpen(false)
@@ -48,9 +49,9 @@ const MemberDetailsModal = ({
   }, [onAssignSubmit])
 
   const handleRemove = useCallback((id: string) => {
-    const roleIds = roles.map(role => role.id).filter(roleId => roleId !== id)
+    const roleIds = selectedRoles.filter(roleId => roleId !== id)
     onAssignSubmit?.(roleIds)
-  }, [roles, onAssignSubmit])
+  }, [selectedRoles, onAssignSubmit])
 
   return (
     <>
@@ -167,7 +168,7 @@ const MemberDetailsModal = ({
 
       {assignOpen && (
         <AssignRolesModal
-          member={member}
+          selectedRoles={selectedRoles}
           onClose={handleClose}
           onSubmit={handleAssignSubmit}
         />
