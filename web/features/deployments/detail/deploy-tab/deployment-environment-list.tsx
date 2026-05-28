@@ -15,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
@@ -157,12 +158,13 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
               </DropdownMenuItem>
               {!isUndeployed && (
                 <>
-                  <div className="my-1 border-t border-divider-subtle" aria-hidden />
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
+                    variant="destructive"
                     disabled={undeployActionDisabled}
                     aria-disabled={undeployActionDisabled}
                     className={cn(
-                      'gap-2 px-3 text-util-colors-red-red-600',
+                      'gap-2 px-3',
                       undeployActionDisabled && 'cursor-not-allowed opacity-60',
                     )}
                     onClick={() => {
@@ -191,31 +193,16 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
             setShowUndeployConfirm(open)
           }}
         >
-          <AlertDialogContent className="w-130">
+          <AlertDialogContent className="w-120">
             <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
               <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
                 {t('deployTab.undeployConfirmTitle', { name: environmentName(row.environment) })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="system-md-regular text-text-tertiary">
+              <AlertDialogDescription className="system-sm-regular text-text-tertiary">
                 {t('deployTab.undeployConfirmDesc')}
               </AlertDialogDescription>
-              <div className="rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 px-3 py-3">
-                <div className="system-xs-semibold-uppercase text-util-colors-red-red-700">
-                  {t('deployTab.undeployImpactTitle')}
-                </div>
-                <dl className="mt-2 grid gap-1.5 system-sm-regular">
-                  <div className="flex min-w-0 justify-between gap-3">
-                    <dt className="shrink-0 text-util-colors-red-red-600">{t('deployTab.col.environment')}</dt>
-                    <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{environmentName(row.environment)}</dd>
-                  </div>
-                  <div className="flex min-w-0 justify-between gap-3">
-                    <dt className="shrink-0 text-util-colors-red-red-600">{t('deployTab.col.currentRelease')}</dt>
-                    <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{releaseLabel(row.currentRelease)}</dd>
-                  </div>
-                </dl>
-              </div>
             </div>
-            <AlertDialogActions>
+            <AlertDialogActions className="pt-3">
               <AlertDialogCancelButton variant="secondary" disabled={isUndeployRequesting}>
                 {t('deployDrawer.cancel')}
               </AlertDialogCancelButton>

@@ -100,31 +100,16 @@ function DeleteInstanceButton({
       </Button>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
-        <AlertDialogContent className="w-130">
+        <AlertDialogContent className="w-120">
           <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('settings.deleteConfirmTitle')}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
               {t('settings.deleteConfirmDesc', { name: appName })}
             </AlertDialogDescription>
-            <div className="rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 px-3 py-3">
-              <div className="system-xs-semibold-uppercase text-util-colors-red-red-700">
-                {t('settings.deleteImpactTitle')}
-              </div>
-              <dl className="mt-2 grid gap-1.5 system-sm-regular">
-                <div className="flex min-w-0 justify-between gap-3">
-                  <dt className="shrink-0 text-util-colors-red-red-600">{t('settings.deleteImpactInstance')}</dt>
-                  <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{appName}</dd>
-                </div>
-                <div className="flex min-w-0 justify-between gap-3">
-                  <dt className="shrink-0 text-util-colors-red-red-600">{t('settings.deleteImpact')}</dt>
-                  <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">{t('settings.deleteImpactValue')}</dd>
-                </div>
-              </dl>
-            </div>
           </div>
-          <AlertDialogActions>
+          <AlertDialogActions className="pt-3">
             <AlertDialogCancelButton variant="secondary">
               {t('createModal.cancel')}
             </AlertDialogCancelButton>

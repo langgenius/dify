@@ -345,35 +345,16 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
           setShowDeleteConfirm(nextOpen)
         }}
       >
-        <AlertDialogContent className="w-130">
+        <AlertDialogContent className="w-120">
           <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('versions.deleteConfirmTitle')}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
               {t('versions.deleteConfirmDesc', { name: releaseLabel(targetRelease) })}
             </AlertDialogDescription>
-            <div className="rounded-xl border border-util-colors-red-red-200 bg-util-colors-red-red-50 px-3 py-3">
-              <div className="system-xs-semibold-uppercase text-util-colors-red-red-700">
-                {t('versions.deleteImpactTitle')}
-              </div>
-              <dl className="mt-2 grid gap-1.5 system-sm-regular">
-                <div className="flex min-w-0 justify-between gap-3">
-                  <dt className="shrink-0 text-util-colors-red-red-600">{t('versions.deleteImpactRelease')}</dt>
-                  <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">
-                    {releaseLabel(targetRelease)}
-                  </dd>
-                </div>
-                <div className="flex min-w-0 justify-between gap-3">
-                  <dt className="shrink-0 text-util-colors-red-red-600">{t('versions.deleteImpactDeployment')}</dt>
-                  <dd className="min-w-0 text-right break-words text-util-colors-red-red-700">
-                    {t('versions.deleteImpactNotDeployed')}
-                  </dd>
-                </div>
-              </dl>
-            </div>
           </div>
-          <AlertDialogActions>
+          <AlertDialogActions className="pt-3">
             <AlertDialogCancelButton variant="secondary" disabled={isDeletingRelease}>
               {t('versions.cancelDelete')}
             </AlertDialogCancelButton>
