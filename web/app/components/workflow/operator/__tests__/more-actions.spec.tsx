@@ -10,12 +10,10 @@ const mockDownloadUrl = vi.fn()
 const mockSetViewport = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
 const {
-  mockAppStoreState,
+  mockDropdownContentProps,
   mockWorkflowState,
 } = vi.hoisted(() => ({
-  mockAppStoreState: {
-    appSidebarExpand: 'collapse',
-  },
+  mockDropdownContentProps: vi.fn(),
   mockWorkflowState: {
     knowledgeName: '',
     appName: 'Demo App',
@@ -53,7 +51,17 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
         </button>
       )
     },
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => {
+    DropdownMenuContent: ({
+      children,
+      ...positioningProps
+    }: {
+      children: React.ReactNode
+      placement?: string
+      sideOffset?: number
+      alignOffset?: number
+      popupClassName?: string
+    }) => {
+      mockDropdownContentProps(positioningProps)
       const { open } = useDropdownMenuContext()
       return open ? <div>{children}</div> : null
     },
@@ -99,10 +107,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: typeof mockAppStoreState) => unknown) => selector(mockAppStoreState),
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: typeof mockWorkflowState) => unknown) => selector(mockWorkflowState),
 }))
@@ -138,7 +142,6 @@ describe('MoreActions', () => {
     mockToPng.mockResolvedValue('data:image/png;base64,current')
     mockToJpeg.mockResolvedValue('data:image/jpeg;base64,current')
     mockToSvg.mockResolvedValue('data:image/svg+xml;base64,current')
-    mockAppStoreState.appSidebarExpand = 'collapse'
     mockWorkflowState.knowledgeName = ''
     mockWorkflowState.appName = 'Demo App'
 
@@ -146,6 +149,15 @@ describe('MoreActions', () => {
     const viewport = document.createElement('div')
     viewport.className = 'react-flow__viewport'
     document.body.appendChild(viewport)
+  })
+
+  it('opens the menu to the right of the workflow control bar', () => {
+    render(<MoreActions />)
+
+    expect(mockDropdownContentProps).toHaveBeenCalledWith({
+      placement: 'right-end',
+      popupClassName: 'min-w-[180px]',
+    })
   })
 
   it('opens the menu and exports the current view as png', async () => {
