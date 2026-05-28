@@ -121,7 +121,6 @@ class TestAppMCPServerController:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch("controllers.console.app.mcp_server.current_account_with_tenant", return_value=(None, "tenant-1")),
             patch("controllers.console.app.mcp_server.db.session.add"),
             patch("controllers.console.app.mcp_server.db.session.commit"),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="server-code"),
@@ -131,7 +130,7 @@ class TestAppMCPServerController:
             ),
         ):
             response, status_code = method(
-                api, app_model=SimpleNamespace(id="app-1", name="Demo App", description="App description")
+                api, "tenant-1", app_model=SimpleNamespace(id="app-1", name="Demo App", description="App description")
             )
 
         assert response == {"id": "server-1"}
