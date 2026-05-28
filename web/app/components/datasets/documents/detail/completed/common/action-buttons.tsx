@@ -1,10 +1,11 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../../context'
 
@@ -31,17 +32,17 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   const docForm = useDocumentContext(s => s.docForm)
   const parentMode = useDocumentContext(s => s.parentMode)
 
-  useHotkey('Escape', (e) => {
+  useKeyPress(['esc'], (e) => {
     e.preventDefault()
     handleCancel()
   })
 
-  useHotkey('Mod+S', (e) => {
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
     e.preventDefault()
     if (loading)
       return
     handleSave()
-  })
+  }, { exactMatch: true, useCapture: true })
 
   const isParentChildParagraphMode = useMemo(() => {
     return docForm === ChunkingMode.parentChild && parentMode === 'paragraph'
@@ -54,7 +55,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
       >
         <div className="flex items-center gap-x-1">
           <span className="system-sm-medium text-components-button-secondary-text">{t('operation.cancel', { ns: 'common' })}</span>
-          <Kbd>{formatForDisplay('Escape')}</Kbd>
+          <ShortcutsName keys={['ESC']} textColor="secondary" />
         </div>
       </Button>
       {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk && showRegenerationButton)
@@ -76,11 +77,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
       >
         <div className="flex items-center gap-x-1">
           <span className="text-components-button-primary-text">{t('operation.save', { ns: 'common' })}</span>
-          <KbdGroup>
-            {['Mod', 'S'].map(key => (
-              <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
-            ))}
-          </KbdGroup>
+          <ShortcutsName keys={['ctrl', 'S']} bgColor="white" />
         </div>
       </Button>
     </div>

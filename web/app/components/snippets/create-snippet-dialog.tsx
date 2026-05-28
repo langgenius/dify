@@ -4,10 +4,11 @@ import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useKeyPress } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Textarea from '@/app/components/base/textarea'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
 export type CreateSnippetDialogPayload = {
   name: string
@@ -124,14 +125,14 @@ function CreateSnippetDialog({
               <Textarea
                 className="resize-none"
                 value={description}
-                onValueChange={value => setDescription(value)}
+                onChange={e => setDescription(e.target.value)}
                 placeholder={t('snippet.descriptionPlaceholder', { ns: 'workflow' }) || ''}
                 disabled={isSubmitting}
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 px-6 pb-6">
+          <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button disabled={isSubmitting} onClick={handleClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
@@ -142,6 +143,7 @@ function CreateSnippetDialog({
               onClick={handleConfirm}
             >
               {confirmText || t('snippet.confirm', { ns: 'workflow' })}
+              <ShortcutsName className="ml-1" keys={['ctrl', 'enter']} bgColor="white" />
             </Button>
           </div>
         </DialogContent>

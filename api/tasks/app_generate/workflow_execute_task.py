@@ -102,13 +102,12 @@ class AppExecutionParams(BaseModel):
         workflow_run_id: str | None = None,
     ):
         user_params: _Account | _EndUser
-        match user:
-            case Account():
-                user_params = _Account(user_id=user.id)
-            case EndUser():
-                user_params = _EndUser(end_user_id=user.id)
-            case _:
-                raise AssertionError("this statement should be unreachable.")
+        if isinstance(user, Account):
+            user_params = _Account(user_id=user.id)
+        elif isinstance(user, EndUser):
+            user_params = _EndUser(end_user_id=user.id)
+        else:
+            raise AssertionError("this statement should be unreachable.")
         return cls(
             app_id=app_model.id,
             workflow_id=workflow.id,
@@ -366,37 +365,36 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    match generate_entity:
-        case AdvancedChatAppGenerateEntity():
-            assert conversation is not None
-            assert message is not None
-            _resume_advanced_chat(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                conversation=conversation,
-                message=message,
-                generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
-                session_factory=session_factory,
-                pause_state_config=pause_config,
-                workflow_run_id=workflow_run_id,
-                workflow_run=workflow_run,
-            )
-        case WorkflowAppGenerateEntity():
-            _resume_workflow(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
-                session_factory=session_factory,
-                pause_state_config=pause_config,
-                workflow_run_id=workflow_run_id,
-                workflow_run=workflow_run,
-                workflow_run_repo=workflow_run_repo,
-                pause_entity=pause_entity,
-            )
+    if isinstance(generate_entity, AdvancedChatAppGenerateEntity):
+        assert conversation is not None
+        assert message is not None
+        _resume_advanced_chat(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            conversation=conversation,
+            message=message,
+            generate_entity=generate_entity,
+            graph_runtime_state=graph_runtime_state,
+            session_factory=session_factory,
+            pause_state_config=pause_config,
+            workflow_run_id=workflow_run_id,
+            workflow_run=workflow_run,
+        )
+    elif isinstance(generate_entity, WorkflowAppGenerateEntity):
+        _resume_workflow(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            generate_entity=generate_entity,
+            graph_runtime_state=graph_runtime_state,
+            session_factory=session_factory,
+            pause_state_config=pause_config,
+            workflow_run_id=workflow_run_id,
+            workflow_run=workflow_run,
+            workflow_run_repo=workflow_run_repo,
+            pause_entity=pause_entity,
+        )
 
 
 def _resume_advanced_chat(

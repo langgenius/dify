@@ -108,14 +108,13 @@ describe('DatasetCardTags', () => {
       expect(wrapper).not.toHaveClass('opacity-30')
     })
 
-    it('should keep the overflow mask independent from dataset card hover', () => {
+    it('should hide mask with CSS when the tag area is hovered', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} />)
       const maskDiv = container.querySelector('.bg-tag-selector-mask-bg')
       expect(maskDiv).toBeInTheDocument()
       expect(maskDiv).toHaveClass('group-hover/tag-area:hidden')
       expect(maskDiv).toHaveClass('group-focus-within/tag-area:hidden')
-      expect(maskDiv).not.toHaveClass('group-hover:bg-tag-selector-mask-hover-bg')
-      expect(maskDiv?.parentElement).toHaveClass('relative', 'w-full', 'overflow-hidden')
+      expect(maskDiv).toHaveClass('group-hover:bg-tag-selector-mask-hover-bg')
     })
 
     it('should keep TagSelector visible when tags are empty', () => {

@@ -1,9 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Kbd } from '@langgenius/dify-ui/kbd'
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
 
@@ -146,8 +145,8 @@ const ImagePreviewer = ({
     fetchImage(image)
   }, [fetchImage])
 
-  useHotkey('ArrowLeft', prevImage)
-  useHotkey('ArrowRight', nextImage)
+  useHotkeys('left', prevImage)
+  useHotkeys('right', nextImage)
 
   return (
     <Dialog
@@ -171,7 +170,9 @@ const ImagePreviewer = ({
           >
             <RiCloseLine className="size-5" />
           </Button>
-          <Kbd>{formatForDisplay('Escape')}</Kbd>
+          <span className="system-2xs-medium-uppercase text-text-tertiary">
+            Esc
+          </span>
         </div>
         {cachedImages[currentImage!.url]!.status === 'loading' && (
           <Loading type="app" />

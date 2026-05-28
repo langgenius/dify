@@ -2,17 +2,9 @@ import type { AppMeta } from '../types/app-meta.js'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import yaml from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { CACHE_APP_INFO, cachePath } from '../store/manager.js'
-import { YamlStore } from '../store/store.js'
-import { platform } from '../sys/index.js'
 import { FieldInfo, FieldParameters } from '../types/app-meta.js'
-import { APP_INFO_TTL_MS, loadAppInfoCache } from './app-info.js'
-
-function appInfoPath(dir: string): string {
-  return cachePath(dir, CACHE_APP_INFO)
-}
+import { APP_INFO_TTL_MS, cachePath, loadAppInfoCache } from './app-info.js'
 
 function metaInfoOnly(): AppMeta {
   return {
@@ -43,10 +35,10 @@ describe('app-info disk cache', () => {
   })
 
   it('round-trips an entry across reloads', async () => {
-    const c1 = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c1 = await loadAppInfoCache({ configDir: dir })
     await c1.set('http://localhost:9999', 'app-1', metaInfoOnly())
 
-    const c2 = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c2 = await loadAppInfoCache({ configDir: dir })
     const got = c2.get('http://localhost:9999', 'app-1')
     expect(got).toBeDefined()
     expect(got?.meta.info?.id).toBe('app-1')
@@ -55,7 +47,7 @@ describe('app-info disk cache', () => {
 
   it('isFresh respects TTL', async () => {
     const now = new Date('2026-05-09T00:00:00Z')
-    const c = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)), now: () => now })
+    const c = await loadAppInfoCache({ configDir: dir, now: () => now })
     await c.set('h', 'app-1', metaInfoOnly())
     const r = c.get('h', 'app-1')
     expect(r).toBeDefined()
@@ -66,44 +58,45 @@ describe('app-info disk cache', () => {
   })
 
   it('keys by (host, app_id) — different hosts isolate', async () => {
-    const c = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c = await loadAppInfoCache({ configDir: dir })
     await c.set('h1', 'app-1', metaInfoOnly())
     expect(c.get('h2', 'app-1')).toBeUndefined()
     expect(c.get('h1', 'app-1')).toBeDefined()
   })
 
   it('delete removes entry from disk', async () => {
-    const c1 = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c1 = await loadAppInfoCache({ configDir: dir })
     await c1.set('h', 'app-1', metaInfoOnly())
     await c1.delete('h', 'app-1')
 
-    const c2 = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c2 = await loadAppInfoCache({ configDir: dir })
     expect(c2.get('h', 'app-1')).toBeUndefined()
   })
 
   it('writes file with 0600 permission', async () => {
-    const c = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c = await loadAppInfoCache({ configDir: dir })
     await c.set('h', 'app-1', metaInfoOnly())
     const { stat } = await import('node:fs/promises')
-    const s = await stat(appInfoPath(dir))
-    if (platform() !== 'win32')
+    const s = await stat(cachePath(dir))
+    if (process.platform !== 'win32')
       expect(s.mode & 0o777).toBe(0o600)
   })
 
   it('missing cache file is not an error', async () => {
-    const c = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c = await loadAppInfoCache({ configDir: dir })
     expect(c.get('h', 'app-1')).toBeUndefined()
   })
 
   it('corrupt cache file is treated as empty', async () => {
-    const { writeFile } = await import('node:fs/promises')
-    await writeFile(appInfoPath(dir), ': : not valid yaml', 'utf8')
-    const c = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    await mkdir(join(dir, 'cache'), { recursive: true })
+    await writeFile(cachePath(dir), '{not json', 'utf8')
+    const c = await loadAppInfoCache({ configDir: dir })
     expect(c.get('h', 'app-1')).toBeUndefined()
   })
 
   it('updates same key in place (no growth)', async () => {
-    const c = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const c = await loadAppInfoCache({ configDir: dir })
     await c.set('h', 'app-1', metaInfoOnly())
     const slim: AppMeta = {
       ...metaInfoOnly(),
@@ -111,8 +104,8 @@ describe('app-info disk cache', () => {
       parameters: { opening_statement: 'hi' },
     }
     await c.set('h', 'app-1', slim)
-    const raw = await readFile(appInfoPath(dir), 'utf8')
-    const parsed = yaml.load(raw) as { entries: Record<string, unknown> }
+    const raw = await readFile(cachePath(dir), 'utf8')
+    const parsed = JSON.parse(raw) as { entries: Record<string, unknown> }
     expect(Object.keys(parsed.entries)).toHaveLength(1)
   })
 })

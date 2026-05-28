@@ -1,13 +1,12 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { AppInfoCache } from '../../../cache/app-info.js'
-import type { IOStreams } from '../../../sys/io/streams'
+import type { IOStreams } from '../../../io/streams.js'
 import type { RunContext } from '../../run/app/_strategies/index.js'
 import { AppMetaClient } from '../../../api/app-meta.js'
 import { AppRunClient } from '../../../api/app-run.js'
 import { AppsClient } from '../../../api/apps.js'
-import { getEnv, processExit } from '../../../sys/index.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import { colorEnabled, colorScheme } from '../../../io/color.js'
 import { FieldInfo } from '../../../types/app-meta.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { pickStrategy } from '../../run/app/_strategies/index.js'
@@ -77,7 +76,7 @@ async function resolveInputs(
 }
 
 export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Promise<void> {
-  const env = deps.envLookup ?? getEnv
+  const env = deps.envLookup ?? ((k: string) => process.env[k])
   const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
 
   const apps = new AppsClient(deps.http)
@@ -86,7 +85,7 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
   const mode = m.info?.mode ?? RUN_MODES.Workflow
 
   const runClient = new AppRunClient(deps.http)
-  const exit = deps.exit ?? processExit
+  const exit = deps.exit ?? ((code: number) => process.exit(code) as never)
 
   let action = opts.action
   if (action === undefined) {

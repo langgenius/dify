@@ -1,36 +1,20 @@
-import uuid
-
 import pytest
 from flask import Flask
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.auth.data import AuthData
-from controllers.openapi.auth.pipeline import PipelineRouter
-from libs.oauth_bearer import Scope, TokenType
-
-
-def _stub_execute(self, args, kwargs, view, *, scope=None, allowed_token_types=None, edition=None):
-    """Bypass all auth logic; inject minimal AuthData and call the view directly."""
-    kwargs["auth_data"] = AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        token_hash="test",
-        token_id=uuid.uuid4(),
-        scopes=frozenset({Scope.FULL}),
-        required_scope=scope,
-    )
-    return view(*args, **kwargs)
+from controllers.openapi.auth.pipeline import Pipeline
 
 
 @pytest.fixture
 def bypass_pipeline(monkeypatch):
-    """Stub PipelineRouter._execute so endpoints skip real auth at request time.
+    """Stub Pipeline.run so endpoint decoration does not invoke real auth.
 
-    Module-level @auth_router.guard(...) captures the real router at import
-    time — patching guard itself does nothing. Patching _execute on the class
-    is the seam that fires at request time.
+    Module-level @OAUTH_BEARER_PIPELINE.guard(...) captures the real
+    pipeline at import time; mocking the module attribute does not undo
+    that. Patching Pipeline.run on the class is the bypass that actually
+    works.
     """
-    monkeypatch.setattr(PipelineRouter, "_execute", _stub_execute)
+    monkeypatch.setattr(Pipeline, "run", lambda self, ctx: None)
 
 
 @pytest.fixture

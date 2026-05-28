@@ -54,6 +54,7 @@ def _masked_api_key(api_key: str) -> str:
 def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Bypass console decorators so handlers can run in isolation."""
 
+    import controllers.console.extension as extension_module
     from controllers.console import wraps as wraps_module
 
     account = MagicMock()
@@ -65,6 +66,7 @@ def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     monkeypatch.setattr(wraps_module.dify_config, "EDITION", "CLOUD")
     monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
     monkeypatch.delenv("INIT_PASSWORD", raising=False)
+    monkeypatch.setattr(extension_module, "current_account_with_tenant", lambda: (account, "tenant-123"))
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (account, "tenant-123"))
 
     # The login_required decorator consults the shared LocalProxy in libs.login.

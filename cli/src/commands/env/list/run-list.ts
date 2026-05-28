@@ -1,5 +1,4 @@
 import { ENV_REGISTRY } from '../../../env/registry.js'
-import { getEnv } from '../../../sys/index.js'
 
 export type EnvLookup = (name: string) => string | undefined
 
@@ -18,7 +17,7 @@ export type EnvListJsonRow = {
 const COLUMN_PADDING = 2
 
 export function runEnvList(opts: RunEnvListOptions = {}): string {
-  const lookup = opts.lookup ?? getEnv
+  const lookup = opts.lookup ?? defaultLookup
   if (opts.json) {
     const rows: EnvListJsonRow[] = ENV_REGISTRY.map(v => ({
       name: v.name,
@@ -67,4 +66,8 @@ function renderTable(rows: readonly (readonly string[])[]): string {
     out += `${parts.join('').trimEnd()}\n`
   }
   return out
+}
+
+function defaultLookup(name: string): string | undefined {
+  return process.env[name]
 }

@@ -1534,6 +1534,14 @@ export const zAgentSoulSkillsFilesConfig = z.object({
 })
 
 /**
+ * AgentSoulToolsConfig
+ */
+export const zAgentSoulToolsConfig = z.object({
+  cli_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+  dify_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
  * WorkflowNodeJobMode
  */
 export const zWorkflowNodeJobMode = z.enum(['let_agent_figure_it_out', 'tell_agent_what_to_do'])
@@ -1764,6 +1772,25 @@ export const zAgentSoulModelConfig = z.object({
 })
 
 /**
+ * AgentSoulConfig
+ */
+export const zAgentSoulConfig = z.object({
+  app_features: z.record(z.string(), z.unknown()).optional(),
+  app_variables: z.array(zAppVariableConfig).optional(),
+  env: zAgentSoulEnvConfig.optional(),
+  human: zAgentSoulHumanConfig.optional(),
+  knowledge: zAgentSoulKnowledgeConfig.optional(),
+  memory: zAgentSoulMemoryConfig.optional(),
+  misc_legacy: z.record(z.string(), z.unknown()).optional(),
+  model: zAgentSoulModelConfig.optional(),
+  prompt: zAgentSoulPromptConfig.optional(),
+  sandbox: zAgentSoulSandboxConfig.optional(),
+  schema_version: z.int().optional().default(1),
+  skills_files: zAgentSoulSkillsFilesConfig.optional(),
+  tools: zAgentSoulToolsConfig.optional(),
+})
+
+/**
  * DeclaredOutputCheckConfig
  *
  * File-output content check via a model-based comparison against a benchmark file.
@@ -1814,72 +1841,6 @@ export const zDeclaredArrayItem = z.object({
 })
 
 export const zFormInputConfig = z.unknown()
-
-/**
- * AgentSoulDifyToolCredentialRef
- *
- * Reference to a stored Dify Plugin Tool credential.
- *
- * Secret values are resolved only at runtime. The legacy ``credential_id``
- * field is accepted by :class:`AgentSoulDifyToolConfig` and normalized here so
- * old Agent tool payloads can be read while new payloads stay explicit.
- */
-export const zAgentSoulDifyToolCredentialRef = z.object({
-  id: z.string().max(255).nullish(),
-  provider: z.string().max(255).nullish(),
-  type: z.enum(['provider', 'tool']).optional().default('tool'),
-})
-
-/**
- * AgentSoulDifyToolConfig
- *
- * One Dify Plugin Tool configured on Agent Soul.
- *
- * The API backend prepares this persisted product shape into
- * ``DifyPluginToolConfig`` before sending a run request to Agent backend.
- * ``provider_id`` keeps compatibility with existing Agent tool config payloads;
- * new callers should send ``plugin_id`` + ``provider`` when available.
- */
-export const zAgentSoulDifyToolConfig = z.object({
-  credential_ref: zAgentSoulDifyToolCredentialRef.optional(),
-  credential_type: z.enum(['api-key', 'oauth2', 'unauthorized']).optional().default('api-key'),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-  plugin_id: z.string().max(255).nullish(),
-  provider: z.string().max(255).nullish(),
-  provider_id: z.string().max(255).nullish(),
-  provider_type: z.string().optional().default('plugin'),
-  runtime_parameters: z.record(z.string(), z.unknown()).optional(),
-  tool_name: z.string().min(1).max(255),
-})
-
-/**
- * AgentSoulToolsConfig
- */
-export const zAgentSoulToolsConfig = z.object({
-  cli_tools: z.array(z.record(z.string(), z.unknown())).optional(),
-  dify_tools: z.array(zAgentSoulDifyToolConfig).optional(),
-})
-
-/**
- * AgentSoulConfig
- */
-export const zAgentSoulConfig = z.object({
-  app_features: z.record(z.string(), z.unknown()).optional(),
-  app_variables: z.array(zAppVariableConfig).optional(),
-  env: zAgentSoulEnvConfig.optional(),
-  human: zAgentSoulHumanConfig.optional(),
-  knowledge: zAgentSoulKnowledgeConfig.optional(),
-  memory: zAgentSoulMemoryConfig.optional(),
-  misc_legacy: z.record(z.string(), z.unknown()).optional(),
-  model: zAgentSoulModelConfig.optional(),
-  prompt: zAgentSoulPromptConfig.optional(),
-  sandbox: zAgentSoulSandboxConfig.optional(),
-  schema_version: z.int().optional().default(1),
-  skills_files: zAgentSoulSkillsFilesConfig.optional(),
-  tools: zAgentSoulToolsConfig.optional(),
-})
 
 /**
  * OutputErrorStrategy
@@ -3873,60 +3834,6 @@ export const zPostAppsByAppIdWorkflowsDraftRunPath = z.object({
  */
 export const zPostAppsByAppIdWorkflowsDraftRunResponse = z.record(z.string(), z.unknown())
 
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath = z.object({
-  app_id: z.string(),
-  node_id: z.string(),
-  run_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
-  = z.object({
-    app_id: z.string(),
-    node_id: z.string(),
-    output_name: z.string(),
-    run_id: z.string(),
-  })
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
-  = z.record(z.string(), z.unknown())
-
 export const zGetAppsByAppIdWorkflowsDraftSystemVariablesPath = z.object({
   app_id: z.string(),
 })
@@ -4046,60 +3953,6 @@ export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
  * Success
  */
 export const zPostAppsByAppIdWorkflowsPublishResponse = z.record(z.string(), z.unknown())
-
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath = z.object({
-  app_id: z.string(),
-  node_id: z.string(),
-  run_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
-  = z.object({
-    app_id: z.string(),
-    node_id: z.string(),
-    output_name: z.string(),
-    run_id: z.string(),
-  })
-
-/**
- * Success
- */
-export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
-  = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdWorkflowsTriggersWebhookPath = z.object({
   app_id: z.string(),

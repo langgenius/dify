@@ -218,8 +218,6 @@ describe('Autocomplete wrappers', () => {
       await expect.element(screen.getByText('Workflow')).toHaveClass('system-sm-medium')
       await expect.element(screen.getByTestId('status')).toHaveClass('text-text-tertiary')
       await expect.element(screen.getByTestId('empty')).toHaveClass('system-sm-regular')
-      await expect.element(screen.getByTestId('empty')).toHaveClass('empty:p-0')
-      expect(screen.getByTestId('empty').element().getBoundingClientRect().height).toBe(0)
       expect(screen.getByText('Workflow').element().parentElement?.querySelector('.i-ri-arrow-right-line')).toHaveAttribute('aria-hidden', 'true')
     })
 
@@ -249,35 +247,6 @@ describe('Autocomplete wrappers', () => {
       await expect.element(screen.getByRole('option', { name: 'Workflow' })).toHaveClass('custom-item')
       await expect.element(screen.getByText('Workflow')).toHaveClass('custom-text')
       await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
-    })
-
-    it('should navigate function-rendered items with arrow keys', async () => {
-      const screen = await renderWithSafeViewport(
-        <Autocomplete open defaultValue="" items={['workflow', 'dataset', 'app']}>
-          <AutocompleteInputGroup>
-            <AutocompleteInput aria-label="Search resources" />
-          </AutocompleteInputGroup>
-          <AutocompleteContent>
-            <AutocompleteList>
-              {(item: string) => (
-                <AutocompleteItem key={item} value={item}>
-                  <AutocompleteItemText>{item}</AutocompleteItemText>
-                </AutocompleteItem>
-              )}
-            </AutocompleteList>
-          </AutocompleteContent>
-        </Autocomplete>,
-      )
-
-      const input = asHTMLElement(screen.getByRole('combobox', { name: 'Search resources' }).element())
-
-      input.focus()
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
-      await expect.element(screen.getByRole('option', { name: 'workflow' })).toHaveAttribute('data-highlighted')
-
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
-
-      await expect.element(screen.getByRole('option', { name: 'dataset' })).toHaveAttribute('data-highlighted')
     })
   })
 })

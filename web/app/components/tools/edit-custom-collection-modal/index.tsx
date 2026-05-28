@@ -13,9 +13,6 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { Input } from '@langgenius/dify-ui/input'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
@@ -25,6 +22,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
@@ -221,7 +220,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                   : 'data-[swipe-direction=right]:right-2',
               )}
             >
-              <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <div className="shrink-0 border-b border-divider-regular py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
@@ -234,14 +233,8 @@ const EditCustomCollectionModal: FC<Props> = ({
                   </div>
                 </div>
                 <div className="min-h-0 flex-1">
-                  <div className="flex h-full min-h-0 flex-col">
-                    <ScrollArea
-                      className="min-h-0 flex-1 overflow-hidden"
-                      slotClassNames={{
-                        viewport: 'overscroll-contain',
-                        content: 'space-y-4 py-3 pr-8 pl-6',
-                      }}
-                    >
+                  <div className="flex h-full flex-col">
+                    <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
                       <div>
                         <div className="py-2 system-sm-medium text-text-primary">
                           {t('createTool.name', { ns: 'tools' })}
@@ -287,10 +280,9 @@ const EditCustomCollectionModal: FC<Props> = ({
 
                         </div>
                         <Textarea
-                          aria-label={t('createTool.schema', { ns: 'tools' })}
                           className="h-[240px] resize-none"
                           value={schema}
-                          onValueChange={value => setSchema(value)}
+                          onChange={e => setSchema(e.target.value)}
                           placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
                         />
                       </div>
@@ -380,7 +372,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         />
                       </div>
 
-                    </ScrollArea>
+                    </div>
                     <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
                       {
                         isEdit && (

@@ -45,7 +45,7 @@ from libs.helper import to_timestamp, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import current_account_with_tenant, login_required
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService, attach_message_extra_contents
@@ -180,7 +180,7 @@ class ChatMessageListApi(Resource):
     @setup_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model: App):
+    def get(self, app_model):
         args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
         conversation = db.session.scalar(
@@ -257,7 +257,7 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_model: App):
+    def post(self, app_model):
         current_user, _ = current_account_with_tenant()
 
         args = MessageFeedbackPayload.model_validate(console_ns.payload)
@@ -314,7 +314,7 @@ class MessageAnnotationCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
+    def get(self, app_model):
         count = db.session.scalar(
             select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
         )
@@ -337,7 +337,7 @@ class MessageSuggestedQuestionApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, message_id: UUID):
+    def get(self, app_model, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         message_id_str = str(message_id)
 
@@ -379,7 +379,7 @@ class MessageFeedbackExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
+    def get(self, app_model):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
         # Import the service function
@@ -417,7 +417,7 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App, message_id: UUID):
+    def get(self, app_model, message_id: UUID):
         message_id_str = str(message_id)
 
         message = db.session.scalar(

@@ -17,8 +17,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.composition import OAUTH_BEARER_PIPELINE
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.helper import to_timestamp
@@ -56,9 +55,8 @@ def _ensure_form_is_allowed_for_openapi(form) -> None:
 @openapi_ns.route("/apps/<string:app_id>/form/human_input/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @openapi_ns.response(200, "Form definition")
-    @auth_router.guard(scope=Scope.APPS_RUN)
-    def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
+    def get(self, app_id: str, form_token: str, app_model: App, caller, caller_kind: str):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
@@ -71,9 +69,8 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[HumanInputFormSubmitPayload.__name__])
     @openapi_ns.response(200, "Form submitted")
-    @auth_router.guard(scope=Scope.APPS_RUN)
-    def post(self, app_id: str, form_token: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
+    def post(self, app_id: str, form_token: str, app_model: App, caller, caller_kind: str):
         payload = HumanInputFormSubmitPayload.model_validate(request.get_json(silent=True) or {})
 
         service = HumanInputService(db.engine)

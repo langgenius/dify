@@ -1,4 +1,3 @@
-import { arch, platform } from '../sys/index.js'
 import { compatString } from './compat.js'
 
 export type Channel = 'dev' | 'rc' | 'stable'
@@ -28,5 +27,5 @@ export function longVersion(): string {
 }
 
 export function userAgent(): string {
-  return `difyctl/${versionInfo.version} (${platform()}; ${arch()}; ${versionInfo.channel})`
+  return `difyctl/${versionInfo.version} (${process.platform}; ${process.arch}; ${versionInfo.channel})`
 }

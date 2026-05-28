@@ -1,25 +1,18 @@
 import pytest
 from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
-from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-    DifyPluginToolConfig,
-    DifyPluginToolsLayerConfig,
-)
-from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
+from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LAYER_TYPE_ID, DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
 from dify_agent.protocol import (
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
+    ExecutionContext,
 )
 from pydantic import ValidationError
 
 from clients.agent_backend import (
     AGENT_SOUL_PROMPT_LAYER_ID,
-    DIFY_EXECUTION_CONTEXT_LAYER_ID,
-    DIFY_PLUGIN_TOOLS_LAYER_ID,
     WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
     WORKFLOW_USER_PROMPT_LAYER_ID,
     AgentBackendModelConfig,
@@ -33,14 +26,15 @@ from clients.agent_backend import (
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
     return AgentBackendWorkflowNodeRunInput(
         model=AgentBackendModelConfig(
+            tenant_id="tenant-1",
             plugin_id="langgenius/openai",
+            user_id="user-1",
             model_provider="openai",
             model="gpt-test",
             credentials={"api_key": "secret-key"},
         ),
-        execution_context=DifyExecutionContextLayerConfig(
+        execution_context=ExecutionContext(
             tenant_id="tenant-1",
-            user_id="user-1",
             workflow_id="workflow-1",
             workflow_run_id="workflow-run-1",
             node_id="node-1",
@@ -70,11 +64,13 @@ def test_request_builder_outputs_dify_agent_create_run_request():
         AGENT_SOUL_PROMPT_LAYER_ID,
         WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
         WORKFLOW_USER_PROMPT_LAYER_ID,
-        DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "plugin",
         DIFY_AGENT_MODEL_LAYER_ID,
         DIFY_AGENT_OUTPUT_LAYER_ID,
     ]
     assert request.on_exit.default is ExitIntent.DELETE
+    assert request.execution_context is not None
+    assert request.execution_context.node_execution_id == "node-execution-1"
     assert request.idempotency_key == "workflow-run-1:node-execution-1"
     assert request.metadata == {"workflow_id": "workflow-1", "node_id": "node-1"}
 
@@ -98,39 +94,10 @@ def test_request_builder_sets_model_and_output_layer_contract_ids():
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].type == DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config.user_id == "user-1"
+    assert layers["plugin"].type == DIFY_PLUGIN_LAYER_TYPE_ID
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].type == DIFY_PLUGIN_LLM_LAYER_TYPE_ID
-    assert layers[DIFY_AGENT_MODEL_LAYER_ID].config.plugin_id == "langgenius/openai"
-    assert layers[DIFY_AGENT_MODEL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID].deps == {"plugin": "plugin"}
     assert layers[DIFY_AGENT_OUTPUT_LAYER_ID].type == DIFY_OUTPUT_LAYER_TYPE_ID
-
-
-def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
-    run_input = _run_input()
-    run_input.tools = DifyPluginToolsLayerConfig(
-        tools=[
-            DifyPluginToolConfig(
-                plugin_id="langgenius/time",
-                provider="time",
-                tool_name="current_time",
-                credential_type="unauthorized",
-                name="current_time",
-                description="Get current time.",
-                credentials={},
-                runtime_parameters={},
-                parameters=[],
-                parameters_json_schema={"type": "object", "properties": {}, "required": []},
-            )
-        ]
-    )
-
-    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
-    layers = {layer.name: layer for layer in request.composition.layers}
-
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].type == DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config.tools[0].tool_name == "current_time"
 
 
 def test_request_builder_can_suspend_on_exit_for_resume_or_babysit_paths():
@@ -146,11 +113,12 @@ def test_request_builder_rejects_blank_prompts():
     with pytest.raises(ValidationError):
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
+                tenant_id="tenant-1",
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=ExecutionContext(tenant_id="tenant-1", invoke_from="workflow_run"),
             workflow_node_job_prompt=" ",
             user_prompt="hello",
         )

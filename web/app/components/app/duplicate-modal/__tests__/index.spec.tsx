@@ -145,6 +145,18 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
+    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    expect(emojiButton).toBeTruthy()
+    await user.click(emojiButton!)
+    await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByText('open-icon-picker'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    })
     await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
@@ -153,9 +165,9 @@ describe('DuplicateAppModal', () => {
 
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
       name: 'Image App',
-      icon_type: 'image',
-      icon: 'original-file',
-      icon_background: undefined,
+      icon_type: 'emoji',
+      icon: expect.any(String),
+      icon_background: '#E4FBCC',
     }))
   })
 })

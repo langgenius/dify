@@ -161,7 +161,7 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
     if new_member_count <= 0:
         return
 
-    features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
+    features = FeatureService.get_features(tenant_id=tenant_id)
 
     if dify_config.ENTERPRISE_ENABLED:
         workspace_members = features.workspace_members

@@ -267,25 +267,13 @@ export const useSnippetRun = (snippetId: string) => {
   }, [doSyncWorkflowDraft, fetchInspectVars, handleWorkflowAgentLog, handleWorkflowFailed, handleWorkflowFinished, handleWorkflowNodeFinished, handleWorkflowNodeIterationFinished, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationStarted, handleWorkflowNodeLoopFinished, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopStarted, handleWorkflowNodeRetry, handleWorkflowNodeStarted, handleWorkflowStarted, handleWorkflowTextChunk, handleWorkflowTextReplace, invalidAllLastRun, invalidateRunHistory, snippetId, store, workflowStore])
 
   const handleStopRun = useCallback((taskId: string) => {
-    const {
-      workflowRunningData,
-      setWorkflowRunningData,
-    } = workflowStore.getState()
-
-    if (taskId)
-      stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`)
+    stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`)
 
     if (abortControllerRef.current)
       abortControllerRef.current.abort()
 
     abortControllerRef.current = null
-
-    if (workflowRunningData) {
-      setWorkflowRunningData(produce(workflowRunningData, (draft) => {
-        draft.result.status = WorkflowRunningStatus.Stopped
-      }))
-    }
-  }, [snippetId, workflowStore])
+  }, [snippetId])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
     const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))

@@ -1,5 +1,5 @@
 import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
+import type { IOStreams } from '../../../io/streams.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
 

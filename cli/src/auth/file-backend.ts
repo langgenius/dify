@@ -2,7 +2,7 @@ import type { TokenStore } from './store.js'
 import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import yaml from 'js-yaml'
-import { DIR_PERM, FILE_PERM } from '../store/dir.js'
+import { DIR_PERM, FILE_PERM } from '../config/dir.js'
 
 export const TOKENS_FILE_NAME = 'tokens.yml'
 

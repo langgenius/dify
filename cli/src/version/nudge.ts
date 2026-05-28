@@ -1,6 +1,6 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { NudgeStore } from '../cache/nudge-store.js'
-import { colorScheme } from '../sys/io/color.js'
+import { colorScheme } from '../io/color.js'
 import { difyCompat, evaluateCompat } from './compat.js'
 
 // Formats whose stdout is structured data (json/yaml) or a single name token —

@@ -4,16 +4,14 @@ import { ChunkingMode } from '@/models/datasets'
 import { DocumentContext } from '../../../context'
 import ActionButtons from '../action-buttons'
 
-const mockUseHotkey = vi.fn()
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, callback: (e: KeyboardEvent) => void, options?: object) => {
-      mockUseHotkey(hotkey, callback, options)
-    },
-  }
-})
+// Mock useKeyPress: required because tests capture registered callbacks
+// via mockUseKeyPress to verify ESC and Ctrl+S keyboard shortcut behavior.
+const mockUseKeyPress = vi.fn()
+vi.mock('ahooks', () => ({
+  useKeyPress: (keys: string | string[], callback: (e: KeyboardEvent) => void, options?: object) => {
+    mockUseKeyPress(keys, callback, options)
+  },
+}))
 
 // Create wrapper component for providing context
 const createWrapper = (contextValue: {
@@ -27,20 +25,31 @@ const createWrapper = (contextValue: {
   )
 }
 
+// Helper to get captured callbacks from useKeyPress mock
 const getEscCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const escCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Escape')
+  const escCall = mockUseKeyPress.mock.calls.find(
+    (call) => {
+      const keys = call[0]
+      return Array.isArray(keys) && keys.includes('esc')
+    },
+  )
   return escCall?.[1]
 }
 
 const getCtrlSCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const ctrlSCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Mod+S')
+  const ctrlSCall = mockUseKeyPress.mock.calls.find(
+    (call) => {
+      const keys = call[0]
+      return typeof keys === 'string' && keys.includes('.s')
+    },
+  )
   return ctrlSCall?.[1]
 }
 
 describe('ActionButtons', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseHotkey.mockClear()
+    mockUseKeyPress.mockClear()
   })
 
   describe('Rendering', () => {
@@ -93,7 +102,7 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      expect(screen.getByText('Esc'))!.toBeInTheDocument()
+      expect(screen.getByText('ESC'))!.toBeInTheDocument()
     })
 
     it('should render S keyboard hint on save button', () => {
@@ -372,6 +381,7 @@ describe('ActionButtons', () => {
     })
   })
 
+  // Keyboard shortcuts tests via useKeyPress callbacks
   describe('Keyboard Shortcuts', () => {
     it('should display ctrl key hint on save button', () => {
       render(
@@ -383,7 +393,8 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      const kbdElements = document.querySelectorAll('kbd')
+      // Assert - check for ctrl key hint (Ctrl or Cmd depending on system)
+      const kbdElements = document.querySelectorAll('.system-kbd')
       expect(kbdElements.length).toBeGreaterThan(0)
     })
 
@@ -450,7 +461,7 @@ describe('ActionButtons', () => {
       expect(mockHandleSave).not.toHaveBeenCalled()
     })
 
-    it('should register the Mod+S hotkey', () => {
+    it('should register useKeyPress with correct options for Ctrl+S', () => {
       render(
         <ActionButtons
           handleCancel={vi.fn()}
@@ -460,8 +471,12 @@ describe('ActionButtons', () => {
         { wrapper: createWrapper({}) },
       )
 
-      const ctrlSCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Mod+S')
+      // Assert - verify useKeyPress was called with correct options
+      const ctrlSCall = mockUseKeyPress.mock.calls.find(
+        call => typeof call[0] === 'string' && call[0].includes('.s'),
+      )
       expect(ctrlSCall).toBeDefined()
+      expect(ctrlSCall![2]).toEqual({ exactMatch: true, useCapture: true })
     })
   })
 })

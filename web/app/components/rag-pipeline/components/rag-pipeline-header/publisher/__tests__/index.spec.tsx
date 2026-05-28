@@ -1,32 +1,10 @@
 import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Publisher from '../index'
 import Popup from '../popup'
-
-const hotkeyHandlers = vi.hoisted(() => new Map<string, (event: KeyboardEvent) => void>())
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: (event: KeyboardEvent) => void) => {
-      hotkeyHandlers.set(hotkey, handler)
-    },
-  }
-})
-
-const triggerHotkey = (hotkey: string) => {
-  const handler = hotkeyHandlers.get(hotkey)
-  if (!handler)
-    return
-
-  act(() => {
-    handler({ preventDefault: vi.fn() } as unknown as KeyboardEvent)
-  })
-}
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 vi.mock('@langgenius/dify-ui/button', () => ({
@@ -192,6 +170,11 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/utils', () => ({
+  getKeyboardKeyCodeBySystem: (key: string) => key,
+  getKeyboardKeyNameBySystem: (key: string) => key === 'ctrl' ? '⌘' : key,
+}))
+
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({ confirmDisabled, onConfirm, onCancel }: {
     confirmDisabled: boolean
@@ -232,7 +215,6 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('publisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyHandlers.clear()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockPublishedAt.mockReturnValue(null)
     mockDraftUpdatedAt.mockReturnValue(1700000000)
@@ -890,7 +872,7 @@ describe('publisher', () => {
         mockPublishWorkflow.mockResolvedValue({ created_at: 1700100000 })
         renderWithQueryClient(<Popup />)
 
-        triggerHotkey('Mod+Shift+P')
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         await waitFor(() => {
           expect(mockPublishWorkflow).toHaveBeenCalled()
@@ -911,7 +893,7 @@ describe('publisher', () => {
 
         vi.clearAllMocks()
 
-        triggerHotkey('Mod+Shift+P')
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         expect(mockPublishWorkflow).not.toHaveBeenCalled()
       })
@@ -920,7 +902,7 @@ describe('publisher', () => {
         mockPublishedAt.mockReturnValue(null)
         renderWithQueryClient(<Popup />)
 
-        triggerHotkey('Mod+Shift+P')
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         await waitFor(() => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
@@ -935,14 +917,14 @@ describe('publisher', () => {
         }))
         renderWithQueryClient(<Popup />)
 
-        triggerHotkey('Mod+Shift+P')
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         await waitFor(() => {
           const publishButton = screen.getByRole('button', { name: /workflow.common.publishUpdate/i })
           expect(publishButton).toBeDisabled()
         })
 
-        triggerHotkey('Mod+Shift+P')
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         expect(mockPublishWorkflow).toHaveBeenCalledTimes(1)
 

@@ -72,7 +72,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={Date.now()}
-        publishShortcut={['Mod', 'Shift', 'P']}
+        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -110,7 +110,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['Mod', 'Shift', 'P']}
+        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -134,7 +134,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['Mod', 'Shift', 'P']}
+        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -158,7 +158,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['Mod', 'Shift', 'P']}
+        publishShortcut={['ctrl', '⇧', 'P']}
         startNodeLimitExceeded
         upgradeHighlightStyle={{}}
       />,

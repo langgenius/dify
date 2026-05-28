@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
@@ -40,7 +40,7 @@ const RunMode = ({
       <button
         type="button"
         className={cn(
-          'flex h-7 items-center gap-x-1 rounded-md px-1.5 system-xs-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover',
+          'system-xs-medium flex h-7 items-center gap-x-1 rounded-md px-1.5 text-components-button-secondary-accent-text hover:bg-state-accent-hover',
           isRunning && 'cursor-not-allowed rounded-l-md bg-state-accent-hover',
         )}
         onClick={handleWorkflowStartRunInWorkflow}
@@ -57,7 +57,7 @@ const RunMode = ({
               <>
                 <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
                 {text ?? t('common.run', { ns: 'workflow' })}
-                <ShortcutKbd shortcut="workflow.open-test-run-menu" textColor="secondary" />
+                <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
               </>
             )}
       </button>

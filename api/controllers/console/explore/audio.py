@@ -20,7 +20,6 @@ from controllers.console.app.error import (
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models.model import InstalledApp
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -41,10 +40,8 @@ register_schema_model(console_ns, TextToAudioPayload)
     endpoint="installed_app_audio",
 )
 class ChatAudioApi(InstalledAppResource):
-    def post(self, installed_app: InstalledApp):
+    def post(self, installed_app):
         app_model = installed_app.app
-        if app_model is None:
-            raise AppUnavailableError()
 
         file = request.files["file"]
 
@@ -84,10 +81,8 @@ class ChatAudioApi(InstalledAppResource):
 )
 class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
-    def post(self, installed_app: InstalledApp):
+    def post(self, installed_app):
         app_model = installed_app.app
-        if app_model is None:
-            raise AppUnavailableError()
         try:
             payload = TextToAudioPayload.model_validate(console_ns.payload or {})
 

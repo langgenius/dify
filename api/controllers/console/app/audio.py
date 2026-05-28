@@ -70,7 +70,7 @@ class ChatMessageAudioApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App):
+    def post(self, app_model):
         file = request.files["file"]
 
         try:
@@ -171,7 +171,7 @@ class TextModesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
+    def get(self, app_model):
         try:
             args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
 

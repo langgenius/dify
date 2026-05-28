@@ -1,6 +1,6 @@
+import { resolveConfigDir } from '../../../config/dir.js'
 import { Args } from '../../../framework/flags.js'
 import { raw } from '../../../framework/output.js'
-import { getConfigurationStore } from '../../../store/manager.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigGet } from './run.js'
 
@@ -17,6 +17,6 @@ export default class ConfigGet extends DifyCommand {
 
   async run(argv: string[]) {
     const { args } = this.parse(ConfigGet, argv)
-    return raw(runConfigGet({ store: getConfigurationStore(), key: args.key }))
+    return raw(await runConfigGet({ dir: resolveConfigDir(), key: args.key }))
   }
 }

@@ -5,12 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { FILE_NAME } from '../../../config/schema.js'
 import { isBaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
-import { YamlStore } from '../../../store/store.js'
 import { runConfigUnset } from './run.js'
-
-function makeStore(dir: string): YamlStore {
-  return new YamlStore(join(dir, FILE_NAME))
-}
 
 describe('runConfigUnset', () => {
   let dir: string
@@ -25,7 +20,7 @@ describe('runConfigUnset', () => {
       'schema_version: 1\ndefaults:\n  format: json\n  limit: 25\n',
       'utf8',
     )
-    const out = runConfigUnset({ store: makeStore(dir), key: 'defaults.format' })
+    const out = await runConfigUnset({ dir, key: 'defaults.format' })
     expect(out).toBe('unset defaults.format\n')
     const raw = await readFile(join(dir, FILE_NAME), 'utf8')
     expect(raw).not.toContain('format:')
@@ -33,16 +28,16 @@ describe('runConfigUnset', () => {
   })
 
   it('is a no-op (writes empty config) when key was already unset', async () => {
-    const out = runConfigUnset({ store: makeStore(dir), key: 'defaults.format' })
+    const out = await runConfigUnset({ dir, key: 'defaults.format' })
     expect(out).toBe('unset defaults.format\n')
     const raw = await readFile(join(dir, FILE_NAME), 'utf8')
     expect(raw).toContain('schema_version: 1')
   })
 
-  it('rejects unknown key', () => {
+  it('rejects unknown key', async () => {
     let caught: unknown
     try {
-      runConfigUnset({ store: makeStore(dir), key: 'bogus' })
+      await runConfigUnset({ dir, key: 'bogus' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)

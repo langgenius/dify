@@ -9,7 +9,7 @@ import {
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { inputVarTypeToVarType } from '../../data-source/utils'
-import { appendSnippetInputFieldVars, filterSnippetSystemVars } from './snippet-input-field-vars'
+import { appendSnippetInputFieldVars } from './snippet-input-field-vars'
 import useNodeInfo from './use-node-info'
 
 type Params = {
@@ -73,7 +73,7 @@ const useAvailableVarList = (nodeId: string, {
       })
     }
   }
-  const availableVars = filterSnippetSystemVars([
+  const availableVars = [
     ...snippetInputFieldAvailability.availableVars,
     ...getNodeAvailableVars({
       parentNode: iterationNode,
@@ -84,7 +84,7 @@ const useAvailableVarList = (nodeId: string, {
       hideChatVar,
     }),
     ...dataSourceRagVars,
-  ])
+  ]
 
   return {
     availableVars,

@@ -10,7 +10,6 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '.'
-import { Kbd, KbdGroup } from '../kbd'
 
 const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
 
@@ -47,10 +46,11 @@ export const Default: Story = {
           <PopoverDescription className="text-xs text-text-secondary">
             Press
             {' '}
-            <KbdGroup>
-              <Kbd>⌘</Kbd>
-              <Kbd>K</Kbd>
-            </KbdGroup>
+            <kbd className="rounded bg-background-default-subtle px-1 py-0.5 font-mono text-[11px]">⌘</kbd>
+            {' '}
+            +
+            {' '}
+            <kbd className="rounded bg-background-default-subtle px-1 py-0.5 font-mono text-[11px]">K</kbd>
             {' '}
             to open the command palette anywhere in the app.
           </PopoverDescription>

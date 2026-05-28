@@ -16,8 +16,7 @@ import services
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._models import AppRunRequest
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.composition import OAUTH_BEARER_PIPELINE
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -125,9 +124,8 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 class AppRunApi(Resource):
     @openapi_ns.expect(openapi_ns.models[AppRunRequest.__name__])
     @openapi_ns.response(200, "Run result (SSE stream)")
-    @auth_router.guard(scope=Scope.APPS_RUN)
-    def post(self, app_id: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
+    def post(self, app_id: str, app_model: App, caller, caller_kind: str):
         body = request.get_json(silent=True) or {}
         try:
             payload = AppRunRequest.model_validate(body)
@@ -160,9 +158,8 @@ class AppRunApi(Resource):
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
 class AppRunTaskStopApi(Resource):
     @openapi_ns.response(200, "Task stopped")
-    @auth_router.guard(scope=Scope.APPS_RUN)
-    def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
+    def post(self, app_id: str, task_id: str, app_model: App, caller, caller_kind: str):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
         GraphEngineManager(redis_client).send_stop_command(task_id)
         return {"result": "success"}

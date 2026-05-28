@@ -872,11 +872,6 @@ class TestSegmentApiPost:
         mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
 
-        mock_vector_space = Mock()
-        mock_vector_space.limit = 10
-        mock_vector_space.size = 0
-        mock_feature_svc.get_vector_space.return_value = mock_vector_space
-
         mock_rate_limit = Mock()
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
@@ -1214,10 +1209,6 @@ class TestDatasetSegmentApiUpdate:
         mock_features = Mock()
         mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
-        mock_vector_space = Mock()
-        mock_vector_space.limit = 10
-        mock_vector_space.size = 0
-        mock_feature_svc.get_vector_space.return_value = mock_vector_space
         mock_rate_limit = Mock()
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
@@ -1719,10 +1710,6 @@ class TestChildChunkApiPost:
         mock_features = Mock()
         mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
-        mock_vector_space = Mock()
-        mock_vector_space.limit = 10
-        mock_vector_space.size = 0
-        mock_feature_svc.get_vector_space.return_value = mock_vector_space
         mock_rate_limit = Mock()
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit

@@ -573,7 +573,7 @@ class AppApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @get_app_model(mode=None)
-    def get(self, app_model: App):
+    def get(self, app_model):
         """Get app detail"""
         app_service = AppService()
 
@@ -581,7 +581,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
+            app_model.access_mode = app_setting.access_mode
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -598,7 +598,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def put(self, app_model: App):
+    def put(self, app_model):
         """Update app"""
         args = UpdateAppPayload.model_validate(console_ns.payload)
 
@@ -627,7 +627,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model: App):
+    def delete(self, app_model):
         """Delete app"""
         app_service = AppService()
         app_service.delete_app(app_model)
@@ -648,7 +648,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
@@ -709,7 +709,7 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_model: App):
+    def get(self, app_model):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -731,7 +731,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, app_model):
         """Publish app to Creators Platform"""
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
@@ -762,7 +762,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, app_model):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -784,7 +784,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, app_model):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
@@ -811,7 +811,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model: App):
+    def post(self, app_model):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -833,7 +833,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model(mode=None)
-    def post(self, app_model: App):
+    def post(self, app_model):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -874,7 +874,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model
-    def post(self, app_model: App):
+    def post(self, app_model):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 

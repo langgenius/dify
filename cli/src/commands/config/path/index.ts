@@ -1,5 +1,5 @@
+import { resolveConfigDir } from '../../../config/dir.js'
 import { raw } from '../../../framework/output.js'
-import { resolveConfigDir } from '../../../store/dir.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigPath } from './run.js'
 

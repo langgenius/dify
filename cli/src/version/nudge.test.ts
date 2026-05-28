@@ -5,8 +5,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadNudgeStore } from '../cache/nudge-store.js'
-import { CACHE_NUDGE, cachePath } from '../store/manager.js'
-import { YamlStore } from '../store/store.js'
 import { maybeNudgeCompat } from './nudge.js'
 
 const HOST = 'https://cloud.dify.ai'
@@ -46,7 +44,7 @@ describe('maybeNudgeCompat', () => {
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-nudge-'))
-    store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: fixedNow })
+    store = await loadNudgeStore({ configDir: dir, now: fixedNow })
   })
   afterEach(async () => {
     await rm(dir, { recursive: true, force: true })
@@ -78,12 +76,12 @@ describe('maybeNudgeCompat', () => {
 
   it('warns again after the silence window has elapsed', async () => {
     const yesterday = new Date(NOW.getTime() - 25 * 60 * 60 * 1000)
-    const tStore = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => yesterday })
+    const tStore = await loadNudgeStore({ configDir: dir, now: () => yesterday })
     await tStore.markWarned(HOST)
     const probe = vi.fn(async () => UNSUPPORTED)
     const { emit, lines } = emitterSpy()
 
-    const freshStore = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: fixedNow })
+    const freshStore = await loadNudgeStore({ configDir: dir, now: fixedNow })
     await maybeNudgeCompat(HOST, baseDeps({ store: freshStore, probe, emit }))
 
     expect(probe).toHaveBeenCalledOnce()

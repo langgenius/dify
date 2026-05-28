@@ -21,7 +21,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import SnippetDetailCard from './snippet-detail-card'
@@ -33,7 +32,6 @@ import { useInsertSnippet } from './use-insert-snippet'
 type SnippetsProps = {
   loading?: boolean
   searchText: string
-  onSearchTextChange?: (searchText: string) => void
   insertPayload?: Parameters<OnNodeAdd>[1]
   onInserted?: () => void
 }
@@ -64,11 +62,9 @@ const LoadingSkeleton = () => {
 const Snippets = ({
   loading = false,
   searchText,
-  onSearchTextChange,
   insertPayload,
   onInserted,
 }: SnippetsProps) => {
-  const { t } = useTranslation()
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -118,42 +114,16 @@ const Snippets = ({
     },
   )
 
-  const filter = (
-    <div className="border-b border-divider-subtle p-2">
-      <div className="flex items-center rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover">
-        <div className="flex min-w-0 grow items-center py-1.75 pr-3 pl-2">
-          <span className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" aria-hidden="true" />
-          <input
-            autoFocus
-            value={searchText}
-            placeholder={t('tabs.searchSnippets', { ns: 'workflow' })}
-            className={cn(
-              'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-              searchText && 'mr-2',
-            )}
-            onChange={event => onSearchTextChange?.(event.target.value)}
-          />
-          {!!searchText && (
-            <button
-              type="button"
-              aria-label={t('operation.clear', { ns: 'common' })}
-              className="group shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-              onClick={() => onSearchTextChange?.('')}
-            >
-              <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-            </button>
-          )}
-        </div>
-        <div className="mx-0 mr-0.5 h-3.5 w-px bg-divider-regular" />
-        <SnippetTagsFilter embedded value={tagIds} onChange={setTagIds} />
-      </div>
+  const tagsFilter = (
+    <div className="flex justify-end border-b border-divider-subtle px-2 py-2">
+      <SnippetTagsFilter value={tagIds} onChange={setTagIds} />
     </div>
   )
 
   if (loading || isLoading || (isFetching && snippets.length === 0)) {
     return (
       <>
-        {filter}
+        {tagsFilter}
         <LoadingSkeleton />
       </>
     )
@@ -161,7 +131,7 @@ const Snippets = ({
 
   return (
     <>
-      {filter}
+      {tagsFilter}
       {!snippets.length
         ? (
             <SnippetEmptyState />
@@ -191,7 +161,7 @@ const Snippets = ({
                           render={row}
                         />
                         <TooltipContent
-                          placement="right-start"
+                          placement="left-start"
                           className="bg-transparent! p-0!"
                         >
                           <SnippetDetailCard snippet={item} />

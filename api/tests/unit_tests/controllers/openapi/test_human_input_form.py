@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import sys
-import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -12,21 +11,7 @@ from unittest.mock import Mock
 import pytest
 from werkzeug.exceptions import NotFound
 
-from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
 from models.human_input import RecipientType
-
-
-def _make_auth_data(app_model, caller, caller_kind):
-    return AuthData.model_construct(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        token_hash="test",
-        scopes=frozenset({Scope.FULL}),
-        app=app_model,
-        caller=caller,
-        caller_kind=caller_kind,
-    )
 
 
 class TestOpenApiHumanInputFormGet:
@@ -58,14 +43,15 @@ class TestOpenApiHumanInputFormGet:
 
         api = OpenApiWorkflowHumanInputFormApi()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
 
         with app.test_request_context("/openapi/v1/apps/app-1/form/human_input/tok-1"):
             resp = api.get.__wrapped__(
                 api,
                 app_id="app-1",
                 form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "account"),
+                app_model=app_model,
+                caller=SimpleNamespace(id="acct-1"),
+                caller_kind="account",
             )
 
         payload = json.loads(resp.get_data(as_text=True))
@@ -85,7 +71,6 @@ class TestOpenApiHumanInputFormGet:
 
         api = OpenApiWorkflowHumanInputFormApi()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
 
         with app.test_request_context("/openapi/v1/apps/app-1/form/human_input/bad"):
             with pytest.raises(NotFound):
@@ -93,7 +78,9 @@ class TestOpenApiHumanInputFormGet:
                     api,
                     app_id="app-1",
                     form_token="bad",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
+                    app_model=app_model,
+                    caller=SimpleNamespace(id="acct-1"),
+                    caller_kind="account",
                 )
 
     def test_get_form_wrong_app(self, app, bypass_pipeline, monkeypatch):
@@ -110,7 +97,6 @@ class TestOpenApiHumanInputFormGet:
 
         api = OpenApiWorkflowHumanInputFormApi()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
 
         with app.test_request_context("/openapi/v1/apps/app-1/form/human_input/tok-1"):
             with pytest.raises(NotFound):
@@ -118,7 +104,9 @@ class TestOpenApiHumanInputFormGet:
                     api,
                     app_id="app-1",
                     form_token="tok-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
+                    app_model=app_model,
+                    caller=SimpleNamespace(id="acct-1"),
+                    caller_kind="account",
                 )
 
     def test_get_form_wrong_surface(self, app, bypass_pipeline, monkeypatch):
@@ -138,7 +126,6 @@ class TestOpenApiHumanInputFormGet:
 
         api = OpenApiWorkflowHumanInputFormApi()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        caller = SimpleNamespace(id="acct-1")
 
         with app.test_request_context("/openapi/v1/apps/app-1/form/human_input/tok-1"):
             with pytest.raises(NotFound):
@@ -146,7 +133,9 @@ class TestOpenApiHumanInputFormGet:
                     api,
                     app_id="app-1",
                     form_token="tok-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
+                    app_model=app_model,
+                    caller=SimpleNamespace(id="acct-1"),
+                    caller_kind="account",
                 )
 
 
@@ -183,7 +172,9 @@ class TestOpenApiHumanInputFormPost:
                 api,
                 app_id="app-1",
                 form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "account"),
+                app_model=app_model,
+                caller=caller,
+                caller_kind="account",
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(
@@ -220,7 +211,9 @@ class TestOpenApiHumanInputFormPost:
                 api,
                 app_id="app-1",
                 form_token="tok-1",
-                auth_data=_make_auth_data(app_model, caller, "end_user"),
+                app_model=app_model,
+                caller=caller,
+                caller_kind="end_user",
             )
 
         service_mock.submit_form_by_token.assert_called_once_with(

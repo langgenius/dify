@@ -1,10 +1,12 @@
 import type { Snippet as SnippetContract } from '@/types/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { useKeyPress } from 'ahooks'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { consoleQuery } from '@/service/client'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 
@@ -39,12 +41,20 @@ export const useSnippetPublish = ({
         old => old ? { ...old, is_published: true } : old,
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-      toast.success(t('saveSuccess'))
+      toast.success(t('publishSuccess'))
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('publishFailed'))
     }
   }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, snippetId, t, workflowStore])
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (event) => {
+    if (publishSnippetMutation.isPending)
+      return
+
+    event.preventDefault()
+    void handlePublish()
+  }, { exactMatch: true, useCapture: true })
 
   return {
     handlePublish,

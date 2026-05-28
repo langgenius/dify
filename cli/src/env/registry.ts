@@ -1,5 +1,4 @@
 import { parseLimit } from '../limit/limit.js'
-import { getEnv } from '../sys/index.js'
 
 export type EnvVar = {
   readonly name: string
@@ -56,7 +55,9 @@ export function lookupEnv(name: string): EnvVar | undefined {
   return BY_NAME.get(name)
 }
 
-export { getEnv }
+export function getEnv(name: string): string | undefined {
+  return process.env[name]
+}
 
 export function resolveEnv(name: string): unknown {
   const entry = lookupEnv(name)

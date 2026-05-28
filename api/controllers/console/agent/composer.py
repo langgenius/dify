@@ -5,7 +5,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from libs.login import current_account_with_tenant, login_required
-from models.model import App, AppMode
+from models.model import AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.entities.agent_entities import ComposerSavePayload
@@ -19,7 +19,7 @@ class WorkflowAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, node_id: str):
+    def get(self, app_model, node_id: str):
         _, tenant_id = current_account_with_tenant()
         return AgentComposerService.load_workflow_composer(
             tenant_id=tenant_id,
@@ -33,7 +33,7 @@ class WorkflowAgentComposerApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def put(self, app_model: App, node_id: str):
+    def put(self, app_model, node_id: str):
         account, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         return AgentComposerService.save_workflow_composer(
@@ -52,7 +52,7 @@ class WorkflowAgentComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
+    def post(self, app_model, node_id: str):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
         return {"result": "success", "errors": []}
@@ -64,7 +64,7 @@ class WorkflowAgentComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, node_id: str):
+    def get(self, app_model, node_id: str):
         return AgentComposerService.get_workflow_candidates(app_id=app_model.id)
 
 
@@ -74,7 +74,7 @@ class WorkflowAgentComposerImpactApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
+    def post(self, app_model, node_id: str):
         _, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         current_snapshot_id = payload.binding.current_snapshot_id if payload.binding else None
@@ -91,7 +91,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
+    def post(self, app_model, node_id: str):
         account, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         return AgentComposerService.save_workflow_composer(
@@ -109,7 +109,7 @@ class AgentAppComposerApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def get(self, app_model: App):
+    def get(self, app_model):
         _, tenant_id = current_account_with_tenant()
         return AgentComposerService.load_agent_app_composer(tenant_id=tenant_id, app_id=app_model.id)
 
@@ -119,7 +119,7 @@ class AgentAppComposerApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model()
-    def put(self, app_model: App):
+    def put(self, app_model):
         account, tenant_id = current_account_with_tenant()
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         return AgentComposerService.save_agent_app_composer(
@@ -137,7 +137,7 @@ class AgentAppComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def post(self, app_model: App):
+    def post(self, app_model):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
         return {"result": "success", "errors": []}
@@ -149,5 +149,5 @@ class AgentAppComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model()
-    def get(self, app_model: App):
+    def get(self, app_model):
         return AgentComposerService.get_agent_app_candidates(app_id=app_model.id)

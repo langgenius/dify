@@ -62,8 +62,6 @@ const HeaderInRestoring = ({
       return ''
     if (configsMap.flowType === FlowType.ragPipeline)
       return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
-    if (configsMap.flowType === FlowType.snippet)
-      return `/snippets/${configsMap.flowId}/workflows/${versionId}/restore`
     return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
   }, [configsMap?.flowId, configsMap?.flowType])
 

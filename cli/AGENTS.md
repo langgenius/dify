@@ -47,7 +47,7 @@ Layer rules:
 - Commands thin shells. Use `this.authedCtx(opts)` for bearer context; delegate to domain function.
 - Domain receives deps via options; never imports `src/framework/`.
 - Only `src/http/client.ts` and `src/api/*` import ky at runtime; elsewhere use `import type { KyInstance }`.
-- `process.*` lives in `src/io/`, `src/store/dir.ts`, `src/util/browser.ts`. Nowhere else.
+- `process.*` lives in `src/io/`, `src/config/dir.ts`, `src/util/browser.ts`. Nowhere else.
 - No circular imports. `types/` pure leaf.
 
 ## Dev commands

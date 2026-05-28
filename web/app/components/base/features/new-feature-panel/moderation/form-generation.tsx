@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import type { ModerationConfig } from '@/models/debug'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { Textarea } from '@langgenius/dify-ui/textarea'
+import Textarea from '@/app/components/base/textarea'
 import { useLocale } from '@/context/i18n'
 
 type FormGenerationProps = {
@@ -55,11 +55,10 @@ const FormGeneration: FC<FormGenerationProps> = ({
                 form.type === 'paragraph' && (
                   <div className="relative">
                     <Textarea
-                      aria-label={locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
                       className="resize-none"
                       value={value?.[form.variable] || ''}
                       placeholder={form.placeholder}
-                      onValueChange={value => handleFormChange(form.variable, value)}
+                      onChange={e => handleFormChange(form.variable, e.target.value)}
                     />
                   </div>
                 )

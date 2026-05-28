@@ -15,6 +15,7 @@ import { useWorkflowCanvasMaximize } from '../hooks/use-workflow-canvas-maximize
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store/workflow'
+import { isEventTargetInputArea } from '../utils'
 import {
   subscribeWorkflowCommand,
   WorkflowCommand,
@@ -25,16 +26,6 @@ const workflowHotkeyOptions = {
   ignoreInputs: true,
   conflictBehavior: 'warn',
 } satisfies UseHotkeyOptions
-
-const isInputLikeElement = (element: Element | null) => {
-  if (!element)
-    return false
-
-  return element instanceof HTMLInputElement
-    || element instanceof HTMLTextAreaElement
-    || element instanceof HTMLSelectElement
-    || (element instanceof HTMLElement && element.isContentEditable)
-}
 
 const toHotkeyDefinitions = (
   shortcut: WorkflowShortcutDefinition,
@@ -236,7 +227,7 @@ export const useWorkflowHotkeys = (): void => {
       if (shiftDimmedRef.current)
         return
 
-      if (isInputLikeElement(document.activeElement))
+      if (isEventTargetInputArea(document.activeElement as HTMLElement))
         return
 
       shiftDimmedRef.current = true

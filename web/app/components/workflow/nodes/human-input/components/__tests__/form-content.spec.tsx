@@ -4,7 +4,7 @@ import FormContent from '../form-content'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseWorkflowVariableType = vi.hoisted(() => vi.fn())
-const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => hotkey))
+const mockIsMac = vi.hoisted(() => vi.fn())
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockAddInputField = vi.hoisted(() => vi.fn())
 const mockOnInsert = vi.hoisted(() => vi.fn())
@@ -30,13 +30,9 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowVariableType: () => mockUseWorkflowVariableType(),
 }))
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    formatForDisplay: (hotkey: string) => mockFormatForDisplay(hotkey),
-  }
-})
+vi.mock('@/app/components/workflow/utils', () => ({
+  isMac: () => mockIsMac(),
+}))
 
 vi.mock('@/app/components/base/prompt-editor', () => ({
   __esModule: true,
@@ -118,7 +114,7 @@ describe('FormContent', () => {
       t: (key: string) => key,
     })
     mockUseWorkflowVariableType.mockReturnValue(() => 'string')
-    mockFormatForDisplay.mockImplementation((hotkey: string) => hotkey)
+    mockIsMac.mockReturnValue(false)
   })
 
   it('should build workflow node maps, show the hotkey tip on focus, and defer form-input sync until value changes', async () => {
@@ -236,7 +232,7 @@ describe('FormContent', () => {
   })
 
   it('should render the mac hotkey hint when focused on macOS', () => {
-    mockFormatForDisplay.mockReturnValue('⌘')
+    mockIsMac.mockReturnValue(true)
 
     render(
       <FormContent

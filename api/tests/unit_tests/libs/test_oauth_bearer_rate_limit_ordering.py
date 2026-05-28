@@ -11,7 +11,6 @@ from libs.oauth_bearer import (
     SubjectType,
     TokenKind,
     TokenKindRegistry,
-    TokenType,
 )
 
 
@@ -22,7 +21,7 @@ def _registry_with_resolver(resolver) -> TokenKindRegistry:
                 prefix="dfoa_",
                 subject_type=SubjectType.ACCOUNT,
                 scopes=frozenset({Scope.FULL}),
-                token_type=TokenType.OAUTH_ACCOUNT,
+                source="oauth_account",
                 resolver=resolver,
             )
         ]
@@ -64,7 +63,7 @@ def test_unknown_prefix_raises_generic_invalid_bearer():
                     prefix="dfoa_",
                     subject_type=SubjectType.ACCOUNT,
                     scopes=frozenset({Scope.FULL}),
-                    token_type=TokenType.OAUTH_ACCOUNT,
+                    source="oauth_account",
                     resolver=MagicMock(),
                 )
             ]

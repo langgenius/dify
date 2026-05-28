@@ -1,9 +1,9 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
+import type { IOStreams } from '../../../io/streams.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams'
+import { runWithSpinner } from '../../../io/spinner.js'
+import { nullStreams } from '../../../io/streams.js'
 import { WorkspaceListOutput, WorkspaceRow } from './handlers.js'
 
 export const EMPTY_WORKSPACES_MESSAGE

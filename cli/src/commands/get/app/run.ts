@@ -1,13 +1,12 @@
 import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
+import type { IOStreams } from '../../../io/streams.js'
 import { AppsClient } from '../../../api/apps.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
+import { runWithSpinner } from '../../../io/spinner.js'
+import { nullStreams } from '../../../io/streams.js'
 import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
-import { getEnv } from '../../../sys/index.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { AppListOutput, AppRow } from './handlers.js'
 
@@ -39,7 +38,7 @@ export type GetAppResult = {
 }
 
 export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<GetAppResult> {
-  const env = deps.envLookup ?? getEnv
+  const env = deps.envLookup ?? ((k: string) => process.env[k])
   const appsFactory = deps.appsFactory ?? ((h: KyInstance) => new AppsClient(h))
   const wsFactory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
 

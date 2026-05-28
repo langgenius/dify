@@ -1,5 +1,4 @@
 import openModule from 'open'
-import { platform } from '../sys'
 
 export const OpenDecision = {
   Auto: 'auto-open',
@@ -20,7 +19,7 @@ export type BrowserEnv = {
 export function realEnv(): BrowserEnv {
   return {
     getEnv: k => process.env[k],
-    platform: platform(),
+    platform: process.platform,
     isOutTTY: Boolean(process.stdout.isTTY),
     isErrTTY: Boolean(process.stderr.isTTY),
   }

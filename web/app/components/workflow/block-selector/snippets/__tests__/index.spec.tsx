@@ -119,18 +119,6 @@ describe('Snippets', () => {
       })
     })
 
-    it('should delegate embedded search changes', () => {
-      const onSearchTextChange = vi.fn()
-
-      render(<Snippets searchText="" onSearchTextChange={onSearchTextChange} />)
-
-      fireEvent.change(screen.getByPlaceholderText('workflow.tabs.searchSnippets'), {
-        target: { value: 'review' },
-      })
-
-      expect(onSearchTextChange).toHaveBeenCalledWith('review')
-    })
-
     it('should delegate insert action when snippet item is clicked', () => {
       mockUseInfiniteSnippetList.mockReturnValue({
         data: {

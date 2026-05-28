@@ -70,14 +70,13 @@ class TestExternalApiTemplateListApi:
                 ExternalDatasetService,
                 "get_external_knowledge_apis",
                 return_value=([api_item], 1),
-            ) as get_external_knowledge_apis,
+            ),
         ):
-            resp, status = method(api, "tenant-1")
+            resp, status = method(api, "id")
 
         assert status == 200
         assert resp["total"] == 1
         assert resp["data"][0]["id"] == "1"
-        get_external_knowledge_apis.assert_called_once_with(1, 20, "tenant-1", None)
 
     def test_post_forbidden(self, app: Flask, current_user):
         current_user.is_dataset_editor = False
@@ -322,14 +321,13 @@ class TestExternalApiTemplateListApiAdvanced:
             patch(
                 "controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_apis",
                 return_value=(templates, 25),
-            ) as get_external_knowledge_apis,
+            ),
         ):
-            resp, status = method(api, "tenant-1")
+            resp, status = method(api, "id")
 
         assert status == 200
         assert resp["total"] == 25
         assert len(resp["data"]) == 3
-        get_external_knowledge_apis.assert_called_once_with(1, 20, "tenant-1", None)
 
 
 class TestExternalDatasetCreateApiAdvanced:

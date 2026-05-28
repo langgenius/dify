@@ -11,7 +11,6 @@ from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
-from models.model import App, EndUser
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
@@ -44,7 +43,7 @@ class SavedMessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model: App, end_user: EndUser):
+    def get(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -78,7 +77,7 @@ class SavedMessageListApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Message saved successfully", web_ns.models[ResultResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    def post(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -107,7 +106,7 @@ class SavedMessageApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def delete(self, app_model: App, end_user: EndUser, message_id: UUID):
+    def delete(self, app_model, end_user, message_id: UUID):
         message_id_str = str(message_id)
 
         if app_model.mode != "completion":

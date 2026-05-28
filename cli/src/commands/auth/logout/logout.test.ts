@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { saveHosts } from '../../../auth/hosts.js'
 import { createClient } from '../../../http/client.js'
-import { bufferStreams } from '../../../sys/io/streams'
+import { bufferStreams } from '../../../io/streams.js'
 import { runLogout } from './logout.js'
 
 class MemStore implements TokenStore {

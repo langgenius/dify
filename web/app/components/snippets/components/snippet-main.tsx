@@ -38,12 +38,6 @@ type SnippetMainContentProps = {
   onCancel: () => void | Promise<void>
 }
 
-const unsupportedSnippetBlockTypes = new Set([
-  BlockEnum.HumanInput,
-  BlockEnum.End,
-  BlockEnum.KnowledgeRetrieval,
-])
-
 const SnippetMainContent = ({
   snippetId,
   fields,
@@ -116,7 +110,7 @@ const SnippetMain = ({
   } = publishedWorkflowQuery
   const availableNodesMetaData = useMemo(() => {
     const nodes = workflowAvailableNodesMetaData.nodes.filter(node =>
-      !unsupportedSnippetBlockTypes.has(node.metaData.type))
+      node.metaData.type !== BlockEnum.HumanInput && node.metaData.type !== BlockEnum.End)
 
     if (!workflowAvailableNodesMetaData.nodesMap)
       return { nodes }
@@ -124,7 +118,6 @@ const SnippetMain = ({
     const {
       [BlockEnum.HumanInput]: _humanInput,
       [BlockEnum.End]: _end,
-      [BlockEnum.KnowledgeRetrieval]: _knowledgeRetrieval,
       ...nodesMap
     } = workflowAvailableNodesMetaData.nodesMap
 

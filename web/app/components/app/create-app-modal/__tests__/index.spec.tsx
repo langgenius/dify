@@ -13,8 +13,8 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
 
-const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, () => void>(),
+const ahooksMocks = vi.hoisted(() => ({
+  keyPressHandlers: [] as Array<() => void>,
 }))
 
 vi.mock('ahooks', () => ({
@@ -24,18 +24,11 @@ vi.mock('ahooks', () => ({
     const flush = vi.fn()
     return { run, cancel, flush }
   },
+  useKeyPress: (_keys: unknown, handler: () => void) => {
+    ahooksMocks.keyPressHandlers.push(handler)
+  },
   useHover: () => false,
 }))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: () => void) => {
-      hotkeyMocks.handlers.set(hotkey, handler)
-    },
-  }
-})
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({}),
@@ -120,7 +113,7 @@ describe('CreateAppModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyMocks.handlers.clear()
+    ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     mockUseProviderContext.mockReturnValue({
       plan: {
@@ -212,13 +205,6 @@ describe('CreateAppModal', () => {
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
 
-  it('renders the create shortcut with kbd primitives', () => {
-    renderModal()
-
-    const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
-    expect(createButton.querySelectorAll('kbd')).toHaveLength(2)
-  })
-
   it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
     const user = userEvent.setup()
     mockCreateApp.mockResolvedValue({ id: 'chat-app', mode: AppModeEnum.CHAT } as App)
@@ -242,7 +228,7 @@ describe('CreateAppModal', () => {
       target: { value: 'Created from shortcut' },
     })
 
-    hotkeyMocks.handlers.get('Mod+Enter')?.()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -259,7 +245,7 @@ describe('CreateAppModal', () => {
   it('shows validation feedback when the keyboard shortcut runs without a name', () => {
     renderModal()
 
-    hotkeyMocks.handlers.get('Mod+Enter')?.()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
 
     expect(mockToastError).toHaveBeenCalledWith('app.newApp.nameNotEmpty')
     expect(mockCreateApp).not.toHaveBeenCalled()
@@ -290,7 +276,7 @@ describe('CreateAppModal', () => {
 
     expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
-    hotkeyMocks.handlers.get('Mod+Enter')?.()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
 
     expect(mockCreateApp).not.toHaveBeenCalled()
   })

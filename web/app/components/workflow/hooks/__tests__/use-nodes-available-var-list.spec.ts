@@ -41,31 +41,6 @@ const outputVars: NodeOutPutVar[] = [{
   }] satisfies Var[],
 }]
 
-const outputVarsWithSystemVars: NodeOutPutVar[] = [
-  {
-    nodeId: 'vars-node',
-    title: 'Vars',
-    vars: [
-      {
-        variable: 'answer',
-        type: VarType.string,
-      },
-      {
-        variable: 'sys.files',
-        type: VarType.arrayFile,
-      },
-    ] satisfies Var[],
-  },
-  {
-    nodeId: 'global',
-    title: 'SYSTEM',
-    vars: [{
-      variable: 'sys.user_id',
-      type: VarType.string,
-    }] satisfies Var[],
-  },
-]
-
 describe('useNodesAvailableVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -144,38 +119,6 @@ describe('useNodesAvailableVarList', () => {
         type: VarType.string,
       })],
     }))
-  })
-
-  it('filters system variables on snippet canvases', () => {
-    globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
-    mockGetNodeAvailableVars.mockReturnValue(outputVarsWithSystemVars)
-
-    const currentNode = createNode({ id: 'node-a' })
-
-    const { result } = renderHook(() => useNodesAvailableVarList([currentNode], {
-      filterVar: () => true,
-    }))
-
-    expect(result.current['node-a']?.availableVars).toEqual([{
-      nodeId: 'vars-node',
-      title: 'Vars',
-      vars: [{
-        variable: 'answer',
-        type: VarType.string,
-      }],
-    }])
-  })
-
-  it('keeps system variables outside snippet canvases', () => {
-    mockGetNodeAvailableVars.mockReturnValue(outputVarsWithSystemVars)
-
-    const currentNode = createNode({ id: 'node-a' })
-
-    const { result } = renderHook(() => useNodesAvailableVarList([currentNode], {
-      filterVar: () => true,
-    }))
-
-    expect(result.current['node-a']?.availableVars).toEqual(outputVarsWithSystemVars)
   })
 
   it('returns a callback version that can use leaf nodes or caller-provided nodes', () => {

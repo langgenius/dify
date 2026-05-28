@@ -28,8 +28,8 @@ const sectionProps = vi.hoisted(() => ({
   access: null as null | Record<string, any>,
   actions: null as null | Record<string, any>,
 }))
-const hotkeyMocks = vi.hoisted(() => ({
-  handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
+const ahooksMocks = vi.hoisted(() => ({
+  keyPressHandlers: [] as Array<(event: { preventDefault: () => void }) => void>,
 }))
 
 let mockAppDetail: Record<string, any> | null = null
@@ -41,11 +41,13 @@ vi.mock('react-i18next', () => ({
   Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
 }))
 
-vi.mock('@tanstack/react-hotkeys', () => ({
-  useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
-    hotkeyMocks.handlers.push(handler)
-  },
-}))
+vi.mock('ahooks', async () => {
+  return {
+    useKeyPress: (_keys: unknown, handler: (event: { preventDefault: () => void }) => void) => {
+      ahooksMocks.keyPressHandlers.push(handler)
+    },
+  }
+})
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { appDetail: Record<string, any> | null, setAppDetail: typeof mockSetAppDetail }) => unknown) => selector({
@@ -182,7 +184,7 @@ vi.mock('../sections', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyMocks.handlers.length = 0
+    ahooksMocks.keyPressHandlers.length = 0
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
@@ -441,7 +443,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    hotkeyMocks.handlers[0]!({ preventDefault })
+    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
@@ -470,7 +472,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    hotkeyMocks.handlers[0]!({ preventDefault })
+    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()

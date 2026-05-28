@@ -7,8 +7,6 @@ import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
   zDeleteAccountSessionsSelfResponse,
-  zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath,
-  zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse,
   zGetAccountResponse,
   zGetAccountSessionsResponse,
   zGetAppsByAppIdDescribePath,
@@ -25,9 +23,6 @@ import {
   zGetOauthDeviceLookupResponse,
   zGetPermittedExternalAppsResponse,
   zGetVersionResponse,
-  zGetWorkspacesByWorkspaceIdMembersPath,
-  zGetWorkspacesByWorkspaceIdMembersQuery,
-  zGetWorkspacesByWorkspaceIdMembersResponse,
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdResponse,
   zGetWorkspacesResponse,
@@ -49,14 +44,6 @@ import {
   zPostOauthDeviceDenyResponse,
   zPostOauthDeviceTokenBody,
   zPostOauthDeviceTokenResponse,
-  zPostWorkspacesByWorkspaceIdMembersBody,
-  zPostWorkspacesByWorkspaceIdMembersPath,
-  zPostWorkspacesByWorkspaceIdMembersResponse,
-  zPostWorkspacesByWorkspaceIdSwitchPath,
-  zPostWorkspacesByWorkspaceIdSwitchResponse,
-  zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleBody,
-  zPutWorkspacesByWorkspaceIdMembersByMemberIdRolePath,
-  zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse,
 } from './zod.gen'
 
 /**
@@ -474,97 +461,7 @@ export const permittedExternalApps = {
   get: get10,
 }
 
-export const put = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PUT',
-    operationId: 'putWorkspacesByWorkspaceIdMembersByMemberIdRole',
-    path: '/workspaces/{workspace_id}/members/{member_id}/role',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      body: zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleBody,
-      params: zPutWorkspacesByWorkspaceIdMembersByMemberIdRolePath,
-    }),
-  )
-  .output(zPutWorkspacesByWorkspaceIdMembersByMemberIdRoleResponse)
-
-export const role = {
-  put,
-}
-
-export const delete3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteWorkspacesByWorkspaceIdMembersByMemberId',
-    path: '/workspaces/{workspace_id}/members/{member_id}',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath }))
-  .output(zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse)
-
-export const byMemberId = {
-  delete: delete3,
-  role,
-}
-
 export const get11 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdMembers',
-    path: '/workspaces/{workspace_id}/members',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      params: zGetWorkspacesByWorkspaceIdMembersPath,
-      query: zGetWorkspacesByWorkspaceIdMembersQuery.optional(),
-    }),
-  )
-  .output(zGetWorkspacesByWorkspaceIdMembersResponse)
-
-export const post9 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesByWorkspaceIdMembers',
-    path: '/workspaces/{workspace_id}/members',
-    successStatus: 201,
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      body: zPostWorkspacesByWorkspaceIdMembersBody,
-      params: zPostWorkspacesByWorkspaceIdMembersPath,
-    }),
-  )
-  .output(zPostWorkspacesByWorkspaceIdMembersResponse)
-
-export const members = {
-  get: get11,
-  post: post9,
-  byMemberId,
-}
-
-export const post10 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesByWorkspaceIdSwitch',
-    path: '/workspaces/{workspace_id}/switch',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
-  .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
-
-export const switch_ = {
-  post: post10,
-}
-
-export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -576,12 +473,10 @@ export const get12 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get12,
-  members,
-  switch: switch_,
+  get: get11,
 }
 
-export const get13 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -592,7 +487,7 @@ export const get13 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get13,
+  get: get12,
   byWorkspaceId,
 }
 

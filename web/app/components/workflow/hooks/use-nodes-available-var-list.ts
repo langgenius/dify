@@ -9,7 +9,6 @@ import {
 } from '@/app/components/workflow/hooks'
 import {
   appendSnippetInputFieldVars,
-  filterSnippetSystemVars,
 } from '@/app/components/workflow/nodes/_base/hooks/snippet-input-field-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -70,7 +69,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
       parentNode: iterationNode,
     } = getNodeInfo(nodeId, nodes)
 
-    const availableVars = filterSnippetSystemVars([
+    const availableVars = [
       ...snippetInputFieldAvailability.availableVars,
       ...getNodeAvailableVars({
         parentNode: iterationNode,
@@ -80,7 +79,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
         hideEnv,
         hideChatVar,
       }),
-    ])
+    ]
     const result = {
       node,
       availableVars,
@@ -124,7 +123,7 @@ export const useGetNodesAvailableVarList = () => {
         parentNode: iterationNode,
       } = getNodeInfo(nodeId, nodes)
 
-      const availableVars = filterSnippetSystemVars([
+      const availableVars = [
         ...snippetInputFieldAvailability.availableVars,
         ...getNodeAvailableVars({
           parentNode: iterationNode,
@@ -134,7 +133,7 @@ export const useGetNodesAvailableVarList = () => {
           hideEnv,
           hideChatVar,
         }),
-      ])
+      ]
       const result = {
         node,
         availableVars,

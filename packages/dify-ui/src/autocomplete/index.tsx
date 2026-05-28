@@ -346,7 +346,7 @@ export function AutocompleteEmpty({
 }: BaseAutocomplete.Empty.Props) {
   return (
     <BaseAutocomplete.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
       {...props}
     />
   )

@@ -8,15 +8,8 @@ export class AccountSessionsClient {
     this.http = http
   }
 
-  async list(q?: { page?: number, limit?: number }): Promise<SessionListResponse> {
-    const params = new URLSearchParams()
-    if (q?.page !== undefined)
-      params.set('page', String(q.page))
-    if (q?.limit !== undefined)
-      params.set('limit', String(q.limit))
-    const hasParams = Array.from(params.keys()).length > 0
-    const opts = hasParams ? { searchParams: params } : undefined
-    return this.http.get('account/sessions', opts).json<SessionListResponse>()
+  async list(): Promise<SessionListResponse> {
+    return this.http.get('account/sessions').json<SessionListResponse>()
   }
 
   async revoke(sessionId: string): Promise<void> {

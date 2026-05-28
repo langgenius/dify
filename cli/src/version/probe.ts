@@ -4,9 +4,8 @@ import type { CompatVerdict } from './compat.js'
 import type { Channel } from './info.js'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '../api/meta.js'
 import { loadHosts } from '../auth/hosts.js'
+import { resolveConfigDir } from '../config/dir.js'
 import { createClient } from '../http/client.js'
-import { resolveConfigDir } from '../store/dir.js'
-import { arch, platform } from '../sys/index.js'
 import { hostWithScheme } from '../util/host.js'
 import { difyCompat, evaluateCompat } from './compat.js'
 import { versionInfo } from './info.js'
@@ -61,8 +60,8 @@ function buildClientBlock(): ClientBlock {
     commit: versionInfo.commit,
     buildDate: versionInfo.buildDate,
     channel: versionInfo.channel,
-    platform: platform(),
-    arch: arch(),
+    platform: process.platform,
+    arch: process.arch,
   }
 }
 

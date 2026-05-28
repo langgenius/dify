@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { FILE_PERM } from '../store/dir.js'
+import { FILE_PERM } from '../config/dir.js'
 import { HOSTS_FILE_NAME, HostsBundleSchema, loadHosts, saveHosts } from './hosts.js'
 
 describe('HostsBundleSchema', () => {

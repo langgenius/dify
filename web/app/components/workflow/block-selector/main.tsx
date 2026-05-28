@@ -27,6 +27,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  Plus02,
+} from '@/app/components/base/icons/src/vender/line/general'
 import Input from '@/app/components/base/input'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -160,7 +163,7 @@ function NodeSelector({
 
     if (onOpenChange)
       onOpenChange(newOpen)
-  }, [activeTab, disabled, onOpenChange])
+  }, [disabled, onOpenChange])
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
     e.stopPropagation()
   }, [])
@@ -216,7 +219,7 @@ function NodeSelector({
       style={triggerStyle}
       onClick={handleTrigger}
     >
-      <span aria-hidden className="i-custom-vender-line-general-plus-02 size-2.5" />
+      <Plus02 aria-hidden className="size-2.5" />
     </PopoverTrigger>
   )
   const triggerElement = trigger?.(open)
@@ -261,56 +264,65 @@ function NodeSelector({
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
             onActiveTabChange={handleActiveTabChange}
-            filterElem={activeTab === TabsEnum.Snippets
-              ? null
-              : (
-                  <div className="relative m-2" onClick={e => e.stopPropagation()}>
-                    {activeTab === TabsEnum.Start && (
-                      <SearchBox
-                        autoFocus
-                        search={searchText}
-                        onSearchChange={setSearchText}
-                        tags={tags}
-                        onTagsChange={setTags}
-                        placeholder={searchPlaceholder}
-                        inputClassName="grow"
-                      />
-                    )}
-                    {activeTab === TabsEnum.Blocks && (
-                      <Input
-                        showLeftIcon
-                        showClearIcon
-                        autoFocus
-                        value={searchText}
-                        placeholder={searchPlaceholder}
-                        onChange={e => setSearchText(e.target.value)}
-                        onClear={() => setSearchText('')}
-                      />
-                    )}
-                    {activeTab === TabsEnum.Sources && (
-                      <Input
-                        showLeftIcon
-                        showClearIcon
-                        autoFocus
-                        value={searchText}
-                        placeholder={searchPlaceholder}
-                        onChange={e => setSearchText(e.target.value)}
-                        onClear={() => setSearchText('')}
-                      />
-                    )}
-                    {activeTab === TabsEnum.Tools && (
-                      <SearchBox
-                        autoFocus
-                        search={searchText}
-                        onSearchChange={setSearchText}
-                        tags={tags}
-                        onTagsChange={setTags}
-                        placeholder={t('searchTools', { ns: 'plugin' })!}
-                        inputClassName="grow"
-                      />
-                    )}
-                  </div>
+            filterElem={(
+              <div className="relative m-2" onClick={e => e.stopPropagation()}>
+                {activeTab === TabsEnum.Start && (
+                  <SearchBox
+                    autoFocus
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    placeholder={searchPlaceholder}
+                    inputClassName="grow"
+                  />
                 )}
+                {activeTab === TabsEnum.Blocks && (
+                  <Input
+                    showLeftIcon
+                    showClearIcon
+                    autoFocus
+                    value={searchText}
+                    placeholder={searchPlaceholder}
+                    onChange={e => setSearchText(e.target.value)}
+                    onClear={() => setSearchText('')}
+                  />
+                )}
+                {activeTab === TabsEnum.Sources && (
+                  <Input
+                    showLeftIcon
+                    showClearIcon
+                    autoFocus
+                    value={searchText}
+                    placeholder={searchPlaceholder}
+                    onChange={e => setSearchText(e.target.value)}
+                    onClear={() => setSearchText('')}
+                  />
+                )}
+                {activeTab === TabsEnum.Tools && (
+                  <SearchBox
+                    autoFocus
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    placeholder={t('searchTools', { ns: 'plugin' })!}
+                    inputClassName="grow"
+                  />
+                )}
+                {activeTab === TabsEnum.Snippets && (
+                  <Input
+                    showLeftIcon
+                    showClearIcon
+                    autoFocus
+                    value={searchText}
+                    placeholder={searchPlaceholder}
+                    onChange={e => setSearchText(e.target.value)}
+                    onClear={() => setSearchText('')}
+                  />
+                )}
+              </div>
+            )}
             onSelect={handleSelect}
             searchText={searchText}
             tags={tags}
@@ -326,7 +338,6 @@ function NodeSelector({
                   <Snippets
                     loading={snippetsLoading}
                     searchText={searchText}
-                    onSearchTextChange={setSearchText}
                     insertPayload={snippetInsertPayload}
                     onInserted={() => handleOpenChange(false)}
                   />

@@ -2,18 +2,17 @@ import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../auth/hosts.js'
 import type { AppInfoCache } from '../../cache/app-info.js'
 import type { Command } from '../../framework/command.js'
-import type { IOStreams } from '../../sys/io/streams'
+import type { IOStreams } from '../../io/streams.js'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '../../api/meta.js'
 import { loadHosts } from '../../auth/hosts.js'
 import { loadAppInfoCache } from '../../cache/app-info.js'
 import { loadNudgeStore } from '../../cache/nudge-store.js'
-import { getEnv } from '../../env/registry.js'
+import { resolveConfigDir } from '../../config/dir.js'
 import { BaseError } from '../../errors/base.js'
 import { ErrorCode } from '../../errors/codes.js'
 import { formatErrorForCli } from '../../errors/format.js'
 import { createClient } from '../../http/client.js'
-import { resolveConfigDir } from '../../store/dir.js'
-import { realStreams } from '../../sys/io/streams'
+import { realStreams } from '../../io/streams.js'
 import { hostWithScheme } from '../../util/host.js'
 import { versionInfo } from '../../version/info.js'
 import { maybeNudgeCompat } from '../../version/nudge.js'
@@ -39,7 +38,6 @@ export async function buildAuthedContext(
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
   const configDir = resolveConfigDir()
-  const io = realStreams(opts.format ?? '')
   const bundle = await loadHosts(configDir)
   if (bundle === undefined || bundle.tokens?.bearer === undefined || bundle.tokens.bearer === '') {
     const err = new BaseError({
@@ -47,19 +45,20 @@ export async function buildAuthedContext(
       message: 'not logged in',
       hint: 'run \'difyctl auth login\'',
     })
-    cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: io.isErrTTY }), { exit: err.exit() })
+    cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: process.stderr.isTTY }), { exit: err.exit() })
   }
 
   const host = hostWithScheme(bundle.current_host, bundle.scheme)
   const retryAttempts = resolveRetryAttempts({
     flag: opts.retryFlag,
-    env: getEnv,
+    env: (k: string) => process.env[k],
   })
   const http = createClient({ host, bearer: bundle.tokens.bearer, retryAttempts })
+  const io = realStreams(opts.format ?? '')
 
-  const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
+  const cache = opts.withCache === true ? await loadAppInfoCache({ configDir }) : undefined
 
-  await runCompatNudge({ host, io })
+  await runCompatNudge({ configDir, host, io })
 
   return { bundle, http, host, io, configDir, cache }
 }
@@ -67,11 +66,12 @@ export async function buildAuthedContext(
 // Best-effort nudge: never throws, never blocks. Lives here so every authed
 // command flows through it without per-command wiring.
 async function runCompatNudge(opts: {
+  readonly configDir: string
   readonly host: string
   readonly io: IOStreams
 }): Promise<void> {
   try {
-    const store = await loadNudgeStore()
+    const store = await loadNudgeStore({ configDir: opts.configDir })
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {

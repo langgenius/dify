@@ -1,8 +1,8 @@
 import type { ContentItemProps } from './type'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
+import Textarea from '@/app/components/base/textarea'
 
 const ContentItem = ({
   content,
@@ -42,10 +42,9 @@ const ContentItem = ({
     <div className="py-3">
       {formInputField.type === 'paragraph' && (
         <Textarea
-          aria-label={fieldName}
           className="h-[104px] sm:text-xs"
           value={inputs[fieldName]!}
-          onValueChange={(value) => { onInputChange(fieldName, value) }}
+          onChange={(e) => { onInputChange(fieldName, e.target.value) }}
           data-testid="content-item-textarea"
         />
       )}
