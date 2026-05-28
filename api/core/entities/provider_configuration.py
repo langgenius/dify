@@ -120,7 +120,9 @@ class ProviderConfiguration(BaseModel):
                 self._cached_provider_schema = self.provider
             else:
                 model_provider_factory = self.get_model_provider_factory()
-                self._cached_provider_schema = model_provider_factory.get_provider_schema(provider=self.provider.provider)
+                self._cached_provider_schema = model_provider_factory.get_provider_schema(
+                    provider=self.provider.provider
+                )
 
         return self._cached_provider_schema
 
