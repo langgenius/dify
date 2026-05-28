@@ -19,8 +19,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
-from core.tools.entities.tool_entities import ApiProviderSchemaType
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, ApiToken, Tenant, TenantAccountJoin, TenantAccountRole
