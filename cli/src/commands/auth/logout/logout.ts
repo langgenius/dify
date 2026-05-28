@@ -1,14 +1,14 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { TokenStore } from '../../../auth/store.js'
-import type { IOStreams } from '../../../io/streams.js'
+import type { IOStreams } from '../../../sys/io/streams'
 import { unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AccountSessionsClient } from '../../../api/account-sessions.js'
 import { HOSTS_FILE_NAME } from '../../../auth/hosts.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../io/color.js'
+import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 
 export type LogoutOptions = {
   readonly configDir: string
