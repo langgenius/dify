@@ -185,4 +185,5 @@ function clearLocal(bundle: HostsBundle, store: Store): void {
     store.unset(tokenKey(bundle.current_host, accountId))
   }
   catch { /* best-effort */ }
+  getHostStore().rm()
 }
