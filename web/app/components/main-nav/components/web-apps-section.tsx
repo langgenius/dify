@@ -24,6 +24,7 @@ import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import SearchInput from '@/app/components/base/search-input'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { usePathname } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -140,7 +141,7 @@ const WebAppsSection = () => {
       icon_background={app.icon_background}
       icon_url={app.icon_url}
       id={id}
-      isSelected={pathname.endsWith(`/installed/${id}`)}
+      isSelected={isInstalledAppPath(pathname, id)}
       isPinned={is_pinned}
       togglePin={() => {
         void handleUpdatePinStatus(id, !is_pinned)

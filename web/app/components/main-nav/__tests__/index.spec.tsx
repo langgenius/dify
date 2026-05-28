@@ -410,7 +410,7 @@ describe('MainNav', () => {
     const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
     expect(homeLink).toHaveAttribute('aria-current', 'page')
 
-    mockPathname = '/explore/installed/installed-1'
+    mockPathname = '/installed/installed-1'
     rerender(<MainNav />)
 
     expect(homeLink).not.toHaveAttribute('aria-current')
@@ -559,7 +559,7 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Beta Tool'))
-    expect(mockPush).toHaveBeenCalledWith('/explore/installed/installed-2')
+    expect(mockPush).toHaveBeenCalledWith('/installed/installed-2')
   })
 
   it('renders web app skeleton rows while installed apps are loading', () => {
