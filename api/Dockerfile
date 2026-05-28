@@ -97,6 +97,7 @@ RUN \
 # Copy Python environment and packages
 ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+COPY --from=packages --chown=dify:dify /app/dify-agent /app/dify-agent
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Download nltk data
