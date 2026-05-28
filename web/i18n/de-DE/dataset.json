@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Mehr erfahren",
   "nTo1RetrievalLegacyLinkText": "N-zu-1-Abruf wird im September offiziell eingestellt.",
   "noExternalKnowledge": "Es gibt noch keine External Knowledge API, klicken Sie hier, um zu erstellen",
+  "pageTitle.connectExternalKnowledgeBase": "Externe Wissensdatenbank verbinden",
   "parentMode.fullDoc": "Vollständiges Dokument",
   "parentMode.paragraph": "Absatz",
   "partialEnabled_one": "Insgesamt {{count}} Dokumente, {{num}} verfügbar",

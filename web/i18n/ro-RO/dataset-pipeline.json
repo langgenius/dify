@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Creați cunoștințe",
   "creation.errorTip": "Nu s-a reușit crearea unei baze de cunoștințe",
   "creation.importDSL": "Importul dintr-un fișier DSL",
+  "creation.pageTitle": "Creează pipeline de cunoștințe",
   "creation.successTip": "Crearea cu succes a unei baze de cunoștințe",
   "deletePipeline.content": "Ștergerea șablonului de conductă este ireversibilă.",
   "deletePipeline.title": "Sunteți sigur că ștergeți acest șablon de conductă?",

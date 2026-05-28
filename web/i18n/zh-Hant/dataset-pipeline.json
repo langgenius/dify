@@ -27,6 +27,7 @@
   "creation.createKnowledge": "創造知識",
   "creation.errorTip": "無法建立知識庫",
   "creation.importDSL": "從 DSL 檔案匯入",
+  "creation.pageTitle": "建立知識流水線",
   "creation.successTip": "成功建立知識庫",
   "deletePipeline.content": "刪除管線範本是不可逆的。",
   "deletePipeline.title": "您確定要刪除此管線範本嗎？",

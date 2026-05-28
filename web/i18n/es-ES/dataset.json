@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Más información",
   "nTo1RetrievalLegacyLinkText": "La recuperación N-a-1 será oficialmente obsoleta en septiembre.",
   "noExternalKnowledge": "Todavía no hay una API de conocimiento externo, haga clic aquí para crear",
+  "pageTitle.connectExternalKnowledgeBase": "Conectar base de conocimientos externa",
   "parentMode.fullDoc": "Documento completo",
   "parentMode.paragraph": "Párrafo",
   "partialEnabled_one": "Total de {{count}} documentos, {{num}} disponibles",

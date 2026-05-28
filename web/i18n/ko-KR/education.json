@@ -51,6 +51,7 @@
   "notice.stillInEducation.expired": "지금 다시 확인하여 다가오는 학년도에 사용할 새 쿠폰을 받아보세요. 우리는 그것을 귀하의 계정에 추가하며, 다음 업그레이드에 사용할 수 있습니다.",
   "notice.stillInEducation.isAboutToExpire": "새로운 학년을 위한 쿠폰을 받으시려면 지금 다시 인증하십시오. 쿠폰은 귀하의 계정에 저장되어 다음 갱신 시 사용할 수 있습니다.",
   "notice.stillInEducation.title": "아직 학업 중이신가요?",
+  "pageTitle.verification": "교육 인증",
   "planNotSupportEducationDiscount": "교육 가격 대상 아님",
   "rejectContent": "안타깝게도, 귀하는 교육 인증 상태에 적합하지 않으므로 이 이메일 주소를 사용할 경우 Dify Professional Plan 의 독점 100% 쿠폰을 받을 수 없습니다.",
   "rejectTitle": "귀하의 Dify 교육 인증이 거부되었습니다.",

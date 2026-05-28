@@ -27,6 +27,7 @@
   "creation.createKnowledge": "สร้างความรู้",
   "creation.errorTip": "สร้างฐานความรู้ไม่สําเร็จ",
   "creation.importDSL": "นําเข้าจากไฟล์ DSL",
+  "creation.pageTitle": "สร้างไปป์ไลน์ความรู้",
   "creation.successTip": "สร้างฐานความรู้สําเร็จ",
   "deletePipeline.content": "การลบเทมเพลตไปป์ไลน์ไม่สามารถย้อนกลับได้",
   "deletePipeline.title": "คุณแน่ใจที่จะลบเทมเพลตไปป์ไลน์นี้หรือไม่",

@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Dowiedz się więcej",
   "nTo1RetrievalLegacyLinkText": "Wyszukiwanie N-do-1 zostanie oficjalnie wycofane we wrześniu.",
   "noExternalKnowledge": "Nie ma jeszcze interfejsu API wiedzy zewnętrznej, kliknij tutaj, aby utworzyć",
+  "pageTitle.connectExternalKnowledgeBase": "Połącz zewnętrzną bazę wiedzy",
   "parentMode.fullDoc": "Pełna wersja dokumentu",
   "parentMode.paragraph": "Akapit",
   "partialEnabled_one": "Łącznie {{count}} dokumentów, {{num}} dostępnych",

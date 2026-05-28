@@ -27,6 +27,7 @@
   "creation.createKnowledge": "ज्ञान उत्पन्न करें",
   "creation.errorTip": "ज्ञान आधार बनाने में विफल",
   "creation.importDSL": "एक DSL फ़ाइल से आयात करें",
+  "creation.pageTitle": "ज्ञान पाइपलाइन बनाएँ",
   "creation.successTip": "सफलता से एक ज्ञान आधार बनाया गया",
   "deletePipeline.content": "पाइपलाइन टेम्पलेट को हटाना वापस नहीं किया जा सकता।",
   "deletePipeline.title": "क्या आप इस पाइपलाइन टेम्पलेट को हटाने के लिए निश्चित हैं?",

@@ -51,6 +51,7 @@
   "notice.stillInEducation.expired": "Xác minh lại ngay bây giờ để nhận một phiếu giảm giá mới cho năm học sắp tới. Chúng tôi sẽ thêm nó vào tài khoản của bạn và bạn có thể sử dụng nó cho lần nâng cấp tiếp theo.",
   "notice.stillInEducation.isAboutToExpire": "Xác minh lại ngay bây giờ để nhận một phiếu giảm giá mới cho năm học sắp tới. Nó sẽ được lưu vào tài khoản của bạn và sẵn sàng sử dụng khi bạn gia hạn tiếp theo.",
   "notice.stillInEducation.title": "Vẫn đang học tập?",
+  "pageTitle.verification": "Xác minh giáo dục",
   "planNotSupportEducationDiscount": "Không đủ điều kiện cho giá giáo dục",
   "rejectContent": "Rất tiếc, bạn không đủ điều kiện để nhận trạng thái Xác minh Giáo dục và do đó không thể nhận được mã giảm giá độc quyền 100% cho Kế hoạch Chuyên nghiệp Dify nếu bạn sử dụng địa chỉ email này.",
   "rejectTitle": "Yêu cầu xác minh giáo dục Dify của bạn đã bị từ chối",

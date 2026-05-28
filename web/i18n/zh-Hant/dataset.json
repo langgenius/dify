@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "了解更多",
   "nTo1RetrievalLegacyLinkText": "N 對 1 檢索將於 9 月正式棄用。",
   "noExternalKnowledge": "目前還沒有外部知識 API，按兩下此處創建",
+  "pageTitle.connectExternalKnowledgeBase": "連接外部知識庫",
   "parentMode.fullDoc": "完整文件",
   "parentMode.paragraph": "段",
   "partialEnabled_one": "共 {{count}} 份文件，{{num}} 份可用",

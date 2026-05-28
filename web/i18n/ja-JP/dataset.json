@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "詳細はこちら",
   "nTo1RetrievalLegacyLinkText": " N-to-1 Retrieval は 9 月に正式に廃止されます。",
   "noExternalKnowledge": "外部ナレッジベース連携 API がありません。ここをクリックして作成してください",
+  "pageTitle.connectExternalKnowledgeBase": "外部知識ベースに接続",
   "parentMode.fullDoc": "全体",
   "parentMode.paragraph": "段落",
   "partialEnabled_one": "合計 {{count}} 件のドキュメント、{{num}} 件が利用可能",

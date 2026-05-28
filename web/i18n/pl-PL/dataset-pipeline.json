@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Tworzenie wiedzy",
   "creation.errorTip": "Nie można utworzyć bazy wiedzy",
   "creation.importDSL": "Importowanie z pliku DSL",
+  "creation.pageTitle": "Utwórz potok wiedzy",
   "creation.successTip": "Pomyślnie utworzono bazę wiedzy",
   "deletePipeline.content": "Usunięcie szablonu potoku jest nieodwracalne.",
   "deletePipeline.title": "Czy na pewno chcesz usunąć ten szablon potoku?",

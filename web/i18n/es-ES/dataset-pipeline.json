@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Crear conocimiento",
   "creation.errorTip": "No se pudo crear una base de conocimiento",
   "creation.importDSL": "Importar desde un archivo DSL",
+  "creation.pageTitle": "Crear pipeline de conocimiento",
   "creation.successTip": "Creó con éxito una base de conocimientos",
   "deletePipeline.content": "La eliminación de la plantilla de canalización es irreversible.",
   "deletePipeline.title": "¿Está seguro de eliminar esta plantilla de canalización?",

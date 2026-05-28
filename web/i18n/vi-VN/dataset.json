@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Tìm hiểu thêm",
   "nTo1RetrievalLegacyLinkText": "Truy xuất N-đến-1 sẽ chính thức bị loại bỏ vào tháng 9.",
   "noExternalKnowledge": "Chưa có API Kiến thức Bên ngoài, hãy nhấp vào đây để tạo",
+  "pageTitle.connectExternalKnowledgeBase": "Kết nối cơ sở kiến thức bên ngoài",
   "parentMode.fullDoc": "Tài liệu đầy đủ",
   "parentMode.paragraph": "Đoạn",
   "partialEnabled_one": "Tổng cộng {{count}} tài liệu, {{num}} có sẵn",

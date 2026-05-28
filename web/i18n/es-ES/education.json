@@ -51,6 +51,7 @@
   "notice.stillInEducation.expired": "Verifica de nuevo ahora para obtener un nuevo cupón para el próximo año académico. Lo añadiremos a tu cuenta y podrás usarlo para la próxima actualización.",
   "notice.stillInEducation.isAboutToExpire": "Verifica de nuevo ahora para obtener un nuevo cupón para el próximo año académico. Se guardará en tu cuenta y estará listo para usar en tu próxima renovación.",
   "notice.stillInEducation.title": "¿Aún en educación?",
+  "pageTitle.verification": "Verificación educativa",
   "planNotSupportEducationDiscount": "No elegible para precios educativos",
   "rejectContent": "Desafortunadamente, no eres elegible para el estado de Educación Verificada y, por lo tanto, no puedes recibir el exclusivo cupón del 100% para el Plan Profesional de Dify si utilizas esta dirección de correo electrónico.",
   "rejectTitle": "Su verificación educativa de Dify ha sido rechazada.",
