@@ -33,6 +33,7 @@ export default function DevicePage() {
   const pathname = usePathname()
   const urlUserCode = (searchParams.get('user_code') || '').trim().toUpperCase()
   const ssoVerified = searchParams.get('sso_verified') === '1'
+  const ssoError = searchParams.get('sso_error') || ''
 
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<View>({ kind: 'code_entry' })
@@ -81,7 +82,11 @@ export default function DevicePage() {
       return
     }
     let consumed = false
-    if (ssoVerified) {
+    if (ssoError) {
+      setErrMsg(ssoError) // eslint-disable-line react/set-state-in-effect
+      consumed = true
+    }
+    else if (ssoVerified) {
       setView({ kind: 'authorize_sso' }) // eslint-disable-line react/set-state-in-effect
       consumed = true
     }
@@ -92,9 +97,9 @@ export default function DevicePage() {
         setView({ kind: 'chooser', userCode: urlUserCode }) // eslint-disable-line react/set-state-in-effect
       consumed = true
     }
-    if (consumed && (urlUserCode || ssoVerified))
+    if (consumed && (urlUserCode || ssoVerified || ssoError))
       router.replace(pathname)
-  }, [urlUserCode, ssoVerified, account, view, router, pathname])
+  }, [urlUserCode, ssoVerified, ssoError, account, view, router, pathname])
 
   const onContinue = async () => {
     if (!isValidUserCode(typed))
