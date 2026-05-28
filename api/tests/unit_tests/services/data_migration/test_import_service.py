@@ -10,7 +10,9 @@ from services.data_migration.entities import (
     ImportTarget,
     MigrationDataError,
     MigrationPackage,
+    ResourceIdMapping,
     ResourceReportItem,
+    ResourceType,
 )
 from services.data_migration.import_service import ImportRequest, ImportTargetResolver, MigrationImportService
 from services.entities.dsl_entities import ImportStatus
@@ -372,6 +374,7 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
         ImportOptions(),
         {},
         [],
+        [],
     )
 
     assert events == [("published", "workflow-app-1"), ("created", "workflow-app-1")]
@@ -389,6 +392,7 @@ def test_workflow_tool_import_id_follows_id_strategy(monkeypatch, id_strategy, e
     target_provider = type("WorkflowToolProvider", (), {"id": "target-workflow-tool-id"})()
     account = type("Account", (), {"id": "account-1"})()
     id_mapping = {"source-app-id": "target-app-id"}
+    id_mapping_details = []
 
     class StubSession:
         def get(self, model, identifier):
@@ -434,11 +438,20 @@ def test_workflow_tool_import_id_follows_id_strategy(monkeypatch, id_strategy, e
         ),
         ImportOptions(id_strategy=id_strategy),
         id_mapping,
+        id_mapping_details,
         [],
     )
 
     assert created_kwargs[0]["import_id"] == expected_import_id
     assert id_mapping["source-workflow-tool-id"] == "target-workflow-tool-id"
+    assert id_mapping_details == [
+        ResourceIdMapping(
+            ResourceType.WORKFLOW_TOOL,
+            "embedded_workflow_as_tool",
+            "source-workflow-tool-id",
+            "target-workflow-tool-id",
+        )
+    ]
 
 
 def test_workflow_tool_skip_records_id_mapping(monkeypatch):
@@ -486,6 +499,7 @@ def test_workflow_tool_skip_records_id_mapping(monkeypatch):
         ImportOptions(conflict_strategy=ConflictStrategy.SKIP, id_strategy=IdStrategy.GENERATE_NEW_ID),
         id_mapping,
         [],
+        [],
     )
 
     assert id_mapping["source-workflow-tool-id"] == "existing-workflow-tool-id"
@@ -495,6 +509,7 @@ def test_workflow_tool_skip_records_id_mapping(monkeypatch):
 def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_strategy):
     target_provider = type("ApiToolProvider", (), {"id": "target-api-provider-id", "name": "weather"})()
     id_mapping = {}
+    id_mapping_details = []
     report_items = []
 
     class ExistingApiImportService(MigrationImportService):
@@ -525,6 +540,7 @@ def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
         ImportOptions(conflict_strategy=conflict_strategy),
         report_items,
         id_mapping,
+        id_mapping_details,
         {"weather": {"source-api-provider-id-from-dsl"}},
     )
 
@@ -532,6 +548,9 @@ def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
         "source-api-provider-id": "target-api-provider-id",
         "source-api-provider-id-from-dsl": "target-api-provider-id",
     }
+    assert ResourceIdMapping(
+        ResourceType.API_TOOL, "weather", "source-api-provider-id", "target-api-provider-id"
+    ) in id_mapping_details
 
 
 def test_api_tool_create_records_id_mapping(monkeypatch):
@@ -570,6 +589,7 @@ def test_api_tool_create_records_id_mapping(monkeypatch):
         ImportOptions(),
         [],
         id_mapping,
+        [],
         {},
     )
 
@@ -624,6 +644,7 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch):
         ImportOptions(conflict_strategy=ConflictStrategy.UPDATE),
         report_items,
         {},
+        [],
     )
 
     assert provider.tools == '[{"name": "echo"}]'
@@ -634,6 +655,7 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch):
 def test_mcp_tool_existing_provider_records_id_mapping(monkeypatch, conflict_strategy):
     provider = type("Provider", (), {"id": "target-mcp-provider-id", "tools": "[]", "authed": False})()
     id_mapping = {}
+    id_mapping_details = []
 
     class StubSession:
         def commit(self):
@@ -680,10 +702,14 @@ def test_mcp_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
         ImportOptions(conflict_strategy=conflict_strategy),
         [],
         id_mapping,
+        id_mapping_details,
     )
 
     assert id_mapping["source-mcp-provider-id"] == "target-mcp-provider-id"
     assert "my-test-mcp" not in id_mapping
+    assert id_mapping_details == [
+        ResourceIdMapping(ResourceType.MCP_TOOL, "my-test-mcp", "source-mcp-provider-id", "target-mcp-provider-id")
+    ]
 
 
 def test_mcp_tool_create_records_id_mapping(monkeypatch):
@@ -736,6 +762,7 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch):
         ImportOptions(),
         [],
         id_mapping,
+        [],
     )
 
     assert id_mapping["source-mcp-provider-id"] == "target-mcp-provider-id"
@@ -761,6 +788,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             options,
             report_items,
             id_mapping,
+            id_mapping_details,
             source_provider_ids_by_name,
         ):
             events.append(("api_tools", "imported"))
@@ -772,6 +800,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             options,
             report_items,
             id_mapping,
+            id_mapping_details,
             *,
             imported_workflow_ids=None,
             only_app_ids=None,
@@ -790,10 +819,10 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
                 if imported_workflow_ids is not None:
                     imported_workflow_ids.add(app_id)
 
-        def _import_workflow_tools(self, package, target, options, id_mapping, report_items):
+        def _import_workflow_tools(self, package, target, options, id_mapping, id_mapping_details, report_items):
             events.append(("workflow_tool", package.workflow_tools[0]["id"]))
 
-        def _import_mcp_tools(self, package, target, options, report_items, id_mapping):
+        def _import_mcp_tools(self, package, target, options, report_items, id_mapping, id_mapping_details):
             events.append(("mcp_tools", "imported"))
 
     package = MigrationPackage.from_mapping(

@@ -38,6 +38,7 @@ from services.data_migration.entities import (
     MigrationDataError,
     MigrationPackage,
     ReportContext,
+    ResourceIdMapping,
     ResourceReportItem,
     ResourceType,
 )
@@ -161,6 +162,7 @@ class MigrationImportService:
             )
         ]
         id_mapping: dict[str, str] = {}
+        id_mapping_details: list[ResourceIdMapping] = []
 
         self._import_api_tools(
             request.package,
@@ -168,9 +170,10 @@ class MigrationImportService:
             options,
             report_items,
             id_mapping,
+            id_mapping_details,
             self._source_api_provider_ids_by_name(request.package),
         )
-        self._import_mcp_tools(request.package, target, options, report_items, id_mapping)
+        self._import_mcp_tools(request.package, target, options, report_items, id_mapping, id_mapping_details)
         workflow_tool_app_ids = self._workflow_tool_source_app_ids(request.package)
         imported_workflow_ids: set[str] = set()
         if workflow_tool_app_ids:
@@ -180,16 +183,18 @@ class MigrationImportService:
                 options,
                 report_items,
                 id_mapping,
+                id_mapping_details=id_mapping_details,
                 imported_workflow_ids=imported_workflow_ids,
                 only_app_ids=workflow_tool_app_ids,
             )
-        self._import_workflow_tools(request.package, target, options, id_mapping, report_items)
+        self._import_workflow_tools(request.package, target, options, id_mapping, id_mapping_details, report_items)
         self._import_workflows(
             request.package,
             target,
             options,
             report_items,
             id_mapping,
+            id_mapping_details=id_mapping_details,
             imported_workflow_ids=imported_workflow_ids,
             skip_app_ids=imported_workflow_ids,
         )
@@ -202,6 +207,7 @@ class MigrationImportService:
                 operator_email=target.operator_email,
                 id_mapping_count=len(id_mapping),
                 id_mappings=dict(id_mapping),
+                id_mapping_details=id_mapping_details,
             ),
         )
 
@@ -212,6 +218,7 @@ class MigrationImportService:
         options: ImportOptions,
         report_items: list[ResourceReportItem],
         id_mapping: dict[str, str],
+        id_mapping_details: list[ResourceIdMapping],
         imported_workflow_ids: set[str] | None = None,
         only_app_ids: set[str] | None = None,
         skip_app_ids: set[str] | None = None,
@@ -242,6 +249,15 @@ class MigrationImportService:
             if existing_app is not None and options.conflict_strategy == ConflictStrategy.FAIL:
                 raise MigrationDataError(f"App already exists and conflict_strategy=fail: {app_id}")
             if existing_app is not None and options.conflict_strategy == ConflictStrategy.SKIP:
+                if app_id:
+                    self._record_id_mappings(
+                        id_mapping,
+                        id_mapping_details,
+                        ResourceType.WORKFLOW,
+                        workflow_data.get("name") if isinstance(workflow_data.get("name"), str) else None,
+                        {app_id},
+                        existing_app.id,
+                    )
                 report_items.append(
                     ResourceReportItem(ResourceType.WORKFLOW, str(app_id), workflow_data.get("name"), "skipped")
                 )
@@ -256,7 +272,14 @@ class MigrationImportService:
                 options=options,
             )
             if app_id:
-                id_mapping[app_id] = imported_app_id
+                self._record_id_mappings(
+                    id_mapping,
+                    id_mapping_details,
+                    ResourceType.WORKFLOW,
+                    workflow_data.get("name") if isinstance(workflow_data.get("name"), str) else None,
+                    {app_id},
+                    imported_app_id,
+                )
                 if imported_workflow_ids is not None:
                     imported_workflow_ids.add(app_id)
             if options.create_app_api_token_on_import:
@@ -407,6 +430,7 @@ class MigrationImportService:
         options: ImportOptions,
         report_items: list[ResourceReportItem],
         id_mapping: dict[str, str],
+        id_mapping_details: list[ResourceIdMapping],
         source_provider_ids_by_name: dict[str, set[str]],
     ) -> None:
         for tool_data in package.tools:
@@ -423,6 +447,9 @@ class MigrationImportService:
             if existing is not None and options.conflict_strategy == ConflictStrategy.SKIP:
                 self._record_id_mappings(
                     id_mapping,
+                    id_mapping_details,
+                    ResourceType.API_TOOL,
+                    provider_name,
                     self._api_tool_source_ids(provider_name, tool_data, source_provider_ids_by_name),
                     existing.id,
                 )
@@ -471,6 +498,9 @@ class MigrationImportService:
             if target_provider is not None:
                 self._record_id_mappings(
                     id_mapping,
+                    id_mapping_details,
+                    ResourceType.API_TOOL,
+                    provider_name,
                     self._api_tool_source_ids(provider_name, tool_data, source_provider_ids_by_name),
                     target_provider.id,
                 )
@@ -496,9 +526,19 @@ class MigrationImportService:
             source_ids.add(source_id)
         return source_ids
 
-    def _record_id_mappings(self, id_mapping: dict[str, str], source_ids: Iterable[str], target_id: str) -> None:
+    def _record_id_mappings(
+        self,
+        id_mapping: dict[str, str],
+        id_mapping_details: list[ResourceIdMapping],
+        resource_type: ResourceType,
+        name: str | None,
+        source_ids: Iterable[str],
+        target_id: str,
+    ) -> None:
         for source_id in source_ids:
             id_mapping[source_id] = target_id
+            id_mapping_details[:] = [item for item in id_mapping_details if item.source_id != source_id]
+            id_mapping_details.append(ResourceIdMapping(resource_type, name, source_id, target_id))
 
     def _import_workflow_tools(
         self,
@@ -506,6 +546,7 @@ class MigrationImportService:
         target: ImportTarget,
         options: ImportOptions,
         id_mapping: dict[str, str],
+        id_mapping_details: list[ResourceIdMapping],
         report_items: list[ResourceReportItem],
     ) -> None:
         if not package.workflow_tools:
@@ -550,7 +591,14 @@ class MigrationImportService:
                 raise MigrationDataError(f"Workflow tool already exists and conflict_strategy=fail: {tool_name}")
             if existing is not None and options.conflict_strategy == ConflictStrategy.SKIP:
                 if workflow_tool_id:
-                    id_mapping[workflow_tool_id] = existing.id
+                    self._record_id_mappings(
+                        id_mapping,
+                        id_mapping_details,
+                        ResourceType.WORKFLOW_TOOL,
+                        tool_name,
+                        {workflow_tool_id},
+                        existing.id,
+                    )
                 report_items.append(ResourceReportItem(ResourceType.WORKFLOW_TOOL, existing.id, tool_name, "skipped"))
                 continue
             kwargs = {
@@ -591,7 +639,14 @@ class MigrationImportService:
                     raise MigrationDataError(f"Workflow tool was not created: {tool_name}")
                 identifier = target_provider.id
             if workflow_tool_id:
-                id_mapping[workflow_tool_id] = identifier
+                self._record_id_mappings(
+                    id_mapping,
+                    id_mapping_details,
+                    ResourceType.WORKFLOW_TOOL,
+                    tool_name,
+                    {workflow_tool_id},
+                    identifier,
+                )
             report_items.append(ResourceReportItem(ResourceType.WORKFLOW_TOOL, identifier, tool_name, status))
 
     def _ensure_workflow_app_is_published(self, target: ImportTarget, account: Account, app_id: str) -> None:
@@ -626,6 +681,7 @@ class MigrationImportService:
         options: ImportOptions,
         report_items: list[ResourceReportItem],
         id_mapping: dict[str, str],
+        id_mapping_details: list[ResourceIdMapping],
     ) -> None:
         for mcp_data in package.mcp_tools:
             name = self._required_string(mcp_data, "name", "mcp_tool")
@@ -637,7 +693,14 @@ class MigrationImportService:
                 raise MigrationDataError(f"MCP tool already exists and conflict_strategy=fail: {name}")
             if existing is not None and options.conflict_strategy == ConflictStrategy.SKIP:
                 if provider_id:
-                    id_mapping[provider_id] = existing.id
+                    self._record_id_mappings(
+                        id_mapping,
+                        id_mapping_details,
+                        ResourceType.MCP_TOOL,
+                        name,
+                        {provider_id},
+                        existing.id,
+                    )
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, existing.id, name, "skipped"))
                 continue
 
@@ -686,7 +749,14 @@ class MigrationImportService:
             self._restore_mcp_provider_tools(provider, mcp_data)
             db.session.commit()
             if provider_id:
-                id_mapping[provider_id] = identifier
+                self._record_id_mappings(
+                    id_mapping,
+                    id_mapping_details,
+                    ResourceType.MCP_TOOL,
+                    name,
+                    {provider_id},
+                    identifier,
+                )
             report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, identifier, name, status))
 
     def _restore_mcp_provider_tools(self, provider: MCPToolProvider, mcp_data: dict[str, object]) -> None:

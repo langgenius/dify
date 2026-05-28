@@ -1,4 +1,4 @@
-from services.data_migration.entities import ReportContext, ResourceReportItem, ResourceType
+from services.data_migration.entities import ReportContext, ResourceIdMapping, ResourceReportItem, ResourceType
 from services.data_migration.report_service import MigrationReportService
 
 
@@ -62,6 +62,10 @@ def test_report_includes_export_and_import_context():
             app_api_tokens_reused=2,
             id_mapping_count=3,
             id_mappings={"source-app": "target-app", "source-tool": "target-tool"},
+            id_mapping_details=[
+                ResourceIdMapping(ResourceType.WORKFLOW, "Main workflow", "source-app", "target-app"),
+                ResourceIdMapping(ResourceType.API_TOOL, "weather", "source-tool", "target-tool"),
+            ],
         ),
     )
 
@@ -73,5 +77,5 @@ def test_report_includes_export_and_import_context():
     assert "operator: admin@example.com" in lines
     assert "app api tokens: 1 created, 2 reused" in lines
     assert "resource references resolved: 2" in lines
-    assert "- source-app -> target-app" in lines
-    assert "- source-tool -> target-tool" in lines
+    assert "- workflow Main workflow: source-app -> target-app" in lines
+    assert "- api_tool weather: source-tool -> target-tool" in lines

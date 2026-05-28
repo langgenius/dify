@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from services.data_migration.entities import ReportContext, ResourceReportItem
+from services.data_migration.entities import ReportContext, ResourceIdMapping, ResourceReportItem
 
 
 class MigrationReportService:
@@ -47,9 +47,24 @@ class MigrationReportService:
             )
         if context.id_mappings:
             lines.append(f"resource references resolved: {len(context.id_mappings)}")
-            lines.extend(
-                f"- {source_id} -> {target_id}" for source_id, target_id in sorted(context.id_mappings.items())
-            )
+            if context.id_mapping_details:
+                lines.extend(
+                    self._render_id_mapping_detail(item)
+                    for item in sorted(
+                        context.id_mapping_details,
+                        key=lambda item: (item.resource_type.value, item.name or "", item.source_id),
+                    )
+                )
+            else:
+                lines.extend(
+                    f"- {source_id} -> {target_id}" for source_id, target_id in sorted(context.id_mappings.items())
+                )
         elif context.id_mapping_count:
             lines.append(f"resource references resolved: {context.id_mapping_count}")
         return lines
+
+    def _render_id_mapping_detail(self, item: ResourceIdMapping) -> str:
+        label = item.resource_type.value
+        if item.name:
+            label = f"{label} {item.name}"
+        return f"- {label}: {item.source_id} -> {item.target_id}"

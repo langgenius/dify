@@ -192,6 +192,14 @@ class ResourceReportItem:
 
 
 @dataclass(frozen=True)
+class ResourceIdMapping:
+    resource_type: ResourceType
+    name: str | None
+    source_id: str
+    target_id: str
+
+
+@dataclass(frozen=True)
 class ExportResult:
     package: MigrationPackage
     report_items: list[ResourceReportItem]
@@ -225,3 +233,4 @@ class ReportContext:
     app_api_tokens_reused: int = 0
     id_mapping_count: int = 0
     id_mappings: dict[str, str] = field(default_factory=dict)
+    id_mapping_details: list[ResourceIdMapping] = field(default_factory=list)
