@@ -44,7 +44,7 @@ describe('getTokenStore', () => {
     expect(result.store).toBe(f)
   })
 
-  it('falls back to file when probe round-trip mismatches',() => {
+  it('falls back to file when probe round-trip mismatches', () => {
     const k = memStore('keyring')
     const f = memStore('file')
     k.get = vi.fn(() => 'something-else')

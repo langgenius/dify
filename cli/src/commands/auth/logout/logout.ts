@@ -1,11 +1,12 @@
 import type { KyInstance } from 'ky'
-import { clearLocal, type HostsBundle } from '../../../auth/hosts.js'
+import type { HostsBundle } from '../../../auth/hosts.js'
 import type { Store } from '../../../store/store.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import { AccountSessionsClient } from '../../../api/account-sessions.js'
+import { clearLocal } from '../../../auth/hosts.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
-import { getHostStore, getTokenStore, tokenKey } from '../../../store/manager.js'
+import { getTokenStore } from '../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 
 export type LogoutOptions = {
