@@ -5246,9 +5246,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
