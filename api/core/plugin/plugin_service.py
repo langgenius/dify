@@ -11,8 +11,8 @@ while a Redis generation key lets every worker observe invalidation events
 before reusing its in-memory copy.
 """
 
-import time
 import logging
+import time
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 from typing import ClassVar
