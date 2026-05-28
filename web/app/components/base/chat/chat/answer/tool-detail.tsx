@@ -35,12 +35,12 @@ const ToolDetail = ({
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill className="mr-1 h-3.5 w-3.5" />}
-        {!isFinished && <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />}
+        {isFinished && <RiHammerFill className="mr-1 size-3.5" />}
+        {!isFinished && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
         {t(`thought.${isFinished ? 'used' : 'using'}`, { ns: 'tools' })}
         <div className="mx-1 text-text-secondary">{toolLabel}</div>
-        {!expand && <RiArrowRightSLine className="h-4 w-4" />}
-        {expand && <RiArrowDownSLine className="ml-auto h-4 w-4" />}
+        {!expand && <RiArrowRightSLine className="size-4" />}
+        {expand && <RiArrowDownSLine className="ml-auto size-4" />}
       </div>
       {
         expand && (

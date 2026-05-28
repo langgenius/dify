@@ -45,6 +45,7 @@ SPEC_TARGETS: tuple[SpecTarget, ...] = (
     SpecTarget(route="/console/api/swagger.json", filename="console-swagger.json", namespace="console"),
     SpecTarget(route="/api/swagger.json", filename="web-swagger.json", namespace="web"),
     SpecTarget(route="/v1/swagger.json", filename="service-swagger.json", namespace="service"),
+    SpecTarget(route="/openapi/v1/swagger.json", filename="openapi-swagger.json", namespace="openapi"),
 )
 
 
@@ -161,6 +162,8 @@ def create_spec_app() -> Flask:
 
     from controllers.console import bp as console_bp
     from controllers.console import console_ns
+    from controllers.openapi import bp as openapi_bp
+    from controllers.openapi import openapi_ns
     from controllers.service_api import bp as service_api_bp
     from controllers.service_api import service_api_ns
     from controllers.web import bp as web_bp
@@ -169,8 +172,9 @@ def create_spec_app() -> Flask:
     app.register_blueprint(console_bp)
     app.register_blueprint(web_bp)
     app.register_blueprint(service_api_bp)
+    app.register_blueprint(openapi_bp)
 
-    for namespace in (console_ns, web_ns, service_api_ns):
+    for namespace in (console_ns, web_ns, service_api_ns, openapi_ns):
         for api in namespace.apis:
             _materialize_inline_model_definitions(api)
 
@@ -199,6 +203,13 @@ def _registered_models(namespace: str) -> dict[str, object]:
 
         models = dict(service_api_ns.models)
         for api in service_api_ns.apis:
+            models.update(api.models)
+        return models
+    if namespace == "openapi":
+        from controllers.openapi import openapi_ns
+
+        models = dict(openapi_ns.models)
+        for api in openapi_ns.apis:
             models.update(api.models)
         return models
 

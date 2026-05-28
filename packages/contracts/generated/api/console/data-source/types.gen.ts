@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type GetDataSourceIntegratesData = {
   body?: never
   path?: never
@@ -28,9 +32,7 @@ export type PatchDataSourceIntegratesData = {
 }
 
 export type PatchDataSourceIntegratesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDataSourceIntegratesResponse
@@ -66,9 +68,7 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionResponse

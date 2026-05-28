@@ -21,6 +21,7 @@ describe('checkbox list component', () => {
     )
     expect(screen.getByText('Test Title'))!.toBeInTheDocument()
     expect(screen.getByText('Test Description'))!.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Test Title' }))!.toHaveAccessibleDescription('Test Description')
     options.forEach((option) => {
       expect(screen.getByText(option.label))!.toBeInTheDocument()
     })
@@ -231,6 +232,7 @@ describe('checkbox list component', () => {
       />,
     )
     expect(screen.getByText('Test Label'))!.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Test Label' }))!.toBeInTheDocument()
   })
 
   it('renders without showSelectAll, showCount, showSearch', () => {

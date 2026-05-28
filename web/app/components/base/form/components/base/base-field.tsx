@@ -1,6 +1,10 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Radio } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -22,8 +26,6 @@ import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Radio from '@/app/components/base/radio'
-import RadioE from '@/app/components/base/radio/ui'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
@@ -180,6 +182,8 @@ const BaseField = ({
   }, [options, renderI18nObject, watchedValues])
 
   const value = useStore(field.form.store, s => s.values[field.name])
+  const stringValue = typeof value === 'string' ? value : undefined
+  const booleanValue = typeof value === 'boolean' ? value : undefined
 
   const { data: dynamicOptionsData, isLoading: isDynamicOptionsLoading, error: dynamicOptionsError } = useTriggerPluginDynamicOptions(
     dynamicSelectParams || {
@@ -305,6 +309,7 @@ const BaseField = ({
           {
             formItemType === FormTypeEnum.checkbox /* && multiple */ && (
               <CheckboxList
+                name={field.name}
                 title={name}
                 value={value}
                 onChange={v => field.handleChange(v)}
@@ -387,49 +392,82 @@ const BaseField = ({
           }
           {
             formItemType === FormTypeEnum.radio && (
-              <div
-                className={cn(
-                  memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
-                )}
-                data-testid="radio-group"
-              >
-                {
-                  memorizedOptions.map(option => (
-                    <div
-                      key={option.value}
+              <FieldRoot name={name} className="contents">
+                <FieldsetRoot
+                  render={(
+                    <RadioGroup
+                      value={stringValue}
+                      onValueChange={optionValue => handleChange(optionValue)}
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
-                        value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
-                        disabled && 'cursor-not-allowed opacity-50',
-                        inputClassName,
+                        memorizedOptions.length >= 3 && 'flex-col items-stretch',
                       )}
-                      onClick={() => !disabled && handleChange(option.value)}
-                    >
-                      {
-                        formSchema.showRadioUI && (
-                          <RadioE
-                            className="mr-2"
-                            isChecked={value === option.value}
-                          />
-                        )
-                      }
-                      {option.label}
-                    </div>
-                  ))
-                }
-              </div>
+                    />
+                  )}
+                >
+                  <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
+                  {
+                    memorizedOptions.map(option => (
+                      <FieldItem key={option.value} className={cn('min-w-0', memorizedOptions.length < 3 && 'flex-1 grow')}>
+                        <FieldLabel
+                          className={cn(
+                            'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
+                            value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
+                            disabled && 'cursor-not-allowed opacity-50',
+                            inputClassName,
+                          )}
+                        >
+                          {
+                            formSchema.showRadioUI && (
+                              <Radio
+                                className="mr-2"
+                                value={option.value}
+                                disabled={disabled}
+                              />
+                            )
+                          }
+                          {!formSchema.showRadioUI && (
+                            <Radio
+                              className="sr-only"
+                              value={option.value}
+                              disabled={disabled}
+                            />
+                          )}
+                          {option.label}
+                        </FieldLabel>
+                      </FieldItem>
+                    ))
+                  }
+                </FieldsetRoot>
+              </FieldRoot>
             )
           }
           {
             formItemType === FormTypeEnum.boolean && (
-              <Radio.Group
-                className="flex w-fit items-center"
-                value={value}
-                onChange={v => field.handleChange(v)}
-              >
-                <Radio value={true} className="mr-1!">True</Radio>
-                <Radio value={false}>False</Radio>
-              </Radio.Group>
+              <FieldRoot name={name} className="contents">
+                <FieldsetRoot
+                  render={(
+                    <RadioGroup<boolean>
+                      className="w-fit gap-3"
+                      value={booleanValue}
+                      onValueChange={v => field.handleChange(v)}
+                    />
+                  )}
+                >
+                  <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
+                  <FieldItem>
+                    <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                      <Radio value={true} />
+                      True
+                    </FieldLabel>
+                  </FieldItem>
+                  <FieldItem>
+                    <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                      <Radio value={false} />
+                      False
+                    </FieldLabel>
+                  </FieldItem>
+                </FieldsetRoot>
+              </FieldRoot>
             )
           }
           {fieldState?.validateStatus && [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(fieldState?.validateStatus) && (
@@ -458,7 +496,7 @@ const BaseField = ({
             <span className="break-all">
               {translatedHelp}
             </span>
-            <div className="ml-1 i-ri-external-link-line h-3 w-3 shrink-0" />
+            <div className="ml-1 i-ri-external-link-line size-3 shrink-0" />
           </a>
         )
       }

@@ -78,7 +78,7 @@ const InvitedModal = ({
                                 render={(
                                   <div className="flex items-center justify-center gap-1 text-sm">
                                     {item.email}
-                                    <div className="i-ri-question-line h-4 w-4 text-red-300" />
+                                    <div className="i-ri-question-line size-4 text-red-300" />
                                   </div>
                                 )}
                               />

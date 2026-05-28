@@ -56,14 +56,14 @@ const AddVariable = ({
               <div
                 className={cn(
                   'group/addvariable flex items-center justify-center',
-                  'h-4 w-4 cursor-pointer',
+                  'size-4 cursor-pointer',
                   'hover:rounded-full hover:bg-primary-600',
                   open && 'rounded-full! bg-primary-600!',
                 )}
               >
                 <Plus02
                   className={cn(
-                    'h-2.5 w-2.5 text-text-tertiary',
+                    'size-2.5 text-text-tertiary',
                     'group-hover/addvariable:text-text-primary',
                     open && 'text-text-primary!',
                   )}

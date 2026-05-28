@@ -130,7 +130,7 @@ describe('CommentsPanel', () => {
 
   it('resolves a comment and syncs list refresh', async () => {
     const { container } = render(<CommentsPanel />)
-    const resolveIcons = container.querySelectorAll('.h-4.w-4.cursor-pointer.text-text-tertiary')
+    const resolveIcons = container.querySelectorAll('.size-4.cursor-pointer.text-text-tertiary')
     expect(resolveIcons.length).toBeGreaterThan(0)
 
     fireEvent.click(resolveIcons[0]!)

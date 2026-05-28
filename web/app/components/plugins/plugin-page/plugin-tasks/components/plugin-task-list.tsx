@@ -40,7 +40,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
+            <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />
           }
           defaultStatusText={t('task.installingHint', { ns: 'plugin' })}
         />
@@ -55,7 +55,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           getIconUrl={getIconUrl}
           language={language}
           statusIcon={
-            <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+            <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
           }
           defaultStatusText={t('task.installed', { ns: 'plugin' })}
           statusClassName="text-text-success"

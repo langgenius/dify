@@ -119,7 +119,7 @@ describe('OperationsDropdown', () => {
     it('should have icon with correct size classes', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const icon = container.querySelector('.i-ri-more-fill')
-      expect(icon).toHaveClass('h-5', 'w-5', 'text-text-tertiary')
+      expect(icon).toHaveClass('size-5', 'text-text-tertiary')
     })
 
     it('should have aria-label on trigger for accessibility', () => {

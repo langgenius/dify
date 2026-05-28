@@ -117,13 +117,13 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
           <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
             <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
           </div>
           <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('switch', { ns: 'app' })}</div>
-          <div className="my-1 text-sm leading-5 text-text-tertiary">
+          <div className="my-1 text-sm/5 text-text-tertiary">
             <span>{t('switchTipStart', { ns: 'app' })}</span>
             <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
             <span>{t('switchTipEnd', { ns: 'app' })}</span>
@@ -149,15 +149,13 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             </div>
             {showAppIconPicker && (
               <AppIconPicker
+                open={showAppIconPicker}
+                initialEmoji={appIcon.type === 'emoji'
+                  ? { icon: appIcon.icon, background: appIcon.background }
+                  : undefined}
+                onOpenChange={setShowAppIconPicker}
                 onSelect={(payload) => {
                   setAppIcon(payload)
-                  setShowAppIconPicker(false)
-                }}
-                onClose={() => {
-                  setAppIcon(appDetail.icon_type === 'image'
-                    ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
-                    : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background })
-                  setShowAppIconPicker(false)
                 }}
               />
             )}
@@ -167,7 +165,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             <div className="flex items-center">
               <label className="flex cursor-pointer items-center">
                 <Checkbox className="shrink-0" checked={removeOriginal} onCheckedChange={setRemoveOriginal} />
-                <span className="ml-2 text-left text-sm leading-5 text-text-secondary">
+                <span className="ml-2 text-left text-sm/5 text-text-secondary">
                   {t('removeOriginal', { ns: 'app' })}
                 </span>
               </label>

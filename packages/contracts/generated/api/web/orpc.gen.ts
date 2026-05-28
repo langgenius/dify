@@ -110,16 +110,10 @@ export const audioToText = {
 
 /**
  * Stop a running chat message task.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Stop a running chat message task.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Stop a running chat message task.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postChatMessagesByTaskIdStop',
@@ -165,16 +159,10 @@ export const chatMessages = {
 
 /**
  * Stop a running completion message task.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Stop a running completion message task.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Stop a running completion message task.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postCompletionMessagesByTaskIdStop',
@@ -250,16 +238,10 @@ export const name = {
 
 /**
  * Pin a specific conversation to keep it at the top of the list.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch = oc
   .route({
-    deprecated: true,
-    description:
-      'Pin a specific conversation to keep it at the top of the list.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Pin a specific conversation to keep it at the top of the list.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdPin',
@@ -275,16 +257,10 @@ export const pin = {
 
 /**
  * Unpin a specific conversation to remove it from the top of the list.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Unpin a specific conversation to remove it from the top of the list.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Unpin a specific conversation to remove it from the top of the list.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -349,16 +325,10 @@ export const conversations = {
 
 /**
  * Verify email code and complete login
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Verify email code and complete login\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Verify email code and complete login',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postEmailCodeLoginValidity',
@@ -374,16 +344,10 @@ export const validity = {
 
 /**
  * Send email verification code for login
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Send email verification code for login\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Send email verification code for login',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postEmailCodeLogin',
@@ -448,16 +412,10 @@ export const files = {
 
 /**
  * Reset user password with verification token
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post10 = oc
   .route({
-    deprecated: true,
-    description:
-      'Reset user password with verification token\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Reset user password with verification token',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postForgotPasswordResets',
@@ -473,16 +431,10 @@ export const resets = {
 
 /**
  * Verify password reset token validity
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Verify password reset token validity\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Verify password reset token validity',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postForgotPasswordValidity',
@@ -498,16 +450,10 @@ export const validity2 = {
 
 /**
  * Send password reset email
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post12 = oc
   .route({
-    deprecated: true,
-    description:
-      'Send password reset email\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Send password reset email',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postForgotPassword',
@@ -594,16 +540,10 @@ export const form = {
 
 /**
  * Check login status
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Check login status\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Check login status',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getLoginStatus',
@@ -620,16 +560,10 @@ export const status = {
  * Authenticate user and login
  *
  * Authenticate user for web application access
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Authenticate user for web application access\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postLogin',
@@ -647,16 +581,10 @@ export const login = {
 
 /**
  * Logout user from web application
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Logout user from web application\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Logout user from web application',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postLogout',
@@ -731,16 +659,10 @@ export const moreLikeThis = {
 
 /**
  * Get suggested follow-up questions after a message (chat apps only).
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get suggested follow-up questions after a message (chat apps only).\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get suggested follow-up questions after a message (chat apps only).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',
@@ -886,11 +808,16 @@ export const passport = {
  * RemoteFileUploadError: Failed to fetch file from remote URL
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post17 = oc
   .route({
+    deprecated: true,
     description:
-      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRemoteFilesUpload',
@@ -1060,16 +987,11 @@ export const site = {
  * Authentication would create circular dependency (can't authenticate without webapp loading).
  *
  * Only non-sensitive configuration data should be returned by this endpoint.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get13 = oc
   .route({
-    deprecated: true,
     description:
-      'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',
@@ -1113,16 +1035,10 @@ export const textToAudio = {
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve the access mode for a web application (public or restricted).\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWebappAccessMode',
@@ -1138,16 +1054,10 @@ export const accessMode = {
 
 /**
  * Check if user has permission to access a web application.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Check if user has permission to access a web application.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWebappPermission',
@@ -1236,16 +1146,10 @@ export const run = {
  * Stop workflow task
  *
  * Stop a running workflow task.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post21 = oc
   .route({
-    deprecated: true,
-    description:
-      'Stop a running workflow task.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsTasksByTaskIdStop',

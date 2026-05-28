@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
@@ -1378,7 +1379,11 @@ describe('Item', () => {
 
       it('should show radio as checked when isSelected is true', () => {
         const props = createItemProps({ isSelected: true, isMultipleChoice: false })
-        render(<ActualItem {...props} />)
+        render(
+          <RadioGroup aria-label="Files" value={props.file.id}>
+            <ActualItem {...props} />
+          </RadioGroup>,
+        )
         const radio = getRadio()
         expect(radio).toHaveAttribute('aria-checked', 'true')
       })
@@ -1481,7 +1486,17 @@ describe('Item', () => {
         const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: false })
-        render(<ActualItem {...props} />)
+        render(
+          <RadioGroup
+            aria-label="Files"
+            onValueChange={(fileId) => {
+              if (fileId === file.id)
+                onSelect(file)
+            }}
+          >
+            <ActualItem {...props} />
+          </RadioGroup>,
+        )
         const radio = getRadio()
         fireEvent.click(radio)
         expect(onSelect).toHaveBeenCalledWith(file)

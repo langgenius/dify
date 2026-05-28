@@ -119,7 +119,7 @@ const DocumentTableRow = React.memo(({
                     className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
                     onClick={handleRenameClick}
                   >
-                    <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                    <span className="i-ri-edit-line size-4 text-text-tertiary" />
                   </div>
                 )}
               />

@@ -29,8 +29,11 @@ class RedisRunStore(RunEventSink):
     """Async Redis implementation for run records and event logs.
 
     ``run_retention_seconds`` is applied to both the run record key and the
-    per-run Redis stream. Event writes also refresh the record TTL so long-running
-    runs that keep producing events do not lose their status record mid-run.
+    per-run Redis stream. Event writes run ``XADD`` and both TTL refreshes in one
+    Redis transaction so a newly created stream is not left without expiration if
+    the client is interrupted between commands. Event writes also refresh the
+    record TTL so long-running runs that keep producing events do not lose their
+    status record mid-run.
     """
 
     redis: Redis
@@ -81,15 +84,18 @@ class RedisRunStore(RunEventSink):
         )
 
     async def append_event(self, event: RunEvent) -> str:
-        """Append an event JSON payload to the run's Redis stream."""
+        """Append an event JSON payload to the run's Redis stream with TTLs."""
         events_key = run_events_key(self.prefix, event.run_id)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        event_id = await self.redis.xadd(
-            events_key,
-            {"payload": payload},
-        )
-        await self.redis.expire(events_key, self.run_retention_seconds)
-        await self.redis.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
+        async with self.redis.pipeline(transaction=True) as pipeline:
+            _ = pipeline.xadd(
+                events_key,
+                {"payload": payload},
+            )
+            _ = pipeline.expire(events_key, self.run_retention_seconds)
+            _ = pipeline.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
+            results = cast(list[object], await pipeline.execute())
+        event_id = results[0]
         return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:

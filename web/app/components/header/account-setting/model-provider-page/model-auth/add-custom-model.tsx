@@ -83,7 +83,7 @@ const AddCustomModel = ({
           notAllowCustomCredential && !!noModels && 'cursor-not-allowed opacity-50',
         )}
       >
-        <RiAddCircleFill className="mr-1 h-3.5 w-3.5" />
+        <RiAddCircleFill className="mr-1 size-3.5" />
         {t('modelProvider.addModel', { ns: 'common' })}
       </Button>
     )
@@ -108,6 +108,7 @@ const AddCustomModel = ({
       onOpenChange={setOpen}
     >
       <PopoverTrigger
+        nativeButton={false}
         render={<div className="inline-block">{renderTrigger(open)}</div>}
       />
       <PopoverContent
@@ -128,7 +129,7 @@ const AddCustomModel = ({
                   }}
                 >
                   <ModelIcon
-                    className="mr-1 h-5 w-5 shrink-0"
+                    className="mr-1 size-5 shrink-0"
                     iconClassName="h-5 w-5"
                     provider={provider}
                     modelName={model.model}
@@ -152,7 +153,7 @@ const AddCustomModel = ({
                   handleOpenModalForAddNewCustomModel()
                 }}
               >
-                <RiAddLine className="mr-1 h-4 w-4" />
+                <RiAddLine className="mr-1 size-4" />
                 {t('modelProvider.auth.addNewModel', { ns: 'common' })}
               </div>
             )

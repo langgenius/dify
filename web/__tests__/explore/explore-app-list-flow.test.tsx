@@ -236,8 +236,8 @@ describe('Explore App List Flow', () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderAppList(true, onSuccess)

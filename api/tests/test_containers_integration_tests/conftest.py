@@ -496,6 +496,51 @@ def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Se
             logger.debug("Database session closed")
 
 
+def _truncate_container_database(app: Flask) -> None:
+    """
+    Reset application tables after a container integration test.
+
+    Tests in this package share one PostgreSQL container for performance, while
+    application code may commit through db.session, Session(db.engine), or
+    session_factory-created sessions. Truncating after each test gives the suite
+    a central DB isolation contract that does not depend on which session a test used.
+    This only covers SQLAlchemy application tables in db.metadata for now;
+    Redis, object storage, and custom ad hoc metadata still need their own cleanup.
+    """
+    with app.app_context():
+        db.session.remove()
+
+        tables = db.metadata.sorted_tables
+        if not tables:
+            return
+
+        preparer = db.engine.dialect.identifier_preparer
+        table_names = ", ".join(preparer.format_table(table) for table in tables)
+
+        with db.engine.begin() as conn:
+            conn.execute(text("SET LOCAL lock_timeout = '5s'"))
+            conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
+
+        db.session.remove()
+
+
+@pytest.fixture(autouse=True)
+def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+    """
+    Clean DB state after tests that use the containerized Flask app.
+
+    This fixture intentionally does not depend on flask_app_with_containers so
+    non-DB tests under this package do not start the full app/container stack.
+    """
+    yield
+
+    if "flask_app_with_containers" not in request.fixturenames:
+        return
+
+    app = request.getfixturevalue("flask_app_with_containers")
+    _truncate_container_database(app)
+
+
 @pytest.fixture(scope="package", autouse=True)
 def mock_ssrf_proxy_requests():
     """

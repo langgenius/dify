@@ -249,7 +249,9 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
 
 class TestHitlServiceApi:
     # Service API event-stream continuation
-    def test_workflow_events_continue_on_pause_keeps_stream_open(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_events_continue_on_pause_keeps_stream_open(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",

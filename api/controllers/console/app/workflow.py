@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.fields import NewAppResponse, SimpleResultResponse
 from controllers.common.schema import (
     register_response_schema_model,
     register_response_schema_models,
@@ -290,6 +291,8 @@ register_response_schema_models(
     WorkflowOnlineUser,
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
+    NewAppResponse,
+    SimpleResultResponse,
 )
 
 
@@ -869,7 +872,7 @@ class WorkflowTaskStopApi(Resource):
     @console_ns.doc("stop_workflow_task")
     @console_ns.doc(description="Stop running workflow task")
     @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID"})
-    @console_ns.response(200, "Task stopped successfully")
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Task not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -1069,7 +1072,11 @@ class ConvertToWorkflowApi(Resource):
     @console_ns.doc("convert_to_workflow")
     @console_ns.doc(description="Convert application to workflow mode")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Application converted to workflow successfully")
+    @console_ns.response(
+        200,
+        "Application converted to workflow successfully",
+        console_ns.models[NewAppResponse.__name__],
+    )
     @console_ns.response(400, "Application cannot be converted")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -1106,7 +1113,11 @@ class WorkflowFeaturesApi(Resource):
     @console_ns.doc("update_workflow_features")
     @console_ns.doc(description="Update draft workflow features")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Workflow features updated successfully")
+    @console_ns.response(
+        200,
+        "Workflow features updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required

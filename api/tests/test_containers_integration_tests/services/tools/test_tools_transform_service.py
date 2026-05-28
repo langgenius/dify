@@ -6,6 +6,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -20,7 +21,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -31,7 +31,7 @@ class TestToolTransformService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with patch("services.tools.tools_transform_service.dify_config") as mock_dify_config:
-            with patch("services.plugin.plugin_service.dify_config", new=mock_dify_config):
+            with patch("core.plugin.plugin_service.dify_config", new=mock_dify_config):
                 # Setup default mock returns
                 mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
 

@@ -197,7 +197,7 @@ const PluginPage = ({
                       className="px-3"
                       variant="secondary-accent"
                     >
-                      <RiBookOpenLine className="mr-1 h-4 w-4" />
+                      <RiBookOpenLine className="mr-1 size-4" />
                       {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
@@ -223,10 +223,10 @@ const PluginPage = ({
                     render={(
                       <Button
                         aria-label={t('privilege.title', { ns: 'plugin' })}
-                        className="group h-full w-full p-2 text-components-button-secondary-text"
+                        className="group size-full p-2 text-components-button-secondary-text"
                         onClick={setShowPluginSettingModal}
                       >
-                        <RiEqualizer2Line className="h-4 w-4" aria-hidden="true" />
+                        <RiEqualizer2Line className="size-4" aria-hidden="true" />
                       </Button>
                     )}
                   />
@@ -250,7 +250,7 @@ const PluginPage = ({
             </div>
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-            <RiDragDropLine className="h-4 w-4" />
+            <RiDragDropLine className="size-4" />
             <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
           </div>
           {currentFile && (

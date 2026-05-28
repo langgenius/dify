@@ -31,16 +31,8 @@ export const get = oc
   .input(z.object({ params: zGetDataSourceIntegratesByBindingIdByActionPath }))
   .output(zGetDataSourceIntegratesByBindingIdByActionResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDataSourceIntegratesByBindingIdByAction',
@@ -77,16 +69,8 @@ export const get2 = oc
   })
   .output(zGetDataSourceIntegratesResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDataSourceIntegrates',

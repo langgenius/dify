@@ -1,33 +1,66 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
-import { useApiBasedExtensions } from '@/service/use-common'
-import ApiBasedExtensionPage from '../index'
+import { ApiBasedExtensionPage } from '../index'
 
-vi.mock('@/service/use-common', () => ({
-  useApiBasedExtensions: vi.fn(),
+const {
+  mockApiBasedExtensionsQuery,
+  mockCreateApiBasedExtension,
+  mockUpdateApiBasedExtension,
+  mockDeleteApiBasedExtension,
+} = vi.hoisted(() => ({
+  mockApiBasedExtensionsQuery: vi.fn(),
+  mockCreateApiBasedExtension: vi.fn(),
+  mockUpdateApiBasedExtension: vi.fn(),
+  mockDeleteApiBasedExtension: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  addApiBasedExtension: vi.fn(),
-  updateApiBasedExtension: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apiBasedExtension: {
+      get: {
+        queryOptions: () => ({}),
+      },
+      post: {
+        mutationOptions: () => ({ mutationFn: mockCreateApiBasedExtension }),
+      },
+      byId: {
+        post: {
+          mutationOptions: () => ({ mutationFn: mockUpdateApiBasedExtension }),
+        },
+        delete: {
+          mutationOptions: () => ({ mutationFn: mockDeleteApiBasedExtension }),
+        },
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(() => mockApiBasedExtensionsQuery()),
+  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
+    isPending: false,
+    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
+      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+    },
+  })),
 }))
 
 describe('ApiBasedExtensionPage', () => {
-  const mockRefetch = vi.fn<() => void>()
-
   beforeEach(() => {
     vi.clearAllMocks()
+    mockApiBasedExtensionsQuery.mockReturnValue({
+      data: [],
+      isPending: false,
+    })
   })
 
   describe('Rendering', () => {
     it('should render empty state when no data exists', () => {
       // Arrange
-      vi.mocked(useApiBasedExtensions).mockReturnValue({
+      mockApiBasedExtensionsQuery.mockReturnValue({
         data: [],
         isPending: false,
-        refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useApiBasedExtensions>)
+      })
 
       // Act
       render(<ApiBasedExtensionPage />)
@@ -44,11 +77,10 @@ describe('ApiBasedExtensionPage', () => {
         { id: '2', name: 'Extension 2', api_endpoint: 'url2', api_key: 'key2' },
       ]
 
-      vi.mocked(useApiBasedExtensions).mockReturnValue({
+      mockApiBasedExtensionsQuery.mockReturnValue({
         data: mockData,
         isPending: false,
-        refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useApiBasedExtensions>)
+      })
 
       // Act
       render(<ApiBasedExtensionPage />)
@@ -63,11 +95,10 @@ describe('ApiBasedExtensionPage', () => {
 
     it('should handle loading state', () => {
       // Arrange
-      vi.mocked(useApiBasedExtensions).mockReturnValue({
-        data: null,
+      mockApiBasedExtensionsQuery.mockReturnValue({
+        data: undefined,
         isPending: true,
-        refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useApiBasedExtensions>)
+      })
 
       // Act
       render(<ApiBasedExtensionPage />)
@@ -112,11 +143,10 @@ describe('ApiBasedExtensionPage', () => {
   describe('User Interactions', () => {
     it('should open modal when clicking add button', () => {
       // Arrange
-      vi.mocked(useApiBasedExtensions).mockReturnValue({
+      mockApiBasedExtensionsQuery.mockReturnValue({
         data: [],
         isPending: false,
-        refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useApiBasedExtensions>)
+      })
 
       // Act
       render(<ApiBasedExtensionPage />)
@@ -126,19 +156,18 @@ describe('ApiBasedExtensionPage', () => {
       expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
     })
 
-    it('should call refetch when add modal saves successfully', async () => {
+    it('should close add modal when create mutation succeeds', async () => {
       // Arrange
-      vi.mocked(addApiBasedExtension).mockResolvedValue({
+      mockCreateApiBasedExtension.mockResolvedValue({
         id: 'new-id',
         name: 'New Ext',
         api_endpoint: 'https://api.test',
         api_key: 'secret-key',
       })
-      vi.mocked(useApiBasedExtensions).mockReturnValue({
+      mockApiBasedExtensionsQuery.mockReturnValue({
         data: [],
         isPending: false,
-        refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useApiBasedExtensions>)
+      })
 
       // Act
       render(<ApiBasedExtensionPage />)
@@ -150,19 +179,25 @@ describe('ApiBasedExtensionPage', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockRefetch).toHaveBeenCalled()
+        expect(mockCreateApiBasedExtension).toHaveBeenCalledWith({
+          body: {
+            name: 'New Ext',
+            api_endpoint: 'https://api.test',
+            api_key: 'secret-key',
+          },
+        })
+        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).not.toBeInTheDocument()
       })
     })
 
-    it('should call refetch when an item is updated', async () => {
+    it('should close edit modal when update mutation succeeds', async () => {
       // Arrange
       const extension: ApiBasedExtensionResponse = { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'long-api-key' }
-      vi.mocked(updateApiBasedExtension).mockResolvedValue({ ...extension, name: 'Updated' })
-      vi.mocked(useApiBasedExtensions).mockReturnValue({
+      mockUpdateApiBasedExtension.mockResolvedValue({ ...extension, name: 'Updated' })
+      mockApiBasedExtensionsQuery.mockReturnValue({
         data: [extension],
         isPending: false,
-        refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useApiBasedExtensions>)
+      })
 
       render(<ApiBasedExtensionPage />)
 
@@ -172,7 +207,17 @@ describe('ApiBasedExtensionPage', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockRefetch).toHaveBeenCalled()
+        expect(mockUpdateApiBasedExtension).toHaveBeenCalledWith({
+          params: {
+            id: '1',
+          },
+          body: {
+            name: 'Extension 1',
+            api_endpoint: 'url1',
+            api_key: '[__HIDDEN__]',
+          },
+        })
+        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.editTitle' })).not.toBeInTheDocument()
       })
     })
   })

@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -32,7 +33,7 @@ from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account
-from models.model import AppMode
+from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -66,6 +67,7 @@ class ChatMessagePayload(BaseMessagePayload):
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion message api for user
@@ -82,7 +84,7 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model):
+    def post(self, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -124,12 +126,12 @@ class CompletionMessageStopApi(Resource):
     @console_ns.doc("stop_completion_message")
     @console_ns.doc(description="Stop a running completion message generation")
     @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
-    @console_ns.response(200, "Task stopped successfully")
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model, task_id):
+    def post(self, app_model: App, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 
@@ -157,7 +159,7 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args_model = ChatMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -205,12 +207,12 @@ class ChatMessageStopApi(Resource):
     @console_ns.doc("stop_chat_message")
     @console_ns.doc(description="Stop a running chat message generation")
     @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
-    @console_ns.response(200, "Task stopped successfully")
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model, task_id):
+    def post(self, app_model: App, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
 

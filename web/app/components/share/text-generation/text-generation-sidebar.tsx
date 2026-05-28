@@ -102,7 +102,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                   id: 'saved',
                   name: t('generation.tabs.saved', { ns: 'share' }),
                   isRight: true,
-                  icon: <span aria-hidden className="i-ri-bookmark-3-line h-4 w-4" />,
+                  icon: <span aria-hidden className="i-ri-bookmark-3-line size-4" />,
                   extra: savedMessages.length > 0
                     ? (
                         <Badge className="ml-1">

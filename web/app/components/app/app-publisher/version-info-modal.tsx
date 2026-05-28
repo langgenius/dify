@@ -2,13 +2,13 @@ import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '../../base/input'
-import Textarea from '../../base/textarea'
 
 type VersionInfoModalProps = {
   isOpen: boolean
@@ -57,12 +57,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
     onClose()
   }
 
-  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value)
-  }, [])
-
-  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setReleaseNotes(e.target.value)
+  const handleDescriptionChange = useCallback((value: string) => {
+    setReleaseNotes(value)
   }, [])
 
   return (
@@ -81,7 +77,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </div>
           <button
             type="button"
-            className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onClose}
           >
@@ -89,28 +85,26 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
-          <div className="flex flex-col gap-y-1">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
+          <FieldRoot name="title" invalid={titleError} className="gap-y-1">
+            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t('versionHistory.editField.title', { ns: 'workflow' })}
-            </div>
-            <Input
+            </FieldLabel>
+            <FieldControl
               value={title}
               placeholder={`${t('versionHistory.nameThisVersion', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
-              onChange={handleTitleChange}
-              destructive={titleError}
+              onValueChange={setTitle}
             />
-          </div>
-          <div className="flex flex-col gap-y-1">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
+          </FieldRoot>
+          <FieldRoot name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
+            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
-            </div>
+            </FieldLabel>
             <Textarea
               value={releaseNotes}
               placeholder={`${t('versionHistory.releaseNotesPlaceholder', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
-              onChange={handleDescriptionChange}
-              destructive={releaseNotesError}
+              onValueChange={handleDescriptionChange}
             />
-          </div>
+          </FieldRoot>
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">

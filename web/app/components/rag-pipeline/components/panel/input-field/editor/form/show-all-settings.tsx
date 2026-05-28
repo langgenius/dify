@@ -37,7 +37,7 @@ const ShowAllSettings = ({
             {hiddenFieldNames}
           </span>
         </div>
-        <RiArrowRightSLine className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+        <RiArrowRightSLine className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
       </button>
     )
   },

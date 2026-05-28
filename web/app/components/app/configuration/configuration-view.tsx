@@ -130,14 +130,14 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                     {isMobile && (
                       <Button className="mr-2 h-8! text-[13px]! font-medium" onClick={onOpenDebugPanel}>
                         <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
-                        <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
+                        <CodeBracketIcon className="size-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...appPublisherProps} />
                   </div>
                 </div>
               </div>
-              <div className={`flex h-full w-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
                 <Config />
               </div>
               {!isMobile && (
@@ -217,7 +217,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                       <div className="mb-4 flex shrink-0 justify-end">
                         <DrawerCloseButton
                           aria-label={t('operation.close', { ns: 'common' })}
-                          className="h-6 w-6 rounded-md"
+                          className="size-6 rounded-md"
                         />
                       </div>
                       <Debug

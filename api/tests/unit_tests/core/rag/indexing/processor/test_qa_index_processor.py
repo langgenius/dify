@@ -106,7 +106,7 @@ class TestQAIndexProcessor:
             patch.object(processor, "_format_qa_document", side_effect=_append_document) as mock_format,
             patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
         ):
-            mock_current_app._get_current_object.return_value = fake_flask_app
+            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
             result = processor.transform(
                 [document],
                 process_rule=process_rule,
@@ -155,7 +155,7 @@ class TestQAIndexProcessor:
                 "core.rag.index_processor.processor.qa_index_processor.threading.Thread", side_effect=_ImmediateThread
             ),
         ):
-            mock_current_app._get_current_object.return_value = fake_flask_app
+            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
             result = processor.transform(documents, process_rule=process_rule, preview=False, tenant_id="tenant-1")
 
         assert len(result) == 2

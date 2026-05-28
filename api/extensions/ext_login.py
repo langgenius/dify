@@ -12,7 +12,7 @@ from constants import HEADER_NAME_APP_CODE
 from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
-from libs.token import extract_access_token, extract_webapp_passport
+from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
 from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
@@ -84,6 +84,24 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
 
         logged_in_account = AccountService.load_logged_in_account(account_id=user_id)
         return logged_in_account
+    elif request.blueprint == "openapi":
+        # Account-branch device-flow approval routes (approve / deny /
+        # approval-context) sit under @login_required and authenticate via
+        # the console session cookie. Cookie-only on purpose — bearer
+        # tokens (dfoa_/dfoe_) live on the Authorization header and are
+        # validated by AppPipeline, not flask-login.
+        cookie_token = extract_console_cookie_token(request)
+        if not cookie_token:
+            return None
+        try:
+            decoded = PassportService().verify(cookie_token)
+        except Exception:
+            return None
+        user_id = decoded.get("user_id")
+        source = decoded.get("token_source")
+        if source or not user_id:
+            return None
+        return AccountService.load_logged_in_account(account_id=user_id)
     elif request.blueprint == "web":
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         webapp_token = extract_webapp_passport(app_code, request) if app_code else None

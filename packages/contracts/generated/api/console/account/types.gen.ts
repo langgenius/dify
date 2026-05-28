@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AvatarUrlResponse = {
+  avatar_url: string
+}
+
 export type AccountAvatarPayload = {
   avatar: string
 }
@@ -29,8 +33,17 @@ export type ChangeEmailSendPayload = {
   token?: string | null
 }
 
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
 export type CheckEmailUniquePayload = {
   email: string
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type ChangeEmailResetPayload = {
@@ -41,6 +54,12 @@ export type ChangeEmailResetPayload = {
 export type ChangeEmailValidityPayload = {
   code: string
   email: string
+  token: string
+}
+
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
   token: string
 }
 
@@ -126,9 +145,7 @@ export type GetAccountAvatarData = {
 }
 
 export type GetAccountAvatarResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AvatarUrlResponse
 }
 
 export type GetAccountAvatarResponse = GetAccountAvatarResponses[keyof GetAccountAvatarResponses]
@@ -154,9 +171,7 @@ export type PostAccountChangeEmailData = {
 }
 
 export type PostAccountChangeEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostAccountChangeEmailResponse
@@ -170,9 +185,7 @@ export type PostAccountChangeEmailCheckEmailUniqueData = {
 }
 
 export type PostAccountChangeEmailCheckEmailUniqueResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountChangeEmailCheckEmailUniqueResponse
@@ -200,9 +213,7 @@ export type PostAccountChangeEmailValidityData = {
 }
 
 export type PostAccountChangeEmailValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostAccountChangeEmailValidityResponse
@@ -216,9 +227,7 @@ export type PostAccountDeleteData = {
 }
 
 export type PostAccountDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountDeleteResponse = PostAccountDeleteResponses[keyof PostAccountDeleteResponses]
@@ -231,9 +240,7 @@ export type PostAccountDeleteFeedbackData = {
 }
 
 export type PostAccountDeleteFeedbackResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountDeleteFeedbackResponse
@@ -247,9 +254,7 @@ export type GetAccountDeleteVerifyData = {
 }
 
 export type GetAccountDeleteVerifyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type GetAccountDeleteVerifyResponse
@@ -325,9 +330,7 @@ export type PostAccountInitData = {
 }
 
 export type PostAccountInitResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountInitResponse = PostAccountInitResponses[keyof PostAccountInitResponses]

@@ -115,7 +115,7 @@ const renderInputCell = (
       disabled={readonly}
       wrapperClassName="w-full min-w-0"
       className={cn(
-        'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
+        'h-6 rounded-none border-0 bg-transparent p-0 shadow-none',
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
@@ -315,7 +315,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       aria-label="Delete row"
                     >
                       {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
-                      <RiDeleteBinLine className="h-3.5 w-3.5 text-text-destructive" />
+                      <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>
                 )}

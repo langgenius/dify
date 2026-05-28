@@ -594,6 +594,7 @@ class TestIndexingRunnerLoad:
             patch("core.indexing_runner.threading.Thread") as mock_thread,
             patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor") as mock_executor,
         ):
+            mock_app._get_current_object = Mock(return_value=Mock())
             yield {
                 "db": mock_db,
                 "model_manager": mock_model_manager,
@@ -1395,12 +1396,10 @@ class TestIndexingRunnerEstimate:
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.db") as mock_db,
-            patch("core.indexing_runner.FeatureService") as mock_feature_service,
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             yield {
                 "db": mock_db,
-                "feature_service": mock_feature_service,
                 "factory": mock_factory,
             }
 
@@ -1410,13 +1409,9 @@ class TestIndexingRunnerEstimate:
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
 
-        # Mock feature service
-        mock_features = MagicMock()
-        mock_features.billing.enabled = True
-        mock_dependencies["feature_service"].get_features.return_value = mock_features
-
         # Create too many extract settings
         with patch("core.indexing_runner.dify_config") as mock_config:
+            mock_config.BILLING_ENABLED = True
             mock_config.BATCH_UPLOAD_LIMIT = 10
             extract_settings = [MagicMock() for _ in range(15)]
 

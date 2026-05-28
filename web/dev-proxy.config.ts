@@ -14,6 +14,11 @@ const difyCookieRewrite: CookieRewriteOptions = {
     'webapp_access_token',
     /^passport-/,
   ],
+  localCookieScope: 'target-origin',
+  csrfHeader: {
+    cookieName: 'csrf_token',
+    headerName: 'X-CSRF-Token',
+  },
 }
 
 export default {

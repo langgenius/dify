@@ -1,3 +1,4 @@
+import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { Tag } from '@/contract/console/tags'
@@ -89,6 +90,45 @@ export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleR
 export const consoleQuery = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
   experimental_defaults: {
+    apiBasedExtension: {
+      post: {
+        mutationOptions: {
+          onSuccess: (createdExtension, _variables, _onMutateResult, context) => {
+            context.client.setQueryData(
+              consoleQuery.apiBasedExtension.get.queryKey(),
+              (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
+                oldExtensions ? [createdExtension, ...oldExtensions] : oldExtensions,
+            )
+          },
+        },
+      },
+      byId: {
+        post: {
+          mutationOptions: {
+            onSuccess: (updatedExtension, variables, _onMutateResult, context) => {
+              context.client.setQueryData(
+                consoleQuery.apiBasedExtension.get.queryKey(),
+                (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
+                  oldExtensions?.map(extension => extension.id === variables.params.id
+                    ? updatedExtension
+                    : extension),
+              )
+            },
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueryData(
+                consoleQuery.apiBasedExtension.get.queryKey(),
+                (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
+                  oldExtensions?.filter(extension => extension.id !== variables.params.id),
+              )
+            },
+          },
+        },
+      },
+    },
     tags: {
       create: {
         mutationOptions: {

@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Any, Literal, cast
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
@@ -10,6 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -34,6 +36,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from factories import variable_factory
+from fields.base import ResponseModel
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -115,6 +118,17 @@ class RagPipelineRecommendedPluginQuery(BaseModel):
     type: str = "all"
 
 
+class RagPipelineWorkflowSyncResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
+
+
+class RagPipelineWorkflowPublishResponse(ResponseModel):
+    result: str
+    created_at: int
+
+
 register_schema_models(
     console_ns,
     DraftWorkflowSyncPayload,
@@ -133,6 +147,9 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    RagPipelineWorkflowPublishResponse,
+    RagPipelineWorkflowSyncResponse,
+    SimpleResultResponse,
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
@@ -172,6 +189,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     def post(self, pipeline: Pipeline):
         """
         Sync draft workflow
@@ -462,6 +480,7 @@ class RagPipelineDraftNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop")
 class RagPipelineTaskStopApi(Resource):
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -508,6 +527,7 @@ class PublishedRagPipelineApi(Resource):
 
         return dump_response(WorkflowResponse, workflow)
 
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -630,6 +650,7 @@ class PublishedAllRagPipelineApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
 class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -699,6 +720,7 @@ class RagPipelineByIdApi(Resource):
 
             return dump_response(WorkflowResponse, workflow)
 
+    @console_ns.response(204, "Workflow deleted successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -854,14 +876,14 @@ class RagPipelineWorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id):
+    def get(self, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run detail
         """
-        run_id = str(run_id)
+        run_id_str = str(run_id)
 
         rag_pipeline_service = RagPipelineService()
-        workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id)
+        workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id_str)
         if workflow_run is None:
             raise NotFound("Workflow run not found")
 
@@ -879,17 +901,17 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id: str):
+    def get(self, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run node execution list
         """
-        run_id = str(run_id)
+        run_id_str = str(run_id)
 
         rag_pipeline_service = RagPipelineService()
         user = cast("Account | EndUser", current_user)
         node_executions = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
             pipeline=pipeline,
-            run_id=run_id,
+            run_id=run_id_str,
             user=user,
         )
 
@@ -939,15 +961,15 @@ class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id: str):
+    def post(self, dataset_id: UUID):
         current_user, _ = current_account_with_tenant()
 
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        dataset_id = str(dataset_id)
+        dataset_id_str = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset_id)
+        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str)
         return result
 
 

@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleDataResponse = {
+  data: string
+}
+
 export type RagPipelineDatasetImportPayload = {
   yaml_content: string
 }
@@ -32,6 +36,10 @@ export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
   has_more: boolean
   limit: number
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type WorkflowRunDetailResponse = {
@@ -84,6 +92,12 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccount
   version: string
+}
+
+export type RagPipelineWorkflowSyncResponse = {
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type DatasourceNodeRunPayload = {
@@ -149,6 +163,11 @@ export type DraftWorkflowRunPayload = {
     [key: string]: unknown
   }
   start_node_id: string
+}
+
+export type RagPipelineWorkflowPublishResponse = {
+  created_at: number
+  result: string
 }
 
 export type Parser = {
@@ -285,9 +304,7 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -524,9 +541,7 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
@@ -663,9 +678,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse
@@ -1044,9 +1057,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowPublishResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse
@@ -1156,8 +1167,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1207,9 +1218,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse

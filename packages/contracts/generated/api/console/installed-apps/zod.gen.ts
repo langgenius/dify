@@ -3,6 +3,21 @@
 import * as z from 'zod'
 
 /**
+ * SimpleMessageResponse
+ */
+export const zSimpleMessageResponse = z.object({
+  message: z.string(),
+})
+
+/**
+ * SimpleResultMessageResponse
+ */
+export const zSimpleResultMessageResponse = z.object({
+  message: z.string(),
+  result: z.string(),
+})
+
+/**
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
@@ -14,6 +29,13 @@ export const zChatMessagePayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
   retriever_from: z.string().optional().default('dev'),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -36,12 +58,26 @@ export const zConversationRenamePayload = z.object({
 })
 
 /**
+ * ResultResponse
+ */
+export const zResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
+})
+
+/**
+ * SuggestedQuestionsResponse
+ */
+export const zSuggestedQuestionsResponse = z.object({
+  data: z.array(z.string()),
 })
 
 /**
@@ -110,16 +146,16 @@ export const zGetInstalledAppsResponse = zInstalledAppListResponse
 /**
  * Success
  */
-export const zPostInstalledAppsResponse = z.record(z.string(), z.unknown())
+export const zPostInstalledAppsResponse = zSimpleMessageResponse
 
 export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
   installed_app_id: z.string(),
 })
 
 /**
- * Success
+ * App uninstalled successfully
  */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.never())
 
 export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
   installed_app_id: z.string(),
@@ -128,7 +164,7 @@ export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
 /**
  * Success
  */
-export const zPatchInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.unknown())
+export const zPatchInstalledAppsByInstalledAppIdResponse = zSimpleResultMessageResponse
 
 export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
   installed_app_id: z.string(),
@@ -164,10 +200,8 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
+  = zSimpleResultResponse
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody
   = zCompletionMessageExplorePayload
@@ -192,10 +226,8 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPat
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
+  = zSimpleResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
   installed_app_id: z.string(),
@@ -221,11 +253,11 @@ export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.obje
 })
 
 /**
- * Success
+ * Conversation deleted successfully
  */
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
@@ -252,10 +284,7 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath = z.ob
 /**
  * Success
  */
-export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.object({
   c_id: z.string(),
@@ -265,10 +294,7 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.
 /**
  * Success
  */
-export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse = zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesPath = z.object({
   installed_app_id: z.string(),
@@ -294,12 +320,10 @@ export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath 
 })
 
 /**
- * Success
+ * Feedback submitted successfully
  */
-export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
+  = zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath = z.object({
   installed_app_id: z.string(),
@@ -327,7 +351,7 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuesti
  * Success
  */
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = z.record(z.string(), z.unknown())
+  = zSuggestedQuestionsResponse
 
 export const zGetInstalledAppsByInstalledAppIdMetaPath = z.object({
   installed_app_id: z.string(),
@@ -373,10 +397,7 @@ export const zPostInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdSavedMessagesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdSavedMessagesResponse = zResultResponse
 
 export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath = z.object({
   installed_app_id: z.string(),
@@ -384,11 +405,11 @@ export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath = 
 })
 
 /**
- * Success
+ * Saved message deleted successfully
  */
 export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse = z.record(
   z.string(),
-  z.unknown(),
+  z.never(),
 )
 
 export const zPostInstalledAppsByInstalledAppIdTextToAudioBody = zTextToAudioPayload
@@ -427,7 +448,5 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse
+  = zSimpleResultResponse

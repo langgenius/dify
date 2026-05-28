@@ -54,7 +54,7 @@ const MetadataFilterSelector = ({
         )}
       >
         {selectedOption.value}
-        <RiArrowDownSLine className="h-3.5 w-3.5" />
+        <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -76,7 +76,7 @@ const MetadataFilterSelector = ({
                 <div className="w-4 shrink-0">
                   {
                     option.key === value && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <RiCheckLine className="size-4 text-text-accent" />
                     )
                   }
                 </div>

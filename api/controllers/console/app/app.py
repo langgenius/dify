@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
@@ -25,7 +26,6 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -413,6 +413,7 @@ class AppExportResponse(ResponseModel):
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -572,7 +573,7 @@ class AppApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @get_app_model(mode=None)
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get app detail"""
         app_service = AppService()
 
@@ -580,7 +581,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode
+            app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -597,7 +598,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def put(self, app_model):
+    def put(self, app_model: App):
         """Update app"""
         args = UpdateAppPayload.model_validate(console_ns.payload)
 
@@ -626,12 +627,12 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model):
+    def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
         app_service.delete_app(app_model)
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/copy")
@@ -647,7 +648,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
@@ -708,7 +709,7 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -724,12 +725,13 @@ class AppExportApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
 class AppPublishToCreatorsPlatformApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RedirectUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Publish app to Creators Platform"""
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
@@ -760,7 +762,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -782,7 +784,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
@@ -809,7 +811,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -831,7 +833,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model(mode=None)
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -849,11 +851,11 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session
     @get_app_model
-    def get(self, app_model):
+    def get(self, session: Session, app_model: App):
         """Get app trace"""
-        with session_factory.create_session() as session:
-            app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
+        app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
         return app_trace_config
 
@@ -861,14 +863,18 @@ class AppTraceApi(Resource):
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
-    @console_ns.response(200, "Trace configuration updated successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @get_app_model
-    def post(self, app_model):
+    def post(self, app_model: App):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 

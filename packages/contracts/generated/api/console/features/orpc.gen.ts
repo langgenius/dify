@@ -2,22 +2,37 @@
 
 import { oc } from '@orpc/contract'
 
-import { zGetFeaturesResponse } from './zod.gen'
+import { zGetFeaturesResponse, zGetFeaturesVectorSpaceResponse } from './zod.gen'
+
+/**
+ * Get vector-space usage and limit for current tenant
+ *
+ * Get vector-space usage and limit for current tenant
+ */
+export const get = oc
+  .route({
+    description: 'Get vector-space usage and limit for current tenant',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFeaturesVectorSpace',
+    path: '/features/vector-space',
+    summary: 'Get vector-space usage and limit for current tenant',
+    tags: ['console'],
+  })
+  .output(zGetFeaturesVectorSpaceResponse)
+
+export const vectorSpace = {
+  get,
+}
 
 /**
  * Get feature configuration for current tenant
  *
  * Get feature configuration for current tenant
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get = oc
+export const get2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get feature configuration for current tenant\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get feature configuration for current tenant',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFeatures',
@@ -28,7 +43,8 @@ export const get = oc
   .output(zGetFeaturesResponse)
 
 export const features = {
-  get,
+  get: get2,
+  vectorSpace,
 }
 
 export const contract = {

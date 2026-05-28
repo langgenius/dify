@@ -238,9 +238,7 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      // The indicator should be rendered
-      // The indicator should be rendered
-      expect(container.querySelector('[data-testid="status-indicator"]'))!.toBeInTheDocument()
+      expect(container.querySelector('.shadow-status-indicator-gray-shadow'))!.toBeInTheDocument()
     })
   })
 

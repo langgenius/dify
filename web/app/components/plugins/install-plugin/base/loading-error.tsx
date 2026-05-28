@@ -20,11 +20,11 @@ const LoadingError: FC = () => {
             className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
               border-state-destructive-border bg-state-destructive-hover p-1 backdrop-blur-xs"
           >
-            <div className="flex h-5 w-5 items-center justify-center">
+            <div className="flex size-5 items-center justify-center">
               <Group className="text-text-quaternary" />
             </div>
             <div className="absolute right-[-4px] bottom-[-4px] rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
-              <RiCloseLine className="h-3 w-3 text-text-primary-on-surface" />
+              <RiCloseLine className="size-3 text-text-primary-on-surface" />
             </div>
           </div>
           <div className="ml-3 grow">

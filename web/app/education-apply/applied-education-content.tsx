@@ -42,7 +42,7 @@ const AppliedEducationContent = ({
       <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3">
         <div className="flex items-center gap-2">
           <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-state-success-solid text-text-primary-on-surface">
-            <span className="i-ri-check-line h-3.5 w-3.5" />
+            <span className="i-ri-check-line size-3.5" />
           </div>
           <div>
             <div className="text-text-secondary">
@@ -73,7 +73,7 @@ const AppliedEducationContent = ({
             <SelectTrigger className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover">
               <span className="flex min-w-0 items-center gap-3">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[14px]">
-                  <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
+                  <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
                     {workspaceName?.[0]?.toLocaleUpperCase()}
                   </span>
                 </span>

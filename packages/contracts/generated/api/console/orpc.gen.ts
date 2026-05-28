@@ -2,6 +2,7 @@
 
 import { account } from './account/orpc.gen'
 import { activate } from './activate/orpc.gen'
+import { agents } from './agents/orpc.gen'
 import { allWorkspaces } from './all-workspaces/orpc.gen'
 import { apiBasedExtension } from './api-based-extension/orpc.gen'
 import { apiKeyAuth } from './api-key-auth/orpc.gen'
@@ -49,6 +50,7 @@ import { workspaces } from './workspaces/orpc.gen'
 export const contract = {
   account,
   activate,
+  agents,
   allWorkspaces,
   apiBasedExtension,
   apiKeyAuth,

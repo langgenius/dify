@@ -117,7 +117,8 @@ describe('MemberSelector', () => {
     const trigger = screen.getByTestId('member-selector-trigger')
     await user.click(trigger)
 
-    expect(trigger).toHaveClass('bg-state-base-hover-alt')
+    expect(trigger).toHaveAttribute('data-popup-open')
+    expect(trigger).toHaveClass('data-popup-open:bg-state-base-hover-alt')
   })
 
   it('should not match account when neither name nor email contains search value', async () => {

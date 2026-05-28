@@ -156,16 +156,8 @@ export const patch = oc
   .input(z.object({ params: zPatchRagPipelineCustomizedTemplatesByTemplateIdPath }))
   .output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelineCustomizedTemplatesByTemplateId',
@@ -498,16 +490,9 @@ export const exports_ = {
 
 /**
  * Stop workflow task
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStop',
@@ -1268,16 +1253,9 @@ export const get21 = oc
 
 /**
  * Publish workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelinesByPipelineIdWorkflowsPublish',
@@ -1470,16 +1448,8 @@ export const published = {
   run: run7,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post20 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestore',
@@ -1495,20 +1465,14 @@ export const restore = {
 
 /**
  * Delete a published workflow version that is not currently active on the pipeline
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const delete5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteRagPipelinesByPipelineIdWorkflowsByWorkflowId',
     path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
+    successStatus: 204,
     summary: 'Delete a published workflow version that is not currently active on the pipeline',
     tags: ['console'],
   })

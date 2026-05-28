@@ -165,7 +165,7 @@ export const BannerItem: FC<BannerItemProps> = ({
               style={viewMoreStyle}
             >
               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
-                <RiArrowRightLine className="h-3 w-3 text-text-primary-on-surface" />
+                <RiArrowRightLine className="size-3 text-text-primary-on-surface" />
               </div>
               <span className="system-sm-semibold-uppercase text-text-accent">
                 {t('banner.viewMore', { ns: 'explore' })}

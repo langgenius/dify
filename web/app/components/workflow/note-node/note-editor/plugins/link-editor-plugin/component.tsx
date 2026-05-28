@@ -137,7 +137,7 @@ const LinkEditorComponent = ({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <RiExternalLinkLine className="mr-1 h-3 w-3" />
+                      <RiExternalLinkLine className="mr-1 size-3" />
                       <div className="mr-1">
                         {t('nodes.note.editor.openLink', { ns: 'workflow' })}
                       </div>
@@ -156,14 +156,14 @@ const LinkEditorComponent = ({
                         setLinkOperatorShow(false)
                       }}
                     >
-                      <RiEditLine className="mr-1 h-3 w-3" />
+                      <RiEditLine className="mr-1 size-3" />
                       {t('operation.edit', { ns: 'common' })}
                     </div>
                     <div
                       className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={handleUnlink}
                     >
-                      <RiLinkUnlinkM className="mr-1 h-3 w-3" />
+                      <RiLinkUnlinkM className="mr-1 size-3" />
                       {t('nodes.note.editor.unlink', { ns: 'workflow' })}
                     </div>
                   </>

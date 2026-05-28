@@ -109,7 +109,7 @@ const VarList: FC<Props> = ({
           />
           {canDrag && (
             <RiDraggable className={cn(
-              'handle absolute top-2.5 left-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+              'handle absolute top-2.5 left-3 hidden size-3 cursor-pointer text-text-tertiary',
               'group-hover:block',
             )}
             />

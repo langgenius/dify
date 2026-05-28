@@ -8,6 +8,15 @@ export type InstalledAppListResponse = {
   installed_apps: Array<InstalledAppResponse>
 }
 
+export type SimpleMessageResponse = {
+  message: string
+}
+
+export type SimpleResultMessageResponse = {
+  message: string
+  result: string
+}
+
 export type ChatMessagePayload = {
   conversation_id?: string | null
   files?: Array<unknown> | null
@@ -21,6 +30,10 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type CompletionMessageExplorePayload = {
@@ -40,10 +53,18 @@ export type ConversationRenamePayload = {
   name?: string | null
 }
 
+export type ResultResponse = {
+  result: string
+}
+
 export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
 }
 
 export type SavedMessageCreatePayload = {
@@ -107,9 +128,7 @@ export type PostInstalledAppsData = {
 }
 
 export type PostInstalledAppsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleMessageResponse
 }
 
 export type PostInstalledAppsResponse = PostInstalledAppsResponses[keyof PostInstalledAppsResponses]
@@ -124,8 +143,8 @@ export type DeleteInstalledAppsByInstalledAppIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -142,9 +161,7 @@ export type PatchInstalledAppsByInstalledAppIdData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultMessageResponse
 }
 
 export type PatchInstalledAppsByInstalledAppIdResponse
@@ -197,9 +214,7 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
@@ -234,9 +249,7 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData 
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
@@ -275,8 +288,8 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -313,9 +326,7 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse
@@ -332,9 +343,7 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse
@@ -373,9 +382,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
@@ -413,9 +420,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuggestedQuestionsResponse
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse
@@ -488,9 +493,7 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesResponse
@@ -507,8 +510,8 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -562,9 +565,7 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse

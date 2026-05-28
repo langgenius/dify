@@ -1,9 +1,4 @@
 import type {
-  ApiBasedExtensionListResponse,
-  ApiBasedExtensionPayload,
-  ApiBasedExtensionResponse,
-} from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type {
   DefaultModelResponse,
   Model,
   ModelItem,
@@ -273,26 +268,6 @@ export const fetchNotionConnection = (url: string): Promise<{ data: string }> =>
 
 export const fetchDataSourceNotionBinding = (url: string): Promise<{ result: string }> => {
   return get<{ result: string }>(url)
-}
-
-export const fetchApiBasedExtensionList = (url: string): Promise<ApiBasedExtensionListResponse> => {
-  return get<ApiBasedExtensionListResponse>(url)
-}
-
-export const fetchApiBasedExtensionDetail = (url: string): Promise<ApiBasedExtensionResponse> => {
-  return get<ApiBasedExtensionResponse>(url)
-}
-
-export const addApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtensionPayload }): Promise<ApiBasedExtensionResponse> => {
-  return post<ApiBasedExtensionResponse>(url, { body })
-}
-
-export const updateApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtensionPayload }): Promise<ApiBasedExtensionResponse> => {
-  return post<ApiBasedExtensionResponse>(url, { body })
-}
-
-export const deleteApiBasedExtension = (url: string): Promise<{ result: string }> => {
-  return del<{ result: string }>(url)
 }
 
 export const fetchCodeBasedExtensionList = (url: string): Promise<CodeBasedExtension> => {

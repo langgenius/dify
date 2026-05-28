@@ -8,7 +8,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.helper import uuid_value
 from libs.login import login_required
-from models.model import AppMode
+from models.model import App, AppMode
 from services.agent_service import AgentService
 
 
@@ -39,7 +39,7 @@ class AgentLogApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT])
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get agent logs"""
         args = AgentLogQuery.model_validate(request.args.to_dict(flat=True))
 

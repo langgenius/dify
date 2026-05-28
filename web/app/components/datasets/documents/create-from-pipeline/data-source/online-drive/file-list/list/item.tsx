@@ -1,10 +1,10 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Radio } from '@langgenius/dify-ui/radio'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Radio from '@/app/components/base/radio/ui'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
 
@@ -32,11 +32,6 @@ const Item = ({
   const isFolder = type === 'folder'
 
   const disabledTip = t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' })
-
-  const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    onSelect(file)
-  }, [file, onSelect])
 
   const handleCheckboxSelect = useCallback(() => {
     onSelect(file)
@@ -70,12 +65,14 @@ const Item = ({
         </span>
       )}
       {!isBucket && !isMultipleChoice && (
-        <Radio
-          className="shrink-0"
-          disabled={disabled}
-          isChecked={isSelected}
-          onCheck={handleSelect}
-        />
+        <span onClick={event => event.stopPropagation()}>
+          <Radio
+            className="shrink-0"
+            disabled={disabled}
+            value={file.id}
+            aria-label={name}
+          />
+        </span>
       )}
       {disabled
         ? (

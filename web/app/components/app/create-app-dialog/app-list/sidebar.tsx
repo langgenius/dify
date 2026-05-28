@@ -18,7 +18,7 @@ type SidebarProps = {
 export default function Sidebar({ current, categories, onClick, onCreateFromBlank }: SidebarProps) {
   const { t } = useTranslation()
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex size-full flex-col">
       <ul className="pt-0.5">
         <CategoryItem category={AppCategories.RECOMMENDED} active={current === AppCategories.RECOMMENDED} onClick={onClick} />
       </ul>
@@ -32,7 +32,7 @@ export default function Sidebar({ current, categories, onClick, onCreateFromBlan
         className="flex w-full cursor-pointer items-center gap-1 border-none bg-transparent px-3 py-1 text-left text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onCreateFromBlank}
       >
-        <RiStickyNoteAddLine className="h-3.5 w-3.5" aria-hidden="true" />
+        <RiStickyNoteAddLine className="size-3.5" aria-hidden="true" />
         <span className="system-xs-regular">{t('newApp.startFromBlank', { ns: 'app' })}</span>
       </button>
     </div>
@@ -53,8 +53,8 @@ function CategoryItem({ category, active, onClick }: CategoryItemProps) {
         onClick={() => { onClick?.(category) }}
       >
         {category === AppCategories.RECOMMENDED && (
-          <div className="inline-flex h-5 w-5 items-center justify-center rounded-md">
-            <RiThumbUpLine className="h-4 w-4 text-components-menu-item-text group-[.active]:text-components-menu-item-text-active" aria-hidden="true" />
+          <div className="inline-flex size-5 items-center justify-center rounded-md">
+            <RiThumbUpLine className="size-4 text-components-menu-item-text group-[.active]:text-components-menu-item-text-active" aria-hidden="true" />
           </div>
         )}
         <AppCategoryLabel
