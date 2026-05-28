@@ -34,7 +34,6 @@ def test_rule_generate_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.RuleGenerateApi()
     method = _unwrap(api.post)
 
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
     monkeypatch.setattr(generator_module.LLMGenerator, "generate_rule_config", lambda **_kwargs: {"rules": []})
 
     with app.test_request_context(
@@ -42,7 +41,7 @@ def test_rule_generate_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
         method="POST",
         json={"instruction": "do it", "model_config": _model_config_payload()},
     ):
-        response = method()
+        response = method("t1")
 
     assert response == {"rules": []}
 
@@ -50,8 +49,6 @@ def test_rule_generate_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_rule_code_generate_maps_token_error(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.RuleCodeGenerateApi()
     method = _unwrap(api.post)
-
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     def _raise(*_args, **_kwargs):
         raise ProviderTokenNotInitError("missing token")
@@ -64,14 +61,12 @@ def test_rule_code_generate_maps_token_error(app, monkeypatch: pytest.MonkeyPatc
         json={"instruction": "do it", "model_config": _model_config_payload()},
     ):
         with pytest.raises(ProviderNotInitializeError):
-            method()
+            method("t1")
 
 
 def test_instruction_generate_app_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
     method = _unwrap(api.post)
-
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: None))
 
@@ -85,7 +80,7 @@ def test_instruction_generate_app_not_found(app, monkeypatch: pytest.MonkeyPatch
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method()
+        response, status = method("t1")
 
     assert status == 400
     assert response["error"] == "app app-1 not found"
@@ -94,8 +89,6 @@ def test_instruction_generate_app_not_found(app, monkeypatch: pytest.MonkeyPatch
 def test_instruction_generate_workflow_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
     method = _unwrap(api.post)
-
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     app_model = SimpleNamespace(id="app-1")
     monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: app_model))
@@ -111,7 +104,7 @@ def test_instruction_generate_workflow_not_found(app, monkeypatch: pytest.Monkey
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method()
+        response, status = method("t1")
 
     assert status == 400
     assert response["error"] == "workflow app-1 not found"
@@ -120,8 +113,6 @@ def test_instruction_generate_workflow_not_found(app, monkeypatch: pytest.Monkey
 def test_instruction_generate_node_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
     method = _unwrap(api.post)
-
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     app_model = SimpleNamespace(id="app-1")
     monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: app_model))
@@ -139,7 +130,7 @@ def test_instruction_generate_node_missing(app, monkeypatch: pytest.MonkeyPatch)
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method()
+        response, status = method("t1")
 
     assert status == 400
     assert response["error"] == "node node-1 not found"
@@ -148,8 +139,6 @@ def test_instruction_generate_node_missing(app, monkeypatch: pytest.MonkeyPatch)
 def test_instruction_generate_code_node(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
     method = _unwrap(api.post)
-
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     app_model = SimpleNamespace(id="app-1")
     monkeypatch.setattr(generator_module.db, "session", SimpleNamespace(get=lambda *_args, **_kwargs: app_model))
@@ -174,7 +163,7 @@ def test_instruction_generate_code_node(app, monkeypatch: pytest.MonkeyPatch) ->
             "model_config": _model_config_payload(),
         },
     ):
-        response = method()
+        response = method("t1")
 
     assert response == {"code": "x"}
 
@@ -183,7 +172,6 @@ def test_instruction_generate_legacy_modify(app, monkeypatch: pytest.MonkeyPatch
     api = generator_module.InstructionGenerateApi()
     method = _unwrap(api.post)
 
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
     monkeypatch.setattr(
         generator_module.LLMGenerator,
         "instruction_modify_legacy",
@@ -201,7 +189,7 @@ def test_instruction_generate_legacy_modify(app, monkeypatch: pytest.MonkeyPatch
             "model_config": _model_config_payload(),
         },
     ):
-        response = method()
+        response = method("t1")
 
     assert response == {"instruction": "ok"}
 
@@ -209,8 +197,6 @@ def test_instruction_generate_legacy_modify(app, monkeypatch: pytest.MonkeyPatch
 def test_instruction_generate_incompatible_params(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.InstructionGenerateApi()
     method = _unwrap(api.post)
-
-    monkeypatch.setattr(generator_module, "current_account_with_tenant", lambda: (None, "t1"))
 
     with app.test_request_context(
         "/console/api/instruction-generate",
@@ -223,7 +209,7 @@ def test_instruction_generate_incompatible_params(app, monkeypatch: pytest.Monke
             "model_config": _model_config_payload(),
         },
     ):
-        response, status = method()
+        response, status = method("t1")
 
     assert status == 400
     assert response["error"] == "incompatible parameters"
