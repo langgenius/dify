@@ -1,6 +1,6 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../../auth/hosts.js'
+import { clearLocal, type HostsBundle } from '../../../../auth/hosts.js'
 import type { Store } from '../../../../store/store.js'
 import type { IOStreams } from '../../../../sys/io/streams'
 import { AccountSessionsClient } from '../../../../api/account-sessions.js'
@@ -177,13 +177,4 @@ function renderTable(rows: readonly SessionRow[], currentId: string): string {
   const fmt = (cells: readonly string[]): string =>
     cells.map((c, i) => c.padEnd(widths[i] ?? 0)).join('  ').trimEnd()
   return body.length === 0 ? `${fmt(header)}\n` : `${[fmt(header), ...body.map(fmt)].join('\n')}\n`
-}
-
-function clearLocal(bundle: HostsBundle, store: Store): void {
-  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
-  try {
-    store.unset(tokenKey(bundle.current_host, accountId))
-  }
-  catch { /* best-effort */ }
-  getHostStore().rm()
 }

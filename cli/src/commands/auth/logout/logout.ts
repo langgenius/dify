@@ -1,5 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import { clearLocal, type HostsBundle } from '../../../auth/hosts.js'
 import type { Store } from '../../../store/store.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import { AccountSessionsClient } from '../../../api/account-sessions.js'
@@ -50,13 +50,4 @@ const REVOCABLE_PREFIXES = ['dfoa_', 'dfoe_'] as const
 
 function revokeAllowed(bearer: string): boolean {
   return REVOCABLE_PREFIXES.some(p => bearer.startsWith(p))
-}
-
-function clearLocal(bundle: HostsBundle, store: Store): void {
-  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
-  try {
-    store.unset(tokenKey(bundle.current_host, accountId))
-  }
-  catch { /* best-effort */ }
-  getHostStore().rm()
 }

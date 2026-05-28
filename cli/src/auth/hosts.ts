@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { getHostStore } from '../store/manager.js'
+import { getHostStore, tokenKey } from '../store/manager.js'
+import type { Store } from '../store/store.js'
 
 const StorageModeSchema = z.enum(['keychain', 'file'])
 export type StorageMode = z.infer<typeof StorageModeSchema>
@@ -53,4 +54,13 @@ export function loadHosts(): HostsBundle | undefined {
 export function saveHosts(bundle: HostsBundle): void {
   const validated = HostsBundleSchema.parse(bundle)
   getHostStore().setTyped(validated)
+}
+
+export function clearLocal(bundle: HostsBundle, store: Store): void {
+  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
+  try {
+    store.unset(tokenKey(bundle.current_host, accountId))
+  }
+  catch { /* best-effort */ }
+  getHostStore().rm()
 }

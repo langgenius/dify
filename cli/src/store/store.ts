@@ -60,7 +60,9 @@ abstract class FileBasedStore implements Store {
 
   lock(): void {
     try {
-      lockfile.lockSync(`${this.file_path}.lock`)
+      lockfile.lockSync(`${this.file_path}.lock`, {
+        stale: 30_000,
+      })
     }
     catch (err) {
       const code = (err as NodeJS.ErrnoException).code
