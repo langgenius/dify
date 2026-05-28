@@ -1,15 +1,14 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../../auth/hosts.js'
-import type { TokenStore } from '../../../../auth/store.js'
+import type { Store } from '../../../../store/store.js'
 import type { IOStreams } from '../../../../sys/io/streams'
-import { unlink } from 'node:fs/promises'
-import { join } from 'node:path'
 import { AccountSessionsClient } from '../../../../api/account-sessions.js'
-import { HOSTS_FILE_NAME } from '../../../../auth/hosts.js'
+import { clearLocal } from '../../../../auth/hosts.js'
 import { BaseError } from '../../../../errors/base.js'
 import { ErrorCode } from '../../../../errors/codes.js'
 import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '../../../../limit/limit.js'
+import { getTokenStore } from '../../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../../sys/io/color.js'
 import { runWithSpinner } from '../../../../sys/io/spinner.js'
 
@@ -72,11 +71,11 @@ export async function listAllSessions(client: AccountSessionsClient): Promise<re
 }
 
 export type DevicesRevokeOptions = {
-  readonly configDir: string
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
   readonly http: KyInstance
-  readonly store: TokenStore
+  /** Optional override for tests; production code resolves via `getTokenStore`. */
+  readonly store?: Store
   readonly target?: string
   readonly all: boolean
   readonly yes?: boolean
@@ -104,8 +103,10 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
   for (const id of ids)
     await sessions.revoke(id)
 
-  if (selfHit)
-    await clearLocal(opts.configDir, b, opts.store)
+  if (selfHit) {
+    const tokens = opts.store ?? getTokenStore().store
+    clearLocal(b, tokens)
+  }
 
   opts.io.out.write(`${cs.successIcon()} Revoked ${ids.length} session(s)\n`)
 }
@@ -177,19 +178,4 @@ function renderTable(rows: readonly SessionRow[], currentId: string): string {
   const fmt = (cells: readonly string[]): string =>
     cells.map((c, i) => c.padEnd(widths[i] ?? 0)).join('  ').trimEnd()
   return body.length === 0 ? `${fmt(header)}\n` : `${[fmt(header), ...body.map(fmt)].join('\n')}\n`
-}
-
-async function clearLocal(configDir: string, bundle: HostsBundle, store: TokenStore): Promise<void> {
-  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
-  try {
-    await store.delete(bundle.current_host, accountId)
-  }
-  catch { /* best-effort */ }
-  try {
-    await unlink(join(configDir, HOSTS_FILE_NAME))
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
-      throw err
-  }
 }
