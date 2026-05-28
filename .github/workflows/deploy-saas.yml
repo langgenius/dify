@@ -1,4 +1,4 @@
-name: Deploy Agent Dev
+name: Deploy SaaS
 
 permissions:
   contents: read
