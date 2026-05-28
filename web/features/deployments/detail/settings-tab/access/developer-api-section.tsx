@@ -5,6 +5,7 @@ import type {
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -186,11 +187,13 @@ export function DeveloperApiHeaderActions({ appInstanceId }: {
   if (!apiEnabled)
     return null
 
+  if (apiKeys.length === 0)
+    return null
+
   return (
     <ApiKeyGenerateMenu
       appInstanceId={appInstanceId}
       environments={environments}
-      apiKeys={apiKeys}
       onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
     />
   )
@@ -368,6 +371,47 @@ function ApiKeyDesktopRowSkeleton() {
   )
 }
 
+function DeveloperApiState({ icon, children, action }: {
+  icon: string
+  children: ReactNode
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-divider-subtle bg-background-default-subtle px-6 py-8 text-center">
+      <span className="flex size-10 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary">
+        <span className={cn(icon, 'size-5')} aria-hidden="true" />
+      </span>
+      <span className="max-w-120 system-sm-medium text-text-secondary">
+        {children}
+      </span>
+      {action && (
+        <div className="pt-1">
+          {action}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ApiKeyListSection({ apiKeys, environments }: {
+  apiKeys: ApiKey[]
+  environments: Environment[]
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="system-xs-semibold-uppercase text-text-tertiary">
+        {t('access.api.keyList')}
+      </div>
+      <ApiKeyList
+        apiKeys={apiKeys}
+        environments={environments}
+      />
+    </div>
+  )
+}
+
 export function DeveloperApiSection({
   appInstanceId,
 }: {
@@ -404,26 +448,28 @@ export function DeveloperApiSection({
                   )}
                   {apiKeys.length === 0
                     ? (
-                        <SectionState>
-                          <div className="flex flex-col items-center gap-3">
-                            <span>
-                              {environments.length === 0
-                                ? t('access.api.empty')
-                                : t('access.api.noKeys')}
-                            </span>
-                            {environments.length > 0 && (
-                              <ApiKeyGenerateMenu
-                                appInstanceId={appInstanceId}
-                                environments={environments}
-                                apiKeys={apiKeys}
-                                onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-                              />
-                            )}
-                          </div>
-                        </SectionState>
+                        <DeveloperApiState
+                          icon={environments.length === 0 ? 'i-ri-rocket-line' : 'i-ri-key-2-line'}
+                          action={(
+                            environments.length > 0
+                              ? (
+                                  <ApiKeyGenerateMenu
+                                    appInstanceId={appInstanceId}
+                                    environments={environments}
+                                    triggerVariant="primary"
+                                    onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+                                  />
+                                )
+                              : undefined
+                          )}
+                        >
+                          {environments.length === 0
+                            ? t('access.api.empty')
+                            : t('access.api.noKeys')}
+                        </DeveloperApiState>
                       )
                     : (
-                        <ApiKeyList
+                        <ApiKeyListSection
                           apiKeys={apiKeys}
                           environments={environments}
                         />
@@ -438,9 +484,9 @@ export function DeveloperApiSection({
                 </div>
               )
             : (
-                <div className="system-xs-regular text-text-tertiary">
+                <DeveloperApiState icon="i-ri-toggle-line">
                   {t('access.api.disabled')}
-                </div>
+                </DeveloperApiState>
               )}
     </>
   )

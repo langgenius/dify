@@ -14,12 +14,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, type ButtonProps } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -340,11 +341,18 @@ export function ApiKeyList({ apiKeys, environments }: {
   )
 }
 
-export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken }: {
+export function ApiKeyGenerateMenu({
+  appInstanceId,
+  environments,
+  onCreatedToken,
+  triggerVariant = 'secondary',
+  triggerClassName,
+}: {
   appInstanceId: string
   environments: Environment[]
-  apiKeys: ApiKey[]
   onCreatedToken: (token: string) => void
+  triggerVariant?: ButtonProps['variant']
+  triggerClassName?: string
 }) {
   const { t } = useTranslation('deployments')
   const nameInputId = useId()
@@ -426,10 +434,12 @@ export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken
     <>
       <Button
         type="button"
-        variant="secondary"
+        variant={triggerVariant}
         disabled={disabled}
         onClick={handleOpenCreateDialog}
+        className={cn('gap-1.5', triggerClassName)}
       >
+        <span className="i-ri-add-line size-4" aria-hidden="true" />
         {t('access.api.newKey')}
       </Button>
       <Dialog open={createDialogOpen} onOpenChange={handleDialogOpenChange}>
@@ -440,6 +450,9 @@ export function ApiKeyGenerateMenu({ appInstanceId, environments, onCreatedToken
               <DialogTitle className="title-xl-semi-bold text-text-primary">
                 {t('access.api.createKeyTitle')}
               </DialogTitle>
+              <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+                {t('access.api.description')}
+              </DialogDescription>
             </div>
 
             <div className="flex flex-col gap-4 px-6 py-5">
