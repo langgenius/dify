@@ -2,18 +2,18 @@ import type {
   DataSourceCredential,
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Operator from './operator'
 
 type ItemProps = {
   credentialItem: DataSourceCredential
-  onAction: (action: string, credentialItem: DataSourceCredential, renamePayload?: Record<string, any>) => void
+  onAction: (action: string, credentialItem: DataSourceCredential, renamePayload?: { credential_id: string, name: string }) => void
 }
 const Item = ({
   credentialItem,
@@ -29,8 +29,7 @@ const Item = ({
         renaming && (
           <div className="flex w-full items-center space-x-1">
             <Input
-              wrapperClassName="grow rounded-md"
-              className="h-6"
+              className="h-6 min-w-0 grow"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
               placeholder={t('placeholder.input', { ns: 'common' })}

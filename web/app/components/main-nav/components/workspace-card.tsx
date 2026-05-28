@@ -42,7 +42,6 @@ function WorkspaceCardSkeleton({
   return (
     <div
       aria-hidden="true"
-      data-testid="workspace-card-skeleton"
       className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs"
     >
       <div className="flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5">

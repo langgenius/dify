@@ -102,7 +102,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   if (layout === 'grid') {
     return (
       <div
-        data-testid="provider-added-card"
         className={cn(
           'group relative mb-0 min-h-[120px] overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs',
           currentProviderName === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
@@ -115,6 +114,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               <img
                 alt=""
                 src={renderI18nObject(provider.icon_small, language)}
+                width={40}
+                height={40}
                 className="size-10 rounded-lg object-contain"
               />
             </div>
@@ -150,7 +151,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           {(showModelProvider || !notConfigured) && (
             <button
               type="button"
-              data-testid="show-models-button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs hover:bg-components-button-secondary-bg-hover"
               aria-label={t('modelProvider.showModels', { ns: 'common' })}
               onClick={handleOpenModelList}
@@ -162,13 +162,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                     : t('modelProvider.showModels', { ns: 'common' })
                 }
               </span>
-              {!loading && <span className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0" />}
-              {loading && <span className="ml-1 i-ri-loader-2-line size-3 animate-spin" />}
+              {!loading && <span aria-hidden className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0" />}
+              {loading && <span aria-hidden className="ml-1 i-ri-loader-2-line size-3 animate-spin" />}
             </button>
           )}
           {!showModelProvider && notConfigured && (
             <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg bg-background-default-subtle px-2">
-              <span className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent" />
+              <span aria-hidden className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent" />
               <span className="truncate system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
             </div>
           )}

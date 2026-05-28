@@ -20,6 +20,8 @@ type Props = {
   onUpdate?: (isDelete?: boolean) => void
 }
 
+const usePluginDetailHeader = useDetailHeaderState
+
 const getDetailUrl = (
   detail: PluginDetail,
   locale: string,
@@ -44,6 +46,7 @@ const DataSourcePluginActions = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
+  const detailHeaderState = usePluginDetailHeader(detail)
   const {
     modalStates,
     versionPicker,
@@ -51,7 +54,7 @@ const DataSourcePluginActions = ({
     isAutoUpgradeEnabled,
     isFromGitHub,
     isFromMarketplace,
-  } = useDetailHeaderState(detail)
+  } = detailHeaderState
   const {
     handleUpdate,
     handleUpdatedFromMarketplace,
@@ -96,7 +99,7 @@ const DataSourcePluginActions = ({
               text={(
                 <>
                   <div>{displayVersion}</div>
-                  {isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />}
+                  {isFromMarketplace && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}

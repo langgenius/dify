@@ -79,7 +79,7 @@ const LearnDify = ({
     <section
       ref={sectionRef}
       className={cn(
-        'px-12 pb-6 transition-all duration-800 ease-in-out',
+        'px-12 pb-6 transition-[opacity,transform] duration-800 ease-in-out',
         isClosing && 'pointer-events-none relative z-50 opacity-20',
         className,
       )}

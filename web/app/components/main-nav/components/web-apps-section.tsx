@@ -38,9 +38,9 @@ const webAppSkeletonWidths = ['w-24', 'w-32', 'w-20', 'w-28', 'w-36']
 
 function WebAppsSkeleton() {
   return (
-    <div aria-hidden="true" data-testid="web-apps-skeleton" className="space-y-0.5 pb-2">
-      {webAppSkeletonWidths.map((width, index) => (
-        <div key={index} className="flex h-8 items-center gap-2 rounded-lg py-0.5 pr-0.5 pl-2">
+    <div aria-hidden="true" className="space-y-0.5 pb-2">
+      {webAppSkeletonWidths.map(width => (
+        <div key={width} className="flex h-8 items-center gap-2 rounded-lg py-0.5 pr-0.5 pl-2">
           <div className={cn(webAppSkeletonClassName, 'size-5 shrink-0 rounded-md')} />
           <div className="min-w-0 flex-1 py-1 pr-1">
             <div className={cn(webAppSkeletonClassName, 'h-3', width)} />

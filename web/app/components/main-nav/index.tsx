@@ -110,8 +110,8 @@ const MainNav = ({
           ? (
               <img
                 src={systemFeatures.branding.workspace_logo}
-                className="block h-[22px] w-auto object-contain"
-                alt="logo"
+                className="block h-5.5 w-auto object-contain"
+                alt=""
               />
             )
           : <DifyLogo />}
@@ -122,7 +122,7 @@ const MainNav = ({
   return (
     <aside
       className={cn(
-        'flex h-full w-[240px] shrink-0 flex-col',
+        'flex h-full w-60 shrink-0 flex-col',
         showDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
         className,
       )}
@@ -159,7 +159,7 @@ const MainNav = ({
           </div>
         )}
       </div>
-      <div className="flex w-[240px] items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+      <div className="flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
         <div className="flex min-w-0 items-center gap-1">
           <AccountSection />
         </div>

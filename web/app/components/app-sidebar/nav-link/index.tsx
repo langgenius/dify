@@ -62,7 +62,7 @@ const NavLink = ({
       >
         {renderIcon()}
         <span
-          className={cn('overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out', mode === 'expand'
+          className={cn('overflow-hidden whitespace-nowrap transition-[margin-left,max-width,opacity] duration-200 ease-in-out', mode === 'expand'
             ? 'ml-2 max-w-none opacity-100'
             : 'ml-0 max-w-0 opacity-0')}
         >
@@ -83,7 +83,7 @@ const NavLink = ({
     >
       {renderIcon()}
       <span
-        className={cn('overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out', mode === 'expand'
+        className={cn('overflow-hidden whitespace-nowrap transition-[margin-left,max-width,opacity] duration-200 ease-in-out', mode === 'expand'
           ? 'ml-2 max-w-none opacity-100'
           : 'ml-0 max-w-0 opacity-0')}
       >

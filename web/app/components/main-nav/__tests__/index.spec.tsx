@@ -595,9 +595,9 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByTestId('web-apps-skeleton')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute('aria-busy', 'true')
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+    expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
   })
 
   it('separates pinned and unpinned installed web apps', () => {
@@ -679,7 +679,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     fireEvent.mouseEnter(screen.getByTitle('Alpha App'))
-    fireEvent.click(screen.getByTestId('item-operation-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
     await waitFor(() => {
@@ -687,7 +687,7 @@ describe('MainNav', () => {
     })
 
     fireEvent.mouseEnter(screen.getByTitle('Alpha App'))
-    fireEvent.click(screen.getByTestId('item-operation-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
     fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
     fireEvent.click(await screen.findByText('common.operation.confirm'))
 
