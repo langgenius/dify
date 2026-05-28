@@ -760,6 +760,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Biểu tượng phân đoạn",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Siêu dữ liệu khác",
   "nodes.knowledgeRetrieval.outputVars.output": "Dữ liệu phân đoạn được truy xuất",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Tóm tắt nội dung",
   "nodes.knowledgeRetrieval.outputVars.title": "Tiêu đề phân đoạn",
   "nodes.knowledgeRetrieval.outputVars.url": "URL phân đoạn",
   "nodes.knowledgeRetrieval.queryAttachment": "Truy vấn hình ảnh",

@@ -760,6 +760,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "ไอคอนแบ่งส่วน",
   "nodes.knowledgeRetrieval.outputVars.metadata": "ข้อมูลเมตาอื่นๆ",
   "nodes.knowledgeRetrieval.outputVars.output": "การดึงข้อมูลที่แบ่งส่วน",
+  "nodes.knowledgeRetrieval.outputVars.summary": "สรุปเนื้อหา",
   "nodes.knowledgeRetrieval.outputVars.title": "ชื่อแบ่งส่วน",
   "nodes.knowledgeRetrieval.outputVars.url": "URL ที่แบ่งกลุ่ม",
   "nodes.knowledgeRetrieval.queryAttachment": "ค้นหารูปภาพ",

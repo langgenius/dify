@@ -760,6 +760,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "أيقونة مقسمة",
   "nodes.knowledgeRetrieval.outputVars.metadata": "بيانات وصفية أخرى",
   "nodes.knowledgeRetrieval.outputVars.output": "استرجاع البيانات المقسمة",
+  "nodes.knowledgeRetrieval.outputVars.summary": "ملخص المحتوى",
   "nodes.knowledgeRetrieval.outputVars.title": "العنوان المقسم",
   "nodes.knowledgeRetrieval.outputVars.url": "عنوان URL المقسم",
   "nodes.knowledgeRetrieval.queryAttachment": "استعلام الصور",

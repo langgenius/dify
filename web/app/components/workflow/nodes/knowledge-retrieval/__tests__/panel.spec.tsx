@@ -200,7 +200,22 @@ vi.mock('../components/metadata/metadata-filter', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({
+    name,
+    type,
+    subItems,
+  }: {
+    name: string
+    type: string
+    subItems?: Array<{ name: string, type: string }>
+  }) => (
+    <div>
+      <div>{`${name}:${type}`}</div>
+      {subItems?.map(item => (
+        <div key={item.name}>{`${item.name}:${item.type}`}</div>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('../use-config', () => ({
@@ -303,6 +318,25 @@ describe('knowledge-retrieval/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseConfig.mockReturnValue(createConfigResult() as ReturnType<typeof useConfig>)
+  })
+
+  it('shows output variables that match backend retrieval results', () => {
+    render(
+      <Panel
+        id="knowledge-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('result:Array[Object]')).toBeInTheDocument()
+    expect(screen.getByText('content:string')).toBeInTheDocument()
+    expect(screen.getByText('title:string')).toBeInTheDocument()
+    expect(screen.getByText('metadata:object')).toBeInTheDocument()
+    expect(screen.getByText('files:Array[File]')).toBeInTheDocument()
+    expect(screen.getByText('summary:string')).toBeInTheDocument()
+    expect(screen.queryByText('url:string')).not.toBeInTheDocument()
+    expect(screen.queryByText('icon:string')).not.toBeInTheDocument()
   })
 
   it('wires panel actions and passes the intersected metadata list to metadata filters', async () => {

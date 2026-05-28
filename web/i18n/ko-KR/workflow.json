@@ -760,6 +760,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "세그먼트 아이콘",
   "nodes.knowledgeRetrieval.outputVars.metadata": "기타 메타데이터",
   "nodes.knowledgeRetrieval.outputVars.output": "복구된 세그먼트 데이터",
+  "nodes.knowledgeRetrieval.outputVars.summary": "콘텐츠 요약",
   "nodes.knowledgeRetrieval.outputVars.title": "세그먼트 제목",
   "nodes.knowledgeRetrieval.outputVars.url": "세그먼트 URL",
   "nodes.knowledgeRetrieval.queryAttachment": "이미지 조회",
