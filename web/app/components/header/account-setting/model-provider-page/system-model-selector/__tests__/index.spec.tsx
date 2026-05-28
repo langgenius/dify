@@ -74,8 +74,8 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: ({ onSelect }: { onSelect: (model: { model: string, provider: string }) => void }) => (
-    <button onClick={() => onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
+  default: ({ onSelect, readonly }: { onSelect: (model: { model: string, provider: string }) => void, readonly?: boolean }) => (
+    <button disabled={readonly} onClick={() => onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
   ),
 }))
 
@@ -184,6 +184,20 @@ describe('SystemModel', () => {
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
+    })
+  })
+
+  it('should disable model selectors without model.manage permission', async () => {
+    mockWorkspacePermissionKeys = []
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Mock Model Selector' })).toHaveLength(5)
+    })
+    screen.getAllByRole('button', { name: 'Mock Model Selector' }).forEach((selector) => {
+      expect(selector).toBeDisabled()
     })
   })
 

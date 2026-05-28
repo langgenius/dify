@@ -46,7 +46,7 @@ const List: FC<Props> = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isLoadingCurrentWorkspace, workspacePermissionKeys } = useAppContext()
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const canAccessAppList = hasPermission(workspacePermissionKeys, 'app_library.access')
+  const canAccessAppList = hasPermission(workspacePermissionKeys, 'page.apps.access')
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {

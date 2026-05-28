@@ -180,6 +180,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
+                    readonly={!canManageModel}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                   />
                 </div>
@@ -190,6 +191,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
+                    readonly={!canManageModel}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                   />
                 </div>
@@ -200,6 +202,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
+                    readonly={!canManageModel}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                   />
                 </div>
@@ -210,6 +213,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
+                    readonly={!canManageModel}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                   />
                 </div>
@@ -220,6 +224,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
+                    readonly={!canManageModel}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                   />
                 </div>
