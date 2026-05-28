@@ -1,18 +1,19 @@
 import type { ConfigFile } from '../../../config/schema.js'
+import type { YamlStore } from '../../../store/store.js'
+import { loadConfig } from '../../../config/config-loader.js'
 import { unsetKey } from '../../../config/keys.js'
-import { loadConfig } from '../../../config/loader.js'
 import { emptyConfig } from '../../../config/schema.js'
-import { saveConfig } from '../../../config/writer.js'
+import { saveConfig } from '../../../store/config-writer.js'
 
 export type RunConfigUnsetOptions = {
   readonly key: string
-  readonly dir: string
+  readonly store: YamlStore
 }
 
-export async function runConfigUnset(opts: RunConfigUnsetOptions): Promise<string> {
-  const loaded = await loadConfig(opts.dir)
+export function runConfigUnset(opts: RunConfigUnsetOptions): string {
+  const loaded = loadConfig(opts.store)
   const config: ConfigFile = loaded.found ? loaded.config : emptyConfig()
   const next = unsetKey(config, opts.key)
-  await saveConfig(opts.dir, next)
+  saveConfig(opts.store, next)
   return `unset ${opts.key}\n`
 }

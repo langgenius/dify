@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client

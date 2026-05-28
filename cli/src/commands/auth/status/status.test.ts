@@ -1,6 +1,6 @@
 import type { HostsBundle } from '../../../auth/hosts.js'
 import { describe, expect, it } from 'vitest'
-import { bufferStreams } from '../../../io/streams.js'
+import { bufferStreams } from '../../../sys/io/streams'
 import { runStatus } from './status.js'
 
 function accountBundle(): HostsBundle {

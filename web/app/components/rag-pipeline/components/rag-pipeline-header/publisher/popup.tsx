@@ -10,9 +10,11 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
-import { useBoolean, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useBoolean } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -20,9 +22,7 @@ import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -35,7 +35,7 @@ import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
 
-const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
 type PopupProps = {
   onRequestClose?: () => void
   confirmVisible?: boolean
@@ -133,12 +133,12 @@ const Popup = ({
         handleHideConfirm()
     }
   }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, handleHideConfirm])
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
+  useHotkey('Mod+Shift+P', (e) => {
     e.preventDefault()
     if (published)
       return
     handlePublish()
-  }, { exactMatch: true, useCapture: true })
+  })
   const goToAddDocuments = useCallback(() => {
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
   }, [datasetId, push])
@@ -181,7 +181,11 @@ const Popup = ({
             : (
                 <div className="flex gap-1">
                   <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                  <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
+                  <KbdGroup>
+                    {PUBLISH_SHORTCUT.map(key => (
+                      <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                    ))}
+                  </KbdGroup>
                 </div>
               )}
         </Button>

@@ -4,7 +4,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
-from dify_agent.protocol import CreateRunRequest, ExecutionContext
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol import CreateRunRequest
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -29,6 +30,7 @@ from models.agent_config_entities import (
 )
 
 from .output_failure_orchestrator import retry_idempotency_key
+from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -83,9 +85,11 @@ class WorkflowAgentRuntimeRequestBuilder:
         *,
         credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
+        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
+        self._plugin_tools_builder = plugin_tools_builder or WorkflowAgentPluginToolsBuilder()
 
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
@@ -101,20 +105,44 @@ class WorkflowAgentRuntimeRequestBuilder:
         workflow_job_prompt = node_job.workflow_prompt.strip() or "Run this workflow Agent Node for the current run."
         user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
+        try:
+            tools_layer = self._plugin_tools_builder.build(
+                tenant_id=context.dify_context.tenant_id,
+                app_id=context.dify_context.app_id,
+                user_id=context.dify_context.user_id,
+                tools=agent_soul.tools,
+                # Thread the *real* runtime invocation source through to
+                # ToolManager so credential quotas, rate limits, and audit
+                # trails match the actual call site (DEBUGGER for draft test
+                # run, SERVICE_API / WEB_APP for published run).
+                invoke_from=context.dify_context.invoke_from,
+            )
+        except WorkflowAgentPluginToolsBuildError as error:
+            raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
+        if tools_layer is not None:
+            metadata["agent_tools"] = {
+                "dify_tool_count": len(tools_layer.tools),
+                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools],
+                "cli_tool_count": len(agent_soul.tools.cli_tools),
+            }
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    tenant_id=context.dify_context.tenant_id,
                     plugin_id=agent_soul.model.plugin_id,
                     model_provider=agent_soul.model.model_provider,
                     model=agent_soul.model.model,
-                    user_id=context.dify_context.user_id,
                     credentials=self._normalize_credentials(credentials),
                     model_settings=cast(dict[str, Any], agent_soul.model.model_settings),
                 ),
-                execution_context=ExecutionContext(
+                # The execution-context layer is now the only public protocol
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
+                # be forwarded here because downstream plugin-daemon provider and
+                # tool clients read it from this layer rather than from any
+                # parallel top-level request field.
+                execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
+                    user_id=context.dify_context.user_id,
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -129,6 +157,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
+                tools=tools_layer,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )

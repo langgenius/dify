@@ -17,11 +17,11 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.openapi import openapi_ns
-from controllers.openapi.auth.composition import OAUTH_BEARER_PIPELINE
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
 from libs.oauth_bearer import Scope
-from models import Account, App
 from services.file_service import FileService
 
 
@@ -39,8 +39,9 @@ class AppFileUploadApi(Resource):
         }
     )
     @openapi_ns.response(HTTPStatus.CREATED, "File uploaded", openapi_ns.models[FileResponse.__name__])
-    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
-    def post(self, app_id: str, app_model: App, caller: Account, caller_kind: str):
+    @auth_router.guard(scope=Scope.APPS_RUN)
+    def post(self, app_id: str, *, auth_data: AuthData):
+        app_model, caller, _ = auth_data.require_app_context()
         if "file" not in request.files:
             raise NoFileUploadedError()
         if len(request.files) > 1:
