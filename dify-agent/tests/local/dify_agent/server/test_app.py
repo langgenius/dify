@@ -6,9 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 import dify_agent.server.app as app_module
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
-from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
-from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
 from dify_agent.server.app import create_app, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -148,11 +148,15 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert scheduler.shutdown_grace_seconds == 5
         layer_providers = scheduler.layer_providers
         assert isinstance(layer_providers, tuple)
-        plugin_provider = next(provider for provider in layer_providers if provider.type_id == "dify.plugin")
-        plugin_layer = plugin_provider.create_layer(DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="plugin-1"))
-        assert isinstance(plugin_layer, DifyPluginLayer)
-        assert plugin_layer.daemon_url == "http://plugin-daemon"
-        assert plugin_layer.daemon_api_key == "daemon-secret"
+        execution_context_provider = next(
+            provider for provider in layer_providers if provider.type_id == "dify.execution_context"
+        )
+        execution_context_layer = execution_context_provider.create_layer(
+            DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run")
+        )
+        assert isinstance(execution_context_layer, DifyExecutionContextLayer)
+        assert execution_context_layer.daemon_url == "http://plugin-daemon"
+        assert execution_context_layer.daemon_api_key == "daemon-secret"
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
         assert http_client.is_closed is False

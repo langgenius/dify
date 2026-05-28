@@ -1,5 +1,5 @@
 import type { HitlPausePayload } from './sse-collector.js'
-import { colorEnabled, colorScheme } from '../../../io/color.js'
+import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 
 export type HitlExitObject = {
   status: 'paused'

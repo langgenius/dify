@@ -1,19 +1,13 @@
 import { toast } from '@langgenius/dify-ui/toast'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { useSnippetPublish } from '../use-snippet-publish'
 
 const mockMutateAsync = vi.fn()
-const mockUseKeyPress = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetQueryData = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
 
 let isPending = false
-let shortcutHandler: ((event: KeyboardEvent) => void) | undefined
-
-vi.mock('ahooks', () => ({
-  useKeyPress: (...args: Parameters<typeof mockUseKeyPress>) => mockUseKeyPress(...args),
-}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -53,12 +47,8 @@ describe('useSnippetPublish', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     isPending = false
-    shortcutHandler = undefined
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockMutateAsync.mockResolvedValue({ created_at: 1_712_345_678 })
-    mockUseKeyPress.mockImplementation((_key, handler) => {
-      shortcutHandler = handler
-    })
   })
 
   describe('Publish action', () => {
@@ -81,7 +71,7 @@ describe('useSnippetPublish', () => {
       const updateSnippetDetail = setQueryDataCall![1] as (old: { is_published: boolean }) => { is_published: boolean }
       expect(updateSnippetDetail({ is_published: false })).toEqual({ is_published: true })
       expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
-      expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
+      expect(toast.success).toHaveBeenCalledWith('snippet.saveSuccess')
     })
 
     it('should not publish the snippet when checklist validation fails', async () => {
@@ -117,42 +107,13 @@ describe('useSnippetPublish', () => {
     })
   })
 
-  describe('Keyboard shortcut', () => {
-    it('should trigger publish on ctrl+shift+p in the orchestrate section', async () => {
-      renderHook(() => useSnippetPublish({
-        snippetId: 'snippet-1',
-      }))
+  it('should expose publishing pending state', () => {
+    isPending = true
 
-      const event = new KeyboardEvent('keydown')
-      const preventDefault = vi.spyOn(event, 'preventDefault')
+    const { result } = renderHook(() => useSnippetPublish({
+      snippetId: 'snippet-1',
+    }))
 
-      act(() => {
-        shortcutHandler?.(event)
-      })
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith({
-          params: { snippetId: 'snippet-1' },
-        })
-      })
-      expect(preventDefault).toHaveBeenCalledTimes(1)
-    })
-
-    it('should ignore the shortcut while publishing is pending', () => {
-      isPending = true
-      renderHook(() => useSnippetPublish({
-        snippetId: 'snippet-1',
-      }))
-
-      const event = new KeyboardEvent('keydown')
-      const preventDefault = vi.spyOn(event, 'preventDefault')
-
-      act(() => {
-        shortcutHandler?.(event)
-      })
-
-      expect(mockMutateAsync).not.toHaveBeenCalled()
-      expect(preventDefault).not.toHaveBeenCalled()
-    })
+    expect(result.current.isPublishing).toBe(true)
   })
 })

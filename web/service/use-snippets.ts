@@ -122,7 +122,17 @@ const normalizeSnippetListParams = (params: SnippetListParams) => {
   }
 }
 
-const snippetListKey = (params: SnippetListParams) => ['snippets', 'list', params]
+const snippetListRootKey = ['snippets', 'list'] as const
+const snippetListKey = (params: SnippetListParams) => [...snippetListRootKey, params]
+
+const invalidateSnippetQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({
+    queryKey: consoleQuery.snippets.key(),
+  })
+  queryClient.invalidateQueries({
+    queryKey: snippetListRootKey,
+  })
+}
 
 export const useInfiniteSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
   const normalizedParams = normalizeSnippetListParams(params)
@@ -158,9 +168,7 @@ export const useCreateSnippetMutation = () => {
 
   return useMutation(consoleQuery.snippets.create.mutationOptions({
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.snippets.key(),
-      })
+      invalidateSnippetQueries(queryClient)
     },
   }))
 }
@@ -171,9 +179,7 @@ export const useUpdateSnippetMutation = () => {
   return useMutation({
     ...consoleQuery.snippets.update.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.snippets.key(),
-        })
+        invalidateSnippetQueries(queryClient)
       },
     }),
   })
@@ -185,9 +191,7 @@ export const useDeleteSnippetMutation = () => {
   return useMutation({
     ...consoleQuery.snippets.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.snippets.key(),
-        })
+        invalidateSnippetQueries(queryClient)
       },
     }),
   })
@@ -199,9 +203,7 @@ export const useIncrementSnippetUseCountMutation = () => {
   return useMutation({
     ...consoleQuery.snippets.incrementUseCount.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.snippets.key(),
-        })
+        invalidateSnippetQueries(queryClient)
       },
     }),
   })
@@ -232,9 +234,7 @@ export const useImportSnippetDSLMutation = () => {
       }) as Promise<SnippetDSLImportResponse>
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.snippets.key(),
-      })
+      invalidateSnippetQueries(queryClient)
     },
   })
 }
@@ -251,9 +251,7 @@ export const useConfirmSnippetImportMutation = () => {
       }) as Promise<SnippetDSLImportResponse>
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.snippets.key(),
-      })
+      invalidateSnippetQueries(queryClient)
     },
   })
 }

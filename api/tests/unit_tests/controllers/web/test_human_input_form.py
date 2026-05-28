@@ -126,7 +126,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     monkeypatch.setattr(
         site_module.FeatureService,
         "get_features",
-        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+        lambda tenant_id, **_kwargs: SimpleNamespace(can_replace_logo=True),
     )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
@@ -245,7 +245,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     monkeypatch.setattr(
         site_module.FeatureService,
         "get_features",
-        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+        lambda tenant_id, **_kwargs: SimpleNamespace(can_replace_logo=True),
     )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):

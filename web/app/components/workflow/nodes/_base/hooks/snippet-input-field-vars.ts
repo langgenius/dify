@@ -14,6 +14,18 @@ export const isSnippetCanvas = () => {
   return /^\/snippets\/[^/]+\/orchestrate/.test(globalThis.location.pathname)
 }
 
+export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[]) => {
+  if (!isSnippetCanvas())
+    return availableVars
+
+  return availableVars
+    .map(nodeVar => ({
+      ...nodeVar,
+      vars: nodeVar.vars.filter(variable => !variable.variable.startsWith('sys.')),
+    }))
+    .filter(nodeVar => nodeVar.vars.length > 0)
+}
+
 const toWorkflowInputType = (type: SnippetInputField['type']) => type as unknown as InputVarType
 
 export const buildSnippetInputFieldNode = (

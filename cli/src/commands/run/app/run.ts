@@ -1,13 +1,14 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { AppInfoCache } from '../../../cache/app-info.js'
-import type { IOStreams } from '../../../io/streams.js'
+import type { IOStreams } from '../../../sys/io/streams'
 import { AppMetaClient } from '../../../api/app-meta.js'
 import { AppRunClient } from '../../../api/app-run.js'
 import { AppsClient } from '../../../api/apps.js'
 import { FileUploadClient } from '../../../api/file-upload.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
+import { getEnv, processExit } from '../../../sys/index.js'
 import { FieldInfo } from '../../../types/app-meta.js'
 import { resolveWorkspaceId } from '../../../workspace/resolver.js'
 import { pickStrategy } from './_strategies/index.js'
@@ -78,7 +79,7 @@ async function resolveInputs(
 }
 
 export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<void> {
-  const env = deps.envLookup ?? ((k: string) => process.env[k])
+  const env = deps.envLookup ?? getEnv
   const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
@@ -111,7 +112,7 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   const runClient = new AppRunClient(deps.http)
   const printFlags = new AppRunPrintFlags()
 
-  const exit = deps.exit ?? ((code: number) => process.exit(code) as never)
+  const exit = deps.exit ?? processExit
   const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit, think: opts.think ?? false }
   await pickStrategy(isText, livePrint).execute(ctx)
 }

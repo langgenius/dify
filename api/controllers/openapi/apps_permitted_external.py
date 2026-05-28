@@ -18,37 +18,27 @@ from controllers.openapi._models import (
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
 )
-from controllers.openapi.auth.surface_gate import accept_subjects
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData, Edition
 from extensions.ext_database import db
-from libs.device_flow_security import enterprise_only
-from libs.oauth_bearer import (
-    ACCEPT_USER_ANY,
-    Scope,
-    SubjectType,
-    require_scope,
-    validate_bearer,
-)
+from libs.oauth_bearer import Scope, TokenType
 from models import App
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
-from services.openapi.license_gate import license_required
 
 
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
-    method_decorators = [
-        require_scope(Scope.APPS_READ_PERMITTED_EXTERNAL),
-        license_required,
-        accept_subjects(SubjectType.EXTERNAL_SSO),
-        validate_bearer(accept=ACCEPT_USER_ANY),
-        enterprise_only,
-    ]
-
     @openapi_ns.response(
         200, "Permitted external apps list", openapi_ns.models[PermittedExternalAppsListResponse.__name__]
     )
-    def get(self):
+    @auth_router.guard(
+        scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
+        allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
+        edition=frozenset({Edition.EE}),
+    )
+    def get(self, *, auth_data: AuthData):
         try:
             query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
