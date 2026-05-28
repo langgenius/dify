@@ -31,7 +31,6 @@ abstract class FileBasedStore implements Store {
   constructor(file_path: string) {
     this.file_path = file_path
     this.platform = resolvePlatform()
-    fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
   }
 
   unlock(): void {
@@ -42,6 +41,7 @@ abstract class FileBasedStore implements Store {
    * atomically write raw_content (if any)
    */
   flush(): void {
+    fs.mkdirSync(dirname(this.file_path), { recursive: true, mode: DIR_PERM })
     if (this.raw_content !== undefined) {
       const tmp = `${this.file_path}.tmp.${pid()}.${Date.now()}`
       try {
