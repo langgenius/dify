@@ -5,6 +5,7 @@ import { Entry } from '@napi-rs/keyring'
 import yaml from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '../sys'
+import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
@@ -21,12 +22,6 @@ export type Store = {
 }
 
 export type StorageMode = 'keychain' | 'file'
-
-export class ConcurrentAccessError extends Error {
-  constructor(filePath: string) {
-    super(`Another process is modifying the file ${filePath}. remove ${filePath}.lock to reset lock.`)
-  }
-}
 
 abstract class FileBasedStore implements Store {
   file_path: string
@@ -145,7 +140,7 @@ export class YamlStore extends FileBasedStore {
   }
 
   doGet<T>(key: Key<T>): T {
-    const data = loadYaml(this.raw_content)
+    const data = loadYaml(this.raw_content, this.file_path)
     const parts = key.key.split('.')
     let current: unknown = data
     for (const part of parts) {
@@ -159,7 +154,7 @@ export class YamlStore extends FileBasedStore {
   getTyped<T>(): T | null {
     return this.withLock(() => {
       this.load()
-      return loadYaml(this.raw_content) as T
+      return loadYaml(this.raw_content, this.file_path) as T
     })
   }
 
@@ -172,7 +167,7 @@ export class YamlStore extends FileBasedStore {
   }
 
   doSet<T>(key: Key<T>, value: T): void {
-    const data = loadYaml(this.raw_content) || {}
+    const data = loadYaml(this.raw_content, this.file_path) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
     if (lastKey === undefined)
@@ -188,7 +183,7 @@ export class YamlStore extends FileBasedStore {
   }
 
   doUnset<T>(key: Key<T>): void {
-    const data = loadYaml(this.raw_content) || {}
+    const data = loadYaml(this.raw_content, this.file_path) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
     if (lastKey === undefined)
@@ -207,10 +202,17 @@ export class YamlStore extends FileBasedStore {
   }
 }
 
-function loadYaml(raw: string | undefined): Record<string, unknown> | null {
+function loadYaml(raw: string | undefined, file_path: string): Record<string, unknown> | null {
   if (raw === undefined)
     return null
-  return (yaml.load(raw) ?? {}) as Record<string, unknown>
+  try {
+    return (yaml.load(raw) ?? {}) as Record<string, unknown>
+  }
+  catch (err) {
+    if (err instanceof yaml.YAMLException)
+      throw new BadYamlFormatError(file_path, raw, err)
+    throw err
+  }
 }
 
 /**

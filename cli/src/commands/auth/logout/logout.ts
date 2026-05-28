@@ -5,7 +5,7 @@ import type { IOStreams } from '../../../sys/io/streams'
 import { AccountSessionsClient } from '../../../api/account-sessions.js'
 import { BaseError } from '../../../errors/base.js'
 import { ErrorCode } from '../../../errors/codes.js'
-import { getHostStore, getTokenStore, tokenKey } from '../../../store/manager.js'
+import { getTokenStore, tokenKey } from '../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 
 export type LogoutOptions = {

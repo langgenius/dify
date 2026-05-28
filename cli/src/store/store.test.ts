@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ConcurrentAccessError, YamlStore } from './store'
+import { BadYamlFormatError, ConcurrentAccessError } from './errors'
+import { YamlStore } from './store'
 
 describe('YamlStore.doGet', () => {
   it('returns default when content is undefined', () => {
@@ -39,6 +40,24 @@ describe('YamlStore.doGet', () => {
     const store = new YamlStore('/irrelevant')
     store.raw_content = 'user: scalar\n'
     expect(store.doGet({ key: 'user.id', default: 0 })).toBe(0)
+  })
+
+  it('throws BadYamlFormatError with file path, location, and snippet for malformed YAML', () => {
+    const path = '/irrelevant'
+    const store = new YamlStore(path)
+    store.raw_content = 'name: alice\nuser:\n  id: 42\n   bad: indent\n'
+    let caught: unknown
+    try {
+      store.doGet({ key: 'name', default: '' })
+    }
+    catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(BadYamlFormatError)
+    const msg = (caught as BadYamlFormatError).message
+    expect(msg).toContain(path)
+    expect(msg).toMatch(/line \d+, column \d+/)
+    expect(msg).toContain('bad: indent')
   })
 })
 
