@@ -144,6 +144,7 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
         }
     ]
     assert report_items[0].status == "dependency-only"
+    assert report_items[0].name == "mcp_tool mcp-1"
 
 
 def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(monkeypatch):

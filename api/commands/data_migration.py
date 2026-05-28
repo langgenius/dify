@@ -196,6 +196,11 @@ def _print_wizard_step(title: str) -> None:
     click.echo(f"==== {title} ====")
 
 
+def _print_wizard_substep(title: str) -> None:
+    click.echo("")
+    click.echo(f"-- {title} --")
+
+
 @click.command("migration-data-wizard", help="Interactively export workflow migration data.")
 def migration_data_wizard() -> None:
     try:
@@ -233,7 +238,9 @@ def migration_data_wizard() -> None:
         _confirm_wizard_summary(
             tenant_name=tenant.name,
             app_names=[app.name for app in apps if app.id in set(app_ids)],
+            auto_tools=auto_tools,
             additional_tools=additional_tools,
+            manual_labels=_selected_tool_labels_for_tenant(tenant.id, additional_tools),
             include_referenced_tools=include_referenced_tools,
             include_secrets=include_secrets,
             create_tokens=create_tokens,
@@ -338,6 +345,7 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
 
 def _prompt_import_options() -> tuple[bool, bool, str, str]:
     _print_wizard_step("Import Options")
+    _print_wizard_substep("Secrets")
     click.echo("Secrets include workflow/app DSL secret values, custom API tool credentials,")
     click.echo("and full MCP provider connection data such as server URL, headers, authentication, and tool list.")
     click.echo("If you choose no, credentials are omitted or masked,")
@@ -348,6 +356,7 @@ def _prompt_import_options() -> tuple[bool, bool, str, str]:
         default=False,
         show_default=False,
     )
+    _print_wizard_substep("App API Tokens")
     click.echo("When enabled, import will create an app API token if the imported app has none,")
     click.echo("or reuse an existing app API token if one already exists.")
     create_tokens = click.confirm(
@@ -355,6 +364,7 @@ def _prompt_import_options() -> tuple[bool, bool, str, str]:
         default=False,
         show_default=False,
     )
+    _print_wizard_substep("ID Strategy")
     click.echo("ID strategy controls whether imported app and tool IDs preserve source IDs")
     click.echo("or use target-generated IDs.")
     click.echo("preserve-id: keep source IDs where the target service supports it.")
@@ -365,6 +375,7 @@ def _prompt_import_options() -> tuple[bool, bool, str, str]:
         default="preserve-id",
         show_default=True,
     )
+    _print_wizard_substep("Conflict Strategy")
     click.echo("Conflict strategy controls what import does when a target resource already exists.")
     click.echo("fail: stop at the first conflict; previously committed resources are not rolled back.")
     click.echo("skip: keep the existing target resource and skip importing that resource.")
@@ -537,6 +548,53 @@ def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> Wizar
     return selections
 
 
+def _selected_tool_labels_for_tenant(tenant_id: str, selected_tools: WizardToolSelection) -> dict[str, str]:
+    labels: dict[str, str] = {}
+    if selected_tools["api_tools"]:
+        labels.update(
+            _selected_tool_labels(
+                [
+                    (tool.name, tool.name, tool.id)
+                    for tool in db.session.scalars(
+                        sa.select(ApiToolProvider)
+                        .where(ApiToolProvider.tenant_id == tenant_id)
+                        .order_by(ApiToolProvider.name)
+                    ).all()
+                ],
+                selected_tools["api_tools"],
+            )
+        )
+    if selected_tools["workflow_tools"]:
+        labels.update(
+            _selected_tool_labels(
+                [
+                    (tool.id, tool.name, tool.id)
+                    for tool in db.session.scalars(
+                        sa.select(WorkflowToolProvider)
+                        .where(WorkflowToolProvider.tenant_id == tenant_id)
+                        .order_by(WorkflowToolProvider.name)
+                    ).all()
+                ],
+                selected_tools["workflow_tools"],
+            )
+        )
+    if selected_tools["mcp_tools"]:
+        labels.update(
+            _selected_tool_labels(
+                [
+                    (tool.id, tool.name, tool.server_identifier)
+                    for tool in db.session.scalars(
+                        sa.select(MCPToolProvider)
+                        .where(MCPToolProvider.tenant_id == tenant_id)
+                        .order_by(MCPToolProvider.name)
+                    ).all()
+                ],
+                selected_tools["mcp_tools"],
+            )
+        )
+    return labels
+
+
 def _selected_tool_labels(options: list[tuple[str, str, str]], selected_values: list[str]) -> dict[str, str]:
     selected = set(selected_values)
     return {value: _format_tool_name_id(name, detail) for value, name, detail in options if value in selected}
@@ -575,6 +633,14 @@ def _print_final_tool_selection(
     manual_labels: dict[str, str],
 ) -> None:
     _print_wizard_step("Final Tool Selection")
+    _print_tool_selection_body(auto_tools, additional_tools, manual_labels)
+
+
+def _print_tool_selection_body(
+    auto_tools: WizardToolMap,
+    additional_tools: WizardToolSelection,
+    manual_labels: dict[str, str],
+) -> None:
     click.echo("Final tools to export:")
     _print_final_tool_category(
         "Custom API tools",
@@ -622,7 +688,9 @@ def _confirm_wizard_summary(
     *,
     tenant_name: str,
     app_names: list[str],
-    additional_tools: dict[str, list[str]],
+    auto_tools: WizardToolMap,
+    additional_tools: WizardToolSelection,
+    manual_labels: dict[str, str],
     include_referenced_tools: bool,
     include_secrets: bool,
     create_tokens: bool,
@@ -637,9 +705,7 @@ def _confirm_wizard_summary(
     for app_name in app_names:
         click.echo(f"- {app_name}")
     click.echo(f"auto referenced tools: {str(include_referenced_tools).lower()}")
-    click.echo(f"additional api tools: {len(additional_tools['api_tools'])}")
-    click.echo(f"additional workflow tools: {len(additional_tools['workflow_tools'])}")
-    click.echo(f"additional mcp tools: {len(additional_tools['mcp_tools'])}")
+    _print_tool_selection_body(auto_tools, additional_tools, manual_labels)
     click.echo(f"include secrets: {str(include_secrets).lower()}")
     click.echo(f"create app api token on import: {str(create_tokens).lower()}")
     click.echo(f"id strategy: {id_strategy}")

@@ -305,12 +305,14 @@ class MigrationExportService:
                     tool_info.pop(field_name, None)
                 exported_workflow_tools.append(tool_info)
                 if tool_info.get("app_id") not in exported_app_ids:
+                    workflow_app_id = str(tool_info.get("app_id") or "")
+                    workflow_app = db.session.get(App, workflow_app_id) if workflow_app_id else None
                     self._record_dependency_metadata(
                         [
                             DiscoveredDependency(
                                 DependencyKind.WORKFLOW_TOOL,
-                                str(tool_info.get("app_id") or ""),
-                                provider_name=tool_info.get("name"),
+                                workflow_app_id,
+                                provider_name=workflow_app.name if workflow_app else tool_info.get("name"),
                                 source="workflow_tool_app",
                             )
                         ],
@@ -437,7 +439,7 @@ class MigrationExportService:
                 ResourceReportItem(
                     ResourceType.DEPENDENCY,
                     dependency.provider_id,
-                    dependency.provider_name,
+                    self._dependency_report_name(dependency),
                     "dependency-only",
                     self._dependency_message(dependency.kind),
                 )
@@ -482,3 +484,9 @@ class MigrationExportService:
         if kind == DependencyKind.BUILTIN_OR_PLUGIN_TOOL:
             return "Ensure the built-in or plugin tool exists in the target environment."
         return "Dependency metadata only; ensure the resource exists in the target environment."
+
+    def _dependency_report_name(self, dependency: DiscoveredDependency) -> str:
+        name = dependency.provider_name or dependency.provider_id
+        if dependency.kind == DependencyKind.WORKFLOW_TOOL:
+            return f"workflow {name}"
+        return f"{dependency.kind.value} {name}"

@@ -21,7 +21,7 @@ class MigrationReportService:
             item for item in items if item.status in {"dependency-only", "skipped", "unresolved"} and item.message
         ]
         for item in actionable_items:
-            lines.append(f"{item.resource_type.value} {item.identifier}: {item.message}")
+            lines.append(self._render_actionable_detail(item))
         return lines
 
     def _render_context(self, context: ReportContext | None) -> list[str]:
@@ -68,3 +68,13 @@ class MigrationReportService:
         if item.name:
             label = f"{label} {item.name}"
         return f"- {label}: {item.source_id} -> {item.target_id}"
+
+    def _render_actionable_detail(self, item: ResourceReportItem) -> str:
+        if item.resource_type.value == "dependency" and item.name and self._has_dependency_type_prefix(item.name):
+            if item.identifier and item.identifier not in item.name:
+                return f"dependency {item.name}: {item.identifier}: {item.message}"
+            return f"dependency {item.name}: {item.message}"
+        return f"{item.resource_type.value} {item.identifier}: {item.message}"
+
+    def _has_dependency_type_prefix(self, name: str) -> bool:
+        return name.startswith(("workflow ", "api_tool ", "workflow_tool ", "mcp_tool ", "builtin_or_plugin_tool "))

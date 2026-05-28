@@ -260,7 +260,9 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
     _confirm_wizard_summary(
         tenant_name="admin's Workspace",
         app_names=["main_chatflow"],
+        auto_tools={"api_tools": {}, "workflow_tools": {}, "mcp_tools": {}},
         additional_tools={"api_tools": [], "workflow_tools": [], "mcp_tools": []},
+        manual_labels={},
         include_referenced_tools=True,
         include_secrets=False,
         create_tokens=True,
@@ -274,6 +276,51 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
     assert confirm_prompts == [
         ("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})
     ]
+
+
+def test_confirm_wizard_summary_shows_final_deduplicated_tool_selection(monkeypatch):
+    output_lines = []
+
+    monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
+    monkeypatch.setattr("commands.data_migration.click.confirm", lambda *args, **kwargs: True)
+
+    _confirm_wizard_summary(
+        tenant_name="admin's Workspace",
+        app_names=["main_chatflow"],
+        auto_tools={
+            "api_tools": {"weather": "weather-id"},
+            "workflow_tools": {"embedded_workflow_as_tool": "workflow-tool-id"},
+            "mcp_tools": {},
+        },
+        additional_tools={
+            "api_tools": ["weather-id", "calendar"],
+            "workflow_tools": [],
+            "mcp_tools": ["mcp-id"],
+        },
+        manual_labels={
+            "calendar": "calendar: calendar-id",
+            "mcp-id": "my-test-mcp: mcp-id",
+        },
+        include_referenced_tools=True,
+        include_secrets=False,
+        create_tokens=False,
+        id_strategy="preserve-id",
+        conflict_strategy="update",
+        output_file="migration-data.json",
+    )
+
+    assert "Final tools to export:" in output_lines
+    assert "Custom API tools" in output_lines
+    assert "- [auto] weather: weather-id" in output_lines
+    assert "- [manual] calendar: calendar-id" in output_lines
+    assert "Workflow tools" in output_lines
+    assert "- [auto] embedded_workflow_as_tool: workflow-tool-id" in output_lines
+    assert "MCP tools" in output_lines
+    assert "- [manual] my-test-mcp: mcp-id" in output_lines
+    assert not any(line.startswith("additional api tools:") for line in output_lines)
+    assert not any(line.startswith("additional workflow tools:") for line in output_lines)
+    assert not any(line.startswith("additional mcp tools:") for line in output_lines)
+    assert "- [manual] weather-id" not in output_lines
 
 
 def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch):
@@ -302,9 +349,12 @@ def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch)
     assert id_strategy == "preserve-id"
     assert conflict_strategy == "update"
     assert "Secrets include workflow/app DSL secret values, custom API tool credentials," in output_lines
+    assert "-- Secrets --" in output_lines
     assert "If you choose no, credentials are omitted or masked," in output_lines
+    assert "-- App API Tokens --" in output_lines
     assert "When enabled, import will create an app API token if the imported app has none," in output_lines
     assert "or reuse an existing app API token if one already exists." in output_lines
+    assert "-- ID Strategy --" in output_lines
     assert "ID strategy controls whether imported app and tool IDs preserve source IDs" in output_lines
     assert "or use target-generated IDs." in output_lines
     assert "preserve-id: keep source IDs where the target service supports it." in output_lines
@@ -312,6 +362,7 @@ def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch)
         "generate-new-id: let the target environment generate new IDs and rewrite references via mapping."
         in output_lines
     )
+    assert "-- Conflict Strategy --" in output_lines
     assert "Conflict strategy controls what import does when a target resource already exists." in output_lines
     assert "fail: stop at the first conflict; previously committed resources are not rolled back." in output_lines
     assert "skip: keep the existing target resource and skip importing that resource." in output_lines

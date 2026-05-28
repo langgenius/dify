@@ -31,6 +31,36 @@ def test_report_includes_actionable_lines_for_skipped_and_unresolved_items():
     assert "dependency mcp-1: MCP provider not found" in lines
 
 
+def test_report_dependency_detail_uses_type_and_name_when_available():
+    lines = MigrationReportService().render(
+        [
+            ResourceReportItem(
+                ResourceType.DEPENDENCY,
+                "785e52f1-06bf-483c-8dcf-712e59fd43b9",
+                "workflow embedded_workflow",
+                "dependency-only",
+                "Dependency metadata only; ensure the resource exists in the target environment.",
+            ),
+            ResourceReportItem(
+                ResourceType.DEPENDENCY,
+                "my-test-mcp",
+                "mcp_tool my-test-mcp",
+                "dependency-only",
+                "Configure MCP provider manually in the target tenant unless exporting with secrets enabled.",
+            ),
+        ]
+    )
+
+    assert (
+        "dependency workflow embedded_workflow: 785e52f1-06bf-483c-8dcf-712e59fd43b9: "
+        "Dependency metadata only; ensure the resource exists in the target environment."
+    ) in lines
+    assert (
+        "dependency mcp_tool my-test-mcp: "
+        "Configure MCP provider manually in the target tenant unless exporting with secrets enabled."
+    ) in lines
+
+
 def test_report_includes_dependency_only_detail_lines():
     lines = MigrationReportService().render(
         [
