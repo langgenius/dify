@@ -515,8 +515,8 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <DetailTableRow className="block pc:table-row">
-      <DetailTableCell className="block h-auto px-4 pt-3 pb-1 align-top pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
+    <DetailTableRow className="block h-auto pc:table-row pc:h-8">
+      <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.environment')}
         </div>
@@ -526,7 +526,7 @@ export function EnvironmentPermissionRow({
           </span>
         </div>
       </DetailTableCell>
-      <DetailTableCell className="block h-auto px-4 py-1 align-top pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
+      <DetailTableCell className="block h-auto max-w-none px-4 py-1 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
@@ -537,7 +537,7 @@ export function EnvironmentPermissionRow({
           onChange={handlePermissionChange}
         />
       </DetailTableCell>
-      <DetailTableCell className="block h-auto px-4 pt-1 pb-3 align-top pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
+      <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.subjects')}
         </div>
@@ -551,15 +551,20 @@ export function EnvironmentPermissionRow({
                   onChange={handleSubjectsChange}
                 />
                 {!accessSubjectsQuery.isLoading && subjects.length === 0 && (
-                  <span className="mt-1.5 block system-xs-regular text-text-tertiary">
-                    {t('access.members.emptySelection')}
+                  <span className="mt-1.5 flex min-h-7 items-start gap-1.5 rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-2 py-1.5 system-xs-regular text-util-colors-warning-warning-700">
+                    <span className="i-ri-error-warning-line mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0">
+                      {t('access.members.emptySelection')}
+                    </span>
                   </span>
                 )}
               </>
             )
           : (
               <div className="flex min-h-8 items-center system-xs-regular text-text-tertiary">
-                {t(`access.permission.${permissionKind}Desc`)}
+                <span className="min-w-0">
+                  {t(`access.permission.${permissionKind}Desc`)}
+                </span>
               </div>
             )}
       </DetailTableCell>

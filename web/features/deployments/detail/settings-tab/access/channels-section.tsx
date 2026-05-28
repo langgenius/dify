@@ -107,9 +107,31 @@ function ChannelEmptyState({ children }: {
   children: ReactNode
 }) {
   return (
-    <div className="flex min-h-8 items-center rounded-lg bg-background-default-subtle px-3 system-xs-regular text-text-tertiary">
-      <span className="mr-1.5 i-ri-information-line size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
-      <span className="min-w-0 truncate">{children}</span>
+    <div className="flex min-h-9 items-start gap-1.5 rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-2 system-xs-regular text-text-tertiary">
+      <span className="i-ri-information-line mt-0.5 size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
+      <span className="min-w-0">{children}</span>
+    </div>
+  )
+}
+
+function AccessChannelsDisabledState({ children }: {
+  children: ReactNode
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <div className="flex min-h-16 items-start gap-3 rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-3">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle text-text-tertiary">
+        <span className="i-ri-toggle-line size-4" aria-hidden="true" />
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="system-sm-medium text-text-secondary">
+          {children}
+        </span>
+        <span className="system-xs-regular text-text-tertiary">
+          {t('access.channels.disabledHint')}
+        </span>
+      </div>
     </div>
   )
 }
@@ -248,9 +270,9 @@ export function AccessChannelsSection({
                 </div>
               )
             : (
-                <div className="system-xs-regular text-text-tertiary">
+                <AccessChannelsDisabledState>
                   {t('access.channels.disabled')}
-                </div>
+                </AccessChannelsDisabledState>
               )}
     </Section>
   )

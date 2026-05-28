@@ -29,7 +29,7 @@ function AccessPermissionsSkeleton() {
   const { t } = useTranslation('deployments')
 
   return (
-    <DetailTable>
+    <DetailTable className="block pc:table">
       <DetailTableHeader className="hidden pc:table-header-group">
         <DetailTableRow>
           <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
@@ -37,16 +37,16 @@ function AccessPermissionsSkeleton() {
           <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.subjects}>{t('access.permissions.col.subjects')}</DetailTableHead>
         </DetailTableRow>
       </DetailTableHeader>
-      <DetailTableBody>
+      <DetailTableBody className="block pc:table-row-group">
         {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
-          <DetailTableRow key={key} className="block pc:table-row">
-            <DetailTableCell className="block h-auto px-4 pt-3 pb-1 pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
+          <DetailTableRow key={key} className="block h-auto pc:table-row pc:h-8">
+            <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
               <SkeletonRectangle className="h-4 w-32 animate-pulse" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto px-4 py-1 pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
+            <DetailTableCell className="block h-auto max-w-none px-4 py-1 pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto px-4 pt-1 pb-3 pc:table-cell pc:px-2.5 pc:py-[5px] pc:pl-3">
+            <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
           </DetailTableRow>
@@ -88,7 +88,7 @@ export function AccessPermissionsSection({
                 </SectionState>
               )
             : (
-                <DetailTable>
+                <DetailTable className="block pc:table">
                   <DetailTableHeader className="hidden pc:table-header-group">
                     <DetailTableRow>
                       <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
@@ -96,7 +96,7 @@ export function AccessPermissionsSection({
                       <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.subjects}>{t('access.permissions.col.subjects')}</DetailTableHead>
                     </DetailTableRow>
                   </DetailTableHeader>
-                  <DetailTableBody>
+                  <DetailTableBody className="block pc:table-row-group">
                     {environments.map(environment => (
                       <EnvironmentPermissionRow
                         key={environment.id}

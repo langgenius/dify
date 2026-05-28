@@ -34,6 +34,7 @@
   "access.channels.col.status": "Status",
   "access.channels.description": "WebApp and CLI entry points use the access permissions above.",
   "access.channels.disabled": "Access channels are turned off for this project.",
+  "access.channels.disabledHint": "Enable access channels to expose WebApp and CLI entry points again.",
   "access.channels.followPermission": "Follows permissions",
   "access.channels.title": "Access channels",
   "access.cli.description": "Use the unified domain when accessing this project from the CLI.",
