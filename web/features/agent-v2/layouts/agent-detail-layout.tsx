@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,9 +12,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import VersionHistoryItem from '@/app/components/workflow/panel/version-history-panel/version-history-item'
+import { WorkflowVersion } from '@/app/components/workflow/types'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 type AgentDetailLayoutProps = {
@@ -21,62 +23,86 @@ type AgentDetailLayoutProps = {
   children: ReactNode
 }
 
-type MockDraftAgentVersion = {
+const createMockAgentVersion = ({
+  id,
+  version,
+  markedName,
+  markedComment,
+  createdAt,
+  createdBy,
+}: {
   id: string
+  version: string
+  markedName: string
+  markedComment: string
   createdAt: number
   createdBy: string
-  isDraft: true
-  isLatest?: never
-}
+}): VersionHistory => ({
+  id,
+  graph: {
+    nodes: [],
+    edges: [],
+  },
+  created_at: createdAt,
+  created_by: {
+    id: createdBy.toLowerCase().replaceAll(' ', '-'),
+    name: createdBy,
+    email: '',
+  },
+  hash: id,
+  updated_at: createdAt,
+  updated_by: {
+    id: createdBy.toLowerCase().replaceAll(' ', '-'),
+    name: createdBy,
+    email: '',
+  },
+  tool_published: false,
+  version,
+  marked_name: markedName,
+  marked_comment: markedComment,
+})
 
-type MockPublishedAgentVersion = {
-  id: string
-  name: string
-  comment: string
-  createdAt: number
-  createdBy: string
-  isDraft?: false
-  isLatest?: boolean
-}
-
-type MockAgentVersion = MockDraftAgentVersion | MockPublishedAgentVersion
-
-const mockAgentVersions: MockAgentVersion[] = [
-  {
+const mockAgentVersions: VersionHistory[] = [
+  createMockAgentVersion({
     id: 'draft',
+    version: WorkflowVersion.Draft,
+    markedName: '',
+    markedComment: '',
     createdAt: 1790467200,
     createdBy: 'Joel',
-    isDraft: true,
-  },
-  {
+  }),
+  createMockAgentVersion({
     id: 'agent-version-4',
-    name: 'v1.4.0 Handoff rules',
-    comment: 'Aligned escalation handoff rules and response boundaries.',
+    version: '2026-09-25T13:00:00Z',
+    markedName: 'v1.4.0 Handoff rules',
+    markedComment: 'Aligned escalation handoff rules and response boundaries.',
     createdAt: 1790254800,
     createdBy: 'Emma Chen',
-    isLatest: true,
-  },
-  {
+  }),
+  createMockAgentVersion({
     id: 'agent-version-3',
-    name: 'v1.3.0 Tool routing',
-    comment: 'Added mock tool preference data for scheduling and knowledge lookup.',
+    version: '2026-09-18T12:30:00Z',
+    markedName: 'v1.3.0 Tool routing',
+    markedComment: 'Added mock tool preference data for scheduling and knowledge lookup.',
     createdAt: 1789648200,
     createdBy: 'Noah Kim',
-  },
-  {
+  }),
+  createMockAgentVersion({
     id: 'agent-version-2',
-    name: 'v1.2.0 Prompt tuning',
-    comment: 'Refined task decomposition prompts for multi-step workflows.',
+    version: '2026-09-11T12:00:00Z',
+    markedName: 'v1.2.0 Prompt tuning',
+    markedComment: 'Refined task decomposition prompts for multi-step workflows.',
     createdAt: 1789041600,
     createdBy: 'Ava Smith',
-  },
-  {
+  }),
+  createMockAgentVersion({
     id: 'agent-version-1',
-    name: 'v1.0.0 Initial roster setup',
-    comment: 'Created the reusable agent profile and default workflow instructions.',
+    version: '2026-09-05T12:00:00Z',
+    markedName: 'v1.0.0 Initial roster setup',
+    markedComment: 'Created the reusable agent profile and default workflow instructions.',
     createdAt: 1788523200,
     createdBy: 'Liam Wong',
-  },
+  }),
 ]
 
 export function AgentDetailLayout({
@@ -85,7 +111,7 @@ export function AgentDetailLayout({
 }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
   const [showVersionHistory, setShowVersionHistory] = useState(false)
-  const [selectedVersionId, setSelectedVersionId] = useState(mockAgentVersions[0]!.id)
+  const [currentVersion, setCurrentVersion] = useState<VersionHistory>(mockAgentVersions[0]!)
 
   useDocumentTitle(t('agentDetail.documentTitle'))
 
@@ -168,8 +194,8 @@ export function AgentDetailLayout({
       {showVersionHistory && (
         <AgentVersionHistoryPanel
           versions={mockAgentVersions}
-          selectedVersionId={selectedVersionId}
-          onSelectVersion={setSelectedVersionId}
+          currentVersion={currentVersion}
+          onSelectVersion={setCurrentVersion}
           onClose={() => setShowVersionHistory(false)}
         />
       )}
@@ -179,16 +205,17 @@ export function AgentDetailLayout({
 
 function AgentVersionHistoryPanel({
   versions,
-  selectedVersionId,
+  currentVersion,
   onSelectVersion,
   onClose,
 }: {
-  versions: MockAgentVersion[]
-  selectedVersionId: string
-  onSelectVersion: (versionId: string) => void
+  versions: VersionHistory[]
+  currentVersion: VersionHistory
+  onSelectVersion: (version: VersionHistory) => void
   onClose: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const latestVersionId = versions.find(item => item.version !== WorkflowVersion.Draft)?.id ?? ''
 
   return (
     <aside className="absolute top-20 right-0 bottom-0 flex w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
@@ -206,60 +233,18 @@ function AgentVersionHistoryPanel({
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-        {versions.map((item, index) => {
-          const isSelected = item.id === selectedVersionId
-          const isLast = index === versions.length - 1
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={cn(
-                'group relative flex w-full gap-x-1 rounded-lg p-2 text-left',
-                isSelected ? 'cursor-not-allowed bg-state-accent-active' : 'cursor-pointer hover:bg-state-base-hover',
-              )}
-              onClick={() => onSelectVersion(item.id)}
-            >
-              {!isLast && <span aria-hidden className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />}
-              <span className="flex h-5 w-[18px] shrink-0 items-center justify-center">
-                <span
-                  aria-hidden
-                  className={cn(
-                    'size-2 rounded-lg border-2',
-                    isSelected ? 'border-text-accent' : 'border-text-quaternary',
-                  )}
-                />
-              </span>
-              <span className="flex min-w-0 grow flex-col gap-y-0.5 overflow-hidden">
-                <span className="mr-6 flex h-5 items-center gap-x-1">
-                  <span
-                    className={cn(
-                      'truncate py-px system-sm-semibold',
-                      isSelected ? 'text-text-accent' : 'text-text-secondary',
-                    )}
-                  >
-                    {item.isDraft ? t('versionHistory.currentDraft', { ns: 'workflow' }) : item.name}
-                  </span>
-                  {item.isLatest && (
-                    <span className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] system-2xs-medium-uppercase text-text-accent-secondary">
-                      {t('versionHistory.latest', { ns: 'workflow' })}
-                    </span>
-                  )}
-                </span>
-                {!item.isDraft && (
-                  <span className="system-xs-regular wrap-break-word text-text-secondary">
-                    {item.comment}
-                  </span>
-                )}
-                {!item.isDraft && (
-                  <span className="truncate system-xs-regular text-text-tertiary">
-                    {`${dayjs.unix(item.createdAt).format('YYYY-MM-DD HH:mm')} · ${item.createdBy}`}
-                  </span>
-                )}
-              </span>
-            </button>
-          )
-        })}
+        {versions.map((item, index) => (
+          <VersionHistoryItem
+            key={item.id}
+            item={item}
+            currentVersion={currentVersion}
+            latestVersionId={latestVersionId}
+            onClick={onSelectVersion}
+            handleClickActionMenuItem={() => {}}
+            isLast={index === versions.length - 1}
+            hideActionMenu
+          />
+        ))}
       </div>
     </aside>
   )
