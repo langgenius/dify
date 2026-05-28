@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -45,6 +46,26 @@ const OperationDropdown: FC<Props> = ({
     select: s => s.enable_marketplace,
   })
   const { canUpdate, canUninstall } = useReferenceSetting()
+
+  const dropdownOptionsCount = useMemo(() => {
+    let count = 0
+    if (source === PluginSource.github) {
+      count += 1 // Info option
+      if (canUpdate)
+        count += 1 // Check update option
+    }
+    if ((source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace) {
+      count += 1 // View detail option
+    }
+    if (canUninstall) {
+      count += 1 // Remove option
+    }
+    return count
+  }, [source, enable_marketplace, canUpdate, canUninstall])
+
+  if (dropdownOptionsCount === 0) {
+    return null
+  }
 
   return (
     <DropdownMenu>
