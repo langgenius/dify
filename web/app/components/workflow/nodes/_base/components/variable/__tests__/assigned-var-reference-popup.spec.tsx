@@ -9,15 +9,13 @@ vi.mock('../var-reference-vars', () => ({
   default: ({
     vars,
     onChange,
-    itemWidth,
     isSupportFileVar,
   }: {
     vars: NodeOutPutVar[]
     onChange: (value: ValueSelector, item: Var) => void
-    itemWidth?: number
     isSupportFileVar?: boolean
   }) => {
-    mockVarReferenceVars({ vars, onChange, itemWidth, isSupportFileVar })
+    mockVarReferenceVars({ vars, onChange, isSupportFileVar })
     return <div data-testid="var-reference-vars">{vars.length}</div>
   },
 }))
@@ -56,7 +54,6 @@ describe('AssignedVarReferencePopup', () => {
     render(
       <AssignedVarReferencePopup
         vars={[createOutputVar()]}
-        itemWidth={280}
         onChange={onChange}
       />,
     )
@@ -65,7 +62,6 @@ describe('AssignedVarReferencePopup', () => {
     expect(mockVarReferenceVars).toHaveBeenCalledWith({
       vars: [createOutputVar()],
       onChange,
-      itemWidth: 280,
       isSupportFileVar: true,
     })
   })

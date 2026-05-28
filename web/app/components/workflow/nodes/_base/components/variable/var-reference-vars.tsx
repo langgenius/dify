@@ -1,20 +1,28 @@
 'use client'
-import type { FC } from 'react'
 import type { StructuredOutput } from '../../../llm/types'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Combobox,
+  ComboboxClear,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxGroupLabel,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemText,
+  ComboboxList,
+} from '@langgenius/dify-ui/combobox'
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useHover } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
@@ -28,8 +36,17 @@ import {
   getVariableDisplayName,
 } from './var-reference-vars.helpers'
 
-const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
 export const VAR_REFERENCE_CHILD_POPUP_CLASS_NAME = 'var-reference-vars-child-popup'
+
+type ReferenceVarItem = {
+  nodeId: string
+  title: string
+  itemData: Var
+  optionIndex: number
+  isFlat?: boolean
+  isException?: boolean
+  isLoopVar?: boolean
+}
 
 const resolveValueSelector = ({
   itemData,
@@ -66,41 +83,26 @@ const resolveValueSelector = ({
 }
 
 type ItemProps = {
-  nodeId: string
-  title: string
-  objPath: string[]
-  itemData: Var
+  item: ReferenceVarItem
   onChange: (value: ValueSelector, item: Var) => void
-  onHovering?: (value: boolean) => void
-  itemWidth?: number
-  isSupportFileVar?: boolean
-  isException?: boolean
-  isLoopVar?: boolean
-  isFlat?: boolean
   isInCodeGeneratorInstructionEditor?: boolean
-  className?: string
   preferSchemaType?: boolean
-  isSelected?: boolean
-  onActivate?: () => void
 }
 
-const Item: FC<ItemProps> = ({
-  nodeId,
-  title,
-  objPath,
-  itemData,
+function Item({
+  item,
   onChange,
-  onHovering,
-  isSupportFileVar,
-  isException,
-  isLoopVar,
-  isFlat,
   isInCodeGeneratorInstructionEditor,
-  className,
   preferSchemaType,
-  isSelected,
-  onActivate,
-}) => {
+}: ItemProps) {
+  const {
+    nodeId,
+    title,
+    itemData,
+    isException,
+    isFlat,
+    isLoopVar,
+  } = item
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && (itemData.children as Var[]).length > 0)
   const isEnv = itemData.variable.startsWith('env.')
@@ -159,69 +161,16 @@ const Item: FC<ItemProps> = ({
     return objStructuredOutput
   })()
 
-  const itemRef = useRef<HTMLDivElement>(null)
-  const [isItemHovering, setIsItemHovering] = useState(false)
-  useHover(itemRef, {
-    onChange: (hovering) => {
-      if (hovering) {
-        setIsItemHovering(true)
-      }
-      else {
-        if (isObj || isStructureOutput) {
-          setTimeout(() => {
-            setIsItemHovering(false)
-          }, 100)
-        }
-        else {
-          setIsItemHovering(false)
-        }
-      }
-    },
-  })
-  const [isChildrenHovering, setIsChildrenHovering] = useState(false)
-  const isHovering = isItemHovering || isChildrenHovering
-  const open = (isObj || isStructureOutput) && isHovering
-  useEffect(() => {
-    onHovering?.(isHovering)
-  }, [isHovering, onHovering])
-  const handleChosen = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.nativeEvent.stopImmediatePropagation()
-    const valueSelector = resolveValueSelector({
-      itemData,
-      isFlat,
-      isSupportFileVar,
-      nodeId,
-      objPath,
-    })
-
-    if (valueSelector)
-      onChange(valueSelector, itemData)
-  }
   const variableCategory = useMemo(
     () => getVariableCategory({ isEnv, isChatVar, isLoopVar, isRagVariable }),
     [isEnv, isChatVar, isLoopVar, isRagVariable],
   )
 
   const itemTrigger = (
-    <div
-      ref={itemRef}
-      className={cn(
-        (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
-        (isHovering || isSelected) && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
-        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
-        className,
-      )}
-      data-selected={isSelected ? 'true' : 'false'}
-      onClick={handleChosen}
-      onMouseEnter={onActivate}
-      onMouseDown={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        e.nativeEvent.stopImmediatePropagation()
-      }}
+    <ComboboxItem
+      value={item}
     >
-      <div className="flex w-0 grow items-center">
+      <ComboboxItemText className="flex items-center gap-1 px-0">
         {!isFlat && (
           <VariableIconWithColor
             variables={itemData.variable.split('.')}
@@ -232,33 +181,33 @@ const Item: FC<ItemProps> = ({
         {isFlat && flatVarIcon}
 
         {!isEnv && !isChatVar && !isRagVariable && (
-          <div title={itemData.variable} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{varName}</div>
+          <span title={itemData.variable} className="min-w-0 grow truncate">{varName}</span>
         )}
         {isEnv && (
-          <div title={itemData.variable} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.replace('env.', '')}</div>
+          <span title={itemData.variable} className="min-w-0 grow truncate">{itemData.variable.replace('env.', '')}</span>
         )}
         {isChatVar && (
-          <div title={itemData.des} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
+          <span title={itemData.des} className="min-w-0 grow truncate">{itemData.variable.replace('conversation.', '')}</span>
         )}
         {isRagVariable && (
-          <div title={itemData.des} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
+          <span title={itemData.des} className="min-w-0 grow truncate">{itemData.variable.split('.').slice(-1)[0]}</span>
         )}
-      </div>
-      <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
+      </ComboboxItemText>
+      <span className="text-xs font-normal text-text-tertiary capitalize">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</span>
       {
         (isObj || isStructureOutput) && (
-          <span aria-hidden className={cn('ml-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
+          <span aria-hidden className="i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary" />
         )
       }
-    </div>
+    </ComboboxItem>
   )
 
+  if (!isObj && !isStructureOutput)
+    return itemTrigger
+
   return (
-    <Popover
-      open={open}
-      onOpenChange={noop}
-    >
-      <PopoverTrigger nativeButton={false} render={itemTrigger} />
+    <Popover>
+      <PopoverTrigger nativeButton={false} openOnHover render={itemTrigger} />
       <PopoverContent
         placement="left-start"
         sideOffset={0}
@@ -268,7 +217,6 @@ const Item: FC<ItemProps> = ({
           <PickerStructurePanel
             root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.schemaType }}
             payload={structuredOutput!}
-            onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {
               onChange(valueSelector, itemData)
             }}
@@ -279,6 +227,20 @@ const Item: FC<ItemProps> = ({
   )
 }
 
+function getReferenceVarLabel(item: ReferenceVarItem) {
+  return getVariableDisplayName(item.itemData.variable, !!item.isFlat)
+}
+
+function getReferenceVarValue(item: ReferenceVarItem) {
+  return `${item.nodeId}:${item.itemData.variable}:${item.optionIndex}`
+}
+
+function isSameReferenceVar(item: ReferenceVarItem, value: ReferenceVarItem) {
+  return item.nodeId === value.nodeId
+    && item.itemData.variable === value.itemData.variable
+    && item.optionIndex === value.optionIndex
+}
+
 type Props = {
   hideSearch?: boolean
   searchText?: string
@@ -286,7 +248,6 @@ type Props = {
   vars: NodeOutPutVar[]
   isSupportFileVar?: boolean
   onChange: (value: ValueSelector, item: Var) => void
-  itemWidth?: number
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
@@ -296,68 +257,44 @@ type Props = {
   autoFocus?: boolean
   preferSchemaType?: boolean
 }
-const VarReferenceVars: FC<Props> = ({
+function VarReferenceVars({
   hideSearch,
   searchText,
   searchBoxClassName,
   vars,
   isSupportFileVar,
   onChange,
-  itemWidth,
   maxHeightClass,
-  onClose,
   onBlur,
   isInCodeGeneratorInstructionEditor,
   showManageInputField,
   onManageInputField,
   autoFocus = true,
   preferSchemaType,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [internalSearchValue, setInternalSearchValue] = useState('')
-  const listRef = useRef<HTMLDivElement>(null)
   const searchValue = searchText ?? internalSearchValue
   const filteredVars = useMemo(() => filterReferenceVars(vars, searchValue), [vars, searchValue])
-  const selectableItems = useMemo(() => {
-    return filteredVars.flatMap(node => node.vars.map(item => ({
-      nodeId: node.nodeId,
-      isFlat: node.isFlat,
-      itemData: item,
-    })))
-  }, [filteredVars])
-  const indexedFilteredVars = useMemo(() => {
+  const groupedItems = useMemo(() => {
     let optionIndex = 0
 
     return filteredVars.map(node => ({
       ...node,
-      vars: node.vars.map(variable => ({
-        variable,
+      vars: node.vars.map((variable): ReferenceVarItem => ({
+        nodeId: node.nodeId,
+        title: node.title,
+        itemData: variable,
+        isFlat: node.isFlat,
+        isException: variable.isException,
+        isLoopVar: node.isLoop,
         optionIndex: optionIndex++,
       })),
     }))
   }, [filteredVars])
-  const [selectedIndex, setSelectedIndex] = useState(-1)
-  const effectiveSelectedIndex = selectableItems.length ? Math.min(Math.max(selectedIndex, 0), selectableItems.length - 1) : -1
+  const selectableItems = useMemo(() => groupedItems.flatMap(node => node.vars), [groupedItems])
 
-  useEffect(() => {
-    const listElement = listRef.current
-    const selectedElement = listElement?.querySelector('[data-selected="true"]') as HTMLElement | null
-    if (!listElement || !selectedElement)
-      return
-
-    const selectedTop = selectedElement.offsetTop
-    const selectedBottom = selectedTop + selectedElement.offsetHeight
-    const visibleTop = listElement.scrollTop
-    const visibleBottom = visibleTop + listElement.clientHeight
-
-    if (selectedTop < visibleTop)
-      listElement.scrollTop = selectedTop
-    else if (selectedBottom > visibleBottom)
-      listElement.scrollTop = selectedBottom - listElement.clientHeight
-  }, [effectiveSelectedIndex])
-
-  const selectItem = useCallback((index: number) => {
-    const selectedItem = selectableItems[index]
+  const selectItem = useCallback((selectedItem?: ReferenceVarItem) => {
     if (!selectedItem)
       return
 
@@ -372,141 +309,97 @@ const VarReferenceVars: FC<Props> = ({
 
     if (valueSelector)
       onChange(valueSelector, itemData)
-  }, [isSupportFileVar, onChange, selectableItems])
+  }, [isSupportFileVar, onChange])
 
-  const handleKeyboardEvent = useCallback((event: Pick<KeyboardEvent, 'key' | 'preventDefault' | 'stopPropagation'>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      onClose?.()
-      return
-    }
-
-    if (!selectableItems.length)
+  const handleValueChange = useCallback((item: ReferenceVarItem | null) => {
+    if (!item)
       return
 
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      event.stopPropagation()
-      setSelectedIndex(
-        event.key === 'ArrowDown'
-          ? Math.min(effectiveSelectedIndex + 1, selectableItems.length - 1)
-          : Math.max(effectiveSelectedIndex - 1, 0),
-      )
-      return
-    }
+    selectItem(item)
+  }, [selectItem])
 
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      event.stopPropagation()
-      selectItem(effectiveSelectedIndex)
-    }
-  }, [effectiveSelectedIndex, onClose, selectableItems.length, selectItem])
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    handleKeyboardEvent(e)
-  }, [handleKeyboardEvent])
-
-  useEffect(() => {
-    if (!hideSearch)
-      return
-
-    const handleDocumentKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey)
-        return
-      if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key))
-        return
-
-      handleKeyboardEvent(event)
-    }
-
-    document.addEventListener('keydown', handleDocumentKeyDown, true)
-    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true)
-  }, [handleKeyboardEvent, hideSearch])
+  const handleInputValueChange = useCallback((value: string) => {
+    if (searchText === undefined)
+      setInternalSearchValue(value)
+  }, [searchText])
 
   return (
-    <>
+    <Combobox<ReferenceVarItem>
+      inline
+      open
+      value={null}
+      items={selectableItems}
+      inputValue={searchValue}
+      onInputValueChange={handleInputValueChange}
+      onValueChange={handleValueChange}
+      filter={null}
+      itemToStringLabel={getReferenceVarLabel}
+      itemToStringValue={getReferenceVarValue}
+      isItemEqualToValue={isSameReferenceVar}
+    >
       {
         !hideSearch && (
-          <>
-            <div className={cn('m-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
-              <Input
-                className={VAR_SEARCH_INPUT_CLASS_NAME}
-                showLeftIcon
-                showClearIcon
-                value={searchValue}
+          <div className={cn('m-2', searchBoxClassName)}>
+            <ComboboxInputGroup>
+              <ComboboxInput
+                aria-label={t('common.searchVar', { ns: 'workflow' }) || ''}
                 placeholder={t('common.searchVar', { ns: 'workflow' }) || ''}
-                onChange={e => setInternalSearchValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onClear={() => setInternalSearchValue('')}
                 onBlur={onBlur}
                 autoFocus={autoFocus}
               />
-            </div>
-            <div
-              className="relative left-[-4px] h-[0.5px] bg-black/5"
-              style={{
-                width: 'calc(100% + 8px)',
-              }}
-            >
-            </div>
-          </>
+              {searchValue && (
+                <ComboboxClear
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                />
+              )}
+            </ComboboxInputGroup>
+          </div>
         )
       }
 
       {filteredVars.length > 0
         ? (
-            <div ref={listRef} className={cn('max-h-[85vh] overflow-x-hidden overflow-y-auto', maxHeightClass)}>
+            <ComboboxList className={maxHeightClass}>
               {
-                indexedFilteredVars.map((item, i) => (
-                  <div key={item.nodeId} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
-                    {!item.isFlat && (
-                      <div
-                        className="truncate px-3 system-xs-medium-uppercase leading-[22px] text-text-tertiary"
-                        title={item.title}
+                groupedItems.map((group, i) => (
+                  <ComboboxGroup key={group.nodeId} items={group.vars}>
+                    {!group.isFlat && (
+                      <ComboboxGroupLabel
+                        title={group.title}
                       >
-                        {item.title}
-                      </div>
+                        {group.title}
+                      </ComboboxGroupLabel>
                     )}
-                    {item.vars.map(({ variable, optionIndex }) => (
+                    {group.vars.map(item => (
                       <Item
-                        key={optionIndex}
-                        title={item.title}
-                        nodeId={item.nodeId}
-                        objPath={[]}
-                        itemData={variable}
+                        key={item.optionIndex}
+                        item={item}
                         onChange={onChange}
-                        itemWidth={itemWidth}
-                        isSupportFileVar={isSupportFileVar}
-                        isException={variable.isException}
-                        isLoopVar={item.isLoop}
-                        isFlat={item.isFlat}
                         isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                         preferSchemaType={preferSchemaType}
-                        isSelected={effectiveSelectedIndex === optionIndex}
-                        onActivate={() => setSelectedIndex(optionIndex)}
                       />
                     ))}
-                    {item.isFlat && !indexedFilteredVars[i + 1]?.isFlat && !!indexedFilteredVars.find(item => !item.isFlat) && (
+                    {group.isFlat && !groupedItems[i + 1]?.isFlat && !!groupedItems.find(item => !item.isFlat) && (
                       <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                         <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
                         <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
-                  </div>
+                  </ComboboxGroup>
                 ))
               }
-            </div>
+            </ComboboxList>
           )
-        : <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">{t('common.noVar', { ns: 'workflow' })}</div>}
+        : <ComboboxEmpty>{t('common.noVar', { ns: 'workflow' })}</ComboboxEmpty>}
       {
-        showManageInputField && (
+        showManageInputField && onManageInputField && (
           <ManageInputField
-            onManage={onManageInputField || noop}
+            onManage={onManageInputField}
           />
         )
       }
-    </>
+    </Combobox>
   )
 }
 

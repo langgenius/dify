@@ -9,12 +9,10 @@ import VarReferenceVars from './var-reference-vars'
 type Props = {
   vars: NodeOutPutVar[]
   onChange: (value: ValueSelector, varDetail: Var) => void
-  itemWidth?: number
 }
 const AssignedVarReferencePopup: FC<Props> = ({
   vars,
   onChange,
-  itemWidth,
 }) => {
   const { t } = useTranslation()
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
@@ -32,7 +30,6 @@ const AssignedVarReferencePopup: FC<Props> = ({
               searchBoxClassName="mt-1"
               vars={vars}
               onChange={onChange}
-              itemWidth={itemWidth}
               isSupportFileVar
             />
           )}

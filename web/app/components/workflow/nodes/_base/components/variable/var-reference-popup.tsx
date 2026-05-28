@@ -64,7 +64,6 @@ const VarReferencePopup: FC<Props> = ({
               searchBoxClassName="mt-1"
               vars={vars}
               onChange={onChange}
-              itemWidth={itemWidth}
               isSupportFileVar={isSupportFileVar}
               showManageInputField={showManageRagInputFields}
               onManageInputField={() => setShowInputFieldPanel?.(true)}

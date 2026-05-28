@@ -33,13 +33,11 @@ describe('VarReferenceVars', () => {
     vars: [{ variable: 'valid_name', type: VarType.string }],
   }])
 
-  it('should filter vars through the search box and call onClose on escape', () => {
-    const onClose = vi.fn()
+  it('should filter vars through the search box', () => {
     render(
       <VarReferenceVars
         vars={baseVars}
         onChange={vi.fn()}
-        onClose={onClose}
       />,
     )
 
@@ -47,45 +45,6 @@ describe('VarReferenceVars', () => {
       target: { value: 'valid' },
     })
     expect(screen.getByText('valid_name')).toBeInTheDocument()
-
-    fireEvent.keyDown(screen.getByPlaceholderText('workflow.common.searchVar'), { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('should select the first visible variable by default and support arrow navigation in slash mode', () => {
-    const onChange = vi.fn()
-
-    render(
-      <VarReferenceVars
-        hideSearch
-        vars={createVars([{
-          title: 'Node A',
-          nodeId: 'node-a',
-          vars: [
-            { variable: 'first_value', type: VarType.string },
-            { variable: 'second_value', type: VarType.string },
-          ],
-        }])}
-        onChange={onChange}
-      />,
-    )
-
-    const firstItem = screen.getByText('first_value').closest('[data-selected]')
-    const secondItem = screen.getByText('second_value').closest('[data-selected]')
-
-    expect(firstItem).toHaveAttribute('data-selected', 'true')
-    expect(secondItem).toHaveAttribute('data-selected', 'false')
-
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-
-    expect(firstItem).toHaveAttribute('data-selected', 'false')
-    expect(secondItem).toHaveAttribute('data-selected', 'true')
-
-    fireEvent.keyDown(document, { key: 'Enter' })
-
-    expect(onChange).toHaveBeenCalledWith(['node-a', 'second_value'], expect.objectContaining({
-      variable: 'second_value',
-    }))
   })
 
   it('should call onChange when a variable item is chosen', () => {
@@ -117,7 +76,7 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.common.noVar')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.noVar')
 
     fireEvent.click(screen.getByText('manage-input'))
     expect(onManageInputField).toHaveBeenCalledTimes(1)
@@ -208,43 +167,6 @@ describe('VarReferenceVars', () => {
     expect(onChange).toHaveBeenNthCalledWith(4, ['node-special', 'asset'], expect.objectContaining({ variable: 'asset' }))
   })
 
-  it('should resolve selectors for special variables and file support from keyboard selection', () => {
-    const onChange = vi.fn()
-
-    render(
-      <VarReferenceVars
-        hideSearch
-        isSupportFileVar
-        vars={createVars([
-          {
-            title: 'Specials',
-            nodeId: 'node-special',
-            vars: [
-              { variable: 'env.API_KEY', type: VarType.string },
-              { variable: 'conversation.user_name', type: VarType.string, des: 'User name' },
-              { variable: 'current', type: VarType.string },
-              { variable: 'asset', type: VarType.file },
-            ],
-          },
-        ])}
-        onChange={onChange}
-      />,
-    )
-
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-
-    expect(onChange).toHaveBeenNthCalledWith(1, ['env', 'API_KEY'], expect.objectContaining({ variable: 'env.API_KEY' }))
-    expect(onChange).toHaveBeenNthCalledWith(2, ['conversation', 'user_name'], expect.objectContaining({ variable: 'conversation.user_name' }))
-    expect(onChange).toHaveBeenNthCalledWith(3, ['node-special', 'current'], expect.objectContaining({ variable: 'current' }))
-    expect(onChange).toHaveBeenNthCalledWith(4, ['node-special', 'asset'], expect.objectContaining({ variable: 'asset' }))
-  })
-
   it('should render object vars and select them by node path', () => {
     const onChange = vi.fn()
 
@@ -322,28 +244,6 @@ describe('VarReferenceVars', () => {
     expect(onBlur).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByText('asset'))
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('should ignore file vars when file support is disabled during keyboard selection', () => {
-    const onChange = vi.fn()
-
-    render(
-      <VarReferenceVars
-        hideSearch
-        vars={createVars([
-          {
-            title: 'Files',
-            nodeId: 'node-files',
-            vars: [{ variable: 'asset', type: VarType.file }],
-          },
-        ])}
-        onChange={onChange}
-      />,
-    )
-
-    fireEvent.keyDown(document, { key: 'Enter' })
-
     expect(onChange).not.toHaveBeenCalled()
   })
 })
