@@ -26,7 +26,7 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.role_gate import require_workspace_role
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models.account import TenantAccountRole
 
 # Tokens from `_seed`'s `set_auth_ctx` calls, drained after each test so a
@@ -55,7 +55,7 @@ def _account_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
         client_id="difyctl",
         scopes=frozenset({Scope.FULL}),
         token_id=uuid.uuid4(),
-        source="oauth_account",
+        token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),
         token_hash="h1",
         verified_tenants={},
@@ -71,7 +71,7 @@ def _sso_ctx() -> AuthContext:
         client_id="difyctl",
         scopes=frozenset({Scope.APPS_RUN}),
         token_id=uuid.uuid4(),
-        source="oauth_external_sso",
+        token_type=TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=datetime.now(UTC),
         token_hash="h2",
         verified_tenants={},

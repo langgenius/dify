@@ -43,10 +43,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('ahooks', () => ({
-  useKeyPress: vi.fn(),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
     appDetail: mockAppDetail,
@@ -123,11 +119,6 @@ vi.mock('@/app/components/app/app-access-control', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
 
 describe('App Publisher Flow', () => {
   beforeEach(() => {

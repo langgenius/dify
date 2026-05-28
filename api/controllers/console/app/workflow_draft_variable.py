@@ -83,13 +83,14 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
     # create a copy of the value to avoid affecting the model cache.
     value = value.model_copy(deep=True)
     # Refresh the url signature before returning it to client.
-    if isinstance(value, FileSegment):
-        file = value.value
-        file.remote_url = file.generate_url()
-    elif isinstance(value, ArrayFileSegment):
-        files = value.value
-        for file in files:
+    match value:
+        case FileSegment():
+            file = value.value
             file.remote_url = file.generate_url()
+        case ArrayFileSegment():
+            files = value.value
+            for file in files:
+                file.remote_url = file.generate_url()
     return _convert_values_to_json_serializable_object(value)
 
 

@@ -35,15 +35,11 @@ from controllers.openapi._models import (
     WorkspaceListResponse,
     WorkspaceSummaryResponse,
 )
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.role_gate import require_workspace_role
-from controllers.openapi.auth.surface_gate import accept_subjects
 from extensions.ext_database import db
-from libs.oauth_bearer import (
-    ACCEPT_USER_ANY,
-    SubjectType,
-    get_auth_ctx,
-    validate_bearer,
-)
+from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -60,11 +56,6 @@ from services.feature_service import FeatureService
 
 
 def _validate_body[M: BaseModel](model: type[M]) -> M:
-    """Validate JSON body against ``model``. Validation errors → HTTP 400.
-
-    The workspace spec is explicit that bad email / unknown role payloads
-    are 400, not Pydantic's default 422 — handle uniformly here.
-    """
     body = request.get_json(silent=True) or {}
     try:
         return model.model_validate(body)
@@ -91,7 +82,6 @@ def _load_tenant(workspace_id: str) -> Tenant:
 
 
 def _load_account(account_id: object) -> Account:
-    """Load the caller's Account. Missing == auth wiring bug, not user error."""
     account = AccountService.get_account_by_id(db.session, str(account_id)) if account_id else None
     if account is None:
         raise RuntimeError("authenticated account_id has no Account row")
@@ -99,13 +89,6 @@ def _load_account(account_id: object) -> Account:
 
 
 def _quota_error(*, code: str, message: str, hint: str) -> Forbidden:
-    """Build a 403 with envelope ``{code, message, hint}``.
-
-    CLI ``error-mapper`` reads ``message`` and ``hint`` off the wire body
-    verbatim — the structured envelope lets it surface remediation guidance
-    (e.g. "upgrade your plan") without the CLI needing to know edition
-    semantics.
-    """
     err = Forbidden(message)
     err.response = make_response(
         jsonify({"code": code, "message": message, "hint": hint}),
@@ -115,16 +98,6 @@ def _quota_error(*, code: str, message: str, hint: str) -> Forbidden:
 
 
 def _check_member_invite_quota(tenant_id: str) -> None:
-    """Edition-aware member-count gate for invite.
-
-    Both branches self-disable on CE because ``FeatureService.get_features``
-    leaves ``billing.enabled`` and ``workspace_members.enabled`` False by
-    default; SaaS billing API and EE license activation are what flip them on.
-
-    Mirrors the two checks the console invite path performs (decorator at
-    ``console/wraps.py:106`` for billing + inline at
-    ``console/workspace/members.py:130`` for license).
-    """
     features = FeatureService.get_features(tenant_id)
 
     if features.billing.enabled:
@@ -148,12 +121,9 @@ def _check_member_invite_quota(tenant_id: str) -> None:
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
     @openapi_ns.response(200, "Workspace list", openapi_ns.models[WorkspaceListResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
-    def get(self):
-        ctx = get_auth_ctx()
-
-        rows = TenantService.get_workspaces_for_account(db.session, str(ctx.account_id))
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, *, auth_data: AuthData):
+        rows = TenantService.get_workspaces_for_account(db.session, str(auth_data.account_id))
 
         return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows))).model_dump(mode="json"), 200
 
@@ -161,12 +131,9 @@ class WorkspacesApi(Resource):
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
     @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
-    def get(self, workspace_id: str):
-        ctx = get_auth_ctx()
-
-        row = TenantService.find_workspace_for_account(db.session, str(ctx.account_id), workspace_id)
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, workspace_id: str, *, auth_data: AuthData):
+        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
         if row is None:
             raise NotFound("workspace not found")
@@ -185,21 +152,17 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @openapi_ns.response(200, "Workspace detail", openapi_ns.models[WorkspaceDetailResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role()
-    def post(self, workspace_id: str):
-        ctx = get_auth_ctx()
-        account = _load_account(ctx.account_id)
+    def post(self, workspace_id: str, *, auth_data: AuthData):
+        account = _load_account(auth_data.account_id)
 
         try:
             TenantService.switch_tenant(account, workspace_id)
         except AccountNotLinkTenantError:
-            # Membership existed at gate time but Tenant.status != NORMAL or
-            # the row was just removed — treat as not-found.
             raise NotFound("workspace not found")
 
-        row = TenantService.find_workspace_for_account(db.session, str(ctx.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
@@ -216,20 +179,15 @@ class WorkspaceMembersApi(Resource):
 
     @openapi_ns.doc(params=query_params_from_model(MemberListQuery))
     @openapi_ns.response(200, "Member list", openapi_ns.models[MemberListResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role()
-    def get(self, workspace_id: str):
+    def get(self, workspace_id: str, *, auth_data: AuthData):
         try:
             query = MemberListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise BadRequest(str(exc))
 
         tenant = _load_tenant(workspace_id)
-        # Members per workspace are bounded by SaaS plan caps (≤50) or EE
-        # license seats (low thousands worst-case), so we materialize and
-        # slice in-memory rather than push pagination into the service —
-        # matches how the rest of the service exposes member lists.
         members = TenantService.get_tenant_members(tenant)
         total = len(members)
         start = (query.page - 1) * query.limit
@@ -244,13 +202,11 @@ class WorkspaceMembersApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[MemberInvitePayload.__name__])
     @openapi_ns.response(201, "Member invited", openapi_ns.models[MemberInviteResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
-    def post(self, workspace_id: str):
+    def post(self, workspace_id: str, *, auth_data: AuthData):
         payload = _validate_body(MemberInvitePayload)
-        ctx = get_auth_ctx()
-        inviter = _load_account(ctx.account_id)
+        inviter = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
 
         _check_member_invite_quota(str(tenant.id))
@@ -297,12 +253,10 @@ class WorkspaceMemberApi(Resource):
     """
 
     @openapi_ns.response(200, "Member removed", openapi_ns.models[MemberActionResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
-    def delete(self, workspace_id: str, member_id: str):
-        ctx = get_auth_ctx()
-        operator = _load_account(ctx.account_id)
+    def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
+        operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:
@@ -330,13 +284,11 @@ class WorkspaceMemberRoleApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[MemberRoleUpdatePayload.__name__])
     @openapi_ns.response(200, "Role updated", openapi_ns.models[MemberActionResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    @accept_subjects(SubjectType.ACCOUNT)
+    @auth_router.guard(scope=Scope.WORKSPACE_WRITE, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @require_workspace_role(TenantAccountRole.OWNER, TenantAccountRole.ADMIN)
-    def put(self, workspace_id: str, member_id: str):
+    def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         payload = _validate_body(MemberRoleUpdatePayload)
-        ctx = get_auth_ctx()
-        operator = _load_account(ctx.account_id)
+        operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
         if member is None:

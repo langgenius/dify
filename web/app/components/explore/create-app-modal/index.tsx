@@ -2,10 +2,12 @@
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +17,6 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -103,9 +104,11 @@ const CreateAppModal = ({
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !(!isEditModal && isAppsFull) && name.trim())
-      handleSubmit()
+  useHotkey('Mod+Enter', () => {
+    handleSubmit()
+  }, {
+    enabled: show && !(!isEditModal && isAppsFull) && !!name.trim(),
+    ignoreInputs: false,
   })
 
   return (
@@ -191,7 +194,11 @@ const CreateAppModal = ({
               onClick={handleSubmit}
             >
               <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+              <KbdGroup>
+                {['Mod', 'Enter'].map(key => (
+                  <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                ))}
+              </KbdGroup>
             </Button>
             <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
           </div>
