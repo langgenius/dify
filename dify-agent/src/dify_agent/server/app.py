@@ -6,7 +6,8 @@ route wiring, and a process-local scheduler. Run execution happens in background
 cancel the agent runtime. Redis persists run records and per-run event streams
 with configured retention only; it is not used as a job queue. Agenton layers and
 providers stay state-only: they borrow the lifespan-owned plugin daemon client
-through the runner and never create or close it themselves.
+through the runner and receive shell-layer server settings through provider
+construction rather than reading environment variables themselves.
 """
 
 from collections.abc import AsyncGenerator
@@ -29,6 +30,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
+        shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
     )
     state: dict[str, object] = {}
 

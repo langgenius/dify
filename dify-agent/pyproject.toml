@@ -8,6 +8,7 @@ dependencies = [
     "httpx==0.28.1",
     "pydantic>=2.12.5,<2.13",
     "pydantic-ai-slim>=1.85.1,<2.0.0",
+    "shell-session-manager>=2.0.0",
     "typing-extensions>=4.12.2,<5.0.0",
 ]
 
