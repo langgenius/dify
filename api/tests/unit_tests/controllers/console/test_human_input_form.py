@@ -1,6 +1,4 @@
 from __future__ import annotations
-from controllers.common.human_input import HumanInputFormSubmitPayload
-from flask import Flask
 
 import json
 from datetime import UTC, datetime
@@ -8,8 +6,9 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Response
+from flask import Flask, Response
 
+from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
     ConsoleWorkflowEventsApi,
@@ -121,7 +120,11 @@ def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.Monkey
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
         with pytest.raises(NotFoundError):
-            handler(api, HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}), form_token="token")
+            handler(
+                api,
+                HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+                form_token="token",
+            )
 
 
 def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -150,7 +153,11 @@ def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
         with pytest.raises(NotFoundError):
-            handler(api, HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}), form_token="token")
+            handler(
+                api,
+                HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+                form_token="token",
+            )
 
 
 def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -182,7 +189,11 @@ def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         method="POST",
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
-        response = handler(api, HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}), form_token="token")
+        response = handler(
+            api,
+            HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+            form_token="token",
+        )
 
     assert response.get_json() == {}
     submit_mock.assert_called_once()

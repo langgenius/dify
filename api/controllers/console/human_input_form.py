@@ -2,7 +2,6 @@
 Console/Studio Human Input Form APIs.
 """
 
-from controllers.console.wraps import model_validate
 import json
 import logging
 from collections.abc import Generator
@@ -14,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
