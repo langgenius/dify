@@ -5,6 +5,7 @@ import type {
 } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -21,7 +22,6 @@ import {
   useEmbeddedChatbot,
 } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import Tooltip from '@/app/components/base/tooltip'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
@@ -78,12 +78,21 @@ const TryApp: FC<Props> = ({
           </div>
           <div className="flex items-center gap-1">
             {currentConversationId && (
-              <Tooltip
-                popupContent={t('chat.resetChat', { ns: 'share' })}
-              >
-                <ActionButton size="l" onClick={handleNewConversation}>
-                  <RiResetLeftLine className="h-[18px] w-[18px]" />
-                </ActionButton>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <ActionButton
+                      size="l"
+                      aria-label={t('chat.resetChat', { ns: 'share' })}
+                      onClick={handleNewConversation}
+                    >
+                      <RiResetLeftLine className="h-[18px] w-[18px]" aria-hidden="true" />
+                    </ActionButton>
+                  )}
+                />
+                <TooltipContent>
+                  {t('chat.resetChat', { ns: 'share' })}
+                </TooltipContent>
               </Tooltip>
             )}
             {currentConversationId && inputsForms.length > 0 && (

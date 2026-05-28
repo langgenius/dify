@@ -18,7 +18,7 @@ const StatusContainer: FC<Props> = ({
   return (
     <div
       className={cn(
-        'relative rounded-lg border px-3 py-2.5 system-xs-regular break-all',
+        'relative rounded-lg border border-workflow-display-disabled-border-1 px-3 py-2.5 system-xs-regular break-all',
         status === 'succeeded' && 'border-[rgba(23,178,106,0.8)] bg-workflow-display-success-bg bg-[url(~@/app/components/workflow/run/assets/bg-line-success.svg)] text-text-success',
         status === 'succeeded' && theme === Theme.light && 'shadow-[inset_2px_2px_0_0_rgba(255,255,255,0.5),inset_0_1px_3px_0_rgba(0,0,0,0.12),inset_0_2px_24px_0_rgba(23,178,106,0.2),0_1px_2px_0_rgba(9,9,11,0.05),0_0_0_1px_rgba(0,0,0,0.05)]',
         status === 'succeeded' && theme === Theme.dark && 'shadow-[inset_2px_2px_0_0_rgba(255,255,255,0.12),inset_0_1px_3px_0_rgba(0,0,0,0.4),inset_0_2px_24px_0_rgba(23,178,106,0.25),0_1px_2px_0_rgba(0,0,0,0.1),0_0_0_1px_rgba(24,24,27,0.95)]',

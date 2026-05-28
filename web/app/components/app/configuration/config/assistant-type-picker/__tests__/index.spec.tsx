@@ -841,11 +841,11 @@ describe('AssistantTypePicker', () => {
     it('should have proper ARIA state for dropdown', async () => {
       // Arrange
       const user = userEvent.setup()
-      const { container } = renderComponent()
+      renderComponent()
 
       // Act - Check initial state
-      const portalContainer = container.querySelector('[data-state]')
-      expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
+      const triggerButton = screen.getByRole('button', { name: /chatAssistant\.name/i })
+      expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
 
       // Open dropdown
       const trigger = screen.getByText(/chatAssistant.name/i)
@@ -853,23 +853,22 @@ describe('AssistantTypePicker', () => {
 
       // Assert - State should change to open
       await waitFor(() => {
-        const openPortal = container.querySelector('[data-state="open"]')
-        expect(openPortal)!.toBeInTheDocument()
+        expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
       })
     })
 
     it('should have proper data-state attribute', () => {
       // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
-      // Assert - Portal should have data-state for accessibility
-      const portalContainer = container.querySelector('[data-state]')
-      expect(portalContainer)!.toBeInTheDocument()
-      expect(portalContainer)!.toHaveAttribute('data-state')
+      // Assert - Trigger should expose expanded state for accessibility
+      const triggerButton = screen.getByRole('button', { name: /chatAssistant\.name/i })
+      expect(triggerButton).toBeInTheDocument()
+      expect(triggerButton).toHaveAttribute('aria-expanded')
 
       // Should start in closed state
       // Should start in closed state
-      expect(portalContainer)!.toHaveAttribute('data-state', 'closed')
+      expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('should maintain accessible structure for screen readers', () => {

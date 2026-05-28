@@ -1,9 +1,10 @@
+import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node } from '../types'
-import type { WorkflowHistoryState } from '../workflow-history-store'
-import { render, renderHook, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { renderHook } from '@testing-library/react'
+import { WorkflowContext } from '../context'
+import { createWorkflowStore } from '../store/workflow'
 import { BlockEnum } from '../types'
-import { useWorkflowHistoryStore, WorkflowHistoryProvider } from '../workflow-history-store'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 const nodes: Node[] = [
   {
@@ -36,44 +37,28 @@ const edges: Edge[] = [
   },
 ]
 
-const HistoryConsumer = () => {
-  const { store, shortcutsEnabled, setShortcutsEnabled } = useWorkflowHistoryStore()
+const createWrapper = () => {
+  const workflowStore = createWorkflowStore({})
+  workflowStore.temporal.getState().pause()
+  workflowStore.getState().setWorkflowHistory({
+    nodes,
+    edges,
+    workflowHistoryEvent: undefined,
+    workflowHistoryEventMeta: undefined,
+  })
+  workflowStore.temporal.getState().clear()
+  workflowStore.temporal.getState().resume()
 
-  return (
-    <button onClick={() => setShortcutsEnabled(!shortcutsEnabled)}>
-      {`nodes:${store.getState().nodes.length} shortcuts:${String(shortcutsEnabled)}`}
-    </button>
+  return ({ children }: { children: React.ReactNode }) => (
+    <WorkflowContext.Provider value={workflowStore}>
+      {children}
+    </WorkflowContext.Provider>
   )
 }
 
-describe('WorkflowHistoryProvider', () => {
-  it('provides workflow history state and shortcut toggles', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <WorkflowHistoryProvider
-        nodes={nodes}
-        edges={edges}
-      >
-        <HistoryConsumer />
-      </WorkflowHistoryProvider>,
-    )
-
-    expect(screen.getByRole('button', { name: 'nodes:1 shortcuts:true' }))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'nodes:1 shortcuts:true' }))
-    expect(screen.getByRole('button', { name: 'nodes:1 shortcuts:false' }))!.toBeInTheDocument()
-  })
-
+describe('workflow history store', () => {
   it('sanitizes selected flags when history state is replaced through the exposed store api', () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <WorkflowHistoryProvider
-        nodes={nodes}
-        edges={edges}
-      >
-        {children}
-      </WorkflowHistoryProvider>
-    )
+    const wrapper = createWrapper()
 
     const { result } = renderHook(() => useWorkflowHistoryStore(), { wrapper })
     const nextState: WorkflowHistoryState = {
@@ -91,7 +76,7 @@ describe('WorkflowHistoryProvider', () => {
 
   it('throws when consumed outside the provider', () => {
     expect(() => renderHook(() => useWorkflowHistoryStore())).toThrow(
-      'useWorkflowHistoryStoreApi must be used within a WorkflowHistoryProvider',
+      'Missing WorkflowContext.Provider in the tree',
     )
   })
 })

@@ -1,46 +1,39 @@
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
-import * as React from 'react'
-import Drawer from './drawer'
+import { CompletedDrawer } from './drawer'
 
-type IFullScreenDrawerProps = {
-  isOpen: boolean
+type DocumentDetailDrawerProps = {
+  open: boolean
   onClose?: () => void
   fullScreen: boolean
-  showOverlay?: boolean
-  needCheckChunks?: boolean
   modal?: boolean
+  children: ReactNode
 }
 
-const FullScreenDrawer = ({
-  isOpen,
+export function DocumentDetailDrawer({
+  open,
   onClose = noop,
   fullScreen,
   children,
-  showOverlay = true,
-  needCheckChunks = false,
   modal = false,
-}: React.PropsWithChildren<IFullScreenDrawerProps>) => {
+}: DocumentDetailDrawerProps) {
   return (
-    <Drawer
-      open={isOpen}
+    <CompletedDrawer
+      open={open}
       onClose={onClose}
       panelClassName={cn(
         fullScreen
-          ? 'w-full'
-          : 'w-[568px] pt-16 pr-2 pb-2',
+          ? 'w-full data-[swipe-direction=left]:w-full data-[swipe-direction=right]:w-full'
+          : 'w-[568px] pt-16 pr-2 pb-2 data-[swipe-direction=left]:w-[568px] data-[swipe-direction=right]:w-[568px]',
       )}
       panelContentClassName={cn(
         'bg-components-panel-bg',
         !fullScreen && 'rounded-xl border-[0.5px] border-components-panel-border',
       )}
-      showOverlay={showOverlay}
-      needCheckChunks={needCheckChunks}
       modal={modal}
     >
       {children}
-    </Drawer>
+    </CompletedDrawer>
   )
 }
-
-export default FullScreenDrawer

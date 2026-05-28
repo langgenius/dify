@@ -88,7 +88,6 @@ describe('createWorkflowStore', () => {
       ['showSingleRunPanel', 'setShowSingleRunPanel', true],
       ['nodeAnimation', 'setNodeAnimation', true],
       ['candidateNode', 'setCandidateNode', undefined],
-      ['nodeMenu', 'setNodeMenu', { top: 100, left: 200, nodeId: 'n1' }],
       ['showAssignVariablePopup', 'setShowAssignVariablePopup', undefined],
       ['hoveringAssignVariableGroupId', 'setHoveringAssignVariableGroupId', 'group-1'],
       ['connectingNodePayload', 'setConnectingNodePayload', { nodeId: 'n1', nodeType: 'llm', handleType: 'source', handleId: 'h1' }],
@@ -108,9 +107,7 @@ describe('createWorkflowStore', () => {
       ['showWorkflowVersionHistoryPanel', 'setShowWorkflowVersionHistoryPanel', true],
       ['showInputsPanel', 'setShowInputsPanel', true],
       ['showDebugAndPreviewPanel', 'setShowDebugAndPreviewPanel', true],
-      ['panelMenu', 'setPanelMenu', { top: 10, left: 20 }],
-      ['selectionMenu', 'setSelectionMenu', { clientX: 50, clientY: 60 }],
-      ['edgeMenu', 'setEdgeMenu', { clientX: 320, clientY: 180, edgeId: 'e1' }],
+      ['contextMenuTarget', 'setContextMenuTarget', { type: 'edge', edgeId: 'e1' }],
       ['showVariableInspectPanel', 'setShowVariableInspectPanel', true],
       ['initShowLastRunTab', 'setInitShowLastRunTab', true],
     ])('should update %s', (stateKey, setter, value) => {

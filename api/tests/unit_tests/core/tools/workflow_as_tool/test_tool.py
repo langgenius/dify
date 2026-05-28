@@ -147,6 +147,142 @@ def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.Monke
     assert call_kwargs["pause_state_config"] is None
 
 
+def test_workflow_tool_passes_parent_trace_context_from_runtime(monkeypatch: pytest.MonkeyPatch):
+    """Ensure nested workflow runtime metadata is forwarded as parent trace context."""
+    tool = _build_tool()
+    tool.set_parent_trace_context(
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
+    }
+
+
+def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypatch: pytest.MonkeyPatch):
+    """Ensure private trace context does not overwrite same-named workflow inputs."""
+    tool = _build_tool()
+    tool.entity.parameters = [
+        ToolParameter.get_simple_instance(
+            name="outer_workflow_run_id",
+            llm_description="User workflow input",
+            typ=ToolParameter.ToolParameterType.STRING,
+            required=False,
+        ),
+        ToolParameter.get_simple_instance(
+            name="outer_node_execution_id",
+            llm_description="User node input",
+            typ=ToolParameter.ToolParameterType.STRING,
+            required=False,
+        ),
+    ]
+    tool.set_parent_trace_context(
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(
+        tool.invoke(
+            "test_user",
+            {
+                "outer_workflow_run_id": "user-workflow-input",
+                "outer_node_execution_id": "user-node-input",
+            },
+        )
+    )
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["inputs"]["outer_workflow_run_id"] == "user-workflow-input"
+    assert call_kwargs["args"]["inputs"]["outer_node_execution_id"] == "user-node-input"
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
+    }
+
+
+def test_workflow_tool_can_clear_parent_trace_context(monkeypatch: pytest.MonkeyPatch):
+    """Ensure reused WorkflowTool instances do not keep stale parent trace context."""
+    tool = _build_tool()
+    tool.set_parent_trace_context(
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
+    )
+    tool.clear_parent_trace_context()
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert "parent_trace_context" not in call_kwargs["args"]
+
+
+@pytest.mark.parametrize(
+    "runtime_parameters",
+    [
+        {},
+        {"outer_workflow_run_id": "outer-workflow-run-1"},
+        {"outer_node_execution_id": "outer-node-execution-1"},
+        {"outer_workflow_run_id": None, "outer_node_execution_id": None},
+    ],
+)
+def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
+    monkeypatch: pytest.MonkeyPatch,
+    runtime_parameters: dict[str, Any],
+):
+    """Ensure incomplete runtime metadata does not leak parent trace context into generator args."""
+    tool = _build_tool()
+    tool.runtime.runtime_parameters = runtime_parameters
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert "parent_trace_context" not in call_kwargs["args"]
+
+
 def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch: pytest.MonkeyPatch):
     """Test that WorkflowTool should generate variable messages when there are outputs"""
     tool = _build_tool()

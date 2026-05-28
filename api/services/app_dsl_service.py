@@ -10,7 +10,6 @@ from uuid import uuid4
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from packaging import version
 from packaging.version import parse as parse_version
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -40,6 +39,7 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
+from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -62,30 +62,6 @@ class Import(BaseModel):
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
-
-
-def _check_version_compatibility(imported_version: str) -> ImportStatus:
-    """Determine import status based on version comparison"""
-    try:
-        current_ver = version.parse(CURRENT_DSL_VERSION)
-        imported_ver = version.parse(imported_version)
-    except version.InvalidVersion:
-        return ImportStatus.FAILED
-
-    # If imported version is newer than current, always return PENDING
-    if imported_ver > current_ver:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's major, return PENDING
-    if imported_ver.major < current_ver.major:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
-    if imported_ver.minor < current_ver.minor:
-        return ImportStatus.COMPLETED_WITH_WARNINGS
-
-    # If imported version equals or is older than current's micro, return COMPLETED
-    return ImportStatus.COMPLETED
 
 
 class PendingData(BaseModel):
@@ -121,6 +97,7 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         app_id: str | None = None,
+        import_app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -203,7 +180,7 @@ class AppDslService:
             # check if imported_version is a float-like string
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
-            status = _check_version_compatibility(imported_version)
+            status = check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
 
             # Extract app data
             app_data = data.get("app")
@@ -286,6 +263,7 @@ class AppDslService:
                 icon=icon,
                 icon_background=icon_background,
                 dependencies=check_dependencies_pending_data,
+                import_app_id=import_app_id,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -409,6 +387,7 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         dependencies: list[PluginDependency] | None = None,
+        import_app_id: str | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -441,7 +420,7 @@ class AppDslService:
 
             # Create new app
             app = App()
-            app.id = str(uuid4())
+            app.id = import_app_id or str(uuid4())
             app.tenant_id = account.current_tenant_id
             app.mode = app_mode
             app.name = name or app_data.get("name", "")

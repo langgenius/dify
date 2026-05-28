@@ -22,8 +22,8 @@ const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) =
         size="small"
         variant="ghost"
       >
-        <div className="flex h-3.5 w-3.5 items-center justify-center">
-          <RiKey2Line className="h-3.5 w-3.5 text-text-tertiary" />
+        <div className="flex size-3.5 items-center justify-center">
+          <RiKey2Line className="size-3.5 text-text-tertiary" />
         </div>
         <div className={`px-[3px] system-xs-medium text-text-tertiary ${textCls}`}>{t('apiKey', { ns: 'appApi' })}</div>
       </Button>

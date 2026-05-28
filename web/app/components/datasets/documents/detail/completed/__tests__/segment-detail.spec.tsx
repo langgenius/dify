@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode } from '@/models/datasets'
 
-import SegmentDetail from '../segment-detail'
+import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
 let mockIndexingTechnique = IndexingType.QUALIFIED
@@ -167,7 +167,6 @@ describe('SegmentDetail', () => {
     onCancel: vi.fn(),
     isEditMode: false,
     docForm: ChunkingMode.text,
-    onModalStateChange: vi.fn(),
   }
 
   describe('Rendering', () => {
@@ -279,21 +278,17 @@ describe('SegmentDetail', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(<SegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
+      render(<SegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
 
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<SegmentDetail {...defaultProps} />)
+      render(<SegmentDetail {...defaultProps} />)
 
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })
@@ -352,35 +347,12 @@ describe('SegmentDetail', () => {
       expect(screen.getByTestId('regeneration-modal'))!.toBeInTheDocument()
     })
 
-    it('should call onModalStateChange when regeneration modal opens', () => {
-      const mockOnModalStateChange = vi.fn()
-      render(
-        <SegmentDetail
-          {...defaultProps}
-          isEditMode={true}
-          onModalStateChange={mockOnModalStateChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('regenerate-btn'))
-
-      expect(mockOnModalStateChange).toHaveBeenCalledWith(true)
-    })
-
     it('should close modal when cancel is clicked', () => {
-      const mockOnModalStateChange = vi.fn()
-      render(
-        <SegmentDetail
-          {...defaultProps}
-          isEditMode={true}
-          onModalStateChange={mockOnModalStateChange}
-        />,
-      )
+      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
       fireEvent.click(screen.getByTestId('regenerate-btn'))
 
       fireEvent.click(screen.getByTestId('cancel-regeneration'))
 
-      expect(mockOnModalStateChange).toHaveBeenCalledWith(false)
       expect(screen.queryByTestId('regeneration-modal')).not.toBeInTheDocument()
     })
   })
@@ -504,22 +476,18 @@ describe('SegmentDetail', () => {
 
     it('should close modal and edit drawer when close after regeneration is clicked', () => {
       const mockOnCancel = vi.fn()
-      const mockOnModalStateChange = vi.fn()
       render(
         <SegmentDetail
           {...defaultProps}
           isEditMode={true}
           onCancel={mockOnCancel}
-          onModalStateChange={mockOnModalStateChange}
         />,
       )
 
-      // Open regeneration modal
       fireEvent.click(screen.getByTestId('regenerate-btn'))
 
       fireEvent.click(screen.getByTestId('close-regeneration'))
 
-      expect(mockOnModalStateChange).toHaveBeenCalledWith(false)
       expect(mockOnCancel).toHaveBeenCalled()
     })
   })

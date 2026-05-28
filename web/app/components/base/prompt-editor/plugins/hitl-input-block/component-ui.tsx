@@ -4,6 +4,7 @@ import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Type } from '@/app/components/workflow/nodes/llm/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -11,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
 import ActionButton from '../../../action-button'
 import { VariableX } from '../../../icons/src/vender/workflow'
-import Modal from '../../../modal'
 import InputField from './input-field'
 import VariableBlock from './variable-block'
 
@@ -136,20 +136,18 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             <div className="flex h-full items-center" ref={editBtnRef}>
               <ActionButton
                 size="s"
-                data-testid="action-btn-edit"
                 aria-label={t('operation.edit', { ns: 'common' })}
               >
-                <span className="i-ri-edit-line size-4 text-text-tertiary" />
+                <span className="i-ri-edit-line size-4 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
             </div>
 
             <div className="flex h-full items-center" ref={removeBtnRef}>
               <ActionButton
                 size="s"
-                data-testid="action-btn-remove"
                 aria-label={t('operation.remove', { ns: 'common' })}
               >
-                <span className="i-ri-delete-bin-line size-4 text-text-tertiary" />
+                <span className="i-ri-delete-bin-line size-4 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
             </div>
           </div>
@@ -157,20 +155,24 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       </div>
 
       {isShowEditModal && (
-        <Modal
-          isShow
-          onClose={hideEditModal}
-          wrapperClassName="z-999"
-          className="max-w-[372px] p-0!"
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open)
+              hideEditModal()
+          }}
         >
-          <InputField
-            nodeId={nodeId}
-            isEdit
-            payload={formInput}
-            onChange={handleChange}
-            onCancel={hideEditModal}
-          />
-        </Modal>
+          <DialogContent className="w-full max-w-[372px] overflow-hidden! border-none p-0! text-left align-middle">
+
+            <InputField
+              nodeId={nodeId}
+              isEdit
+              payload={formInput}
+              onChange={handleChange}
+              onCancel={hideEditModal}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

@@ -14,7 +14,7 @@ from core.telemetry.events import TelemetryContext, TelemetryEvent
 
 
 @pytest.fixture
-def telemetry_test_setup(monkeypatch):
+def telemetry_test_setup(monkeypatch: pytest.MonkeyPatch):
     module_name = "core.ops.ops_trace_manager"
     ops_stub = types.ModuleType(module_name)
 

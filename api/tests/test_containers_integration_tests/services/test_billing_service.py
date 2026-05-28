@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from extensions.ext_redis import redis_client
@@ -24,7 +25,7 @@ class TestBillingServiceGetPlanBulkWithCache:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_redis_cleanup(self, flask_app_with_containers):
+    def setup_redis_cleanup(self, flask_app_with_containers: Flask):
         """Clean up Redis cache before and after each test."""
         with flask_app_with_containers.app_context():
             # Clean up before test
@@ -56,7 +57,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             return value
         return None
 
-    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers: Flask):
         """Test bulk plan retrieval when all tenants are in cache."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -87,7 +88,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify API was not called
             mock_get_plan_bulk.assert_not_called()
 
-    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers: Flask):
         """Test bulk plan retrieval when all tenants are not in cache."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -127,7 +128,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert ttl_1 > 0
             assert ttl_1 <= 600  # Should be <= 600 seconds
 
-    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers: Flask):
         """Test bulk plan retrieval when some tenants are in cache, some are not."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -158,7 +159,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             cached_data_3 = json.loads(cached_3)
             assert cached_data_3 == missing_plan["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask):
         """Test fallback to API when Redis mget fails."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -189,7 +190,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert cached_1 is not None
             assert cached_2 is not None
 
-    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers: Flask):
         """Test fallback to API when cache contains invalid JSON."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -241,7 +242,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             cached_data_3 = json.loads(cached_3)
             assert cached_data_3 == expected_plans["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask):
         """Test fallback to API when cache data doesn't match SubscriptionPlan schema."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -274,7 +275,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
 
-    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers: Flask):
         """Test that pipeline failure doesn't affect return value."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -303,7 +304,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify pipeline was attempted
             mock_pipeline.assert_called_once()
 
-    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers: Flask):
         """Test with empty tenant_ids list."""
         with flask_app_with_containers.app_context():
             # Act
@@ -321,7 +322,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # But we should check that mget was not called at all
             # Since we can't easily verify this without more mocking, we just verify the result
 
-    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers):
+    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers: Flask):
         """Test that expired cache keys are treated as cache misses."""
         with flask_app_with_containers.app_context():
             # Arrange

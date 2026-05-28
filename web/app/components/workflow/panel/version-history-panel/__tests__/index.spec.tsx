@@ -49,7 +49,7 @@ type MockRestoreConfirmModalProps = {
 type MockVersionHistoryItemProps = {
   item: VersionHistory
   onClick: (item: VersionHistory) => void
-  handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
 vi.mock('@/context/app-context', () => ({
@@ -148,7 +148,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
 vi.mock('../version-history-item', () => ({
   default: (props: MockVersionHistoryItemProps) => {
     const MockVersionHistoryItem = () => {
-      const { item, onClick, handleClickMenuItem } = props
+      const { item, onClick, handleClickActionMenuItem } = props
 
       useEffect(() => {
         if (item.version === WorkflowVersion.Draft)
@@ -159,7 +159,7 @@ vi.mock('../version-history-item', () => ({
         <div>
           <button onClick={() => onClick(item)}>{item.marked_name || item.version}</button>
           {item.version !== WorkflowVersion.Draft && (
-            <button onClick={() => handleClickMenuItem(VersionHistoryContextMenuOptions.restore)}>
+            <button onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.restore)}>
               {`restore-${item.id}`}
             </button>
           )}

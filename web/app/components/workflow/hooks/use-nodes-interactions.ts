@@ -137,6 +137,12 @@ const getUniquePastedNodeTitle = (
   return titleCandidate
 }
 
+const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
+  return node.type === CUSTOM_NOTE_NODE
+    && target instanceof HTMLElement
+    && !!target.closest('.note-editor-theme_link')
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const { data: appDslVersion } = useSuspenseQuery({
@@ -434,16 +440,12 @@ export const useNodesInteractions = () => {
       if (initShowLastRunTab)
         workflowStore.setState({ initShowLastRunTab: true })
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const selectedNode = nodes.find(node => node.data.selected)
-
-      if (!cancelSelection && selectedNode?.id === nodeId)
-        return
 
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
-          if (node.id === nodeId)
-            node.data.selected = !cancelSelection
-          else node.data.selected = false
+          const selected = node.id === nodeId && !cancelSelection
+          node.selected = selected
+          node.data.selected = selected
         })
       })
       setNodes(newNodes, false)
@@ -474,9 +476,11 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
-    (_, node) => {
+    (event, node) => {
       const { controlMode } = workflowStore.getState()
       if (controlMode === ControlMode.Comment)
+        return
+      if (isNoteLinkClickTarget(event.target, node))
         return
       if (node.type === CUSTOM_ITERATION_START_NODE)
         return
@@ -1681,6 +1685,7 @@ export const useNodesInteractions = () => {
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_ITERATION_START_NODE
       ) {
+        e.stopPropagation()
         return
       }
 
@@ -1688,23 +1693,18 @@ export const useNodesInteractions = () => {
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_LOOP_START_NODE
       ) {
+        e.stopPropagation()
         return
       }
 
       e.preventDefault()
-      const container = document.querySelector('#workflow-container')
-      const { x, y } = container!.getBoundingClientRect()
       workflowStore.setState({
-        panelMenu: undefined,
-        selectionMenu: undefined,
-        edgeMenu: undefined,
-        nodeMenu: {
-          top: e.clientY - y,
-          left: e.clientX - x,
+        contextMenuTarget: {
+          type: 'node',
           nodeId: node.id,
         },
       })
-      handleNodeSelect(node.id)
+      handleNodeSelect(node.id, true)
     },
     [workflowStore, handleNodeSelect],
   )
@@ -2472,7 +2472,7 @@ export const useNodesInteractions = () => {
     setNodes(nodes, shouldBroadcast, 'nodes:history-back')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('undo')
-    workflowStore.setState({ edgeMenu: undefined })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
     workflowStore,
@@ -2497,7 +2497,7 @@ export const useNodesInteractions = () => {
     setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('redo')
-    workflowStore.setState({ edgeMenu: undefined })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
     redo,

@@ -4,6 +4,17 @@ import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 
+const GENERATED_IGNORES = [
+  '**/storybook-static/',
+  '**/.next/',
+  'web/next/',
+  'web/next-env.d.ts',
+  '**/dist/',
+  '**/coverage/',
+  'e2e/.auth/',
+  'e2e/cucumber-report/',
+]
+
 export default antfu(
   {
     ignores: original => [
@@ -11,10 +22,15 @@ export default antfu(
       '!packages/**',
       '!web/**',
       '!e2e/**',
+      '!cli/**',
+      'cli/context/**',
+      'cli/docs/**',
+      'cli/oclif.manifest.json',
       '!eslint.config.mjs',
       '!package.json',
       '!pnpm-workspace.yaml',
       '!vite.config.ts',
+      ...GENERATED_IGNORES,
       ...original,
     ],
     typescript: {

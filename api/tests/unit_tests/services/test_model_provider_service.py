@@ -90,7 +90,7 @@ class TestModelProviderServiceConfiguration:
         )
         manager.get_configurations.return_value = {"openai": allowed, "embedding": filtered}
 
-        result = service.get_provider_list(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_provider_list(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert len(result) == 1
         assert result[0].provider == "openai"
@@ -232,7 +232,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -245,7 +245,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                 },
@@ -258,7 +258,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                     "credential_name": "cred-a",
@@ -277,7 +277,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                     "credential_id": "cred-1",
@@ -298,7 +298,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -311,7 +311,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -324,7 +324,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -337,7 +337,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                 },
                 "delete_custom_model",
@@ -425,7 +425,7 @@ class TestModelProviderServiceListingsAndDefaults:
         provider_configurations = SimpleNamespace(get_models=MagicMock(return_value=models))
         manager.get_configurations.return_value = provider_configurations
 
-        result = service.get_models_by_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_models_by_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
         assert len(result) == 1
@@ -495,7 +495,7 @@ class TestModelProviderServiceListingsAndDefaults:
             ),
         )
 
-        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert result is not None
         assert result.model == "gpt-4o"
@@ -506,7 +506,7 @@ class TestModelProviderServiceListingsAndDefaults:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.return_value = None
 
-        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert result is None
 
@@ -514,7 +514,7 @@ class TestModelProviderServiceListingsAndDefaults:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.side_effect = RuntimeError("boom")
 
-        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert result is None
 
@@ -523,7 +523,7 @@ class TestModelProviderServiceListingsAndDefaults:
 
         service.update_default_model_of_model_type(
             tenant_id="tenant-1",
-            model_type=ModelType.LLM.value,
+            model_type=ModelType.LLM,
             provider="openai",
             model="gpt-4o",
         )
@@ -593,7 +593,7 @@ class TestModelProviderServiceListingsAndDefaults:
             tenant_id="tenant-1",
             provider="openai",
             model="gpt-4o",
-            model_type=ModelType.LLM.value,
+            model_type=ModelType.LLM,
         )
 
         getattr(provider_configuration, provider_method_name).assert_called_once_with(

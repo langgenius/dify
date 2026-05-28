@@ -46,6 +46,11 @@ _file_access_controller = DatabaseFileAccessController()
 
 
 class _WorkflowChildEngineBuilder:
+    tenant_id: str
+
+    def __init__(self, *, tenant_id: str) -> None:
+        self.tenant_id = tenant_id
+
     @staticmethod
     def _has_node_id(graph_config: Mapping[str, Any], node_id: str) -> bool | None:
         """
@@ -107,7 +112,7 @@ class _WorkflowChildEngineBuilder:
             config=config,
             child_engine_builder=self,
         )
-        child_engine.layer(LLMQuotaLayer())
+        child_engine.layer(LLMQuotaLayer(tenant_id=self.tenant_id))
         return child_engine
 
 
@@ -176,7 +181,7 @@ class WorkflowEntry:
         self.command_channel = command_channel
         execution_context = capture_current_context()
         graph_runtime_state.execution_context = execution_context
-        self._child_engine_builder = _WorkflowChildEngineBuilder()
+        self._child_engine_builder = _WorkflowChildEngineBuilder(tenant_id=tenant_id)
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -208,7 +213,7 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
-        self.graph_engine.layer(LLMQuotaLayer())
+        self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():

@@ -62,7 +62,6 @@ let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
 let mockIsAllowPublishAsCustom = true
 const mockUseBoolean = vi.hoisted(() => vi.fn())
-const mockUseKeyPress = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
   useRouter: () => ({ push: mockPush }),
@@ -76,8 +75,15 @@ vi.mock('@/next/link', () => ({
 
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => mockUseBoolean(initial),
-  useKeyPress: (...args: unknown[]) => mockUseKeyPress(...args),
 }))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
@@ -128,14 +134,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
-}))
-
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span data-testid="shortcuts">{keys.join('+')}</span>,
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
@@ -220,7 +218,6 @@ describe('Popup', () => {
       setFalse: vi.fn(),
       setTrue: vi.fn(),
     }])
-    mockUseKeyPress.mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -244,10 +241,10 @@ describe('Popup', () => {
     })
 
     it('should render publish button with shortcuts', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
-      expect(screen.getByTestId('shortcuts')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
     it('should render "Go to Add Documents" button', () => {
@@ -327,11 +324,18 @@ describe('Popup', () => {
 
     it('should request closing the outer popover before opening publish-as modal', () => {
       const onRequestClose = vi.fn()
-      render(<Popup onRequestClose={onRequestClose} />)
+      const onShowPublishAsKnowledgePipelineModal = vi.fn()
+      render(
+        <Popup
+          onRequestClose={onRequestClose}
+          onShowPublishAsKnowledgePipelineModal={onShowPublishAsKnowledgePipelineModal}
+        />,
+      )
 
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
+      expect(onShowPublishAsKnowledgePipelineModal).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -349,27 +353,6 @@ describe('Popup', () => {
       fireEvent.click(screen.getByTestId('alert-dialog-close'))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Publish params', () => {
-    it('should publish as template with empty pipeline id fallback', async () => {
-      mockPipelineId = undefined
-      mockUseBoolean
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce(() => [true, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-      render(<Popup />)
-
-      fireEvent.click(screen.getByTestId('publish-as-confirm'))
-
-      expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-        pipelineId: '',
-        name: 'My Pipeline',
-        icon_info: { icon_type: 'emoji' },
-        description: 'desc',
-      })
     })
   })
 

@@ -74,7 +74,7 @@ const Apps = ({
     const filteredByCategory = allList.filter((item) => {
       if (currCategory === allCategoriesEn)
         return true
-      return item.category === currCategory
+      return item.categories?.includes(currCategory) ?? false
     })
     if (currentType.length === 0)
       return filteredByCategory
@@ -127,7 +127,7 @@ const Apps = ({
         icon_background,
         description,
       })
-      trackCreateApp({ appMode: mode })
+      trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))
@@ -237,8 +237,8 @@ function NoTemplateFound() {
   const { t } = useTranslation()
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
-      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
-        <RiRobot2Line className="h-5 w-5 text-text-tertiary" />
+      <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
+        <RiRobot2Line className="size-5 text-text-tertiary" />
       </div>
       <p className="title-md-semi-bold text-text-primary">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
       <p className="system-sm-regular text-text-tertiary">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>

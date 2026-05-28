@@ -151,10 +151,10 @@ describe('TextGenerationResultPanel', () => {
       values: baseProps.exportRes,
     }))
     expect(screen.getByText('share.generation.batchFailed.info:{"num":1}'))!.toBeInTheDocument()
-    expect(screen.getByText('share.generation.batchFailed.retry'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }))!.toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'appApi.loading' }))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('share.generation.batchFailed.retry'))
+    fireEvent.click(screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }))
     expect(handleRetryAllFailedTask).toHaveBeenCalledTimes(1)
   })
 

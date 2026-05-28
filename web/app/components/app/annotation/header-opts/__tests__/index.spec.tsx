@@ -3,146 +3,22 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import type { AnnotationItemBasic } from '../../type'
 import type { Locale } from '@/i18n-config'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 import HeaderOptions from '../index'
 
-vi.mock('@headlessui/react', () => {
-  type PopoverContextValue = { open: boolean, setOpen: (open: boolean) => void }
-  type MenuContextValue = { open: boolean, setOpen: (open: boolean) => void }
-  const PopoverContext = React.createContext<PopoverContextValue | null>(null)
-  const MenuContext = React.createContext<MenuContextValue | null>(null)
-
-  const Popover = ({ children }: { children: React.ReactNode | ((props: { open: boolean }) => React.ReactNode) }) => {
-    const [open, setOpen] = React.useState(false)
-    const value = React.useMemo(() => ({ open, setOpen }), [open])
-    return (
-      <PopoverContext.Provider value={value}>
-        {typeof children === 'function' ? children({ open }) : children}
-      </PopoverContext.Provider>
-    )
-  }
-
-  const PopoverButton = React.forwardRef(({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }, ref: React.Ref<HTMLButtonElement>) => {
-    const context = React.useContext(PopoverContext)
-    const handleClick = () => {
-      context?.setOpen(!context.open)
-      onClick?.()
-    }
-    return (
-      <button
-        ref={ref}
-        type="button"
-        aria-expanded={context?.open ?? false}
-        onClick={handleClick}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  })
-
-  const PopoverPanel = React.forwardRef(({ children, ...props }: { children: React.ReactNode | ((props: { close: () => void }) => React.ReactNode) }, ref: React.Ref<HTMLDivElement>) => {
-    const context = React.useContext(PopoverContext)
-    if (!context?.open)
-      return null
-    const content = typeof children === 'function' ? children({ close: () => context.setOpen(false) }) : children
-    return (
-      <div ref={ref} {...props}>
-        {content}
-      </div>
-    )
-  })
-
-  const Menu = ({ children }: { children: React.ReactNode }) => {
-    const [open, setOpen] = React.useState(false)
-    const value = React.useMemo(() => ({ open, setOpen }), [open])
-    return (
-      <MenuContext.Provider value={value}>
-        {children}
-      </MenuContext.Provider>
-    )
-  }
-
-  const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }) => {
-    const context = React.useContext(MenuContext)
-    const handleClick = () => {
-      context?.setOpen(!context.open)
-      onClick?.()
-    }
-    return (
-      <button type="button" aria-expanded={context?.open ?? false} onClick={handleClick} {...props}>
-        {children}
-      </button>
-    )
-  }
-
-  const MenuItems = ({ children, ...props }: { children: React.ReactNode }) => {
-    const context = React.useContext(MenuContext)
-    if (!context?.open)
-      return null
-    return (
-      <div {...props}>
-        {children}
-      </div>
-    )
-  }
-
-  return {
-    Dialog: ({ open, children, className }: { open?: boolean, children: React.ReactNode, className?: string }) => {
-      if (open === false)
-        return null
-      return (
-        <div role="dialog" className={className}>
-          {children}
-        </div>
-      )
-    },
-    DialogBackdrop: ({ children, className, onClick }: { children?: React.ReactNode, className?: string, onClick?: () => void }) => (
-      <div className={className} onClick={onClick}>
-        {children}
-      </div>
-    ),
-    DialogPanel: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
-      <div className={className} {...props}>
-        {children}
-      </div>
-    ),
-    DialogTitle: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
-      <div className={className} {...props}>
-        {children}
-      </div>
-    ),
-    Popover,
-    PopoverButton,
-    PopoverPanel,
-    Menu,
-    MenuButton,
-    MenuItems,
-    Transition: ({ show = true, children }: { show?: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-    TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  }
-})
-
-let lastCSVDownloaderProps: Record<string, unknown> | undefined
-const mockCSVDownloader = vi.fn(({ children, ...props }) => {
-  lastCSVDownloaderProps = props
-  return (
-    <div data-testid="csv-downloader">
-      {children}
-    </div>
-  )
-})
+const mockJsonToCSV = vi.fn((_: unknown) => 'csv-content')
+const mockCSVDownloader = vi.fn(({ children }) => <>{children}</>)
 
 vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => ({
     CSVDownloader: (props: any) => mockCSVDownloader(props),
     Type: { Link: 'link' },
   }),
+  jsonToCSV: (data: unknown) => mockJsonToCSV(data),
 }))
 
 vi.mock('@/service/annotation', () => ({
@@ -194,33 +70,28 @@ const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) =
 
 const expandExportMenu = async (user: ReturnType<typeof userEvent.setup>) => {
   await openOperationsPopover(user)
-  const exportLabel = await screen.findByText('appAnnotation.table.header.bulkExport')
-  const exportButton = exportLabel.closest('button') as HTMLButtonElement
-  expect(exportButton).toBeTruthy()
-  await user.click(exportButton)
+  const exportItem = await screen.findByRole('menuitem', { name: /appAnnotation\.table\.header\.bulkExport/i })
+  await user.hover(exportItem)
 }
 
-const getExportButtons = async () => {
-  const csvLabel = await screen.findByText('CSV')
-  const jsonLabel = await screen.findByText('JSONL')
-  const csvButton = csvLabel.closest('button') as HTMLButtonElement
-  const jsonButton = jsonLabel.closest('button') as HTMLButtonElement
-  expect(csvButton).toBeTruthy()
-  expect(jsonButton).toBeTruthy()
+const getExportItems = async () => {
+  const csvItem = await screen.findByRole('menuitem', { name: 'CSV' })
+  const jsonItem = await screen.findByRole('menuitem', { name: 'JSONL' })
   return {
-    csvButton,
-    jsonButton,
+    csvItem,
+    jsonItem,
   }
 }
 
-const clickOperationAction = async (
-  user: ReturnType<typeof userEvent.setup>,
-  translationKey: string,
-) => {
-  const label = await screen.findByText(translationKey)
-  const button = label.closest('button') as HTMLButtonElement
-  expect(button).toBeTruthy()
-  await user.click(button)
+const clickMenuItem = async (item: HTMLElement) => {
+  await act(async () => {
+    item.click()
+  })
+}
+
+const clickOperationAction = async (translationKey: string) => {
+  const item = await screen.findByRole('menuitem', { name: translationKey })
+  await clickMenuItem(item)
 }
 
 const mockAnnotations: AnnotationItemBasic[] = [
@@ -237,9 +108,12 @@ describe('HeaderOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    mockCSVDownloader.mockClear()
-    lastCSVDownloaderProps = undefined
+    mockJsonToCSV.mockReturnValue('csv-content')
     mockedFetchAnnotations.mockResolvedValue({ data: [] })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('should fetch annotations on mount and render enabled export actions when data exist', async () => {
@@ -253,22 +127,69 @@ describe('HeaderOptions', () => {
 
     await expandExportMenu(user)
 
-    const { csvButton, jsonButton } = await getExportButtons()
+    const { csvItem, jsonItem } = await getExportItems()
 
-    expect(csvButton).not.toBeDisabled()
-    expect(jsonButton).not.toBeDisabled()
+    expect(csvItem).not.toHaveAttribute('data-disabled')
+    expect(jsonItem).not.toHaveAttribute('data-disabled')
 
-    await waitFor(() => {
-      expect(lastCSVDownloaderProps).toMatchObject({
-        bom: true,
-        filename: 'annotations-en-US',
-        type: 'link',
-        data: [
-          ['Question', 'Answer'],
-          ['Question 1', 'Answer 1'],
-        ],
+    await clickMenuItem(csvItem)
+
+    expect(mockJsonToCSV).toHaveBeenCalledWith([
+      ['Question', 'Answer'],
+      ['Question 1', 'Answer 1'],
+    ])
+  })
+
+  it('should trigger CSV download with locale-specific filename', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    const originalCreateElement = document.createElement.bind(document)
+    const anchor = originalCreateElement('a') as HTMLAnchorElement
+    const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(vi.fn())
+    const createElementSpy = vi.spyOn(document, 'createElement')
+      .mockImplementation((tagName: Parameters<Document['createElement']>[0]) => {
+        if (tagName === 'a')
+          return anchor
+        return originalCreateElement(tagName)
       })
+    let capturedBlob: Blob | null = null
+    const objectURLSpy = vi.spyOn(URL, 'createObjectURL')
+      .mockImplementation((blob) => {
+        capturedBlob = blob as Blob
+        return 'blob://mock-url'
+      })
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(vi.fn())
+
+    renderComponent({}, LanguagesSupported[1])
+
+    await expandExportMenu(user)
+
+    const { csvItem } = await getExportItems()
+    await clickMenuItem(csvItem)
+
+    expect(mockJsonToCSV).toHaveBeenCalledWith([
+      ['问题', '答案'],
+      ['Question 1', 'Answer 1'],
+    ])
+    expect(createElementSpy).toHaveBeenCalled()
+    expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.csv`)
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
+
+    expect(capturedBlob).toBeInstanceOf(Blob)
+    expect(capturedBlob!.type).toBe('text/csv;charset=utf-8;')
+
+    const blobContent = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(capturedBlob!)
     })
+    expect(blobContent).toBe('csv-content')
+
+    clickSpy.mockRestore()
+    createElementSpy.mockRestore()
+    objectURLSpy.mockRestore()
+    revokeSpy.mockRestore()
   })
 
   it('should disable export actions when there are no annotations', async () => {
@@ -277,14 +198,11 @@ describe('HeaderOptions', () => {
 
     await expandExportMenu(user)
 
-    const { csvButton, jsonButton } = await getExportButtons()
+    const { csvItem, jsonItem } = await getExportItems()
 
-    expect(csvButton)!.toBeDisabled()
-    expect(jsonButton)!.toBeDisabled()
-
-    expect(lastCSVDownloaderProps).toMatchObject({
-      data: [['Question', 'Answer']],
-    })
+    expect(csvItem).toHaveAttribute('data-disabled')
+    expect(jsonItem).toHaveAttribute('data-disabled')
+    expect(mockJsonToCSV).not.toHaveBeenCalled()
   })
 
   it('should open the add annotation modal and forward the onAdd callback', async () => {
@@ -321,7 +239,7 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction(user, 'appAnnotation.table.header.bulkImport')
+    await clickOperationAction('appAnnotation.table.header.bulkImport')
 
     expect(await screen.findByText('appAnnotation.batchModal.title'))!.toBeInTheDocument()
     await user.click(
@@ -354,10 +272,8 @@ describe('HeaderOptions', () => {
 
     await expandExportMenu(user)
 
-    await waitFor(() => expect(mockCSVDownloader).toHaveBeenCalled())
-
-    const { jsonButton } = await getExportButtons()
-    await user.click(jsonButton)
+    const { jsonItem } = await getExportItems()
+    await clickMenuItem(jsonItem)
 
     expect(createElementSpy).toHaveBeenCalled()
     expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.jsonl`)
@@ -396,7 +312,7 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
+    await clickOperationAction('appAnnotation.table.header.clearAll')
 
     await screen.findByText('appAnnotation.table.header.clearAllConfirm')
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
@@ -416,7 +332,7 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
+    await clickOperationAction('appAnnotation.table.header.clearAll')
     await screen.findByText('appAnnotation.table.header.clearAllConfirm')
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
     await user.click(confirmButton)

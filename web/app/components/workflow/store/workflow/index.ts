@@ -1,5 +1,7 @@
+import type { TemporalState } from 'zundo'
 import type {
   StateCreator,
+  StoreApi,
 } from 'zustand'
 import type { ChatVariableSliceShape } from './chat-variable-slice'
 import type { CommentSliceShape } from './comment-slice'
@@ -7,7 +9,7 @@ import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
 import type { EnvVariableSliceShape } from './env-variable-slice'
 import type { FormSliceShape } from './form-slice'
 import type { HelpLineSliceShape } from './help-line-slice'
-import type { HistorySliceShape } from './history-slice'
+import type { HistorySliceShape, WorkflowHistoryTemporalState } from './history-slice'
 import type { LayoutSliceShape } from './layout-slice'
 import type { NodeSliceShape } from './node-slice'
 import type { PanelSliceShape } from './panel-slice'
@@ -17,7 +19,8 @@ import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
 import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
-import { useContext } from 'react'
+import { use } from 'react'
+import { temporal } from 'zundo'
 import {
   useStore as useZustandStore,
 } from 'zustand'
@@ -29,7 +32,11 @@ import { createInspectVarsSlice } from './debug/inspect-vars-slice'
 import { createEnvVariableSlice } from './env-variable-slice'
 import { createFormSlice } from './form-slice'
 import { createHelpLineSlice } from './help-line-slice'
-import { createHistorySlice } from './history-slice'
+import {
+  createHistorySlice,
+  getWorkflowHistoryTemporalState,
+  isWorkflowHistoryTemporalStateEqual,
+} from './history-slice'
 import { createLayoutSlice } from './layout-slice'
 import { createNodeSlice } from './node-slice'
 
@@ -60,6 +67,10 @@ export type Shape
     & LayoutSliceShape
     & SliceFromInjection
 
+type WorkflowStoreApi = StoreApi<Shape> & {
+  temporal: StoreApi<TemporalState<WorkflowHistoryTemporalState>>
+}
+
 export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
 
 type CreateWorkflowStoreParams = {
@@ -69,27 +80,35 @@ type CreateWorkflowStoreParams = {
 export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
   const { injectWorkflowStoreSliceFn } = params || {}
 
-  return createStore<Shape>((...args) => ({
-    ...createChatVariableSlice(...args),
-    ...createEnvVariableSlice(...args),
-    ...createFormSlice(...args),
-    ...createHelpLineSlice(...args),
-    ...createHistorySlice(...args),
-    ...createNodeSlice(...args),
-    ...createPanelSlice(...args),
-    ...createCommentSlice(...args),
-    ...createToolSlice(...args),
-    ...createVersionSlice(...args),
-    ...createWorkflowDraftSlice(...args),
-    ...createWorkflowSlice(...args),
-    ...createInspectVarsSlice(...args),
-    ...createLayoutSlice(...args),
-    ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
-  }))
+  return createStore<Shape>()(
+    temporal<Shape, [], [], WorkflowHistoryTemporalState>(
+      (...args) => ({
+        ...createChatVariableSlice(...args),
+        ...createEnvVariableSlice(...args),
+        ...createFormSlice(...args),
+        ...createHelpLineSlice(...args),
+        ...createHistorySlice(...args),
+        ...createNodeSlice(...args),
+        ...createPanelSlice(...args),
+        ...createCommentSlice(...args),
+        ...createToolSlice(...args),
+        ...createVersionSlice(...args),
+        ...createWorkflowDraftSlice(...args),
+        ...createWorkflowSlice(...args),
+        ...createInspectVarsSlice(...args),
+        ...createLayoutSlice(...args),
+        ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
+      }),
+      {
+        partialize: getWorkflowHistoryTemporalState,
+        equality: isWorkflowHistoryTemporalStateEqual,
+      },
+    ),
+  ) as WorkflowStoreApi
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(WorkflowContext)
+  const store = use(WorkflowContext)
   if (!store)
     throw new Error('Missing WorkflowContext.Provider in the tree')
 
@@ -97,5 +116,5 @@ export function useStore<T>(selector: (state: Shape) => T): T {
 }
 
 export const useWorkflowStore = () => {
-  return useContext(WorkflowContext)!
+  return use(WorkflowContext)!
 }

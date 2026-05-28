@@ -4,6 +4,7 @@ import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
@@ -176,9 +177,7 @@ describe('useNodesInteractions', () => {
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
       initialStoreState: {
-        edgeMenu: {
-          id: 'edge-1',
-        } as never,
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       },
       historyStore: {
         nodes: historyNodes,
@@ -193,7 +192,7 @@ describe('useNodesInteractions', () => {
     expect(mockUndo).toHaveBeenCalledTimes(1)
     expect(rfState.setNodes).toHaveBeenCalledWith(historyNodes)
     expect(rfState.setEdges).toHaveBeenCalledWith(historyEdges)
-    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('skips undo and redo when the workflow is read-only', () => {
@@ -311,6 +310,41 @@ describe('useNodesInteractions', () => {
 
     act(() => {
       result.current.handleNodeClick({} as never, currentNodes[0] as Node)
+    })
+
+    expect(rfState.setNodes).not.toHaveBeenCalled()
+    expect(rfState.setEdges).not.toHaveBeenCalled()
+  })
+
+  it('ignores note node selection when clicking a linked text target', () => {
+    currentNodes = [
+      createNode({
+        id: 'note-1',
+        type: CUSTOM_NOTE_NODE,
+        data: {
+          type: '' as unknown as BlockEnum,
+          title: 'Note',
+          desc: '',
+          selected: false,
+        },
+      }),
+    ]
+    currentEdges = []
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: currentEdges,
+      },
+    })
+
+    const link = document.createElement('a')
+    link.className = 'note-editor-theme_link'
+
+    act(() => {
+      result.current.handleNodeClick({ target: link } as never, currentNodes[0] as Node)
     })
 
     expect(rfState.setNodes).not.toHaveBeenCalled()
@@ -446,6 +480,51 @@ describe('useNodesInteractions', () => {
     expect(rfState.setNodes).toHaveBeenCalledTimes(1)
     const nodesArg = rfState.setNodes.mock.calls[0]?.[0] as Node[]
     expect(nodesArg[0]?.data.selected).toBe(false)
+  })
+
+  it('keeps ReactFlow and node data selection in sync when selecting another node', () => {
+    currentNodes = [
+      createNode({
+        id: 'knowledge-retrieval-node',
+        selected: true,
+        data: {
+          type: BlockEnum.KnowledgeRetrieval,
+          title: 'Knowledge Retrieval',
+          desc: '',
+          selected: true,
+        },
+      }),
+      createNode({
+        id: 'answer-node',
+        position: { x: 100, y: 0 },
+        data: {
+          type: BlockEnum.Answer,
+          title: 'Answer',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: currentEdges,
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeSelect('answer-node')
+    })
+
+    const nodesArg = rfState.setNodes.mock.calls[0]?.[0] as Node[]
+    const knowledgeNode = nodesArg.find(node => node.id === 'knowledge-retrieval-node')
+    const answerNode = nodesArg.find(node => node.id === 'answer-node')
+
+    expect(knowledgeNode?.selected).toBe(false)
+    expect(knowledgeNode?.data.selected).toBe(false)
+    expect(answerNode?.selected).toBe(true)
+    expect(answerNode?.data.selected).toBe(true)
   })
 
   it('skips clipboard copy when bundled/selected nodes have no metadata', () => {

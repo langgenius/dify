@@ -1,9 +1,11 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
+from uuid import uuid4
 
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
@@ -22,6 +24,7 @@ from core.workflow.node_runtime import (
     DifyPromptMessageSerializer,
     DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
+    DifyToolNodeRuntime,
     apply_dify_debug_email_recipient,
     build_dify_llm_file_saver,
     resolve_dify_run_context,
@@ -30,6 +33,7 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -266,6 +270,114 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
     assert parse_file_reference(mapping["reference"]).storage_key is None
 
 
+def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from factories.file_factory import builders as file_builders
+
+    upload_file_id = str(uuid4())
+    segment_id = str(uuid4())
+    upload_file = SimpleNamespace(
+        id=upload_file_id,
+        tenant_id="tenant-id",
+        name="diagram.png",
+        extension="png",
+        mime_type="image/png",
+        source_url="https://example.com/diagram.png",
+        key="storage-key",
+        size=128,
+    )
+    attachment_session = MagicMock()
+    attachment_session.execute.return_value.all.return_value = [(None, upload_file)]
+
+    class _AttachmentSessionContext:
+        def __enter__(self):
+            return attachment_session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    upload_session = MagicMock()
+    upload_session.__enter__.return_value = upload_session
+    upload_session.__exit__.return_value = False
+    upload_session.scalar.return_value = upload_file
+
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_AttachmentSessionContext()))
+    monkeypatch.setattr(file_builders, "session_factory", SimpleNamespace(create_session=lambda: upload_session))
+
+    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        files = loader.load(segment_id=segment_id)
+
+    assert files[0].related_id == upload_file_id
+    stmt = upload_session.scalar.call_args.args[0]
+    whereclause = str(stmt.whereclause)
+    assert "upload_files.tenant_id" in whereclause
+    assert "upload_files.id IN" in whereclause
+
+
+def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    build_from_mapping = MagicMock()
+    session_factory = MagicMock()
+    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    loader = DifyRetrieverAttachmentLoader(
+        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
+    )
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        files = loader.load(segment_id=str(uuid4()))
+
+    assert files == []
+    session_factory.assert_not_called()
+    build_from_mapping.assert_not_called()
+
+
+def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    segment_id = str(uuid4())
+    build_from_mapping = MagicMock()
+    session_factory = MagicMock()
+    segment_access_checker = MagicMock(return_value=False)
+    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    loader = DifyRetrieverAttachmentLoader(
+        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping),
+        segment_access_checker=segment_access_checker,
+    )
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        files = loader.load(segment_id=segment_id)
+
+    assert files == []
+    segment_access_checker.assert_called_once_with(segment_id)
+    session_factory.assert_not_called()
+    build_from_mapping.assert_not_called()
+
+
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
     create_file_by_raw = MagicMock(return_value=SimpleNamespace(id="tool-file-id"))
     manager_instance = SimpleNamespace(create_file_by_raw=create_file_by_raw)
@@ -314,6 +426,81 @@ def test_dify_tool_file_manager_delegates_file_generator_lookup(monkeypatch: pyt
     get_file_generator.assert_called_once_with("tool-file-id")
 
 
+def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(
+        node_runtime,
+        "get_system_text",
+        lambda _pool, key: (
+            "outer-workflow-run-id" if key == node_runtime.SystemVariableKey.WORKFLOW_EXECUTION_ID else None
+        ),
+    )
+
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    node_data = ToolNodeData(
+        title="Workflow Tool Node",
+        desc=None,
+        provider_id="workflow-provider-id",
+        provider_type=ToolProviderType.WORKFLOW,
+        provider_name="workflow-provider",
+        tool_name="workflow-tool",
+        tool_label="Workflow Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+        node_execution_id="node-execution-id",
+    )
+
+    assert handle.raw.tool is runtime_tool
+    assert handle.raw.parent_trace_context.model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-id",
+        "parent_node_execution_id": "node-execution-id",
+    }
+    assert runtime_tool.runtime.runtime_parameters == {}
+    get_runtime.assert_called_once()
+
+
+def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
+
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    node_data = ToolNodeData(
+        title="Builtin Tool Node",
+        desc=None,
+        provider_id="builtin-provider-id",
+        provider_type=ToolProviderType.BUILT_IN,
+        provider_name="builtin-provider",
+        tool_name="builtin-tool",
+        tool_label="Builtin Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+    )
+
+    assert handle.raw.tool is runtime_tool
+    assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
+    get_runtime.assert_called_once()
+
+
 def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.MonkeyPatch) -> None:
     repository = MagicMock()
     repository_cls = MagicMock(return_value=repository)
@@ -332,6 +519,41 @@ def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.Mo
         invoke_source="debugger",
         submission_actor_id="user-id",
     )
+
+
+def test_dify_tool_runtime_spec_prefers_tool_parameters_for_runtime_form_values() -> None:
+    node_data = ToolNodeData(
+        provider_id="video-mixcut-agent",
+        provider_type=ToolProviderType.PLUGIN,
+        provider_name="sawyer-shi/video-mixcut-agent",
+        tool_name="mixcut",
+        tool_label="MixCut",
+        tool_configurations={"count": 2},
+        tool_parameters={
+            "vision_llm_model": {
+                "type": "constant",
+                "value": {
+                    "provider": "langgenius/tongyi/tongyi",
+                    "model": "qwen3-vl-plus",
+                    "model_type": "llm",
+                },
+            }
+        },
+    )
+
+    spec = DifyToolNodeRuntime._build_tool_runtime_spec(node_data)
+
+    assert spec.tool_configurations == {
+        "count": 2,
+        "vision_llm_model": {
+            "type": "constant",
+            "value": {
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-vl-plus",
+                "model_type": "llm",
+            },
+        },
+    }
 
 
 def test_dify_human_input_runtime_create_form_filters_debugger_delivery_methods() -> None:

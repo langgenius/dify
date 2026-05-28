@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
@@ -48,7 +49,9 @@ class TestAppImportApi:
     def api(self):
         return app_import_module.AppImportApi()
 
-    def test_import_post_returns_failed_status_and_rolls_back(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_post_returns_failed_status_and_rolls_back(
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
@@ -68,7 +71,9 @@ class TestAppImportApi:
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
-    def test_import_post_returns_pending_status_and_commits(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_post_returns_pending_status_and_commits(
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
@@ -88,7 +93,9 @@ class TestAppImportApi:
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
 
-    def test_import_post_updates_webapp_auth_when_enabled(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_post_updates_webapp_auth_when_enabled(
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
@@ -118,7 +125,7 @@ class TestAppImportConfirmApi:
         return app_import_module.AppImportConfirmApi()
 
     def test_import_confirm_returns_failed_status_and_rolls_back(
-        self, api, app, monkeypatch: pytest.MonkeyPatch
+        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         method = _unwrap(api.post)
 

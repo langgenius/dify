@@ -117,7 +117,7 @@ const SearchBox = ({
             className="ml-2 rounded-full bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text"
             onClick={onShowAddCustomCollectionModal}
           >
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="size-4" />
           </ActionButton>
         </div>
       )}

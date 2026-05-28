@@ -47,39 +47,39 @@ export type IOnDataMoreInfo = {
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
-export type IOnThought = (though: ThoughtItem) => void
-export type IOnFile = (file: VisionFile) => void
-export type IOnMessageEnd = (messageEnd: MessageEnd) => void
+type IOnThought = (though: ThoughtItem) => void
+type IOnFile = (file: VisionFile) => void
+type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
-export type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
-export type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
-export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
-export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
-export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
-export type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
-export type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
-export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
-export type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
-export type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
-export type IOnTextChunk = (textChunk: TextChunkResponse) => void
-export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
-export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
-export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
-export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
-export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
-export type IOnAgentLog = (agentLog: AgentLogResponse) => void
+type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
+type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
+type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
+type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
+type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
+type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
+type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
+type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
+type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
+type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
+type IOnTextChunk = (textChunk: TextChunkResponse) => void
+type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
+type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
+type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
+type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
+type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
+type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
-export type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
-export type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
-export type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
-export type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
-export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
-export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
-export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
+type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
+type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
+type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
+type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
+type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
+type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
+type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -138,6 +138,20 @@ function jumpTo(url: string) {
   if (targetPath === globalThis.location.pathname)
     return
   globalThis.location.href = url
+}
+
+const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+
+export const buildSigninUrlWithRedirect = (): string => {
+  const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+
+  // Only preserve redirect URL for OAuth authorize pages
+  if (globalThis.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+    const currentUrl = globalThis.location.href
+    return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
+  }
+
+  return loginUrl
 }
 
 function unicodeToChar(text: string) {
@@ -794,15 +808,20 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // /device is the device-flow chooser; logged-out is a valid state
+      // there. Redirecting to /signin loses the user_code context and
+      // the post-login flow lands on /apps instead of returning here.
+      if (location.pathname === `${basePath}/device`)
+        return Promise.reject(err)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
-        jumpTo(loginUrl)
+        jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
       if (!silent) {
         toast.error(message)
         return Promise.reject(err)
       }
-      jumpTo(loginUrl)
+      jumpTo(buildSigninUrlWithRedirect())
       return Promise.reject(err)
     }
     else {
@@ -816,6 +835,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
 }
 
 // request methods
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
@@ -830,6 +855,12 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
   return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
 }
@@ -843,10 +874,22 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
@@ -855,6 +898,12 @@ export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }

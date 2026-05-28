@@ -10,15 +10,22 @@ import type {
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Drawer from '@/app/components/base/drawer'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -56,6 +63,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 })
 
   const total = recordsRes?.total || 0
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
   const isExternal = currentDataset?.provider === 'external'
@@ -97,7 +105,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderEmptyState = () => (
     <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'h-14! w-14! bg-text-quaternary!')} />
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')} />
       <div className="mt-3 text-[13px] text-text-quaternary">
         {t('hit.emptyTip', { ns: 'datasetHitTesting' })}
       </div>
@@ -114,7 +122,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   }, [isMobile, setShowRightPanel])
 
   return (
-    <div className="relative flex h-full w-full gap-x-6 overflow-y-auto pl-6">
+    <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">{t('title', { ns: 'datasetHitTesting' })}</h1>
@@ -144,7 +152,19 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <>
             <Records records={recordsRes?.data} onClickRecord={handleClickRecord} />
             {(total && total > limit)
-              ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
+              ? (
+                  <Pagination
+                    page={currPage + 1}
+                    totalPages={totalPages}
+                    onPageChange={page => setCurrPage(page - 1)}
+                    labels={{
+                      previous: t('pagination.previous', { ns: 'common' }),
+                      next: t('pagination.next', { ns: 'common' }),
+                      editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                      pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                    }}
+                  />
+                )
               : null}
           </>
         )}
@@ -158,7 +178,6 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         isMobile={isMobile}
         isOpen={isShowRightPanel}
         onClose={hideRightPanel}
-        footer={null}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading
@@ -181,23 +200,33 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         </div>
       </FloatRightContainer>
       <Drawer
-        unmount={true}
-        isOpen={isShowModifyRetrievalModal}
-        onClose={() => setIsShowModifyRetrievalModal(false)}
-        footer={null}
-        mask={isMobile}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[640px]! rounded-xl"
-      >
-        <ModifyRetrievalModal
-          indexMethod={currentDataset?.indexing_technique || ''}
-          value={retrievalConfig}
-          isShow={isShowModifyRetrievalModal}
-          onHide={() => setIsShowModifyRetrievalModal(false)}
-          onSave={(value) => {
-            setRetrievalConfig(value)
+        open={isShowModifyRetrievalModal}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
             setIsShowModifyRetrievalModal(false)
-          }}
-        />
+        }}
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <ModifyRetrievalModal
+                  indexMethod={currentDataset?.indexing_technique || ''}
+                  value={retrievalConfig}
+                  isShow={isShowModifyRetrievalModal}
+                  onHide={() => setIsShowModifyRetrievalModal(false)}
+                  onSave={(value) => {
+                    setRetrievalConfig(value)
+                    setIsShowModifyRetrievalModal(false)
+                  }}
+                />
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

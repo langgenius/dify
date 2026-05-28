@@ -246,8 +246,18 @@ class TidbService:
                 userPrefix = item["userPrefix"]
                 if state == "ACTIVE" and len(userPrefix) > 0:
                     cluster_info = tidb_serverless_list_map[item["clusterId"]]
-                    cluster_info.status = TidbAuthBindingStatus.ACTIVE
                     cluster_info.account = f"{userPrefix}.root"
+                    if not cluster_info.qdrant_endpoint:
+                        cluster_info.qdrant_endpoint = TidbService.extract_qdrant_endpoint(
+                            item
+                        ) or TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, item["clusterId"])
+                    if cluster_info.qdrant_endpoint:
+                        cluster_info.status = TidbAuthBindingStatus.ACTIVE
+                    else:
+                        logger.warning(
+                            "Cluster %s is ACTIVE but qdrant endpoint is not ready; will retry later",
+                            item["clusterId"],
+                        )
                     db.session.add(cluster_info)
             db.session.commit()
         else:

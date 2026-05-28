@@ -167,7 +167,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         render={(
           <div className="flex h-8 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 select-none hover:bg-state-base-hover-alt">
             {icon && (
-              <div className="flex h-6 w-6 items-center justify-center">
+              <div className="flex size-6 items-center justify-center">
                 <img
                   src={icon}
                   width={20}
@@ -231,7 +231,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         placement="bottom"
         sideOffset={0}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 10 } }}
       >
         <div className="w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">

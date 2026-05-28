@@ -6,6 +6,8 @@ import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -17,8 +19,6 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -128,12 +128,25 @@ const RunOnce: FC<IRunOnceProps> = ({
                   <div className="mt-1">
                     {item.type === 'select' && (
                       <Select
-                        className="w-full"
-                        defaultValue={inputs[item.key] as (string | number | undefined)}
-                        onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
-                        items={(item.options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                      />
+                        value={inputs[item.key] ? String(inputs[item.key]) : null}
+                        onValueChange={(nextValue) => {
+                          if (!nextValue)
+                            return
+                          handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          {String(inputs[item.key] || item.default || t('placeholder.select', { ns: 'common' }))}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(item.options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {item.type === 'string' && (
                       <Input
@@ -146,10 +159,11 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'paragraph' && (
                       <Textarea
+                        aria-label={item.name}
                         className="h-[104px] sm:text-xs"
                         placeholder={item.name}
                         value={inputs[item.key] as string}
-                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                        onValueChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                       />
                     )}
                     {item.type === 'number' && (
@@ -238,20 +252,19 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
                 onClick={handlePrimaryClick}
-                data-testid={isRunning ? 'stop-button' : 'run-button'}
               >
                 {isRunning
                   ? (
                       <>
                         {runControl?.isStopping
-                          ? <RiLoader2Line className="mr-1 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
-                          : <StopCircle className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />}
+                          ? <RiLoader2Line className="mr-1 size-4 shrink-0 animate-spin" aria-hidden="true" />
+                          : <StopCircle className="mr-1 size-4 shrink-0" aria-hidden="true" />}
                         <span className="text-[13px]">{stopLabel}</span>
                       </>
                     )
                   : (
                       <>
-                        <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
+                        <RiPlayLargeLine className="mr-1 size-4 shrink-0" aria-hidden="true" />
                         <span className="text-[13px]">{t('generation.run', { ns: 'share' })}</span>
                       </>
                     )}

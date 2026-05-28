@@ -22,41 +22,17 @@ export const usePanelInteractions = () => {
         workflowStore.getState().setClipboardData({ nodes, edges })
     })
 
-    const container = document.querySelector('#workflow-container')
-    const { x, y } = container!.getBoundingClientRect()
     workflowStore.setState({
-      nodeMenu: undefined,
-      selectionMenu: undefined,
-      edgeMenu: undefined,
-      panelMenu: {
-        top: e.clientY - y,
-        left: e.clientX - x,
-      },
+      contextMenuTarget: { type: 'panel' },
     })
   }, [workflowStore, appDslVersion])
 
   const handlePaneContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      panelMenu: undefined,
-    })
-  }, [workflowStore])
-
-  const handleNodeContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      nodeMenu: undefined,
-    })
-  }, [workflowStore])
-
-  const handleEdgeContextmenuCancel = useCallback(() => {
-    workflowStore.setState({
-      edgeMenu: undefined,
-    })
+    workflowStore.setState({ contextMenuTarget: undefined })
   }, [workflowStore])
 
   return {
     handlePaneContextMenu,
     handlePaneContextmenuCancel,
-    handleNodeContextmenuCancel,
-    handleEdgeContextmenuCancel,
   }
 }

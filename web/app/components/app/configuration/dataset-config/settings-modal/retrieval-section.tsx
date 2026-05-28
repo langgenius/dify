@@ -57,7 +57,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
       </div>
       <div className="w-full max-w-[480px]">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
-          <ApiConnectionMod className="h-4 w-4 text-text-secondary" />
+          <ApiConnectionMod className="size-4 text-text-secondary" />
           <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
             {currentDataset?.external_knowledge_info.external_knowledge_api_name}
           </div>
@@ -212,7 +212,7 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
         }}
         aria-label="close-retrieval-change-tip"
       >
-        <RiCloseLine className="h-4 w-4 text-gray-500" />
+        <RiCloseLine className="size-4 text-gray-500" />
       </button>
     </div>
   )

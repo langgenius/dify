@@ -57,7 +57,7 @@ class TestGuessFileInfoFromResponse:
             (False, "bin"),
         ],
     )
-    def test_generated_filename_when_missing(self, monkeypatch, magic_available, expected_ext):
+    def test_generated_filename_when_missing(self, monkeypatch: pytest.MonkeyPatch, magic_available, expected_ext):
         if magic_available:
             if helpers.magic is None:
                 pytest.skip("python-magic is not installed, cannot run 'magic_available=True' test variant")
@@ -155,7 +155,7 @@ class TestMagicImportWarnings:
     )
     def test_magic_import_warning_per_platform(
         self,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         platform_name,
         expected_message,
     ):

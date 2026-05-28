@@ -13,6 +13,8 @@ from langfuse.api import (
     TraceBody,
 )
 from langfuse.api.commons.types.usage import Usage
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -52,12 +54,39 @@ class LangFuseDataTrace(BaseTraceInstance):
         langfuse_config: LangfuseConfig,
     ):
         super().__init__(langfuse_config)
+        # Isolated TracerProvider prevents the langfuse v3 SDK from attaching its
+        # SpanProcessor to the global OpenTelemetry TracerProvider, which would
+        # otherwise siphon every Flask/Celery/SQLAlchemy span in the process into
+        # this tenant's Langfuse project. See langfuse upgrade guide v2 -> v3.
+        self._tracer_provider: TracerProvider | None = TracerProvider(
+            resource=Resource.create({"service.name": "dify-langfuse-app-trace"}),
+        )
         self.langfuse_client = Langfuse(
             public_key=langfuse_config.public_key,
             secret_key=langfuse_config.secret_key,
             host=langfuse_config.host,
+            tracer_provider=self._tracer_provider,
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
+
+    def close(self) -> None:
+        """Flush and shut down the isolated TracerProvider.
+
+        Called explicitly when the trace instance is evicted from the cache, or
+        implicitly via ``__del__`` on garbage collection. Idempotent.
+        """
+        provider = getattr(self, "_tracer_provider", None)
+        if provider is None:
+            return
+        try:
+            provider.shutdown()
+        except Exception:
+            logger.debug("Failed to shut down Langfuse TracerProvider", exc_info=True)
+        finally:
+            self._tracer_provider = None
+
+    def __del__(self) -> None:
+        self.close()
 
     @staticmethod
     def _get_completion_start_time(

@@ -74,7 +74,7 @@ describe('CSVUploader', () => {
       render(<CSVUploader {...defaultProps} />)
 
       expect(screen.getByText(/list\.batchModal\.csvUploadTitle/i)).toBeInTheDocument()
-      expect(screen.getByText(/list\.batchModal\.browse/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /list\.batchModal\.browse/i })).toBeInTheDocument()
     })
 
     it('should render hidden file input', () => {
@@ -139,9 +139,30 @@ describe('CSVUploader', () => {
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       const clickSpy = vi.spyOn(fileInput, 'click')
 
-      fireEvent.click(screen.getByText(/list\.batchModal\.browse/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.batchModal\.browse/i }))
 
       expect(clickSpy).toHaveBeenCalled()
+    })
+
+    it('should clear the selected file when delete is clicked', () => {
+      const mockUpdateFile = vi.fn()
+      const mockFile: FileItem = {
+        fileID: 'file-1',
+        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
+        progress: 100,
+      }
+      const { container } = render(<CSVUploader {...defaultProps} file={mockFile} updateFile={mockUpdateFile} />)
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+      Object.defineProperty(fileInput, 'value', {
+        configurable: true,
+        value: 'C:\\fakepath\\test.csv',
+        writable: true,
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /operation\.delete$/ }))
+
+      expect(fileInput.value).toBe('')
+      expect(mockUpdateFile).toHaveBeenCalledWith()
     })
 
     it('should call updateFile when file is selected', async () => {

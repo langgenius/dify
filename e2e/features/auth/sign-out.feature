@@ -1,4 +1,4 @@
-@auth @authenticated
+@auth @authenticated @core
 Feature: Sign out
   Scenario: Sign out from the apps console
     Given I am signed in as the default E2E admin

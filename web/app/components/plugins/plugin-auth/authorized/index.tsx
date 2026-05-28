@@ -18,10 +18,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -29,7 +27,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
 import {
@@ -93,19 +90,19 @@ const Authorized = ({
   }, [onOpenChange])
   const oAuthCredentials = credentials.filter(credential => credential.credential_type === CredentialTypeEnum.OAUTH2)
   const apiKeyCredentials = credentials.filter(credential => credential.credential_type === CredentialTypeEnum.API_KEY)
-  const pendingOperationCredentialId = useRef<string | null>(null)
+  const pendingOperationCredentialIdRef = useRef<string | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
   const { mutateAsync: deletePluginCredential } = useDeletePluginCredentialHook(pluginPayload)
   const openConfirm = useCallback((credentialId?: string) => {
     setMergedIsOpen(false)
     if (credentialId)
-      pendingOperationCredentialId.current = credentialId
+      pendingOperationCredentialIdRef.current = credentialId
 
-    setDeleteCredentialId(pendingOperationCredentialId.current)
+    setDeleteCredentialId(pendingOperationCredentialIdRef.current)
   }, [setMergedIsOpen])
   const closeConfirm = useCallback(() => {
     setDeleteCredentialId(null)
-    pendingOperationCredentialId.current = null
+    pendingOperationCredentialIdRef.current = null
   }, [])
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
@@ -116,28 +113,35 @@ const Authorized = ({
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current)
       return
-    if (!pendingOperationCredentialId.current) {
+    if (!pendingOperationCredentialIdRef.current) {
       setDeleteCredentialId(null)
       return
     }
     try {
       handleSetDoingAction(true)
-      await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
+      await deletePluginCredential({ credential_id: pendingOperationCredentialIdRef.current })
       toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
       setDeleteCredentialId(null)
-      pendingOperationCredentialId.current = null
+      pendingOperationCredentialIdRef.current = null
     }
     finally {
       handleSetDoingAction(false)
     }
   }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
   const [editValues, setEditValues] = useState<Record<string, unknown> | null>(null)
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
   const handleEdit = useCallback((id: string, values: Record<string, unknown>) => {
     setMergedIsOpen(false)
-    pendingOperationCredentialId.current = id
+    pendingOperationCredentialIdRef.current = id
     setEditValues(values)
+    setIsApiKeyModalOpen(true)
   }, [setMergedIsOpen])
+  const handleApiKeyModalOpenChange = useCallback((open: boolean) => {
+    setIsApiKeyModalOpen(open)
+    if (!open)
+      pendingOperationCredentialIdRef.current = null
+  }, [])
   // Lifted state for the "+ Add API Key" modal so it isn't unmounted when the
   // popover closes due to outside-click detection on the modal's portal.
   const [isAddApiKeyOpen, setIsAddApiKeyOpen] = useState(false)
@@ -146,7 +150,7 @@ const Authorized = ({
     setIsAddApiKeyOpen(true)
   }, [setMergedIsOpen])
   const handleRemove = useCallback(() => {
-    setDeleteCredentialId(pendingOperationCredentialId.current)
+    setDeleteCredentialId(pendingOperationCredentialIdRef.current)
   }, [])
   const { mutateAsync: setPluginDefaultCredential } = useSetPluginDefaultCredentialHook(pluginPayload)
   const handleSetDefault = useCallback(async (id: string) => {
@@ -207,7 +211,7 @@ const Authorized = ({
                           mergedIsOpen && 'bg-components-button-secondary-bg-hover',
                         )}
                       >
-                        <Indicator className="mr-2" color={unavailableCredential ? 'gray' : 'green'} />
+                        <StatusDot className="mr-2" status={unavailableCredential ? 'disabled' : 'success'} />
                         {credentials.length}
 &nbsp;
                         {
@@ -220,7 +224,7 @@ const Authorized = ({
                             ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
                           )
                         }
-                        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
+                        <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
                       </Button>
                     )
               }
@@ -364,12 +368,11 @@ const Authorized = ({
       {
         !!editValues && (
           <ApiKeyModal
+            open={isApiKeyModalOpen}
+            onOpenChange={handleApiKeyModalOpenChange}
             pluginPayload={pluginPayload}
             editValues={editValues}
-            onClose={() => {
-              setEditValues(null)
-              pendingOperationCredentialId.current = null
-            }}
+            onClose={() => handleApiKeyModalOpenChange(false)}
             onRemove={handleRemove}
             disabled={disabled || doingAction}
             onUpdate={onUpdate}
@@ -379,6 +382,8 @@ const Authorized = ({
       {
         isAddApiKeyOpen && (
           <ApiKeyModal
+            open={isAddApiKeyOpen}
+            onOpenChange={setIsAddApiKeyOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsAddApiKeyOpen(false)}
             disabled={disabled || doingAction}

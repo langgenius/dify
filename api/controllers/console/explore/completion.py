@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -30,7 +31,7 @@ from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
-from models.model import AppMode
+from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -72,6 +73,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -81,8 +83,10 @@ register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageP
 )
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    def post(self, installed_app):
+    def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -130,8 +134,11 @@ class CompletionApi(InstalledAppResource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def post(self, installed_app: InstalledApp, task_id: str):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -154,8 +161,10 @@ class CompletionStopApi(InstalledAppResource):
 )
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    def post(self, installed_app):
+    def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -205,8 +214,11 @@ class ChatApi(InstalledAppResource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def post(self, installed_app: InstalledApp, task_id: str):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()

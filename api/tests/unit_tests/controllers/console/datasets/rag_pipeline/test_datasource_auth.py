@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import console_ns
@@ -29,7 +30,7 @@ def unwrap(func):
 
 
 class TestDatasourcePluginOAuthAuthorizationUrl:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = unwrap(api.get)
 
@@ -61,7 +62,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
 
         assert response.status_code == 200
 
-    def test_get_no_oauth_config(self, app):
+    def test_get_no_oauth_config(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = unwrap(api.get)
 
@@ -80,7 +81,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             with pytest.raises(ValueError):
                 method(api, "notion")
 
-    def test_get_without_credential_id_sets_cookie(self, app):
+    def test_get_without_credential_id_sets_cookie(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = unwrap(api.get)
 
@@ -115,7 +116,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
 
 
 class TestDatasourceOAuthCallback:
-    def test_callback_success_new_credential(self, app):
+    def test_callback_success_new_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = unwrap(api.get)
 
@@ -157,7 +158,7 @@ class TestDatasourceOAuthCallback:
 
         assert response.status_code == 302
 
-    def test_callback_missing_context(self, app):
+    def test_callback_missing_context(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = unwrap(api.get)
 
@@ -165,7 +166,7 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(Forbidden):
                 method(api, "notion")
 
-    def test_callback_invalid_context(self, app):
+    def test_callback_invalid_context(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = unwrap(api.get)
 
@@ -180,7 +181,7 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(Forbidden):
                 method(api, "notion")
 
-    def test_callback_oauth_config_not_found(self, app):
+    def test_callback_oauth_config_not_found(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = unwrap(api.get)
 
@@ -202,7 +203,7 @@ class TestDatasourceOAuthCallback:
             with pytest.raises(NotFound):
                 method(api, "notion")
 
-    def test_callback_reauthorize_existing_credential(self, app):
+    def test_callback_reauthorize_existing_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = unwrap(api.get)
 
@@ -245,7 +246,7 @@ class TestDatasourceOAuthCallback:
         assert response.status_code == 302
         assert "/oauth-callback" in response.location
 
-    def test_callback_context_id_from_cookie(self, app):
+    def test_callback_context_id_from_cookie(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = unwrap(api.get)
 
@@ -289,7 +290,7 @@ class TestDatasourceOAuthCallback:
 
 
 class TestDatasourceAuth:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = DatasourceAuth()
         method = unwrap(api.post)
 
@@ -312,7 +313,7 @@ class TestDatasourceAuth:
 
         assert status == 200
 
-    def test_post_invalid_credentials(self, app):
+    def test_post_invalid_credentials(self, app: Flask):
         api = DatasourceAuth()
         method = unwrap(api.post)
 
@@ -334,7 +335,7 @@ class TestDatasourceAuth:
             with pytest.raises(ValueError):
                 method(api, "notion")
 
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasourceAuth()
         method = unwrap(api.get)
 
@@ -355,7 +356,7 @@ class TestDatasourceAuth:
         assert status == 200
         assert response["result"]
 
-    def test_post_missing_credentials(self, app):
+    def test_post_missing_credentials(self, app: Flask):
         api = DatasourceAuth()
         method = unwrap(api.post)
 
@@ -372,7 +373,7 @@ class TestDatasourceAuth:
             with pytest.raises(ValueError):
                 method(api, "notion")
 
-    def test_get_empty_list(self, app):
+    def test_get_empty_list(self, app: Flask):
         api = DatasourceAuth()
         method = unwrap(api.get)
 
@@ -395,7 +396,7 @@ class TestDatasourceAuth:
 
 
 class TestDatasourceAuthDeleteApi:
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = DatasourceAuthDeleteApi()
         method = unwrap(api.post)
 
@@ -418,7 +419,7 @@ class TestDatasourceAuthDeleteApi:
 
         assert status == 200
 
-    def test_delete_missing_credential_id(self, app):
+    def test_delete_missing_credential_id(self, app: Flask):
         api = DatasourceAuthDeleteApi()
         method = unwrap(api.post)
 
@@ -437,7 +438,7 @@ class TestDatasourceAuthDeleteApi:
 
 
 class TestDatasourceAuthUpdateApi:
-    def test_update_success(self, app):
+    def test_update_success(self, app: Flask):
         api = DatasourceAuthUpdateApi()
         method = unwrap(api.post)
 
@@ -460,7 +461,7 @@ class TestDatasourceAuthUpdateApi:
 
         assert status == 201
 
-    def test_update_with_credentials_none(self, app):
+    def test_update_with_credentials_none(self, app: Flask):
         api = DatasourceAuthUpdateApi()
         method = unwrap(api.post)
 
@@ -484,7 +485,7 @@ class TestDatasourceAuthUpdateApi:
         update_mock.assert_called_once()
         assert status == 201
 
-    def test_update_name_only(self, app):
+    def test_update_name_only(self, app: Flask):
         api = DatasourceAuthUpdateApi()
         method = unwrap(api.post)
 
@@ -507,7 +508,7 @@ class TestDatasourceAuthUpdateApi:
 
         assert status == 201
 
-    def test_update_with_empty_credentials_dict(self, app):
+    def test_update_with_empty_credentials_dict(self, app: Flask):
         api = DatasourceAuthUpdateApi()
         method = unwrap(api.post)
 
@@ -533,7 +534,7 @@ class TestDatasourceAuthUpdateApi:
 
 
 class TestDatasourceAuthListApi:
-    def test_list_success(self, app):
+    def test_list_success(self, app: Flask):
         api = DatasourceAuthListApi()
         method = unwrap(api.get)
 
@@ -553,7 +554,7 @@ class TestDatasourceAuthListApi:
 
         assert status == 200
 
-    def test_auth_list_empty(self, app):
+    def test_auth_list_empty(self, app: Flask):
         api = DatasourceAuthListApi()
         method = unwrap(api.get)
 
@@ -574,7 +575,7 @@ class TestDatasourceAuthListApi:
         assert status == 200
         assert response["result"] == []
 
-    def test_hardcode_list_empty(self, app):
+    def test_hardcode_list_empty(self, app: Flask):
         api = DatasourceHardCodeAuthListApi()
         method = unwrap(api.get)
 
@@ -597,7 +598,7 @@ class TestDatasourceAuthListApi:
 
 
 class TestDatasourceHardCodeAuthListApi:
-    def test_list_success(self, app):
+    def test_list_success(self, app: Flask):
         api = DatasourceHardCodeAuthListApi()
         method = unwrap(api.get)
 
@@ -619,7 +620,7 @@ class TestDatasourceHardCodeAuthListApi:
 
 
 class TestDatasourceAuthOauthCustomClient:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
         method = unwrap(api.post)
 
@@ -642,7 +643,7 @@ class TestDatasourceAuthOauthCustomClient:
 
         assert status == 200
 
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
         method = unwrap(api.delete)
 
@@ -662,7 +663,7 @@ class TestDatasourceAuthOauthCustomClient:
 
         assert status == 200
 
-    def test_post_empty_payload(self, app):
+    def test_post_empty_payload(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
         method = unwrap(api.post)
 
@@ -685,7 +686,7 @@ class TestDatasourceAuthOauthCustomClient:
 
         assert status == 200
 
-    def test_post_disabled_flag(self, app):
+    def test_post_disabled_flag(self, app: Flask):
         api = DatasourceAuthOauthCustomClient()
         method = unwrap(api.post)
 
@@ -714,7 +715,7 @@ class TestDatasourceAuthOauthCustomClient:
 
 
 class TestDatasourceAuthDefaultApi:
-    def test_set_default_success(self, app):
+    def test_set_default_success(self, app: Flask):
         api = DatasourceAuthDefaultApi()
         method = unwrap(api.post)
 
@@ -737,7 +738,7 @@ class TestDatasourceAuthDefaultApi:
 
         assert status == 200
 
-    def test_default_missing_id(self, app):
+    def test_default_missing_id(self, app: Flask):
         api = DatasourceAuthDefaultApi()
         method = unwrap(api.post)
 
@@ -756,7 +757,7 @@ class TestDatasourceAuthDefaultApi:
 
 
 class TestDatasourceUpdateProviderNameApi:
-    def test_update_name_success(self, app):
+    def test_update_name_success(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
         method = unwrap(api.post)
 
@@ -779,7 +780,7 @@ class TestDatasourceUpdateProviderNameApi:
 
         assert status == 200
 
-    def test_update_name_too_long(self, app):
+    def test_update_name_too_long(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
         method = unwrap(api.post)
 
@@ -799,7 +800,7 @@ class TestDatasourceUpdateProviderNameApi:
             with pytest.raises(ValueError):
                 method(api, "notion")
 
-    def test_update_name_missing_credential_id(self, app):
+    def test_update_name_missing_credential_id(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
         method = unwrap(api.post)
 

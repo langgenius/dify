@@ -49,7 +49,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                 )}
                 key={index}
               >
-                <RiDraggable className="handle h-4 w-4 cursor-grab text-text-quaternary" />
+                <RiDraggable className="handle size-4 cursor-grab text-text-quaternary" />
                 <input
                   key={index}
                   type="input"
@@ -63,13 +63,14 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                       return item
                     }))
                   }}
-                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm leading-9 text-text-secondary focus:outline-hidden"
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm/9 text-text-secondary focus:outline-hidden"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
-                <div
-                  role="button"
-                  className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                <button
+                  type="button"
+                  aria-label={t('operation.delete', { ns: 'common' })}
+                  className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))
                     setDeletingID(null)
@@ -77,8 +78,8 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <RiDeleteBinLine className="h-3.5 w-3.5" />
-                </div>
+                  <RiDeleteBinLine className="size-3.5" aria-hidden="true" />
+                </button>
               </div>
             ))}
           </ReactSortable>
@@ -89,7 +90,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
         onClick={() => { onChange([...options, '']) }}
         className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
       >
-        <RiAddLine className="h-4 w-4" />
+        <RiAddLine className="size-4" />
         <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
       </div>
     </div>

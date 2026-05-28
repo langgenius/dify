@@ -58,7 +58,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
           )}
         >
           <div className="p-px">
-            <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
+            <Tag01 className="size-3.5 text-text-tertiary" />
           </div>
           <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-tertiary">
             {!value.length && t('tag.placeholder', { ns: 'common' })}
@@ -69,7 +69,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
           )}
           {!value.length && (
             <div className="shrink-0 p-px">
-              <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
+              <RiArrowDownSLine className="size-3.5 text-text-tertiary" />
             </div>
           )}
         </PopoverTrigger>
@@ -77,11 +77,10 @@ const LabelFilter: FC<LabelFilterProps> = ({
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 p-px"
-            data-testid="label-filter-clear-button"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={() => onChange([])}
           >
-            <XCircle className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+            <XCircle className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
           </button>
         )}
         <PopoverContent
@@ -104,16 +103,16 @@ const LabelFilter: FC<LabelFilterProps> = ({
                 <button
                   key={label.name}
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
+                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-[6px] pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
-                  <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
-                  {value.includes(label.name) && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
+                  <div title={label.label} className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
+                  {value.includes(label.name) && <Check className="size-4 shrink-0 text-text-accent" aria-hidden="true" />}
                 </button>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="h-6 w-6 text-text-quaternary" />
+                  <Tag03 className="size-6 text-text-quaternary" />
                   <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}

@@ -1,3 +1,16 @@
+@import '../app/styles/tailwind-core.css';
+
+@source '../app';
+@source '../context';
+@source '../hooks';
+@source '.';
+@source '../../packages/dify-ui/src';
+@source '../node_modules/streamdown/dist';
+@source '../node_modules/@streamdown/math/dist';
+@source not '../**/*.{spec,test}.{js,ts,jsx,tsx}';
+@source not '../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
+@source not '../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
+
 html,
 body {
   max-width: unset;

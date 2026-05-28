@@ -64,13 +64,13 @@ describe('TimePickerOptions', () => {
     it('should render selected hour in the list', () => {
       const props = createOptionsProps({ selectedTime: dayjs('2024-01-01 05:30:00') })
       render(<Options {...props} />)
-      const selectedHour = screen.getAllByRole('listitem').find(item => item.textContent === '05')
+      const selectedHour = screen.getAllByRole('button').find(item => item.textContent === '05')
       expect(selectedHour)!.toHaveClass('bg-components-button-ghost-bg-hover')
     })
     it('should render selected minute in the list', () => {
       const props = createOptionsProps({ selectedTime: dayjs('2024-01-01 05:30:00') })
       render(<Options {...props} />)
-      const selectedMinute = screen.getAllByRole('listitem').find(item => item.textContent === '30')
+      const selectedMinute = screen.getAllByRole('button').find(item => item.textContent === '30')
       expect(selectedMinute)!.toHaveClass('bg-components-button-ghost-bg-hover')
     })
 

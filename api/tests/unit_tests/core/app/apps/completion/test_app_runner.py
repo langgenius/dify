@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
@@ -47,7 +48,7 @@ def _build_generate_entity(app_config, file_upload_config=None):
 
 
 class TestCompletionAppRunner:
-    def test_run_app_not_found(self, runner, mocker):
+    def test_run_app_not_found(self, runner, mocker: MockerFixture):
         session = mocker.MagicMock()
         session.scalar.return_value = None
         mocker.patch.object(module.db, "session", session)
@@ -58,7 +59,7 @@ class TestCompletionAppRunner:
         with pytest.raises(ValueError):
             runner.run(app_generate_entity, MagicMock(), MagicMock())
 
-    def test_run_moderation_error_outputs_direct(self, runner, mocker):
+    def test_run_moderation_error_outputs_direct(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
 
         session = mocker.MagicMock()
@@ -78,7 +79,7 @@ class TestCompletionAppRunner:
         runner.direct_output.assert_called_once()
         runner._handle_invoke_result.assert_not_called()
 
-    def test_run_hosting_moderation_stops(self, runner, mocker):
+    def test_run_hosting_moderation_stops(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
 
         session = mocker.MagicMock()
@@ -97,7 +98,7 @@ class TestCompletionAppRunner:
 
         runner._handle_invoke_result.assert_not_called()
 
-    def test_run_dataset_and_external_tools_flow(self, runner, mocker):
+    def test_run_dataset_and_external_tools_flow(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
 
         session = mocker.MagicMock()
@@ -140,7 +141,7 @@ class TestCompletionAppRunner:
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
         runner._handle_invoke_result.assert_called_once()
 
-    def test_run_uses_low_image_detail_default(self, runner, mocker):
+    def test_run_uses_low_image_detail_default(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
 
         session = mocker.MagicMock()

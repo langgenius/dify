@@ -155,12 +155,7 @@ const EmailInput = ({
               sideOffset={4}
               alignOffset={-40}
               popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-              positionerProps={{
-                anchor: inputRef,
-                style: {
-                  zIndex: 1000,
-                },
-              }}
+              positionerProps={{ anchor: inputRef }}
             >
               <MemberList
                 searchValue={searchKey}

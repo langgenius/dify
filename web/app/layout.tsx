@@ -4,12 +4,13 @@ import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import AmplitudeProvider from '@/app/components/base/amplitude'
+import { IS_PROD } from '@/config'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
+import { headers } from '@/next/headers'
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
-import CreateAppAttributionBootstrap from './components/create-app-attribution-bootstrap'
+import { CreateAppAttributionBootstrap } from './components/create-app-attribution-bootstrap'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
@@ -32,6 +33,7 @@ const LocaleLayout = async ({
 }) => {
   const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
+  const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? undefined : undefined
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -49,22 +51,20 @@ const LocaleLayout = async ({
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
         <CreateAppAttributionBootstrap />
-        {/* <ReactGrabLoader /> */}
         <ReactScanLoader />
       </head>
       <body
-        className="h-full select-auto"
+        className="h-full"
         {...datasetMap}
       >
         <div className="isolate h-full">
-          <AmplitudeProvider />
           <JotaiProvider>
             <ThemeProvider
               attribute="data-theme"
               defaultTheme="system"
               enableSystem
               disableTransitionOnChange
-              enableColorScheme={false}
+              nonce={nonce}
             >
               <NuqsAdapter>
                 <TanstackQueryInitializer>

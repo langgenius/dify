@@ -166,6 +166,71 @@ def test_adapt_node_data_for_graph_migrates_legacy_tool_configurations() -> None
     }
 
 
+def test_adapt_node_data_for_graph_preserves_model_selector_top_level_configurations() -> None:
+    normalized = adapt_node_data_for_graph(
+        {
+            "type": BuiltinNodeTypes.TOOL,
+            "tool_configurations": {
+                "vision_llm_model": {
+                    "type": "constant",
+                    "value": "",
+                    "provider": "langgenius/tongyi/tongyi",
+                    "model": "qwen3-vl-plus",
+                    "model_type": "llm",
+                    "mode": "chat",
+                },
+            },
+        }
+    )
+
+    assert normalized["tool_configurations"] == {}
+    assert normalized["tool_parameters"] == {
+        "vision_llm_model": {
+            "type": "constant",
+            "value": {
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-vl-plus",
+                "model_type": "llm",
+                "mode": "chat",
+            },
+        }
+    }
+
+
+def test_adapt_node_data_for_graph_flattens_constant_model_selector_value() -> None:
+    normalized = adapt_node_data_for_graph(
+        {
+            "type": BuiltinNodeTypes.TOOL,
+            "tool_configurations": {
+                "tts_model": {
+                    "type": "constant",
+                    "value": {
+                        "provider": "langgenius/tongyi/tongyi",
+                        "model": "qwen3-tts-flash",
+                        "model_type": "tts",
+                        "language": "Chinese",
+                        "voice": "Cherry",
+                    },
+                },
+            },
+        }
+    )
+
+    assert normalized["tool_configurations"] == {}
+    assert normalized["tool_parameters"] == {
+        "tts_model": {
+            "type": "constant",
+            "value": {
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-tts-flash",
+                "model_type": "tts",
+                "language": "Chinese",
+                "voice": "Cherry",
+            },
+        }
+    }
+
+
 def test_adapt_node_config_for_graph_rewrites_nested_node_data() -> None:
     normalized = adapt_node_config_for_graph(
         {

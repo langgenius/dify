@@ -11,6 +11,7 @@ import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiCloseLine, RiErrorWarningFill, RiLoader4Line, RiMoreLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -114,6 +115,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   varName,
   variableCategory,
 }) => {
+  const { t } = useTranslation()
   const handleTriggerReadonlyClick = (e: React.MouseEvent<HTMLElement>) => {
     if (!readonly)
       return
@@ -154,12 +156,12 @@ const VarReferencePickerTrigger: FC<Props> = ({
               )}
               {isShowAPart && (
                 <div className="flex items-center">
-                  <RiMoreLine className="h-3 w-3 text-text-secondary" />
+                  <RiMoreLine className="size-3 text-text-secondary" />
                   <Line3 className="mr-0.5 text-divider-deep"></Line3>
                 </div>
               )}
               <div className="flex items-center text-text-accent">
-                {isLoading && <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />}
+                {isLoading && <RiLoader4Line className="size-3.5 animate-spin text-text-secondary" />}
                 <VariableIconWithColor
                   variables={value as ValueSelector}
                   variableCategory={variableCategory}
@@ -180,7 +182,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               >
                 {type}
               </div>
-              {showErrorIcon && <RiErrorWarningFill data-testid="var-reference-picker-error-icon" className="ml-0.5 h-3 w-3 text-text-destructive" />}
+              {showErrorIcon && <RiErrorWarningFill data-testid="var-reference-picker-error-icon" className="ml-0.5 size-3 text-text-destructive" />}
             </>
           )
         : (
@@ -188,7 +190,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               {isLoading
                 ? (
                     <div className="flex items-center">
-                      <RiLoader4Line className="mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
+                      <RiLoader4Line className="mr-1 size-3.5 animate-spin text-text-secondary" />
                       <span>{placeholder}</span>
                     </div>
                   )
@@ -230,6 +232,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
           ? variablePicker
           : (
               <PopoverTrigger
+                nativeButton={false}
                 render={variablePicker}
                 onClick={handleTriggerReadonlyClick}
               />
@@ -251,9 +254,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
         {isAddBtnTrigger
           ? (
               <div>
-                <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={() => {}} data-testid="add-button">
-                  <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                </div>
+                <button
+                  type="button"
+                  aria-label={t('operation.add', { ns: 'common' })}
+                  className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={() => {}}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
               </div>
             )
           : (
@@ -273,7 +281,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                           trigger={(
                             <div className="flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2">
                               <div className="mr-1 system-sm-regular text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
-                              <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
+                              <RiArrowDownSLine className="size-4 text-text-quaternary" />
                             </div>
                           )}
                           popupClassName="top-8"
@@ -287,7 +295,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                     )
                   : (!hasValue && (
                       <div className="mr-1 ml-1.5">
-                        <Variable02 className={`h-4 w-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
+                        <Variable02 className={`size-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
                       </div>
                     ))}
                 {isConstant
@@ -302,13 +310,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
                     )
                   : resolvedVariablePicker}
                 {(hasValue && !readonly && !isInTable && !isJustShowValue) && (
-                  <div
-                    className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 group-hover/wrap:visible hover:bg-state-base-hover"
+                  <button
+                    type="button"
+                    aria-label={t('operation.clear', { ns: 'common' })}
+                    className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 group-hover/wrap:visible hover:bg-state-base-hover"
                     onClick={handleClearVar}
-                    data-testid="var-reference-picker-clear"
                   >
-                    <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
-                  </div>
+                    <RiCloseLine className="size-3.5 text-text-tertiary group-hover:text-text-secondary" aria-hidden="true" />
+                  </button>
                 )}
                 {!hasValue && valueTypePlaceHolder && (
                   <Badge
@@ -344,6 +353,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
 
     return (
       <PopoverTrigger
+        nativeButton={false}
         render={triggerContent}
         onClick={handleTriggerReadonlyClick}
       />

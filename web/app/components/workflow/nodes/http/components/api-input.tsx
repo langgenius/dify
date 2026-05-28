@@ -56,7 +56,7 @@ const ApiInput: FC<Props> = ({
         trigger={(
           <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')}>
             <div className="w-12 pl-0.5 text-xs leading-[18px] font-medium text-text-primary uppercase">{method}</div>
-            {!readonly && <RiArrowDownSLine className="ml-1 h-3.5 w-3.5 text-text-secondary" />}
+            {!readonly && <RiArrowDownSLine className="ml-1 size-3.5 text-text-secondary" />}
           </div>
         )}
         popupClassName="top-[34px] w-[108px]"

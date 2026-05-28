@@ -27,7 +27,7 @@ export type SyncDraftCallback = {
   onError?: () => void
   onSettled?: () => void
 }
-export type CommonHooksFnMap = {
+type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,

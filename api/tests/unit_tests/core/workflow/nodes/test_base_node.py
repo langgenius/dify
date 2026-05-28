@@ -35,7 +35,10 @@ def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams,
         invoke_from="debugger",
     )
     runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=build_system_variables(user_id="user", files=[]),
+            user_inputs={},
+        ),
         start_at=0.0,
     )
     return init_params, runtime_state
@@ -62,7 +65,7 @@ def test_node_hydrates_data_during_initialization():
 
     node = _SampleNode(
         node_id="node-1",
-        config=_build_node_data(),
+        data=_build_node_data(),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )
@@ -82,13 +85,16 @@ def test_node_accepts_invoke_from_enum():
         invoke_from=InvokeFrom.DEBUGGER,
     )
     runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={}),
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=build_system_variables(user_id="user", files=[]),
+            user_inputs={},
+        ),
         start_at=0.0,
     )
 
     node = _SampleNode(
         node_id="node-1",
-        config=_build_node_data(),
+        data=_build_node_data(),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )
@@ -140,7 +146,7 @@ def test_node_hydration_preserves_compatibility_extra_fields():
 
     node = _SampleNode(
         node_id="node-1",
-        config=node_config["data"],
+        data=node_config["data"],
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )

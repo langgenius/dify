@@ -36,8 +36,9 @@ describe('VariableTypeSelector', () => {
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(screen.queryByText('number')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toHaveAttribute('aria-expanded', 'false')
     })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('keeps the custom popup class in in-cell mode', async () => {

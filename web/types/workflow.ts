@@ -453,7 +453,7 @@ export const VarInInspectType = {
 } as const
 export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
 
-export type FullContent = {
+type FullContent = {
   size_bytes: number
   download_url: string
 }

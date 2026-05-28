@@ -150,7 +150,7 @@ def _build_fake_couchbase_modules():
 
 
 @pytest.fixture
-def couchbase_module(monkeypatch):
+def couchbase_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_couchbase_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -194,7 +194,7 @@ def test_init_sets_cluster_handles(couchbase_module):
     vector._cluster.wait_until_ready.assert_called_once()
 
 
-def test_create_and_create_collection_branches(couchbase_module, monkeypatch):
+def test_create_and_create_collection_branches(couchbase_module, monkeypatch: pytest.MonkeyPatch):
     vector = couchbase_module.CouchbaseVector.__new__(couchbase_module.CouchbaseVector)
     vector._collection_name = "collection_1"
     vector._client_config = _config(couchbase_module)
@@ -319,7 +319,7 @@ def test_search_methods_and_format_metadata(couchbase_module):
     assert vector._format_metadata({"metadata.a": 1, "plain": 2}) == {"a": 1, "plain": 2}
 
 
-def test_delete_collection_and_factory(couchbase_module, monkeypatch):
+def test_delete_collection_and_factory(couchbase_module, monkeypatch: pytest.MonkeyPatch):
     vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
     scopes = [
         SimpleNamespace(collections=[SimpleNamespace(name="other")]),

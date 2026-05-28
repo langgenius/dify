@@ -255,7 +255,6 @@ const TestThemeProvider = ({ children }: { children: React.ReactNode }) => (
     defaultTheme="system"
     enableSystem
     disableTransitionOnChange
-    enableColorScheme={false}
   >
     {children}
   </ThemeProvider>

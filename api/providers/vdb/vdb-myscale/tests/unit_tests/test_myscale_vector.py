@@ -38,7 +38,7 @@ def _build_fake_clickhouse_connect_module():
 
 
 @pytest.fixture
-def myscale_module(monkeypatch):
+def myscale_module(monkeypatch: pytest.MonkeyPatch):
     fake_module = _build_fake_clickhouse_connect_module()
     monkeypatch.setitem(sys.modules, "clickhouse_connect", fake_module)
 
@@ -90,7 +90,7 @@ def test_delete_by_ids_short_circuits_on_empty_list(myscale_module):
     vector._client.command.assert_not_called()
 
 
-def test_factory_initializes_lower_case_collection_name(myscale_module, monkeypatch):
+def test_factory_initializes_lower_case_collection_name(myscale_module, monkeypatch: pytest.MonkeyPatch):
     factory = myscale_module.MyScaleVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",
@@ -160,7 +160,7 @@ def test_create_collection_builds_expected_sql(myscale_module):
     assert "INDEX text_idx text TYPE fts('tokenizer=unicode')" in sql
 
 
-def test_add_texts_inserts_rows_and_returns_ids(myscale_module, monkeypatch):
+def test_add_texts_inserts_rows_and_returns_ids(myscale_module, monkeypatch: pytest.MonkeyPatch):
     vector = myscale_module.MyScaleVector("collection_1", _config(myscale_module))
     monkeypatch.setattr(myscale_module.uuid, "uuid4", lambda: "generated-uuid")
     docs = [

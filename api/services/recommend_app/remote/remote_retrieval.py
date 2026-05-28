@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 
 class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
     """
-    Retrieval recommended app from dify official
+    Retrieval recommended app from dify official.
+
+    The remote `/apps` payload is already curated for display, including category order.
+    Keep the response order intact so Explore matches the template service.
     """
 
     def get_recommend_app_detail(self, app_id: str):
@@ -64,8 +67,4 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
         result: dict[str, Any] = response.json()
-
-        if "categories" in result:
-            result["categories"] = sorted(result["categories"])
-
         return result

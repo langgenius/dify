@@ -30,7 +30,7 @@ const RetryResultPanel: FC<Props> = ({
           onBack()
         }}
       >
-        <RiArrowLeftLine className="mr-1 h-4 w-4" />
+        <RiArrowLeftLine className="mr-1 size-4" />
         {t('singleRun.back', { ns: 'workflow' })}
       </div>
       <TracingPanel

@@ -2,12 +2,14 @@ import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypedDict
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -33,7 +35,6 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkflowDraftVariableListQuery(BaseModel):
@@ -56,33 +57,25 @@ class EnvironmentVariableUpdatePayload(BaseModel):
     environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
 
 
-console_ns.schema_model(
-    WorkflowDraftVariableListQuery.__name__,
-    WorkflowDraftVariableListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    WorkflowDraftVariableUpdatePayload.__name__,
-    WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ConversationVariableUpdatePayload.__name__,
-    ConversationVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    EnvironmentVariableUpdatePayload.__name__,
-    EnvironmentVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+register_schema_models(
+    console_ns,
+    WorkflowDraftVariableListQuery,
+    WorkflowDraftVariableUpdatePayload,
+    ConversationVariableUpdatePayload,
+    EnvironmentVariableUpdatePayload,
 )
 
 
 def _convert_values_to_json_serializable_object(value: Segment):
-    if isinstance(value, FileSegment):
-        return value.value.model_dump()
-    elif isinstance(value, ArrayFileSegment):
-        return [i.model_dump() for i in value.value]
-    elif isinstance(value, SegmentGroup):
-        return [_convert_values_to_json_serializable_object(i) for i in value.value]
-    else:
-        return value.value
+    match value:
+        case FileSegment():
+            return value.value.model_dump()
+        case ArrayFileSegment():
+            return [i.model_dump() for i in value.value]
+        case SegmentGroup():
+            return [_convert_values_to_json_serializable_object(i) for i in value.value]
+        case _:
+            return value.value
 
 
 def _serialize_var_value(variable: WorkflowDraftVariable):
@@ -90,13 +83,14 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
     # create a copy of the value to avoid affecting the model cache.
     value = value.model_copy(deep=True)
     # Refresh the url signature before returning it to client.
-    if isinstance(value, FileSegment):
-        file = value.value
-        file.remote_url = file.generate_url()
-    elif isinstance(value, ArrayFileSegment):
-        files = value.value
-        for file in files:
+    match value:
+        case FileSegment():
+            file = value.value
             file.remote_url = file.generate_url()
+        case ArrayFileSegment():
+            files = value.value
+            for file in files:
+                file.remote_url = file.generate_url()
     return _convert_values_to_json_serializable_object(value)
 
 
@@ -259,7 +253,7 @@ class WorkflowVariableCollectionApi(Resource):
         """
         Get draft workflow
         """
-        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -353,14 +347,15 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, app_model: App, variable_id: str):
+    def get(self, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
         return variable
 
@@ -371,7 +366,7 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, app_model: App, variable_id: str):
+    def patch(self, app_model: App, variable_id: UUID):
         # Request payload for file types:
         #
         # Local File:
@@ -398,10 +393,11 @@ class VariableApi(Resource):
         )
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
 
         new_name = args_model.name
@@ -442,14 +438,15 @@ class VariableApi(Resource):
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def delete(self, app_model: App, variable_id: str):
+    def delete(self, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
         draft_var_srv.delete_variable(variable)
         db.session.commit()
@@ -465,7 +462,7 @@ class VariableResetApi(Resource):
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def put(self, app_model: App, variable_id: str):
+    def put(self, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -476,10 +473,11 @@ class VariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, app_id={app_model.id}",
             )
+        variable_id_str = str(variable_id)
         variable = _ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
             app_id=app_model.id,
-            variable_id=variable_id,
+            variable_id=variable_id_str,
         )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)

@@ -122,7 +122,7 @@ class TestValidateResult:
                 parameters=[
                     ParameterConfig(
                         name="status",
-                        type="select",  # pyright: ignore[reportArgumentType]
+                        type="select",
                         description="Status",
                         required=True,
                         options=["active", "inactive"],

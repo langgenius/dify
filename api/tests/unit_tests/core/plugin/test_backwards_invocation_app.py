@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
+from pytest_mock import MockerFixture
 
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
@@ -41,7 +42,7 @@ class TestBaseBackwardsInvocation:
 
 
 class TestPluginAppBackwardsInvocation:
-    def test_fetch_app_info_workflow_path(self, mocker):
+    def test_fetch_app_info_workflow_path(self, mocker: MockerFixture):
         workflow = MagicMock()
         workflow.features_dict = {"feature": "v"}
         workflow.user_input_form.return_value = [{"name": "foo"}]
@@ -57,7 +58,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"data": {"mapped": True}}
         mapper.assert_called_once_with(features_dict={"feature": "v"}, user_input_form=[{"name": "foo"}])
 
-    def test_fetch_app_info_model_config_path(self, mocker):
+    def test_fetch_app_info_model_config_path(self, mocker: MockerFixture):
         model_config = MagicMock()
         model_config.to_dict.return_value = {"user_input_form": [{"name": "bar"}], "k": "v"}
         app = MagicMock(mode=AppMode.COMPLETION, app_model_config=model_config)
@@ -81,7 +82,7 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.COMPLETION, "invoke_completion_app"),
         ],
     )
-    def test_invoke_app_routes_by_mode(self, mocker, mode, route_method):
+    def test_invoke_app_routes_by_mode(self, mocker: MockerFixture, mode, route_method):
         app = MagicMock(mode=mode)
         user = MagicMock()
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
@@ -102,7 +103,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"routed": True}
         assert route.call_count == 1
 
-    def test_invoke_app_uses_end_user_when_user_id_missing(self, mocker):
+    def test_invoke_app_uses_end_user_when_user_id_missing(self, mocker: MockerFixture):
         app = MagicMock(mode=AppMode.WORKFLOW)
         end_user = MagicMock()
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
@@ -127,7 +128,7 @@ class TestPluginAppBackwardsInvocation:
         get_or_create.assert_called_once_with(app)
         assert route.call_args.args[1] is end_user
 
-    def test_invoke_app_missing_query_for_chat_raises(self, mocker):
+    def test_invoke_app_missing_query_for_chat_raises(self, mocker: MockerFixture):
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=MagicMock(mode=AppMode.CHAT))
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=MagicMock())
 
@@ -143,7 +144,7 @@ class TestPluginAppBackwardsInvocation:
                 files=[],
             )
 
-    def test_invoke_app_unexpected_mode_raises(self, mocker):
+    def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture):
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=MagicMock(mode="other"))
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=MagicMock())
 
@@ -166,7 +167,7 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.CHAT, "core.plugin.backwards_invocation.app.ChatAppGenerator.generate"),
         ],
     )
-    def test_invoke_chat_app_agent_and_chat(self, mocker, mode, generator_path):
+    def test_invoke_chat_app_agent_and_chat(self, mocker: MockerFixture, mode, generator_path):
         app = MagicMock(mode=mode, workflow=None)
         spy = mocker.patch(generator_path, return_value={"result": "ok"})
 
@@ -183,7 +184,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"result": "ok"}
         assert spy.call_count == 1
 
-    def test_invoke_chat_app_advanced_chat_injects_pause_state_config(self, mocker):
+    def test_invoke_chat_app_advanced_chat_injects_pause_state_config(self, mocker: MockerFixture):
         workflow = MagicMock()
         workflow.created_by = "owner-id"
 
@@ -242,7 +243,7 @@ class TestPluginAppBackwardsInvocation:
                 files=[],
             )
 
-    def test_invoke_workflow_app_injects_pause_state_config(self, mocker):
+    def test_invoke_workflow_app_injects_pause_state_config(self, mocker: MockerFixture):
         workflow = MagicMock()
         workflow.created_by = "owner-id"
 
@@ -284,7 +285,7 @@ class TestPluginAppBackwardsInvocation:
                 files=[],
             )
 
-    def test_invoke_completion_app(self, mocker):
+    def test_invoke_completion_app(self, mocker: MockerFixture):
         spy = mocker.patch(
             "core.plugin.backwards_invocation.app.CompletionAppGenerator.generate", return_value={"ok": 1}
         )
@@ -295,7 +296,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"ok": 1}
         assert spy.call_count == 1
 
-    def test_get_user_returns_end_user(self, mocker):
+    def test_get_user_returns_end_user(self, mocker: MockerFixture):
         session = MagicMock()
         session.scalar.side_effect = [MagicMock(id="end-user")]
         session_ctx = MagicMock()
@@ -307,7 +308,7 @@ class TestPluginAppBackwardsInvocation:
         user = PluginAppBackwardsInvocation._get_user("uid")
         assert user.id == "end-user"
 
-    def test_get_user_falls_back_to_account_user(self, mocker):
+    def test_get_user_falls_back_to_account_user(self, mocker: MockerFixture):
         session = MagicMock()
         session.scalar.side_effect = [None, MagicMock(id="account-user")]
         session_ctx = MagicMock()
@@ -319,7 +320,7 @@ class TestPluginAppBackwardsInvocation:
         user = PluginAppBackwardsInvocation._get_user("uid")
         assert user.id == "account-user"
 
-    def test_get_user_raises_when_user_not_found(self, mocker):
+    def test_get_user_raises_when_user_not_found(self, mocker: MockerFixture):
         session = MagicMock()
         session.scalar.side_effect = [None, None]
         session_ctx = MagicMock()
@@ -331,21 +332,21 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid")
 
-    def test_get_app_returns_app(self, mocker):
+    def test_get_app_returns_app(self, mocker: MockerFixture):
         app_obj = MagicMock(id="app")
         db = SimpleNamespace(session=MagicMock(scalar=MagicMock(return_value=app_obj)))
         mocker.patch("core.plugin.backwards_invocation.app.db", db)
 
         assert PluginAppBackwardsInvocation._get_app("app", "tenant") is app_obj
 
-    def test_get_app_raises_when_missing(self, mocker):
+    def test_get_app_raises_when_missing(self, mocker: MockerFixture):
         db = SimpleNamespace(session=MagicMock(scalar=MagicMock(return_value=None)))
         mocker.patch("core.plugin.backwards_invocation.app.db", db)
 
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
 
-    def test_get_app_raises_when_query_fails(self, mocker):
+    def test_get_app_raises_when_query_fails(self, mocker: MockerFixture):
         db = SimpleNamespace(session=MagicMock(scalar=MagicMock(side_effect=RuntimeError("db down"))))
         mocker.patch("core.plugin.backwards_invocation.app.db", db)
 

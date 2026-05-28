@@ -38,7 +38,7 @@ describe('EndPanel', () => {
 
     expect(screen.getByText('workflow.nodes.end.output.variable')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('add-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.end.output.variable' }))
 
     expect(handleAddVariable).toHaveBeenCalledTimes(1)
   })
@@ -53,6 +53,6 @@ describe('EndPanel', () => {
 
     render(<Panel id="end-node" data={createData()} panelProps={{} as PanelProps} />)
 
-    expect(screen.queryByTestId('add-button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.end.output.variable' })).not.toBeInTheDocument()
   })
 })

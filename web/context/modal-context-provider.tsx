@@ -9,7 +9,7 @@ import type { ModelLoadBalancingModalProps } from '@/app/components/header/accou
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
-import type { ApiBasedExtension, ExternalDataTool } from '@/models/common'
+import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -33,9 +33,6 @@ import {
 } from './modal-context'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
-  ssr: false,
-})
-const ApiBasedExtensionModal = dynamic(() => import('@/app/components/header/account-setting/api-based-extension-page/modal'), {
   ssr: false,
 })
 const ModerationSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'), {
@@ -89,7 +86,6 @@ export const ModalContextProvider = ({
         ? urlAccountModalState.payload
         : DEFAULT_ACCOUNT_SETTING_TAB)
     : null
-  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
@@ -169,13 +165,13 @@ export const ModalContextProvider = ({
       showModelModal.onCancelCallback()
   }, [showModelModal])
 
-  const handleSaveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleSaveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onSaveCallback)
       showModelModal.onSaveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
   }, [showModelModal])
 
-  const handleRemoveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleRemoveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onRemoveCallback)
       showModelModal.onRemoveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
@@ -204,12 +200,6 @@ export const ModalContextProvider = ({
     if (showOpeningModal?.onCancelCallback)
       showOpeningModal.onCancelCallback()
   }, [showOpeningModal])
-
-  const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
-    if (showApiBasedExtensionModal?.onSaveCallback)
-      showApiBasedExtensionModal.onSaveCallback(newApiBasedExtension)
-    setShowApiBasedExtensionModal(null)
-  }
 
   const handleSaveModeration = (newModerationConfig: ModerationConfig) => {
     if (showModerationSettingModal?.onSaveCallback)
@@ -246,7 +236,6 @@ export const ModalContextProvider = ({
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
-      setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
       setShowPricingModal: handleShowPricingModal,
@@ -272,15 +261,6 @@ export const ModalContextProvider = ({
           )
         }
 
-        {
-          !!showApiBasedExtensionModal && (
-            <ApiBasedExtensionModal
-              data={showApiBasedExtensionModal.payload}
-              onCancel={() => setShowApiBasedExtensionModal(null)}
-              onSave={handleSaveApiBasedExtension}
-            />
-          )
-        }
         {
           !!showModerationSettingModal && (
             <ModerationSettingModal
@@ -369,7 +349,7 @@ export const ModalContextProvider = ({
               }}
               onSave={() => {
                 setShowUpdatePluginModal(null)
-                showUpdatePluginModal.onSaveCallback?.({} as any)
+                showUpdatePluginModal.onSaveCallback?.()
               }}
             />
           )

@@ -110,48 +110,6 @@ Object.defineProperty(navigator, 'clipboard', {
   writable: true,
 })
 
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({
-    children,
-    onClose,
-    onConfirm,
-    onCancel,
-    title,
-    confirmButtonText,
-    cancelButtonText,
-    footerSlot,
-    onExtraButtonClick,
-    extraButtonText,
-  }: {
-    children: React.ReactNode
-    onClose: () => void
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-    confirmButtonText: string
-    cancelButtonText?: string
-    footerSlot?: React.ReactNode
-    onExtraButtonClick?: () => void
-    extraButtonText?: string
-  }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      <div data-testid="modal-content">{children}</div>
-      <div data-testid="modal-footer">
-        {footerSlot}
-        {extraButtonText && (
-          <button data-testid="modal-extra" onClick={onExtraButtonClick}>{extraButtonText}</button>
-        )}
-        {cancelButtonText && (
-          <button data-testid="modal-cancel" onClick={onCancel}>{cancelButtonText}</button>
-        )}
-        <button data-testid="modal-confirm" onClick={onConfirm}>{confirmButtonText}</button>
-        <button data-testid="modal-close" onClick={onClose}>Close</button>
-      </div>
-    </div>
-  ),
-}))
-
 let mockFormValues: { values: Record<string, string>, isCheckValidated: boolean } = {
   values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
   isCheckValidated: true,
@@ -161,10 +119,13 @@ const setMockFormValues = (values: typeof mockFormValues) => {
 }
 
 vi.mock('@/app/components/base/form/components/base', () => ({
-  BaseForm: React.forwardRef((
-    { formSchemas }: { formSchemas: Array<{ name: string, default?: string }> },
-    ref: React.ForwardedRef<{ getFormValues: () => { values: Record<string, string>, isCheckValidated: boolean } }>,
-  ) => {
+  BaseForm: ({
+    formSchemas,
+    ref,
+  }: {
+    formSchemas: Array<{ name: string, default?: string }>
+    ref?: React.Ref<{ getFormValues: () => { values: Record<string, string>, isCheckValidated: boolean } }>
+  }) => {
     React.useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
     }))
@@ -180,15 +141,24 @@ vi.mock('@/app/components/base/form/components/base', () => ({
         ))}
       </div>
     )
-  }),
+  },
 }))
 
 describe('OAuthClientSettingsModal', () => {
   const defaultProps = {
+    open: true,
     oauthConfig: createMockOAuthConfig(),
-    onClose: vi.fn(),
+    onOpenChange: vi.fn(),
     showOAuthCreateModal: vi.fn(),
   }
+  const title = 'pluginTrigger.modal.oauth.title'
+  const getDialog = () => screen.getByRole('dialog', { name: title })
+  const getCloseButton = () => screen.getByRole('button', { name: 'Close' })
+  const getCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+  const getSaveOnlyButton = () => screen.getByRole('button', { name: 'plugin.auth.saveOnly' })
+  const getConfirmButton = () => screen.getByRole('button', {
+    name: /plugin\.auth\.saveAndAuth|pluginTrigger\.modal\.common\.authorizing|pluginTrigger\.modal\.oauth\.authorization\.waitingJump/,
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -215,7 +185,7 @@ describe('OAuthClientSettingsModal', () => {
     it('should render modal with correct title', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.oauth.title')
+      expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
     })
 
     it('should render client type selector when system_configured is true', () => {
@@ -332,7 +302,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalled()
     })
@@ -350,7 +320,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
         'https://oauth.example.com/authorize',
@@ -359,7 +329,7 @@ describe('OAuthClientSettingsModal', () => {
     })
 
     it('should show success toast and close modal when OAuth callback succeeds', () => {
-      const mockOnClose = vi.fn()
+      const mockOnOpenChange = vi.fn()
       const mockShowOAuthCreateModal = vi.fn()
 
       mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
@@ -379,18 +349,18 @@ describe('OAuthClientSettingsModal', () => {
       render(
         <OAuthClientSettingsModal
           {...defaultProps}
-          onClose={mockOnClose}
+          onOpenChange={mockOnOpenChange}
           showOAuthCreateModal={mockShowOAuthCreateModal}
         />,
       )
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'pluginTrigger.modal.oauth.authorization.authSuccess',
       })
-      expect(mockOnClose).toHaveBeenCalled()
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
 
     it('should show error toast when OAuth initiation fails', () => {
@@ -403,7 +373,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
@@ -420,7 +390,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -432,20 +402,20 @@ describe('OAuthClientSettingsModal', () => {
     })
 
     it('should show success toast when save only succeeds', () => {
-      const mockOnClose = vi.fn()
+      const mockOnOpenChange = vi.fn()
       mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
 
-      render(<OAuthClientSettingsModal {...defaultProps} onClose={mockOnClose} />)
+      render(<OAuthClientSettingsModal {...defaultProps} onOpenChange={mockOnOpenChange} />)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'pluginTrigger.modal.oauth.save.success',
       })
-      expect(mockOnClose).toHaveBeenCalled()
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
   })
 
@@ -469,7 +439,7 @@ describe('OAuthClientSettingsModal', () => {
     })
 
     it('should show success toast when remove succeeds', () => {
-      const mockOnClose = vi.fn()
+      const mockOnOpenChange = vi.fn()
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
@@ -484,7 +454,7 @@ describe('OAuthClientSettingsModal', () => {
         <OAuthClientSettingsModal
           {...defaultProps}
           oauthConfig={configWithCustomEnabled}
-          onClose={mockOnClose}
+          onOpenChange={mockOnOpenChange}
         />,
       )
 
@@ -495,7 +465,7 @@ describe('OAuthClientSettingsModal', () => {
         type: 'success',
         message: 'pluginTrigger.modal.oauth.remove.success',
       })
-      expect(mockOnClose).toHaveBeenCalled()
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
 
     it('should show error toast when remove fails', () => {
@@ -522,22 +492,22 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Modal Actions', () => {
-    it('should call onClose when close button is clicked', () => {
-      const mockOnClose = vi.fn()
-      render(<OAuthClientSettingsModal {...defaultProps} onClose={mockOnClose} />)
+    it('should call onOpenChange when close button is clicked', () => {
+      const mockOnOpenChange = vi.fn()
+      render(<OAuthClientSettingsModal {...defaultProps} onOpenChange={mockOnOpenChange} />)
 
-      fireEvent.click(screen.getByTestId('modal-close'))
+      fireEvent.click(getCloseButton())
 
-      expect(mockOnClose).toHaveBeenCalled()
+      expect(mockOnOpenChange.mock.calls[0]?.[0]).toBe(false)
     })
 
-    it('should call onClose when extra button (cancel) is clicked', () => {
-      const mockOnClose = vi.fn()
-      render(<OAuthClientSettingsModal {...defaultProps} onClose={mockOnClose} />)
+    it('should call onOpenChange when cancel button is clicked', () => {
+      const mockOnOpenChange = vi.fn()
+      render(<OAuthClientSettingsModal {...defaultProps} onOpenChange={mockOnOpenChange} />)
 
-      fireEvent.click(screen.getByTestId('modal-extra'))
+      fireEvent.click(getCancelButton())
 
-      expect(mockOnClose).toHaveBeenCalled()
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
   })
 
@@ -545,13 +515,13 @@ describe('OAuthClientSettingsModal', () => {
     it('should show default button text initially', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('plugin.auth.saveAndAuth')
+      expect(getConfirmButton()).toHaveTextContent('plugin.auth.saveAndAuth')
     })
 
     it('should show save only button text', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-cancel')).toHaveTextContent('plugin.auth.saveOnly')
+      expect(getSaveOnlyButton()).toHaveTextContent('plugin.auth.saveOnly')
     })
   })
 
@@ -591,7 +561,7 @@ describe('OAuthClientSettingsModal', () => {
     it('should handle undefined oauthConfig', () => {
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={undefined} />)
 
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(getDialog()).toBeInTheDocument()
     })
 
     it('should handle missing provider', () => {
@@ -600,7 +570,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(getDialog()).toBeInTheDocument()
     })
   })
 
@@ -618,7 +588,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       // Verify OAuth flow was initiated
       expect(mockInitiateOAuth).toHaveBeenCalledWith(
@@ -644,13 +614,13 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       vi.advanceTimersByTime(3000)
       expect(mockVerifyBuilder).toHaveBeenCalled()
 
       // Should still be in pending state (polling continues)
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.authorizing')
+      expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.authorizing')
 
       vi.useRealTimers()
     })
@@ -765,7 +735,7 @@ describe('OAuthClientSettingsModal', () => {
 
   describe('OAuth callback edge cases', () => {
     it('should not show success toast when OAuth callback returns falsy data', () => {
-      const mockOnClose = vi.fn()
+      const mockOnOpenChange = vi.fn()
       const mockShowOAuthCreateModal = vi.fn()
 
       mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
@@ -784,12 +754,12 @@ describe('OAuthClientSettingsModal', () => {
       render(
         <OAuthClientSettingsModal
           {...defaultProps}
-          onClose={mockOnClose}
+          onOpenChange={mockOnOpenChange}
           showOAuthCreateModal={mockShowOAuthCreateModal}
         />,
       )
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       // Should not show success toast or call callbacks
       expect(mockToastNotify).not.toHaveBeenCalledWith(
@@ -811,7 +781,7 @@ describe('OAuthClientSettingsModal', () => {
       const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
       fireEvent.click(customCard!)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -829,7 +799,7 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Default is already selected
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -901,7 +871,7 @@ describe('OAuthClientSettingsModal', () => {
     it('should show saveAndAuth text by default', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('plugin.auth.saveAndAuth')
+      expect(getConfirmButton()).toHaveTextContent('plugin.auth.saveAndAuth')
     })
 
     it('should show authorizing text when authorization is pending', () => {
@@ -914,9 +884,9 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.authorizing')
+      expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.authorizing')
     })
   })
 
@@ -931,10 +901,10 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       // After failure, button text should return to default
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('plugin.auth.saveAndAuth')
+      expect(getConfirmButton()).toHaveTextContent('plugin.auth.saveAndAuth')
     })
   })
 
@@ -1013,7 +983,7 @@ describe('OAuthClientSettingsModal', () => {
       const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!
       fireEvent.click(customCard)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       // Should not call configureOAuth because form validation failed
       expect(mockConfigureOAuth).not.toHaveBeenCalled()
@@ -1035,7 +1005,7 @@ describe('OAuthClientSettingsModal', () => {
       // Switch to custom type
       fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1062,7 +1032,7 @@ describe('OAuthClientSettingsModal', () => {
       // Switch to custom type
       fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1089,7 +1059,7 @@ describe('OAuthClientSettingsModal', () => {
       // Switch to custom type
       fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1116,7 +1086,7 @@ describe('OAuthClientSettingsModal', () => {
       // Switch to custom type
       fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
 
-      fireEvent.click(screen.getByTestId('modal-cancel'))
+      fireEvent.click(getSaveOnlyButton())
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1148,7 +1118,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       // Advance timer to trigger polling
       await vi.advanceTimersByTimeAsync(3000)
@@ -1157,7 +1127,7 @@ describe('OAuthClientSettingsModal', () => {
 
       // Button text should show waitingJump after verified
       await waitFor(() => {
-        expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.oauth.authorization.waitingJump')
+        expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.oauth.authorization.waitingJump')
       })
 
       vi.useRealTimers()
@@ -1180,7 +1150,7 @@ describe('OAuthClientSettingsModal', () => {
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('modal-confirm'))
+      fireEvent.click(getConfirmButton())
 
       // First poll
       await vi.advanceTimersByTimeAsync(3000)
@@ -1191,7 +1161,7 @@ describe('OAuthClientSettingsModal', () => {
       expect(mockVerifyBuilder).toHaveBeenCalledTimes(2)
 
       // Should still be in authorizing state
-      expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.authorizing')
+      expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.authorizing')
 
       vi.useRealTimers()
     })

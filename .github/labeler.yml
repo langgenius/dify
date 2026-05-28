@@ -6,5 +6,4 @@ web:
           - 'package.json'
           - 'pnpm-lock.yaml'
           - 'pnpm-workspace.yaml'
-          - '.npmrc'
           - '.nvmrc'

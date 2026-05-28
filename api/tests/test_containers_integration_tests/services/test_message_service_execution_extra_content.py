@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy.orm import Session
 
 from services.message_service import MessageService
 from tests.test_containers_integration_tests.helpers.execution_extra_content import (
@@ -9,7 +10,7 @@ from tests.test_containers_integration_tests.helpers.execution_extra_content imp
 
 
 @pytest.mark.usefixtures("flask_req_ctx_with_containers")
-def test_pagination_returns_extra_contents(db_session_with_containers):
+def test_pagination_returns_extra_contents(db_session_with_containers: Session):
     fixture = create_human_input_message_fixture(db_session_with_containers)
 
     pagination = MessageService.pagination_by_first_id(

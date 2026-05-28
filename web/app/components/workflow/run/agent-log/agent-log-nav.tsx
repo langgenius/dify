@@ -28,7 +28,7 @@ const AgentLogNav = ({
           onShowAgentOrToolLog()
         }}
       >
-        <RiArrowLeftLine className="mr-1 h-3.5 w-3.5" />
+        <RiArrowLeftLine className="mr-1 size-3.5" />
         AGENT
       </Button>
       <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>

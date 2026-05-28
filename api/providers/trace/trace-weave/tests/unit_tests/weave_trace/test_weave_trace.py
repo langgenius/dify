@@ -267,14 +267,14 @@ class TestInit:
         with pytest.raises(ValueError, match="Weave login failed"):
             WeaveDataTrace(config)
 
-    def test_init_files_url_from_env(self, mock_wandb, mock_weave, monkeypatch):
+    def test_init_files_url_from_env(self, mock_wandb, mock_weave, monkeypatch: pytest.MonkeyPatch):
         """Test FILES_URL is read from environment."""
         monkeypatch.setenv("FILES_URL", "http://files.example.com")
         config = _make_weave_config()
         instance = WeaveDataTrace(config)
         assert instance.file_base_url == "http://files.example.com"
 
-    def test_init_files_url_default(self, mock_wandb, mock_weave, monkeypatch):
+    def test_init_files_url_default(self, mock_wandb, mock_weave, monkeypatch: pytest.MonkeyPatch):
         """Test FILES_URL defaults to http://127.0.0.1:5001."""
         monkeypatch.delenv("FILES_URL", raising=False)
         config = _make_weave_config()
@@ -302,7 +302,7 @@ class TestGetProjectUrl:
         url = instance.get_project_url()
         assert url == "https://wandb.ai/my-project"
 
-    def test_get_project_url_exception_raises(self, trace_instance, monkeypatch):
+    def test_get_project_url_exception_raises(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Raises ValueError when exception occurs in get_project_url."""
         monkeypatch.setattr(trace_instance, "entity", None)
         monkeypatch.setattr(trace_instance, "project_name", None)
@@ -583,7 +583,7 @@ class TestFinishCall:
 
 
 class TestWorkflowTrace:
-    def _setup_repo(self, monkeypatch, nodes=None):
+    def _setup_repo(self, monkeypatch: pytest.MonkeyPatch, nodes=None):
         """Helper to patch session/repo dependencies."""
         if nodes is None:
             nodes = []
@@ -599,7 +599,7 @@ class TestWorkflowTrace:
         monkeypatch.setattr("dify_trace_weave.weave_trace.db", MagicMock(engine="engine"))
         return repo
 
-    def test_workflow_trace_no_nodes_no_message_id(self, trace_instance, monkeypatch):
+    def test_workflow_trace_no_nodes_no_message_id(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Workflow trace with no nodes and no message_id."""
         self._setup_repo(monkeypatch, nodes=[])
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
@@ -614,7 +614,7 @@ class TestWorkflowTrace:
         assert trace_instance.start_call.call_count == 1
         assert trace_instance.finish_call.call_count == 1
 
-    def test_workflow_trace_with_message_id(self, trace_instance, monkeypatch):
+    def test_workflow_trace_with_message_id(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Workflow trace with message_id creates both message and workflow runs."""
         self._setup_repo(monkeypatch, nodes=[])
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
@@ -629,7 +629,7 @@ class TestWorkflowTrace:
         assert trace_instance.start_call.call_count == 2
         assert trace_instance.finish_call.call_count == 2
 
-    def test_workflow_trace_with_node_execution(self, trace_instance, monkeypatch):
+    def test_workflow_trace_with_node_execution(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Workflow trace iterates node executions and creates node runs."""
         node = _make_node(
             id="node-1",
@@ -652,7 +652,7 @@ class TestWorkflowTrace:
         # workflow run + node run = 2 calls
         assert trace_instance.start_call.call_count == 2
 
-    def test_workflow_trace_with_llm_node(self, trace_instance, monkeypatch):
+    def test_workflow_trace_with_llm_node(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """LLM node uses process_data prompts as inputs."""
         node = _make_node(
             node_type=BuiltinNodeTypes.LLM,
@@ -680,7 +680,7 @@ class TestWorkflowTrace:
         # The key "messages" should be present (validator transforms the list)
         assert "messages" in node_run.inputs
 
-    def test_workflow_trace_with_non_llm_node_uses_inputs(self, trace_instance, monkeypatch):
+    def test_workflow_trace_with_non_llm_node_uses_inputs(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Non-LLM node uses node_execution.inputs directly."""
         node = _make_node(
             node_type=BuiltinNodeTypes.TOOL,
@@ -701,7 +701,7 @@ class TestWorkflowTrace:
         node_run = node_call_args[0][0]
         assert node_run.inputs.get("tool_input") == "val"
 
-    def test_workflow_trace_missing_app_id_raises(self, trace_instance, monkeypatch):
+    def test_workflow_trace_missing_app_id_raises(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Raises ValueError when app_id is missing from metadata."""
         monkeypatch.setattr("dify_trace_weave.weave_trace.sessionmaker", lambda bind: MagicMock())
         monkeypatch.setattr("dify_trace_weave.weave_trace.db", MagicMock(engine="engine"))
@@ -714,7 +714,7 @@ class TestWorkflowTrace:
         with pytest.raises(ValueError, match="No app_id found in trace_info metadata"):
             trace_instance.workflow_trace(trace_info)
 
-    def test_workflow_trace_start_time_none_defaults_to_now(self, trace_instance, monkeypatch):
+    def test_workflow_trace_start_time_none_defaults_to_now(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """start_time defaults to datetime.now() when None."""
         self._setup_repo(monkeypatch, nodes=[])
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
@@ -727,7 +727,7 @@ class TestWorkflowTrace:
 
         assert trace_instance.start_call.call_count == 1
 
-    def test_workflow_trace_node_created_at_none(self, trace_instance, monkeypatch):
+    def test_workflow_trace_node_created_at_none(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Node with created_at=None uses datetime.now()."""
         node = _make_node(created_at=None, elapsed_time=0.5)
         self._setup_repo(monkeypatch, nodes=[node])
@@ -740,7 +740,7 @@ class TestWorkflowTrace:
         trace_instance.workflow_trace(trace_info)
         assert trace_instance.start_call.call_count == 2
 
-    def test_workflow_trace_chat_mode_llm_node_adds_provider(self, trace_instance, monkeypatch):
+    def test_workflow_trace_chat_mode_llm_node_adds_provider(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Chat mode LLM node adds ls_provider and ls_model_name to attributes."""
         node = _make_node(
             node_type=BuiltinNodeTypes.LLM,
@@ -765,7 +765,7 @@ class TestWorkflowTrace:
         assert node_run.attributes.get("ls_provider") == "openai"
         assert node_run.attributes.get("ls_model_name") == "gpt-4"
 
-    def test_workflow_trace_nodes_sorted_by_created_at(self, trace_instance, monkeypatch):
+    def test_workflow_trace_nodes_sorted_by_created_at(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """Nodes are sorted by created_at before processing."""
         node1 = _make_node(id="node-b", created_at=_dt() + timedelta(seconds=2))
         node2 = _make_node(id="node-a", created_at=_dt())
@@ -799,7 +799,7 @@ class TestMessageTrace:
         trace_instance.message_trace(trace_info)
         trace_instance.start_call.assert_not_called()
 
-    def test_basic_message_trace(self, trace_instance, monkeypatch):
+    def test_basic_message_trace(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """message_trace creates message run and llm child run."""
         monkeypatch.setattr(
             "dify_trace_weave.weave_trace.db.session.get",
@@ -816,7 +816,7 @@ class TestMessageTrace:
         assert trace_instance.start_call.call_count == 2
         assert trace_instance.finish_call.call_count == 2
 
-    def test_message_trace_with_file_data(self, trace_instance, monkeypatch):
+    def test_message_trace_with_file_data(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """message_trace appends file URL to file_list."""
         file_data = MagicMock()
         file_data.url = "path/to/file.png"
@@ -839,7 +839,7 @@ class TestMessageTrace:
         message_run = trace_instance.start_call.call_args_list[0][0][0]
         assert "http://files.test/path/to/file.png" in message_run.file_list
 
-    def test_message_trace_with_end_user(self, trace_instance, monkeypatch):
+    def test_message_trace_with_end_user(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """message_trace looks up end user and sets end_user_id attribute."""
         end_user = MagicMock()
         end_user.session_id = "session-xyz"
@@ -862,7 +862,7 @@ class TestMessageTrace:
         message_run = trace_instance.start_call.call_args_list[0][0][0]
         assert message_run.attributes.get("end_user_id") == "session-xyz"
 
-    def test_message_trace_no_end_user(self, trace_instance, monkeypatch):
+    def test_message_trace_no_end_user(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """message_trace handles when from_end_user_id is None."""
         mock_db = MagicMock()
         mock_db.session.get.return_value = None
@@ -880,7 +880,7 @@ class TestMessageTrace:
         trace_instance.message_trace(trace_info)
         assert trace_instance.start_call.call_count == 2
 
-    def test_message_trace_trace_id_fallback_to_message_id(self, trace_instance, monkeypatch):
+    def test_message_trace_trace_id_fallback_to_message_id(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """trace_id falls back to message_id when trace_id is None."""
         mock_db = MagicMock()
         mock_db.session.get.return_value = None
@@ -895,7 +895,7 @@ class TestMessageTrace:
         message_run = trace_instance.start_call.call_args_list[0][0][0]
         assert message_run.id == "msg-1"
 
-    def test_message_trace_file_list_none(self, trace_instance, monkeypatch):
+    def test_message_trace_file_list_none(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
         """message_trace handles file_list=None gracefully."""
         mock_db = MagicMock()
         mock_db.session.get.return_value = None

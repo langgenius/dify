@@ -4,21 +4,6 @@ import TriggerEventsLimitModal from '../index'
 const mockOnClose = vi.fn()
 const mockOnUpgrade = vi.fn()
 
-const planUpgradeModalMock = vi.fn((props: { show: boolean, title: string, description: string, extraInfo?: React.ReactNode, onClose: () => void, onUpgrade: () => void }) => (
-  <div
-    data-testid="plan-upgrade-modal"
-    data-show={props.show}
-    data-title={props.title}
-    data-description={props.description}
-  >
-    {props.extraInfo}
-  </div>
-))
-
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: (props: { show: boolean, title: string, description: string, extraInfo?: React.ReactNode, onClose: () => void, onUpgrade: () => void }) => planUpgradeModalMock(props),
-}))
-
 describe('TriggerEventsLimitModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -36,16 +21,9 @@ describe('TriggerEventsLimitModal', () => {
       />,
     )
 
-    const modal = screen.getByTestId('plan-upgrade-modal')
-    expect(modal.getAttribute('data-show')).toBe('true')
-    expect(modal.getAttribute('data-title')).toContain('billing.triggerLimitModal.title')
-    expect(modal.getAttribute('data-description')).toContain('billing.triggerLimitModal.description')
-    expect(planUpgradeModalMock).toHaveBeenCalled()
-
-    const passedProps = planUpgradeModalMock.mock.calls[0]![0]
-    expect(passedProps.onClose).toBe(mockOnClose)
-    expect(passedProps.onUpgrade).toBe(mockOnUpgrade)
-
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('billing.triggerLimitModal.title')).toBeInTheDocument()
+    expect(screen.getByText('billing.triggerLimitModal.description')).toBeInTheDocument()
     expect(screen.getByText('billing.triggerLimitModal.usageTitle'))!.toBeInTheDocument()
     expect(screen.getByText('12'))!.toBeInTheDocument()
     expect(screen.getByText('20'))!.toBeInTheDocument()
@@ -62,8 +40,7 @@ describe('TriggerEventsLimitModal', () => {
       />,
     )
 
-    expect(planUpgradeModalMock).toHaveBeenCalled()
-    expect(screen.getByTestId('plan-upgrade-modal').getAttribute('data-show')).toBe('false')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders reset info when resetInDays is provided', () => {
@@ -94,9 +71,8 @@ describe('TriggerEventsLimitModal', () => {
       />,
     )
 
-    const modal = screen.getByTestId('plan-upgrade-modal')
-    expect(modal.getAttribute('data-title')).toBe('billing.triggerLimitModal.title')
-    expect(modal.getAttribute('data-description')).toBe('billing.triggerLimitModal.description')
+    expect(screen.getByText('billing.triggerLimitModal.title')).toBeInTheDocument()
+    expect(screen.getByText('billing.triggerLimitModal.description')).toBeInTheDocument()
   })
 
   it('passes onClose and onUpgrade callbacks to PlanUpgradeModal', () => {
@@ -110,8 +86,10 @@ describe('TriggerEventsLimitModal', () => {
       />,
     )
 
-    const passedProps = planUpgradeModalMock.mock.calls[0]![0]
-    expect(passedProps.onClose).toBe(mockOnClose)
-    expect(passedProps.onUpgrade).toBe(mockOnUpgrade)
+    screen.getByText('billing.triggerLimitModal.dismiss').click()
+    expect(mockOnClose).toHaveBeenCalledTimes(1)
+
+    screen.getByText('billing.triggerLimitModal.upgrade').click()
+    expect(mockOnUpgrade).toHaveBeenCalledTimes(1)
   })
 })

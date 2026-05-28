@@ -33,7 +33,11 @@ const AddApiKeyButton = ({
   onClick,
 }: AddApiKeyButtonProps) => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
-  const handleClick = onClick ?? (() => setIsApiKeyModalOpen(true))
+  const [isApiKeyModalMounted, setIsApiKeyModalMounted] = useState(false)
+  const handleClick = onClick ?? (() => {
+    setIsApiKeyModalMounted(true)
+    setIsApiKeyModalOpen(true)
+  })
 
   return (
     <>
@@ -46,9 +50,11 @@ const AddApiKeyButton = ({
         {buttonText}
       </Button>
       {
-        // Only render the modal here when in uncontrolled mode (no onClick prop).
-        !onClick && isApiKeyModalOpen && (
+        // Only mount the modal here when in uncontrolled mode (no onClick prop).
+        !onClick && isApiKeyModalMounted && (
           <ApiKeyModal
+            open={isApiKeyModalOpen}
+            onOpenChange={setIsApiKeyModalOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}
             onUpdate={onUpdate}

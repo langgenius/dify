@@ -3,6 +3,7 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
+import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -77,7 +78,10 @@ const Apps = ({
   const filteredList = useMemo(() => {
     if (!data)
       return []
-    return data.allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
+    return data.allList.filter(item => (
+      currCategory === allCategoriesEn
+      || item.categories?.includes(currCategory)
+    ))
   }, [data, currCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
@@ -104,6 +108,7 @@ const Apps = ({
 
   const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
   const currentCreateAppModeRef = useRef<App['app']['mode'] | null>(null)
+  const currentCreateAppTrackingRef = useRef<Pick<TrackCreateAppParams, 'source' | 'templateId'> | null>(null)
   const isShowTryAppPanel = !!currentTryApp
   const hideTryAppPanel = useCallback(() => {
     setCurrentTryApp(undefined)
@@ -113,13 +118,24 @@ const Apps = ({
   }, [])
   const handleShowFromTryApp = useCallback(() => {
     setCurrApp(currentTryApp?.app || null)
+    currentCreateAppTrackingRef.current = {
+      source: 'explore_template_preview',
+      templateId: currentTryApp?.appId || currentTryApp?.app.app_id,
+    }
     setIsShowCreateModal(true)
-  }, [currentTryApp?.app])
-  const trackCurrentCreateApp = useCallback(() => {
-    if (!currentCreateAppModeRef.current)
+  }, [currentTryApp?.app, currentTryApp?.appId])
+  const trackCurrentCreateApp = useCallback((appMode?: App['app']['mode'] | null) => {
+    const currentCreateAppTracking = currentCreateAppTrackingRef.current
+    const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
+    if (!resolvedAppMode || !currentCreateAppTracking)
       return
 
-    trackCreateApp({ appMode: currentCreateAppModeRef.current })
+    trackCreateApp({
+      ...currentCreateAppTracking,
+      appMode: resolvedAppMode,
+    })
+    currentCreateAppTrackingRef.current = null
+    currentCreateAppModeRef.current = null
   }, [])
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
@@ -145,8 +161,8 @@ const Apps = ({
       description,
     }
     await handleImportDSL(payload, {
-      onSuccess: () => {
-        trackCurrentCreateApp()
+      onSuccess: (response) => {
+        trackCurrentCreateApp(response.app_mode)
         setIsShowCreateModal(false)
       },
       onPending: () => {
@@ -157,8 +173,8 @@ const Apps = ({
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess: () => {
-        trackCurrentCreateApp()
+      onSuccess: (response) => {
+        trackCurrentCreateApp(response.app_mode)
         onSuccess?.()
       },
     })
@@ -239,6 +255,10 @@ const Apps = ({
                 app={app}
                 canCreate={hasEditPermission}
                 onCreate={() => {
+                  currentCreateAppTrackingRef.current = {
+                    source: 'explore_template_list',
+                    templateId: app.app_id,
+                  }
                   setCurrApp(app)
                   setIsShowCreateModal(true)
                 }}
@@ -277,7 +297,7 @@ const Apps = ({
         <TryApp
           appId={currentTryApp?.appId || ''}
           app={currentTryApp?.app}
-          category={currentTryApp?.app?.category}
+          categories={currentTryApp?.app?.categories}
           onClose={hideTryAppPanel}
           onCreate={handleShowFromTryApp}
         />

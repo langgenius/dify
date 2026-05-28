@@ -298,7 +298,7 @@ def _build_from_datasource_file(
             raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
 
         extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
-        detected_file_type = standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
+        detected_file_type = standardize_file_type(extension=extension, mime_type=datasource_file.mime_type)
         file_type = _resolve_file_type(
             detected_file_type=detected_file_type,
             specified_type=mapping.get("type"),

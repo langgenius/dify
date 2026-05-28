@@ -353,8 +353,8 @@ describe('loop path', () => {
       await user.click(screen.getByText('Variable'))
       fireEvent.change(screen.getByDisplayValue('12'), { target: { value: '42' } })
 
-      expect(onSelect).toHaveBeenCalledWith(ComparisonOperator.is)
-      expect(onNumberVarTypeChange).toHaveBeenCalledWith(NumberVarType.variable)
+      expect(onSelect.mock.calls[0]?.[0]).toBe(ComparisonOperator.is)
+      expect(onNumberVarTypeChange.mock.calls[0]?.[0]).toBe(NumberVarType.variable)
       expect(onValueChange).toHaveBeenCalledWith('42')
     })
 
@@ -656,7 +656,7 @@ describe('loop path', () => {
         />,
       )
 
-      fireEvent.click(container.querySelector('.mr-4.flex.h-5.w-5.cursor-pointer.items-center.justify-center') as HTMLElement)
+      fireEvent.click(container.querySelector('.mr-4.flex.size-5.cursor-pointer.items-center.justify-center') as HTMLElement)
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '8' } })
 
       expect(handleAddLoopVariable).toHaveBeenCalled()

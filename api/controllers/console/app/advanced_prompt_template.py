@@ -34,7 +34,7 @@ class AdvancedPromptTemplateList(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        args = AdvancedPromptTemplateQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AdvancedPromptTemplateQuery.model_validate(request.args.to_dict(flat=True))
         prompt_args: AdvancedPromptTemplateArgs = {
             "app_mode": args.app_mode,
             "model_mode": args.model_mode,

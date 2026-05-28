@@ -1,7 +1,10 @@
 import type { NoteNodeType } from '../note-node/types'
 import { useCallback } from 'react'
 import { useAppContext } from '@/context/app-context'
-import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import {
+  CUSTOM_NOTE_NODE,
+  NOTE_SHOW_AUTHOR_STORAGE_KEY,
+} from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
 import { useWorkflowStore } from '../store'
 import { generateNewNode } from '../utils'
@@ -20,7 +23,7 @@ export const useOperator = () => {
         text: '',
         theme: NoteTheme.blue,
         author: userProfile?.name || '',
-        showAuthor: true,
+        showAuthor: localStorage.getItem(NOTE_SHOW_AUTHOR_STORAGE_KEY) !== 'false',
         width: 240,
         height: 88,
         _isCandidate: true,

@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     name: Web Full-Stack E2E
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
     defaults:
       run:
         shell: bash

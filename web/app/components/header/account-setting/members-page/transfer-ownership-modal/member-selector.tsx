@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
@@ -56,7 +55,7 @@ const MemberSelector: FC<Props> = ({
         render={(
           <div
             data-testid="member-selector-trigger"
-            className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}
+            className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           >
             {!currentValue && (
               <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
@@ -68,7 +67,7 @@ const MemberSelector: FC<Props> = ({
                 <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
               </>
             )}
-            <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+            <div className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary" />
           </div>
         )}
       />
@@ -76,7 +75,6 @@ const MemberSelector: FC<Props> = ({
         placement="bottom"
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 1002 } }}
       >
         <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">

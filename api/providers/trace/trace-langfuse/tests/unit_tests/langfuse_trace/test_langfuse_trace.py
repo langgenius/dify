@@ -40,7 +40,7 @@ def langfuse_config():
 
 
 @pytest.fixture
-def trace_instance(langfuse_config, monkeypatch):
+def trace_instance(langfuse_config, monkeypatch: pytest.MonkeyPatch):
     # Mock Langfuse client to avoid network calls
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: mock_client)
@@ -49,22 +49,94 @@ def trace_instance(langfuse_config, monkeypatch):
     return instance
 
 
-def test_init(langfuse_config, monkeypatch):
+def test_init(langfuse_config, monkeypatch: pytest.MonkeyPatch):
+    from opentelemetry.sdk.trace import TracerProvider
+
     mock_langfuse = MagicMock()
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", mock_langfuse)
     monkeypatch.setenv("FILES_URL", "http://test.url")
 
     instance = LangFuseDataTrace(langfuse_config)
 
-    mock_langfuse.assert_called_once_with(
-        public_key=langfuse_config.public_key,
-        secret_key=langfuse_config.secret_key,
-        host=langfuse_config.host,
-    )
+    mock_langfuse.assert_called_once()
+    kwargs = mock_langfuse.call_args.kwargs
+    assert kwargs["public_key"] == langfuse_config.public_key
+    assert kwargs["secret_key"] == langfuse_config.secret_key
+    assert kwargs["host"] == langfuse_config.host
+    assert isinstance(kwargs["tracer_provider"], TracerProvider)
+    assert kwargs["tracer_provider"] is instance._tracer_provider
     assert instance.file_base_url == "http://test.url"
 
 
-def test_trace_dispatch(trace_instance, monkeypatch):
+def test_init_passes_isolated_tracer_provider_to_langfuse(langfuse_config, monkeypatch: pytest.MonkeyPatch):
+    """Regression test for langfuse v3 SDK side effect.
+
+    Without an explicit ``tracer_provider=`` kwarg, the Langfuse v3 SDK
+    attaches a ``LangfuseSpanProcessor`` to the *global* OpenTelemetry
+    TracerProvider — siphoning every Flask / Celery / SQLAlchemy span in the
+    process into the tenant's Langfuse project. See langfuse upgrade-path
+    docs (v2 -> v3) and GitHub discussion #9136.
+
+    The fix is to construct an isolated ``TracerProvider`` and pass it via
+    ``tracer_provider=`` so the SDK never touches the global one.
+    """
+    from opentelemetry import trace as otel_trace_api
+    from opentelemetry.sdk.trace import TracerProvider
+
+    captured: dict[str, object] = {}
+
+    def fake_langfuse(**kwargs):
+        captured.update(kwargs)
+        return MagicMock()
+
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", fake_langfuse)
+
+    instance = LangFuseDataTrace(langfuse_config)
+
+    # 1. tracer_provider kwarg must be supplied (drives the no-pollution branch
+    #    in langfuse.LangfuseResourceManager._init_tracer_provider).
+    assert "tracer_provider" in captured, (
+        "Langfuse() must receive an explicit tracer_provider=; without it the "
+        "v3 SDK attaches its SpanProcessor to the global OTEL TracerProvider."
+    )
+
+    passed_provider = captured["tracer_provider"]
+    assert isinstance(passed_provider, TracerProvider)
+    assert passed_provider is instance._tracer_provider
+
+    # 2. The instance's provider must not be the global one.
+    global_provider = otel_trace_api.get_tracer_provider()
+    assert passed_provider is not global_provider
+
+
+def test_close_shuts_down_tracer_provider(langfuse_config, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: MagicMock())
+
+    instance = LangFuseDataTrace(langfuse_config)
+    provider = instance._tracer_provider
+    provider_shutdown = MagicMock()
+    monkeypatch.setattr(provider, "shutdown", provider_shutdown)
+
+    instance.close()
+
+    provider_shutdown.assert_called_once()
+    assert instance._tracer_provider is None
+
+
+def test_close_is_idempotent(langfuse_config, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: MagicMock())
+
+    instance = LangFuseDataTrace(langfuse_config)
+    provider_shutdown = MagicMock()
+    monkeypatch.setattr(instance._tracer_provider, "shutdown", provider_shutdown)
+
+    instance.close()
+    instance.close()
+
+    provider_shutdown.assert_called_once()
+
+
+def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     methods = [
         "workflow_trace",
         "message_trace",
@@ -114,7 +186,7 @@ def test_trace_dispatch(trace_instance, monkeypatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
+def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Setup trace info
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
@@ -218,7 +290,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     assert other_span.level == LevelEnum.ERROR
 
 
-def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
+def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -259,7 +331,7 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     assert trace_data.name == TraceTaskName.WORKFLOW_TRACE
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
+def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -287,7 +359,7 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
         trace_instance.workflow_trace(trace_info)
 
 
-def test_message_trace_basic(trace_instance, monkeypatch):
+def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -331,7 +403,7 @@ def test_message_trace_basic(trace_instance, monkeypatch):
     assert gen_data.usage.total == 30
 
 
-def test_message_trace_with_end_user(trace_instance, monkeypatch):
+def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -636,7 +708,7 @@ def test_langfuse_trace_entity_with_list_dict_input():
     assert data.input[0]["content"] == "hello"
 
 
-def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypatch, caplog):
+def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
     # Setup trace info to trigger LLM node usage extraction
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",

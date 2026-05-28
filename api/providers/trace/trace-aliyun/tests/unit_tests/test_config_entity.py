@@ -25,13 +25,13 @@ class TestAliyunConfig:
     def test_missing_required_fields(self):
         """Test that required fields are enforced"""
         with pytest.raises(ValidationError):
-            AliyunConfig()
+            AliyunConfig.model_validate({})
 
         with pytest.raises(ValidationError):
-            AliyunConfig(license_key="test_license")
+            AliyunConfig.model_validate({"license_key": "test_license"})
 
         with pytest.raises(ValidationError):
-            AliyunConfig(endpoint="https://tracing-analysis-dc-hz.aliyuncs.com")
+            AliyunConfig.model_validate({"endpoint": "https://tracing-analysis-dc-hz.aliyuncs.com"})
 
     def test_app_name_validation_empty(self):
         """Test app_name validation with empty value"""

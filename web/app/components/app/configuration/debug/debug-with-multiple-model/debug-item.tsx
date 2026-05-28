@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -41,10 +41,8 @@ const DebugItem: FC<DebugItemProps> = ({
   const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
   const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
   const currentModel = currentProvider?.models.find(item => item.model === modelAndParameter.model)
-  const [open, setOpen] = useState(false)
 
   const handleDuplicate = () => {
-    setOpen(false)
     if (multipleModelConfigs.length >= 4)
       return
 
@@ -62,12 +60,10 @@ const DebugItem: FC<DebugItemProps> = ({
   }
 
   const handleDebugAsSingleModel = () => {
-    setOpen(false)
     onDebugWithMultipleModelChange(modelAndParameter)
   }
 
   const handleRemove = () => {
-    setOpen(false)
     onMultipleModelConfigsChange(
       true,
       multipleModelConfigs.filter(item => item.id !== modelAndParameter.id),
@@ -91,12 +87,17 @@ const DebugItem: FC<DebugItemProps> = ({
         <ModelParameterTrigger
           modelAndParameter={modelAndParameter}
         />
-        <DropdownMenu open={open} onOpenChange={setOpen}>
-          <DropdownMenuTrigger render={<div />}>
-            <ActionButton className={open ? 'bg-state-base-hover' : ''}>
-              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-            </ActionButton>
-          </DropdownMenuTrigger>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={(
+              <ActionButton
+                className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+                aria-label={t('operation.more', { ns: 'common' })}
+              >
+                <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+              </ActionButton>
+            )}
+          />
           <DropdownMenuContent
             placement="bottom-end"
             sideOffset={4}

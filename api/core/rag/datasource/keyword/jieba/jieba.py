@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import orjson
 from pydantic import BaseModel
@@ -29,6 +29,7 @@ class Jieba(BaseKeyword):
         super().__init__(dataset)
         self._config = KeywordTableConfig()
 
+    @override
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -48,6 +49,7 @@ class Jieba(BaseKeyword):
 
             return self
 
+    @override
     def add_texts(self, texts: list[Document], **kwargs):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -72,12 +74,14 @@ class Jieba(BaseKeyword):
 
             self._save_dataset_keyword_table(keyword_table)
 
+    @override
     def text_exists(self, id: str) -> bool:
         keyword_table = self._get_dataset_keyword_table()
         if keyword_table is None:
             return False
         return id in set.union(*keyword_table.values())
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -87,6 +91,7 @@ class Jieba(BaseKeyword):
 
             self._save_dataset_keyword_table(keyword_table)
 
+    @override
     def search(self, query: str, **kwargs: Any) -> list[Document]:
         keyword_table = self._get_dataset_keyword_table()
 
@@ -122,6 +127,7 @@ class Jieba(BaseKeyword):
 
         return documents
 
+    @override
     def delete(self):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
@@ -156,7 +162,8 @@ class Jieba(BaseKeyword):
         if dataset_keyword_table:
             keyword_table_dict = dataset_keyword_table.keyword_table_dict
             if keyword_table_dict:
-                return dict(keyword_table_dict["__data__"]["table"])
+                data: Any = keyword_table_dict["__data__"]
+                return dict(data["table"])
         else:
             keyword_data_source_type = dify_config.KEYWORD_DATA_SOURCE_TYPE
             dataset_keyword_table = DatasetKeywordTable(
@@ -244,6 +251,7 @@ class Jieba(BaseKeyword):
             segment = pre_segment_data["segment"]
             if pre_segment_data["keywords"]:
                 segment.keywords = pre_segment_data["keywords"]
+                assert segment.index_node_id
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, pre_segment_data["keywords"]
                 )
@@ -252,6 +260,7 @@ class Jieba(BaseKeyword):
 
                 keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)
                 segment.keywords = list(keywords)
+                assert segment.index_node_id
                 keyword_table = self._add_text_to_keyword_table(
                     keyword_table or {}, segment.index_node_id, list(keywords)
                 )

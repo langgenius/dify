@@ -94,7 +94,7 @@ class WebhookTriggerApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = Parser.model_validate(request.args.to_dict(flat=True))
 
         node_id = args.node_id
 

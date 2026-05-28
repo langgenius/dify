@@ -128,6 +128,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
               description={t(`${i18nPrefix}.outputVars.className`, { ns: 'workflow' })}
             />
             <VarItem
+              name="class_label"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.classLabel`, { ns: 'workflow' })}
+            />
+            <VarItem
               name="usage"
               type="object"
               description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}

@@ -241,8 +241,8 @@ vi.mock('../next-step', () => ({
   default: () => <div>next-step</div>,
 }))
 
-vi.mock('../panel-operator', () => ({
-  default: () => <div>panel-operator</div>,
+vi.mock('@/app/components/workflow/node-actions-menu', () => ({
+  NodeActionsDropdown: () => <div>node-actions-menu</div>,
 }))
 
 vi.mock('../retry/retry-on-panel', () => ({
@@ -349,8 +349,9 @@ describe('workflow-panel index', () => {
     expect(mockSaveStateToHistory).toHaveBeenCalled()
     fireEvent.click(screen.getByText('authorized-in-node'))
 
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
+
     const clickableItems = container.querySelectorAll('.cursor-pointer')
-    fireEvent.click(clickableItems[0] as HTMLElement)
     fireEvent.click(clickableItems[clickableItems.length - 1] as HTMLElement)
 
     expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
@@ -587,8 +588,7 @@ describe('workflow-panel index', () => {
     expect(root.style.right).toBe('240px')
     expect(root.className).toContain('absolute')
 
-    const clickableItems = container.querySelectorAll('.cursor-pointer')
-    fireEvent.click(clickableItems[0] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }))
 
     expect(mockHandleStop).toHaveBeenCalledTimes(1)
   })

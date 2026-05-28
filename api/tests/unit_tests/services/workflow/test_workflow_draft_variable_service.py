@@ -200,7 +200,7 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
 
-    def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
+    def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
@@ -212,18 +212,21 @@ class TestDraftVariableSaver:
             assert draft_var.file_id is None
             _mock_try_offload.return_value = None
 
-    def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
+    def test_draft_saver_with_large_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
-                id=str(uuidv7()),
+                tenant_id=str(uuidv7()),
+                app_id=str(uuidv7()),
+                user_id=str(uuidv7()),
                 size=1024,
                 length=10,
                 value_type=SegmentType.ARRAY_STRING,
-                upload_file_id=str(uuid.uuid4()),
+                upload_file_id=str(uuidv7()),
             )
+            mock_draft_var_file.id = str(uuidv7())
 
             _mock_try_offload.return_value = mock_segment, mock_draft_var_file
             draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
@@ -395,7 +398,7 @@ class TestWorkflowDraftVariableService:
         self,
         mock_engine,
         mock_session,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test resetting a node variable when execution record doesn't exist"""
         mock_repo_session = Mock(spec=Session)
@@ -432,7 +435,7 @@ class TestWorkflowDraftVariableService:
     def test_reset_node_variable_with_valid_execution_record(
         self,
         mock_session,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test resetting a node variable with valid execution record - should restore from execution"""
         mock_repo_session = Mock(spec=Session)

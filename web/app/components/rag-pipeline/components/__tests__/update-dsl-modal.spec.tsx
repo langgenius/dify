@@ -121,18 +121,14 @@ vi.mock('@langgenius/dify-ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, _onClose, className }: PropsWithChildren<{
-    isShow: boolean
-    _onClose: () => void
-    className?: string
-  }>) => isShow
-    ? (
-        <div data-testid="modal" className={className}>
-          {children}
-        </div>
-      )
-    : null,
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: PropsWithChildren<{ open?: boolean }>) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children, className }: PropsWithChildren<{ className?: string }>) => (
+    <div data-testid="modal" className={className}>
+      {children}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({

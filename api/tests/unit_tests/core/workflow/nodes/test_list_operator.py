@@ -22,7 +22,7 @@ from graphon.variables import ArrayFileSegment
 def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params) -> ListOperatorNode:
     return ListOperatorNode(
         node_id="test_node_id",
-        config=node_data,
+        data=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=MagicMock(),
     )

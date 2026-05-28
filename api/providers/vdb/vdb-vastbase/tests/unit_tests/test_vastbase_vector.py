@@ -37,7 +37,7 @@ def _build_fake_psycopg2_modules():
 
 
 @pytest.fixture
-def vastbase_module(monkeypatch):
+def vastbase_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_psycopg2_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -93,7 +93,7 @@ def test_vastbase_config_rejects_invalid_connection_window(vastbase_module):
         )
 
 
-def test_init_and_get_cursor_context_manager(vastbase_module, monkeypatch):
+def test_init_and_get_cursor_context_manager(vastbase_module, monkeypatch: pytest.MonkeyPatch):
     pool = MagicMock()
     monkeypatch.setattr(vastbase_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -114,7 +114,7 @@ def test_init_and_get_cursor_context_manager(vastbase_module, monkeypatch):
     pool.putconn.assert_called_once_with(conn)
 
 
-def test_create_and_add_texts(vastbase_module, monkeypatch):
+def test_create_and_add_texts(vastbase_module, monkeypatch: pytest.MonkeyPatch):
     vector = vastbase_module.VastbaseVector.__new__(vastbase_module.VastbaseVector)
     vector.table_name = "embedding_collection_1"
     vector._create_collection = MagicMock()
@@ -205,7 +205,7 @@ def test_search_by_vector_and_full_text(vastbase_module):
     assert full_docs[0].page_content == "full-text"
 
 
-def test_create_collection_cache_and_dimension_branches(vastbase_module, monkeypatch):
+def test_create_collection_cache_and_dimension_branches(vastbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -240,7 +240,7 @@ def test_create_collection_cache_and_dimension_branches(vastbase_module, monkeyp
     vastbase_module.redis_client.set.assert_called()
 
 
-def test_vastbase_factory_uses_existing_or_generated_collection(vastbase_module, monkeypatch):
+def test_vastbase_factory_uses_existing_or_generated_collection(vastbase_module, monkeypatch: pytest.MonkeyPatch):
     factory = vastbase_module.VastbaseVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

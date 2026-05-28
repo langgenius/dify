@@ -12,7 +12,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, App, Workflow
+from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_service import WorkflowService
@@ -33,7 +33,7 @@ class TestWorkflowService:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
@@ -49,7 +49,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",  # Set interface language for Site creation
         )
         account.created_at = fake.date_time_this_year()
@@ -62,7 +62,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
@@ -77,7 +77,7 @@ class TestWorkflowService:
 
         return account
 
-    def _create_test_app(self, db_session_with_containers: Session, fake=None):
+    def _create_test_app(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test app with realistic data.
 
@@ -109,7 +109,7 @@ class TestWorkflowService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake=None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake: Faker | None = None):
         """
         Helper method to create a test workflow associated with an app.
 

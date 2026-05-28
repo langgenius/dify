@@ -1,4 +1,5 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   JsonEditorField,
@@ -18,7 +19,7 @@ describe('form-input-item sections', () => {
       />,
     )
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Options' })).toHaveTextContent('Loading')
   })
 
   it('should render the shared json editor section', () => {
@@ -33,7 +34,8 @@ describe('form-input-item sections', () => {
     expect(screen.getByText('JSON')).toBeInTheDocument()
   })
 
-  it('should render placeholder, icons, and select multi-select options', () => {
+  it('should render placeholder, icons, and select multi-select options', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     renderWorkflowComponent(
@@ -51,8 +53,8 @@ describe('form-input-item sections', () => {
     )
 
     expect(screen.getByText('Choose options')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('Alpha'))
+    await user.click(screen.getByRole('combobox', { name: 'Choose options' }))
+    await user.click(await screen.findByRole('option', { name: 'Alpha' }))
 
     expect(document.querySelector('img[src="/alpha.svg"]')).toBeInTheDocument()
     expect(onChange).toHaveBeenCalled()

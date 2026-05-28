@@ -29,7 +29,7 @@ def _build_fake_elasticsearch_modules():
 
 
 @pytest.fixture
-def huawei_module(monkeypatch):
+def huawei_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_elasticsearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -155,7 +155,7 @@ def test_search_by_vector_and_full_text(huawei_module):
     assert docs[0].page_content == "text-hit"
 
 
-def test_search_by_vector_skips_hits_without_metadata(huawei_module, monkeypatch):
+def test_search_by_vector_skips_hits_without_metadata(huawei_module, monkeypatch: pytest.MonkeyPatch):
     class FakeDocument:
         def __init__(self, page_content, vector, metadata):
             self.page_content = page_content
@@ -185,7 +185,7 @@ def test_search_by_vector_skips_hits_without_metadata(huawei_module, monkeypatch
     assert docs == []
 
 
-def test_create_and_create_collection_paths(huawei_module, monkeypatch):
+def test_create_and_create_collection_paths(huawei_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -218,7 +218,7 @@ def test_create_and_create_collection_paths(huawei_module, monkeypatch):
     huawei_module.redis_client.set.assert_called_once()
 
 
-def test_huawei_factory_branches(huawei_module, monkeypatch):
+def test_huawei_factory_branches(huawei_module, monkeypatch: pytest.MonkeyPatch):
     factory = huawei_module.HuaweiCloudVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

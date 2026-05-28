@@ -312,7 +312,7 @@ describe('ChatInputArea', () => {
 
     it('should render the send button', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} />)
-      expect(screen.getByTestId('send-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
     })
   })
 
@@ -334,7 +334,7 @@ describe('ChatInputArea', () => {
       const textarea = getTextarea()!
 
       await user.type(textarea, 'Hello world')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).toHaveBeenCalled()
       expect(textarea).toHaveValue('')
@@ -448,14 +448,14 @@ describe('ChatInputArea', () => {
   describe('Voice Input', () => {
     it('should render the voice input button when enabled', () => {
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
-      expect(screen.getByTestId('voice-input-button')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeTruthy()
     })
 
     it('should handle stop recording in VoiceInput', async () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       // Wait for VoiceInput to show speaking
       await screen.findByText(/voiceInput.speaking/i)
       const stopBtn = screen.getByTestId('voice-input-stop')
@@ -473,7 +473,7 @@ describe('ChatInputArea', () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await screen.findByText(/voiceInput.speaking/i)
       const stopBtn = screen.getByTestId('voice-input-stop')
       await user.click(stopBtn)
@@ -493,7 +493,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
 
       // Permission denied should trigger error toast
       await waitFor(() => {
@@ -513,7 +513,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await screen.findByText(/voiceInput.speaking/i)
       const stopBtn = screen.getByTestId('voice-input-stop')
       await user.click(stopBtn)
@@ -532,7 +532,7 @@ describe('ChatInputArea', () => {
       const onSend = vi.fn()
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
       expect(onSend).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }))
     })
@@ -543,7 +543,7 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea onSend={onSend} isResponding visionConfig={mockVisionConfig} />)
 
       await user.type(getTextarea()!, 'Hello')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
       expect(onSend).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }))
     })
@@ -555,7 +555,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
       await user.type(getTextarea()!, 'Hello')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }))
@@ -569,7 +569,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
       await user.type(getTextarea()!, 'Hello')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).toHaveBeenCalledWith('Hello', [completedFile])
     })
@@ -586,7 +586,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
       await user.type(getTextarea()!, 'Remote test')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).toHaveBeenCalledWith('Remote test', [remoteFile])
     })
@@ -598,7 +598,7 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
 
       await user.type(getTextarea()!, 'Validation fail')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
       expect(onSend).not.toHaveBeenCalled()
     })
@@ -608,7 +608,7 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} />)
 
       await user.type(getTextarea()!, 'No onSend')
-      await user.click(screen.getByTestId('send-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
       // Should not throw
     })
   })
@@ -663,7 +663,7 @@ describe('ChatInputArea', () => {
       mockIsMultipleLine.value = true
       render(<ChatInputArea visionConfig={mockVisionConfig} />)
       // Send button should still be present
-      expect(screen.getByTestId('send-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
     })
 
     it('should handle drag enter event on textarea', () => {

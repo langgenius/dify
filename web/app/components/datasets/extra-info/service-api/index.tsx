@@ -1,9 +1,10 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
+import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -15,6 +16,15 @@ const ServiceApi = ({
 }: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+
+  const handleOpenSecretKeyModal = useCallback(() => {
+    setIsSecretKeyModalVisible(true)
+  }, [])
+
+  const handleCloseSecretKeyModal = useCallback(() => {
+    setIsSecretKeyModalVisible(false)
+  }, [])
 
   return (
     <div>
@@ -30,10 +40,10 @@ const ServiceApi = ({
                 open ? 'bg-components-button-secondary-bg-hover' : 'hover:bg-components-button-secondary-bg-hover',
               )}
               >
-                <Indicator
+                <StatusDot
                   className={cn('shrink-0')}
-                  color={
-                    apiBaseUrl ? 'green' : 'yellow'
+                  status={
+                    apiBaseUrl ? 'success' : 'warning'
                   }
                 />
                 <div className="grow system-sm-medium text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
@@ -49,9 +59,14 @@ const ServiceApi = ({
         >
           <Card
             apiBaseUrl={apiBaseUrl}
+            onOpenSecretKeyModal={handleOpenSecretKeyModal}
           />
         </PopoverContent>
       </Popover>
+      <SecretKeyModal
+        isShow={isSecretKeyModalVisible}
+        onClose={handleCloseSecretKeyModal}
+      />
     </div>
   )
 }

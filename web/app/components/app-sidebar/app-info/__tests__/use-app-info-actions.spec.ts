@@ -153,6 +153,27 @@ describe('useAppInfoActions', () => {
       expect(result.current.panelOpen).toBe(false)
       expect(onDetailExpand).toHaveBeenCalledWith(false)
     })
+
+    it('should reset app-scoped state when resetKey changes', () => {
+      const { result, rerender } = renderHook(
+        ({ resetKey }) => useAppInfoActions({ resetKey }),
+        { initialProps: { resetKey: 'app-1' } },
+      )
+
+      act(() => {
+        result.current.openModal('delete')
+        result.current.setPanelOpen(true)
+      })
+
+      expect(result.current.panelOpen).toBe(true)
+      expect(result.current.activeModal).toBe('delete')
+
+      rerender({ resetKey: 'app-2' })
+
+      expect(result.current.panelOpen).toBe(false)
+      expect(result.current.activeModal).toBeNull()
+      expect(result.current.secretEnvList).toEqual([])
+    })
   })
 
   describe('Modal management', () => {

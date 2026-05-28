@@ -2,14 +2,14 @@
 import type { FC, JSX } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
-import Indicator from '@/app/components/header/indicator'
 import ProviderConfigModal from './provider-config-modal'
 import ProviderPanel from './provider-panel'
 import TracingIcon from './tracing-icon'
@@ -330,7 +330,7 @@ const ConfigPopup: FC<PopupProps> = ({
           <div className="title-2xl-semi-bold text-text-primary">{t(`${I18N_PREFIX}.tracing`, { ns: 'app' })}</div>
         </div>
         <div className="flex items-center">
-          <Indicator color={enabled ? 'green' : 'gray'} />
+          <StatusDot status={enabled ? 'success' : 'disabled'} />
           <div className={cn('ml-1 system-xs-semibold-uppercase text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
             {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
           </div>
@@ -338,10 +338,13 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               {providerAllNotConfigured
                 ? (
-                    <Tooltip
-                      popupContent={t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
-                    >
-                      {switchContent}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={switchContent}
+                      />
+                      <TooltipContent>
+                        {t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
+                      </TooltipContent>
                     </Tooltip>
                   )
                 : switchContent}

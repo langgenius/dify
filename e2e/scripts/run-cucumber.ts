@@ -67,11 +67,20 @@ const main = async () => {
     logFilePath: path.join(logDir, 'cucumber-api.log'),
   })
 
+  const celeryProcess = await startLoggedProcess({
+    command: 'npx',
+    args: ['tsx', './scripts/setup.ts', 'celery'],
+    cwd: e2eDir,
+    label: 'celery worker',
+    logFilePath: path.join(logDir, 'cucumber-celery.log'),
+  })
+
   let cleanupPromise: Promise<void> | undefined
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
         await stopWebServer()
+        await stopManagedProcess(celeryProcess)
         await stopManagedProcess(apiProcess)
 
         if (startMiddlewareForRun) {

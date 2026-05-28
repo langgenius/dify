@@ -1574,7 +1574,7 @@ describe('handleSubmitField', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('field-list-add-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(mockToggleInputFieldEditPanel).toHaveBeenCalled()
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
@@ -1798,7 +1798,7 @@ describe('handleSubmitField', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('field-list-add-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1822,7 +1822,7 @@ describe('handleSubmitField', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('field-list-add-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
     expect(editorProps).toHaveProperty('onClose')
@@ -1853,7 +1853,7 @@ describe('Duplicate Variable Name Handling', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('field-list-add-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1939,7 +1939,7 @@ describe('Integration Tests', () => {
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
-      fireEvent.click(screen.getByTestId('field-list-add-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
       expect(mockToggleInputFieldEditPanel).toHaveBeenCalled()
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')

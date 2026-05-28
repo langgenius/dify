@@ -1,12 +1,15 @@
 from urllib import parse
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter
+from sqlalchemy import func, select
 
 import services
 from configs import dify_config
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -20,20 +23,18 @@ from controllers.console.auth.error import (
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
-    cloud_edition_billing_resource_check,
     is_allow_transfer_owner,
     setup_required,
 )
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from fields.member_fields import AccountWithRole, AccountWithRoleList
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
-from models.account import Account, TenantAccountRole
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class MemberInvitePayload(BaseModel):
@@ -59,17 +60,72 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(MemberInvitePayload)
-reg(MemberRoleUpdatePayload)
-reg(OwnerTransferEmailPayload)
-reg(OwnerTransferCheckPayload)
-reg(OwnerTransferPayload)
 register_enum_models(console_ns, TenantAccountRole)
-register_schema_models(console_ns, AccountWithRole, AccountWithRoleList)
+register_schema_models(
+    console_ns,
+    AccountWithRole,
+    AccountWithRoleList,
+    MemberInvitePayload,
+    MemberRoleUpdatePayload,
+    OwnerTransferEmailPayload,
+    OwnerTransferCheckPayload,
+    OwnerTransferPayload,
+)
+register_response_schema_models(console_ns, SimpleResultDataResponse, VerificationTokenResponse)
+
+
+def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
+    if role != TenantAccountRole.DATASET_OPERATOR:
+        return True
+    return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
+
+
+def _normalize_invitee_emails(emails: list[str]) -> list[str]:
+    return list(dict.fromkeys(email.lower() for email in emails))
+
+
+def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
+    new_member_count = 0
+    for email in emails:
+        account = AccountService.get_account_by_email_with_case_fallback(email)
+        if not account:
+            new_member_count += 1
+            continue
+
+        exists = db.session.scalar(
+            select(TenantAccountJoin.id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == account.id)
+            .limit(1)
+        )
+        if not exists:
+            new_member_count += 1
+
+    return new_member_count
+
+
+def _count_current_members(tenant_id: str) -> int:
+    return (
+        db.session.scalar(select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.tenant_id == tenant_id)) or 0
+    )
+
+
+def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
+    if new_member_count <= 0:
+        return
+
+    features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
+
+    if dify_config.ENTERPRISE_ENABLED:
+        workspace_members = features.workspace_members
+        if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
+            raise WorkspaceMembersLimitExceeded()
+        return
+
+    if dify_config.BILLING_ENABLED and features.billing.enabled is True:
+        members = features.members
+        current_member_count = _count_current_members(tenant_id)
+        if 0 < members.limit < current_member_count + new_member_count:
+            raise WorkspaceMembersLimitExceeded()
 
 
 @console_ns.route("/workspaces/current/members")
@@ -98,12 +154,11 @@ class MemberInviteEmailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_resource_check("members")
     def post(self):
         payload = console_ns.payload or {}
         args = MemberInvitePayload.model_validate(payload)
 
-        invitee_emails = args.emails
+        invitee_emails = _normalize_invitee_emails(args.emails)
         invitee_role = args.role
         interface_language = args.language
         if not TenantAccountRole.is_non_owner_role(invitee_role):
@@ -112,6 +167,8 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
+        if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
+            return {"code": "invalid-role", "message": "Invalid role"}, 400
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
@@ -121,37 +178,36 @@ class MemberInviteEmailApi(Resource):
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
-        workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
+        tenant_id = inviter.current_tenant.id
+        with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
+            new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
+            _check_member_invite_limits(tenant_id, new_member_count)
 
-        if not workspace_members.is_available(len(invitee_emails)):
-            raise WorkspaceMembersLimitExceeded()
-
-        for invitee_email in invitee_emails:
-            normalized_invitee_email = invitee_email.lower()
-            try:
-                if not inviter.current_tenant:
-                    raise ValueError("No current tenant")
-                token = RegisterService.invite_new_member(
-                    tenant=inviter.current_tenant,
-                    email=invitee_email,
-                    language=interface_language,
-                    role=invitee_role,
-                    inviter=inviter,
-                )
-                encoded_invitee_email = parse.quote(normalized_invitee_email)
-                invitation_results.append(
-                    {
-                        "status": "success",
-                        "email": normalized_invitee_email,
-                        "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
-                    }
-                )
-            except AccountAlreadyInTenantError:
-                invitation_results.append(
-                    {"status": "success", "email": normalized_invitee_email, "url": f"{console_web_url}/signin"}
-                )
-            except Exception as e:
-                invitation_results.append({"status": "failed", "email": normalized_invitee_email, "message": str(e)})
+            for invitee_email in invitee_emails:
+                try:
+                    if not inviter.current_tenant:
+                        raise ValueError("No current tenant")
+                    token = RegisterService.invite_new_member(
+                        tenant=inviter.current_tenant,
+                        email=invitee_email,
+                        language=interface_language,
+                        role=invitee_role,
+                        inviter=inviter,
+                    )
+                    encoded_invitee_email = parse.quote(invitee_email)
+                    invitation_results.append(
+                        {
+                            "status": "success",
+                            "email": invitee_email,
+                            "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
+                        }
+                    )
+                except AccountAlreadyInTenantError:
+                    invitation_results.append(
+                        {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
+                    )
+                except Exception as e:
+                    invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
 
         return {
             "result": "success",
@@ -167,7 +223,7 @@ class MemberCancelInviteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, member_id):
+    def delete(self, member_id: UUID):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
@@ -200,7 +256,7 @@ class MemberUpdateRoleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, member_id):
+    def put(self, member_id: UUID):
         payload = console_ns.payload or {}
         args = MemberRoleUpdatePayload.model_validate(payload)
         new_role = args.role
@@ -210,6 +266,8 @@ class MemberUpdateRoleApi(Resource):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
+        if not _is_role_enabled(new_role, current_user.current_tenant.id):
+            return {"code": "invalid-role", "message": "Invalid role"}, 400
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
@@ -217,10 +275,16 @@ class MemberUpdateRoleApi(Resource):
         try:
             assert member is not None, "Member not found"
             TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
+        except services.errors.account.CannotOperateSelfError as e:
+            return {"code": "cannot-operate-self", "message": str(e)}, 400
+        except services.errors.account.NoPermissionError as e:
+            return {"code": "forbidden", "message": str(e)}, 403
+        except services.errors.account.MemberNotInTenantError as e:
+            return {"code": "member-not-found", "message": str(e)}, 404
+        except services.errors.account.RoleAlreadyAssignedError as e:
+            return {"code": "role-already-assigned", "message": str(e)}, 400
         except Exception as e:
             raise ValueError(str(e))
-
-        # todo: 403
 
         return {"result": "success"}
 
@@ -248,6 +312,7 @@ class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -285,6 +350,7 @@ class SendOwnerTransferEmailApi(Resource):
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -333,7 +399,7 @@ class OwnerTransfer(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self, member_id):
+    def post(self, member_id: UUID):
         payload = console_ns.payload or {}
         args = OwnerTransferPayload.model_validate(payload)
 

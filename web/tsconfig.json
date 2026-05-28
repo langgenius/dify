@@ -15,6 +15,7 @@
       "vitest/globals",
       "node"
     ],
+    "allowImportingTsExtensions": true,
     "allowJs": true
   },
   "include": [

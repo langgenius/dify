@@ -10,7 +10,7 @@ import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { AppModeEnum } from '@/types/app'
 
-export type HandleRunMode = TriggerType
+type HandleRunMode = TriggerType
 export type HandleRunOptions = {
   mode?: HandleRunMode
   scheduleNodeId?: string
