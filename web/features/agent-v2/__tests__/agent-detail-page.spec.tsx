@@ -1,7 +1,26 @@
-import { render, screen } from '@testing-library/react'
+import type { Mock } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { usePathname, useRouter } from '@/next/navigation'
 import { AgentDetailPage } from '../pages/agent-detail-page'
 
+vi.mock('@/next/navigation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/next/navigation')>()
+  return {
+    ...actual,
+    usePathname: vi.fn(),
+    useRouter: vi.fn(),
+  }
+})
+
 describe('AgentDetailPage', () => {
+  const push = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(usePathname as Mock).mockReturnValue('/roster/agent-1/access')
+    ;(useRouter as Mock).mockReturnValue({ push })
+  })
+
   it('renders the logs skeleton with filters and table rows', () => {
     render(<AgentDetailPage section="logs" />)
 
@@ -35,5 +54,20 @@ describe('AgentDetailPage', () => {
       name: 'agentV2.agentDetail.monitoring.timeRangeLabel',
     })).toHaveTextContent('agentV2.agentDetail.monitoring.timeRanges.last7days')
     expect(screen.getAllByLabelText(/agentV2\.agentDetail\.monitoring\.metrics\..*\.explanation/)).toHaveLength(4)
+  })
+
+  it('routes access actions to the target tab', async () => {
+    render(<AgentDetailPage section="access" />)
+
+    expect(screen.getByRole('region', { name: 'agentV2.agentDetail.sections.access' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'agentV2.agentDetail.access.title' })).toBeInTheDocument()
+    expect(screen.getByText('agentV2.agentDetail.access.entries.webapp.name')).toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('button', {
+      name: /agentV2\.agentDetail\.access\.moreActions/,
+    })[0]!)
+    fireEvent.click(await screen.findByText('agentV2.agentDetail.sections.logs'))
+
+    expect(push).toHaveBeenCalledWith('/roster/agent-1/logs')
   })
 })
