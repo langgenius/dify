@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SnippetCreateButton from '../snippet-create-button'
 
-const { mockPush, mockCreateMutate, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+const { mockPush, mockCreateMutate, mockImportMutateAsync, mockConfirmImportMutateAsync, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockCreateMutate: vi.fn(),
+  mockImportMutateAsync: vi.fn(),
+  mockConfirmImportMutateAsync: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
@@ -26,6 +28,14 @@ vi.mock('@/service/use-snippets', () => ({
     mutate: mockCreateMutate,
     isPending: false,
   }),
+  useImportSnippetDSLMutation: () => ({
+    mutateAsync: mockImportMutateAsync,
+    isPending: false,
+  }),
+  useConfirmSnippetImportMutation: () => ({
+    mutateAsync: mockConfirmImportMutateAsync,
+    isPending: false,
+  }),
 }))
 
 describe('SnippetCreateButton', () => {
@@ -41,6 +51,7 @@ describe('SnippetCreateButton', () => {
     render(<SnippetCreateButton />)
 
     fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.createFromBlank' }))
     expect(screen.getByText('workflow.snippet.createDialogTitle')).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
@@ -65,5 +76,36 @@ describe('SnippetCreateButton', () => {
     })
 
     expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
+  })
+
+  it('should import a snippet from a DSL URL', async () => {
+    mockImportMutateAsync.mockResolvedValue({
+      id: 'import-1',
+      status: 'completed',
+      snippet_id: 'snippet-imported',
+      error: '',
+    })
+
+    render(<SnippetCreateButton />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.importDSLFile' }))
+    expect(screen.getByText('snippet.importDialogTitle')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    fireEvent.change(screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'), {
+      target: { value: 'https://example.com/snippet.yml' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    await waitFor(() => {
+      expect(mockImportMutateAsync).toHaveBeenCalledWith({
+        mode: 'yaml-url',
+        yamlContent: undefined,
+        yamlUrl: 'https://example.com/snippet.yml',
+      })
+    })
+    expect(mockToastSuccess).toHaveBeenCalledWith('snippet.importSuccess')
+    expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
   })
 })

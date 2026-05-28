@@ -59,7 +59,7 @@ members = ["providers/vdb/*", "providers/trace/*"]
 exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
-dify-agent = { path = "../dify-agent" }
+dify-agent = { path = "../dify-agent", editable = true }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }
