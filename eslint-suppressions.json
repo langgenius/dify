@@ -3693,11 +3693,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon.tsx": {
     "react/static-components": {
       "count": 2
