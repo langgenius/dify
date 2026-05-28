@@ -1,5 +1,6 @@
 from commands.data_migration import (
     CONFLICT_STRATEGY_CHOICES,
+    ID_STRATEGY_CHOICES,
     _confirm_wizard_summary,
     _print_auto_tools,
     _print_final_tool_selection,
@@ -263,10 +264,12 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
         include_referenced_tools=True,
         include_secrets=False,
         create_tokens=True,
+        id_strategy="preserve-id",
         conflict_strategy="fail",
         output_file="migration-data.json",
     )
 
+    assert "id strategy: preserve-id" in output_lines
     assert "conflict strategy: fail" in output_lines
     assert confirm_prompts == [
         ("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})
@@ -292,15 +295,23 @@ def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch)
     monkeypatch.setattr("commands.data_migration.click.confirm", capture_confirm)
     monkeypatch.setattr("commands.data_migration.click.prompt", capture_prompt)
 
-    include_secrets, create_tokens, conflict_strategy = _prompt_import_options()
+    include_secrets, create_tokens, id_strategy, conflict_strategy = _prompt_import_options()
 
     assert include_secrets is False
     assert create_tokens is False
+    assert id_strategy == "preserve-id"
     assert conflict_strategy == "update"
     assert "Secrets include workflow/app DSL secret values, custom API tool credentials," in output_lines
     assert "If you choose no, credentials are omitted or masked," in output_lines
     assert "When enabled, import will create an app API token if the imported app has none," in output_lines
     assert "or reuse an existing app API token if one already exists." in output_lines
+    assert "ID strategy controls whether imported app and tool IDs preserve source IDs" in output_lines
+    assert "or use target-generated IDs." in output_lines
+    assert "preserve-id: keep source IDs where the target service supports it." in output_lines
+    assert (
+        "generate-new-id: let the target environment generate new IDs and rewrite references via mapping."
+        in output_lines
+    )
     assert "Conflict strategy controls what import does when a target resource already exists." in output_lines
     assert "fail: stop at the first conflict; previously committed resources are not rolled back." in output_lines
     assert "skip: keep the existing target resource and skip importing that resource." in output_lines
@@ -309,7 +320,11 @@ def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch)
         ("Include secrets in output JSON? [y/n, default: n]", {"default": False, "show_default": False}),
         ("Create or reuse app API tokens during import? [y/n, default: n]", {"default": False, "show_default": False}),
     ]
-    assert prompt_calls[0][0] == "Import conflict strategy. Enter one of: fail, skip, update"
-    assert prompt_calls[0][1]["default"] == "update"
+    assert prompt_calls[0][0] == "Import ID strategy. Enter one of: preserve-id, generate-new-id"
+    assert prompt_calls[0][1]["default"] == "preserve-id"
     assert prompt_calls[0][1]["show_default"] is True
-    assert prompt_calls[0][1]["type"].choices == CONFLICT_STRATEGY_CHOICES
+    assert prompt_calls[0][1]["type"].choices == ID_STRATEGY_CHOICES
+    assert prompt_calls[1][0] == "Import conflict strategy. Enter one of: fail, skip, update"
+    assert prompt_calls[1][1]["default"] == "update"
+    assert prompt_calls[1][1]["show_default"] is True
+    assert prompt_calls[1][1]["type"].choices == CONFLICT_STRATEGY_CHOICES

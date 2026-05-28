@@ -164,7 +164,7 @@ def migration_data_wizard() -> None:
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
-        include_secrets, create_tokens, conflict_strategy = _prompt_import_options()
+        include_secrets, create_tokens, id_strategy, conflict_strategy = _prompt_import_options()
         _print_wizard_step("Output")
         output_file, overwrite = _prompt_output_file()
 
@@ -177,6 +177,7 @@ def migration_data_wizard() -> None:
                 "include_secrets": include_secrets,
                 "import_options": {
                     "create_app_api_token_on_import": create_tokens,
+                    "id_strategy": id_strategy,
                     "conflict_strategy": conflict_strategy,
                 },
             }
@@ -188,6 +189,7 @@ def migration_data_wizard() -> None:
             include_referenced_tools=include_referenced_tools,
             include_secrets=include_secrets,
             create_tokens=create_tokens,
+            id_strategy=id_strategy,
             conflict_strategy=conflict_strategy,
             output_file=output_file,
         )
@@ -286,7 +288,7 @@ def _prompt_app_ids(apps: list[App]) -> list[str]:
     return app_ids
 
 
-def _prompt_import_options() -> tuple[bool, bool, str]:
+def _prompt_import_options() -> tuple[bool, bool, str, str]:
     _print_wizard_step("Import Options")
     click.echo("Secrets include workflow/app DSL secret values, custom API tool credentials,")
     click.echo("and full MCP provider connection data such as server URL, headers, authentication, and tool list.")
@@ -305,6 +307,16 @@ def _prompt_import_options() -> tuple[bool, bool, str]:
         default=False,
         show_default=False,
     )
+    click.echo("ID strategy controls whether imported app and tool IDs preserve source IDs")
+    click.echo("or use target-generated IDs.")
+    click.echo("preserve-id: keep source IDs where the target service supports it.")
+    click.echo("generate-new-id: let the target environment generate new IDs and rewrite references via mapping.")
+    id_strategy = click.prompt(
+        "Import ID strategy. Enter one of: preserve-id, generate-new-id",
+        type=click.Choice(ID_STRATEGY_CHOICES),
+        default="preserve-id",
+        show_default=True,
+    )
     click.echo("Conflict strategy controls what import does when a target resource already exists.")
     click.echo("fail: stop at the first conflict; previously committed resources are not rolled back.")
     click.echo("skip: keep the existing target resource and skip importing that resource.")
@@ -315,7 +327,7 @@ def _prompt_import_options() -> tuple[bool, bool, str]:
         default="update",
         show_default=True,
     )
-    return include_secrets, create_tokens, conflict_strategy
+    return include_secrets, create_tokens, id_strategy, conflict_strategy
 
 
 def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> WizardToolMap:
@@ -566,6 +578,7 @@ def _confirm_wizard_summary(
     include_referenced_tools: bool,
     include_secrets: bool,
     create_tokens: bool,
+    id_strategy: str,
     conflict_strategy: str,
     output_file: str,
 ) -> None:
@@ -581,6 +594,7 @@ def _confirm_wizard_summary(
     click.echo(f"additional mcp tools: {len(additional_tools['mcp_tools'])}")
     click.echo(f"include secrets: {str(include_secrets).lower()}")
     click.echo(f"create app api token on import: {str(create_tokens).lower()}")
+    click.echo(f"id strategy: {id_strategy}")
     click.echo(f"conflict strategy: {conflict_strategy}")
     click.echo(f"output path: {output_file}")
     if not click.confirm("Write migration package? [y/n, default: y]", default=True, show_default=False):
