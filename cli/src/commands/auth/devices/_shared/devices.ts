@@ -7,7 +7,7 @@ import { AccountSessionsClient } from '../../../../api/account-sessions.js'
 import { BaseError } from '../../../../errors/base.js'
 import { ErrorCode } from '../../../../errors/codes.js'
 import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '../../../../limit/limit.js'
-import { getTokenStore, tokenKey } from '../../../../store/manager.js'
+import { getHostStore, getTokenStore, tokenKey } from '../../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../../sys/io/color.js'
 import { runWithSpinner } from '../../../../sys/io/spinner.js'
 
