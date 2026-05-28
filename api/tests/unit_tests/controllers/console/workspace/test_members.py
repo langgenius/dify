@@ -470,4 +470,4 @@ class TestOwnerTransferApi:
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
         ):
             with pytest.raises(InvalidTokenError):
-                method(api, "2")
+                method(api, user, "2")
