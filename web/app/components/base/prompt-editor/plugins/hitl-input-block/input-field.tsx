@@ -2,12 +2,9 @@ import type { Item as TypeSelectItem } from '@/app/components/app/configuration/
 import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import type { UploadFileSetting, ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-<<<<<<< HEAD
 import { cn } from '@langgenius/dify-ui/cn'
-=======
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
->>>>>>> upstream/main
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -15,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import Input from '@/app/components/base/input'
-<<<<<<< HEAD
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import {
@@ -27,10 +23,6 @@ import {
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-=======
-import { InputVarType } from '@/app/components/workflow/types'
->>>>>>> upstream/main
 import PrePopulate from './pre-populate'
 import TypeSwitch from './type-switch'
 
@@ -351,54 +343,14 @@ const InputField: React.FC<InputFieldProps> = ({
                   onClick={handleSave}
                 >
                   <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-                  <span className="mr-0.5 flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
-                  <span className="flex h-4 items-center rounded-sm bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
+                  <KbdGroup>
+                    {['Mod', 'Enter'].map(key => (
+                      <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                    ))}
+                  </KbdGroup>
                 </Button>
               )}
         </div>
-<<<<<<< HEAD
-=======
-        <PrePopulate
-          isVariable={defaultValueConfig?.type === 'variable'}
-          onIsVariableChange={(isVariable) => {
-            handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
-          }}
-          nodeId={nodeId}
-          valueSelector={defaultValueConfig?.selector}
-          onValueSelectorChange={handleDefaultValueChange('selector')}
-          value={defaultValueConfig?.value}
-          onValueChange={handleDefaultValueChange('value')}
-        />
-      </div>
-      <div className="mt-4 flex justify-end space-x-2">
-        <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-        {isEdit
-          ? (
-              <Button
-                variant="primary"
-                onClick={handleSave}
-                disabled={!nameValid}
-              >
-                {t('operation.save', { ns: 'common' })}
-              </Button>
-            )
-          : (
-              <Button
-                className="flex"
-                variant="primary"
-                disabled={!nameValid}
-                onClick={handleSave}
-              >
-                <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-                <KbdGroup>
-                  {['Mod', 'Enter'].map(key => (
-                    <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
-                  ))}
-                </KbdGroup>
-              </Button>
-            )}
-
->>>>>>> upstream/main
       </div>
     </div>
   )
