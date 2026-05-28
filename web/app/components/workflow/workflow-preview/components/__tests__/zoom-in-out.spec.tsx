@@ -1,4 +1,4 @@
-import { fireEvent, render, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -26,29 +26,25 @@ vi.mock('reactflow', () => ({
 }))
 
 const getZoomControls = () => {
-  const label = Array.from(document.querySelectorAll('div')).find((element) => {
+  const label = Array.from(document.querySelectorAll('button')).find((element) => {
     return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-[34px]')
   })
-  const icons = Array.from(document.querySelectorAll('svg'))
+  const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
+  const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
 
-  if (!label || icons.length < 2)
+  if (!label || !zoomOutIcon || !zoomInIcon)
     throw new Error('Missing zoom controls')
 
   return {
-    zoomOutTrigger: icons[0].parentElement as HTMLElement,
+    zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
     label,
-    zoomInTrigger: icons[1].parentElement as HTMLElement,
+    zoomInTrigger: zoomInIcon.parentElement as HTMLElement,
   }
 }
 
 const openZoomMenu = () => {
   fireEvent.click(getZoomControls().label)
-
-  const portal = document.querySelector('[data-floating-ui-portal]')
-  if (!portal)
-    throw new Error('Missing zoom menu portal')
-
-  return within(portal as HTMLElement)
+  return within(screen.getByRole('menu'))
 }
 
 describe('workflow preview zoom controls', () => {

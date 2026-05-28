@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { createContext, use } from 'react'
-import { cn } from '@/utils/classnames'
 import styles from './quota-panel.module.css'
 
 type Variant = 'default' | 'destructive'

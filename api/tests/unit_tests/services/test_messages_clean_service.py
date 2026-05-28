@@ -1,4 +1,5 @@
 import datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,7 +19,7 @@ def make_simple_message(msg_id: str, app_id: str) -> SimpleMessage:
     return SimpleMessage(id=msg_id, app_id=app_id, created_at=datetime.datetime(2024, 1, 1))
 
 
-def make_plan_provider(tenant_plans: dict) -> MagicMock:
+def make_plan_provider(tenant_plans: dict[str, Any]) -> MagicMock:
     """Helper to create a mock plan_provider that returns the given tenant_plans."""
     provider = MagicMock()
     provider.return_value = tenant_plans
@@ -402,7 +403,7 @@ class TestBillingDisabledPolicyFilterMessageIds:
 class TestCreateMessageCleanPolicy:
     """Unit tests for create_message_clean_policy factory function."""
 
-    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
+    @patch("services.retention.conversation.messages_clean_policy.dify_config")
     def test_billing_disabled_returns_billing_disabled_policy(self, mock_config):
         """Test that BILLING_ENABLED=False returns BillingDisabledPolicy."""
         # Arrange
@@ -415,7 +416,7 @@ class TestCreateMessageCleanPolicy:
         assert isinstance(policy, BillingDisabledPolicy)
 
     @patch("services.retention.conversation.messages_clean_policy.BillingService", autospec=True)
-    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
+    @patch("services.retention.conversation.messages_clean_policy.dify_config")
     def test_billing_enabled_policy_has_correct_internals(self, mock_config, mock_billing_service):
         """Test that BillingSandboxPolicy is created with correct internal values."""
         # Arrange

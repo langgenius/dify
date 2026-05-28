@@ -1,4 +1,5 @@
 import type { ToolInfoInThought } from '../type'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -7,7 +8,6 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type ToolDetailProps = {
   payload: ToolInfoInThought
@@ -30,34 +30,34 @@ const ToolDetail = ({
     >
       <div
         className={cn(
-          'system-xs-medium flex cursor-pointer items-center px-2.5 py-2 text-text-tertiary',
+          'flex cursor-pointer items-center px-2.5 py-2 system-xs-medium text-text-tertiary',
           expand && 'pb-1.5',
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill className="mr-1 h-3.5 w-3.5" />}
-        {!isFinished && <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />}
+        {isFinished && <RiHammerFill className="mr-1 size-3.5" />}
+        {!isFinished && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
         {t(`thought.${isFinished ? 'used' : 'using'}`, { ns: 'tools' })}
         <div className="mx-1 text-text-secondary">{toolLabel}</div>
-        {!expand && <RiArrowRightSLine className="h-4 w-4" />}
-        {expand && <RiArrowDownSLine className="ml-auto h-4 w-4" />}
+        {!expand && <RiArrowRightSLine className="size-4" />}
+        {expand && <RiArrowDownSLine className="ml-auto size-4" />}
       </div>
       {
         expand && (
           <>
-            <div className="mx-1 mb-0.5 radius-lg bg-components-panel-on-panel-item-bg text-text-secondary">
-              <div className="system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1">
+            <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
+              <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
                 {t('thought.requestTitle', { ns: 'tools' })}
               </div>
-              <div className="code-xs-regular wrap-break-word px-3 pb-2 pt-1">
+              <div className="px-3 pt-1 pb-2 code-xs-regular wrap-break-word">
                 {input}
               </div>
             </div>
-            <div className="mx-1 mb-1 radius-lg bg-components-panel-on-panel-item-bg text-text-secondary">
-              <div className="system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1">
+            <div className="mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
+              <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
                 {t('thought.responseTitle', { ns: 'tools' })}
               </div>
-              <div className="code-xs-regular wrap-break-word px-3 pb-2 pt-1">
+              <div className="px-3 pt-1 pb-2 code-xs-regular wrap-break-word">
                 {output}
               </div>
             </div>

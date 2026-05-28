@@ -124,7 +124,7 @@ export type DataSourceItem = {
   is_authorized: boolean
 }
 
-export type TriggerCredentialField = {
+type TriggerCredentialField = {
   type: 'secret-input' | 'text-input' | 'select' | 'boolean'
     | 'app-selector' | 'model-selector' | 'tools-selector'
   name: string
@@ -226,14 +226,14 @@ export type TriggerLogEntity = {
   created_at: string
 }
 
-export type LogRequest = {
+type LogRequest = {
   method: string
   url: string
   headers: LogRequestHeaders
   data: string
 }
 
-export type LogRequestHeaders = {
+type LogRequestHeaders = {
   'Host': string
   'User-Agent': string
   'Content-Length': string
@@ -251,13 +251,13 @@ export type LogRequestHeaders = {
   [key: string]: string
 }
 
-export type LogResponse = {
+type LogResponse = {
   status_code: number
   headers: LogResponseHeaders
   data: string
 }
 
-export type LogResponseHeaders = {
+type LogResponseHeaders = {
   'Content-Type': string
   'Content-Length': string
   [key: string]: string

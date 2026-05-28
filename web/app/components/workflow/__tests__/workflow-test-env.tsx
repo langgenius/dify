@@ -63,21 +63,18 @@
 import type { RenderHookOptions, RenderHookResult, RenderOptions, RenderResult } from '@testing-library/react'
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
+import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
-import type { WorkflowHistoryStoreApi } from '../workflow-history-store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
-import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { temporal } from 'zundo'
-import { create } from 'zustand'
+import { seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
 import { createWorkflowStore } from '../store/workflow'
 import { WorkflowRunningStatus } from '../types'
-import { WorkflowHistoryStoreContext } from '../workflow-history-store'
 
 // Re-exports are in a separate non-JSX file to avoid react-refresh warnings.
 // Import directly from the individual modules:
@@ -134,6 +131,7 @@ type WorkflowProviderOptions = {
   initialStoreState?: Partial<Shape>
   hooksStoreProps?: Partial<HooksStoreShape>
   historyStore?: HistoryStoreConfig
+  queryClient?: QueryClient
 }
 
 type StoreInstances = {
@@ -152,28 +150,27 @@ function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstanc
 function createWorkflowWrapper(
   stores: StoreInstances,
   historyConfig?: HistoryStoreConfig,
+  externalQueryClient?: QueryClient,
 ) {
-  const historyCtxValue = historyConfig
-    ? createTestHistoryStoreContext(historyConfig)
-    : undefined
-  const queryClient = new QueryClient({
+  if (historyConfig) {
+    stores.store.temporal.getState().pause()
+    stores.store.getState().setWorkflowHistory(createTestWorkflowHistoryState(historyConfig))
+    stores.store.temporal.getState().clear()
+    stores.store.temporal.getState().resume()
+  }
+
+  const queryClient = externalQueryClient ?? new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   })
+  if (!externalQueryClient)
+    seedSystemFeatures(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children
-
-    if (historyCtxValue) {
-      inner = React.createElement(
-        WorkflowHistoryStoreContext.Provider,
-        { value: historyCtxValue },
-        inner,
-      )
-    }
 
     if (stores.hooksStore) {
       inner = React.createElement(
@@ -209,16 +206,16 @@ type WorkflowHookTestResult<R, P> = RenderHookResult<R, P> & StoreInstances
  * Contexts provided based on options:
  * - **Always**: `WorkflowContext` (real zustand store)
  * - **hooksStoreProps**: `HooksStoreContext` (real zustand store)
- * - **historyStore**: `WorkflowHistoryStoreContext` (real zundo temporal store)
+ * - **historyStore**: workflow history zundo store on `WorkflowContext`
  */
 export function renderWorkflowHook<R, P = undefined>(
   hook: (props: P) => R,
   options?: WorkflowHookTestOptions<P>,
 ): WorkflowHookTestResult<R, P> {
-  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, ...rest } = options ?? {}
+  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, queryClient, ...rest } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
   return { ...renderResult, ...stores }
@@ -238,16 +235,16 @@ type WorkflowComponentTestResult = RenderResult & StoreInstances
  * Provides the same context layers as `renderWorkflowHook`:
  * - **Always**: `WorkflowContext` (real zustand store)
  * - **hooksStoreProps**: `HooksStoreContext` (real zustand store)
- * - **historyStore**: `WorkflowHistoryStoreContext` (real zundo temporal store)
+ * - **historyStore**: workflow history zundo store on `WorkflowContext`
  */
 export function renderWorkflowComponent(
   ui: React.ReactElement,
   options?: WorkflowComponentTestOptions,
 ): WorkflowComponentTestResult {
-  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, ...renderOptions } = options ?? {}
+  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, queryClient, ...renderOptions } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
 
   const renderResult = render(ui, { wrapper, ...renderOptions })
   return { ...renderResult, ...stores }
@@ -388,36 +385,13 @@ export function renderNodeComponent<T extends Record<string, unknown>>(
 // WorkflowHistoryStore test helper
 // ---------------------------------------------------------------------------
 
-function createTestHistoryStoreContext(config: HistoryStoreConfig) {
+function createTestWorkflowHistoryState(config: HistoryStoreConfig): WorkflowHistoryState {
   const nodes = config.nodes ?? []
   const edges = config.edges ?? []
-
-  type HistState = {
-    workflowHistoryEvent: string | undefined
-    workflowHistoryEventMeta: unknown
-    nodes: Node[]
-    edges: Edge[]
-    getNodes: () => Node[]
-    setNodes: (n: Node[]) => void
-    setEdges: (e: Edge[]) => void
-  }
-
-  const store = create(temporal<HistState>(
-    (set, get) => ({
-      workflowHistoryEvent: undefined,
-      workflowHistoryEventMeta: undefined,
-      nodes,
-      edges,
-      getNodes: () => get().nodes,
-      setNodes: (n: Node[]) => set({ nodes: n }),
-      setEdges: (e: Edge[]) => set({ edges: e }),
-    }),
-    { equality: (a, b) => isDeepEqual(a, b) },
-  )) as unknown as WorkflowHistoryStoreApi
-
   return {
-    store,
-    shortcutsEnabled: true,
-    setShortcutsEnabled: () => {},
+    nodes,
+    edges,
+    workflowHistoryEvent: undefined,
+    workflowHistoryEventMeta: undefined,
   }
 }

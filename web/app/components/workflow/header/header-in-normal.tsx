@@ -18,6 +18,7 @@ import {
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import GlobalVariableButton from './global-variable-button'
+import OnlineUsers from './online-users'
 import RunAndHistory from './run-and-history'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 import VersionHistoryButton from './version-history-button'
@@ -72,6 +73,7 @@ const HeaderInNormal = ({
         <ScrollToSelectedNodeButton />
       </div>
       <div className="flex items-center gap-2">
+        <OnlineUsers />
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />

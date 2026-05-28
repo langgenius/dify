@@ -1,9 +1,10 @@
 'use client'
 
 import type { PluginDetail } from '../../../types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useReferenceSetting from '../../../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
 import { PluginSource } from '../../../types'
@@ -48,7 +49,10 @@ type UseDetailHeaderStateReturn = {
 }
 
 export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderStateReturn => {
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const { referenceSetting } = useReferenceSetting()
 
   const {

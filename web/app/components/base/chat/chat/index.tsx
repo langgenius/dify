@@ -13,12 +13,12 @@ import type {
 import type { InputForm } from './type'
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import Answer from './answer'
 import ChatInputArea from './chat-input-area'
 import ChatLogModals from './chat-log-modals'
@@ -177,7 +177,7 @@ const Chat: FC<ChatProps> = ({
                       appData={appData}
                       key={item.id}
                       item={item}
-                      question={chatList[index - 1]?.content}
+                      question={chatList[index - 1]?.content!}
                       index={index}
                       config={config}
                       answerIcon={answerIcon}

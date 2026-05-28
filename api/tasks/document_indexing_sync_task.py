@@ -69,7 +69,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         index_type = document.doc_form
 
         segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-        index_node_ids = [segment.index_node_id for segment in segments]
+        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
     # Get credentials from datasource provider
     datasource_provider_service = DatasourceProviderService()

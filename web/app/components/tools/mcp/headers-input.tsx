@@ -1,12 +1,12 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { cn } from '@/utils/classnames'
 
 export type HeaderItem = {
   id: string
@@ -31,7 +31,7 @@ const HeadersInput = ({
 
   const handleItemChange = (index: number, field: 'key' | 'value', value: string) => {
     const newItems = [...headersItems]
-    newItems[index] = { ...newItems[index], [field]: value }
+    newItems[index] = { ...newItems[index]!, [field]: value }
 
     onChange(newItems)
   }
@@ -61,7 +61,7 @@ const HeadersInput = ({
             onClick={handleAddItem}
             className="w-full"
           >
-            <RiAddLine className="mr-1 h-4 w-4" />
+            <RiAddLine className="mr-1 size-4" />
             {t('mcp.modal.addHeader', { ns: 'tools' })}
           </Button>
         )}
@@ -77,9 +77,9 @@ const HeadersInput = ({
         </div>
       )}
       <div className="overflow-hidden rounded-lg border border-divider-regular">
-        <div className="system-xs-medium-uppercase bg-background-secondary flex h-7 items-center leading-7 text-text-tertiary">
+        <div className="bg-background-secondary flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
           <div className="h-full w-1/2 border-r border-divider-regular pl-3">{t('mcp.modal.headerKey', { ns: 'tools' })}</div>
-          <div className="h-full w-1/2 pl-3 pr-1">{t('mcp.modal.headerValue', { ns: 'tools' })}</div>
+          <div className="h-full w-1/2 pr-1 pl-3">{t('mcp.modal.headerValue', { ns: 'tools' })}</div>
         </div>
         {headersItems.map((item, index) => (
           <div
@@ -111,7 +111,7 @@ const HeadersInput = ({
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
-                  <RiDeleteBinLine className="h-4 w-4 text-text-destructive" />
+                  <RiDeleteBinLine className="size-4 text-text-destructive" />
                 </ActionButton>
               )}
             </div>
@@ -125,7 +125,7 @@ const HeadersInput = ({
           onClick={handleAddItem}
           className="w-full"
         >
-          <RiAddLine className="mr-1 h-4 w-4" />
+          <RiAddLine className="mr-1 size-4" />
           {t('mcp.modal.addHeader', { ns: 'tools' })}
         </Button>
       )}

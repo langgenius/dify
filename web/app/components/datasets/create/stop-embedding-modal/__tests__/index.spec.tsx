@@ -25,8 +25,7 @@ const renderStopEmbeddingModal = (props: Partial<StopEmbeddingModalProps> = {}) 
 
 // StopEmbeddingModal Component Tests
 describe('StopEmbeddingModal', () => {
-  // Suppress Headless UI warnings in tests
-  // These warnings are from the library's internal behavior, not our code
+  // Suppress expected modal warnings in tests.
   let consoleWarnSpy: MockInstance
   let consoleErrorSpy: MockInstance
 
@@ -49,31 +48,31 @@ describe('StopEmbeddingModal', () => {
     it('should render without crashing when show is true', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
     })
 
     it('should render modal title', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
     })
 
     it('should render modal content', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelContent')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
     })
 
     it('should render confirm button with correct text', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm'))!.toBeInTheDocument()
     })
 
     it('should render cancel button with correct text', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel'))!.toBeInTheDocument()
     })
 
     it('should not render modal content when show is false', () => {
@@ -85,33 +84,33 @@ describe('StopEmbeddingModal', () => {
     it('should render buttons in correct order (cancel first, then confirm)', () => {
       renderStopEmbeddingModal({ show: true })
 
-      // Assert - Due to flex-row-reverse, confirm appears first visually but cancel is first in DOM
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
     })
 
     it('should render confirm button with primary variant styling', () => {
       renderStopEmbeddingModal({ show: true })
 
       const confirmButton = screen.getByText('datasetCreation.stepThree.modelButtonConfirm')
-      expect(confirmButton).toHaveClass('ml-2', 'w-24')
+      expect(confirmButton)!.toHaveClass('ml-2', 'w-24')
     })
 
     it('should render cancel button with default styling', () => {
       renderStopEmbeddingModal({ show: true })
 
       const cancelButton = screen.getByText('datasetCreation.stepThree.modelButtonCancel')
-      expect(cancelButton).toHaveClass('w-24')
+      expect(cancelButton)!.toHaveClass('w-24')
     })
 
     it('should render all modal elements', () => {
       renderStopEmbeddingModal({ show: true })
 
       // Assert - Modal should contain title, content, and buttons
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepThree.modelContent')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel')).toBeInTheDocument()
+      // Assert - Modal should contain title, content, and buttons
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel'))!.toBeInTheDocument()
     })
   })
 
@@ -121,7 +120,7 @@ describe('StopEmbeddingModal', () => {
       it('should show modal when show is true', () => {
         renderStopEmbeddingModal({ show: true })
 
-        expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       })
 
       it('should hide modal when show is false', () => {
@@ -155,7 +154,7 @@ describe('StopEmbeddingModal', () => {
 
         // Assert - Modal should be visible
         await waitFor(() => {
-          expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+          expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
         })
       })
     })
@@ -167,7 +166,8 @@ describe('StopEmbeddingModal', () => {
         renderStopEmbeddingModal({ onConfirm })
 
         // Assert - No errors thrown
-        expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+        // Assert - No errors thrown
+        expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       })
     })
 
@@ -178,7 +178,8 @@ describe('StopEmbeddingModal', () => {
         renderStopEmbeddingModal({ onHide })
 
         // Assert - No errors thrown
-        expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+        // Assert - No errors thrown
+        expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       })
     })
   })
@@ -288,47 +289,28 @@ describe('StopEmbeddingModal', () => {
     })
 
     describe('Close Icon', () => {
-      it('should call onHide when close span is clicked', async () => {
+      it('should call onHide when close button is clicked', async () => {
         const onConfirm = vi.fn()
         const onHide = vi.fn()
-        const { container } = renderStopEmbeddingModal({ onConfirm, onHide })
+        renderStopEmbeddingModal({ onConfirm, onHide })
 
-        // Act - Find the close span (it should be the span with onClick handler)
-        const spans = container.querySelectorAll('span')
-        const closeSpan = Array.from(spans).find(span =>
-          span.className && span.getAttribute('class')?.includes('close'),
-        )
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+        })
 
-        if (closeSpan) {
-          await act(async () => {
-            fireEvent.click(closeSpan)
-          })
-
-          expect(onHide).toHaveBeenCalledTimes(1)
-        }
-        else {
-          // If no close span found with class, just verify the modal renders
-          expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
-        }
+        expect(onHide).toHaveBeenCalledTimes(1)
       })
 
-      it('should not call onConfirm when close span is clicked', async () => {
+      it('should not call onConfirm when close button is clicked', async () => {
         const onConfirm = vi.fn()
         const onHide = vi.fn()
-        const { container } = renderStopEmbeddingModal({ onConfirm, onHide })
+        renderStopEmbeddingModal({ onConfirm, onHide })
 
-        const spans = container.querySelectorAll('span')
-        const closeSpan = Array.from(spans).find(span =>
-          span.className && span.getAttribute('class')?.includes('close'),
-        )
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+        })
 
-        if (closeSpan) {
-          await act(async () => {
-            fireEvent.click(closeSpan)
-          })
-
-          expect(onConfirm).not.toHaveBeenCalled()
-        }
+        expect(onConfirm).not.toHaveBeenCalled()
       })
     })
 
@@ -431,8 +413,8 @@ describe('StopEmbeddingModal', () => {
         />,
       )
 
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepThree.modelContent')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
     })
   })
 
@@ -441,22 +423,22 @@ describe('StopEmbeddingModal', () => {
     it('should have buttons container with flex-row-reverse', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons[0].closest('div')).toHaveClass('flex', 'flex-row-reverse')
+      const confirmButton = screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })
+      expect(confirmButton.closest('div'))!.toHaveClass('flex', 'flex-row-reverse')
     })
 
     it('should render title and content elements', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepThree.modelContent')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
     })
 
-    it('should render two buttons', () => {
+    it('should render two action buttons', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
     })
   })
 
@@ -532,7 +514,8 @@ describe('StopEmbeddingModal', () => {
       )
 
       // Assert - Modal should be visible
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+      // Assert - Modal should be visible
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
 
       // Act - Hide modal
       await act(async () => {
@@ -559,17 +542,18 @@ describe('StopEmbeddingModal', () => {
     it('should have semantic button elements', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
+      expect(screen.getByRole('button', { name: /operation\.close$/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
     })
 
     it('should have accessible text content', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeVisible()
-      expect(screen.getByText('datasetCreation.stepThree.modelContent')).toBeVisible()
-      expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm')).toBeVisible()
-      expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel')).toBeVisible()
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeVisible()
+      expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeVisible()
+      expect(screen.getByText('datasetCreation.stepThree.modelButtonConfirm'))!.toBeVisible()
+      expect(screen.getByText('datasetCreation.stepThree.modelButtonCancel'))!.toBeVisible()
     })
   })
 
@@ -608,7 +592,8 @@ describe('StopEmbeddingModal', () => {
       )
 
       // Verify initial render
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+      // Verify initial render
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
 
       // Update props
       await act(async () => {
@@ -616,7 +601,8 @@ describe('StopEmbeddingModal', () => {
       })
 
       // Assert - Still renders correctly
-      expect(screen.getByText('datasetCreation.stepThree.modelTitle')).toBeInTheDocument()
+      // Assert - Still renders correctly
+      expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
     })
   })
 })

@@ -1,3 +1,4 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { DataSourceAuth } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { AddApiKeyButtonProps, AddOAuthButtonProps, PluginPayload } from '@/app/components/plugins/plugin-auth/types'
@@ -5,6 +6,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import Configure from '../configure'
+
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode }) => (
+    <button {...props}>
+      {children}
+    </button>
+  ),
+}))
 
 /**
  * Configure Component Tests

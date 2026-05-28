@@ -36,18 +36,6 @@ class _FakeSession:
 
     def __init__(self, mapping: dict[str, Any]):
         self._mapping = mapping
-        self._model_name: str | None = None
-
-    def query(self, model):
-        self._model_name = model.__name__
-        return self
-
-    def where(self, *args, **kwargs):
-        return self
-
-    def first(self):
-        assert self._model_name is not None
-        return self._mapping.get(self._model_name)
 
     def get(self, model, ident):
         return self._mapping.get(model.__name__)
@@ -138,7 +126,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     monkeypatch.setattr(
         site_module.FeatureService,
         "get_features",
-        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+        lambda tenant_id, **_kwargs: SimpleNamespace(can_replace_logo=True),
     )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
@@ -257,7 +245,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     monkeypatch.setattr(
         site_module.FeatureService,
         "get_features",
-        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+        lambda tenant_id, **_kwargs: SimpleNamespace(can_replace_logo=True),
     )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):

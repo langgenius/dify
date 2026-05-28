@@ -1,11 +1,11 @@
 'use client'
 import type { VariantProps } from 'class-variance-authority'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
+import { Infotip } from '@/app/components/base/infotip'
 
 const variants = cva([], {
   variants: {
@@ -48,9 +48,9 @@ const OptionCard: FC<Props> = ({
   return (
     <div
       className={cn(
-        'system-sm-regular flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+        'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
         (!selected && !disabled) && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-        selected && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
+        selected && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
         disabled && 'text-text-disabled',
         variants({ align }),
         className,
@@ -60,13 +60,9 @@ const OptionCard: FC<Props> = ({
       <span>{title}</span>
       {tooltip
         && (
-          <Tooltip
-            popupContent={(
-              <div className="w-[240px]">
-                {tooltip}
-              </div>
-            )}
-          />
+          <Infotip aria-label={tooltip} popupClassName="w-[240px]">
+            {tooltip}
+          </Infotip>
         )}
     </div>
   )

@@ -10,8 +10,6 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from graphon.entities import WorkflowStartReason
-from graphon.enums import BuiltinNodeTypes
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -27,6 +25,8 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
 )
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode

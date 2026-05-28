@@ -27,7 +27,7 @@ const {
   mockIsPrivateOrLocalAddress: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

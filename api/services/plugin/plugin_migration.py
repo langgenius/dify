@@ -13,13 +13,16 @@ import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
 from pydantic import TypeAdapter
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
 from models.account import Tenant
@@ -27,7 +30,6 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,7 @@ class PluginMigration:
         current_time = started_at
 
         with Session(db.engine) as session:
-            total_tenant_count = session.query(Tenant.id).count()
+            total_tenant_count = session.scalar(select(func.count(Tenant.id))) or 0
 
         click.echo(click.style(f"Total tenant count: {total_tenant_count}", fg="white"))
 
@@ -123,9 +125,12 @@ class PluginMigration:
                 tenant_count = 0
                 for test_interval in test_intervals:
                     tenant_count = (
-                        session.query(Tenant.id)
-                        .where(Tenant.created_at.between(current_time, current_time + test_interval))
-                        .count()
+                        session.scalar(
+                            select(func.count(Tenant.id)).where(
+                                Tenant.created_at.between(current_time, current_time + test_interval)
+                            )
+                        )
+                        or 0
                     )
                     if tenant_count <= 100:
                         interval = test_interval
@@ -147,8 +152,8 @@ class PluginMigration:
 
                 batch_end = min(current_time + interval, ended_at)
 
-                rs = (
-                    session.query(Tenant.id)
+                rs = session.execute(
+                    select(Tenant.id)
                     .where(Tenant.created_at.between(current_time, batch_end))
                     .order_by(Tenant.created_at)
                 )
@@ -235,7 +240,7 @@ class PluginMigration:
         Extract tool tables.
         """
         with Session(db.engine) as session:
-            rs = session.query(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id).all()
+            rs = session.scalars(select(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id)).all()
             result = []
             for row in rs:
                 result.append(ToolProviderID(row.provider).plugin_id)
@@ -249,7 +254,7 @@ class PluginMigration:
         """
 
         with Session(db.engine) as session:
-            rs = session.query(Workflow).where(Workflow.tenant_id == tenant_id).all()
+            rs = session.scalars(select(Workflow).where(Workflow.tenant_id == tenant_id)).all()
             result = []
             for row in rs:
                 graph = row.graph_dict
@@ -272,7 +277,7 @@ class PluginMigration:
         Extract app tables.
         """
         with Session(db.engine) as session:
-            apps = session.query(App).where(App.tenant_id == tenant_id).all()
+            apps = session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             if not apps:
                 return []
 
@@ -280,7 +285,7 @@ class PluginMigration:
                 app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT
             ]
 
-            rs = session.query(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
+            rs = session.scalars(select(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids))).all()
             result = []
             for row in rs:
                 agent_config = row.agent_mode_dict
@@ -306,6 +311,8 @@ class PluginMigration:
         """
         Fetch plugin unique identifier using plugin id.
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            return None
         plugin_manifest = marketplace.batch_fetch_plugin_manifests([plugin_id])
         if not plugin_manifest:
             return None
@@ -382,17 +389,19 @@ class PluginMigration:
                     for plugin_id in batch_plugin_ids
                     if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
                 ]
-                manager.install_from_identifiers(
-                    tenant_id,
-                    batch_plugin_identifiers,
-                    PluginInstallationSource.Marketplace,
-                    metas=[
-                        {
-                            "plugin_unique_identifier": identifier,
-                        }
-                        for identifier in batch_plugin_identifiers
-                    ],
-                )
+                if batch_plugin_identifiers:
+                    manager.install_from_identifiers(
+                        tenant_id,
+                        batch_plugin_identifiers,
+                        PluginInstallationSource.Marketplace,
+                        metas=[
+                            {
+                                "plugin_unique_identifier": identifier,
+                            }
+                            for identifier in batch_plugin_identifiers
+                        ],
+                    )
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
 
         with open(extracted_plugins) as f:
             """
@@ -538,6 +547,11 @@ class PluginMigration:
         """
         Install plugins for a tenant.
         """
+        if plugin_identifiers_map and not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError(
+                "Marketplace disabled in offline mode; cannot bulk-install plugins. "
+                "Pre-upload plugin packages via Console first."
+            )
         manager = PluginInstaller()
 
         # download all the plugins and upload
@@ -583,6 +597,7 @@ class PluginMigration:
                         for identifier in batch_plugin_identifiers
                     ],
                 )
+                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             except Exception:
                 # add to failed
                 failed.extend(batch_plugin_identifiers)
@@ -597,6 +612,7 @@ class PluginMigration:
             while not done:
                 status = manager.fetch_plugin_installation_task(tenant_id, task_id)
                 if status.status in [PluginInstallTaskStatus.Failed, PluginInstallTaskStatus.Success]:
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
                     for plugin in status.plugins:
                         if plugin.status == PluginInstallTaskStatus.Success:
                             success.append(reverse_map[plugin.plugin_unique_identifier])

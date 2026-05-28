@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 from typing import Any, NotRequired
 
 from celery import shared_task
-from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
@@ -24,6 +23,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -162,7 +162,12 @@ def _execute_workflow_common(
                 state_owner_user_id=workflow.created_by,
             )
 
-            # Execute the workflow with the trigger type
+            # NOTE (hj24)
+            # Release the transaction before the blocking generate() call,
+            # otherwise the connection stays "idle in transaction" for hours.
+            session.commit()
+            # NOTE END
+
             generator.generate(
                 app_model=app_model,
                 workflow=workflow,

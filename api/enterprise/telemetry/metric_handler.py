@@ -329,7 +329,7 @@ class EnterpriseMetricHandler:
             return
 
         include_content = exporter.include_content
-        attrs: dict = {
+        attrs: dict[str, Any] = {
             "dify.message.id": payload.get("message_id"),
             "dify.tenant_id": envelope.tenant_id,
             "dify.event.id": envelope.event_id,

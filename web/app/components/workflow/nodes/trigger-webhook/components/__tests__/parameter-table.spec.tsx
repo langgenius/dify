@@ -1,17 +1,27 @@
 import type { WebhookParameter } from '../../types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import ParameterTable from '../parameter-table'
 
-const selectOption = async (triggerName: string, optionName: string) => {
-  await act(async () => {
-    fireEvent.click(screen.getAllByRole('button', { name: triggerName })[0])
-  })
+const selectOption = async ({
+  rowKey,
+  triggerName,
+}: {
+  rowKey: string
+  triggerName: string
+}) => {
+  const user = userEvent.setup()
+  const rowInput = screen.getByDisplayValue(rowKey)
+  const row = rowInput.closest('[style*="min-height"]')
+  if (!(row instanceof HTMLElement))
+    throw new Error('Failed to locate parameter table row')
 
-  await act(async () => {
-    fireEvent.click(await screen.findByRole('option', { name: optionName }))
-  })
+  expect(within(row).getByText(triggerName)).toBeInTheDocument()
+  const selectButton = within(row).getByRole('combobox')
+  await user.click(selectButton)
+  await user.keyboard('{ArrowDown}')
+  await user.keyboard('{Enter}')
 }
 
 describe('trigger-webhook/parameter-table', () => {
@@ -33,7 +43,10 @@ describe('trigger-webhook/parameter-table', () => {
       />,
     )
 
-    await selectOption('String', 'Number')
+    await selectOption({
+      rowKey: 'page',
+      triggerName: 'String',
+    })
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{
@@ -44,7 +57,7 @@ describe('trigger-webhook/parameter-table', () => {
     })
 
     onChange.mockClear()
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
 
     expect(onChange).toHaveBeenCalledWith([{
       name: 'page',
@@ -70,7 +83,7 @@ describe('trigger-webhook/parameter-table', () => {
       />,
     )
 
-    await user.click(screen.getAllByRole('checkbox')[0])
+    await user.click(screen.getAllByRole('checkbox')[0]!)
 
     expect(onChange).toHaveBeenCalledWith([{
       name: 'message',

@@ -2,13 +2,13 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from graphon.file import File, FileUploadConfig
-from graphon.model_runtime.entities.model_entities import AIModelEntity
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
+from graphon.file import File, FileUploadConfig
+from graphon.model_runtime.entities.model_entities import AIModelEntity
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -24,6 +24,7 @@ class UserFrom(StrEnum):
 
 class InvokeFrom(StrEnum):
     SERVICE_API = "service-api"
+    OPENAPI = "openapi"
     WEB_APP = "web-app"
     TRIGGER = "trigger"
     EXPLORE = "explore"
@@ -42,6 +43,7 @@ class InvokeFrom(StrEnum):
             InvokeFrom.EXPLORE: "explore_app",
             InvokeFrom.TRIGGER: "trigger",
             InvokeFrom.SERVICE_API: "api",
+            InvokeFrom.OPENAPI: "openapi",
         }
         return source_mapping.get(self, "dev")
 

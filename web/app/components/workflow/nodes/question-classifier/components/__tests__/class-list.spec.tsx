@@ -79,10 +79,10 @@ describe('question-classifier/class-list', () => {
     await user.click(screen.getAllByText('remove-item')[0]!)
     expect(handleEdgeDeleteByDeleteBranch).toHaveBeenCalledWith('node-1', 'topic-1')
 
-    await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }))
     expect(screen.queryByText('workflow.nodes.questionClassifiers.addClass')).not.toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }))
     await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({ name: '' }),

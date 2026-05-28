@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,6 @@ import {
   useCSVReader,
 } from 'react-papaparse'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   onParsed: (data: string[][]) => void
@@ -42,7 +42,7 @@ const CSVReader: FC<Props> = ({
           <div
             {...getRootProps()}
             className={cn(
-              'system-sm-regular flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg',
+              'flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg system-sm-regular',
               acceptedFile && 'border-solid border-components-panel-border bg-components-panel-on-panel-item-bg px-6 hover:border-components-panel-bg-blur hover:bg-components-panel-on-panel-item-bg-hover',
               zoneHover && 'border border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
             )}

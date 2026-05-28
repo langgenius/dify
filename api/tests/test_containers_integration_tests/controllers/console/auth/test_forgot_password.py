@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.auth.forgot_password import (
     ForgotPasswordCheckApi,
@@ -16,7 +17,7 @@ from services.account_service import AccountService
 
 
 @pytest.fixture
-def app(flask_app_with_containers):
+def app(flask_app_with_containers: Flask):
     return flask_app_with_containers
 
 
@@ -31,7 +32,7 @@ class TestForgotPasswordSendEmailApi:
         mock_is_ip_limit,
         mock_send_email,
         mock_get_account,
-        app,
+        app: Flask,
     ):
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
@@ -80,7 +81,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_generate_token,
         mock_reset_rate,
-        app,
+        app: Flask,
     ):
         mock_rate_limit_check.return_value = False
         mock_get_data.return_value = {"email": "Admin@Example.com", "code": "4321"}
@@ -123,7 +124,7 @@ class TestForgotPasswordResetApi:
         mock_db,
         mock_get_account,
         mock_update_account,
-        app,
+        app: Flask,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
         mock_account = MagicMock()

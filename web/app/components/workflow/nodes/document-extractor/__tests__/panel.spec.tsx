@@ -116,16 +116,16 @@ describe('document-extractor/panel', () => {
     await user.click(screen.getByRole('button', { name: 'pick-file-var' }))
 
     expect(handleVarChanges).toHaveBeenCalledWith(['node-1', 'files'])
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' })).toHaveAttribute(
+    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}'))!.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }))!.toHaveAttribute(
       'href',
       'https://docs.example.com/document-extractor',
     )
-    expect(screen.getByText('text:string')).toBeInTheDocument()
+    expect(screen.getByText('text:string'))!.toBeInTheDocument()
   })
 
   it('uses chinese separators and array output types when the input is an array of files', () => {
-    mockLocale = LanguagesSupported[1]
+    mockLocale = LanguagesSupported[1]!
     mockUseConfig.mockReturnValueOnce(createConfigResult({
       inputs: createData({ is_array_file: true }),
     }))
@@ -138,7 +138,7 @@ describe('document-extractor/panel', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}')).toBeInTheDocument()
-    expect(screen.getByText('text:array[string]')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}'))!.toBeInTheDocument()
+    expect(screen.getByText('text:array[string]'))!.toBeInTheDocument()
   })
 })

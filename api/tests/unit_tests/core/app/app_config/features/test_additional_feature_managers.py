@@ -77,6 +77,38 @@ class TestAdditionalFeatureManagers:
             SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
                 {"suggested_questions_after_answer": {"enabled": "yes"}}
             )
+        with pytest.raises(ValueError):
+            SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+                {"suggested_questions_after_answer": {"enabled": True, "prompt": 123}}
+            )
+        with pytest.raises(ValueError, match="must be less than or equal to 1000 characters"):
+            SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+                {"suggested_questions_after_answer": {"enabled": True, "prompt": "a" * 1001}}
+            )
+        with pytest.raises(ValueError):
+            SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+                {"suggested_questions_after_answer": {"enabled": True, "model": "bad"}}
+            )
+        with pytest.raises(ValueError):
+            SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+                {"suggested_questions_after_answer": {"enabled": True, "model": {"provider": "openai"}}}
+            )
+
+        validated_config, _ = SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
+            {
+                "suggested_questions_after_answer": {
+                    "enabled": True,
+                    "prompt": "custom prompt",
+                    "model": {
+                        "provider": "openai",
+                        "name": "gpt-4o-mini",
+                        "completion_params": {"max_tokens": 1024},
+                    },
+                }
+            }
+        )
+        assert validated_config["suggested_questions_after_answer"]["prompt"] == "custom prompt"
+        assert validated_config["suggested_questions_after_answer"]["model"]["name"] == "gpt-4o-mini"
 
         assert (
             SuggestedQuestionsAfterAnswerConfigManager.convert({"suggested_questions_after_answer": {"enabled": True}})

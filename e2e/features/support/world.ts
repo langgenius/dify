@@ -1,10 +1,8 @@
-import { type IWorldOptions, World, setWorldConstructor } from '@cucumber/cucumber'
-import type { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test'
-import {
-  authStatePath,
-  readAuthSessionMetadata,
-  type AuthSessionMetadata,
-} from '../../fixtures/auth'
+import type { IWorldOptions } from '@cucumber/cucumber'
+import type { Browser, BrowserContext, ConsoleMessage, Download, Page } from '@playwright/test'
+import type { AuthSessionMetadata } from '../../fixtures/auth'
+import { setWorldConstructor, World } from '@cucumber/cucumber'
+import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
 export class DifyWorld extends World {
@@ -14,6 +12,10 @@ export class DifyWorld extends World {
   pageErrors: string[] = []
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
+  lastCreatedAppName: string | undefined
+  createdAppIds: string[] = []
+  capturedDownloads: Download[] = []
+  shareURL: string | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -23,6 +25,10 @@ export class DifyWorld extends World {
   resetScenarioState() {
     this.consoleErrors = []
     this.pageErrors = []
+    this.lastCreatedAppName = undefined
+    this.createdAppIds = []
+    this.capturedDownloads = []
+    this.shareURL = undefined
   }
 
   async startSession(browser: Browser, authenticated: boolean) {
@@ -37,10 +43,14 @@ export class DifyWorld extends World {
     this.page.setDefaultTimeout(30_000)
 
     this.page.on('console', (message: ConsoleMessage) => {
-      if (message.type() === 'error') this.consoleErrors.push(message.text())
+      if (message.type() === 'error')
+        this.consoleErrors.push(message.text())
     })
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
+    })
+    this.page.on('download', (dl) => {
+      this.capturedDownloads.push(dl)
     })
   }
 
@@ -53,7 +63,8 @@ export class DifyWorld extends World {
   }
 
   getPage() {
-    if (!this.page) throw new Error('Playwright page has not been initialized for this scenario.')
+    if (!this.page)
+      throw new Error('Playwright page has not been initialized for this scenario.')
 
     return this.page
   }

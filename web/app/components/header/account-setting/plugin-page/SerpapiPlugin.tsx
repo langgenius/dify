@@ -1,7 +1,7 @@
 import type { Form, ValidateValue } from '../key-validator/declarations'
 import type { PluginProvider } from '@/models/common'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import SerpapiLogo from '../../assets/serpapi.png'
 import KeyValidator from '../key-validator'

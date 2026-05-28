@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
-import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import StructureOutput from './structure-output'
+import { StructureOutput } from './structure-output'
 
 type Props = {
   readOnly: boolean
@@ -43,39 +43,29 @@ const PanelOutputSection: FC<Props> = ({
             {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
               <Tooltip>
                 <TooltipTrigger
-                  delay={0}
                   render={(
                     <div>
-                      <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
+                      <span className="mr-1 i-ri-alert-fill size-4 text-text-warning-secondary" />
                     </div>
                   )}
                 />
-                <TooltipContent>
-                  <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                    <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
-                    <div className="mt-1 body-xs-regular text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
-                  </div>
+                <TooltipContent className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
+                  <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
+                  <div className="mt-1 body-xs-regular text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
                 </TooltipContent>
               </Tooltip>
             )}
             <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
-            <Tooltip>
-              <TooltipTrigger
-                delay={0}
-                render={(
-                  <div>
-                    <RiQuestionLine className="size-3.5 text-text-quaternary" />
-                  </div>
-                )}
-              />
-              <TooltipContent>
-                <div className="max-w-[150px]">{t('structOutput.structuredTip', { ns: 'app' })}</div>
-              </TooltipContent>
-            </Tooltip>
+            <Infotip
+              aria-label={t('structOutput.structuredTip', { ns: 'app' })}
+              popupClassName="w-[150px]"
+            >
+              {t('structOutput.structuredTip', { ns: 'app' })}
+            </Infotip>
             <Switch
               className="ml-2"
-              value={!!inputs.structured_output_enabled}
-              onChange={handleStructureOutputEnableChange}
+              checked={!!inputs.structured_output_enabled}
+              onCheckedChange={handleStructureOutputEnableChange}
               size="md"
               disabled={readOnly}
             />

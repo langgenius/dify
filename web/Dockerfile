@@ -1,5 +1,5 @@
 # base image
-FROM node:22-alpine AS base
+FROM node:22.22.1-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -30,9 +30,8 @@ COPY packages /app/packages
 # Use packageManager from package.json
 RUN corepack install
 
-# Install only the web workspace to keep image builds from pulling in
-# unrelated workspace dependencies such as e2e tooling.
-RUN VITE_GIT_HOOKS=0 pnpm install --filter ./web... --frozen-lockfile
+# Install workspace dependencies for the Docker build environment.
+RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder
@@ -42,6 +41,7 @@ COPY . .
 
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV pnpm_config_verify_deps_before_run=false
 RUN pnpm build && pnpm build:vinext
 
 

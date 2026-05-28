@@ -15,14 +15,16 @@ vi.mock('../../..', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slider', () => ({
   default: ({
+    label,
     value,
     onChange,
   }: {
+    label: string
     value: number
     onChange: (value: number) => void
   }) => (
     <button onClick={() => onChange(value + 1)}>
-      {`slider-value-${value}`}
+      {`${label}-slider-value-${value}`}
     </button>
   ),
 }))
@@ -40,7 +42,7 @@ describe('NumberSliderField', () => {
 
   it('should update value when users interact with slider', () => {
     render(<NumberSliderField label="Threshold" />)
-    fireEvent.click(screen.getByRole('button', { name: 'slider-value-2' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Threshold-slider-value-2' }))
     expect(mockField.handleChange).toHaveBeenCalledWith(3)
   })
 })

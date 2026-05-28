@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
@@ -27,11 +27,12 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
-enum Step {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+const Step = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+type Step = typeof Step[keyof typeof Step]
 type CrawlState = {
   current: number
   total: number

@@ -17,7 +17,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 
 from core.model_manager import ModelInstance
 from core.rag.index_processor.constant.doc_type import DocType
@@ -29,6 +28,7 @@ from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
+from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 
 
 def create_mock_model_instance() -> ModelInstance:

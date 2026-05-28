@@ -22,7 +22,7 @@ const {
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/dialog', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -37,8 +37,8 @@ vi.mock('@/app/components/base/badge/index', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({
     children,
     onClick,
     disabled,
@@ -49,7 +49,7 @@ vi.mock('@/app/components/base/button', () => ({
   }) => <button disabled={disabled} onClick={onClick}>{children}</button>,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

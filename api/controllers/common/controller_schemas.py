@@ -1,4 +1,5 @@
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -23,9 +24,9 @@ class ConversationRenamePayload(BaseModel):
 
 
 class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty
-    first_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100)
+    conversation_id: UUIDStrOrEmpty = Field(description="Conversation UUID")
+    first_id: UUIDStrOrEmpty | None = Field(default=None, description="First message ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return (1-100)")
 
 
 class MessageFeedbackPayload(BaseModel):
@@ -69,11 +70,35 @@ class WorkflowUpdatePayload(BaseModel):
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
+# --- Dataset schemas ---
+
+
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+
+
+class ChildChunkCreatePayload(BaseModel):
+    content: str
+
+
+class ChildChunkUpdatePayload(BaseModel):
+    content: str
+
+
+class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading documents as a zip archive."""
+
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
+class MetadataUpdatePayload(BaseModel):
+    name: str
+
+
 # --- Audio schemas ---
 
 
 class TextToAudioPayload(BaseModel):
-    message_id: str | None = None
-    voice: str | None = None
-    text: str | None = None
-    streaming: bool | None = None
+    message_id: str | None = Field(default=None, description="Message ID")
+    voice: str | None = Field(default=None, description="Voice to use for TTS")
+    text: str | None = Field(default=None, description="Text to convert to audio")
+    streaming: bool | None = Field(default=None, description="Enable streaming response")

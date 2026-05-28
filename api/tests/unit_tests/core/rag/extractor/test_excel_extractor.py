@@ -45,7 +45,7 @@ class _FakeWorkbook:
 
 
 class TestExcelExtractor:
-    def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch):
+    def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch: pytest.MonkeyPatch):
         sheet_with_data = _FakeSheet(
             header_rows=[("Name", "Link")],
             data_rows=[
@@ -68,7 +68,7 @@ class TestExcelExtractor:
         assert docs[1].page_content == '"Name":"";"Link":"123"'
         assert all(doc.metadata["source"] == "/tmp/sample.xlsx" for doc in docs)
 
-    def test_extract_xls_path(self, monkeypatch):
+    def test_extract_xls_path(self, monkeypatch: pytest.MonkeyPatch):
         class FakeExcelFile:
             sheet_names = ["Sheet1"]
 

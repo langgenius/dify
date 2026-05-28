@@ -277,7 +277,7 @@ describe('utils', () => {
       const schema = genModelTypeFormSchema([ModelTypeEnum.textGeneration])
       expect(schema.type).toBe(FormTypeEnum.select)
       expect(schema.variable).toBe('__model_type')
-      expect(schema.options[0].value).toBe(ModelTypeEnum.textGeneration)
+      expect(schema.options[0]!.value).toBe(ModelTypeEnum.textGeneration)
     })
   })
 

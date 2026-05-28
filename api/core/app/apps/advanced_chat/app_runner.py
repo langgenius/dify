@@ -3,12 +3,6 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from graphon.enums import WorkflowType
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import VariableLoader
-from graphon.variables.variables import Variable
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -33,6 +27,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -43,6 +38,12 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from graphon.enums import WorkflowType
+from graphon.graph_engine.command_channels import RedisChannel
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import Variable
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
@@ -239,6 +240,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
         conversation_variable_layer = ConversationVariablePersistenceLayer(
             ConversationVariableUpdater(session_factory.get_session_maker())
         )

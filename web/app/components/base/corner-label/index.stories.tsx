@@ -31,7 +31,7 @@ export const Default: Story = {}
 export const OnCard: Story = {
   render: args => (
     <div className="relative w-80 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <CornerLabel {...args} className="absolute -right-px -top-px" />
+      <CornerLabel {...args} className="absolute -top-px -right-px" />
       <div className="text-sm text-text-secondary">
         Showcase how the label sits on a card header. Pair with contextual text or status information.
       </div>

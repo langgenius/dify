@@ -1,9 +1,9 @@
 import type { StartNodeType } from '../../nodes/start/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
 } from 'react'
 import { useNodes } from 'reactflow'
-import { cn } from '@/utils/classnames'
 import FormItem from '../../nodes/_base/components/before-run-form/form-item'
 import {
   useStore,
@@ -36,7 +36,7 @@ const UserInput = () => {
 
   return (
     <div className={cn('relative z-1 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs')}>
-      <div className="px-4 pb-4 pt-3">
+      <div className="px-4 pt-3 pb-4">
         {visibleVariables.map((variable, index) => (
           <div
             key={variable.variable}

@@ -149,7 +149,7 @@ class ToolInvokeMessage(BaseModel):
         text: str
 
     class JsonMessage(BaseModel):
-        json_object: dict | list
+        json_object: dict[str, Any] | list[Any]
         suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
@@ -337,7 +337,7 @@ class ToolParameter(PluginParameter):
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: str | None = None
     # MCP object and array type parameters use this field to store the schema
-    input_schema: dict | None = None
+    input_schema: dict[str, Any] | None = None
 
     @classmethod
     def get_simple_instance(
@@ -463,7 +463,7 @@ class ToolInvokeMeta(BaseModel):
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
-    tool_config: dict | None = None
+    tool_config: dict[str, Any] | None = None
 
     @classmethod
     def empty(cls) -> ToolInvokeMeta:

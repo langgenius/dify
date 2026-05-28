@@ -1,10 +1,10 @@
 import type { ISavedItemsProps } from '../index'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import copy from 'copy-to-clipboard'
 
+import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
 import SavedItems from '../index'
 
 vi.mock('copy-to-clipboard', () => ({
@@ -37,8 +37,8 @@ describe('SavedItems', () => {
     const { container } = render(<SavedItems {...baseProps} />)
 
     const markdownElement = container.querySelector('.markdown-body')
-    expect(markdownElement).toBeInTheDocument()
-    expect(screen.getByText('11 common.unit.char')).toBeInTheDocument()
+    expect(markdownElement)!.toBeInTheDocument()
+    expect(screen.getByText('11 common.unit.char'))!.toBeInTheDocument()
 
     const actionArea = container.querySelector('[class*="bg-components-actionbar-bg"]')
     const actionButtons = actionArea?.querySelectorAll('button') ?? []
@@ -56,11 +56,11 @@ describe('SavedItems', () => {
     const copyButton = actionButtons[1]
     const deleteButton = actionButtons[2]
 
-    fireEvent.click(copyButton)
+    fireEvent.click(copyButton!)
     expect(mockCopy).toHaveBeenCalledWith('hello world')
     expect(toastSuccessSpy).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
 
-    fireEvent.click(deleteButton)
+    fireEvent.click(deleteButton!)
     expect(handleRemove).toHaveBeenCalledWith('1')
   })
 })

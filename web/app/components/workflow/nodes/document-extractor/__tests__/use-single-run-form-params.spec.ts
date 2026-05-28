@@ -27,14 +27,14 @@ describe('document-extractor/use-single-run-form-params', () => {
     }))
 
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0].inputs).toEqual([
+    expect(result.current.forms[0]!.inputs).toEqual([
       expect.objectContaining({
         variable: 'files',
         required: true,
       }),
     ])
 
-    result.current.forms[0].onChange({ files: ['new-file'] })
+    result.current.forms[0]!.onChange({ files: ['new-file'] })
 
     expect(setRunInputData).toHaveBeenCalledWith({ files: ['new-file'] })
     expect(result.current.getDependentVars()).toEqual([['start', 'files']])

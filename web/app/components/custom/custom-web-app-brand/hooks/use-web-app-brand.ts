@@ -1,13 +1,14 @@
 import type { ChangeEvent } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const CUSTOM_CONFIG_URL = '/workspaces/custom-config'
@@ -19,7 +20,7 @@ const useWebAppBrand = () => {
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''

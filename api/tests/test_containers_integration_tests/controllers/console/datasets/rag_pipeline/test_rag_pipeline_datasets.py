@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -24,13 +25,13 @@ def unwrap(func):
 
 class TestCreateRagPipelineDatasetApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def _valid_payload(self):
         return {"yaml_content": "name: test"}
 
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -58,7 +59,7 @@ class TestCreateRagPipelineDatasetApi:
         assert status == 201
         assert response == import_info
 
-    def test_post_forbidden_non_editor(self, app):
+    def test_post_forbidden_non_editor(self, app: Flask):
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -76,7 +77,7 @@ class TestCreateRagPipelineDatasetApi:
             with pytest.raises(Forbidden):
                 method(api)
 
-    def test_post_dataset_name_duplicate(self, app):
+    def test_post_dataset_name_duplicate(self, app: Flask):
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -101,7 +102,7 @@ class TestCreateRagPipelineDatasetApi:
             with pytest.raises(DatasetNameDuplicateError):
                 method(api)
 
-    def test_post_invalid_payload(self, app):
+    def test_post_invalid_payload(self, app: Flask):
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -122,10 +123,10 @@ class TestCreateRagPipelineDatasetApi:
 
 class TestCreateEmptyRagPipelineDatasetApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -152,7 +153,7 @@ class TestCreateEmptyRagPipelineDatasetApi:
         assert status == 201
         assert response == {"id": "ds-1"}
 
-    def test_post_forbidden_non_editor(self, app):
+    def test_post_forbidden_non_editor(self, app: Flask):
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 

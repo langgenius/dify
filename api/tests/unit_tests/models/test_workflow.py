@@ -3,14 +3,13 @@ import json
 from unittest import mock
 from uuid import uuid4
 
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from graphon.variables.segments import IntegerSegment, Segment
-
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.workflow.file_reference import build_file_reference
 from factories.variable_factory import build_segment
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from graphon.variables.segments import IntegerSegment, Segment
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
@@ -36,18 +35,10 @@ def test_environment_variables():
     )
 
     # Create some EnvironmentVariable instances
-    variable1 = StringVariable.model_validate(
-        {"name": "var1", "value": "value1", "id": str(uuid4()), "selector": ["env", "var1"]}
-    )
-    variable2 = IntegerVariable.model_validate(
-        {"name": "var2", "value": 123, "id": str(uuid4()), "selector": ["env", "var2"]}
-    )
-    variable3 = SecretVariable.model_validate(
-        {"name": "var3", "value": "secret", "id": str(uuid4()), "selector": ["env", "var3"]}
-    )
-    variable4 = FloatVariable.model_validate(
-        {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
-    )
+    variable1 = StringVariable(name="var1", value="value1", id=str(uuid4()), selector=["env", "var1"])
+    variable2 = IntegerVariable(name="var2", value=123, id=str(uuid4()), selector=["env", "var2"])
+    variable3 = SecretVariable(name="var3", value="secret", id=str(uuid4()), selector=["env", "var3"])
+    variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -78,18 +69,10 @@ def test_update_environment_variables():
     )
 
     # Create some EnvironmentVariable instances
-    variable1 = StringVariable.model_validate(
-        {"name": "var1", "value": "value1", "id": str(uuid4()), "selector": ["env", "var1"]}
-    )
-    variable2 = IntegerVariable.model_validate(
-        {"name": "var2", "value": 123, "id": str(uuid4()), "selector": ["env", "var2"]}
-    )
-    variable3 = SecretVariable.model_validate(
-        {"name": "var3", "value": "secret", "id": str(uuid4()), "selector": ["env", "var3"]}
-    )
-    variable4 = FloatVariable.model_validate(
-        {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
-    )
+    variable1 = StringVariable(name="var1", value="value1", id=str(uuid4()), selector=["env", "var1"])
+    variable2 = IntegerVariable(name="var2", value=123, id=str(uuid4()), selector=["env", "var2"])
+    variable3 = SecretVariable(name="var3", value="secret", id=str(uuid4()), selector=["env", "var3"])
+    variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -138,8 +121,8 @@ def test_to_dict():
     ):
         # Set the environment_variables property of the Workflow instance
         workflow.environment_variables = [
-            SecretVariable.model_validate({"name": "secret", "value": "secret", "id": str(uuid4())}),
-            StringVariable.model_validate({"name": "text", "value": "text", "id": str(uuid4())}),
+            SecretVariable(name="secret", value="secret", id=str(uuid4())),
+            StringVariable(name="text", value="text", id=str(uuid4())),
         ]
 
         workflow_dict = workflow.to_dict()
@@ -220,7 +203,7 @@ class TestWorkflowDraftVariableGetValue:
         tenant_id = "test_tenant_id"
 
         test_file = File(
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/example.jpg",
             filename="example.jpg",
@@ -291,8 +274,8 @@ class TestWorkflowDraftVariableGetValue:
 
         # Create a File with specific field values
         test_file = File(
-            id="test_file_id",
-            type=FileType.IMAGE,
+            file_id="test_file_id",
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/test.jpg",
             filename="test.jpg",
@@ -327,8 +310,8 @@ class TestWorkflowDraftVariableGetValue:
 
     def test_file_variable_rebuilds_storage_backed_payloads_with_app_tenant(self):
         persisted_file = File(
-            id="test_file_id",
-            type=FileType.DOCUMENT,
+            file_id="test_file_id",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference=build_file_reference(record_id="upload-1", storage_key="legacy-storage-key"),
             filename="test.txt",
@@ -337,8 +320,8 @@ class TestWorkflowDraftVariableGetValue:
             size=12,
         )
         rebuilt_file = File(
-            id="test_file_id",
-            type=FileType.DOCUMENT,
+            file_id="test_file_id",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference=build_file_reference(record_id="upload-1"),
             filename="test.txt",

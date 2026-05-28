@@ -1,12 +1,12 @@
 import type { ResponseError } from '@/service/fetch'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import * as React from 'react'
-import { useState } from 'react'
+import { useDebounceFn } from 'ahooks'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import { useRouter } from '@/next/navigation'
 import {
   checkEmailExisted,
@@ -18,22 +18,48 @@ import { useLogout } from '@/service/use-common'
 import { asyncRunSafe } from '@/utils'
 
 type Props = {
-  show: boolean
   onClose: () => void
   email: string
 }
 
-enum STEP {
-  start = 'start',
-  verifyOrigin = 'verifyOrigin',
-  newEmail = 'newEmail',
-  verifyNew = 'verifyNew',
+const STEP = {
+  start: 'start',
+  verifyOrigin: 'verifyOrigin',
+  newEmail: 'newEmail',
+  verifyNew: 'verifyNew',
+} as const
+
+type Step = typeof STEP[keyof typeof STEP]
+
+const emailPattern = /^[\w.!#$%&'*+\-/=?^`{|}~]+@(?:[\w-]+\.)+[\w-]{2,}$/
+
+type FetchResponseError = {
+  status: number
+  json: () => Promise<ResponseError>
 }
 
-const EmailChangeModal = ({ onClose, email, show }: Props) => {
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error)
+    return error.message
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    return typeof message === 'string' ? message : ''
+  }
+  return ''
+}
+
+function isFetchResponseError(error: unknown): error is FetchResponseError {
+  if (typeof error !== 'object' || error === null)
+    return false
+
+  const maybeError = error as { status?: unknown, json?: unknown }
+  return typeof maybeError.status === 'number' && typeof maybeError.json === 'function'
+}
+
+const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [step, setStep] = useState<STEP>(STEP.start)
+  const [step, setStep] = useState<Step>(STEP.newEmail)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('')
   const [time, setTime] = useState<number>(0)
@@ -41,13 +67,26 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const [newEmailExited, setNewEmailExited] = useState<boolean>(false)
   const [unAvailableEmail, setUnAvailableEmail] = useState<boolean>(false)
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const latestEmailRef = useRef<string>('')
+
+  const clearCountdown = useCallback(() => {
+    if (!timerRef.current)
+      return
+
+    clearInterval(timerRef.current)
+    timerRef.current = null
+  }, [])
+
+  useEffect(() => clearCountdown, [clearCountdown])
 
   const startCount = () => {
+    clearCountdown()
     setTime(60)
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTime((prev) => {
-        if (prev <= 0) {
-          clearInterval(timer)
+        if (prev <= 1) {
+          clearCountdown()
           return 0
         }
         return prev - 1
@@ -67,11 +106,11 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
         setStepToken(res.data)
     }
     catch (error) {
-      toast.error(`Error sending verification code: ${error ? (error as any).message : ''}`)
+      toast.error(`Error sending verification code: ${getErrorMessage(error)}`)
     }
   }
 
-  const verifyEmailAddress = async (email: string, code: string, token: string, callback?: (data?: any) => void) => {
+  const verifyEmailAddress = async (email: string, code: string, token: string, callback?: (token: string) => void) => {
     try {
       const res = await verifyEmail({
         email,
@@ -87,7 +126,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       }
     }
     catch (error) {
-      toast.error(`Error verifying email: ${error ? (error as any).message : ''}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
     }
   }
 
@@ -105,8 +144,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   }
 
   const isValidEmail = (email: string): boolean => {
-    const rfc5322emailRegex = /^[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i
-    return rfc5322emailRegex.test(email) && email.length <= 254
+    return emailPattern.test(email)
   }
 
   const checkNewEmailExisted = async (email: string) => {
@@ -115,11 +153,15 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       await checkEmailExisted({
         email,
       })
+      if (latestEmailRef.current !== email)
+        return
       setNewEmailExited(false)
       setUnAvailableEmail(false)
     }
-    catch (e: any) {
-      if (e.status === 400) {
+    catch (e: unknown) {
+      if (latestEmailRef.current !== email)
+        return
+      if (isFetchResponseError(e) && e.status === 400) {
         const [, errRespData] = await asyncRunSafe<ResponseError>(e.json())
         const { code } = errRespData || {}
         if (code === 'email_already_in_use')
@@ -129,24 +171,41 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       }
     }
     finally {
-      setIsCheckingEmail(false)
+      if (latestEmailRef.current === email)
+        setIsCheckingEmail(false)
     }
   }
 
+  const {
+    run: checkNewEmailExistedDebounced,
+    cancel: cancelCheckNewEmailExisted,
+  } = useDebounceFn(checkNewEmailExisted, { wait: 500 })
+
+  useEffect(() => cancelCheckNewEmailExisted, [cancelCheckNewEmailExisted])
+
   const handleNewEmailValueChange = (mailAddress: string) => {
+    const normalizedMailAddress = mailAddress.trim()
+    latestEmailRef.current = normalizedMailAddress
     setMail(mailAddress)
     setNewEmailExited(false)
-    if (isValidEmail(mailAddress))
-      checkNewEmailExisted(mailAddress)
+    setUnAvailableEmail(false)
+    if (isValidEmail(normalizedMailAddress)) {
+      setIsCheckingEmail(true)
+      checkNewEmailExistedDebounced(normalizedMailAddress)
+      return
+    }
+    cancelCheckNewEmailExisted()
+    setIsCheckingEmail(false)
   }
 
   const sendCodeToNewEmail = async () => {
-    if (!isValidEmail(mail)) {
+    const normalizedMail = mail.trim()
+    if (!isValidEmail(normalizedMail)) {
       toast.error('Invalid email format')
       return
     }
     await sendEmail(
-      mail,
+      normalizedMail,
       false,
       stepToken,
     )
@@ -166,36 +225,40 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const updateEmail = async (lastToken: string) => {
     try {
       await resetEmail({
-        new_email: mail,
+        new_email: mail.trim(),
         token: lastToken,
       })
       handleLogout()
     }
     catch (error) {
-      toast.error(`Error changing email: ${error ? (error as any).message : ''}`)
+      toast.error(`Error changing email: ${getErrorMessage(error)}`)
     }
   }
 
   const submitNewEmail = async () => {
-    await verifyEmailAddress(mail, code, stepToken, updateEmail)
+    await verifyEmailAddress(mail.trim(), code, stepToken, updateEmail)
   }
 
+  const normalizedMail = mail.trim()
+  const isMailValid = isValidEmail(normalizedMail)
+  const isSendCodeDisabled = !normalizedMail || newEmailExited || unAvailableEmail || isCheckingEmail || !isMailValid
+
   return (
-    <Dialog open={show} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[420px]! p-6!">
-        <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
-          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+    <Dialog open onOpenChange={open => !open && onClose()}>
+      <DialogContent className="w-105! p-6!">
+        <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
+          <RiCloseLine className="size-5 text-text-tertiary" />
         </div>
         {step === STEP.start && (
           <>
-            <div className="pb-3 text-text-primary title-2xl-semi-bold">{t('account.changeEmail.title', { ns: 'common' })}</div>
-            <div className="space-y-0.5 pb-2 pt-1">
-              <div className="text-text-warning body-md-medium">{t('account.changeEmail.authTip', { ns: 'common' })}</div>
-              <div className="text-text-secondary body-md-regular">
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.title', { ns: 'common' })}</div>
+            <div className="space-y-0.5 pt-1 pb-2">
+              <div className="body-md-medium text-text-warning">{t('account.changeEmail.authTip', { ns: 'common' })}</div>
+              <div className="body-md-regular text-text-secondary">
                 <Trans
                   i18nKey="account.changeEmail.content1"
                   ns="common"
-                  components={{ email: <span className="text-text-primary body-md-medium"></span> }}
+                  components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                   values={{ email }}
                 />
               </div>
@@ -220,19 +283,19 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
         )}
         {step === STEP.verifyOrigin && (
           <>
-            <div className="pb-3 text-text-primary title-2xl-semi-bold">{t('account.changeEmail.verifyEmail', { ns: 'common' })}</div>
-            <div className="space-y-0.5 pb-2 pt-1">
-              <div className="text-text-secondary body-md-regular">
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.verifyEmail', { ns: 'common' })}</div>
+            <div className="space-y-0.5 pt-1 pb-2">
+              <div className="body-md-regular text-text-secondary">
                 <Trans
                   i18nKey="account.changeEmail.content2"
                   ns="common"
-                  components={{ email: <span className="text-text-primary body-md-medium"></span> }}
+                  components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                   values={{ email }}
                 />
               </div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
               <Input
                 className="w-full!"
                 placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
@@ -257,25 +320,25 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
             </div>
-            <div className="mt-3 flex items-center gap-1 text-text-tertiary system-xs-regular">
+            <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
               <span>{t('account.changeEmail.resendTip', { ns: 'common' })}</span>
               {time > 0 && (
                 <span>{t('account.changeEmail.resendCount', { ns: 'common', count: time })}</span>
               )}
               {!time && (
-                <span onClick={sendCodeToOriginEmail} className="cursor-pointer text-text-accent-secondary system-xs-medium">{t('account.changeEmail.resend', { ns: 'common' })}</span>
+                <span onClick={sendCodeToOriginEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">{t('account.changeEmail.resend', { ns: 'common' })}</span>
               )}
             </div>
           </>
         )}
         {step === STEP.newEmail && (
           <>
-            <div className="pb-3 text-text-primary title-2xl-semi-bold">{t('account.changeEmail.newEmail', { ns: 'common' })}</div>
-            <div className="space-y-0.5 pb-2 pt-1">
-              <div className="text-text-secondary body-md-regular">{t('account.changeEmail.content3', { ns: 'common' })}</div>
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.newEmail', { ns: 'common' })}</div>
+            <div className="space-y-0.5 pt-1 pb-2">
+              <div className="body-md-regular text-text-secondary">{t('account.changeEmail.content3', { ns: 'common' })}</div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('account.changeEmail.emailLabel', { ns: 'common' })}</div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t('account.changeEmail.emailLabel', { ns: 'common' })}</div>
               <Input
                 className="w-full!"
                 placeholder={t('account.changeEmail.emailPlaceholder', { ns: 'common' })}
@@ -284,15 +347,15 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
                 destructive={newEmailExited || unAvailableEmail}
               />
               {newEmailExited && (
-                <div className="mt-1 py-0.5 text-text-destructive body-xs-regular">{t('account.changeEmail.existingEmail', { ns: 'common' })}</div>
+                <div className="mt-1 py-0.5 body-xs-regular text-text-destructive">{t('account.changeEmail.existingEmail', { ns: 'common' })}</div>
               )}
               {unAvailableEmail && (
-                <div className="mt-1 py-0.5 text-text-destructive body-xs-regular">{t('account.changeEmail.unAvailableEmail', { ns: 'common' })}</div>
+                <div className="mt-1 py-0.5 body-xs-regular text-text-destructive">{t('account.changeEmail.unAvailableEmail', { ns: 'common' })}</div>
               )}
             </div>
             <div className="mt-3 space-y-2">
               <Button
-                disabled={!mail || newEmailExited || unAvailableEmail || isCheckingEmail || !isValidEmail(mail)}
+                disabled={isSendCodeDisabled}
                 className="w-full!"
                 variant="primary"
                 onClick={sendCodeToNewEmail}
@@ -310,19 +373,19 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
         )}
         {step === STEP.verifyNew && (
           <>
-            <div className="pb-3 text-text-primary title-2xl-semi-bold">{t('account.changeEmail.verifyNew', { ns: 'common' })}</div>
-            <div className="space-y-0.5 pb-2 pt-1">
-              <div className="text-text-secondary body-md-regular">
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.verifyNew', { ns: 'common' })}</div>
+            <div className="space-y-0.5 pt-1 pb-2">
+              <div className="body-md-regular text-text-secondary">
                 <Trans
                   i18nKey="account.changeEmail.content4"
                   ns="common"
-                  components={{ email: <span className="text-text-primary body-md-medium"></span> }}
+                  components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                   values={{ email: mail }}
                 />
               </div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
               <Input
                 className="w-full!"
                 placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
@@ -347,13 +410,13 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
             </div>
-            <div className="mt-3 flex items-center gap-1 text-text-tertiary system-xs-regular">
+            <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
               <span>{t('account.changeEmail.resendTip', { ns: 'common' })}</span>
               {time > 0 && (
                 <span>{t('account.changeEmail.resendCount', { ns: 'common', count: time })}</span>
               )}
               {!time && (
-                <span onClick={sendCodeToNewEmail} className="cursor-pointer text-text-accent-secondary system-xs-medium">{t('account.changeEmail.resend', { ns: 'common' })}</span>
+                <span onClick={sendCodeToNewEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">{t('account.changeEmail.resend', { ns: 'common' })}</span>
               )}
             </div>
           </>

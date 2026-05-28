@@ -202,7 +202,7 @@ describe('SlashCommandRegistry', () => {
       const results = await registry.search('/hem')
 
       expect(results).toHaveLength(1)
-      expect(results[0].title).toBe('/theme')
+      expect(results[0]!.title).toBe('/theme')
     })
 
     it('fuzzy search also matches aliases', async () => {
@@ -236,7 +236,7 @@ describe('SlashCommandRegistry', () => {
 
       const results = await registry.search('/')
       expect(results).toHaveLength(1)
-      expect(results[0].title).toBe('/docs')
+      expect(results[0]!.title).toBe('/docs')
     })
 
     it('skips unavailable handler in exact match', async () => {

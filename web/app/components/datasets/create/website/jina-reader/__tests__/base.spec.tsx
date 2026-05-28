@@ -54,7 +54,7 @@ describe('UrlInput', () => {
       render(<UrlInput {...props} />)
 
       // Assert - find button by data-testid when in loading state
-      const runButton = screen.getByTestId('url-input-run-button')
+      const runButton = screen.getByRole('button', { name: /run/i })
       expect(runButton).toBeInTheDocument()
       // Button text should be empty when running
       expect(runButton).not.toHaveTextContent(/run/i)
@@ -67,7 +67,7 @@ describe('UrlInput', () => {
       render(<UrlInput {...props} />)
 
       // Assert - find button by data-testid when in loading state
-      const runButton = screen.getByTestId('url-input-run-button')
+      const runButton = screen.getByRole('button', { name: /run/i })
       expect(runButton).toBeInTheDocument()
 
       // Verify button is empty (loading state removes text)
@@ -143,7 +143,7 @@ describe('UrlInput', () => {
       const props = createUrlInputProps({ onRun, isRunning: true })
 
       render(<UrlInput {...props} />)
-      const runButton = screen.getByTestId('url-input-run-button')
+      const runButton = screen.getByRole('button', { name: /run/i })
       fireEvent.click(runButton)
 
       expect(onRun).not.toHaveBeenCalled()
@@ -161,7 +161,7 @@ describe('UrlInput', () => {
       rerender(<UrlInput isRunning={true} onRun={onRun} />)
 
       // Find and click the button by data-testid (loading state has no text)
-      const runButton = screen.getByTestId('url-input-run-button')
+      const runButton = screen.getByRole('button', { name: /run/i })
       fireEvent.click(runButton)
 
       // Assert - onRun should not be called due to early return at line 28
@@ -173,7 +173,7 @@ describe('UrlInput', () => {
       const props = createUrlInputProps({ onRun, isRunning: true })
 
       render(<UrlInput {...props} />)
-      const runButton = screen.getByTestId('url-input-run-button')
+      const runButton = screen.getByRole('button', { name: /run/i })
       fireEvent.click(runButton)
       fireEvent.click(runButton)
       fireEvent.click(runButton)
@@ -194,7 +194,7 @@ describe('UrlInput', () => {
       rerender(<UrlInput {...props} isRunning={true} />)
 
       // Assert - find button by data-testid and verify it's now in loading state
-      const runButton = screen.getByTestId('url-input-run-button')
+      const runButton = screen.getByRole('button', { name: /run/i })
       expect(runButton).toBeInTheDocument()
       // When loading, the button text should be empty
       expect(runButton).not.toHaveTextContent(/run/i)

@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRepository,
+)
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
@@ -17,20 +24,12 @@ from graphon.graph_events import (
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
-
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -112,7 +111,7 @@ class StaticRepo(HumanInputFormRepository):
 
 
 def _build_runtime_state() -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="user",
             app_id="app",
@@ -140,8 +139,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
 
     start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
-        id=start_config["id"],
-        config=start_config,
+        node_id=start_config["id"],
+        data=StartNodeData(title="Start", variables=[]),
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -150,26 +149,28 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         title="Human Input",
         form_content="Human input required",
         inputs=[],
-        user_actions=[UserAction(id="approve", title="Approve")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
     human_a = HumanInputNode(
-        id=human_a_config["id"],
-        config=human_a_config,
+        node_id=human_a_config["id"],
+        data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
     human_b = HumanInputNode(
-        id=human_b_config["id"],
-        config=human_b_config,
+        node_id=human_b_config["id"],
+        data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
@@ -183,8 +184,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     )
     end_config = {"id": "end", "data": end_data.model_dump()}
     end_node = EndNode(
-        id=end_config["id"],
-        config=end_config,
+        node_id=end_config["id"],
+        data=end_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )

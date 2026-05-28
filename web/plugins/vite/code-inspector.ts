@@ -2,7 +2,7 @@ import type { Plugin } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
-import { injectClientSnippet, normalizeViteModuleId } from './utils'
+import { injectClientSnippet, normalizeViteModuleId } from './utils.ts'
 
 type CodeInspectorPluginOptions = {
   injectTarget: string

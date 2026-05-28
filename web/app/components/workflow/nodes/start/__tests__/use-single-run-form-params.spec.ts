@@ -51,14 +51,14 @@ describe('start/use-single-run-form-params', () => {
     }))
 
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0].label).toBe('nodes.llm.singleRun.variable')
-    expect(result.current.forms[0].inputs).toEqual(expect.arrayContaining([
+    expect(result.current.forms[0]!.label).toBe('nodes.llm.singleRun.variable')
+    expect(result.current.forms[0]!.inputs).toEqual(expect.arrayContaining([
       expect.objectContaining({ variable: 'query' }),
       expect.objectContaining({ variable: '#sys.query#', required: true }),
       expect.objectContaining({ variable: '#sys.files#', required: false }),
     ]))
 
-    result.current.forms[0].onChange({ query: 'updated' })
+    result.current.forms[0]!.onChange({ query: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ query: 'updated' })
     expect(result.current.getDependentVars()).toEqual([
@@ -82,7 +82,7 @@ describe('start/use-single-run-form-params', () => {
       toVarInputs: () => [],
     }))
 
-    expect(result.current.forms[0].inputs).toEqual(expect.not.arrayContaining([
+    expect(result.current.forms[0]!.inputs).toEqual(expect.not.arrayContaining([
       expect.objectContaining({ variable: '#sys.query#' }),
     ]))
     expect(result.current.getDependentVars()).toEqual([

@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
@@ -23,6 +24,15 @@ let mockAppDetail: {
   }
 } | null = null
 
+const renderWithQueryClient = (ui: React.ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      webapp_auth: {
+        enabled: true,
+      },
+    },
+  })
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
@@ -33,16 +43,6 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
     appDetail: mockAppDetail,
     setAppDetail: mockSetAppDetail,
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
   }),
 }))
 
@@ -74,6 +74,18 @@ vi.mock('@/service/apps', () => ({
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
   default: () => null,
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: vi.fn(() => null),
+  },
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppPublishUpdate: vi.fn(() => vi.fn()),
+  },
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
@@ -115,7 +127,7 @@ describe('App Access Control Flow', () => {
   })
 
   it('refreshes app detail after confirming access control updates', async () => {
-    render(<AppPublisher publishedAt={1700000000} />)
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
     fireEvent.click(screen.getByText('app.accessControlDialog.accessItems.specific'))

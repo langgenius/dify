@@ -29,6 +29,7 @@ from libs import helper
 from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import ProcessRuleMode
 from services.account_service import AccountService
 from services.summary_index_service import SummaryIndexService
 
@@ -159,14 +160,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if node_ids:
                 # Find segments by index_node_id
                 with session_factory.create_session() as session:
-                    segments = (
-                        session.query(DocumentSegment)
-                        .filter(
+                    segments = session.scalars(
+                        select(DocumentSegment).where(
                             DocumentSegment.dataset_id == dataset.id,
                             DocumentSegment.index_node_id.in_(node_ids),
                         )
-                        .all()
-                    )
+                    ).all()
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
                         SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
@@ -327,7 +326,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             # update document parent mode
             dataset_process_rule = DatasetProcessRule(
                 dataset_id=dataset.id,
-                mode="hierarchical",
+                mode=ProcessRuleMode.HIERARCHICAL,
                 rules=json.dumps(
                     {
                         "parent_mode": parent_childs.parent_mode,

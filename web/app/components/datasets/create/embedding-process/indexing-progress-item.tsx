@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
 } from '@remixicon/react'
 import NotionIcon from '@/app/components/base/notion-icon'
-import Tooltip from '@/app/components/base/tooltip'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { DataSourceType } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import DocumentFileIcon from '../../common/document-file-icon'
 import { getFileType, getSourcePercent, isSourceEmbedding } from './utils'
 
@@ -27,14 +27,16 @@ const StatusIcon: FC<{ status: string, error?: string }> = ({ status, error }) =
 
   if (status === 'error') {
     return (
-      <Tooltip
-        popupClassName="px-4 py-[14px] max-w-60 body-xs-regular text-text-secondary border-[0.5px] border-components-panel-border rounded-xl"
-        offset={4}
-        popupContent={error}
-      >
-        <span>
+      <Tooltip>
+        <TooltipTrigger render={<span aria-label={error || 'Error'} />}>
           <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
-        </span>
+        </TooltipTrigger>
+        <TooltipContent
+          sideOffset={4}
+          className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary"
+        >
+          {error}
+        </TooltipContent>
       </Tooltip>
     )
   }
@@ -92,18 +94,18 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
     >
       {isEmbedding && (
         <div
-          className="absolute left-0 top-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+          className="absolute top-0 left-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
           style={{ width: `${percent}%` }}
         />
       )}
-      <div className="z-1 flex h-full items-center gap-1 pl-[6px] pr-2">
+      <div className="z-1 flex h-full items-center gap-1 pr-2 pl-[6px]">
         <SourceTypeIcon
           sourceType={sourceType}
           name={name}
           notionIcon={notionIcon}
         />
         <div className="flex w-0 grow items-center gap-1" title={name}>
-          <div className="system-xs-medium truncate text-text-secondary">
+          <div className="truncate system-xs-medium text-text-secondary">
             {name}
           </div>
           {enableBilling && <PriorityLabel className="ml-0" />}

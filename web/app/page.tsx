@@ -1,18 +1,23 @@
-import Loading from '@/app/components/base/loading'
-import Link from '@/next/link'
+import { redirect } from '@/next/navigation'
 
-const Home = async () => {
-  return (
-    <div className="flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8">
+type HomePageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Loading type="area" />
-        <div className="mt-10 text-center">
-          <Link href="/apps">🚀</Link>
-        </div>
-      </div>
-    </div>
-  )
+const Home = async ({ searchParams }: HomePageProps) => {
+  const resolvedSearchParams = await searchParams
+  const urlSearchParams = new URLSearchParams()
+  Object.entries(resolvedSearchParams).forEach(([key, value]) => {
+    if (value === undefined)
+      return
+    if (Array.isArray(value)) {
+      value.forEach(item => urlSearchParams.append(key, item))
+      return
+    }
+    urlSearchParams.set(key, value)
+  })
+  const queryString = urlSearchParams.toString()
+  redirect(queryString ? `/apps?${queryString}` : '/apps')
 }
 
 export default Home

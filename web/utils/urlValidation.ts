@@ -46,7 +46,7 @@ export function isPrivateOrLocalAddress(url: string): boolean {
       if (a === 10)
         return true
       // 172.16.0.0/12
-      if (a === 172 && b >= 16 && b <= 31)
+      if (a === 172 && b! >= 16 && b! <= 31)
         return true
       // 192.168.0.0/16
       if (a === 192 && b === 168)

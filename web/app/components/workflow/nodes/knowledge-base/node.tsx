@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import {
   memo,
@@ -16,7 +17,6 @@ import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/client'
-import { cn } from '@/utils/classnames'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
 import {
@@ -48,7 +48,7 @@ const SettingRow = memo(({
           : 'bg-workflow-block-parma-bg',
       )}
     >
-      <div className="mr-2 shrink-0 text-text-tertiary system-xs-medium-uppercase">
+      <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
         {label}
       </div>
       <div
@@ -172,8 +172,8 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     return (
       <div className="mb-1 space-y-0.5 px-3 py-1">
         <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-          <span className="mr-1 size-[4px] shrink-0 radius-2xs bg-text-warning-secondary" />
-          <div className="grow truncate text-text-warning system-xs-medium" title={validationIssueMessage}>
+          <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
+          <div className="grow truncate system-xs-medium text-text-warning" title={validationIssueMessage}>
             {validationIssueMessage}
           </div>
         </div>

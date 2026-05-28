@@ -61,7 +61,7 @@ def test_parse_row():
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
-def test_init_downloads_via_ssrf_proxy(monkeypatch):
+def test_init_downloads_via_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.add_paragraph("hello")
     buf = io.BytesIO()
@@ -97,7 +97,7 @@ def test_init_downloads_via_ssrf_proxy(monkeypatch):
         extractor.temp_file.close()
 
 
-def test_extract_images_from_docx(monkeypatch):
+def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
 
@@ -210,7 +210,7 @@ def test_extract_images_from_docx_uses_internal_files_url():
         dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 
-def test_extract_hyperlinks(monkeypatch):
+def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch):
     # Mock db and storage to avoid issues during image extraction (even if no images are present)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
@@ -255,7 +255,7 @@ def test_extract_hyperlinks(monkeypatch):
             os.remove(tmp_path)
 
 
-def test_extract_legacy_hyperlinks(monkeypatch):
+def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch):
     # Mock db and storage
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
@@ -317,7 +317,7 @@ def test_extract_legacy_hyperlinks(monkeypatch):
             os.remove(tmp_path)
 
 
-def test_init_rejects_invalid_url_status(monkeypatch):
+def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
     class FakeResponse:
         status_code = 404
         content = b""
@@ -354,16 +354,45 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
         WordExtractor("not-a-file", "tenant", "user")
 
 
-def test_del_closes_temp_file():
+def test_close_closes_temp_file():
     extractor = object.__new__(WordExtractor)
+    extractor._closed = False
     extractor.temp_file = MagicMock()
 
-    WordExtractor.__del__(extractor)
+    extractor.close()
 
     extractor.temp_file.close.assert_called_once()
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch):
+def test_close_is_idempotent():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+
+    extractor.close()
+    extractor.close()
+
+    extractor.temp_file.close.assert_called_once()
+
+
+async def _async_close() -> None:
+    return None
+
+
+def test_close_closes_awaitable_close_result():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+    close_result = _async_close()
+    extractor.temp_file.close = MagicMock(return_value=close_result)
+
+    extractor.close()
+
+    assert close_result.cr_frame is None
+    extractor.temp_file.close.assert_called_once()
+
+
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch):
     class FakeTargetRef:
         def __contains__(self, item):
             return item == "image"
@@ -408,7 +437,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch):
     db_stub.session.commit.assert_called_once()
 
 
-def test_table_to_markdown_and_parse_helpers(monkeypatch):
+def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
 
     table = SimpleNamespace(
@@ -471,7 +500,7 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch):
     assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
 
 
-def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch):
+def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"

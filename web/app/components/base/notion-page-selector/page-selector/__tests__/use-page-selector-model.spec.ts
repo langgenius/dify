@@ -20,10 +20,10 @@ const list: DataSourceNotionPage[] = [
 ]
 
 const pagesMap: DataSourceNotionPageMap = {
-  'root-1': { ...list[0], workspace_id: 'workspace-1' },
-  'child-1': { ...list[1], workspace_id: 'workspace-1' },
-  'grandchild-1': { ...list[2], workspace_id: 'workspace-1' },
-  'child-2': { ...list[3], workspace_id: 'workspace-1' },
+  'root-1': { ...list[0]!, workspace_id: 'workspace-1' },
+  'child-1': { ...list[1]!, workspace_id: 'workspace-1' },
+  'grandchild-1': { ...list[2]!, workspace_id: 'workspace-1' },
+  'child-2': { ...list[3]!, workspace_id: 'workspace-1' },
 }
 
 const createProps = (

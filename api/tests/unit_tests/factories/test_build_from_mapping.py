@@ -2,14 +2,29 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from httpx import Response
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import ToolFile, UploadFile
+
+
+def _make_session_ctx_mock(scalar_return=None):
+    """Return a mock usable as the ``session_factory.create_session()`` context manager.
+
+    Patch ``factories.file_factory.builders.session_factory`` and set
+    ``mock_sf.create_session.return_value = <this mock>`` to intercept DB calls
+    without requiring a live Flask app or database engine.
+    """
+    session = MagicMock()
+    session.__enter__.return_value = session
+    session.__exit__.return_value = False
+    session.scalar.return_value = scalar_return
+    return session
+
 
 # Test Data
 TEST_TENANT_ID = "test_tenant_id"
@@ -49,8 +64,11 @@ def mock_upload_file():
     mock.source_url = TEST_REMOTE_URL
     mock.size = 1024
     mock.key = "test_key"
-    with patch("factories.file_factory.builders.db.session.scalar", return_value=mock, autospec=True) as m:
-        yield m
+    session = _make_session_ctx_mock(scalar_return=mock)
+    with patch("factories.file_factory.builders.session_factory") as mock_sf:
+        mock_sf.create_session.return_value = session
+        # yield session.scalar so callers can inspect call_args and mutate return_value
+        yield session.scalar
 
 
 @pytest.fixture
@@ -63,7 +81,9 @@ def mock_tool_file():
     mock.mimetype = "application/pdf"
     mock.original_url = "http://example.com/tool.pdf"
     mock.size = 2048
-    with patch("factories.file_factory.builders.db.session.scalar", return_value=mock, autospec=True):
+    session = _make_session_ctx_mock(scalar_return=mock)
+    with patch("factories.file_factory.builders.session_factory") as mock_sf:
+        mock_sf.create_session.return_value = session
         yield mock
 
 
@@ -231,7 +251,9 @@ def test_build_from_remote_url_without_strict_validation(mock_http_head):
 
 def test_tool_file_not_found():
     """Test ToolFile not found in database."""
-    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
+    session = _make_session_ctx_mock(scalar_return=None)
+    with patch("factories.file_factory.builders.session_factory") as mock_sf:
+        mock_sf.create_session.return_value = session
         mapping = tool_file_mapping()
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -239,7 +261,9 @@ def test_tool_file_not_found():
 
 def test_local_file_not_found():
     """Test UploadFile not found in database."""
-    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
+    session = _make_session_ctx_mock(scalar_return=None)
+    with patch("factories.file_factory.builders.session_factory") as mock_sf:
+        mock_sf.create_session.return_value = session
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -282,7 +306,7 @@ def test_invalid_transfer_method():
         "upload_file_id": TEST_UPLOAD_FILE_ID,
         "type": "image",
     }
-    with pytest.raises(ValueError, match="No matching enum found for value 'invalid_method'"):
+    with pytest.raises(ValueError, match="'invalid_method' is not a valid FileTransferMethod"):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 
@@ -311,7 +335,9 @@ def test_tenant_mismatch():
     mock_file.key = "test_key"
 
     # Mock the database query to return None (no file found for this tenant)
-    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
+    session = _make_session_ctx_mock(scalar_return=None)
+    with patch("factories.file_factory.builders.session_factory") as mock_sf:
+        mock_sf.create_session.return_value = session
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -350,11 +376,13 @@ def test_build_from_mapping_scopes_tool_file_to_end_user():
         invoke_from=InvokeFrom.WEB_APP,
     )
 
-    with patch("factories.file_factory.builders.db.session.scalar", return_value=tool_file, autospec=True) as scalar:
+    session = _make_session_ctx_mock(scalar_return=tool_file)
+    with patch("factories.file_factory.builders.session_factory") as mock_sf:
+        mock_sf.create_session.return_value = session
         with bind_file_access_scope(scope):
             build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
 
-    stmt = scalar.call_args.args[0]
+    stmt = session.scalar.call_args.args[0]
     whereclause = str(stmt.whereclause)
     assert "tool_files.user_id" in whereclause
 

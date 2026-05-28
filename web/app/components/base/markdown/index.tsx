@@ -1,8 +1,8 @@
 import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
+import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
 import { memo, useMemo } from 'react'
 import dynamic from '@/next/dynamic'
-import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
 const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })

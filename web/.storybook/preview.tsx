@@ -1,12 +1,11 @@
 import type { Preview } from '@storybook/react'
 import type { Resource } from 'i18next'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { withThemeByDataAttribute } from '@storybook/addon-themes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ToastHost } from '../app/components/base/ui/toast'
 import { I18nClientProvider as I18N } from '../app/components/provider/i18n'
 import commonEnUS from '../i18n/en-US/common.json'
 
-import '../app/styles/globals.css'
 import '../app/styles/markdown.css'
 import './storybook.css'
 

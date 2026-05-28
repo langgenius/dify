@@ -20,7 +20,7 @@ const PoweredByBrand = ({
 
   return (
     <>
-      <div className="text-text-tertiary system-2xs-medium-uppercase">POWERED BY</div>
+      <div className="system-2xs-medium-uppercase text-text-tertiary">POWERED BY</div>
       {previewLogo
         ? <img src={previewLogo} alt="logo" className="block h-5 w-auto" />
         : <DifyLogo size="small" />}

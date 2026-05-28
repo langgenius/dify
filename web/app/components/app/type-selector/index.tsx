@@ -1,15 +1,15 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiCloseCircleFill, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type AppSelectorProps = {
   value: Array<AppModeEnum>
@@ -44,11 +44,11 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2"
+            className="group absolute top-1/2 right-2 size-4 -translate-y-1/2"
             onClick={() => onChange([])}
           >
             <RiCloseCircleFill
-              className="h-3.5 w-3.5 text-text-quaternary group-hover:text-text-tertiary"
+              className="size-3.5 text-text-quaternary group-hover:text-text-tertiary"
             />
           </button>
         )}
@@ -88,8 +88,8 @@ type AppTypeIconProps = {
 }
 
 export const AppTypeIcon = React.memo(({ type, className, wrapperClassName, style }: AppTypeIconProps) => {
-  const wrapperClassNames = cn('inline-flex h-5 w-5 items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
-  const iconClassNames = cn('h-3.5 w-3.5 text-components-avatar-shape-fill-stop-100', className)
+  const wrapperClassNames = cn('inline-flex size-5 items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
+  const iconClassNames = cn('size-3.5 text-components-avatar-shape-fill-stop-100', className)
   if (type === AppModeEnum.CHAT) {
     return (
       <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
@@ -136,9 +136,9 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
         'flex h-8 items-center justify-between gap-1',
       )}
       >
-        <RiFilter3Line className="h-4 w-4 text-text-tertiary" />
-        <div className="system-sm-medium min-w-[65px] grow text-center text-text-tertiary">{t('typeSelector.all', { ns: 'app' })}</div>
-        <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+        <RiFilter3Line className="size-4 text-text-tertiary" />
+        <div className="min-w-[65px] grow text-center system-sm-medium text-text-tertiary">{t('typeSelector.all', { ns: 'app' })}</div>
+        <RiArrowDownSLine className="size-4 text-text-tertiary" />
       </div>
     )
   }
@@ -148,9 +148,9 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
         'flex h-8 flex-nowrap items-center justify-between gap-1',
       )}
       >
-        <AppTypeIcon type={values[0]} />
+        <AppTypeIcon type={values[0]!} />
         <div className="line-clamp-1 flex flex-1 items-center text-center">
-          <AppTypeLabel type={values[0]} className="system-sm-medium text-components-menu-item-text" />
+          <AppTypeLabel type={values[0]!} className="system-sm-medium text-components-menu-item-text" />
         </div>
       </div>
     )
@@ -175,20 +175,20 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
     <li>
       <button
         type="button"
-        className="flex w-full items-center space-x-2 rounded-lg py-1 pl-2 pr-1 text-left hover:bg-state-base-hover"
+        className="flex w-full items-center space-x-2 rounded-lg py-1 pr-1 pl-2 text-left hover:bg-state-base-hover"
         aria-pressed={checked}
         onClick={onClick}
       >
         <span
           aria-hidden="true"
           className={cn(
-            'flex h-4 w-4 shrink-0 items-center justify-center radius-xs shadow-xs shadow-shadow-shadow-3',
+            'flex size-4 shrink-0 items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3',
             checked
               ? 'bg-components-checkbox-bg text-components-checkbox-icon'
               : 'border border-components-checkbox-border bg-components-checkbox-bg-unchecked',
           )}
         >
-          {checked && <span className="i-ri-check-line h-3 w-3" />}
+          {checked && <span className="i-ri-check-line size-3" />}
         </span>
         <AppTypeIcon type={type} />
         <div className="grow p-1 pl-0">

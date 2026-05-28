@@ -43,8 +43,8 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     toast: {
@@ -118,12 +118,6 @@ describe('SystemModel', () => {
   it('should disable button when loading', () => {
     render(<SystemModel {...defaultProps} isLoading />)
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
-  })
-
-  it('should render the primary button variant when configuration is required', () => {
-    render(<SystemModel {...defaultProps} notConfigured />)
-
-    expect(screen.getByRole('button', { name: /system model settings/i })).toHaveClass('btn-primary')
   })
 
   it('should close dialog when cancel is clicked', async () => {

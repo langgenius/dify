@@ -65,7 +65,7 @@ class FileMetadata:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> FileMetadata:
+    def from_dict(cls, data: dict[str, Any]) -> FileMetadata:
         """Create instance from dictionary"""
         data = data.copy()
         data["created_at"] = datetime.fromisoformat(data["created_at"])
@@ -459,7 +459,7 @@ class FileLifecycleManager:
                 newest_file=None,
             )
 
-    def _create_version_backup(self, filename: str, metadata: dict):
+    def _create_version_backup(self, filename: str, metadata: dict[str, Any]):
         """Create version backup"""
         try:
             # Read current file content
@@ -487,7 +487,7 @@ class FileLifecycleManager:
             logger.warning("Failed to load metadata: %s", e)
             return {}
 
-    def _save_metadata(self, metadata_dict: dict):
+    def _save_metadata(self, metadata_dict: dict[str, Any]):
         """Save metadata file"""
         try:
             metadata_content = json.dumps(metadata_dict, indent=2, ensure_ascii=False)

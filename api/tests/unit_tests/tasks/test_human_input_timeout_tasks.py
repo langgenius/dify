@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from tasks import human_input_timeout_tasks as task_module
 
 

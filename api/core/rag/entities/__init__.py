@@ -4,7 +4,12 @@ from core.rag.entities.event import DatasourceCompletedEvent, DatasourceErrorEve
 from core.rag.entities.index_entities import EconomySetting, EmbeddingSetting, IndexMethod
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition, SupportedComparisonOperator
 from core.rag.entities.processing_entities import ParentMode, PreProcessingRule, Rule, Segmentation
-from core.rag.entities.retrieval_settings import KeywordSetting, VectorSetting, WeightedScoreConfig
+from core.rag.entities.retrieval_settings import (
+    KeywordSetting,
+    RerankingModelConfig,
+    VectorSetting,
+    WeightedScoreConfig,
+)
 
 __all__ = [
     "Condition",
@@ -19,6 +24,7 @@ __all__ = [
     "MetadataFilteringCondition",
     "ParentMode",
     "PreProcessingRule",
+    "RerankingModelConfig",
     "RetrievalSourceMetadata",
     "Rule",
     "Segmentation",

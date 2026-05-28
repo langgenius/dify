@@ -89,7 +89,6 @@ class TestSegmentServiceChildChunks:
         document = _make_document()
         segment = _make_segment()
         existing_a = ChildChunk(
-            id="child-a",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -100,7 +99,6 @@ class TestSegmentServiceChildChunks:
             created_by="user-1",
         )
         existing_b = ChildChunk(
-            id="child-b",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -110,7 +108,8 @@ class TestSegmentServiceChildChunks:
             word_count=9,
             created_by="user-1",
         )
-
+        existing_a.id = "child-a"
+        existing_b.id = "child-b"
         with (
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-new"),
@@ -283,7 +282,6 @@ class TestSegmentServiceQueries:
 
     def test_get_segment_by_id_returns_only_document_segment_instances(self):
         segment = DocumentSegment(
-            id="segment-1",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -293,7 +291,7 @@ class TestSegmentServiceQueries:
             tokens=2,
             created_by="user-1",
         )
-
+        segment.id = "segment-1"
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = segment
             result = SegmentService.get_segment_by_id("segment-1", "tenant-1")
@@ -308,7 +306,6 @@ class TestSegmentServiceQueries:
 
     def test_get_segments_by_document_and_dataset_returns_scalars_result(self):
         segment = DocumentSegment(
-            id="segment-1",
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="doc-1",
@@ -319,6 +316,7 @@ class TestSegmentServiceQueries:
             created_by="user-1",
         )
 
+        segment.id = "segment-1"
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalars.return_value.all.return_value = [segment]
 
@@ -462,6 +460,7 @@ class TestSegmentServiceMutations:
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
             result = SegmentService.multi_create_segment(segments, document, dataset)
+            assert result
 
         assert len(result) == 2
         assert [segment.position for segment in result] == [2, 3]
@@ -714,7 +713,6 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
         ):
-            segments_query = MagicMock()
             # execute().all() for segments_info (multi-column)
             execute_result = MagicMock()
             execute_result.all.return_value = [

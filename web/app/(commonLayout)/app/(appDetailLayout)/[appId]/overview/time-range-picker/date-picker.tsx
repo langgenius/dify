@@ -2,6 +2,7 @@
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { noop } from 'es-toolkit/function'
@@ -9,7 +10,6 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import Picker from '@/app/components/base/date-and-time-picker/date-picker'
 import { useLocale } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import { formatToLocalTime } from '@/utils/format'
 
 type Props = {
@@ -30,7 +30,7 @@ const DatePicker: FC<Props> = ({
 
   const renderDate = useCallback(({ value, handleClickTrigger, isOpen }: TriggerProps) => {
     return (
-      <div className={cn('system-sm-regular flex h-7 cursor-pointer items-center rounded-lg px-1 text-components-input-text-filled hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')} onClick={handleClickTrigger}>
+      <div className={cn('flex h-7 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')} onClick={handleClickTrigger}>
         {value ? formatToLocalTime(value, locale, 'MMM D') : ''}
       </div>
     )

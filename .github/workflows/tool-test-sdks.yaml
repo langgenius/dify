@@ -9,7 +9,6 @@ on:
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
-      - .npmrc
 
 concurrency:
   group: sdk-tests-${{ github.head_ref || github.run_id }}
@@ -18,7 +17,7 @@ concurrency:
 jobs:
   build:
     name: unit test for Node.js SDK
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     defaults:
       run:
@@ -30,7 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Use Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
           cache: ''

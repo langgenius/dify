@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,7 +19,7 @@ describe('MobileOperationDropdown Component', () => {
     render(<MobileOperationDropdown {...defaultProps} />)
 
     // Trigger button should be present (ActionButton renders a button)
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
     expect(trigger).toBeInTheDocument()
 
     // Menu should be hidden initially
@@ -39,7 +39,7 @@ describe('MobileOperationDropdown Component', () => {
     const user = userEvent.setup()
     render(<MobileOperationDropdown {...defaultProps} hideViewChatSettings={true} />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
     expect(screen.getByText('share.chat.resetChat')).toBeInTheDocument()
     expect(screen.queryByText('share.chat.viewChatSettings')).not.toBeInTheDocument()
@@ -49,21 +49,26 @@ describe('MobileOperationDropdown Component', () => {
     const user = userEvent.setup()
     render(<MobileOperationDropdown {...defaultProps} />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
     // Reset Chat
     await user.click(screen.getByText('share.chat.resetChat'))
-    expect(defaultProps.handleResetChat).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(defaultProps.handleResetChat).toHaveBeenCalledTimes(1)
+    })
 
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     // View Chat Settings
     await user.click(screen.getByText('share.chat.viewChatSettings'))
-    expect(defaultProps.handleViewChatSettings).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(defaultProps.handleViewChatSettings).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('applies hover state to ActionButton when open', async () => {
     const user = userEvent.setup()
     render(<MobileOperationDropdown {...defaultProps} />)
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
 
     // closed state
     expect(trigger).not.toHaveClass('action-btn-hover')
@@ -71,5 +76,17 @@ describe('MobileOperationDropdown Component', () => {
     // open state
     await user.click(trigger)
     expect(trigger).toHaveClass('action-btn-hover')
+  })
+
+  it('closes the menu after clicking an action', async () => {
+    const user = userEvent.setup()
+    render(<MobileOperationDropdown {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByText('share.chat.resetChat'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('share.chat.resetChat')).not.toBeInTheDocument()
+    })
   })
 })

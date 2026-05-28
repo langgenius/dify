@@ -1,16 +1,33 @@
+from collections.abc import Mapping
 from typing import TypedDict
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
-from libs.login import current_account_with_tenant, login_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    only_edition_cloud,
+    setup_required,
+    with_current_user,
+)
+from libs.login import login_required
+from models import Account
 from services.billing_service import BillingService
 
 # Notification content is stored under three lang tags.
 _FALLBACK_LANG = "en-US"
+
+
+class NotificationLangContent(TypedDict, total=False):
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    titlePicUrl: str
 
 
 class NotificationItemDict(TypedDict):
@@ -28,13 +45,18 @@ class NotificationResponseDict(TypedDict):
     notifications: list[NotificationItemDict]
 
 
-def _pick_lang_content(contents: dict, lang: str) -> dict:
+def _pick_lang_content(contents: Mapping[str, NotificationLangContent], lang: str) -> NotificationLangContent:
     """Return the single LangContent for *lang*, falling back to English."""
-    return contents.get(lang) or contents.get(_FALLBACK_LANG) or next(iter(contents.values()), {})
+    return (
+        contents.get(lang) or contents.get(_FALLBACK_LANG) or next(iter(contents.values()), NotificationLangContent())
+    )
 
 
 class DismissNotificationPayload(BaseModel):
     notification_id: str = Field(...)
+
+
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/notification")
@@ -54,11 +76,10 @@ class NotificationApi(Resource):
     )
     @setup_required
     @login_required
+    @with_current_user
     @account_initialization_required
     @only_edition_cloud
-    def get(self):
-        current_user, _ = current_account_with_tenant()
-
+    def get(self, current_user: Account):
         result = BillingService.get_account_notification(str(current_user.id))
 
         # Proto JSON uses camelCase field names (Kratos default marshaling).
@@ -71,7 +92,7 @@ class NotificationApi(Resource):
 
         notifications: list[NotificationItemDict] = []
         for notification in result.get("notifications") or []:
-            contents: dict = notification.get("contents") or {}
+            contents: Mapping[str, NotificationLangContent] = notification.get("contents") or {}
             lang_content = _pick_lang_content(contents, lang)
             item: NotificationItemDict = {
                 "notification_id": notification.get("notificationId"),
@@ -97,10 +118,11 @@ class NotificationDismissApi(Resource):
     )
     @setup_required
     @login_required
+    @with_current_user
     @account_initialization_required
     @only_edition_cloud
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    def post(self, current_user: Account):
         payload = DismissNotificationPayload.model_validate(request.get_json())
         BillingService.dismiss_notification(
             notification_id=payload.notification_id,

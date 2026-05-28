@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   ModelFeatureEnum,
   ModelFeatureTextEnum,
@@ -36,7 +37,7 @@ describe('FeatureIcon', () => {
 
     for (const { feature, text } of cases) {
       const { container, unmount } = render(<FeatureIcon feature={feature} />)
-      fireEvent.mouseEnter(container.firstElementChild as HTMLElement)
+      await userEvent.hover(container.firstElementChild as HTMLElement)
       expect(await screen.findByText(`common.modelProvider.featureSupported:{"feature":"${text}"}`))
         .toBeInTheDocument()
       unmount()

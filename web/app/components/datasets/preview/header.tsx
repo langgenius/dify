@@ -1,5 +1,5 @@
 import type { ComponentProps, FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type PreviewHeaderProps = Omit<ComponentProps<'div'>, 'title'> & {
   title: string
@@ -13,7 +13,7 @@ export const PreviewHeader: FC<PreviewHeaderProps> = (props) => {
       className={cn(className)}
     >
       <div
-        className="system-2xs-semibold-uppercase mb-1 px-1 uppercase text-text-accent"
+        className="mb-1 px-1 system-2xs-semibold-uppercase text-text-accent uppercase"
       >
         {title}
       </div>

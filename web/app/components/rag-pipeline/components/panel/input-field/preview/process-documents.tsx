@@ -20,7 +20,7 @@ const ProcessDocuments = ({
 
   return (
     <div className="flex flex-col">
-      <div className="system-sm-semibold-uppercase px-4 pt-2 text-text-secondary">
+      <div className="px-4 pt-2 system-sm-semibold-uppercase text-text-secondary">
         {t('inputFieldPanel.preview.stepTwoTitle', { ns: 'datasetPipeline' })}
       </div>
       <Form variables={paramsConfig?.variables || []} />

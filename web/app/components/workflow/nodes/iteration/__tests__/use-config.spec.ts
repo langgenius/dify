@@ -1,5 +1,4 @@
 import type { IterationNodeType } from '../types'
-import type { Item } from '@/app/components/base/select'
 import type { Var } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -72,6 +71,11 @@ const createVar = (type: VarType, variable = 'test.variable'): Var => ({
   variable,
   type,
 })
+
+type SelectOption = {
+  name: string
+  value: string | number
+}
 
 describe('iteration/use-config', () => {
   const mockSetInputs = vi.fn()
@@ -148,7 +152,7 @@ describe('iteration/use-config', () => {
 
   it('should update parallel, error-mode, and flatten options', () => {
     const { result } = renderHook(() => useConfig('iteration-node', currentInputs))
-    const item: Item = { name: 'Continue', value: ErrorHandleMode.ContinueOnError }
+    const item: SelectOption = { name: 'Continue', value: ErrorHandleMode.ContinueOnError }
 
     act(() => {
       result.current.changeParallel(true)
@@ -169,5 +173,53 @@ describe('iteration/use-config', () => {
     expect(mockSetInputs).toHaveBeenNthCalledWith(4, expect.objectContaining({
       flatten_output: true,
     }))
+  })
+
+  it('should fall back to empty selectors and empty plugin lists when metadata is missing', () => {
+    mockUseStore.mockReturnValue(undefined)
+    mockUseAllBuiltInTools.mockReturnValue({ data: undefined })
+    mockUseAllCustomTools.mockReturnValue({ data: undefined })
+    mockUseAllWorkflowTools.mockReturnValue({ data: undefined })
+    mockUseAllMCPTools.mockReturnValue({ data: undefined })
+
+    const { result } = renderHook(() => useConfig('iteration-node', currentInputs))
+
+    expect(mockToNodeOutputVars).toHaveBeenCalledWith(
+      [{ id: 'child-node' }],
+      false,
+      undefined,
+      [],
+      [],
+      [],
+      {
+        buildInTools: [],
+        customTools: [],
+        workflowTools: [],
+        mcpTools: [],
+        dataSourceList: [],
+      },
+    )
+
+    act(() => {
+      result.current.handleInputChange('', VarKindType.variable)
+    })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      iterator_selector: [],
+      iterator_input_type: VarType.arrayString,
+    }))
+
+    mockSetInputs.mockClear()
+    mockDeleteNodeInspectorVars.mockClear()
+
+    act(() => {
+      result.current.handleOutputVarChange('', VarKindType.variable, createVar(VarType.boolean, 'child.flag'))
+    })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      output_selector: [],
+      output_type: VarType.arrayString,
+    }))
+    expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('iteration-node')
   })
 })

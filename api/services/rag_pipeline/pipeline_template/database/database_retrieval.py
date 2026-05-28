@@ -1,3 +1,5 @@
+from typing import Any, TypedDict
+
 import yaml
 from sqlalchemy import select
 
@@ -7,24 +9,47 @@ from services.rag_pipeline.pipeline_template.pipeline_template_base import Pipel
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
+class PipelineTemplateItemDict(TypedDict):
+    id: str
+    name: str
+    description: str
+    icon: dict[str, Any]
+    copyright: str
+    privacy_policy: str
+    position: int
+    chunk_structure: str
+
+
+class PipelineTemplatesResultDict(TypedDict):
+    pipeline_templates: list[PipelineTemplateItemDict]
+
+
+class PipelineTemplateDetailDict(TypedDict):
+    id: str
+    name: str
+    icon_info: dict[str, Any]
+    description: str
+    chunk_structure: str
+    export_data: str
+    graph: dict[str, Any]
+
+
 class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
     Retrieval pipeline   template from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict:
-        result = self.fetch_pipeline_templates_from_db(language)
-        return result
+    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+        return self.fetch_pipeline_templates_from_db(language)
 
-    def get_pipeline_template_detail(self, template_id: str):
-        result = self.fetch_pipeline_template_detail_from_db(template_id)
-        return result
+    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
+        return self.fetch_pipeline_template_detail_from_db(template_id)
 
     def get_type(self) -> str:
         return PipelineTemplateType.DATABASE
 
     @classmethod
-    def fetch_pipeline_templates_from_db(cls, language: str) -> dict:
+    def fetch_pipeline_templates_from_db(cls, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param language: language
@@ -37,9 +62,9 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             ).all()
         )
 
-        recommended_pipelines_results = []
+        recommended_pipelines_results: list[PipelineTemplateItemDict] = []
         for pipeline_built_in_template in pipeline_built_in_templates:
-            recommended_pipeline_result = {
+            recommended_pipeline_result: PipelineTemplateItemDict = {
                 "id": pipeline_built_in_template.id,
                 "name": pipeline_built_in_template.name,
                 "description": pipeline_built_in_template.description,
@@ -54,7 +79,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID

@@ -1,13 +1,12 @@
 import type { ILanguageSelectProps } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { languages } from '@/i18n-config/language'
 import LanguageSelect from '../index'
 
-// Get supported languages for test assertions
-const supportedLanguages = languages.filter(lang => lang.supported)
+const supportedLanguages = languages.filter(language => language.supported)
 
-// Test data builder for props
 const createDefaultProps = (overrides?: Partial<ILanguageSelectProps>): ILanguageSelectProps => ({
   currentLanguage: 'English',
   onSelect: vi.fn(),
@@ -15,264 +14,163 @@ const createDefaultProps = (overrides?: Partial<ILanguageSelectProps>): ILanguag
   ...overrides,
 })
 
+const openSelect = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('combobox', { name: 'language' }))
+  })
+  return screen.findByRole('listbox')
+}
+
 describe('LanguageSelect', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  // Rendering Tests - Verify component renders correctly
+  // Rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
+    it('should render the current language in the trigger', () => {
+      render(<LanguageSelect {...createDefaultProps()} />)
 
-      render(<LanguageSelect {...props} />)
-
-      expect(screen.getByText('English')).toBeInTheDocument()
+      const trigger = screen.getByRole('combobox', { name: 'language' })
+      expect(trigger).toBeInTheDocument()
+      expect(trigger).toHaveTextContent('English')
     })
 
-    it('should render current language text', () => {
-      const props = createDefaultProps({ currentLanguage: 'Chinese Simplified' })
+    it('should render non-listed current language values', () => {
+      render(<LanguageSelect {...createDefaultProps({ currentLanguage: 'NonExistentLanguage' })} />)
 
-      render(<LanguageSelect {...props} />)
-
-      expect(screen.getByText('Chinese Simplified')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'language' })).toHaveTextContent('NonExistentLanguage')
     })
 
-    it('should render dropdown arrow icon', () => {
-      const props = createDefaultProps()
+    it('should render a placeholder when current language is empty', () => {
+      render(<LanguageSelect {...createDefaultProps({ currentLanguage: '' })} />)
 
-      const { container } = render(<LanguageSelect {...props} />)
-
-      // Assert - RiArrowDownSLine renders as SVG
-      const svgIcon = container.querySelector('svg')
-      expect(svgIcon).toBeInTheDocument()
-    })
-
-    it('should render all supported languages in dropdown when opened', () => {
-      const props = createDefaultProps()
-      render(<LanguageSelect {...props} />)
-
-      // Act - Click button to open dropdown
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - All supported languages should be visible
-      // Use getAllByText because current language appears both in button and dropdown
-      supportedLanguages.forEach((lang) => {
-        expect(screen.getAllByText(lang.prompt_name).length).toBeGreaterThanOrEqual(1)
-      })
-    })
-
-    it('should render check icon for selected language', () => {
-      const selectedLanguage = 'Japanese'
-      const props = createDefaultProps({ currentLanguage: selectedLanguage })
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - The selected language option should have a check icon
-      const languageOptions = screen.getAllByText(selectedLanguage)
-      // One in the button, one in the dropdown list
-      expect(languageOptions.length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('combobox', { name: 'language' }).textContent).toBe('\u00A0')
     })
   })
 
-  // Props Testing - Verify all prop variations work correctly
-  describe('Props', () => {
-    describe('currentLanguage prop', () => {
-      it('should display English when currentLanguage is English', () => {
-        const props = createDefaultProps({ currentLanguage: 'English' })
-        render(<LanguageSelect {...props} />)
-        expect(screen.getByText('English')).toBeInTheDocument()
-      })
+  // Dropdown behavior
+  describe('Dropdown behavior', () => {
+    it('should render all supported languages when the select is opened', async () => {
+      render(<LanguageSelect {...createDefaultProps()} />)
 
-      it('should display Chinese Simplified when currentLanguage is Chinese Simplified', () => {
-        const props = createDefaultProps({ currentLanguage: 'Chinese Simplified' })
-        render(<LanguageSelect {...props} />)
-        expect(screen.getByText('Chinese Simplified')).toBeInTheDocument()
+      expect(await openSelect()).toBeInTheDocument()
+      supportedLanguages.forEach((language) => {
+        expect(screen.getByRole('option', { name: language.prompt_name })).toBeInTheDocument()
       })
+    })
 
-      it('should display Japanese when currentLanguage is Japanese', () => {
-        const props = createDefaultProps({ currentLanguage: 'Japanese' })
-        render(<LanguageSelect {...props} />)
-        expect(screen.getByText('Japanese')).toBeInTheDocument()
+    it('should only render supported languages in the dropdown', async () => {
+      render(<LanguageSelect {...createDefaultProps()} />)
+
+      await openSelect()
+
+      const unsupportedLanguages = languages.filter(language => !language.supported)
+      unsupportedLanguages.forEach((language) => {
+        expect(screen.queryByRole('option', { name: language.prompt_name })).not.toBeInTheDocument()
       })
+    })
 
-      it.each(supportedLanguages.map(l => l.prompt_name))(
-        'should display %s as current language',
-        (language) => {
-          const props = createDefaultProps({ currentLanguage: language })
-          render(<LanguageSelect {...props} />)
-          expect(screen.getByText(language)).toBeInTheDocument()
+    it('should mark the selected language inside the opened list', async () => {
+      render(<LanguageSelect {...createDefaultProps({ currentLanguage: 'Japanese' })} />)
+
+      await openSelect()
+
+      const selectedOption = await screen.findByRole('option', { name: 'Japanese' })
+      expect(selectedOption).toHaveAttribute('aria-selected', 'true')
+    })
+  })
+
+  // Interaction
+  describe('Interaction', () => {
+    it('should call onSelect when a different language is chosen', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      render(<LanguageSelect {...createDefaultProps({ onSelect })} />)
+
+      await user.click(screen.getByRole('combobox', { name: 'language' }))
+      const listbox = await screen.findByRole('listbox')
+      await user.click(within(listbox).getByRole('option', { name: 'French' }))
+
+      await waitFor(() => {
+        expect(onSelect).toHaveBeenCalledTimes(1)
+        expect(onSelect).toHaveBeenCalledWith('French')
+      })
+    })
+
+    it('should re-render with the new language value', () => {
+      const { rerender } = render(<LanguageSelect {...createDefaultProps()} />)
+
+      rerender(<LanguageSelect {...createDefaultProps({ currentLanguage: 'French' })} />)
+
+      expect(screen.getByRole('combobox', { name: 'language' })).toHaveTextContent('French')
+    })
+
+    it('should ignore null values emitted by the select control', async () => {
+      vi.resetModules()
+      vi.doMock('@langgenius/dify-ui/select', () => ({
+        Select: ({ onValueChange, children }: { onValueChange?: (value: string | null) => void, children: React.ReactNode }) => {
+          React.useEffect(() => {
+            onValueChange?.(null)
+          }, [onValueChange])
+          return <div>{children}</div>
         },
-      )
-    })
+        SelectTrigger: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button type="button" {...props}>{children}</button>,
+        SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+        SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+        SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+        SelectItemIndicator: () => null,
+      }))
 
-    describe('disabled prop', () => {
-      it('should have disabled button when disabled is true', () => {
-        const props = createDefaultProps({ disabled: true })
+      const { default: IsolatedLanguageSelect } = await import('../index')
+      const onSelect = vi.fn()
 
-        render(<LanguageSelect {...props} />)
+      render(<IsolatedLanguageSelect currentLanguage="English" onSelect={onSelect} />)
 
-        const button = screen.getByRole('button')
-        expect(button).toBeDisabled()
+      await waitFor(() => {
+        expect(onSelect).not.toHaveBeenCalled()
       })
 
-      it('should have enabled button when disabled is false', () => {
-        const props = createDefaultProps({ disabled: false })
-
-        render(<LanguageSelect {...props} />)
-
-        const button = screen.getByRole('button')
-        expect(button).not.toBeDisabled()
-      })
-
-      it('should have enabled button when disabled is undefined', () => {
-        const props = createDefaultProps()
-        delete (props as Partial<ILanguageSelectProps>).disabled
-
-        render(<LanguageSelect {...props} />)
-
-        const button = screen.getByRole('button')
-        expect(button).not.toBeDisabled()
-      })
-
-      it('should apply disabled styling when disabled is true', () => {
-        const props = createDefaultProps({ disabled: true })
-
-        const { container } = render(<LanguageSelect {...props} />)
-
-        // Assert - Check for disabled class on text elements
-        const disabledTextElement = container.querySelector('.text-components-button-tertiary-text-disabled')
-        expect(disabledTextElement).toBeInTheDocument()
-      })
-
-      it('should apply cursor-not-allowed styling when disabled', () => {
-        const props = createDefaultProps({ disabled: true })
-
-        const { container } = render(<LanguageSelect {...props} />)
-
-        const elementWithCursor = container.querySelector('.cursor-not-allowed')
-        expect(elementWithCursor).toBeInTheDocument()
-      })
-    })
-
-    describe('onSelect prop', () => {
-      it('should be callable as a function', () => {
-        const mockOnSelect = vi.fn()
-        const props = createDefaultProps({ onSelect: mockOnSelect })
-        render(<LanguageSelect {...props} />)
-
-        // Open dropdown and click a language
-        const button = screen.getByRole('button')
-        fireEvent.click(button)
-
-        const germanOption = screen.getByText('German')
-        fireEvent.click(germanOption)
-
-        expect(mockOnSelect).toHaveBeenCalledWith('German')
-      })
+      vi.doUnmock('@langgenius/dify-ui/select')
     })
   })
 
-  // User Interactions - Test event handlers
-  describe('User Interactions', () => {
-    it('should open dropdown when button is clicked', () => {
-      const props = createDefaultProps()
-      render(<LanguageSelect {...props} />)
+  // Disabled state
+  describe('Disabled state', () => {
+    it('should disable the trigger when disabled is true', () => {
+      render(<LanguageSelect {...createDefaultProps({ disabled: true })} />)
 
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Check if dropdown content is visible
-      expect(screen.getAllByText('English').length).toBeGreaterThanOrEqual(1)
+      const trigger = screen.getByRole('combobox', { name: 'language' })
+      expect(trigger).toBeDisabled()
+      expect(trigger).toHaveClass('cursor-not-allowed')
     })
 
-    it('should call onSelect when a language option is clicked', () => {
-      const mockOnSelect = vi.fn()
-      const props = createDefaultProps({ onSelect: mockOnSelect })
-      render(<LanguageSelect {...props} />)
+    it('should not open the listbox when disabled', () => {
+      render(<LanguageSelect {...createDefaultProps({ disabled: true })} />)
 
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-      const frenchOption = screen.getByText('French')
-      fireEvent.click(frenchOption)
+      fireEvent.click(screen.getByRole('combobox', { name: 'language' }))
 
-      expect(mockOnSelect).toHaveBeenCalledTimes(1)
-      expect(mockOnSelect).toHaveBeenCalledWith('French')
-    })
-
-    it('should call onSelect with correct language when selecting different languages', () => {
-      const mockOnSelect = vi.fn()
-      const props = createDefaultProps({ onSelect: mockOnSelect })
-      render(<LanguageSelect {...props} />)
-
-      // Act & Assert - Test multiple language selections
-      const testLanguages = ['Korean', 'Spanish', 'Italian']
-
-      testLanguages.forEach((lang) => {
-        mockOnSelect.mockClear()
-        const button = screen.getByRole('button')
-        fireEvent.click(button)
-        const languageOption = screen.getByText(lang)
-        fireEvent.click(languageOption)
-        expect(mockOnSelect).toHaveBeenCalledWith(lang)
-      })
-    })
-
-    it('should not open dropdown when disabled', () => {
-      const props = createDefaultProps({ disabled: true })
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Dropdown should not open, only one instance of the current language should exist
-      const englishElements = screen.getAllByText('English')
-      expect(englishElements.length).toBe(1) // Only the button text, not dropdown
-    })
-
-    it('should not call onSelect when component is disabled', () => {
-      const mockOnSelect = vi.fn()
-      const props = createDefaultProps({ onSelect: mockOnSelect, disabled: true })
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      expect(mockOnSelect).not.toHaveBeenCalled()
-    })
-
-    it('should handle rapid consecutive clicks', () => {
-      const mockOnSelect = vi.fn()
-      const props = createDefaultProps({ onSelect: mockOnSelect })
-      render(<LanguageSelect {...props} />)
-
-      // Act - Rapid clicks
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-      fireEvent.click(button)
-      fireEvent.click(button)
-
-      // Assert - Component should not crash
-      expect(button).toBeInTheDocument()
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     })
   })
 
-  // Component Memoization - Test React.memo behavior
-  describe('Memoization', () => {
+  // Styling and memoization
+  describe('Styling and memoization', () => {
+    it('should apply the compact tertiary trigger styles', () => {
+      render(<LanguageSelect {...createDefaultProps()} />)
+
+      const trigger = screen.getByRole('combobox', { name: 'language' })
+      expect(trigger).toHaveClass('mx-1', 'bg-components-button-tertiary-bg', 'text-components-button-tertiary-text')
+    })
+
     it('should be wrapped with React.memo', () => {
-      // Assert - Check component has memo wrapper
       expect(LanguageSelect.$$typeof).toBe(Symbol.for('react.memo'))
     })
 
-    it('should not re-render when props remain the same', () => {
-      const mockOnSelect = vi.fn()
-      const props = createDefaultProps({ onSelect: mockOnSelect })
+    it('should avoid re-rendering when props stay the same', () => {
       const renderSpy = vi.fn()
+      const props = createDefaultProps()
 
-      // Create a wrapper component to track renders
       const TrackedLanguageSelect: React.FC<ILanguageSelectProps> = (trackedProps) => {
         renderSpy()
         return <LanguageSelect {...trackedProps} />
@@ -282,224 +180,7 @@ describe('LanguageSelect', () => {
       const { rerender } = render(<MemoizedTracked {...props} />)
       rerender(<MemoizedTracked {...props} />)
 
-      // Assert - Should only render once due to same props
       expect(renderSpy).toHaveBeenCalledTimes(1)
-    })
-
-    it('should re-render when currentLanguage changes', () => {
-      const props = createDefaultProps({ currentLanguage: 'English' })
-
-      const { rerender } = render(<LanguageSelect {...props} />)
-      expect(screen.getByText('English')).toBeInTheDocument()
-
-      rerender(<LanguageSelect {...props} currentLanguage="French" />)
-
-      expect(screen.getByText('French')).toBeInTheDocument()
-    })
-
-    it('should re-render when disabled changes', () => {
-      const props = createDefaultProps({ disabled: false })
-
-      const { rerender } = render(<LanguageSelect {...props} />)
-      expect(screen.getByRole('button')).not.toBeDisabled()
-
-      rerender(<LanguageSelect {...props} disabled={true} />)
-
-      expect(screen.getByRole('button')).toBeDisabled()
-    })
-  })
-
-  // Edge Cases - Test boundary conditions and error handling
-  describe('Edge Cases', () => {
-    it('should handle empty string as currentLanguage', () => {
-      const props = createDefaultProps({ currentLanguage: '' })
-
-      render(<LanguageSelect {...props} />)
-
-      // Assert - Component should still render
-      const button = screen.getByRole('button')
-      expect(button).toBeInTheDocument()
-    })
-
-    it('should handle non-existent language as currentLanguage', () => {
-      const props = createDefaultProps({ currentLanguage: 'NonExistentLanguage' })
-
-      render(<LanguageSelect {...props} />)
-
-      // Assert - Should display the value even if not in list
-      expect(screen.getByText('NonExistentLanguage')).toBeInTheDocument()
-    })
-
-    it('should handle special characters in language names', () => {
-      // Arrange - Turkish has special character in prompt_name
-      const props = createDefaultProps({ currentLanguage: 'Türkçe' })
-
-      render(<LanguageSelect {...props} />)
-
-      expect(screen.getByText('Türkçe')).toBeInTheDocument()
-    })
-
-    it('should handle very long language names', () => {
-      const longLanguageName = 'A'.repeat(100)
-      const props = createDefaultProps({ currentLanguage: longLanguageName })
-
-      render(<LanguageSelect {...props} />)
-
-      // Assert - Should not crash and should display the text
-      expect(screen.getByText(longLanguageName)).toBeInTheDocument()
-    })
-
-    it('should render correct number of language options', () => {
-      const props = createDefaultProps()
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Should show all supported languages
-      const expectedCount = supportedLanguages.length
-      // Each language appears in the dropdown (use getAllByText because current language appears twice)
-      supportedLanguages.forEach((lang) => {
-        expect(screen.getAllByText(lang.prompt_name).length).toBeGreaterThanOrEqual(1)
-      })
-      expect(supportedLanguages.length).toBe(expectedCount)
-    })
-
-    it('should only show supported languages in dropdown', () => {
-      const props = createDefaultProps()
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - All displayed languages should be supported
-      const allLanguages = languages
-      const unsupportedLanguages = allLanguages.filter(lang => !lang.supported)
-
-      unsupportedLanguages.forEach((lang) => {
-        expect(screen.queryByText(lang.prompt_name)).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle undefined onSelect gracefully when clicking', () => {
-      // Arrange - This tests TypeScript boundary, but runtime should not crash
-      const props = createDefaultProps()
-
-      render(<LanguageSelect {...props} />)
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-      const option = screen.getByText('German')
-
-      // Assert - Should not throw
-      expect(() => fireEvent.click(option)).not.toThrow()
-    })
-
-    it('should maintain selection state visually with check icon', () => {
-      const props = createDefaultProps({ currentLanguage: 'Russian' })
-      const { container } = render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Find the check icon (RiCheckLine) in the dropdown
-      // The selected option should have a check icon next to it
-      const checkIcons = container.querySelectorAll('svg.text-text-accent')
-      expect(checkIcons.length).toBeGreaterThanOrEqual(1)
-    })
-  })
-
-  // Accessibility - Basic accessibility checks
-  describe('Accessibility', () => {
-    it('should have accessible button element', () => {
-      const props = createDefaultProps()
-
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      expect(button).toBeInTheDocument()
-    })
-
-    it('should have clickable language options', () => {
-      const props = createDefaultProps()
-      render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Options should be clickable (have cursor-pointer class)
-      const options = screen.getAllByText(/English|French|German|Japanese/i)
-      expect(options.length).toBeGreaterThan(0)
-    })
-  })
-
-  // Integration with Popover - Test Popover behavior
-  describe('Popover Integration', () => {
-    it('should use manualClose prop on Popover', () => {
-      const mockOnSelect = vi.fn()
-      const props = createDefaultProps({ onSelect: mockOnSelect })
-
-      render(<LanguageSelect {...props} />)
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Popover should be open
-      expect(screen.getAllByText('English').length).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should have correct popup z-index class', () => {
-      const props = createDefaultProps()
-      const { container } = render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Check for z-20 class (popupClassName='z-20')
-      // This is applied to the Popover
-      expect(container.querySelector('.z-20')).toBeTruthy()
-    })
-  })
-
-  // Styling Tests - Verify correct CSS classes applied
-  describe('Styling', () => {
-    it('should apply tertiary button styling', () => {
-      const props = createDefaultProps()
-      const { container } = render(<LanguageSelect {...props} />)
-
-      // Assert - Check for tertiary button classes (Tailwind v4 uses ! suffix)
-      expect(container.querySelector('.bg-components-button-tertiary-bg\\!')).toBeInTheDocument()
-    })
-
-    it('should apply hover styling class to options', () => {
-      const props = createDefaultProps()
-      const { container } = render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Options should have hover class
-      const optionWithHover = container.querySelector('.hover\\:bg-state-base-hover')
-      expect(optionWithHover).toBeInTheDocument()
-    })
-
-    it('should apply correct text styling to language options', () => {
-      const props = createDefaultProps()
-      const { container } = render(<LanguageSelect {...props} />)
-
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
-
-      // Assert - Check for system-sm-medium class on options
-      const styledOption = container.querySelector('.system-sm-medium')
-      expect(styledOption).toBeInTheDocument()
-    })
-
-    it('should apply disabled styling to icon when disabled', () => {
-      const props = createDefaultProps({ disabled: true })
-      const { container } = render(<LanguageSelect {...props} />)
-
-      // Assert - Check for disabled text color on icon
-      const disabledIcon = container.querySelector('.text-components-button-tertiary-text-disabled')
-      expect(disabledIcon).toBeInTheDocument()
     })
   })
 })

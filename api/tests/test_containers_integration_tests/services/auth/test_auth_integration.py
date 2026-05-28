@@ -10,6 +10,8 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
@@ -44,8 +46,8 @@ class TestAuthIntegration:
         self,
         mock_encrypt,
         mock_http,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
         tenant_id_1,
         category,
         firecrawl_credentials,
@@ -85,8 +87,8 @@ class TestAuthIntegration:
         mock_jina_http,
         mock_fc_http,
         mock_encrypt,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
         tenant_id_1,
         tenant_id_2,
         category,
@@ -114,7 +116,7 @@ class TestAuthIntegration:
         assert result2[0].tenant_id == tenant_id_2
 
     def test_cross_tenant_access_prevention(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id_2, category
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id_2, category
     ):
         result = ApiKeyAuthService.get_auth_credentials(tenant_id_2, category, AuthType.FIRECRAWL)
 
@@ -138,8 +140,8 @@ class TestAuthIntegration:
         self,
         mock_encrypt,
         mock_http,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
         tenant_id_1,
         category,
         firecrawl_credentials,
@@ -200,8 +202,8 @@ class TestAuthIntegration:
     def test_network_failure_recovery(
         self,
         mock_http,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
         tenant_id_1,
         category,
         firecrawl_credentials,
@@ -238,8 +240,8 @@ class TestAuthIntegration:
         self,
         mock_http,
         mock_encrypt,
-        flask_app_with_containers,
-        db_session_with_containers,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
         tenant_id_1,
         category,
         firecrawl_credentials,

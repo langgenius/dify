@@ -1,10 +1,10 @@
 import logging
 from collections.abc import Callable
 from typing import Any, NoReturn
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
-from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
@@ -28,6 +28,7 @@ from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTE
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
@@ -168,21 +169,22 @@ class RagPipelineVariableApi(Resource):
 
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, pipeline: Pipeline, variable_id: str):
+    def get(self, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         return variable
 
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
     @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
-    def patch(self, pipeline: Pipeline, variable_id: str):
+    def patch(self, pipeline: Pipeline, variable_id: UUID):
         # Request payload for file types:
         #
         # Local File:
@@ -210,11 +212,12 @@ class RagPipelineVariableApi(Resource):
         payload = WorkflowDraftVariablePatchPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
 
         new_name = args.get(self._PATCH_NAME_FIELD, None)
         raw_value = args.get(self._PATCH_VALUE_FIELD, None)
@@ -250,15 +253,16 @@ class RagPipelineVariableApi(Resource):
         return variable
 
     @_api_prerequisite
-    def delete(self, pipeline: Pipeline, variable_id: str):
+    def delete(self, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         draft_var_srv.delete_variable(variable)
         db.session.commit()
         return Response("", 204)
@@ -267,7 +271,7 @@ class RagPipelineVariableApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class RagPipelineVariableResetApi(Resource):
     @_api_prerequisite
-    def put(self, pipeline: Pipeline, variable_id: str):
+    def put(self, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -278,11 +282,12 @@ class RagPipelineVariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, pipeline_id={pipeline.id}",
             )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        variable_id_str = str(variable_id)
+        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
         if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
         if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()

@@ -9,7 +9,6 @@ from mimetypes import guess_extension, guess_type
 from uuid import uuid4
 
 import httpx
-from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from sqlalchemy import select
 
 from configs import dify_config
@@ -17,6 +16,7 @@ from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
+from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from models.model import MessageFile
 from models.tools import ToolFile
 
@@ -28,7 +28,7 @@ class ToolFileManager:
     def _build_graph_file_reference(tool_file: ToolFile) -> File:
         extension = guess_extension(tool_file.mimetype) or ".bin"
         return File(
-            type=get_file_type_by_mime_type(tool_file.mimetype),
+            file_type=get_file_type_by_mime_type(tool_file.mimetype),
             transfer_method=FileTransferMethod.TOOL_FILE,
             remote_url=tool_file.original_url,
             reference=build_file_reference(record_id=str(tool_file.id)),
@@ -51,8 +51,11 @@ class ToolFileManager:
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
         data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        sign = hmac.new(
+            dify_config.SECRET_KEY.encode(),
+            data_to_sign.encode(),
+            hashlib.sha256,
+        ).digest()
         encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
         return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
@@ -63,8 +66,11 @@ class ToolFileManager:
         verify signature
         """
         data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        recalculated_sign = hmac.new(
+            dify_config.SECRET_KEY.encode(),
+            data_to_sign.encode(),
+            hashlib.sha256,
+        ).digest()
         recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
         # verify signature

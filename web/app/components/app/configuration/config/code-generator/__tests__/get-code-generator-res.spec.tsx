@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AppModeEnum } from '@/types/app'
 import GetCodeGeneratorResModal from '../get-code-generator-res'
@@ -21,7 +21,7 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -221,6 +221,43 @@ describe('GetCodeGeneratorResModal', () => {
       modified: 'print("hello")',
       code: 'print("hello")',
     }))
+  })
+
+  it('should close overwrite confirmation without applying the generated code when cancelled', async () => {
+    mockGenerateRule.mockResolvedValue({
+      code: 'print("hello")',
+    })
+
+    render(
+      <GetCodeGeneratorResModal
+        flowId="flow-1"
+        nodeId="node-1"
+        currentCode="print(1)"
+        mode={AppModeEnum.CHAT}
+        isShow
+        codeLanguages={CodeLanguage.python3}
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-code-instruction'))
+    fireEvent.click(screen.getByText('set-code-output'))
+    fireEvent.click(screen.getByText('codegen.generate'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
+    })
+
+    fireEvent.click(screen.getByText('apply-code-result'))
+    const dialog = await screen.findByRole('alertdialog')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(mockOnFinished).not.toHaveBeenCalled()
   })
 
   it('should surface service errors without creating a result version', async () => {

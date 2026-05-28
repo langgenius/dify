@@ -11,7 +11,7 @@ const GroupName: FC<IGroupNameProps> = ({
 }) => {
   return (
     <div className="mb-1 flex items-center">
-      <div className="mr-3 text-xs font-semibold uppercase leading-[18px] text-text-tertiary">{name}</div>
+      <div className="mr-3 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">{name}</div>
       <div
         className="h-px grow"
         style={{

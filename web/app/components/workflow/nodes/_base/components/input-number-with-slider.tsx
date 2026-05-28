@@ -1,10 +1,11 @@
 'use client'
-import type { FC } from 'react'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { Slider } from '@/app/components/base/ui/slider'
 
 export type InputNumberWithSliderProps = {
+  label: string
   value: number
   defaultValue?: number
   min?: number
@@ -13,14 +14,15 @@ export type InputNumberWithSliderProps = {
   onChange: (value: number) => void
 }
 
-const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
+function InputNumberWithSlider({
+  label,
   value,
   defaultValue = 0,
   min,
   max,
   readonly,
   onChange,
-}) => {
+}: InputNumberWithSliderProps) {
   const handleBlur = useCallback(() => {
     if (value === undefined || value === null || Number.isNaN(value)) {
       onChange(defaultValue)
@@ -39,29 +41,33 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
   }, [onChange])
 
   return (
-    <div className="flex h-8 items-center justify-between space-x-2">
-      <input
-        value={value}
-        className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
-        type="number"
-        min={min}
-        max={max}
-        step={1}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        disabled={readonly}
-      />
-      <Slider
-        className="grow"
-        value={value}
-        min={min}
-        max={max}
-        step={1}
-        onValueChange={onChange}
-        disabled={readonly}
-        aria-label="Number input slider"
-      />
-    </div>
+    <FieldsetRoot>
+      <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
+      <div className="flex h-8 items-center justify-between space-x-2">
+        <input
+          aria-label={label}
+          value={value}
+          className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
+          type="number"
+          min={min}
+          max={max}
+          step={1}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          disabled={readonly}
+        />
+        <Slider
+          className="grow"
+          value={value}
+          min={min}
+          max={max}
+          step={1}
+          onValueChange={onChange}
+          disabled={readonly}
+          aria-label={label}
+        />
+      </div>
+    </FieldsetRoot>
   )
 }
 export default React.memo(InputNumberWithSlider)

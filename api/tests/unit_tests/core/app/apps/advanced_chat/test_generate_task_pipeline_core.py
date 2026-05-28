@@ -4,8 +4,6 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.generate_task_pipeline import (
@@ -41,14 +39,20 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
     AnnotationReply,
     AnnotationReplyAccount,
+    HumanInputRequiredResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
+from graphon.entities.pause_reason import PauseReasonType
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import UserActionConfig
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser
@@ -123,6 +127,59 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.answer == "done"
         assert response.data.metadata == {"k": "v"}
 
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "partial answer"
+        pipeline._workflow_run_id = "run-id"
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=build_test_variable_pool(
+                variables=build_system_variables(workflow_execution_id="run-id"),
+            ),
+            start_at=0.0,
+            total_tokens=7,
+            node_run_steps=3,
+        )
+
+        def _gen():
+            yield HumanInputRequiredResponse(
+                task_id="task",
+                workflow_run_id="run-id",
+                data=HumanInputRequiredResponse.Data(
+                    form_id="form-1",
+                    node_id="node-1",
+                    node_title="Approval",
+                    form_content="Need approval",
+                    inputs=[],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                    display_in_ui=True,
+                    form_token="token-1",
+                    resolved_default_values={},
+                    expiration_time=123,
+                ),
+            )
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert isinstance(response, AdvancedChatPausedBlockingResponse)
+        assert response.data.workflow_run_id == "run-id"
+        assert response.data.status == "paused"
+        assert response.data.paused_nodes == ["node-1"]
+        assert response.data.reasons == [
+            {
+                "TYPE": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                "form_id": "form-1",
+                "node_id": "node-1",
+                "node_title": "Approval",
+                "form_content": "Need approval",
+                "inputs": [],
+                "actions": [{"id": "approve", "title": "Approve", "button_style": "default"}],
+                "display_in_ui": True,
+                "form_token": "token-1",
+                "resolved_default_values": {},
+                "expiration_time": 123,
+            }
+        ]
+
     def test_handle_text_chunk_event_updates_state(self):
         pipeline = _make_pipeline()
         pipeline._message_cycle_manager = SimpleNamespace(
@@ -169,7 +226,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch):
+    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
@@ -177,9 +234,19 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
+        # Track database operations for verification
+        executed_statements = []
+
         @contextmanager
         def _fake_session():
-            yield SimpleNamespace()
+            sess = SimpleNamespace()
+
+            def _execute(stmt):
+                executed_statements.append(stmt)
+                return SimpleNamespace()
+
+            sess.execute = _execute
+            yield sess
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
         monkeypatch.setattr(pipeline, "_get_message", lambda **kwargs: SimpleNamespace())
@@ -188,6 +255,14 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert pipeline._workflow_run_id == "run-id"
         assert responses == ["started"]
+
+        # Verify database operation was executed
+        assert len(executed_statements) == 1
+        # Verify the UPDATE statement targets the correct message and sets workflow_run_id
+        update_stmt = executed_statements[0]
+        stmt_str = str(update_stmt)
+        assert "UPDATE messages" in stmt_str
+        assert "WHERE messages.id" in stmt_str
 
     def test_message_end_to_stream_response_strips_annotation_reply(self):
         pipeline = _make_pipeline()
@@ -313,11 +388,13 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_loop_next_event(loop_next)) == ["loop_next"]
         assert list(pipeline._handle_loop_completed_event(loop_done)) == ["loop_done"]
 
-    def test_workflow_finish_handlers(self, monkeypatch):
+    def test_workflow_finish_handlers(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -528,7 +605,9 @@ class TestAdvancedChatGenerateTaskPipeline:
                 self.items = items
 
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
 
@@ -538,7 +617,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.answer == "hello"
         assert message.message_metadata
 
-    def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch):
+    def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._message_end_to_stream_response = lambda: "end"
         saved: list[str] = []
@@ -559,10 +638,12 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["end"]
         assert saved == ["saved"]
 
-    def test_handle_message_end_event_applies_output_moderation(self, monkeypatch):
+    def test_handle_message_end_event_applies_output_moderation(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = lambda answer: "safe"

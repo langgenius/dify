@@ -154,7 +154,7 @@ describe('loop use-config helpers', () => {
     const unchangedAfterMissingRemove = removeSubVariableCondition(removed, 'missing-condition', 'sub-condition-2')
 
     expect(untouched).toEqual(inputs)
-    expect(withKeyedSubCondition.break_conditions?.[0].sub_variable_condition).toEqual({
+    expect(withKeyedSubCondition.break_conditions?.[0]!.sub_variable_condition).toEqual({
       logical_operator: LogicalOperator.and,
       conditions: [{
         id: 'sub-condition-1',
@@ -164,19 +164,19 @@ describe('loop use-config helpers', () => {
         value: '',
       }],
     })
-    expect(withDefaultKeySubCondition.break_conditions?.[0].sub_variable_condition?.conditions[1]).toEqual({
+    expect(withDefaultKeySubCondition.break_conditions?.[0]!.sub_variable_condition?.conditions[1]).toEqual({
       id: 'sub-condition-2',
       key: '',
       varType: VarType.string,
       comparison_operator: undefined,
       value: '',
     })
-    expect(updated.break_conditions?.[0].sub_variable_condition?.conditions[0]).toEqual(expect.objectContaining({
+    expect(updated.break_conditions?.[0]!.sub_variable_condition?.conditions[0]).toEqual(expect.objectContaining({
       comparison_operator: ComparisonOperator.notIn,
       value: ['remote_url'],
     }))
-    expect(toggled.break_conditions?.[0].sub_variable_condition?.logical_operator).toBe(LogicalOperator.or)
-    expect(removed.break_conditions?.[0].sub_variable_condition?.conditions).toEqual([
+    expect(toggled.break_conditions?.[0]!.sub_variable_condition?.logical_operator).toBe(LogicalOperator.or)
+    expect(removed.break_conditions?.[0]!.sub_variable_condition?.conditions).toEqual([
       expect.objectContaining({ id: 'sub-condition-2' }),
     ])
     expect(unchangedAfterMissingRemove).toEqual(removed)

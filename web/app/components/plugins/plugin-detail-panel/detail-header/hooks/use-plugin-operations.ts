@@ -2,10 +2,10 @@
 
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from './use-detail-header-state'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { toast } from '@/app/components/base/ui/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'

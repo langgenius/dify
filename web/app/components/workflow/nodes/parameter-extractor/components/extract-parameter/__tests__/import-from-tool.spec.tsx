@@ -2,6 +2,7 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createTool, createToolProvider } from '@/app/components/workflow/block-selector/__tests__/factories'
@@ -12,12 +13,6 @@ vi.mock('reactflow', () => ({
     getState: () => ({
       getNodes: () => [],
     }),
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector({
-    systemFeatures: { enable_marketplace: false },
   }),
 }))
 
@@ -65,6 +60,20 @@ const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParame
   ...overrides,
 })
 
+const renderImportFromTool = (ui: React.ReactElement) => {
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: false },
+  })
+  return renderWorkflowComponent(
+    <SystemFeaturesWrapper>{ui}</SystemFeaturesWrapper>,
+    {
+      hooksStoreProps: {
+        availableNodesMetaData: { nodes: [] },
+      },
+    },
+  )
+}
+
 describe('parameter-extractor/extract-parameter/import-from-tool', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -94,17 +103,10 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
         human_description: { en_US: 'Internal', zh_Hans: 'Internal' },
       }),
     ] satisfies ToolWithProvider['tools'][number]['parameters']
-    provider.tools[0].parameters = builtInParameters
+    provider.tools[0]!.parameters = builtInParameters
     mockToolCollections.builtIn = [provider]
 
-    renderWorkflowComponent(
-      <ImportFromTool onImport={handleImport} />,
-      {
-        hooksStoreProps: {
-          availableNodesMetaData: { nodes: [] },
-        },
-      },
-    )
+    renderImportFromTool(<ImportFromTool onImport={handleImport} />)
 
     await user.click(screen.getByText('workflow.nodes.parameterExtractor.importFromTool'))
     await user.click(await screen.findByText('Provider One'))
@@ -133,17 +135,10 @@ describe('parameter-extractor/extract-parameter/import-from-tool', () => {
         human_description: { en_US: 'Summary', zh_Hans: 'Summary' },
       }),
     ] satisfies ToolWithProvider['tools'][number]['parameters']
-    provider.tools[0].parameters = workflowParameters
+    provider.tools[0]!.parameters = workflowParameters
     mockToolCollections.workflow = [provider]
 
-    renderWorkflowComponent(
-      <ImportFromTool onImport={handleImport} />,
-      {
-        hooksStoreProps: {
-          availableNodesMetaData: { nodes: [] },
-        },
-      },
-    )
+    renderImportFromTool(<ImportFromTool onImport={handleImport} />)
 
     await user.click(screen.getByText('workflow.nodes.parameterExtractor.importFromTool'))
     await user.click(await screen.findByText('Workflow Tool'))

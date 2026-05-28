@@ -83,8 +83,8 @@ export type LoopNodeType = CommonNodeType & {
   loop_variables?: LoopVariable[]
 }
 
-export type HandleUpdateLoopVariable = (id: string, updateData: Partial<LoopVariable>) => void
-export type HandleRemoveLoopVariable = (id: string) => void
+type HandleUpdateLoopVariable = (id: string, updateData: Partial<LoopVariable>) => void
+type HandleRemoveLoopVariable = (id: string) => void
 
 export type LoopVariablesComponentShape = {
   nodeId: string

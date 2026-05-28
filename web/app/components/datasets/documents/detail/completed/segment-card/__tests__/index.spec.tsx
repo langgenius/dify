@@ -221,8 +221,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      expect(screen.getByTestId('segment-edit-button')).toBeInTheDocument()
-      expect(screen.getByTestId('segment-delete-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
@@ -270,7 +270,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const deleteButton = screen.getByTestId('segment-delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
@@ -290,7 +290,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const deleteButton = screen.getByTestId('segment-delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
@@ -365,7 +365,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const editButton = screen.getByTestId('segment-edit-button')
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
       fireEvent.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
@@ -385,7 +385,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const deleteButton = screen.getByTestId('segment-delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
@@ -437,7 +437,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const editButton = screen.getByTestId('segment-edit-button')
+      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
       fireEvent.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)

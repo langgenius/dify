@@ -1,6 +1,6 @@
 import type { Option } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { EffectColor } from './types'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {
@@ -35,7 +35,7 @@ const ChunkStructureCard = ({
     )}
     >
       <div className={cn(
-        'absolute -left-1 -top-1 size-14 rounded-full blur-[80px]',
+        'absolute -top-1 -left-1 size-14 rounded-full blur-[80px]',
         `${HEADER_EFFECT_MAP[effectColor]}`,
       )}
       />

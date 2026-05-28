@@ -14,10 +14,12 @@ since these test controller-level behavior.
 """
 
 import uuid
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from contextlib import ExitStack
+from datetime import UTC, datetime
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -34,7 +36,7 @@ from controllers.service_api.dataset.dataset import (
 )
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from models.account import Account
-from models.dataset import DatasetPermissionEnum
+from models.dataset import Dataset, DatasetPermissionEnum
 from models.enums import TagType
 from models.model import Tag
 
@@ -115,6 +117,7 @@ class TestDatasetUpdatePayload:
             partial_member_list=[{"user_id": "user_123", "role": "editor"}],
         )
         assert payload.permission == DatasetPermissionEnum.PARTIAL_TEAM
+        assert payload.partial_member_list is not None
         assert len(payload.partial_member_list) == 1
 
     def test_payload_name_length_validation(self):
@@ -180,7 +183,7 @@ class TestTagUpdatePayload:
 
     def test_payload_requires_tag_id(self):
         with pytest.raises(ValueError):
-            TagUpdatePayload(name="Updated Tag")
+            TagUpdatePayload.model_validate({"name": "Updated Tag"})
 
 
 class TestTagDeletePayload:
@@ -192,7 +195,7 @@ class TestTagDeletePayload:
 
     def test_payload_requires_tag_id(self):
         with pytest.raises(ValueError):
-            TagDeletePayload()
+            TagDeletePayload.model_validate({})
 
 
 class TestTagBindingPayload:
@@ -217,9 +220,19 @@ class TestTagUnbindingPayload:
     """Test suite for TagUnbindingPayload Pydantic model."""
 
     def test_payload_with_valid_data(self):
-        payload = TagUnbindingPayload(tag_id="tag_123", target_id="dataset_456")
-        assert payload.tag_id == "tag_123"
+        payload = TagUnbindingPayload(tag_ids=["tag_123"], target_id="dataset_456")
+        assert payload.tag_ids == ["tag_123"]
         assert payload.target_id == "dataset_456"
+
+    def test_payload_normalizes_legacy_tag_id(self):
+        payload = TagUnbindingPayload(tag_id="tag_123", target_id="dataset_456")
+        assert payload.tag_ids == ["tag_123"]
+        assert payload.target_id == "dataset_456"
+
+    def test_payload_rejects_empty_tag_ids(self):
+        with pytest.raises(ValueError) as exc_info:
+            TagUnbindingPayload(tag_ids=[], target_id="dataset_456")
+        assert "Tag IDs is required" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -236,7 +249,7 @@ def _unwrap(method):
 
 
 @pytest.fixture
-def app(flask_app_with_containers):
+def app(flask_app_with_containers: Flask):
     # Uses the full containerised app so that Flask config, extensions, and
     # blueprint registrations match production.  Most tests mock the service
     # layer to isolate controller logic; a few (e.g. test_list_tags_from_db)
@@ -253,13 +266,134 @@ def mock_tenant():
 
 @pytest.fixture
 def mock_dataset():
-    dataset = Mock()
-    dataset.id = str(uuid.uuid4())
-    dataset.tenant_id = str(uuid.uuid4())
-    dataset.indexing_technique = "economy"
-    dataset.embedding_model_provider = None
-    dataset.embedding_model = None
-    return dataset
+    return make_dataset(id=str(uuid.uuid4()), tenant_id=str(uuid.uuid4()))
+
+
+@pytest.fixture(autouse=True)
+def dataset_model_property_defaults():
+    properties: dict[str, object] = {
+        "app_count": 0,
+        "document_count": 0,
+        "word_count": 0,
+        "author_name": None,
+        "tags": [],
+        "doc_form": None,
+        "external_knowledge_info": None,
+        "doc_metadata": [],
+        "is_published": False,
+        "total_documents": 0,
+        "total_available_documents": 0,
+    }
+
+    with ExitStack() as stack:
+        for name, value in properties.items():
+            property_mock = stack.enter_context(patch.object(Dataset, name, new_callable=PropertyMock))
+            property_mock.return_value = value
+        yield
+
+
+def make_dataset(**overrides) -> Dataset:
+    base = {
+        "id": "ds-1",
+        "tenant_id": "tenant-1",
+        "name": "Dataset",
+        "description": "desc",
+        "provider": "vendor",
+        "permission": "only_me",
+        "data_source_type": None,
+        "indexing_technique": "economy",
+        "created_by": "account-1",
+        "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+        "updated_by": None,
+        "updated_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+        "embedding_model": None,
+        "embedding_model_provider": None,
+        "retrieval_model": None,
+        "summary_index_setting": None,
+        "built_in_field_enabled": False,
+        "pipeline_id": None,
+        "runtime_mode": "general",
+        "chunk_structure": None,
+        "icon_info": None,
+        "enable_api": False,
+        "is_multimodal": False,
+    }
+    base.update(overrides)
+    return Dataset(**base)
+
+
+def make_tag(*, id: str, name: str, binding_count: int | None = None) -> Tag:
+    tag = Tag(tenant_id="tenant-1", type=TagType.KNOWLEDGE, name=name, created_by="account-1")
+    tag.id = id
+    if binding_count is not None:
+        tag.__dict__["binding_count"] = binding_count
+    return tag
+
+
+DATASET_DETAIL_KEYS = {
+    "id",
+    "name",
+    "description",
+    "provider",
+    "permission",
+    "data_source_type",
+    "indexing_technique",
+    "app_count",
+    "document_count",
+    "word_count",
+    "created_by",
+    "author_name",
+    "created_at",
+    "updated_by",
+    "updated_at",
+    "embedding_model",
+    "embedding_model_provider",
+    "embedding_available",
+    "retrieval_model_dict",
+    "summary_index_setting",
+    "tags",
+    "doc_form",
+    "external_knowledge_info",
+    "external_retrieval_model",
+    "doc_metadata",
+    "built_in_field_enabled",
+    "pipeline_id",
+    "runtime_mode",
+    "chunk_structure",
+    "icon_info",
+    "is_published",
+    "total_documents",
+    "total_available_documents",
+    "enable_api",
+    "is_multimodal",
+}
+
+
+def assert_dataset_detail_shape(response: dict, *, with_partial_members: bool = False) -> None:
+    expected_keys = set(DATASET_DETAIL_KEYS)
+    if with_partial_members:
+        expected_keys.add("partial_member_list")
+    assert set(response) == expected_keys
+    assert isinstance(response["created_at"], int)
+    assert isinstance(response["updated_at"], int)
+    assert set(response["retrieval_model_dict"]) == {
+        "search_method",
+        "reranking_enable",
+        "reranking_mode",
+        "reranking_model",
+        "weights",
+        "top_k",
+        "score_threshold_enabled",
+        "score_threshold",
+    }
+    if response["external_retrieval_model"] is not None:
+        assert set(response["external_retrieval_model"]) == {
+            "top_k",
+            "score_threshold",
+            "score_threshold_enabled",
+        }
+    if not with_partial_members:
+        assert "partial_member_list" not in response
 
 
 # ---------------------------------------------------------------------------
@@ -270,7 +404,6 @@ def mock_dataset():
 class TestDatasetListApiGet:
     """Test suite for DatasetListApi.get() endpoint."""
 
-    @patch("controllers.service_api.dataset.dataset.marshal")
     @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -279,50 +412,86 @@ class TestDatasetListApiGet:
         mock_dataset_svc,
         mock_current_user,
         mock_provider_mgr,
-        mock_marshal,
-        app,
+        app: Flask,
         mock_tenant,
     ):
         from controllers.service_api.dataset.dataset import DatasetListApi
 
         mock_current_user.__class__ = Account
         mock_current_user.current_tenant_id = mock_tenant.id
-        mock_dataset_svc.get_datasets.return_value = ([Mock()], 1)
+        mock_dataset_svc.get_datasets.return_value = ([make_dataset()], 1)
 
         mock_configs = Mock()
         mock_configs.get_models.return_value = []
         mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
-
-        mock_marshal.return_value = [{"indexing_technique": "economy", "embedding_model_provider": None}]
 
         with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
             api = DatasetListApi()
             response, status = api.get(tenant_id=mock_tenant.id)
 
         assert status == 200
-        assert "data" in response
-        assert "total" in response
+        assert set(response) == {"data", "has_more", "limit", "total", "page"}
+        assert response["has_more"] is False
+        assert response["limit"] == 20
+        assert response["total"] == 1
+        assert response["page"] == 1
+        assert len(response["data"]) == 1
+        assert_dataset_detail_shape(response["data"][0])
+
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_list_datasets_preserves_repeated_tag_ids(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_provider_mgr,
+        app: Flask,
+        mock_tenant,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetListApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = mock_tenant.id
+        mock_dataset_svc.get_datasets.return_value = ([make_dataset()], 1)
+
+        mock_configs = Mock()
+        mock_configs.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
+
+        with app.test_request_context("/datasets?tag_ids=tag-a&tag_ids=tag-b", method="GET"):
+            api = DatasetListApi()
+            response, status = api.get(tenant_id=mock_tenant.id)
+
+        assert status == 200
+        assert response["total"] == 1
+        mock_dataset_svc.get_datasets.assert_called_once_with(
+            1,
+            20,
+            mock_tenant.id,
+            mock_current_user,
+            None,
+            ["tag-a", "tag-b"],
+            False,
+        )
 
 
 class TestDatasetListApiPost:
     """Test suite for DatasetListApi.post() endpoint."""
 
-    @patch("controllers.service_api.dataset.dataset.marshal")
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_create_dataset_success(
         self,
         mock_dataset_svc,
         mock_current_user,
-        mock_marshal,
-        app,
+        app: Flask,
         mock_tenant,
     ):
         from controllers.service_api.dataset.dataset import DatasetListApi
 
         mock_current_user.__class__ = Account
-        mock_dataset_svc.create_empty_dataset.return_value = Mock()
-        mock_marshal.return_value = {"id": "ds-1", "name": "New Dataset"}
+        mock_dataset_svc.create_empty_dataset.return_value = make_dataset(name="New Dataset")
 
         with app.test_request_context(
             "/datasets",
@@ -333,6 +502,8 @@ class TestDatasetListApiPost:
             response, status = _unwrap(api.post)(api, tenant_id=mock_tenant.id)
 
         assert status == 200
+        assert_dataset_detail_shape(response)
+        assert response["name"] == "New Dataset"
         mock_dataset_svc.create_empty_dataset.assert_called_once()
 
     @patch("controllers.service_api.dataset.dataset.current_user")
@@ -341,7 +512,7 @@ class TestDatasetListApiPost:
         self,
         mock_dataset_svc,
         mock_current_user,
-        app,
+        app: Flask,
         mock_tenant,
     ):
         from controllers.service_api.dataset.dataset import DatasetListApi
@@ -368,7 +539,6 @@ class TestDatasetApiGet:
     """Test suite for DatasetApi.get() endpoint."""
 
     @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
-    @patch("controllers.service_api.dataset.dataset.marshal")
     @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -377,9 +547,8 @@ class TestDatasetApiGet:
         mock_dataset_svc,
         mock_current_user,
         mock_provider_mgr,
-        mock_marshal,
         mock_perm_svc,
-        app,
+        app: Flask,
         mock_dataset,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
@@ -393,11 +562,43 @@ class TestDatasetApiGet:
         mock_configs.get_models.return_value = []
         mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
 
-        mock_marshal.return_value = {
-            "indexing_technique": "economy",
-            "embedding_model_provider": None,
-            "permission": "only_me",
-        }
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="GET",
+        ):
+            api = DatasetApi()
+            response, status = api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+        assert status == 200
+        assert_dataset_detail_shape(response)
+        assert response["embedding_available"] is True
+        assert response["retrieval_model_dict"]["search_method"] == "keyword_search"
+
+    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_get_dataset_partial_members_shape(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_provider_mgr,
+        mock_perm_svc,
+        app: Flask,
+        mock_dataset,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset.permission = "partial_members"
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = mock_dataset.tenant_id
+        mock_perm_svc.get_dataset_partial_member_list.return_value = ["user-1", "user-2"]
+
+        mock_configs = Mock()
+        mock_configs.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}",
@@ -407,7 +608,45 @@ class TestDatasetApiGet:
             response, status = api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
         assert status == 200
-        assert response["embedding_available"] is True
+        assert_dataset_detail_shape(response, with_partial_members=True)
+        assert response["partial_member_list"] == ["user-1", "user-2"]
+
+    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_get_dataset_uses_default_external_retrieval_model(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_provider_mgr,
+        mock_perm_svc,
+        app: Flask,
+        mock_dataset,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset.retrieval_model = None
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = mock_dataset.tenant_id
+
+        mock_configs = Mock()
+        mock_configs.get_models.return_value = []
+        mock_provider_mgr.return_value.get_configurations.return_value = mock_configs
+
+        with app.test_request_context(f"/datasets/{mock_dataset.id}", method="GET"):
+            api = DatasetApi()
+            response, status = api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+        assert status == 200
+        assert_dataset_detail_shape(response)
+        assert response["external_retrieval_model"] == {
+            "top_k": 2,
+            "score_threshold": 0.0,
+            "score_threshold_enabled": None,
+        }
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_not_found(self, mock_dataset_svc, app, mock_dataset):
@@ -429,7 +668,7 @@ class TestDatasetApiGet:
         self,
         mock_dataset_svc,
         mock_current_user,
-        app,
+        app: Flask,
         mock_dataset,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
@@ -446,6 +685,58 @@ class TestDatasetApiGet:
                 api.get(_=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
 
+class TestDatasetApiPatch:
+    """Test suite for DatasetApi.patch() endpoint."""
+
+    @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_patch_dataset_success_shape(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        mock_perm_svc,
+        app: Flask,
+        mock_dataset,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        updated_dataset = make_dataset(id=mock_dataset.id, tenant_id=mock_dataset.tenant_id, name="Updated Dataset")
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.update_dataset.return_value = updated_dataset
+        mock_perm_svc.check_permission.return_value = None
+        mock_perm_svc.get_dataset_partial_member_list.return_value = ["user-1"]
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = mock_dataset.tenant_id
+
+        payload = {
+            "name": "Updated Dataset",
+            "permission": "partial_members",
+            "partial_member_list": [{"user_id": "user-1", "role": "editor"}],
+        }
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="PATCH",
+            json=payload,
+        ):
+            api = DatasetApi()
+            response, status = _unwrap(api.patch)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+        assert status == 200
+        assert_dataset_detail_shape(response, with_partial_members=True)
+        assert response["name"] == "Updated Dataset"
+        assert response["partial_member_list"] == ["user-1"]
+        mock_dataset_svc.update_dataset.assert_called_once()
+        _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
+        assert update_data["name"] == "Updated Dataset"
+        assert update_data["permission"] == "partial_members"
+        mock_perm_svc.update_partial_member_list.assert_called_once_with(
+            mock_dataset.tenant_id,
+            mock_dataset.id,
+            [{"user_id": "user-1", "role": "editor"}],
+        )
+
+
 class TestDatasetApiDelete:
     """Test suite for DatasetApi.delete() endpoint."""
 
@@ -457,7 +748,7 @@ class TestDatasetApiDelete:
         mock_dataset_svc,
         mock_current_user,
         mock_perm_svc,
-        app,
+        app: Flask,
         mock_dataset,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
@@ -479,7 +770,7 @@ class TestDatasetApiDelete:
         self,
         mock_dataset_svc,
         mock_current_user,
-        app,
+        app: Flask,
         mock_dataset,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
@@ -500,7 +791,7 @@ class TestDatasetApiDelete:
         self,
         mock_dataset_svc,
         mock_current_user,
-        app,
+        app: Flask,
         mock_dataset,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
@@ -532,7 +823,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -563,7 +854,7 @@ class TestDocumentStatusApiPatch:
     def test_batch_update_status_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -592,7 +883,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -625,7 +916,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -658,7 +949,7 @@ class TestDocumentStatusApiPatch:
         mock_dataset_svc,
         mock_current_user,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -698,13 +989,13 @@ class TestDatasetTagsApiGet:
         self,
         mock_current_user,
         mock_tag_svc,
-        app,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
         mock_current_user.current_tenant_id = "tenant-1"
-        mock_tag = SimpleNamespace(id="tag-1", name="Test Tag", type="knowledge", binding_count="0")
+        mock_tag = make_tag(id="tag-1", name="Test Tag", binding_count=0)
         mock_tag_svc.get_tags.return_value = [mock_tag]
 
         with app.test_request_context("/datasets/tags", method="GET"):
@@ -712,15 +1003,14 @@ class TestDatasetTagsApiGet:
             response, status = api.get(_=None)
 
         assert status == 200
-        assert len(response) == 1
+        assert response == [{"id": "tag-1", "name": "Test Tag", "type": "knowledge", "binding_count": "0"}]
         mock_tag_svc.get_tags.assert_called_once_with("knowledge", "tenant-1")
 
-    @pytest.mark.skip(reason="Production bug: DataSetTag.binding_count is str|None but DB COUNT() returns int")
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_list_tags_from_db(
         self,
         mock_current_user,
-        app,
+        app: Flask,
         db_session_with_containers: Session,
     ):
         """Integration test: creates real Tag rows and retrieves them
@@ -751,26 +1041,27 @@ class TestDatasetTagsApiGet:
 
         assert status == 200
         assert any(t["name"] == "Integration Tag" for t in response)
+        assert all(set(t) == {"id", "name", "type", "binding_count"} for t in response)
+        assert all(isinstance(t["binding_count"], str) for t in response)
 
 
 class TestDatasetTagsApiPost:
     """Test suite for DatasetTagsApi.post() endpoint."""
 
-    @pytest.mark.skip(reason="Production bug: DataSetTag.binding_count is str|None but dataset.py passes int 0")
     @patch("controllers.service_api.dataset.dataset.TagService")
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_create_tag_success(
         self,
         mock_current_user,
         mock_tag_svc,
-        app,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
         mock_current_user.has_edit_permission = True
         mock_current_user.is_dataset_editor = True
-        mock_tag = SimpleNamespace(id="tag-new", name="New Tag", type="knowledge")
+        mock_tag = make_tag(id="tag-new", name="New Tag")
         mock_tag_svc.save_tags.return_value = mock_tag
 
         with app.test_request_context(
@@ -782,11 +1073,11 @@ class TestDatasetTagsApiPost:
             response, status = api.post(_=None)
 
         assert status == 200
-        assert response["name"] == "New Tag"
+        assert response == {"id": "tag-new", "name": "New Tag", "type": "knowledge", "binding_count": "0"}
         mock_tag_svc.save_tags.assert_called_once()
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_create_tag_forbidden(self, mock_current_user, app):
+    def test_create_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
@@ -806,7 +1097,6 @@ class TestDatasetTagsApiPost:
 class TestDatasetTagsApiPatch:
     """Test suite for DatasetTagsApi.patch() endpoint."""
 
-    @pytest.mark.skip(reason="Production bug: DataSetTag.binding_count is str|None but dataset.py passes int 0")
     @patch("controllers.service_api.dataset.dataset.TagService")
     @patch("controllers.service_api.dataset.dataset.service_api_ns")
     @patch("controllers.service_api.dataset.dataset.current_user")
@@ -815,7 +1105,7 @@ class TestDatasetTagsApiPatch:
         mock_current_user,
         mock_service_api_ns,
         mock_tag_svc,
-        app,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
@@ -823,7 +1113,7 @@ class TestDatasetTagsApiPatch:
         mock_current_user.has_edit_permission = True
         mock_current_user.is_dataset_editor = True
 
-        mock_tag = SimpleNamespace(id="tag-1", name="Updated Tag", type="knowledge")
+        mock_tag = make_tag(id="tag-1", name="Updated Tag")
         mock_tag_svc.update_tags.return_value = mock_tag
         mock_tag_svc.get_tag_binding_count.return_value = 5
         mock_service_api_ns.payload = {"name": "Updated Tag", "tag_id": "tag-1"}
@@ -837,11 +1127,14 @@ class TestDatasetTagsApiPatch:
             response, status = api.patch(_=None)
 
         assert status == 200
-        assert response["name"] == "Updated Tag"
-        mock_tag_svc.update_tags.assert_called_once_with({"name": "Updated Tag", "type": "knowledge"}, "tag-1")
+        assert response == {"id": "tag-1", "name": "Updated Tag", "type": "knowledge", "binding_count": "5"}
+        mock_tag_svc.update_tags.assert_called_once()
+        update_payload, tag_id = mock_tag_svc.update_tags.call_args.args
+        assert update_payload.name == "Updated Tag"
+        assert tag_id == "tag-1"
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_update_tag_forbidden(self, mock_current_user, app):
+    def test_update_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
@@ -869,7 +1162,7 @@ class TestDatasetTagsApiDelete:
         mock_current_user,
         mock_service_api_ns,
         mock_tag_svc,
-        app,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
@@ -894,7 +1187,7 @@ class TestDatasetTagsApiDelete:
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1")
 
     @patch("libs.login.current_user")
-    def test_delete_tag_forbidden(self, mock_current_user, app):
+    def test_delete_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         user_obj = Mock(spec=Account)
@@ -922,7 +1215,7 @@ class TestDatasetTagsBindingStatusApi:
         self,
         mock_current_user,
         mock_tag_svc,
-        app,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagsBindingStatusApi
 
@@ -952,7 +1245,7 @@ class TestDatasetTagBindingApiPost:
         self,
         mock_current_user,
         mock_tag_svc,
-        app,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
@@ -973,11 +1266,11 @@ class TestDatasetTagBindingApiPost:
         from services.tag_service import TagBindingCreatePayload
 
         mock_tag_svc.save_tag_binding.assert_called_once_with(
-            TagBindingCreatePayload(tag_ids=["tag-1"], target_id="ds-1", type="knowledge")
+            TagBindingCreatePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE)
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_bind_tags_forbidden(self, mock_current_user, app):
+    def test_bind_tags_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
         mock_current_user.__class__ = Account
@@ -1003,7 +1296,37 @@ class TestDatasetTagUnbindingApiPost:
         self,
         mock_current_user,
         mock_tag_svc,
-        app,
+        app: Flask,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = True
+        mock_current_user.is_dataset_editor = True
+        mock_tag_svc.delete_tag_binding.return_value = None
+
+        with app.test_request_context(
+            "/datasets/tags/unbinding",
+            method="POST",
+            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
+        ):
+            api = DatasetTagUnbindingApi()
+            result = api.post(_=None)
+
+        assert result == ("", 204)
+        from services.tag_service import TagBindingDeletePayload
+
+        mock_tag_svc.delete_tag_binding.assert_called_once_with(
+            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE)
+        )
+
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_unbind_legacy_tag_id_success(
+        self,
+        mock_current_user,
+        mock_tag_svc,
+        app: Flask,
     ):
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
@@ -1024,11 +1347,11 @@ class TestDatasetTagUnbindingApiPost:
         from services.tag_service import TagBindingDeletePayload
 
         mock_tag_svc.delete_tag_binding.assert_called_once_with(
-            TagBindingDeletePayload(tag_id="tag-1", target_id="ds-1", type="knowledge")
+            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE)
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_unbind_tag_forbidden(self, mock_current_user, app):
+    def test_unbind_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
         mock_current_user.__class__ = Account
@@ -1038,7 +1361,7 @@ class TestDatasetTagUnbindingApiPost:
         with app.test_request_context(
             "/datasets/tags/unbinding",
             method="POST",
-            json={"tag_id": "tag-1", "target_id": "ds-1"},
+            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
             api = DatasetTagUnbindingApi()
             with pytest.raises(Forbidden):

@@ -3,9 +3,6 @@ from collections.abc import Generator
 from threading import Lock
 from typing import Any, cast
 
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.file import File, FileTransferMethod, FileType, get_file_type_by_mime_type
-from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from sqlalchemy import select
 
 import contexts
@@ -31,6 +28,9 @@ from core.plugin.impl.datasource import PluginDatasourceManager
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
 from factories import file_factory
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType, get_file_type_by_mime_type
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.datasource_provider_service import DatasourceProviderService
@@ -352,11 +352,11 @@ class DatasourceManager:
                 raise ValueError(f"UploadFile not found for file_id={file_id}, tenant_id={tenant_id}")
 
         file_info = File(
-            id=upload_file.id,
+            file_id=upload_file.id,
             filename=upload_file.name,
             extension="." + upload_file.extension,
             mime_type=upload_file.mime_type,
-            type=FileType.CUSTOM,
+            file_type=FileType.CUSTOM,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             remote_url=upload_file.source_url,
             reference=build_file_reference(record_id=str(upload_file.id)),

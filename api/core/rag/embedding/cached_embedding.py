@@ -4,8 +4,6 @@ import pickle
 from typing import Any, cast
 
 import numpy as np
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -15,6 +13,8 @@ from core.model_manager import ModelInstance
 from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from models.dataset import Embedding
 
@@ -106,7 +106,7 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
         multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
@@ -232,7 +232,7 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
-    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]

@@ -45,7 +45,7 @@ const HITLInputReplacementBlock = ({
   }, [editor])
 
   const createHITLInputBlockNode = useCallback((textNode: TextNode): HITLInputNode => {
-    const varName = textNode.getTextContent().split('.')[1].replace(/#\}\}$/, '')
+    const varName = textNode.getTextContent().split('.')[1]!.replace(/#\}\}$/, '')
     return $applyNodeReplacement($createHITLInputNode(
       varName,
       nodeId,

@@ -92,7 +92,7 @@ export enum CustomConfigurationStatusEnum {
   noConfigure = 'no-configure',
 }
 
-export type FormShowOnObject = {
+type FormShowOnObject = {
   variable: string
   value: string
 }
@@ -155,7 +155,7 @@ export enum QuotaUnitEnum {
   times = 'times',
 }
 
-export type QuotaConfiguration = {
+type QuotaConfiguration = {
   quota_type: CurrentSystemQuotaTypeEnum
   quota_unit: QuotaUnitEnum
   quota_limit: number

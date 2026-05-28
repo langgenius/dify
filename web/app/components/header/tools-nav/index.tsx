@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiHammerFill,
   RiHammerLine,
@@ -7,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 
 type ToolsNavProps = {
   className?: string
@@ -27,8 +27,8 @@ const ToolsNav = ({
     >
       {
         activated
-          ? <RiHammerFill className="h-4 w-4" />
-          : <RiHammerLine className="h-4 w-4" />
+          ? <RiHammerFill className="size-4" />
+          : <RiHammerLine className="size-4" />
       }
       <div className="ml-2 max-[1024px]:hidden">
         {t('menus.tools', { ns: 'common' })}

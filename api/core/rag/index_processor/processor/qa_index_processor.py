@@ -8,6 +8,7 @@ from typing import Any, TypedDict
 
 import pandas as pd
 from flask import Flask, current_app
+from sqlalchemy import select
 from werkzeug.datastructures import FileStorage
 
 from core.db.session_factory import session_factory
@@ -163,14 +164,12 @@ class QAIndexProcessor(BaseIndexProcessor):
             if node_ids:
                 # Find segments by index_node_id
                 with session_factory.create_session() as session:
-                    segments = (
-                        session.query(DocumentSegment)
-                        .filter(
+                    segments = session.scalars(
+                        select(DocumentSegment).where(
                             DocumentSegment.dataset_id == dataset.id,
                             DocumentSegment.index_node_id.in_(node_ids),
                         )
-                        .all()
-                    )
+                    ).all()
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
                         SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)

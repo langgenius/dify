@@ -1,13 +1,17 @@
 'use client'
 import type { Member } from '@/models/common'
-import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-import { memo, useMemo, useState } from 'react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
-import { cn } from '@/utils/classnames'
 
 type IOperationProps = {
   member: Member
@@ -21,8 +25,10 @@ const roleI18nKeyMap = {
   dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
 } as const
 type OperationRoleKey = keyof typeof roleI18nKeyMap
+const nonOwnerRoles = ['admin', 'editor', 'normal'] as const
+const isNonOwnerRole = (role: Member['role']) => role !== 'owner'
+
 const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
-  const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
@@ -43,15 +49,14 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
     if (operatorRole === 'admin') {
       return [
-        'editor',
-        'normal',
+        ...nonOwnerRoles,
         ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
+  const canRemoveMember = operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
   const handleDeleteMemberOrCancelInvitation = async () => {
-    setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
@@ -61,7 +66,6 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
   }
   const handleUpdateMemberRole = async (role: string) => {
-    setOpen(false)
     try {
       await updateMemberRole({
         url: `/workspaces/current/members/${member.id}/update-role`,
@@ -74,40 +78,54 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
     }
   }
   return (
-    <PortalToFollowElem open={open} onOpenChange={setOpen} placement="bottom-end" offset={{ mainAxis: 4 }}>
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(prev => !prev)}>
-        <div className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary system-sm-regular hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-          {RoleMap[member.role] || RoleMap.normal}
-          <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1002">
-        <div className={cn('inline-flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs')}>
-          <div className="p-1">
-            {roleList.map(role => (
-              <div key={role} className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={() => handleUpdateMemberRole(role)}>
-                {role === member.role
-                  ? <CheckIcon className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
-                  : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />}
-                <div>
-                  <div className="whitespace-nowrap text-text-secondary system-sm-semibold">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
-                  <div className="whitespace-nowrap text-text-tertiary system-xs-regular">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-divider-subtle p-1">
-            <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
-              <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
+      >
+        {RoleMap[member.role] || RoleMap.normal}
+        <span aria-hidden className="i-ri-arrow-down-s-line hidden size-4 shrink-0 group-hover:block group-data-popup-open:block" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="inline-flex flex-col rounded-xl p-0"
+      >
+        <div className="p-1">
+          {roleList.map(role => (
+            <DropdownMenuItem
+              key={role}
+              className="h-auto items-start gap-2 rounded-lg px-3 py-2"
+              onClick={() => handleUpdateMemberRole(role)}
+            >
+              {role === member.role
+                ? <span aria-hidden className="mt-[2px] i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
+                : <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />}
               <div>
-                <div className="whitespace-nowrap text-text-secondary system-sm-semibold">{t('members.removeFromTeam', { ns: 'common' })}</div>
-                <div className="whitespace-nowrap text-text-tertiary system-xs-regular">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
+                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
               </div>
-            </div>
-          </div>
+            </DropdownMenuItem>
+          ))}
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        {canRemoveMember && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
+            <div className="p-1">
+              <DropdownMenuItem
+                className="h-auto items-start gap-2 rounded-lg px-3 py-2"
+                onClick={handleDeleteMemberOrCancelInvitation}
+              >
+                <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
+                <div>
+                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                </div>
+              </DropdownMenuItem>
+            </div>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 export default memo(Operation)
