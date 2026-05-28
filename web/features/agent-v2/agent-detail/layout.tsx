@@ -103,6 +103,78 @@ const mockAgentVersions: VersionHistory[] = [
     createdAt: 1788523200,
     createdBy: 'Liam Wong',
   }),
+  createMockAgentVersion({
+    id: 'agent-version-0-9',
+    version: '2026-08-29T12:00:00Z',
+    markedName: 'v0.9.0 Evaluation rubric',
+    markedComment: 'Added scoring criteria for answer completeness and escalation confidence.',
+    createdAt: 1787918400,
+    createdBy: 'Mia Patel',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-8',
+    version: '2026-08-22T12:00:00Z',
+    markedName: 'v0.8.0 Retrieval guardrails',
+    markedComment: 'Tightened knowledge lookup rules before drafting customer-facing responses.',
+    createdAt: 1787313600,
+    createdBy: 'Oliver Brown',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-7',
+    version: '2026-08-15T12:00:00Z',
+    markedName: 'v0.7.0 Memory cleanup',
+    markedComment: 'Removed stale context fields and simplified conversation state handling.',
+    createdAt: 1786708800,
+    createdBy: 'Sophia Garcia',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-6',
+    version: '2026-08-08T12:00:00Z',
+    markedName: 'v0.6.0 Safety pass',
+    markedComment: 'Added refusal boundaries for unsupported financial and legal decisions.',
+    createdAt: 1786104000,
+    createdBy: 'Ethan Davis',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-5',
+    version: '2026-08-01T12:00:00Z',
+    markedName: 'v0.5.0 Scheduling workflow',
+    markedComment: 'Introduced handoff hints for calendar availability and follow-up timing.',
+    createdAt: 1785499200,
+    createdBy: 'Isabella Lee',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-4',
+    version: '2026-07-25T12:00:00Z',
+    markedName: 'v0.4.0 Tone calibration',
+    markedComment: 'Adjusted response tone for concise operational updates.',
+    createdAt: 1784894400,
+    createdBy: 'Lucas Martin',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-3',
+    version: '2026-07-18T12:00:00Z',
+    markedName: 'v0.3.0 Fallback paths',
+    markedComment: 'Documented fallback behavior when required workflow inputs are missing.',
+    createdAt: 1784289600,
+    createdBy: 'Grace Miller',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-2',
+    version: '2026-07-11T12:00:00Z',
+    markedName: 'v0.2.0 Tool schema draft',
+    markedComment: 'Outlined first-pass tool input schemas for roster reuse.',
+    createdAt: 1783684800,
+    createdBy: 'Henry Wilson',
+  }),
+  createMockAgentVersion({
+    id: 'agent-version-0-1',
+    version: '2026-07-04T12:00:00Z',
+    markedName: 'v0.1.0 Prototype',
+    markedComment: 'Captured the initial prototype behavior and basic instruction set.',
+    createdAt: 1783080000,
+    createdBy: 'Chloe Anderson',
+  }),
 ]
 
 export function AgentDetailLayout({
@@ -232,7 +304,7 @@ function AgentVersionHistoryPanel({
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+      <div className="h-0 flex-1 overflow-y-auto px-3 py-2">
         {versions.map((item, index) => (
           <VersionHistoryItem
             key={item.id}

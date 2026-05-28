@@ -2,6 +2,7 @@
 
 import type { AgentDetailSectionKey } from './section'
 import { useTranslation } from 'react-i18next'
+import { MemorySettings } from '../components/configure/memory-settings'
 import { AgentAccessPage } from './access/page'
 import { AgentLogsPage } from './logs/page'
 import { AgentMonitoringPage } from './monitoring/page'
@@ -25,6 +26,19 @@ export function AgentDetailPage({
 
   if (section === 'access')
     return <AgentAccessPage agentId={agentId} />
+
+  if (section === 'configure') {
+    return (
+      <section
+        aria-label={t('agentDetail.sections.configure')}
+        className="h-full min-w-0 flex-1 overflow-auto bg-components-panel-bg-blur px-4 py-6 sm:px-12"
+      >
+        <div className="mx-auto max-w-3xl">
+          <MemorySettings />
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section
