@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -218,6 +219,52 @@ class TestDatasetModelValidation:
         assert result["top_k"] == 2
         assert result["reranking_enable"] is False
         assert result["score_threshold_enabled"] is False
+
+    def test_dataset_retrieval_model_dict_merges_with_defaults(self):
+        """Regression test for #36722: legacy rows missing search_method/reranking_enable."""
+        # Arrange
+        dataset = Dataset(
+            tenant_id=str(uuid4()),
+            name="Test Dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=str(uuid4()),
+        )
+        # Simulate a legacy row that only stored a subset of keys
+        dataset.retrieval_model = {"top_k": 4, "score_threshold_enabled": False}
+
+        # Act
+        result = dataset.retrieval_model_dict
+
+        # Assert — missing keys are filled from defaults
+        assert result["search_method"] == RetrievalMethod.SEMANTIC_SEARCH
+        assert result["reranking_enable"] is False
+        assert result["top_k"] == 4  # preserved from stored value
+        assert result["score_threshold_enabled"] is False
+
+    def test_dataset_retrieval_model_dict_stored_values_override_defaults(self):
+        """Stored values should take precedence over defaults."""
+        # Arrange
+        dataset = Dataset(
+            tenant_id=str(uuid4()),
+            name="Test Dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=str(uuid4()),
+        )
+        dataset.retrieval_model = {
+            "search_method": "full_text_search",
+            "reranking_enable": True,
+            "top_k": 10,
+            "score_threshold_enabled": True,
+        }
+
+        # Act
+        result = dataset.retrieval_model_dict
+
+        # Assert — stored values win
+        assert result["search_method"] == "full_text_search"
+        assert result["reranking_enable"] is True
+        assert result["top_k"] == 10
+        assert result["score_threshold_enabled"] is True
 
     def test_dataset_gen_collection_name_by_id(self):
         """Test static method for generating collection name."""

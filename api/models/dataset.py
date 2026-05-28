@@ -330,7 +330,12 @@ class Dataset(Base):
             "top_k": 2,
             "score_threshold_enabled": False,
         }
-        return self.retrieval_model or default_retrieval_model
+        if not self.retrieval_model:
+            return default_retrieval_model
+        # Merge with defaults so that legacy rows missing newly-added keys
+        # (e.g. search_method, reranking_enable) don't break downstream
+        # Pydantic validation in DatasetDetailResponse.
+        return {**default_retrieval_model, **self.retrieval_model}
 
     @property
     def tags(self):
