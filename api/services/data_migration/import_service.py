@@ -174,6 +174,7 @@ class MigrationImportService:
             self._source_api_provider_ids_by_name(request.package),
         )
         self._import_mcp_tools(request.package, target, options, report_items, id_mapping, id_mapping_details)
+        self._preflight_dependency_only_mcp(request.package, target, report_items)
         workflow_tool_app_ids = self._workflow_tool_source_app_ids(request.package)
         imported_workflow_ids: set[str] = set()
         if workflow_tool_app_ids:
@@ -198,7 +199,6 @@ class MigrationImportService:
             imported_workflow_ids=imported_workflow_ids,
             skip_app_ids=imported_workflow_ids,
         )
-        self._report_dependency_only_mcp(request.package, report_items)
         return ImportResult(
             report_items=report_items,
             id_mapping=id_mapping,
@@ -799,18 +799,111 @@ class MigrationImportService:
             .limit(1)
         )
 
-    def _report_dependency_only_mcp(self, package: MigrationPackage, report_items: list[ResourceReportItem]) -> None:
+    def _preflight_dependency_only_mcp(
+        self, package: MigrationPackage, target: ImportTarget, report_items: list[ResourceReportItem]
+    ) -> None:
         for dependency in package.dependencies:
-            if dependency.get("kind") == "mcp_tool":
+            if dependency.get("kind") != DependencyKind.MCP_TOOL.value:
+                continue
+            provider_id = str(dependency.get("provider_id", dependency.get("id", "")))
+            provider_name = self._optional_string(dependency.get("provider_name") or dependency.get("name"))
+            existing = self._find_dependency_only_mcp_provider(target.tenant_id, provider_id, provider_name)
+            report_name = f"mcp_tool {provider_name or getattr(existing, 'name', None) or provider_id}"
+            if existing is not None:
                 report_items.append(
                     ResourceReportItem(
                         ResourceType.DEPENDENCY,
-                        str(dependency.get("provider_id", dependency.get("id", ""))),
-                        self._optional_string(dependency.get("name")),
-                        "skipped",
-                        "MCP provider is dependency-only; configure it manually in target tenant.",
+                        provider_id,
+                        report_name,
+                        "available",
+                        "MCP provider exists in target tenant.",
                     )
                 )
+                continue
+            reference_summary = self._dependency_only_mcp_reference_summary(package, provider_id, provider_name)
+            message = "missing in target tenant"
+            if reference_summary:
+                message = f"{message}; referenced by {reference_summary}"
+            message = f"{message}; configure it manually before running the workflow."
+            report_items.append(
+                ResourceReportItem(
+                    ResourceType.DEPENDENCY,
+                    provider_id,
+                    report_name,
+                    "skipped",
+                    message,
+                )
+            )
+
+    def _find_dependency_only_mcp_provider(
+        self, tenant_id: str, provider_id: str, provider_name: str | None
+    ) -> MCPToolProvider | None:
+        predicates = [MCPToolProvider.server_identifier == provider_id]
+        if provider_name:
+            predicates.append(MCPToolProvider.name == provider_name)
+        if self._is_uuid_string(provider_id):
+            predicates.append(MCPToolProvider.id == provider_id)
+        return db.session.scalar(
+            sa.select(MCPToolProvider)
+            .where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates))
+            .limit(1)
+        )
+
+    def _dependency_only_mcp_reference_summary(
+        self, package: MigrationPackage, provider_id: str, provider_name: str | None
+    ) -> str:
+        references = self._dependency_only_mcp_references(package, provider_id, provider_name)
+        return "; ".join(references)
+
+    def _dependency_only_mcp_references(
+        self, package: MigrationPackage, provider_id: str, provider_name: str | None
+    ) -> list[str]:
+        references: list[str] = []
+        seen: set[str] = set()
+        for workflow_data in package.workflows:
+            workflow_name = self._optional_string(workflow_data.get("name"))
+            workflow_id = self._optional_string(workflow_data.get("id"))
+            workflow_label = workflow_name or workflow_id or "unknown workflow"
+            dsl_content = self._optional_string(workflow_data.get("dsl"))
+            if not dsl_content:
+                continue
+            parsed = yaml.safe_load(dsl_content) if dsl_content else {}
+            if not isinstance(parsed, dict):
+                continue
+            for node in self._workflow_nodes(parsed):
+                data = node.get("data") if isinstance(node, dict) else None
+                if not isinstance(data, dict):
+                    continue
+                for tool_config in [data, *self._agent_tool_configs(data)]:
+                    if not self._is_mcp_dependency_reference(tool_config, provider_id, provider_name):
+                        continue
+                    tool_label = self._mcp_tool_reference_label(node, tool_config)
+                    reference = f"{workflow_label} / {tool_label}"
+                    if reference not in seen:
+                        seen.add(reference)
+                        references.append(reference)
+        return references
+
+    def _is_mcp_dependency_reference(
+        self, tool_config: dict[str, Any], provider_id: str, provider_name: str | None
+    ) -> bool:
+        provider_type = str(tool_config.get("provider_type") or tool_config.get("type") or "").lower()
+        if provider_type != "mcp":
+            return False
+        config_provider_id = self._optional_string(
+            tool_config.get("provider_id") or tool_config.get("provider_name") or tool_config.get("provider")
+        )
+        if config_provider_id == provider_id:
+            return True
+        return bool(provider_name and config_provider_id == provider_name)
+
+    def _mcp_tool_reference_label(self, node: dict[str, Any], tool_config: dict[str, Any]) -> str:
+        for key in ("tool_name", "tool", "name"):
+            value = self._optional_string(tool_config.get(key))
+            if value:
+                return value
+        node_id = self._optional_string(node.get("id"))
+        return node_id or "unknown tool"
 
     def _required_string(self, value: dict[str, object], field_name: str, resource_name: str) -> str:
         field_value = value.get(field_name)

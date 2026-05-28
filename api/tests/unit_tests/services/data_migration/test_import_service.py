@@ -768,6 +768,129 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch):
     assert id_mapping["source-mcp-provider-id"] == "target-mcp-provider-id"
 
 
+def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_workflow_context(monkeypatch):
+    report_items = []
+    package = MigrationPackage.from_mapping(
+        {
+            "metadata": {"version": "1", "source_scope": "single"},
+            "dependencies": [
+                {
+                    "kind": "mcp_tool",
+                    "provider_id": "my-test-mcp-server",
+                    "provider_name": "my-test-mcp",
+                }
+            ],
+            "workflows": [
+                {
+                    "name": "workflow2",
+                    "dsl": yaml.safe_dump(
+                        {
+                            "workflow": {
+                                "graph": {
+                                    "nodes": [
+                                        {
+                                            "id": "node-1",
+                                            "data": {
+                                                "type": "tool",
+                                                "provider_type": "mcp",
+                                                "provider_id": "my-test-mcp-server",
+                                                "tool_name": "echo",
+                                            },
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ),
+                }
+            ],
+        }
+    )
+
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db.session, "scalar", lambda statement: None)
+
+    MigrationImportService()._preflight_dependency_only_mcp(
+        package,
+        ImportTarget(
+            tenant_id="tenant-1",
+            tenant_name="target",
+            operator_id="account-1",
+            operator_email="owner@example.com",
+        ),
+        report_items,
+    )
+
+    assert report_items == [
+        ResourceReportItem(
+            ResourceType.DEPENDENCY,
+            "my-test-mcp-server",
+            "mcp_tool my-test-mcp",
+            "skipped",
+            "missing in target tenant; referenced by workflow2 / echo; "
+            "configure it manually before running the workflow.",
+        )
+    ]
+
+
+def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid_id(monkeypatch):
+    captured = []
+
+    class StubSession:
+        def scalar(self, statement):
+            captured.append(statement)
+
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
+    MigrationImportService()._find_dependency_only_mcp_provider(
+        "tenant-1",
+        "my-test-mcp-server",
+        "my-test-mcp",
+    )
+
+    where_clause = str(captured[0].whereclause)
+    assert f"{MCPToolProvider.__tablename__}.id" not in where_clause
+
+
+def test_dependency_only_mcp_preflight_reports_available_target_provider(monkeypatch):
+    report_items = []
+    package = MigrationPackage.from_mapping(
+        {
+            "metadata": {"version": "1", "source_scope": "single"},
+            "dependencies": [{"kind": "mcp_tool", "provider_id": "my-test-mcp-server"}],
+        }
+    )
+    provider = type("Provider", (), {"id": "target-provider-id", "name": "my-test-mcp"})()
+
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db.session, "scalar", lambda statement: provider)
+
+    MigrationImportService()._preflight_dependency_only_mcp(
+        package,
+        ImportTarget(
+            tenant_id="tenant-1",
+            tenant_name="target",
+            operator_id="account-1",
+            operator_email="owner@example.com",
+        ),
+        report_items,
+    )
+
+    assert report_items == [
+        ResourceReportItem(
+            ResourceType.DEPENDENCY,
+            "my-test-mcp-server",
+            "mcp_tool my-test-mcp",
+            "available",
+            "MCP provider exists in target tenant.",
+        )
+    ]
+
+
 def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
     events = []
 
