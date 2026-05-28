@@ -38,7 +38,7 @@ from controllers.openapi.workspaces import (
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models.account import AccountStatus, TenantAccountRole
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -97,10 +97,22 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
         client_id="difyctl",
         scopes=frozenset({Scope.FULL}),
         token_id=uuid.uuid4(),
-        source="oauth_account",
+        token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),
         token_hash="h",
         verified_tenants={},
+    )
+
+
+def _auth_data(account_id: uuid.UUID) -> AuthData:
+    from controllers.openapi.auth.data import AuthData
+    from libs.oauth_bearer import Scope, TokenType
+
+    return AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        account_id=account_id,
+        token_hash="testhash",
+        scopes=frozenset({Scope.FULL}),
     )
 
 
@@ -256,7 +268,7 @@ def test_switch_returns_workspace_detail_with_current_true(app, bypass_pipeline,
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+        body, status = api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["id"] == ws_id
@@ -284,7 +296,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(app, bypass_pip
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +330,7 @@ def test_members_list_returns_normalized_rows(app, bypass_pipeline, monkeypatch)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+        body, status = api.get.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["page"] == 1
@@ -360,7 +372,7 @@ def test_members_list_paginates_with_query_params(app, bypass_pipeline, monkeypa
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?page=2&limit=2"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+        body, status = api.get.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["page"] == 2
@@ -383,7 +395,7 @@ def test_members_list_rejects_unknown_query_param(app, bypass_pipeline, monkeypa
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?pg=2"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(BadRequest):
-            api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.get.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -421,7 +433,7 @@ def test_invite_happy_path_returns_invite_url_and_member_id(app, bypass_pipeline
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+        body, status = api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 201
     assert body["result"] == "success"
@@ -506,7 +518,7 @@ def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(Forbidden) as exc_info:
-            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     body = exc_info.value.response.json
     assert body["code"] == "members.limit_exceeded"
@@ -552,7 +564,7 @@ def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, mo
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(Forbidden) as exc_info:
-            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     body = exc_info.value.response.json
     assert body["code"] == "workspace_members.license_exceeded"
@@ -591,7 +603,7 @@ def test_invite_ce_passes_when_both_caps_disabled(app, bypass_pipeline, monkeypa
 
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+        body, status = api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 201
     assert body["email"] == "new@example.com"
@@ -620,7 +632,7 @@ def test_invite_400_when_already_in_tenant(app, bypass_pipeline, monkeypatch):
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(BadRequest):
-            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -653,10 +665,8 @@ def test_delete_member_happy_path(app, bypass_pipeline, monkeypatch):
         method="DELETE",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.delete.__wrapped__.__wrapped__.__wrapped__(
-            api,
-            workspace_id=ws_id,
-            member_id=member_id,
+        body, status = api.delete.__wrapped__.__wrapped__(
+            api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id)
         )
 
     assert status == 200
@@ -697,10 +707,11 @@ def test_delete_member_exception_mapping(app, bypass_pipeline, monkeypatch, exc,
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(expected):
-            api.delete.__wrapped__.__wrapped__.__wrapped__(
+            api.delete.__wrapped__.__wrapped__(
                 api,
                 workspace_id=ws_id,
                 member_id=member_id,
+                auth_data=_auth_data(acct_id),
             )
 
 
@@ -723,10 +734,11 @@ def test_delete_member_404_when_member_missing(app, bypass_pipeline, monkeypatch
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.delete.__wrapped__.__wrapped__.__wrapped__(
+            api.delete.__wrapped__.__wrapped__(
                 api,
                 workspace_id=ws_id,
                 member_id=member_id,
+                auth_data=_auth_data(acct_id),
             )
 
 
@@ -762,10 +774,8 @@ def test_update_role_happy_path(app, bypass_pipeline, monkeypatch):
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.put.__wrapped__.__wrapped__.__wrapped__(
-            api,
-            workspace_id=ws_id,
-            member_id=member_id,
+        body, status = api.put.__wrapped__.__wrapped__(
+            api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id)
         )
 
     assert status == 200
@@ -810,10 +820,11 @@ def test_update_role_exception_mapping(app, bypass_pipeline, monkeypatch, exc, e
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(expected):
-            api.put.__wrapped__.__wrapped__.__wrapped__(
+            api.put.__wrapped__.__wrapped__(
                 api,
                 workspace_id=ws_id,
                 member_id=member_id,
+                auth_data=_auth_data(acct_id),
             )
 
 
@@ -847,9 +858,8 @@ def test_non_member_caller_gets_404_on_switch(app, bypass_pipeline, monkeypatch)
         # Strip only the bearer + surface-gate wrappers; keep the role gate.
         # Decorator stack (innermost → outermost):
         #   role_gate → accept_subjects → validate_bearer
-        # So `post.__wrapped__` unwraps validate_bearer; we then unwrap
-        # accept_subjects to land on the role-gate wrapper.
-        gated = api.post.__wrapped__.__wrapped__
+        # `post.__wrapped__` is now the role-gate wrapper directly (auth_router.guard is the only outer wrapper).
+        gated = api.post.__wrapped__
         with pytest.raises(NotFound):
             gated(api, workspace_id=ws_id)
 
@@ -881,7 +891,7 @@ def test_load_tenant_rejects_archived_workspace(app, bypass_pipeline, monkeypatc
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.get.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.get.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -915,4 +925,4 @@ def test_invite_400_when_register_error(app, bypass_pipeline, monkeypatch):
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(BadRequest):
-            api.post.__wrapped__.__wrapped__.__wrapped__(api, workspace_id=ws_id)
+            api.post.__wrapped__.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))

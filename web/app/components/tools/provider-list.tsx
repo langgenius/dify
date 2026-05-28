@@ -2,27 +2,23 @@
 import type { RefObject } from 'react'
 import type { ToolsContentInset } from './content-inset'
 import type { Collection } from './types'
-import type { CardPayload } from '@/app/components/plugins/card'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
-import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
-import Card from '@/app/components/plugins/card'
-import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import LabelFilter from '@/app/components/tools/labels/filter'
-import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
-import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
-import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
@@ -31,7 +27,8 @@ import { useToolMarketplacePanel } from './hooks/use-tool-marketplace-panel'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import Marketplace from './marketplace'
 import MCPList from './mcp'
-import { getToolType } from './utils'
+import { ToolProviderGrid } from './tool-provider-grid'
+import { ToolProviderToolbar } from './tool-provider-toolbar'
 
 type ProviderListProps = {
   category?: ToolCategory
@@ -43,53 +40,6 @@ type BuiltinMarketplacePanelProps = {
   contentInset: ToolsContentInset
   keywords: string
   tagFilterValue: string[]
-}
-
-const getCollectionPluginIdentity = (collection: Collection) => {
-  const [org, ...nameParts] = collection.plugin_id?.split('/').filter(Boolean) ?? []
-
-  if (org && nameParts.length) {
-    return {
-      org,
-      name: nameParts.join('/'),
-    }
-  }
-
-  return {
-    org: '',
-    name: collection.name,
-  }
-}
-
-const collectionToCardPayload = (collection: Collection): CardPayload => {
-  const { org, name } = getCollectionPluginIdentity(collection)
-
-  return {
-    ...collection,
-    type: 'tool',
-    org,
-    name,
-    plugin_id: collection.plugin_id ?? collection.id,
-    version: '',
-    latest_version: '',
-    latest_package_identifier: '',
-    brief: collection.description,
-    description: collection.description,
-    introduction: '',
-    repository: '',
-    category: PluginCategoryEnum.tool,
-    install_count: 0,
-    endpoint: {
-      settings: [],
-    },
-    tags: collection.labels?.map(name => ({ name })) ?? [],
-    badges: [],
-    verification: {
-      authorized_category: 'community',
-    },
-    verified: false,
-    from: collection.plugin_id ? 'marketplace' : 'package',
-  }
 }
 
 const BuiltinMarketplacePanel = ({
@@ -188,99 +138,60 @@ const ProviderList = ({
   return (
     <>
       <div className="relative flex h-0 shrink-0 grow overflow-hidden">
-        <div
-          ref={containerRef}
-          className="relative flex grow flex-col overflow-y-auto bg-components-panel-bg"
-        >
-          <div
-            className={cn(
-              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
-              toolListFrameClassName,
-              currentProviderId && 'pr-6',
-            )}
+        <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
+          <ScrollAreaViewport
+            ref={containerRef}
+            aria-label={t('menus.tools', { ns: 'common' })}
+            className="overscroll-contain"
+            role="region"
           >
-            {!isRouteCategory && (
-              <TabSliderNew
-                value={activeTab}
-                onChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
+            <ScrollAreaContent className="flex min-h-full flex-col">
+              <ToolProviderToolbar
+                activeTab={activeTab}
+                currentProviderId={currentProviderId}
+                frameClassName={toolListFrameClassName}
+                isRouteCategory={isRouteCategory}
+                keywords={keywords}
                 options={options}
+                showLabelFilter={showLabelFilter}
+                showToolsUpdateSetting={showToolsUpdateSetting}
+                tagFilterValue={tagFilterValue}
+                onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
+                onKeywordsChange={handleKeywordsChange}
+                onTagsChange={handleTagsChange}
               />
-            )}
-            <div className="flex min-w-[200px] flex-1 items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                {showLabelFilter && (
-                  <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
-                )}
-                <SearchInput
-                  className="w-[200px]"
-                  value={keywords}
-                  onChange={handleKeywordsChange}
-                />
-              </div>
-              {showToolsUpdateSetting && (
-                <UpdateSettingPopover
-                  category={PluginCategoryEnum.tool}
+              {activeTab !== 'mcp' && (
+                <ToolProviderGrid
+                  activeTab={activeTab}
+                  collections={filteredCollectionList}
+                  currentProviderId={currentProviderId}
+                  frameClassName={toolListFrameClassName}
+                  getTagLabel={getTagLabel}
+                  isLoading={isCollectionListLoading}
+                  onRefreshData={refetch}
+                  onSelectProvider={setCurrentProviderId}
                 />
               )}
-            </div>
-          </div>
-          {activeTab !== 'mcp' && (
-            <div
-              className={cn(
-                'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
-                toolListFrameClassName,
-                !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+              {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
+                <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
               )}
-            >
-              {isCollectionListLoading
-                ? <ToolCardSkeletonGrid />
-                : (
-                    <>
-                      {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
-                      {filteredCollectionList.map(collection => (
-                        <div
-                          key={collection.id}
-                          onClick={() => setCurrentProviderId(collection.id)}
-                        >
-                          <Card
-                            className={cn(
-                              'cursor-pointer',
-                              currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
-                            )}
-                            hideCornerMark
-                            payload={collectionToCardPayload(collection)}
-                            footer={(
-                              <CardMoreInfo
-                                tags={collection.labels?.map(label => getTagLabel(label)) || []}
-                              />
-                            )}
-                          />
-                        </div>
-                      ))}
-                      {!filteredCollectionList.length && activeTab === 'workflow' && (
-                        <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
-                          <WorkflowToolEmpty type={getToolType(activeTab)} />
-                        </div>
-                      )}
-                    </>
-                  )}
-            </div>
-          )}
-          {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
-          )}
-          {enable_marketplace && activeTab === 'builtin' && (
-            <BuiltinMarketplacePanel
-              containerRef={containerRef}
-              contentInset={contentInset}
-              keywords={keywords}
-              tagFilterValue={tagFilterValue}
-            />
-          )}
-          {activeTab === 'mcp' && (
-            <MCPList searchText={keywords} contentInset={contentInset} />
-          )}
-        </div>
+              {enable_marketplace && activeTab === 'builtin' && (
+                <BuiltinMarketplacePanel
+                  containerRef={containerRef}
+                  contentInset={contentInset}
+                  keywords={keywords}
+                  tagFilterValue={tagFilterValue}
+                />
+              )}
+              {activeTab === 'mcp' && (
+                <MCPList searchText={keywords} contentInset={contentInset} />
+              )}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollAreaRoot>
       </div>
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail

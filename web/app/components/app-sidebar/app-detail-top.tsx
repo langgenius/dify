@@ -32,9 +32,12 @@ const AppDetailTop = () => {
         <span className="mx-1.5 shrink-0 system-md-regular text-text-quaternary">
           /
         </span>
-        <span className="shrink-0 truncate system-sm-semibold-uppercase text-text-secondary">
+        <Link
+          href="/apps"
+          className="shrink-0 truncate system-sm-semibold-uppercase text-text-secondary hover:text-text-primary"
+        >
           {t('menus.apps', { ns: 'common' })}
-        </span>
+        </Link>
       </div>
       <button
         type="button"

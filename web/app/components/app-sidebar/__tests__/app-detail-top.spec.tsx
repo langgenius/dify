@@ -21,6 +21,12 @@ describe('AppDetailTop', () => {
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
   })
 
+  it('links the Studio breadcrumb to the Studio page', () => {
+    render(<AppDetailTop />)
+
+    expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+  })
+
   it('keeps the back button and quick search actions', () => {
     const handleOpen = vi.fn()
     window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)

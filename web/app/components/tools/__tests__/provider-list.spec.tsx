@@ -256,7 +256,7 @@ vi.mock('../marketplace', () => ({
 }))
 
 vi.mock('../marketplace/hooks', () => ({
-  useMarketplace: (...args: unknown[]) => mockUseMarketplace(...args),
+  useMarketplace: mockUseMarketplace,
 }))
 
 vi.mock('../mcp', () => ({
@@ -371,7 +371,7 @@ describe('ProviderList', () => {
     it('uses default content inset outside compact integrations layout', () => {
       const { container } = renderProviderList()
 
-      expect(container.querySelector('.overflow-y-auto')).toHaveClass('bg-components-panel-bg')
+      expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
       expect(container.querySelector('.sticky')).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12', 'gap-2', 'pt-2')
@@ -381,7 +381,7 @@ describe('ProviderList', () => {
     it('uses compact content inset when rendered by integrations layout', () => {
       const { container } = renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(container.querySelector('.overflow-y-auto')).toHaveClass('bg-components-panel-bg')
+      expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
       expect(container.querySelector('.sticky')).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6', 'gap-2', 'pt-2')
@@ -724,8 +724,8 @@ describe('ProviderList', () => {
   describe('Scroll Handling', () => {
     it('delegates scroll events to marketplace handleScroll', () => {
       mockEnableMarketplace = true
-      const { container } = renderProviderList()
-      const scrollContainer = container.querySelector('.overflow-y-auto') as HTMLDivElement
+      renderProviderList()
+      const scrollContainer = screen.getByRole('region', { name: 'common.menus.tools' }) as HTMLDivElement
       fireEvent.scroll(scrollContainer)
       expect(mockHandleScroll).toHaveBeenCalled()
     })
@@ -734,7 +734,7 @@ describe('ProviderList', () => {
       mockEnableMarketplace = true
       renderProviderList()
       expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-visible')
-      const scrollContainer = document.querySelector('.overflow-y-auto') as HTMLDivElement
+      const scrollContainer = screen.getByRole('region', { name: 'common.menus.tools' }) as HTMLDivElement
       fireEvent.scroll(scrollContainer)
       expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-hidden')
     })

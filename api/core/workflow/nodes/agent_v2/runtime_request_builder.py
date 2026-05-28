@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
+from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol import CreateRunRequest
 
@@ -28,6 +29,7 @@ from models.agent_config_entities import (
 from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
+from models.provider_ids import ModelProviderID
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
@@ -66,6 +68,7 @@ class WorkflowAgentRuntimeBuildContext:
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
+    session_snapshot: CompositorSessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,11 +132,14 @@ class WorkflowAgentRuntimeRequestBuilder:
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    plugin_id=agent_soul.model.plugin_id,
-                    model_provider=agent_soul.model.model_provider,
+                    plugin_id=self._plugin_daemon_plugin_id(
+                        plugin_id=agent_soul.model.plugin_id,
+                        model_provider=agent_soul.model.model_provider,
+                    ),
+                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
                     credentials=self._normalize_credentials(credentials),
-                    model_settings=cast(dict[str, Any], agent_soul.model.model_settings),
+                    model_settings=agent_soul.model.model_settings,
                 ),
                 # The execution-context layer is now the only public protocol
                 # carrier for Dify tenant/user/run identifiers. ``user_id`` must
@@ -158,6 +164,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
+                session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -176,6 +183,20 @@ class WorkflowAgentRuntimeRequestBuilder:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
+
+    @staticmethod
+    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
+        """Return the transport plugin id expected by plugin-daemon headers."""
+        if plugin_id.count("/") == 1:
+            return plugin_id
+        if plugin_id:
+            return ModelProviderID(plugin_id).plugin_id
+        return ModelProviderID(model_provider).plugin_id
+
+    @staticmethod
+    def _plugin_daemon_provider_name(model_provider: str) -> str:
+        """Return the provider name expected by plugin-daemon dispatch payloads."""
+        return ModelProviderID(model_provider).provider_name
 
     @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:

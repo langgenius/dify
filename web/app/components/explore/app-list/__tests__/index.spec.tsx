@@ -15,7 +15,9 @@ import AppList from '../index'
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
 let mockLearnDifyApps: App[] = []
+let mockLearnDifyLoading = false
 let mockWorkspaceApps: WorkspaceApp[] = []
+let mockWorkspaceAppsLoading = false
 let mockIsLoading = false
 let mockIsError = false
 const mockHandleImportDSL = vi.fn()
@@ -30,7 +32,7 @@ vi.mock('@/service/use-explore', () => ({
   }),
   useLearnDifyAppList: () => ({
     data: mockLearnDifyApps,
-    isLoading: false,
+    isLoading: mockLearnDifyLoading,
     isError: false,
   }),
 }))
@@ -52,6 +54,12 @@ vi.mock('@/service/client', () => ({
       list: {
         queryOptions: (options: { input?: { query?: { limit?: number } } }) => {
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
+          if (mockWorkspaceAppsLoading) {
+            return {
+              queryKey: ['console', 'apps', 'list', options],
+              queryFn: () => new Promise(() => {}),
+            }
+          }
           const response = {
             data: mockWorkspaceApps.slice(0, limit),
             has_more: false,
@@ -273,7 +281,9 @@ describe('AppList', () => {
         position: 2,
       }),
     ]
+    mockLearnDifyLoading = false
     mockWorkspaceApps = []
+    mockWorkspaceAppsLoading = false
     mockIsLoading = false
     mockIsError = false
     mockConfig.isCloudEdition = false
@@ -284,13 +294,58 @@ describe('AppList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render loading when the query is loading', () => {
+    it('should render the home shell skeleton when the explore query is loading', () => {
       mockExploreData = undefined
       mockIsLoading = true
+      mockWorkspaceAppsLoading = true
+      mockLearnDifyLoading = true
 
       renderAppList()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.queryByText('explore.apps.description')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(4)
+    })
+
+    it('should show a recommendation placeholder while continue work apps are loading', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceAppsLoading = true
+
+      renderAppList()
+
+      expect(screen.queryByRole('heading', { name: 'explore.continueWork.title' })).not.toBeInTheDocument()
+      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    })
+
+    it('should show a recommendation placeholder while learn dify items are loading', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockLearnDifyApps = []
+      mockLearnDifyLoading = true
+
+      renderAppList()
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    })
+
+    it('should not show the learn dify placeholder when the section is hidden', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockLearnDifyApps = []
+      mockLearnDifyLoading = true
+      localStorage.setItem(LEARN_DIFY_HIDDEN_STORAGE_KEY, 'true')
+
+      renderAppList()
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
     it('should render app cards when data is available', () => {
@@ -402,6 +457,28 @@ describe('AppList', () => {
       }
 
       renderAppList(false, undefined, { category: 'Writing' })
+
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    })
+
+    it('should keep selected category when clearing search text', async () => {
+      mockExploreData = {
+        categories: ['Writing', 'Translate'],
+        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
+      }
+
+      renderAppList(false, undefined, { category: 'Writing' })
+
+      const input = screen.getByPlaceholderText('common.operation.search')
+      fireEvent.change(input, { target: { value: 'alp' } })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()

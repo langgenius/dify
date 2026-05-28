@@ -63,3 +63,25 @@ def test_fake_client_cancel_run_returns_cancelled_status():
 
     assert cancelled.run_id == "fake-run-1"
     assert cancelled.status == "cancelled"
+
+
+def test_fake_client_paused_scenario_returns_paused_status_and_event():
+    """The paused scenario exists for HITL-style flows; both ``wait_run`` and
+    the event stream must report the pause so consumers can branch on it."""
+    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
+
+    status = client.wait_run("fake-run-1")
+    events = list(client.stream_events("fake-run-1"))
+
+    assert status.status == "paused"
+    assert status.error is None
+    assert events[-1].type == "run_paused"
+    assert events[-1].data.reason == "human_input_required"
+
+
+def test_fake_client_success_wait_run_returns_succeeded_status():
+    """Covers the default SUCCESS branch of ``wait_run`` directly."""
+    status = FakeAgentBackendRunClient().wait_run("fake-run-1")
+
+    assert status.status == "succeeded"
+    assert status.error is None

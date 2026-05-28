@@ -193,7 +193,8 @@ describe('DataSourcePage Component', () => {
     it('should render an empty view when no data is available and marketplace is disabled', () => {
       // Arrange
       vi.mocked(useGetDataSourceListAuth).mockReturnValue({
-        data: undefined,
+        data: { result: [] },
+        isLoading: false,
       } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
 
       // Act
@@ -209,6 +210,24 @@ describe('DataSourcePage Component', () => {
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
+    })
+
+    it('should show data source placeholders while the list is loading', () => {
+      // Arrange
+      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+        data: undefined,
+        isLoading: true,
+      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+
+      // Act
+      renderWithSystemFeatures(<DataSourcePage stickyToolbar />, {
+        systemFeatures: { enable_marketplace: true },
+      })
+
+      // Assert
+      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+      expect(screen.queryByText('dataSourcePage.notSetUpTitle')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
     })
   })

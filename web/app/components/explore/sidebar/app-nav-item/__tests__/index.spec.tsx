@@ -58,7 +58,7 @@ describe('AppNavItem', () => {
 
       fireEvent.click(screen.getByText('My App'))
 
-      expect(mockPush).toHaveBeenCalledWith('/explore/installed/app-123')
+      expect(mockPush).toHaveBeenCalledWith('/installed/app-123')
     })
 
     it('should call onDelete with app id when delete action is clicked', async () => {

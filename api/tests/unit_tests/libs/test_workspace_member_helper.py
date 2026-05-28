@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from werkzeug.exceptions import Forbidden
 
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, require_workspace_member
+from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, require_workspace_member
 
 
 def _ctx(verified: dict[str, bool] | None = None, *, account: bool = True) -> AuthContext:
@@ -20,7 +20,7 @@ def _ctx(verified: dict[str, bool] | None = None, *, account: bool = True) -> Au
         client_id="difyctl",
         scopes=frozenset({Scope.FULL}),
         token_id=uuid.uuid4(),
-        source="oauth_account",
+        token_type=TokenType.OAUTH_ACCOUNT if account else TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=None,
         token_hash="h1",
         verified_tenants=dict(verified or {}),

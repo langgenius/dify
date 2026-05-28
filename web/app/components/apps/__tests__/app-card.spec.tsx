@@ -1400,9 +1400,10 @@ describe('AppCard', () => {
     })
 
     it('should handle open in explore via async window', async () => {
+      let openedUrl = ''
       // Configure mockOpenAsyncWindow to actually call the callback
       mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        await callback()
+        openedUrl = await callback()
       })
 
       render(<AppCard app={mockApp} />)
@@ -1415,6 +1416,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
+        expect(openedUrl).toBe('/installed/installed-1')
       })
     })
 

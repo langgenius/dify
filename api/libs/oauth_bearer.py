@@ -43,6 +43,11 @@ class SubjectType(StrEnum):
     EXTERNAL_SSO = "external_sso"
 
 
+class TokenType(StrEnum):
+    OAUTH_ACCOUNT = "oauth_account"
+    OAUTH_EXTERNAL_SSO = "oauth_external_sso"
+
+
 class Scope(StrEnum):
     """Catalog of bearer scopes recognised by the openapi surface.
 
@@ -55,6 +60,8 @@ class Scope(StrEnum):
     APPS_READ = "apps:read"
     APPS_READ_PERMITTED_EXTERNAL = "apps:read:permitted-external"
     APPS_RUN = "apps:run"
+    WORKSPACE_READ = "workspace:read"
+    WORKSPACE_WRITE = "workspace:write"
 
 
 class Accepts(StrEnum):
@@ -77,7 +84,7 @@ _SUBJECT_TO_ACCEPT: dict[SubjectType, Accepts] = {
 class AuthContext:
     """Per-request identity published via :data:`_auth_ctx_var`
     (see :func:`set_auth_ctx` / :func:`get_auth_ctx`). ``scopes`` /
-    ``subject_type`` / ``source`` come from the TokenKind, not the DB —
+    ``subject_type`` / ``token_type`` come from the TokenKind, not the DB —
     corrupt rows can't elevate scope.
 
     `verified_tenants` is a snapshot of the Layer-0 verdict cache at
@@ -92,7 +99,7 @@ class AuthContext:
     client_id: str | None
     scopes: frozenset[Scope]
     token_id: uuid.UUID
-    source: str
+    token_type: TokenType
     expires_at: datetime | None
     token_hash: str
     verified_tenants: dict[str, bool] = field(default_factory=dict)
@@ -180,7 +187,7 @@ class TokenKind:
     prefix: str
     subject_type: SubjectType
     scopes: frozenset[Scope]
-    source: str
+    token_type: TokenType
     resolver: Resolver
 
     def matches(self, token: str) -> bool:
@@ -291,7 +298,7 @@ class BearerAuthenticator:
             client_id=row.client_id,
             scopes=kind.scopes,
             token_id=row.token_id,
-            source=kind.source,
+            token_type=kind.token_type,
             expires_at=row.expires_at,
             token_hash=token_hash,
             verified_tenants=dict(row.verified_tenants),
@@ -483,7 +490,7 @@ def check_workspace_membership(
     account_id: uuid.UUID | str,
     tenant_id: str,
     token_hash: str,
-    cached_verdicts: dict[str, bool],
+    membership_cache: dict[str, bool],
 ) -> None:
     """Layer-0 enforcement core. Raises `Forbidden` on deny, returns on allow.
 
@@ -492,7 +499,7 @@ def check_workspace_membership(
     short-circuiting on EE / SSO subjects before invoking — this function
     runs the membership + active-status checks unconditionally.
     """
-    cached = cached_verdicts.get(tenant_id)
+    cached = membership_cache.get(tenant_id)
     if cached is True:
         return
     if cached is False:
@@ -530,7 +537,7 @@ def require_workspace_member(ctx: AuthContext, tenant_id: str) -> None:
         account_id=ctx.account_id,
         tenant_id=tenant_id,
         token_hash=ctx.token_hash,
-        cached_verdicts=ctx.verified_tenants,
+        membership_cache=ctx.verified_tenants,
     )
 
 
@@ -664,14 +671,14 @@ def build_registry(session_factory, redis_client) -> TokenKindRegistry:
                 prefix=account.prefix,
                 subject_type=account.subject_type,
                 scopes=account.scopes,
-                source="oauth_account",
+                token_type=TokenType.OAUTH_ACCOUNT,
                 resolver=oauth.for_account(),
             ),
             TokenKind(
                 prefix=external.prefix,
                 subject_type=external.subject_type,
                 scopes=external.scopes,
-                source="oauth_external_sso",
+                token_type=TokenType.OAUTH_EXTERNAL_SSO,
                 resolver=oauth.for_external_sso(),
             ),
         ]

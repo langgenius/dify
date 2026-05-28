@@ -116,6 +116,7 @@ const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledApp[] = []
+let mockInstalledAppsPending = false
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'installed-1',
@@ -185,6 +186,7 @@ describe('MainNav', () => {
     localStorage.clear()
     mockPathname = '/apps'
     mockInstalledApps = []
+    mockInstalledAppsPending = false
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
     ;(useRouter as Mock).mockReturnValue({
@@ -214,7 +216,7 @@ describe('MainNav', () => {
       ],
     })
     ;(useGetInstalledApps as Mock).mockImplementation(() => ({
-      isPending: false,
+      isPending: mockInstalledAppsPending,
       data: { installed_apps: mockInstalledApps },
     }))
     ;(useUninstallApp as Mock).mockReturnValue({
@@ -430,6 +432,20 @@ describe('MainNav', () => {
     expect(homeLink.className).toContain('bg-[linear-gradient(98.077deg')
   })
 
+  it('keeps Home active on the legacy explore apps route only', () => {
+    mockPathname = '/explore/apps'
+
+    const { rerender } = renderMainNav()
+
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    expect(homeLink).toHaveAttribute('aria-current', 'page')
+
+    mockPathname = '/installed/installed-1'
+    rerender(<MainNav />)
+
+    expect(homeLink).not.toHaveAttribute('aria-current')
+  })
+
   it('dispatches the goto anything open event from the search button', () => {
     const handleOpen = vi.fn()
     window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
@@ -573,7 +589,68 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Beta Tool'))
-    expect(mockPush).toHaveBeenCalledWith('/explore/installed/installed-2')
+    expect(mockPush).toHaveBeenCalledWith('/installed/installed-2')
+  })
+
+  it('renders web app skeleton rows while installed apps are loading', () => {
+    mockInstalledAppsPending = true
+
+    renderMainNav()
+
+    expect(screen.getByTestId('web-apps-skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+  })
+
+  it('separates pinned and unpinned installed web apps', () => {
+    mockInstalledApps = [
+      createInstalledApp({ id: 'installed-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned App' } }),
+      createInstalledApp({ id: 'installed-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned App' } }),
+    ]
+
+    renderMainNav()
+
+    expect(screen.getByText('Pinned App')).toBeInTheDocument()
+    expect(screen.getByText('Unpinned App')).toBeInTheDocument()
+    expect(screen.getByTestId('divider')).toBeInTheDocument()
+  })
+
+  it('keeps long installed web app names truncated in the main nav item', () => {
+    const longName = 'A very long installed web app name that should stay on one line and truncate'
+    mockInstalledApps = [
+      createInstalledApp({ id: 'installed-1', app: { ...createInstalledApp().app, name: longName } }),
+    ]
+
+    renderMainNav()
+
+    expect(screen.getByText(longName)).toHaveClass('truncate')
+    expect(screen.getByTitle(longName)).toBeInTheDocument()
+  })
+
+  it('virtualizes large installed web app lists', async () => {
+    const offsetHeightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(320)
+    const offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(240)
+    mockInstalledApps = Array.from({ length: 100 }, (_, index) => (
+      createInstalledApp({
+        id: `installed-${index}`,
+        app: {
+          ...createInstalledApp().app,
+          id: `app-${index}`,
+          name: `Web App ${index}`,
+        },
+      })
+    ))
+
+    try {
+      renderMainNav()
+
+      expect(await screen.findByText('Web App 0')).toBeInTheDocument()
+      expect(screen.queryByText('Web App 99')).not.toBeInTheDocument()
+    }
+    finally {
+      offsetHeightSpy.mockRestore()
+      offsetWidthSpy.mockRestore()
+    }
   })
 
   it('collapses and expands installed web apps from the section arrow', () => {
