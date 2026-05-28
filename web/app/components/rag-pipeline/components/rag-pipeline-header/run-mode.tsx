@@ -1,12 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
@@ -84,7 +85,11 @@ const RunMode = ({
         )}
         {
           !isDisabled && (
-            <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
+            <KbdGroup>
+              {['Alt', 'R'].map(key => (
+                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+              ))}
+            </KbdGroup>
           )
         }
       </button>
