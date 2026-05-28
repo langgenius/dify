@@ -215,6 +215,8 @@
   "createModal.title": "创建应用实例",
   "deployDrawer.bindingOptionsFailed": "加载凭据选项失败。",
   "deployDrawer.bindingSelectionHint": "选择本次部署要使用的运行时凭据。",
+  "deployDrawer.bindingCount_one": "{{count}} 项",
+  "deployDrawer.bindingCount_other": "{{count}} 项",
   "deployDrawer.bindingsDisabled": "来自发布版本预览的解析结果，暂不支持在这里编辑。",
   "deployDrawer.cancel": "取消",
   "deployDrawer.close": "关闭部署抽屉",

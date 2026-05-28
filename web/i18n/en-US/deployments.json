@@ -215,6 +215,8 @@
   "createModal.title": "Create app instance",
   "deployDrawer.bindingOptionsFailed": "Failed to load credential options.",
   "deployDrawer.bindingSelectionHint": "Choose the credentials used by this deployment.",
+  "deployDrawer.bindingCount_one": "{{count}} binding",
+  "deployDrawer.bindingCount_other": "{{count}} bindings",
   "deployDrawer.bindingsDisabled": "Resolved from the release preview. Editing is not available yet.",
   "deployDrawer.cancel": "Cancel",
   "deployDrawer.close": "Close deployment drawer",

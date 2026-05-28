@@ -62,6 +62,7 @@ type BindingOptionsPanelProps = {
   selections: BindingSelections
   isLoading: boolean
   hasError: boolean
+  bindingCountLabel: string
   onChange: (slot: string, value: string) => void
 }
 
@@ -70,6 +71,7 @@ function BindingOptionsPanel({
   selections,
   isLoading,
   hasError,
+  bindingCountLabel,
   onChange,
 }: BindingOptionsPanelProps) {
   const { t } = useTranslation('deployments')
@@ -105,6 +107,7 @@ function BindingOptionsPanel({
       noCredentialCandidatesLabel={t('deployDrawer.noCredentialCandidates')}
       selectCredentialLabel={t('deployDrawer.selectCredential')}
       missingRequiredLabel={t('deployDrawer.missingRequiredBinding')}
+      bindingCountLabel={bindingCountLabel}
       onChange={onChange}
     />
   )
@@ -170,6 +173,7 @@ function DeployReadyForm({
   const targetRelease = displayedRelease ?? selectedRelease ?? (targetReleaseId ? { id: targetReleaseId } : undefined)
   const deploymentRows = runtimeRows.filter(hasRuntimeInstanceDeployment)
   const selectedDeploymentRow = deploymentRows.find(row => environmentId(row.environment) === selectedEnvironmentId)
+  const hasSelectedEnvironment = Boolean(selectedEnvironmentId && selectedEnvironment)
   const action = releaseDeploymentAction({
     targetRelease,
     currentRelease: selectedDeploymentRow?.currentRelease,
@@ -186,14 +190,14 @@ function DeployReadyForm({
         releaseId: targetReleaseId || '',
       },
     },
-    enabled: Boolean(appInstanceId && targetReleaseId),
+    enabled: Boolean(appInstanceId && targetReleaseId && hasSelectedEnvironment),
   }))
   const bindingSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
   const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
   const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
-  const bindingOptionsLoading = Boolean(targetReleaseId && (bindingOptions.isLoading || bindingOptions.isFetching))
-  const bindingOptionsReady = Boolean(targetReleaseId && bindingOptions.data && !bindingOptionsLoading && !bindingOptions.isError)
+  const bindingOptionsLoading = Boolean(targetReleaseId && hasSelectedEnvironment && (bindingOptions.isLoading || bindingOptions.isFetching))
+  const bindingOptionsReady = Boolean(targetReleaseId && hasSelectedEnvironment && bindingOptions.data && !bindingOptionsLoading && !bindingOptions.isError)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]))
   const isSubmitting = startDeploy.isPending
   const canDeploy = Boolean(
@@ -338,17 +342,18 @@ function DeployReadyForm({
               )}
       </Field>
 
-      {targetReleaseId && (
+      {targetReleaseId && hasSelectedEnvironment && (
         <BindingOptionsPanel
           slots={bindingSlots}
           selections={selectedBindings}
           isLoading={bindingOptionsLoading}
           hasError={bindingOptions.isError}
+          bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
           onChange={(slot, value) => setManualBindings(prev => ({ ...prev, [slot]: value }))}
         />
       )}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="secondary" onClick={closeDeployDrawer}>
           {t('deployDrawer.cancel')}
         </Button>
