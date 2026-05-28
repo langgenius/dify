@@ -9,12 +9,17 @@ from commands.data_migration import (
     _prompt_output_file,
     _prompt_tool_category,
     _resolve_mcp_tool_names,
+    migration_data_wizard,
     parse_index_selection,
 )
 
 
 def test_parse_index_selection_supports_all():
     assert parse_index_selection("all", ["a", "b", "c"]) == ["a", "b", "c"]
+
+
+def test_wizard_command_uses_app_migration_name():
+    assert migration_data_wizard.name == "app-migration-wizard"
 
 
 def test_parse_index_selection_supports_comma_indexes():

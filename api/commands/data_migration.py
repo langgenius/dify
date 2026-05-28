@@ -62,7 +62,7 @@ def _scripted_export_template() -> dict[str, Any]:
     }
 
 
-@click.command("export-migration-data-template", help="Print or write a scripted export config JSON template.")
+@click.command("app-migration-template", help="Print or write a scripted export config JSON template.")
 @click.option(
     "--output",
     "output_file",
@@ -83,7 +83,7 @@ def export_migration_data_template(output_file: str | None, overwrite: bool) -> 
     click.echo(click.style(f"Output written to {output_file}", fg="green"))
 
 
-@click.command("export-migration-data", help="Export workflow migration data to a versioned JSON package.")
+@click.command("export-app-migration", help="Export workflow migration data to a versioned JSON package.")
 @click.option(
     "--input",
     "input_file",
@@ -114,7 +114,7 @@ def export_migration_data(input_file: str | None, output_file: str | None, overw
         raise click.ClickException(str(exc)) from exc
 
 
-@click.command("import-migration-data", help="Import a versioned migration data package.")
+@click.command("import-app-migration", help="Import a versioned migration data package.")
 @click.option(
     "--input",
     "input_file",
@@ -201,7 +201,7 @@ def _print_wizard_substep(title: str) -> None:
     click.echo(f"-- {title} --")
 
 
-@click.command("migration-data-wizard", help="Interactively export workflow migration data.")
+@click.command("app-migration-wizard", help="Interactively export workflow migration data.")
 def migration_data_wizard() -> None:
     try:
         tenant = _prompt_source_tenant()

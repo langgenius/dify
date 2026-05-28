@@ -14,6 +14,7 @@ def test_export_command_requires_input_and_output():
     result = CliRunner().invoke(export_migration_data, [])
 
     assert result.exit_code != 0
+    assert export_migration_data.name == "export-app-migration"
     assert "--input" in result.output
     assert "--output" in result.output
 
@@ -22,6 +23,7 @@ def test_import_command_requires_input_and_target_tenant_or_package_metadata():
     result = CliRunner().invoke(import_migration_data, [])
 
     assert result.exit_code != 0
+    assert import_migration_data.name == "import-app-migration"
     assert "--input" in result.output
 
 
@@ -33,7 +35,7 @@ def test_export_template_command_prints_scripted_json_template():
     result = CliRunner().invoke(export_migration_data_template, [])
 
     assert result.exit_code == 0
-    assert export_migration_data_template.name == "export-migration-data-template"
+    assert export_migration_data_template.name == "app-migration-template"
     template = json.loads(result.output)
     assert template == {
         "source_tenant": {"mode": "single", "id": "", "name": "admin's Workspace"},

@@ -28,7 +28,7 @@ Run the wizard from the source environment:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask migration-data-wizard
+uv run flask app-migration-wizard
 ```
 
 The wizard asks you to select the source workspace, choose workflow/chatflow apps, discover referenced tools, set import behavior, and write the final migration package JSON.
@@ -38,7 +38,7 @@ Then copy the generated JSON package to the target environment and import it:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask import-migration-data \
+uv run flask import-app-migration \
   --input migration-data-20260528-120000.json \
   --target-tenant "production Workspace"
 ```
@@ -50,7 +50,7 @@ This wizard + import combination is the recommended migration workflow because t
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask migration-data-wizard
+uv run flask app-migration-wizard
 ```
 
 The wizard has no CLI options. Its interactive inputs are:
@@ -72,7 +72,7 @@ The wizard has no CLI options. Its interactive inputs are:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask import-migration-data --input migration-package.json --target-tenant "target Workspace"
+uv run flask import-app-migration --input migration-package.json --target-tenant "target Workspace"
 ```
 
 Options:
@@ -106,7 +106,7 @@ Generate the template:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask export-migration-data-template --output export-config.json
+uv run flask app-migration-template --output export-config.json
 ```
 
 Edit `export-config.json`, then run:
@@ -114,7 +114,7 @@ Edit `export-config.json`, then run:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask export-migration-data \
+uv run flask export-app-migration \
   --input export-config.json \
   --output migration-package.json
 ```
@@ -124,7 +124,7 @@ Import it:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask import-migration-data \
+uv run flask import-app-migration \
   --input migration-package.json \
   --target-tenant "production Workspace"
 ```
@@ -134,7 +134,7 @@ uv run flask import-migration-data \
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask export-migration-data-template [--output export-config.json] [--overwrite]
+uv run flask app-migration-template [--output export-config.json] [--overwrite]
 ```
 
 Options:
@@ -147,7 +147,7 @@ Options:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask export-migration-data --input export-config.json --output migration-package.json
+uv run flask export-app-migration --input export-config.json --output migration-package.json
 ```
 
 Options:
