@@ -425,6 +425,7 @@ describe('ProviderList', () => {
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'nonexistent' } })
       expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('empty')).not.toBeInTheDocument()
     })
 
     it('filters by search keyword matching label', () => {
@@ -550,6 +551,16 @@ describe('ProviderList', () => {
       mockCollectionData = createDefaultCollections().filter(c => c.type !== 'workflow')
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
+    })
+
+    it('does not show workflow empty state when search has no matches', () => {
+      renderProviderList({ category: 'workflow' })
+      const input = screen.getByRole('textbox')
+
+      fireEvent.change(input, { target: { value: 'nonexistent' } })
+
+      expect(screen.queryByTestId('card-wf-tool')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
     })
 
     it('shows card skeletons instead of empty state while tool providers are loading', () => {

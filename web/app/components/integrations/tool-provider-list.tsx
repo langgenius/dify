@@ -14,6 +14,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
@@ -109,17 +110,25 @@ const ProviderList = ({
     setKeywords(value)
   }
   const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
+  const activeTabCollectionList = useMemo(() => {
+    return collectionList.filter(collection => collection.type === activeTab)
+  }, [activeTab, collectionList])
   const filteredCollectionList = useMemo(() => {
-    return collectionList.filter((collection) => {
-      if (collection.type !== activeTab)
-        return false
+    return activeTabCollectionList.filter((collection) => {
       if (showLabelFilter && tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
         return false
       if (keywords)
         return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
       return true
     })
-  }, [activeTab, showLabelFilter, tagFilterValue, keywords, collectionList])
+  }, [activeTabCollectionList, showLabelFilter, tagFilterValue, keywords])
+  const isFilteringCollections = !!keywords.trim() || (showLabelFilter && tagFilterValue.length > 0)
+  const isCollectionSearchEmpty = isSearchResultEmpty({
+    hasActiveFilter: isFilteringCollections,
+    isLoading: isCollectionListLoading,
+    resultCount: filteredCollectionList.length,
+    sourceCount: activeTabCollectionList.length,
+  })
 
   const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
   const currentProvider = useMemo<Collection | undefined>(() => {
@@ -167,13 +176,18 @@ const ProviderList = ({
                   currentProviderId={currentProviderId}
                   frameClassName={toolListFrameClassName}
                   getTagLabel={getTagLabel}
+                  hasCategoryCollections={activeTabCollectionList.length > 0}
                   isLoading={isCollectionListLoading}
+                  isSearchResultEmpty={isCollectionSearchEmpty}
                   onRefreshData={refetch}
                   onSelectProvider={setCurrentProviderId}
                 />
               )}
-              {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
+              {!isCollectionListLoading && !activeTabCollectionList.length && activeTab === 'builtin' && (
                 <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
+              )}
+              {isCollectionSearchEmpty && activeTab === 'builtin' && (
+                <div className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
               )}
               {enable_marketplace && activeTab === 'builtin' && (
                 <BuiltinMarketplacePanel
