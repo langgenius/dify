@@ -106,7 +106,7 @@ Generate the template:
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask export_migration_data_template --output export-config.json
+uv run flask export-migration-data-template --output export-config.json
 ```
 
 Edit `export-config.json`, then run:
@@ -134,7 +134,7 @@ uv run flask import-migration-data \
 ```bash
 cd api
 source .venv/bin/activate
-uv run flask export_migration_data_template [--output export-config.json] [--overwrite]
+uv run flask export-migration-data-template [--output export-config.json] [--overwrite]
 ```
 
 Options:

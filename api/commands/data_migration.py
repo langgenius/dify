@@ -62,7 +62,7 @@ def _scripted_export_template() -> dict[str, Any]:
     }
 
 
-@click.command("export_migration_data_template", help="Print or write a scripted export config JSON template.")
+@click.command("export-migration-data-template", help="Print or write a scripted export config JSON template.")
 @click.option(
     "--output",
     "output_file",

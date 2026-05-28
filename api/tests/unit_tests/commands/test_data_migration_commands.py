@@ -33,6 +33,7 @@ def test_export_template_command_prints_scripted_json_template():
     result = CliRunner().invoke(export_migration_data_template, [])
 
     assert result.exit_code == 0
+    assert export_migration_data_template.name == "export-migration-data-template"
     template = json.loads(result.output)
     assert template == {
         "source_tenant": {"mode": "single", "id": "", "name": "admin's Workspace"},
