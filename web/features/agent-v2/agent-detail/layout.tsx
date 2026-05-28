@@ -211,10 +211,12 @@ export function AgentDetailLayout({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={(
-                <Button variant="primary" className="min-w-40 gap-1.5">
+                <Button variant="primary" className="grid min-w-40 grid-cols-[1rem_1fr_1rem] gap-2 py-2 pr-2 pl-3">
                   <span aria-hidden className="i-ri-upload-cloud-2-line size-4" />
-                  {t('agentDetail.publish')}
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+                  <span className="text-center">
+                    {t('agentDetail.publish')}
+                  </span>
+                  <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
                 </Button>
               )}
             />
@@ -249,9 +251,10 @@ export function AgentDetailLayout({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
+            variant="secondary"
             className={cn(
-              'px-2.5',
-              showVersionHistory && 'bg-components-button-secondary-bg-hover',
+              'size-8 px-0! text-text-tertiary hover:text-text-secondary',
+              showVersionHistory && 'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-text-secondary',
             )}
             aria-label={t('common.versionHistory', { ns: 'workflow' })}
             onClick={() => setShowVersionHistory(true)}
