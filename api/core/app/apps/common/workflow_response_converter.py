@@ -79,6 +79,14 @@ from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
+# Maps the entry surface a workflow was invoked from to the HITL surface that
+# its resume tokens must be filtered for. Surfaces not in this map fall back to
+# the general priority ordering (typically CONSOLE > BACKSTAGE).
+_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
+    InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
+    InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
+}
+
 NodeExecutionId = NewType("NodeExecutionId", str)
 logger = logging.getLogger(__name__)
 
@@ -349,11 +357,7 @@ class WorkflowResponseConverter:
                 form_token_by_form_id = load_form_tokens_by_form_id(
                     human_input_form_ids,
                     session=session,
-                    surface=(
-                        HumanInputSurface.SERVICE_API
-                        if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API
-                        else None
-                    ),
+                    surface=_INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from),
                 )
 
         # Reconnect paths must preserve the same pause-reason contract as live streams;

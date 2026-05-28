@@ -4,16 +4,18 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useDebounceFn } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -26,7 +28,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
@@ -94,10 +95,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+  useHotkey('Mod+Enter', () => {
     if (isAppsFull)
       return
     handleCreateApp()
+  }, {
+    ignoreInputs: false,
   })
   return (
     <>
@@ -220,12 +223,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 />
                 {showAppIconPicker && (
                   <AppIconPicker
+                    open={showAppIconPicker}
+                    initialEmoji={appIcon.type === 'emoji'
+                      ? { icon: appIcon.icon, background: appIcon.background }
+                      : undefined}
+                    onOpenChange={setShowAppIconPicker}
                     onSelect={(payload) => {
                       setAppIcon(payload)
-                      setShowAppIconPicker(false)
-                    }}
-                    onClose={() => {
-                      setShowAppIconPicker(false)
                     }}
                   />
                 )}
@@ -240,10 +244,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   </span>
                 </div>
                 <Textarea
+                  aria-label={t('newApp.captionDescription', { ns: 'app' })}
                   className="resize-none"
                   placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onValueChange={value => setDescription(value)}
                 />
               </div>
             </div>
@@ -263,7 +268,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
-                  <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+                  <KbdGroup>
+                    {['Mod', 'Enter'].map(key => (
+                      <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                    ))}
+                  </KbdGroup>
                 </Button>
               </div>
             </div>

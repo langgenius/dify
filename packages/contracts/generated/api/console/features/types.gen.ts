@@ -75,3 +75,17 @@ export type GetFeaturesResponses = {
 }
 
 export type GetFeaturesResponse = GetFeaturesResponses[keyof GetFeaturesResponses]
+
+export type GetFeaturesVectorSpaceData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/features/vector-space'
+}
+
+export type GetFeaturesVectorSpaceResponses = {
+  200: LimitationModel
+}
+
+export type GetFeaturesVectorSpaceResponse
+  = GetFeaturesVectorSpaceResponses[keyof GetFeaturesVectorSpaceResponses]

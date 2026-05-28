@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -80,7 +82,7 @@ class AgentRosterDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, agent_id):
+    def get(self, agent_id: UUID):
         _, tenant_id = current_account_with_tenant()
         return _agent_roster_service().get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id))
 
@@ -89,7 +91,7 @@ class AgentRosterDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def patch(self, agent_id):
+    def patch(self, agent_id: UUID):
         account, tenant_id = current_account_with_tenant()
         payload = RosterAgentUpdatePayload.model_validate(console_ns.payload or {})
         return _agent_roster_service().update_roster_agent(
@@ -100,7 +102,7 @@ class AgentRosterDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, agent_id):
+    def delete(self, agent_id: UUID):
         account, tenant_id = current_account_with_tenant()
         _agent_roster_service().archive_roster_agent(tenant_id=tenant_id, agent_id=str(agent_id), account_id=account.id)
         return "", 204
@@ -111,7 +113,7 @@ class AgentRosterVersionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, agent_id):
+    def get(self, agent_id: UUID):
         _, tenant_id = current_account_with_tenant()
         return {"data": _agent_roster_service().list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))}
 
@@ -121,7 +123,7 @@ class AgentRosterVersionDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, agent_id, version_id):
+    def get(self, agent_id: UUID, version_id: UUID):
         _, tenant_id = current_account_with_tenant()
         return _agent_roster_service().get_agent_version_detail(
             tenant_id=tenant_id,

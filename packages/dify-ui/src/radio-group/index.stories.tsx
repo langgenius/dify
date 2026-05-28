@@ -17,7 +17,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'RadioGroup primitive built on Base UI. For normal form rows, compose FieldRoot, FieldsetRoot, FieldLabel, RadioGroup, and Radio. For option cards, make the card itself a RadioRoot with variant="unstyled" and render RadioControl inside it.',
+        component: 'RadioGroup primitive built on Base UI. For normal form rows, compose FieldRoot, FieldsetRoot, FieldLabel, RadioGroup, and Radio. For option cards, wrap each option in FieldItem and make the card itself a RadioRoot with variant="unstyled".',
       },
     },
   },
@@ -130,26 +130,27 @@ function OptionCardsDemo() {
             description: 'Write a prompt for this app and keep full control.',
           },
         ].map(option => (
-          <RadioRoot
-            key={option.value}
-            value={option.value}
-            variant="unstyled"
-            nativeButton
-            render={<button type="button" />}
-            className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="system-sm-semibold text-text-primary">
-                  {option.title}
+          <FieldItem key={option.value}>
+            <RadioRoot
+              value={option.value}
+              variant="unstyled"
+              nativeButton
+              render={<button type="button" />}
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="system-sm-semibold text-text-primary">
+                    {option.title}
+                  </div>
+                  <div className="mt-1 system-xs-regular text-text-tertiary">
+                    {option.description}
+                  </div>
                 </div>
-                <div className="mt-1 system-xs-regular text-text-tertiary">
-                  {option.description}
-                </div>
+                <RadioControl aria-hidden="true" />
               </div>
-              <RadioControl aria-hidden="true" />
-            </div>
-          </RadioRoot>
+            </RadioRoot>
+          </FieldItem>
         ))}
       </FieldsetRoot>
     </FieldRoot>
@@ -161,7 +162,7 @@ export const OptionCards: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Use RadioRoot with variant="unstyled" when the entire option card is the radio. RadioControl renders the visual dot inside the card.',
+        story: 'Wrap each option card in FieldItem, then use RadioRoot with variant="unstyled" when the entire card is the radio. RadioControl renders the visual dot inside the card.',
       },
     },
   },

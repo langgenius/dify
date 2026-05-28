@@ -6,6 +6,7 @@ import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -399,7 +400,7 @@ export function ComboboxLabel({
 }: BaseCombobox.Label.Props) {
   return (
     <BaseCombobox.Label
-      className={cn('mb-1 block text-text-secondary system-sm-medium', className)}
+      className={cn(formLabelClassName, className)}
       {...props}
     />
   )
@@ -435,7 +436,7 @@ export function ComboboxEmpty({
 }: BaseCombobox.Empty.Props) {
   return (
     <BaseCombobox.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
       {...props}
     />
   )

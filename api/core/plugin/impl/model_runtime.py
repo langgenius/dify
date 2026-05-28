@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections.abc import Generator, Iterable, Sequence
-from threading import Lock
 from typing import IO, Any, Literal, cast, overload, override
 
 from pydantic import ValidationError
@@ -13,9 +12,9 @@ from configs import dify_config
 from core.llm_generator.output_parser.structured_output import (
     invoke_llm_with_structured_output as invoke_llm_with_structured_output_helper,
 )
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.model import PluginModelClient
+from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -101,35 +100,36 @@ class _PluginStructuredOutputModelInstance:
 
 
 class PluginModelRuntime(ModelRuntime):
-    """Plugin-backed runtime adapter bound to tenant context and optional caller scope."""
+    """Plugin-backed runtime adapter bound to tenant context and optional caller scope.
+
+    Provider discovery goes through ``PluginService`` so the plugin lifecycle
+    methods and provider reads share one tenant-scoped cache owner.
+    """
 
     tenant_id: str
     user_id: str | None
     client: PluginModelClient
-    _provider_entities: tuple[ProviderEntity, ...] | None
-    _provider_entities_lock: Lock
+    _plugin_service: type[PluginService]
 
-    def __init__(self, tenant_id: str, user_id: str | None, client: PluginModelClient) -> None:
+    def __init__(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        client: PluginModelClient,
+        plugin_service: type[PluginService],
+    ) -> None:
         if client is None:
             raise ValueError("client is required.")
+        if plugin_service is None:
+            raise ValueError("plugin_service is required.")
         self.tenant_id = tenant_id
         self.user_id = user_id
         self.client = client
-        self._provider_entities = None
-        self._provider_entities_lock = Lock()
+        self._plugin_service = plugin_service
 
     @override
     def fetch_model_providers(self) -> Sequence[ProviderEntity]:
-        if self._provider_entities is not None:
-            return self._provider_entities
-
-        with self._provider_entities_lock:
-            if self._provider_entities is None:
-                self._provider_entities = tuple(
-                    self._to_provider_entity(provider) for provider in self.client.fetch_model_providers(self.tenant_id)
-                )
-
-        return self._provider_entities
+        return self._plugin_service.fetch_plugin_model_providers(tenant_id=self.tenant_id, client=self.client)
 
     @override
     def get_provider_icon(self, *, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
@@ -627,34 +627,6 @@ class PluginModelRuntime(ModelRuntime):
             credentials=credentials,
             text=text,
         )
-
-    def _get_provider_short_name_alias(self, provider: PluginModelProviderEntity) -> str:
-        """
-        Expose a bare provider alias only for the canonical provider mapping.
-
-        Multiple plugins can publish the same short provider slug. If every
-        provider entity keeps that slug in ``provider_name``, callers that still
-        resolve by short name become order-dependent. Restrict the alias to the
-        provider selected by ``ModelProviderID`` so legacy short-name lookups
-        remain deterministic while the runtime surface stays canonical.
-        """
-        try:
-            canonical_provider_id = ModelProviderID(provider.provider)
-        except ValueError:
-            return ""
-
-        if canonical_provider_id.plugin_id != provider.plugin_id:
-            return ""
-        if canonical_provider_id.provider_name != provider.provider:
-            return ""
-
-        return provider.provider
-
-    def _to_provider_entity(self, provider: PluginModelProviderEntity) -> ProviderEntity:
-        declaration = provider.declaration.model_copy(deep=True)
-        declaration.provider = f"{provider.plugin_id}/{provider.provider}"
-        declaration.provider_name = self._get_provider_short_name_alias(provider)
-        return declaration
 
     def _get_provider_schema(self, provider: str) -> ProviderEntity:
         providers = self.fetch_model_providers()

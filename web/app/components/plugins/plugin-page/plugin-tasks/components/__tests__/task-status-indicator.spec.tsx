@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import TaskStatusIndicator from '../task-status-indicator'
 
-vi.mock('@/app/components/base/progress-bar/progress-circle', () => ({
-  default: ({ percentage }: { percentage: number }) => (
-    <div data-testid="progress-circle" data-percentage={percentage} />
+vi.mock('@langgenius/dify-ui/progress', () => ({
+  ProgressCircle: ({ value }: { value: number }) => (
+    <div data-testid="progress-circle" data-value={value} />
   ),
 }))
 
@@ -68,7 +68,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const progress = screen.getByTestId('progress-circle')
-      expect(progress).toHaveAttribute('data-percentage', '40')
+      expect(progress).toHaveAttribute('data-value', '40')
     })
 
     it('should show progress circle when isInstallingWithSuccess', () => {
@@ -81,7 +81,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const progress = screen.getByTestId('progress-circle')
-      expect(progress).toHaveAttribute('data-percentage', '75')
+      expect(progress).toHaveAttribute('data-value', '75')
     })
 
     it('should show error progress circle when isInstallingWithError', () => {
@@ -106,7 +106,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const progress = screen.getByTestId('progress-circle')
-      expect(progress).toHaveAttribute('data-percentage', '0')
+      expect(progress).toHaveAttribute('data-value', '0')
     })
   })
 

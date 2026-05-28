@@ -110,7 +110,6 @@ export const NodeTargetHandle = memo(({
               open={open}
               onOpenChange={handleOpenChange}
               onSelect={handleSelect}
-              asChild
               placement="left"
               triggerClassName={open => `
                 absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
@@ -229,7 +228,6 @@ export const NodeSourceHandle = memo(({
             open={open}
             onOpenChange={handleOpenChange}
             onSelect={handleSelect}
-            asChild
             triggerClassName={open => `
               absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}

@@ -104,12 +104,9 @@ function Chip<T extends ItemValue>({
             <SelectItem
               key={item.value}
               value={item.value}
-              className="mx-1 gap-2 rounded-lg px-2 py-[6px] pl-3 select-none"
             >
-              <SelectItemText className="mr-0 px-0">
-                <span title={item.name} className="block truncate system-sm-medium text-text-secondary">{item.name}</span>
-              </SelectItemText>
-              <SelectItemIndicator className="text-util-colors-blue-light-blue-light-600" />
+              <SelectItemText title={item.name}>{item.name}</SelectItemText>
+              <SelectItemIndicator />
             </SelectItem>
           ))}
         </SelectContent>

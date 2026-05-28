@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import type { SegmentListContextValue } from './segment-list-context'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Pagination from '@/app/components/base/pagination'
 import {
   useChunkListAllKey,
   useChunkListDisabledKey,
@@ -142,10 +142,11 @@ const Completed: FC<ICompletedProps> = ({
       return childSegmentDataHook.childChunkListData?.total || 0
     return segmentListDataHook.segmentListData?.total || 0
   }, [segmentListDataHook.isFullDocMode, childSegmentDataHook.childChunkListData, segmentListDataHook.segmentListData])
+  const totalPages = Math.max(Math.ceil(paginationTotal / limit), 1)
 
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page + 1)
+    setCurrentPage(page)
   }, [])
 
   // Context value
@@ -225,12 +226,22 @@ const Completed: FC<ICompletedProps> = ({
       {/* Pagination */}
       <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
       <Pagination
-        current={currentPage - 1}
-        onChange={handlePageChange}
-        total={paginationTotal}
-        limit={limit}
-        onLimitChange={setLimit}
-        className={segmentListDataHook.isFullDocMode ? 'px-3' : ''}
+        page={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        labels={{
+          previous: t('pagination.previous', { ns: 'common' }),
+          next: t('pagination.next', { ns: 'common' }),
+          editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+          pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+        }}
+        pageSize={{
+          value: limit,
+          options: [10, 25, 50],
+          onValueChange: setLimit,
+          label: t('pagination.perPage', { ns: 'common' }),
+          ariaLabel: t('pagination.perPage', { ns: 'common' }),
+        }}
       />
 
       {/* Drawer Group - only render when docForm is available */}

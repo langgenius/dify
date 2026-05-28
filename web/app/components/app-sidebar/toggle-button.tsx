@@ -1,16 +1,17 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ShortcutsName from '../workflow/shortcuts-name'
 
 type ToggleTooltipContentProps = {
   expand: boolean
 }
 
-const TOGGLE_SHORTCUT = ['ctrl', 'B']
+const TOGGLE_SHORTCUT = ['Mod', 'B']
 
 const ToggleTooltipContent = ({
   expand,
@@ -20,7 +21,11 @@ const ToggleTooltipContent = ({
   return (
     <div className="flex items-center gap-x-1">
       <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
-      <ShortcutsName keys={TOGGLE_SHORTCUT} textColor="secondary" />
+      <KbdGroup>
+        {TOGGLE_SHORTCUT.map(key => (
+          <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+        ))}
+      </KbdGroup>
     </div>
   )
 }

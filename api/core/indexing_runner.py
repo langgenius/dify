@@ -42,7 +42,6 @@ from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetPro
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
-from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -282,8 +281,7 @@ class IndexingRunner:
         Estimate the indexing for the document.
         """
         # check document limit
-        features = FeatureService.get_features(tenant_id)
-        if features.billing.enabled:
+        if dify_config.BILLING_ENABLED:
             count = len(extract_settings)
             batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
             if count > batch_upload_limit:

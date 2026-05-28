@@ -4,7 +4,7 @@ import type { Input as BaseInputNS } from '@base-ui/react/input'
 import type { VariantProps } from 'class-variance-authority'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cn } from '../cn'
-import { textControlVariants } from '../text-control-variants'
+import { textControlVariants } from '../form-control-shared'
 
 export type InputSize = NonNullable<VariantProps<typeof textControlVariants>['size']>
 

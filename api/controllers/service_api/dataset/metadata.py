@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask_login import current_user
 from werkzeug.exceptions import NotFound
@@ -57,7 +58,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         201, "Metadata created successfully", service_api_ns.models[DatasetMetadataResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    def post(self, tenant_id, dataset_id: UUID):
         """Create metadata for a dataset."""
         metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
@@ -83,7 +84,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @service_api_ns.response(
         200, "Metadata retrieved successfully", service_api_ns.models[DatasetMetadataListResponse.__name__]
     )
-    def get(self, tenant_id, dataset_id):
+    def get(self, tenant_id, dataset_id: UUID):
         """Get all metadata for a dataset."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -110,7 +111,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         200, "Metadata updated successfully", service_api_ns.models[DatasetMetadataResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, tenant_id, dataset_id, metadata_id):
+    def patch(self, tenant_id, dataset_id: UUID, metadata_id: UUID):
         """Update metadata name."""
         payload = MetadataUpdatePayload.model_validate(service_api_ns.payload or {})
 
@@ -136,7 +137,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     )
     @service_api_ns.response(204, "Metadata deleted successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id, metadata_id):
+    def delete(self, tenant_id, dataset_id: UUID, metadata_id: UUID):
         """Delete metadata."""
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -164,7 +165,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
         "Built-in fields retrieved successfully",
         service_api_ns.models[DatasetMetadataBuiltInFieldsResponse.__name__],
     )
-    def get(self, tenant_id, dataset_id):
+    def get(self, tenant_id, dataset_id: UUID):
         """Get all built-in metadata fields."""
         built_in_fields = MetadataService.get_built_in_fields()
         return dump_response(DatasetMetadataBuiltInFieldsResponse, {"fields": built_in_fields}), 200
@@ -186,7 +187,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         200, "Action completed successfully", service_api_ns.models[DatasetMetadataActionResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, action: Literal["enable", "disable"]):
+    def post(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -221,7 +222,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         service_api_ns.models[DatasetMetadataActionResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    def post(self, tenant_id, dataset_id: UUID):
         """Update metadata for multiple documents."""
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
