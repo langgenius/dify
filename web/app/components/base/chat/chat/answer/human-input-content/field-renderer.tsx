@@ -8,9 +8,9 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import Textarea from '@/app/components/base/textarea'
 import {
   isFileFormInput,
   isFileListFormInput,
@@ -34,9 +34,10 @@ const HumanInputFieldRenderer = ({
   if (isParagraphFormInput(field)) {
     return (
       <Textarea
+        aria-label={field.output_variable_name}
         className="h-[104px] sm:text-xs"
         value={typeof value === 'string' ? value : ''}
-        onChange={e => onChange(e.target.value)}
+        onValueChange={nextValue => onChange(nextValue)}
         data-testid="content-item-textarea"
       />
     )

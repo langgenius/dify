@@ -5,15 +5,31 @@ import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/
 import { TransferMethod } from '@/types/app'
 import HumanInputFieldRenderer from '../field-renderer'
 
-vi.mock('@/app/components/base/textarea', () => ({
-  __esModule: true,
-  default: ({ value, onChange }: { value: string, onChange: (event: { target: { value: string } }) => void }) => (
+function MockTextarea({
+  value,
+  onChange,
+  onValueChange,
+  ...props
+}: {
+  value: string
+  onChange?: (event: { target: { value: string } }) => void
+  onValueChange?: (value: string) => void
+} & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
     <textarea
       data-testid="content-item-textarea"
       value={value}
-      onChange={event => onChange({ target: { value: event.target.value } })}
+      onChange={(event) => {
+        onChange?.({ target: { value: event.target.value } })
+        onValueChange?.(event.target.value)
+      }}
+      {...props}
     />
-  ),
+  )
+}
+
+vi.mock('@langgenius/dify-ui/textarea', () => ({
+  Textarea: MockTextarea,
 }))
 
 vi.mock('@langgenius/dify-ui/select', () => ({
@@ -77,6 +93,22 @@ describe('HumanInputFieldRenderer', () => {
     })
 
     expect(onChange).toHaveBeenLastCalledWith('hello world')
+  })
+
+  it('renders paragraph input with an accessible name', () => {
+    render(
+      <HumanInputFieldRenderer
+        field={{
+          type: InputVarType.paragraph,
+          output_variable_name: 'summary',
+          default: { type: 'constant', selector: [], value: '' },
+        }}
+        value="hello"
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText('summary')).toHaveValue('hello')
   })
 
   it('renders paragraph input with an empty value when the current value is not a string', () => {

@@ -12,8 +12,19 @@ vi.mock('@/app/components/base/markdown', () => ({
 
 vi.mock('../field-renderer', () => ({
   __esModule: true,
-  default: ({ field, onChange }: { field: FormInputItem, onChange: (value: unknown) => void }) => (
-    <button type="button" data-testid={`renderer-${field.type}`} onClick={() => onChange(field.type === 'paragraph' ? 'updated value' : field.type)}>
+  default: ({
+    field,
+    onChange,
+  }: {
+    field: FormInputItem
+    onChange: (value: unknown) => void
+  }) => (
+    <button
+      type="button"
+      data-testid={`renderer-${field.type}`}
+      aria-label={field.output_variable_name}
+      onClick={() => onChange(field.type === 'paragraph' ? 'updated value' : field.type)}
+    >
       {field.type}
     </button>
   ),
@@ -62,6 +73,7 @@ describe('ContentItem', () => {
 
     const textarea = screen.getByTestId('renderer-paragraph')
     expect(textarea).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'user_bio' })).toBeInTheDocument()
     expect(screen.queryByTestId('mock-markdown')).not.toBeInTheDocument()
   })
 
