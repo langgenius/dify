@@ -35,6 +35,54 @@ WizardToolMap = dict[str, dict[str, str | None]]
 WizardToolSelection = dict[str, list[str]]
 
 
+def _scripted_export_template() -> dict[str, Any]:
+    return {
+        "source_tenant": {
+            "mode": "single",
+            "id": "",
+            "name": "admin's Workspace",
+        },
+        "apps": {
+            "modes": ["workflow", "advanced-chat"],
+            "ids": [],
+            "all": True,
+        },
+        "include_referenced_tools": True,
+        "additional_tools": {
+            "api_tools": [],
+            "workflow_tools": [],
+            "mcp_tools": [],
+        },
+        "include_secrets": False,
+        "import_options": {
+            "create_app_api_token_on_import": False,
+            "id_strategy": "preserve-id",
+            "conflict_strategy": "fail",
+        },
+    }
+
+
+@click.command("export_migration_data_template", help="Print or write a scripted export config JSON template.")
+@click.option(
+    "--output",
+    "output_file",
+    required=False,
+    type=click.Path(dir_okay=False),
+    help="Path to write the export config JSON template. Prints to stdout when omitted.",
+)
+@click.option("--overwrite", is_flag=True, default=False, help="Overwrite output if it already exists.")
+def export_migration_data_template(output_file: str | None, overwrite: bool) -> None:
+    template_json = json.dumps(_scripted_export_template(), indent=2, ensure_ascii=False) + "\n"
+    if output_file is None:
+        click.echo(template_json, nl=False)
+        return
+    path = Path(output_file)
+    if path.exists() and not overwrite:
+        raise click.ClickException(f"Output file already exists: {output_file}")
+    path.write_text(template_json)
+    click.echo(click.style(f"Output written to {output_file}", fg="green"))
+
+
 @click.command("export-migration-data", help="Export workflow migration data to a versioned JSON package.")
 @click.option(
     "--input",

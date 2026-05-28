@@ -16,6 +16,7 @@ def init_app(app: DifyApp):
         delete_archived_workflow_runs,
         export_app_messages,
         export_migration_data,
+        export_migration_data_template,
         extract_plugins,
         extract_unique_plugins,
         file_usage,
@@ -74,6 +75,7 @@ def init_app(app: DifyApp):
         clean_expired_messages,
         export_app_messages,
         export_migration_data,
+        export_migration_data_template,
         import_migration_data,
         migration_data_wizard,
     ]
