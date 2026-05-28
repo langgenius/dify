@@ -36,6 +36,13 @@ class _FakeRedis:
         self._values.pop(key, None)
 
 
+@pytest.fixture(autouse=True)
+def clear_plugin_model_provider_memory_cache() -> None:
+    PluginService._plugin_model_providers_memory_cache.clear()
+    yield
+    PluginService._plugin_model_providers_memory_cache.clear()
+
+
 def _build_model_schema() -> AIModelEntity:
     return AIModelEntity(
         model="gpt-4o-mini",

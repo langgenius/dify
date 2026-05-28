@@ -114,9 +114,13 @@ class ProviderConfiguration(BaseModel):
         self._cached_provider_schema = self.provider
 
     def _get_provider_schema(self) -> ProviderEntity:
-        """Reuse the provider schema captured during configuration assembly."""
+        """Resolve the provider schema lazily while preserving bound-runtime reuse."""
         if self._cached_provider_schema is None:
-            self._cached_provider_schema = self.provider
+            if self.provider.models:
+                self._cached_provider_schema = self.provider
+            else:
+                model_provider_factory = self.get_model_provider_factory()
+                self._cached_provider_schema = model_provider_factory.get_provider_schema(provider=self.provider.provider)
 
         return self._cached_provider_schema
 
@@ -1636,7 +1640,7 @@ class ProviderConfiguration(BaseModel):
 
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
-            for configurate_method in provider_schema.configurate_methods:
+            for configurate_method in self.provider.configurate_methods:
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
         should_use_custom_model = False
@@ -1709,11 +1713,11 @@ class ProviderConfiguration(BaseModel):
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
-            for model in provider_models:
-                if model.model_type == ModelType.LLM and model.model not in restrict_model_names:
-                    model.status = ModelStatus.NO_PERMISSION
+            for provider_model in provider_models:
+                if provider_model.model_type == ModelType.LLM and provider_model.model not in restrict_model_names:
+                    provider_model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
-                    model.status = ModelStatus.QUOTA_EXCEEDED
+                    provider_model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models
 
@@ -1744,8 +1748,6 @@ class ProviderConfiguration(BaseModel):
 
             for m in provider_schema.models:
                 if m.model_type != model_type:
-                    continue
-                if model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE

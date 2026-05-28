@@ -373,7 +373,7 @@ def test_fetch_model_config_reuses_validated_provider_model_from_dify_credential
 
     model_instance = mock.MagicMock(
         model_type_instance=model_config.provider_model_bundle.model_type_instance,
-        provider_model_bundle=mock.MagicMock(configuration=mock_provider_configuration),
+        provider_model_bundle=model_config.provider_model_bundle,
     )
     mock_model_factory.init_model_instance.return_value = model_instance
 

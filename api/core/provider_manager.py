@@ -279,7 +279,6 @@ class ProviderManager:
 
             # Convert to model settings
             model_settings = self._to_model_settings(
-                tenant_id=tenant_id,
                 provider_entity=provider_entity,
                 provider_model_settings=provider_model_settings,
                 load_balancing_model_configs=provider_load_balancing_configs,
@@ -1132,7 +1131,6 @@ class ProviderManager:
 
     def _to_model_settings(
         self,
-        tenant_id: str,
         provider_entity: ProviderEntity,
         provider_model_settings: list[ProviderModelSetting] | None = None,
         load_balancing_model_configs: list[LoadBalancingModelConfig] | None = None,
