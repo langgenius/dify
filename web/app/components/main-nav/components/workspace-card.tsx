@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import LicenseNav from '@/app/components/header/license-env'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
@@ -42,7 +42,6 @@ function WorkspaceCardSkeleton({
   return (
     <div
       aria-hidden="true"
-      data-testid="workspace-card-skeleton"
       className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs"
     >
       <div className="flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5">

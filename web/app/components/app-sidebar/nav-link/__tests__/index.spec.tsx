@@ -39,13 +39,17 @@ describe('NavLink Animation and Layout Issues', () => {
     Object.defineProperty(window, 'getComputedStyle', {
       value: vi.fn((element) => {
         const isExpanded = element.getAttribute('data-mode') === 'expand'
-        return {
+        const style = {
           transition: 'all 0.3s ease',
           opacity: isExpanded ? '1' : '0',
           width: isExpanded ? 'auto' : '0px',
           overflow: 'hidden',
           paddingLeft: isExpanded ? '12px' : '10px', // px-3 vs px-2.5
           paddingRight: isExpanded ? '12px' : '10px',
+        }
+        return {
+          ...style,
+          getPropertyValue: (property: keyof typeof style) => style[property] ?? '',
         }
       }),
       writable: true,
@@ -216,7 +220,7 @@ describe('NavLink Animation and Layout Issues', () => {
         />,
       )
 
-      const linkElement = screen.getByTestId('nav-link')
+      const linkElement = screen.getByRole('link', { name: 'Orchestrate' })
       expect(linkElement).toHaveClass('bg-components-menu-item-bg-active')
     })
   })
@@ -229,7 +233,7 @@ describe('NavLink Animation and Layout Issues', () => {
 
       expect(textElement).toHaveClass('overflow-hidden')
       expect(textElement).toHaveClass('whitespace-nowrap')
-      expect(textElement).toHaveClass('transition-all')
+      expect(textElement).toHaveClass('transition-[margin-left,max-width,opacity]')
       expect(textElement).toHaveClass('duration-200')
       expect(textElement).toHaveClass('ease-in-out')
       expect(textElement).toHaveClass('ml-0')
@@ -244,7 +248,7 @@ describe('NavLink Animation and Layout Issues', () => {
 
       expect(textElement).toHaveClass('overflow-hidden')
       expect(textElement).toHaveClass('whitespace-nowrap')
-      expect(textElement).toHaveClass('transition-all')
+      expect(textElement).toHaveClass('transition-[margin-left,max-width,opacity]')
       expect(textElement).toHaveClass('duration-200')
       expect(textElement).toHaveClass('ease-in-out')
       expect(textElement).toHaveClass('ml-2')

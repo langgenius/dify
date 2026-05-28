@@ -12,7 +12,6 @@ export type WorkflowShortcutId
     | 'workflow.hand-mode'
     | 'workflow.comment-mode'
     | 'workflow.organize'
-    | 'workflow.toggle-maximize'
     | 'workflow.zoom-to-fit'
     | 'workflow.zoom-to-100'
     | 'workflow.zoom-to-50'
@@ -106,12 +105,6 @@ export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefi
     hotkeys: ['Mod+O'],
     name: 'Organize blocks',
     description: 'Automatically organize workflow blocks',
-  },
-  'workflow.toggle-maximize': {
-    id: 'workflow.toggle-maximize',
-    hotkeys: ['F'],
-    name: 'Toggle maximize',
-    description: 'Maximize or minimize the workflow canvas',
   },
   'workflow.zoom-to-fit': {
     id: 'workflow.zoom-to-fit',

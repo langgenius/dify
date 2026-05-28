@@ -1,7 +1,7 @@
 'use client'
 
 import type { MovedAccountSettingTab } from './destinations'
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
 import { useCallback } from 'react'
 import { useModalContext } from '@/context/modal-context'
 import { integrationSectionByMovedAccountSettingTab } from './destinations'

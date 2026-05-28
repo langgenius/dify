@@ -128,7 +128,7 @@ const PluginsPanel = ({
     <>
       <div className={cn(
         isIntegrationCategoryPage
-          ? 'sticky top-0 z-10 flex h-12 shrink-0 items-center bg-components-panel-bg py-2'
+          ? 'flex h-12 shrink-0 items-center bg-components-panel-bg py-2'
           : 'sticky top-0 z-10 flex flex-col items-start justify-center gap-3 self-stretch bg-components-panel-bg pt-1 pb-3',
         contentFrameClassName,
       )}

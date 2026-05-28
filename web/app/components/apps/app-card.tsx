@@ -80,12 +80,12 @@ const ACCESS_MODE_ICON_CLASS_NAMES: Record<AccessMode, string> = {
   [AccessMode.EXTERNAL_MEMBERS]: 'i-ri-verified-badge-line',
 }
 
-const ACCESS_MODE_LABEL_KEYS: Record<AccessMode, string> = {
+const ACCESS_MODE_LABEL_KEYS = {
   [AccessMode.PUBLIC]: 'accessItemsDescription.anyone',
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'accessItemsDescription.specific',
   [AccessMode.ORGANIZATION]: 'accessItemsDescription.organization',
   [AccessMode.EXTERNAL_MEMBERS]: 'accessItemsDescription.external',
-}
+} as const
 
 type AppCardProps = {
   app: App

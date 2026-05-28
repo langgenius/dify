@@ -1,6 +1,6 @@
 import type { AccountSettingTab } from './constants'
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { ACCOUNT_SETTING_TAB } from './constants'
 
 export const integrationSectionByMovedAccountSettingTab = {
@@ -16,7 +16,6 @@ export const movedAccountSettingDestinations = {
 } as const satisfies Partial<Record<AccountSettingTab, string>>
 
 export type MovedAccountSettingTab = keyof typeof movedAccountSettingDestinations
-export type NonMovedAccountSettingTab = Exclude<AccountSettingTab, MovedAccountSettingTab>
 
 export const enableMovedAccountSettingDestinations = true
 

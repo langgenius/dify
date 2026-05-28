@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Використовуйте світлий вигляд",
   "gotoAnything.actions.themeSystem": "Системна тема",
   "gotoAnything.actions.themeSystemDesc": "Дотримуйтесь зовнішнього вигляду вашої операційної системи",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "Очистіть @ для пошуку всіх",
   "gotoAnything.commandHint": "Введіть @ для навігації за категоріями",
   "gotoAnything.emptyState.noAppsFound": "Не знайдено додатків",

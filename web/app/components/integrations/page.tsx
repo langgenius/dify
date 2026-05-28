@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
@@ -11,25 +11,25 @@ import {
   buildIntegrationPath,
   buildMarketplacePathByIntegrationSection,
   toolCategoryBySection,
-} from '@/app/components/tools/integration-routes'
+} from '@/app/components/integrations/routes'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from './content-inset'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
 import { useIntegrationSection } from './hooks/use-integration-section'
-import { IntegrationPageHeader } from './integration-page-header'
-import IntegrationSectionRenderer from './integration-section-renderer'
-import { IntegrationSidebarActions } from './integration-sidebar-actions'
-import { IntegrationSidebarMarketplaceCard } from './integration-sidebar-marketplace-card'
+import { IntegrationPageHeader } from './page-header'
+import IntegrationSectionRenderer from './section-renderer'
+import { IntegrationSidebarActions } from './sidebar-actions'
+import { IntegrationSidebarMarketplaceCard } from './sidebar-marketplace-card'
 import {
   IntegrationSidebarNavItem,
-} from './integration-sidebar-nav-item'
+} from './sidebar-nav-item'
 import {
   integrationSidebarActiveNavItemClassName,
   integrationSidebarInactiveNavItemClassName,
   integrationSidebarNavItemClassName,
-} from './integration-sidebar-nav-item-styles'
+} from './sidebar-nav-item-styles'
 
 const buildSectionHref = (section: IntegrationSection) => {
   return buildIntegrationPath(section)
@@ -68,7 +68,7 @@ export default function IntegrationsPage({
     toolItems,
   } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
-  const useFillLayout = isToolSection || isPluginCategory
+  const useFillLayout = section === 'provider' || section === 'data-source' || isToolSection || isPluginCategory
   const headerFrameClassName = cn(
     toolsContentInsetClassNames.compact,
     toolsUnifiedContentFrameClassName,
@@ -210,6 +210,7 @@ export default function IntegrationsPage({
                 <IntegrationSectionRenderer
                   key={section}
                   section={section}
+                  scrollAreaLabel={scrollAreaLabel}
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
@@ -225,7 +226,7 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'z-10 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer

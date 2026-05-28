@@ -2,7 +2,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'

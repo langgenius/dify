@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Verwenden Sie das helle Erscheinungsbild",
   "gotoAnything.actions.themeSystem": "Systemthema",
   "gotoAnything.actions.themeSystemDesc": "Folgen Sie dem Aussehen Ihres Betriebssystems",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "Löschen Sie @, um alle zu durchsuchen",
   "gotoAnything.commandHint": "Geben Sie @ ein, um nach Kategorie zu suchen",
   "gotoAnything.emptyState.noAppsFound": "Keine Apps gefunden",

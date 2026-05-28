@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Uporabite svetlo prikazovanje",
   "gotoAnything.actions.themeSystem": "Sistem tema",
   "gotoAnything.actions.themeSystemDesc": "Sledite videzu svojega operacijskega sistema",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "Počisti @ za iskanje vseh",
   "gotoAnything.commandHint": "Vnesite @ za brskanje po kategoriji",
   "gotoAnything.emptyState.noAppsFound": "Ni bilo najdenih aplikacij",

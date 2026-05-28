@@ -1,6 +1,6 @@
-import type { ToolCategory } from '@/app/components/tools/integration-routes'
+import type { ToolCategory } from '@/app/components/integrations/routes'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
+import { TOOL_CATEGORY_VALUES } from '@/app/components/integrations/routes'
 
 const toolProviderCategorySet = new Set<string>(TOOL_CATEGORY_VALUES)
 

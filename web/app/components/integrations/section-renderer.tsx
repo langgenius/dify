@@ -1,14 +1,15 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { IntegrationSection } from './integration-routes'
+import type { IntegrationSection } from './routes'
 import { ApiBasedExtensionPage } from '@/app/components/header/account-setting/api-based-extension-page'
 import DataSourcePage from '@/app/components/header/account-setting/data-source-page-new'
 import ModelProviderPage from '@/app/components/header/account-setting/model-provider-page'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { toolsContentFrameClassNames, toolsContentInsetClassNames } from './content-inset'
+import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '@/app/components/tools/content-inset'
 import PluginCategoryPage from './plugin-category-page'
-import ToolProviderList from './provider-list'
+import { IntegrationSectionLayout } from './section-layout'
+import ToolProviderList from './tool-provider-list'
 
 type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
@@ -16,6 +17,7 @@ type IntegrationSectionRendererProps = {
   onSwitchToMarketplace?: () => void
   pluginCategoryToolbarAction?: ReactNode
   providerSearchText: string
+  scrollAreaLabel?: string
   section: IntegrationSection
 }
 
@@ -25,20 +27,32 @@ const IntegrationSectionRenderer = ({
   onSwitchToMarketplace,
   pluginCategoryToolbarAction,
   providerSearchText,
+  scrollAreaLabel,
   section,
 }: IntegrationSectionRendererProps) => {
+  const compactFrameClassName = `${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact}`
+  const renderCompactLayout = ({ body, toolbar }: { body: ReactNode, toolbar: ReactNode }) => (
+    <IntegrationSectionLayout
+      label={scrollAreaLabel}
+      toolbar={toolbar}
+      toolbarClassName={`${compactFrameClassName} pt-2`}
+      bodyClassName={compactFrameClassName}
+    >
+      {body}
+    </IntegrationSectionLayout>
+  )
+
   switch (section) {
     case 'provider':
       return (
-        <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
-          <ModelProviderPage
-            fixedWarningAlignment="content-frame"
-            hideSystemModelSelectorProviderSettingsFooter
-            searchText={providerSearchText}
-            stickyToolbar
-            onSearchTextChange={onProviderSearchTextChange}
-          />
-        </div>
+        <ModelProviderPage
+          fixedWarningAlignment="content-frame"
+          hideSystemModelSelectorProviderSettingsFooter
+          layout={renderCompactLayout}
+          searchText={providerSearchText}
+          stickyToolbar
+          onSearchTextChange={onProviderSearchTextChange}
+        />
       )
     case 'builtin':
       return <ToolProviderList category="builtin" contentInset="compact" />
@@ -50,9 +64,7 @@ const IntegrationSectionRenderer = ({
       return <ToolProviderList category="workflow" contentInset="compact" />
     case 'data-source':
       return (
-        <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-2`}>
-          <DataSourcePage stickyToolbar />
-        </div>
+        <DataSourcePage stickyToolbar layout={renderCompactLayout} />
       )
     case 'api-based-extension':
       return (

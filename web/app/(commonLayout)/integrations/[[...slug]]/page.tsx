@@ -1,5 +1,5 @@
-import { getIntegrationRouteTargetBySlug } from '@/app/components/tools/integration-routes'
-import IntegrationsPage from '@/app/components/tools/integrations-page'
+import IntegrationsPage from '@/app/components/integrations/page'
+import { getIntegrationRouteTargetBySlug } from '@/app/components/integrations/routes'
 import { notFound, redirect } from '@/next/navigation'
 
 type IntegrationsRoutePageProps = {

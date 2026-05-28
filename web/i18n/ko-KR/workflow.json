@@ -1126,8 +1126,6 @@
   "panel.goTo": "로 이동",
   "panel.goToFix": "수정하러 가기",
   "panel.helpLink": "도움말 센터",
-  "panel.maximize": "캔버스 전체 화면",
-  "panel.minimize": "전체 화면 종료",
   "panel.nextStep": "다음 단계",
   "panel.openWorkflow": "워크플로 열기",
   "panel.optional": "(선택사항)",

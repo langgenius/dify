@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Folosește aspectul luminos",
   "gotoAnything.actions.themeSystem": "Tema sistemului",
   "gotoAnything.actions.themeSystemDesc": "Urmăriți aspectul sistemului de operare",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "Ștergeți @ pentru a căuta toate",
   "gotoAnything.commandHint": "Tastați @ pentru a naviga după categorie",
   "gotoAnything.emptyState.noAppsFound": "Nu s-au găsit aplicații",

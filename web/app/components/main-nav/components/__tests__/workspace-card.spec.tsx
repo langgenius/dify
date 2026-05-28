@@ -181,8 +181,8 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard()
 
-    expect(screen.getByTestId('workspace-card-skeleton')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Evan Workspace')).not.toBeInTheDocument()
   })
 
   it('shows the license status instead of a billing plan when billing is disabled', () => {

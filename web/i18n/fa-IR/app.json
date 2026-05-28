@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "از ظاهر روشن استفاده کنید",
   "gotoAnything.actions.themeSystem": "تم سیستم",
   "gotoAnything.actions.themeSystemDesc": "به ظاهر سیستم‌عامل خود پایبند باشید",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "پاک کردن @ برای جستجوی همه",
   "gotoAnything.commandHint": "@ را برای مرور بر اساس دسته بندی تایپ کنید",
   "gotoAnything.emptyState.noAppsFound": "هیچ برنامه ای یافت نشد",

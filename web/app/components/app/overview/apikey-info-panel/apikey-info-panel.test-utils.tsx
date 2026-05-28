@@ -38,6 +38,7 @@ const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunct
 const defaultProviderContext = {
   modelProviders: [],
   refreshModelProviders: noop,
+  isLoadingModelProviders: false,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: false,
@@ -231,4 +232,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { defaultModalContext, mockRouterPush, mockUseModalContext, mockUseModalContextSelector }
+export { defaultModalContext, mockRouterPush, mockUseModalContext }

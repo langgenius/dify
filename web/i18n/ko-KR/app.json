@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "밝은 외관 사용",
   "gotoAnything.actions.themeSystem": "시스템 테마",
   "gotoAnything.actions.themeSystemDesc": "운영 체제의 외관을 따르세요",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "@를 지우면 모두 검색됩니다.",
   "gotoAnything.commandHint": "@를 입력하여 카테고리별로 찾아봅니다.",
   "gotoAnything.emptyState.noAppsFound": "앱을 찾을 수 없습니다.",

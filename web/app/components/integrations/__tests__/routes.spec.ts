@@ -5,7 +5,7 @@ import {
   getIntegrationRouteTargetBySlug,
   integrationPathBySection,
   marketplaceCategoryByIntegrationSection,
-} from '../integration-routes'
+} from '../routes'
 
 describe('integration routes', () => {
   it('maps integration sections to canonical paths', () => {

@@ -1,5 +1,5 @@
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
-import { INTEGRATION_SECTION_VALUES } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
+import { INTEGRATION_SECTION_VALUES } from '@/app/components/integrations/routes'
 
 export const ACCOUNT_SETTING_MODAL_ACTION = 'showSettings'
 
@@ -17,7 +17,7 @@ export type AccountSettingTab = typeof ACCOUNT_SETTING_TAB[keyof typeof ACCOUNT_
 
 export const DEFAULT_ACCOUNT_SETTING_TAB = ACCOUNT_SETTING_TAB.MEMBERS
 
-export const WORKSPACE_SETTING_TAB_VALUES = [
+const WORKSPACE_SETTING_TAB_VALUES = [
   ACCOUNT_SETTING_TAB.MEMBERS,
   ACCOUNT_SETTING_TAB.BILLING,
   ACCOUNT_SETTING_TAB.CUSTOM,
@@ -25,7 +25,7 @@ export const WORKSPACE_SETTING_TAB_VALUES = [
 
 export type WorkspaceSettingTab = typeof WORKSPACE_SETTING_TAB_VALUES[number]
 
-export const USER_SETTING_TAB_VALUES = [
+const USER_SETTING_TAB_VALUES = [
   ACCOUNT_SETTING_TAB.LANGUAGE,
 ] as const
 

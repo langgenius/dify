@@ -6,7 +6,7 @@ import {
   RiHammerLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 

@@ -73,7 +73,6 @@ const DatasetListHeader = ({
               labelClassName="system-md-regular text-text-tertiary"
               className="h-8"
               tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
-              testId="include-all"
             />
           )}
           <TagFilter type="knowledge" value={tagFilterValue} onChange={onTagsChange} onOpenTagManagement={onOpenTagManagement} />

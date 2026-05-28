@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "使用輕盈的外觀",
   "gotoAnything.actions.themeSystem": "系統主題",
   "gotoAnything.actions.themeSystemDesc": "遵循你的操作系統外觀",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "清除 @ 以搜尋全部",
   "gotoAnything.commandHint": "鍵入 @ 按類別流覽",
   "gotoAnything.emptyState.noAppsFound": "未找到應用",

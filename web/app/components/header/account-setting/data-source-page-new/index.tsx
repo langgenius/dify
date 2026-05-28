@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -16,6 +17,7 @@ import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 
 type DataSourcePageProps = {
+  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   stickyToolbar?: boolean
 }
 
@@ -50,6 +52,7 @@ function DataSourceListSkeleton() {
 }
 
 const DataSourcePage = ({
+  layout,
   stickyToolbar,
 }: DataSourcePageProps) => {
   const { t } = useTranslation()
@@ -95,24 +98,29 @@ const DataSourcePage = ({
     invalidateDataSourceList()
   }, [invalidateDataSourceList, invalidateDataSourceListAuth, invalidateInstalledPluginList])
 
-  return (
-    <div>
-      <div className={stickyToolbar
-        ? 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-        : 'mb-2 flex items-center justify-between gap-3'}
-      >
-        <SearchInput
-          className="w-[200px]"
-          placeholder={t('modelProvider.searchModels', { ns: 'common' })}
-          value={searchText}
-          onChange={setSearchText}
+  const toolbar = (
+    <div className={stickyToolbar
+      ? layout
+        ? 'mb-2 flex items-center justify-between gap-3 bg-components-panel-bg pb-2'
+        : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+      : 'mb-2 flex items-center justify-between gap-3'}
+    >
+      <SearchInput
+        className="w-[200px]"
+        placeholder={t('modelProvider.searchModels', { ns: 'common' })}
+        value={searchText}
+        onChange={setSearchText}
+      />
+      {canSetPermissions && (
+        <UpdateSettingPopover
+          category={PluginCategoryEnum.datasource}
         />
-        {canSetPermissions && (
-          <UpdateSettingPopover
-            category={PluginCategoryEnum.datasource}
-          />
-        )}
-      </div>
+      )}
+    </div>
+  )
+
+  const body = (
+    <>
       {isDataSourceListLoading && <DataSourceListSkeleton />}
       {!isDataSourceListLoading && !dataSources.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
@@ -159,6 +167,16 @@ const DataSourcePage = ({
           />
         )
       }
+    </>
+  )
+
+  if (layout)
+    return <div className="relative flex min-h-0 flex-1 flex-col">{layout({ body, toolbar })}</div>
+
+  return (
+    <div>
+      {toolbar}
+      {body}
     </div>
   )
 }

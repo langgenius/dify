@@ -1,6 +1,6 @@
+import type { PermissionSettingKey } from '../permission-quick-panel'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { PermissionType } from '@/app/components/plugins/types'
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
-import type { PermissionSettingKey } from '@/app/components/tools/permission-quick-panel'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 
 const isPluginCategorySection = (section: IntegrationSection) => {

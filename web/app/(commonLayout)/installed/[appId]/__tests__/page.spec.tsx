@@ -4,9 +4,9 @@ import InstalledApp from '../page'
 
 vi.mock('@/app/components/explore/installed-app', () => ({
   default: ({ id }: { id: string }) => (
-    <div data-testid="installed-app-page">
+    <main aria-label="installed app">
       {id}
-    </div>
+    </main>
   ),
 }))
 
@@ -18,6 +18,6 @@ describe('installed app route', () => {
 
     render(page)
 
-    expect(screen.getByTestId('installed-app-page')).toHaveTextContent('installed-1')
+    expect(screen.getByRole('main', { name: 'installed app' })).toHaveTextContent('installed-1')
   })
 })

@@ -84,8 +84,6 @@
   "gotoAnything.actions.themeLightDesc": "明るい外観を使用する",
   "gotoAnything.actions.themeSystem": "システムテーマ",
   "gotoAnything.actions.themeSystemDesc": "OSの外観に従ってください",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "@ をクリアしてすべてを検索",
   "gotoAnything.commandHint": "@ を入力してカテゴリ別に参照",
   "gotoAnything.emptyState.noAppsFound": "アプリが見つかりません",

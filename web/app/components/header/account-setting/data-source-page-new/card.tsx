@@ -98,7 +98,7 @@ const Card = ({
   const handleAction = useCallback((
     action: string,
     credentialItem: DataSourceCredential,
-    renamePayload?: Record<string, any>,
+    renamePayload?: { credential_id: string, name: string },
   ) => {
     if (action === 'edit') {
       handleEdit(
@@ -116,8 +116,8 @@ const Card = ({
     if (action === 'setDefault')
       handleSetDefault(credentialItem.id)
 
-    if (action === 'rename')
-      handleRename(renamePayload as any)
+    if (action === 'rename' && renamePayload)
+      handleRename(renamePayload)
 
     if (action === 'change') {
       changeCredentialIdRef.current = credentialItem.id
@@ -128,6 +128,7 @@ const Card = ({
     handleEdit,
     handleSetDefault,
     handleRename,
+    handleOAuth,
   ])
 
   return (
@@ -137,6 +138,8 @@ const Card = ({
           <img
             src={icon}
             alt={providerLabel}
+            width={20}
+            height={20}
             className="h-5 w-5 object-contain"
           />
         </div>
@@ -159,7 +162,7 @@ const Card = ({
                       text={(
                         <>
                           <div>{fallbackPluginVersion}</div>
-                          <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />
+                          <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />
                         </>
                       )}
                       uppercase={false}

@@ -1,6 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import IntegrationsPage from '../integrations-page'
+import IntegrationsPage from '../page'
 
 const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
@@ -95,21 +95,41 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   __esModule: true,
   default: ({
     fixedWarningAlignment,
+    layout,
     onSearchTextChange,
     searchText,
   }: {
     fixedWarningAlignment?: string
+    layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode
     onSearchTextChange?: (value: string) => void
     searchText: string
-  }) => (
-    <div data-testid="model-provider-page" data-fixed-warning-alignment={fixedWarningAlignment}>
-      <input
-        aria-label="search"
-        value={searchText}
-        onChange={event => onSearchTextChange?.(event.target.value)}
-      />
-    </div>
-  ),
+  }) => {
+    const toolbar = (
+      <div data-testid="model-provider-toolbar">
+        <input
+          aria-label="search"
+          value={searchText}
+          onChange={event => onSearchTextChange?.(event.target.value)}
+        />
+      </div>
+    )
+    const body = (
+      <div data-testid="model-provider-page" data-fixed-warning-alignment={fixedWarningAlignment} />
+    )
+
+    if (layout)
+      return layout({ body, toolbar })
+
+    return (
+      <div data-testid="model-provider-page" data-fixed-warning-alignment={fixedWarningAlignment}>
+        <input
+          aria-label="search"
+          value={searchText}
+          onChange={event => onSearchTextChange?.(event.target.value)}
+        />
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
@@ -122,7 +142,7 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page', () =
   ApiBasedExtensionPage: () => <div data-testid="api-extension-page" />,
 }))
 
-vi.mock('../provider-list', async () => {
+vi.mock('../tool-provider-list', async () => {
   const { useState } = await vi.importActual<typeof import('react')>('react')
 
   const MockProviderList = ({ category }: { category?: string }) => {
@@ -185,7 +205,9 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-    expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6', 'pt-2')
+    expect(screen.getByTestId('model-provider-toolbar').parentElement).toHaveClass('max-w-[1600px]', 'px-6', 'pt-2')
+    expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6')
+    expect(screen.getByTestId('model-provider-page').parentElement).not.toHaveClass('pt-2')
     expect(screen.getByTestId('model-provider-page')).toHaveAttribute('data-fixed-warning-alignment', 'content-frame')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'common.settings.provider' })).toHaveAttribute('aria-current', 'page')

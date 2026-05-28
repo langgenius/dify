@@ -1,5 +1,5 @@
-import type { LegacyToolsSearchParams } from '@/app/components/tools/integration-routes'
-import { getIntegrationRedirectPathByLegacyToolsSearchParams } from '@/app/components/tools/integration-routes'
+import type { LegacyToolsSearchParams } from '@/app/components/integrations/routes'
+import { getIntegrationRedirectPathByLegacyToolsSearchParams } from '@/app/components/integrations/routes'
 import { redirect } from '@/next/navigation'
 
 type ToolsPageProps = {

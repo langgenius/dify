@@ -11,7 +11,7 @@ import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-se
 import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import Link from '@/next/link'
@@ -122,16 +122,16 @@ const MainNav = ({
 
     return (
       <h1 className="min-w-0">
-        <Link href="/" className="flex h-8 shrink-0 items-center overflow-hidden px-2">
+        <Link href="/" className="flex h-8 shrink-0 items-center overflow-hidden px-2" aria-label={appTitle}>
           {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
             ? (
                 <img
                   src={systemFeatures.branding.workspace_logo}
                   className="block h-5.5 w-auto object-contain"
-                  alt={appTitle}
+                  alt=""
                 />
               )
-            : <DifyLogo alt={appTitle} />}
+            : <DifyLogo alt="" />}
         </Link>
       </h1>
     )

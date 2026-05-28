@@ -1,10 +1,10 @@
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import {
   INTEGRATION_SECTION_VALUES,
   sectionByToolCategory,
   TOOL_CATEGORY_VALUES,
-} from '@/app/components/tools/integration-routes'
+} from '@/app/components/integrations/routes'
 
 const parseAsIntegrationSection = parseAsStringLiteral(INTEGRATION_SECTION_VALUES)
 const parseAsToolCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)

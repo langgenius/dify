@@ -2,10 +2,10 @@ import type { ComponentProps, ReactNode } from 'react'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { getToolType } from '@/app/components/tools/utils'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
-import ProviderList from '../provider-list'
-import { getToolType } from '../utils'
+import ProviderList from '../tool-provider-list'
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
@@ -241,7 +241,7 @@ const {
     })),
   }
 })
-vi.mock('../marketplace', () => ({
+vi.mock('@/app/components/tools/marketplace', () => ({
   default: ({ showMarketplacePanel, isMarketplaceArrowVisible, contentInset }: {
     showMarketplacePanel: () => void
     isMarketplaceArrowVisible: boolean
@@ -255,11 +255,11 @@ vi.mock('../marketplace', () => ({
   ),
 }))
 
-vi.mock('../marketplace/hooks', () => ({
+vi.mock('@/app/components/tools/marketplace/hooks', () => ({
   useMarketplace: mockUseMarketplace,
 }))
 
-vi.mock('../mcp', () => ({
+vi.mock('@/app/components/tools/mcp', () => ({
   default: ({ searchText, contentInset }: { searchText: string, contentInset?: string }) => (
     <div data-testid="mcp-list" data-content-inset={contentInset}>
       MCP List:
@@ -369,21 +369,25 @@ describe('ProviderList', () => {
 
   describe('Layout', () => {
     it('uses default content inset outside compact integrations layout', () => {
-      const { container } = renderProviderList()
+      renderProviderList()
+      const toolbar = screen.getByRole('textbox').closest('.bg-components-panel-bg')
 
       expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
-      expect(container.querySelector('.sticky')).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
-      expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
+      expect(toolbar).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
+      expect(toolbar).toHaveClass('max-w-[1600px]')
+      expect(toolbar).not.toHaveClass('sticky')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12', 'gap-2', 'pt-2')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
     })
 
     it('uses compact content inset when rendered by integrations layout', () => {
-      const { container } = renderProviderList(undefined, 'builtin', 'compact')
+      renderProviderList(undefined, 'builtin', 'compact')
+      const toolbar = screen.getByRole('textbox').closest('.bg-components-panel-bg')
 
       expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
-      expect(container.querySelector('.sticky')).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
-      expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
+      expect(toolbar).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
+      expect(toolbar).toHaveClass('max-w-[1600px]')
+      expect(toolbar).not.toHaveClass('sticky')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6', 'gap-2', 'pt-2')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
     })
