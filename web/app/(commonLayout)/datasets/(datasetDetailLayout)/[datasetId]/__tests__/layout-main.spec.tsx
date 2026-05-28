@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { usePathname, useRouter } from '@/next/navigation'
+import { useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import DatasetDetailLayout from '../layout-main'
 
@@ -30,14 +30,12 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const mockUsePathname = vi.mocked(usePathname)
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
 
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUsePathname.mockReturnValue('/datasets/dataset-1/pipeline')
     mockUseRouter.mockReturnValue({
       back: vi.fn(),
       forward: vi.fn(),

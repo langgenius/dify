@@ -1,6 +1,4 @@
-import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { emitWorkflowCommand, WorkflowCommand } from '../../shortcuts/commands'
 import { useWorkflowHotkeys } from '../../shortcuts/use-workflow-hotkeys'
 
 type KeyPressRegistration = {
@@ -47,7 +45,6 @@ const mockHandleModeHand = vi.hoisted(() => vi.fn())
 const mockHandleModePointer = vi.hoisted(() => vi.fn())
 const mockHandleModeComment = vi.hoisted(() => vi.fn())
 const mockHandleLayout = vi.hoisted(() => vi.fn())
-const mockHandleToggleMaximizeCanvas = vi.hoisted(() => vi.fn())
 const mockUseKeyHold = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock('@tanstack/react-hotkeys', () => {
@@ -105,12 +102,6 @@ vi.mock('../use-edges-interactions', () => ({
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('../use-workflow-canvas-maximize', () => ({
-  useWorkflowCanvasMaximize: () => ({
-    handleToggleMaximizeCanvas: mockHandleToggleMaximizeCanvas,
   }),
 }))
 
@@ -254,8 +245,8 @@ describe('useShortcuts', () => {
     getSelectionSpy.mockRestore()
   })
 
-  it('dims while shift is held, undims when released, and responds to zen toggle events', () => {
-    const { rerender, unmount } = renderWorkflowHook(() => useWorkflowHotkeys())
+  it('dims while shift is held and undims when released', () => {
+    const { rerender } = renderWorkflowHook(() => useWorkflowHotkeys())
 
     mockUseKeyHold.mockReturnValue(true)
     rerender()
@@ -265,18 +256,6 @@ describe('useShortcuts', () => {
 
     expect(mockDimOtherNodes).toHaveBeenCalledTimes(1)
     expect(mockUndimAllNodes).toHaveBeenCalledTimes(1)
-
-    act(() => {
-      emitWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize)
-    })
-    expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
-
-    unmount()
-
-    act(() => {
-      emitWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize)
-    })
-    expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
   })
 
   it('does not dim when shift is held inside editable inputs', () => {

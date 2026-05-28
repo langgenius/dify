@@ -1,7 +1,7 @@
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-export type WorkspaceListItem = {
+type WorkspaceListItem = {
   id: string
   name: string
   plan: string
@@ -18,7 +18,7 @@ export type SwitchWorkspaceRequest = {
   tenant_id: string
 }
 
-export type SwitchedWorkspace = {
+type SwitchedWorkspace = {
   id: string
   name: string | null
   plan: string | null

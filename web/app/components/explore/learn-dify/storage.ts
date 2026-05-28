@@ -4,11 +4,11 @@ import { useLocalStorageState } from 'ahooks'
 import { useCallback, useEffect } from 'react'
 
 export const LEARN_DIFY_HIDDEN_STORAGE_KEY = 'explore-learn-dify-hidden'
-export const LEARN_DIFY_VISIBILITY_CHANGE_EVENT = 'explore-learn-dify-visibility-change'
+const LEARN_DIFY_VISIBILITY_CHANGE_EVENT = 'explore-learn-dify-visibility-change'
 
 type LearnDifyVisibilityChangeEvent = CustomEvent<{ hidden: boolean }>
 
-export const dispatchLearnDifyVisibilityChange = (hidden: boolean) => {
+const dispatchLearnDifyVisibilityChange = (hidden: boolean) => {
   window.dispatchEvent(new CustomEvent(LEARN_DIFY_VISIBILITY_CHANGE_EVENT, {
     detail: { hidden },
   }))

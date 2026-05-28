@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "استخدم المظهر الفاتح",
   "gotoAnything.actions.themeSystem": "سمة النظام",
   "gotoAnything.actions.themeSystemDesc": "اتبع مظهر نظام التشغيل",
-  "gotoAnything.actions.zenDesc": "تبديل وضع التركيز على اللوحة",
-  "gotoAnything.actions.zenTitle": "وضع Zen",
   "gotoAnything.clearToSearchAll": "امسح @ للبحث في الكل",
   "gotoAnything.commandHint": "اكتب @ للتصفح حسب الفئة",
   "gotoAnything.emptyState.noAppsFound": "لم يتم العثور على تطبيقات",

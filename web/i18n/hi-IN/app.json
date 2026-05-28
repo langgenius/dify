@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "हल्की उपस्थिति का प्रयोग करें",
   "gotoAnything.actions.themeSystem": "सिस्टम थीम",
   "gotoAnything.actions.themeSystemDesc": "अपने ऑपरेटिंग सिस्टम की उपस्थिति का पालन करें",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "साफ़ @ सभी खोजने के लिए",
   "gotoAnything.commandHint": "@ का उपयोग कर श्रेणी के अनुसार ब्राउज़ करें",
   "gotoAnything.emptyState.noAppsFound": "कोई ऐप्स नहीं मिले",

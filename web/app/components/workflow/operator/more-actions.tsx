@@ -35,17 +35,14 @@ const MoreActions: FC = () => {
   const [previewTitle, setPreviewTitle] = useState('')
   const knowledgeName = useStore(s => s.knowledgeName)
   const appName = useStore(s => s.appName)
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
   const isReadOnly = getNodesReadOnly()
 
   const crossAxisOffset = useMemo(() => {
-    if (maximizeCanvas)
-      return 40
     return appSidebarExpand === 'expand' ? 188 : 40
-  }, [appSidebarExpand, maximizeCanvas])
+  }, [appSidebarExpand])
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
     if (!appName && !knowledgeName)

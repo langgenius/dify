@@ -16,7 +16,6 @@ export const movedAccountSettingDestinations = {
 } as const satisfies Partial<Record<AccountSettingTab, string>>
 
 export type MovedAccountSettingTab = keyof typeof movedAccountSettingDestinations
-export type NonMovedAccountSettingTab = Exclude<AccountSettingTab, MovedAccountSettingTab>
 
 export const enableMovedAccountSettingDestinations = true
 

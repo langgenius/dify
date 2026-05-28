@@ -1126,8 +1126,6 @@
   "panel.goTo": "Aller à",
   "panel.goToFix": "Aller corriger",
   "panel.helpLink": "Aide",
-  "panel.maximize": "Maximiser le Canvas",
-  "panel.minimize": "Sortir du mode plein écran",
   "panel.nextStep": "Étape suivante",
   "panel.openWorkflow": "Ouvrir le flux de travail",
   "panel.optional": "(facultatif)",

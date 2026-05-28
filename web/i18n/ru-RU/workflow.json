@@ -1126,8 +1126,6 @@
   "panel.goTo": "Перейти к",
   "panel.goToFix": "Перейти к исправлению",
   "panel.helpLink": "Помощь",
-  "panel.maximize": "Максимизировать холст",
-  "panel.minimize": "Выйти из полноэкранного режима",
   "panel.nextStep": "Следующий шаг",
   "panel.openWorkflow": "Открыть рабочий процесс",
   "panel.optional": "(необязательно)",

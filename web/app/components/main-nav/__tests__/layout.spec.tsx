@@ -1,31 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { MediaType } from '@/hooks/use-breakpoints'
 import MainNavLayout from '../layout'
-
-type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
-
-let mockMediaType: MediaTypeValue = MediaType.pc
-let mockPathname = '/apps'
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => mockMediaType,
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
-}))
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: undefined,
-  }),
-}))
 
 vi.mock('@/app/components/header', () => ({
   default: () => <div data-testid="desktop-header">Header</div>,
@@ -41,8 +16,6 @@ vi.mock('../index', () => ({
 
 describe('MainNavLayout', () => {
   beforeEach(() => {
-    mockMediaType = MediaType.pc
-    mockPathname = '/apps'
     localStorage.clear()
   })
 
@@ -54,40 +27,11 @@ describe('MainNavLayout', () => {
     expect(screen.getByText('content')).toBeInTheDocument()
   })
 
-  it('uses the main nav on mobile too', () => {
-    mockMediaType = MediaType.mobile
-
+  it('uses the main nav without the desktop header wrapper', () => {
     render(<MainNavLayout><div>content</div></MainNavLayout>)
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
     expect(screen.queryByTestId('header-wrapper')).not.toBeInTheDocument()
     expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
-  })
-
-  it('hides the desktop main nav on fullscreen app workflow canvases', () => {
-    mockPathname = '/app/app-1/workflow'
-    localStorage.setItem('workflow-canvas-maximize', 'true')
-
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
-
-    expect(screen.getByTestId('main-nav')).toHaveClass('hidden')
-  })
-
-  it('hides the desktop main nav on fullscreen dataset pipeline canvases', () => {
-    mockPathname = '/datasets/dataset-1/pipeline'
-    localStorage.setItem('workflow-canvas-maximize', 'true')
-
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
-
-    expect(screen.getByTestId('main-nav')).toHaveClass('hidden')
-  })
-
-  it('keeps the main nav visible on the integrations workflow tool page', () => {
-    mockPathname = '/integrations/tools/workflow'
-    localStorage.setItem('workflow-canvas-maximize', 'true')
-
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
-
-    expect(screen.getByTestId('main-nav')).not.toHaveClass('hidden')
   })
 })

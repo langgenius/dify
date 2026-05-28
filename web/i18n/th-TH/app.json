@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "ใช้รูปลักษณ์ที่มีความสว่าง",
   "gotoAnything.actions.themeSystem": "ธีมระบบ",
   "gotoAnything.actions.themeSystemDesc": "ติดตามรูปลักษณ์ของระบบปฏิบัติการของคุณ",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "ล้าง @ เพื่อค้นหาทั้งหมด",
   "gotoAnything.commandHint": "พิมพ์ @ เพื่อเรียกดูตามหมวดหมู่",
   "gotoAnything.emptyState.noAppsFound": "ไม่พบแอป",

@@ -40,6 +40,7 @@ import { PermissionType, PluginCategoryEnum, TaskStatus } from '@/app/components
 import { useAppContext } from '@/context/app-context'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+// eslint-disable-next-line no-restricted-imports
 import { get, getMarketplace, post, postMarketplace } from './base'
 import { consoleQuery } from './client'
 import { useInvalidateAllBuiltInTools } from './use-tools'
@@ -497,41 +498,12 @@ export const usePluginAutoUpgradeSettings = (category: PluginCategoryEnum) => {
   })
 }
 
-export const useReferenceSettings = (category: PluginCategoryEnum) => {
-  const permissionQuery = usePluginPermissionSettings()
-  const autoUpgradeQuery = usePluginAutoUpgradeSettings(category)
-
-  return {
-    ...autoUpgradeQuery,
-    data: permissionQuery.data && autoUpgradeQuery.data
-      ? {
-        permission: permissionQuery.data,
-        auto_upgrade: autoUpgradeQuery.data.auto_upgrade,
-      } satisfies ReferenceSetting
-      : undefined,
-    error: permissionQuery.error ?? autoUpgradeQuery.error,
-    isLoading: permissionQuery.isLoading || autoUpgradeQuery.isLoading,
-    isFetching: permissionQuery.isFetching || autoUpgradeQuery.isFetching,
-  }
-}
-
 export const useInvalidateReferenceSettings = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries(
       {
         queryKey: useReferenceSettingKey,
-      },
-    )
-  }
-}
-
-export const useInvalidatePluginAutoUpgradeSettings = () => {
-  const queryClient = useQueryClient()
-  return (category: PluginCategoryEnum) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: pluginAutoUpgradeSettingsQueryKey(category),
       },
     )
   }

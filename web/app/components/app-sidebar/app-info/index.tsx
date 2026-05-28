@@ -23,7 +23,7 @@ type AppInfoDetailLayerProps = {
   open?: boolean
 }
 
-export const AppInfoDetailLayer = ({
+const AppInfoDetailLayer = ({
   actions,
   open = actions.panelOpen,
 }: AppInfoDetailLayerProps) => {

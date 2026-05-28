@@ -1,6 +1,7 @@
 import type { SearchResult } from '../../types'
 import { render } from '@testing-library/react'
-import { slashAction, SlashCommandProvider } from '../slash'
+import { slashAction } from '../slash'
+import { SlashCommandProvider } from '../slash-provider'
 
 const {
   mockSetTheme,
@@ -104,7 +105,6 @@ describe('SlashCommandProvider', () => {
       'docs',
       'community',
       'account',
-      'zen',
       'go',
     ])
     expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'theme' }), { setTheme: mockSetTheme })
@@ -119,7 +119,6 @@ describe('SlashCommandProvider', () => {
       'docs',
       'community',
       'account',
-      'zen',
       'go',
     ])
   })

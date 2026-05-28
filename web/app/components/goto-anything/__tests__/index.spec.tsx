@@ -102,7 +102,7 @@ vi.mock('../actions', () => ({
   searchAnything: () => searchAnythingMock(),
 }))
 
-vi.mock('../actions/commands', () => ({
+vi.mock('../actions/commands/slash-provider', () => ({
   SlashCommandProvider: () => null,
 }))
 

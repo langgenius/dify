@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Gunakan penampilan ringan",
   "gotoAnything.actions.themeSystem": "Tema Sistem",
   "gotoAnything.actions.themeSystemDesc": "Ikuti tampilan OS Anda",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "Hapus @ untuk mencari semua",
   "gotoAnything.commandHint": "Ketik @ untuk menelusuri berdasarkan kategori",
   "gotoAnything.emptyState.noAppsFound": "Tidak ada aplikasi yang ditemukan",

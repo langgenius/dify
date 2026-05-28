@@ -1126,8 +1126,6 @@
   "panel.goTo": "Go to",
   "panel.goToFix": "Ga naar repareren",
   "panel.helpLink": "View Docs",
-  "panel.maximize": "Maximize Canvas",
-  "panel.minimize": "Exit Full Screen",
   "panel.nextStep": "Next Step",
   "panel.openWorkflow": "Open Workflow",
   "panel.optional": "(optional)",

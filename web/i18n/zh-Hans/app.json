@@ -84,8 +84,6 @@
   "gotoAnything.actions.themeLightDesc": "使用浅色外观",
   "gotoAnything.actions.themeSystem": "系统主题",
   "gotoAnything.actions.themeSystemDesc": "跟随系统外观",
-  "gotoAnything.actions.zenDesc": "切换画布专注模式",
-  "gotoAnything.actions.zenTitle": "专注模式",
   "gotoAnything.clearToSearchAll": "清除 @ 以搜索全部",
   "gotoAnything.commandHint": "输入 @ 按类别浏览",
   "gotoAnything.emptyState.noAppsFound": "未找到应用",

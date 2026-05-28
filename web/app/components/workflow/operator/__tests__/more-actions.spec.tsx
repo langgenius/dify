@@ -19,7 +19,6 @@ const {
   mockWorkflowState: {
     knowledgeName: '',
     appName: 'Demo App',
-    maximizeCanvas: false,
   },
 }))
 
@@ -142,7 +141,6 @@ describe('MoreActions', () => {
     mockAppStoreState.appSidebarExpand = 'collapse'
     mockWorkflowState.knowledgeName = ''
     mockWorkflowState.appName = 'Demo App'
-    mockWorkflowState.maximizeCanvas = false
 
     document.body.innerHTML = ''
     const viewport = document.createElement('div')
@@ -220,9 +218,8 @@ describe('MoreActions', () => {
     })
   })
 
-  it('exports the whole workflow as svg when the canvas is maximized', async () => {
+  it('exports the whole workflow as svg', async () => {
     vi.useFakeTimers()
-    mockWorkflowState.maximizeCanvas = true
 
     render(<MoreActions />)
 

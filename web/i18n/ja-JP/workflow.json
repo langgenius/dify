@@ -1126,8 +1126,6 @@
   "panel.goTo": "移動",
   "panel.goToFix": "修正する",
   "panel.helpLink": "ドキュメントを見る",
-  "panel.maximize": "キャンバスを最大化する",
-  "panel.minimize": "全画面を終了する",
   "panel.nextStep": "次のステップ",
   "panel.openWorkflow": "ワークフローを開く",
   "panel.optional": "（任意）",

@@ -24,7 +24,7 @@ type LinkActionCardProps = BaseProps & {
   onClick?: never
 }
 
-export type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
+type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
 
 const baseCardClassName = 'relative flex flex-col rounded-xl border border-components-panel-border bg-components-panel-on-panel-item-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm'
 const compactBadgeClassName = {

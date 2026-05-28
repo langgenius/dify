@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Aydınlık görünüm kullan",
   "gotoAnything.actions.themeSystem": "Sistem Teması",
   "gotoAnything.actions.themeSystemDesc": "İşletim sisteminizin görünümünü takip edin",
-  "gotoAnything.actions.zenDesc": "Tuval odak modunu aç/kapat",
-  "gotoAnything.actions.zenTitle": "Zen Modu",
   "gotoAnything.clearToSearchAll": "Tümünü aramak için @ işaretini kaldırın",
   "gotoAnything.commandHint": "Kategoriye göre göz atmak için @ yazın",
   "gotoAnything.emptyState.noAppsFound": "Uygulama bulunamadı",

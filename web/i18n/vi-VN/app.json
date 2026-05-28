@@ -78,8 +78,6 @@
   "gotoAnything.actions.themeLightDesc": "Sử dụng giao diện sáng",
   "gotoAnything.actions.themeSystem": "Chủ đề hệ thống",
   "gotoAnything.actions.themeSystemDesc": "Theo giao diện của hệ điều hành của bạn",
-  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
-  "gotoAnything.actions.zenTitle": "Zen Mode",
   "gotoAnything.clearToSearchAll": "Xóa @ để tìm kiếm tất cả",
   "gotoAnything.commandHint": "Nhập @ để duyệt theo danh mục",
   "gotoAnything.emptyState.noAppsFound": "Không tìm thấy ứng dụng nào",
