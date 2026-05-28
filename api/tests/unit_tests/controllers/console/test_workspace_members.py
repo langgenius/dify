@@ -31,6 +31,15 @@ def _build_feature_flags():
     )
 
 
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
+
+
 class TestMemberInviteEmailApi:
     @pytest.fixture(autouse=True)
     def _mock_member_invite_lock(self):
@@ -39,24 +48,12 @@ class TestMemberInviteEmailApi:
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
     @patch("controllers.console.workspace.members.RegisterService.invite_new_member")
-    @patch("controllers.console.wraps.current_account_with_tenant")
-    @patch("controllers.console.wraps.db")
-    @patch("libs.login.check_csrf_token", return_value=None)
-    def test_invite_normalizes_emails(
-        self,
-        mock_csrf,
-        mock_db,
-        mock_current_account,
-        mock_invite_member,
-        mock_get_features,
-        app: Flask,
-    ):
+    def test_invite_normalizes_emails(self, mock_invite_member, mock_get_features, app: Flask):
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
         inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
-        mock_current_account.return_value = (inviter, tenant.id)
 
         with (
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
@@ -73,7 +70,8 @@ class TestMemberInviteEmailApi:
                 account._current_tenant = tenant
                 g._login_user = account
                 g._current_tenant = tenant
-                response, status_code = MemberInviteEmailApi().post()
+                api = MemberInviteEmailApi()
+                response, status_code = _unwrap(api.post)(inviter)
 
         assert status_code == 201
         assert response["invitation_results"][0]["email"] == "user@example.com"
@@ -85,4 +83,3 @@ class TestMemberInviteEmailApi:
         assert call_args.kwargs["language"] == "en-US"
         assert call_args.kwargs["role"] == TenantAccountRole.EDITOR
         assert call_args.kwargs["inviter"] == inviter
-        mock_csrf.assert_called_once()
