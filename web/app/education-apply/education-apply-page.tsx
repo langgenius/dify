@@ -6,7 +6,7 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -16,15 +16,12 @@ import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/con
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
-import { useWorkspacesContext } from '@/context/workspace-context'
-import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import {
   useRouter,
   useSearchParams,
 } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
-import { switchWorkspace } from '@/service/common'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
 import {
   useEducationAdd,
@@ -62,6 +59,7 @@ const EducationApplyAgeContent = () => {
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
+  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -127,10 +125,10 @@ const EducationApplyAgeContent = () => {
       return
 
     try {
-      await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id: tenantId } })
+      await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: commonQueryKeys.currentWorkspace }),
-        queryClient.invalidateQueries({ queryKey: commonQueryKeys.workspaces }),
+        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.get.queryKey() }),
       ])
       onPlanInfoChanged()
       updateEducationStatus()
@@ -219,7 +217,7 @@ const EducationApplyAgeContent = () => {
           {isEducationAccount || hasSubmittedEducation
             ? (
                 <div className="flex">
-                  <AppliedEducationWorkspaceBlock
+                  <AppliedEducationWorkspaceContent
                     currentWorkspace={currentWorkspace}
                     plan={plan.type}
                     action={renderAppliedEducationAction()}
@@ -319,7 +317,8 @@ function AppliedEducationWorkspaceContent({
   action,
   onSwitchWorkspace,
 }: AppliedEducationWorkspaceBlockProps) {
-  const { workspaces } = useWorkspacesContext()
+  const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const workspaces = workspacesData?.workspaces ?? []
 
   return (
     <AppliedEducationContent
@@ -329,14 +328,6 @@ function AppliedEducationWorkspaceContent({
       action={action}
       onSwitchWorkspace={onSwitchWorkspace}
     />
-  )
-}
-
-function AppliedEducationWorkspaceBlock(props: AppliedEducationWorkspaceBlockProps) {
-  return (
-    <WorkspaceProvider>
-      <AppliedEducationWorkspaceContent {...props} />
-    </WorkspaceProvider>
   )
 }
 

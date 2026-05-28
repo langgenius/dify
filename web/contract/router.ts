@@ -53,6 +53,7 @@ import {
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
+import { workspacesGetContract, workspaceSwitchContract } from './console/workspaces'
 import { collectionPluginsContract, collectionsContract, downloadPluginContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -151,5 +152,11 @@ export const consoleRouterContract = {
     oauthConfigure: triggerOAuthConfigureContract,
     oauthDelete: triggerOAuthDeleteContract,
     oauthInitiate: triggerOAuthInitiateContract,
+  },
+  workspaces: {
+    get: workspacesGetContract,
+    switch: {
+      post: workspaceSwitchContract,
+    },
   },
 }

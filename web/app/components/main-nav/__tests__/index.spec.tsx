@@ -2,9 +2,10 @@ import type { Mock } from 'vitest'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
@@ -12,16 +13,16 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useWorkspacesContext } from '@/context/workspace-context'
 import { usePathname, useRouter } from '@/next/navigation'
-import { switchWorkspace } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import MainNav from '../index'
 
 const activeEdgeClassName = 'before:pointer-events-none'
 
-const { mockToastSuccess } = vi.hoisted(() => ({
+const { mockSwitchWorkspace, mockToastSuccess } = vi.hoisted(() => ({
+  mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
 }))
 
@@ -37,10 +38,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/context/workspace-context', () => ({
-  useWorkspacesContext: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
@@ -50,9 +47,39 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/common', () => ({
-  switchWorkspace: vi.fn(),
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
+  const consoleQuery = new Proxy(actual.consoleQuery, {
+    get(target, prop, receiver) {
+      if (prop === 'workspaces') {
+        return {
+          get: {
+            queryKey: () => workspacesQueryKey,
+            queryOptions: () => ({
+              queryKey: workspacesQueryKey,
+              queryFn: () => new Promise(() => {}),
+            }),
+          },
+          switch: {
+            post: {
+              mutationOptions: () => ({
+                mutationFn: (variables: unknown) => mockSwitchWorkspace(variables),
+              }),
+            },
+          },
+        }
+      }
+
+      return Reflect.get(target, prop, receiver)
+    },
+  })
+
+  return {
+    ...actual,
+    consoleQuery,
+  }
+})
 
 vi.mock('@/service/use-explore', () => ({
   useGetInstalledApps: vi.fn(),
@@ -112,6 +139,7 @@ const mockUpdatePinStatus = vi.fn()
 let mockPathname = '/apps'
 let mockInstalledApps: InstalledApp[] = []
 let mockInstalledAppsPending = false
+let mockWorkspaces: IWorkspace[] = []
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'installed-1',
@@ -173,7 +201,11 @@ const appContextValue: AppContextValue = {
 
 const renderMainNav = (
   systemFeatures = { branding: { enabled: false } },
-) => renderWithSystemFeatures(<MainNav />, { systemFeatures })
+) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  return renderWithSystemFeatures(<MainNav />, { systemFeatures, queryClient })
+}
 
 describe('MainNav', () => {
   beforeEach(() => {
@@ -182,6 +214,10 @@ describe('MainNav', () => {
     mockPathname = '/apps'
     mockInstalledApps = []
     mockInstalledAppsPending = false
+    mockWorkspaces = [
+      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
+      { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.sandbox, status: 'normal', created_at: 0, current: false },
+    ]
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
     ;(useRouter as Mock).mockReturnValue({
@@ -204,12 +240,6 @@ describe('MainNav', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
-    ;(useWorkspacesContext as Mock).mockReturnValue({
-      workspaces: [
-        { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
-        { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.sandbox, status: 'normal', created_at: 0, current: false },
-      ],
-    })
     ;(useGetInstalledApps as Mock).mockImplementation(() => ({
       isPending: mockInstalledAppsPending,
       data: { installed_apps: mockInstalledApps },
@@ -221,7 +251,7 @@ describe('MainNav', () => {
     ;(useUpdateAppPinStatus as Mock).mockReturnValue({
       mutateAsync: mockUpdatePinStatus,
     })
-    ;(switchWorkspace as Mock).mockReturnValue(new Promise(() => {}))
+    mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
 
   it('renders primary navigation with the planned routes', () => {
@@ -470,16 +500,14 @@ describe('MainNav', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByText('Evan Workspace'))
     await waitFor(() => {
-      expect(switchWorkspace).toHaveBeenCalledWith({ url: '/workspaces/switch', body: { tenant_id: 'workspace-2' } })
+      expect(mockSwitchWorkspace).toHaveBeenCalledWith({ body: { tenant_id: 'workspace-2' } })
     })
   })
 
   it('shows the upgrade shortcut for sandbox workspaces', () => {
-    ;(useWorkspacesContext as Mock).mockReturnValue({
-      workspaces: [
-        { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
-      ],
-    })
+    mockWorkspaces = [
+      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
+    ]
 
     renderMainNav()
 

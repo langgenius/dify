@@ -5,7 +5,6 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { usePathname } from '@/next/navigation'
 import MainNav from './index'
 
@@ -35,13 +34,11 @@ const MainNavLayout = ({
 
   return (
     <div className="flex h-0 min-h-0 grow overflow-hidden bg-background-body">
-      <WorkspaceProvider>
-        <MainNav
-          className={cn(
-            hideMainNav && inCanvasFullscreenPath && 'hidden',
-          )}
-        />
-      </WorkspaceProvider>
+      <MainNav
+        className={cn(
+          hideMainNav && inCanvasFullscreenPath && 'hidden',
+        )}
+      />
       <div className="flex min-w-0 grow flex-col overflow-hidden">
         {children}
       </div>
