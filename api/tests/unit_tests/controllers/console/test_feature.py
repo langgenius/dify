@@ -2,34 +2,21 @@ from pytest_mock import MockerFixture
 from werkzeug.exceptions import Unauthorized
 
 
-def unwrap(func):
-    """
-    Recursively unwrap decorated functions.
-    """
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 class TestFeatureApi:
     def test_get_tenant_features_success(self, mocker: MockerFixture):
-        from controllers.console.feature import FeatureApi
-
         mocker.patch(
             "controllers.console.feature.current_account_with_tenant",
             return_value=("account_id", "tenant_123"),
         )
+        mocker.patch(
+            "controllers.console.feature.FeatureService.get_features"
+        ).return_value.model_dump.return_value = {"features": {"feature_a": True}}
 
-        mocker.patch("controllers.console.feature.FeatureService.get_features").return_value.model_dump.return_value = {
-            "features": {"feature_a": True}
-        }
+        from controllers.console.feature import get_features
 
-        api = FeatureApi()
+        result = get_features()
 
-        raw_get = unwrap(FeatureApi.get)
-        result = raw_get(api)
-
-        assert result == {"features": {"feature_a": True}}
+        assert result.model_dump() == {"features": {"feature_a": True}}
 
 
 class TestSystemFeatureApi:
@@ -37,46 +24,36 @@ class TestSystemFeatureApi:
         """
         current_user.is_authenticated == True
         """
-
-        from controllers.console.feature import SystemFeatureApi
-
-        fake_user = mocker.Mock()
-        fake_user.is_authenticated = True
-
-        mocker.patch(
-            "controllers.console.feature.current_user",
-            fake_user,
-        )
-
+        mocker.patch("controllers.console.feature.current_user.is_authenticated", True)
         mocker.patch(
             "controllers.console.feature.FeatureService.get_system_features"
-        ).return_value.model_dump.return_value = {"features": {"sys_feature": True}}
+        ).return_value = {"system_features": {"feature_b": True}}
 
-        api = SystemFeatureApi()
-        result = api.get()
+        from controllers.console.feature import get_system_features
 
-        assert result == {"features": {"sys_feature": True}}
+        result = get_system_features()
+
+        assert result == {"system_features": {"feature_b": True}}
 
     def test_get_system_features_unauthenticated(self, mocker: MockerFixture):
         """
-        current_user.is_authenticated raises Unauthorized
+        Test that system features still work when current_user.is_authenticated raises Unauthorized
         """
-
-        from controllers.console.feature import SystemFeatureApi
-
-        fake_user = mocker.Mock()
-        type(fake_user).is_authenticated = mocker.PropertyMock(side_effect=Unauthorized())
-
         mocker.patch(
-            "controllers.console.feature.current_user",
-            fake_user,
+            "controllers.console.feature.current_user.is_authenticated",
+            new_callable=mocker.PropertyMock,
+            side_effect=Unauthorized(),
         )
-
         mocker.patch(
             "controllers.console.feature.FeatureService.get_system_features"
-        ).return_value.model_dump.return_value = {"features": {"sys_feature": False}}
+        ).return_value = {"system_features": {"feature_c": True}}
 
-        api = SystemFeatureApi()
-        result = api.get()
+        from controllers.console.feature import get_system_features
 
-        assert result == {"features": {"sys_feature": False}}
+        result = get_system_features()
+
+        # Should call get_system_features with is_authenticated=False
+        from services.feature_service import FeatureService
+
+        FeatureService.get_system_features.assert_called_once_with(is_authenticated=False)
+        assert result == {"system_features": {"feature_c": True}}
