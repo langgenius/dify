@@ -283,7 +283,7 @@ class ToolEngine:
         Extract tool response binary
         """
         for response in tool_response:
-            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE, ToolInvokeMessage.MessageType.BINARY_LINK}:
                 mimetype = None
                 if not response.meta:
                     raise ValueError("missing meta data")
@@ -298,7 +298,7 @@ class ToolEngine:
                             mimetype = guess_type_result
 
                 if not mimetype:
-                    mimetype = "image/jpeg"
+                    mimetype = "image/jpeg" if response.type != ToolInvokeMessage.MessageType.BINARY_LINK else "application/octet-stream"
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", mimetype),
