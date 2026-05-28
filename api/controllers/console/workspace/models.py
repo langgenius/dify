@@ -8,17 +8,12 @@ from pydantic import BaseModel, Field, field_validator
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import (
-    account_initialization_required,
-    is_admin_or_owner_required,
-    setup_required,
-    with_current_tenant_id,
-)
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
@@ -143,8 +138,9 @@ class DefaultModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str):
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserGetDefault.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
@@ -160,8 +156,9 @@ class DefaultModelApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str):
+    def post(self):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserPostDefault.model_validate(console_ns.payload)
         model_provider_service = ModelProviderService()
         model_settings = args.model_settings
@@ -192,8 +189,9 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider):
+    def get(self, provider):
+        _, tenant_id = current_account_with_tenant()
+
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
 
@@ -204,9 +202,9 @@ class ModelProviderModelApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
+    def post(self, provider: str):
         # To save the model's load balance configs
+        _, tenant_id = current_account_with_tenant()
         args = ParserPostModels.model_validate(console_ns.payload)
 
         if args.config_from == "custom-model":
@@ -251,8 +249,9 @@ class ModelProviderModelApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def delete(self, tenant_id: str, provider: str):
+    def delete(self, provider: str):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -269,8 +268,9 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
+    def get(self, provider: str):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
@@ -323,8 +323,9 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserCreateCredential.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -354,8 +355,8 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def put(self, current_tenant_id: str, provider: str):
+    def put(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         args = ParserUpdateCredential.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -381,8 +382,8 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def delete(self, current_tenant_id: str, provider: str):
+    def delete(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         args = ParserDeleteCredential.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -405,8 +406,8 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         args = ParserSwitch.model_validate(console_ns.payload)
 
         service = ModelProviderService()
@@ -429,8 +430,9 @@ class ModelProviderModelEnableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def patch(self, tenant_id: str, provider: str):
+    def patch(self, provider: str):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -450,8 +452,9 @@ class ModelProviderModelDisableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def patch(self, tenant_id: str, provider: str):
+    def patch(self, provider: str):
+        _, tenant_id = current_account_with_tenant()
+
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -477,8 +480,8 @@ class ModelProviderModelValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, tenant_id = current_account_with_tenant()
         args = ParserValidate.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -512,9 +515,9 @@ class ModelProviderModelParameterRuleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
+    def get(self, provider: str):
         args = ParserParameter.model_validate(request.args.to_dict(flat=True))
+        _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
@@ -529,8 +532,8 @@ class ModelProviderAvailableModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, model_type: str):
+    def get(self, model_type: str):
+        _, tenant_id = current_account_with_tenant()
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 

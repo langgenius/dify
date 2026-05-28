@@ -38,8 +38,6 @@ from clients.agent_backend.request_builder import (
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
     AgentBackendWorkflowNodeRunInput,
-    CleanupLayerSpec,
-    extract_cleanup_layer_specs,
     redact_for_agent_backend_log,
 )
 
@@ -70,11 +68,9 @@ __all__ = [
     "AgentBackendTransportError",
     "AgentBackendValidationError",
     "AgentBackendWorkflowNodeRunInput",
-    "CleanupLayerSpec",
     "DifyAgentBackendRunClient",
     "FakeAgentBackendRunClient",
     "FakeAgentBackendScenario",
     "create_agent_backend_run_client",
-    "extract_cleanup_layer_specs",
     "redact_for_agent_backend_log",
 ]

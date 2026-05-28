@@ -11,7 +11,7 @@ vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogTrigger: ({ children, render }: { children?: ReactNode, render?: ReactNode }) => render ?? <button type="button">{children}</button>,
+  AlertDialogTrigger: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({
@@ -24,7 +24,6 @@ vi.mock('@/app/components/workflow/header', () => ({
         data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}
       >
         {props.normal?.components?.title}
-        {props.normal?.components?.left}
         <button type="button">
           {props.normal?.runAndHistoryProps?.runButtonText ?? 'snippet.testRunButton'}
         </button>
@@ -36,11 +35,7 @@ vi.mock('@/app/components/workflow/header', () => ({
 
 describe('SnippetHeader', () => {
   const mockCancel = vi.fn()
-  const mockDiscardAndExit = vi.fn()
-  const mockEdit = vi.fn()
-  const mockExitEditing = vi.fn()
   const mockPublish = vi.fn()
-  const mockSaveAndExit = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -52,15 +47,9 @@ describe('SnippetHeader', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
-          hasDraftChanges={false}
-          isEditing={false}
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
-          onEdit={mockEdit}
-          onExitEditing={mockExitEditing}
           onPublish={mockPublish}
-          onSaveAndExitEditing={mockSaveAndExit}
         />,
       )
 
@@ -68,31 +57,26 @@ describe('SnippetHeader', () => {
       expect(header).toHaveAttribute('data-show-env', 'false')
       expect(header).toHaveAttribute('data-show-global-variable', 'false')
       expect(header).toHaveAttribute('data-history-url', '/snippets/snippet-1/workflow-runs')
-      expect(screen.getByText('snippet.viewOnly')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /snippet\.edit/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /snippet\.cancel/i })).toBeInTheDocument()
+      expect(screen.getByText('snippet.unsavedChanges')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /snippet\.save/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /snippet\.testRunButton/i })).toBeInTheDocument()
     })
   })
 
   // Verifies forwarded callbacks still drive the snippet-specific controls.
   describe('User Interactions', () => {
-    it('should invoke the snippet callbacks when save and discard are clicked in editing mode', () => {
+    it('should invoke the snippet callbacks when save and discard are clicked', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
-          hasDraftChanges
-          isEditing
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
-          onEdit={mockEdit}
-          onExitEditing={mockExitEditing}
           onPublish={mockPublish}
-          onSaveAndExitEditing={mockSaveAndExit}
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /^snippet\.save$/i }))
+      fireEvent.click(screen.getByRole('button', { name: /snippet\.save/i }))
       fireEvent.click(screen.getByRole('button', { name: /snippet\.discardChanges/i }))
 
       expect(mockPublish).toHaveBeenCalledTimes(1)

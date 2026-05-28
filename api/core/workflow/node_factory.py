@@ -475,7 +475,6 @@ class DifyNodeFactory(NodeFactory):
             from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
-            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
 
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
@@ -495,7 +494,6 @@ class DifyNodeFactory(NodeFactory):
                 # outputs contain no file refs.
                 "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
-                "session_store": WorkflowAgentRuntimeSessionStore(),
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,

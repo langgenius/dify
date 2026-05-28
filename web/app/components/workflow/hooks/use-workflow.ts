@@ -417,26 +417,19 @@ export const useWorkflow = () => {
 export const useWorkflowReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)
-  const canvasReadOnly = useStore(s => s.canvasReadOnly)
 
   const getWorkflowReadOnly = useCallback(() => {
-    const {
-      canvasReadOnly,
-      workflowRunningData,
-    } = workflowStore.getState()
-
-    return canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    return workflowStore.getState().workflowRunningData?.result.status === WorkflowRunningStatus.Running
   }, [workflowStore])
 
   return {
-    workflowReadOnly: canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running,
+    workflowReadOnly: workflowRunningData?.result.status === WorkflowRunningStatus.Running,
     getWorkflowReadOnly,
   }
 }
 
 export const useNodesReadOnly = () => {
   const workflowStore = useWorkflowStore()
-  const canvasReadOnly = useStore(s => s.canvasReadOnly)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
@@ -446,12 +439,10 @@ export const useNodesReadOnly = () => {
       workflowRunningData,
       historyWorkflowData,
       isRestoring,
-      canvasReadOnly,
     } = workflowStore.getState()
 
     return !!(
-      canvasReadOnly
-      || workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
@@ -460,8 +451,7 @@ export const useNodesReadOnly = () => {
 
   return {
     nodesReadOnly: !!(
-      canvasReadOnly
-      || workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring

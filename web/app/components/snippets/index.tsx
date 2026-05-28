@@ -26,29 +26,17 @@ const SnippetPageLoading = () => {
 
 const SnippetPage = ({ snippetId }: SnippetPageProps) => {
   const { data, isLoading } = useSnippetInit(snippetId)
-  const publishedNodesData = useMemo(() => {
+  const nodesData = useMemo(() => {
     if (!data)
       return []
 
-    return initialNodes(data.published.graph.nodes, data.published.graph.edges)
+    return initialNodes(data.graph.nodes, data.graph.edges)
   }, [data])
-  const publishedEdgesData = useMemo(() => {
+  const edgesData = useMemo(() => {
     if (!data)
       return []
 
-    return initialEdges(data.published.graph.edges, data.published.graph.nodes)
-  }, [data])
-  const draftNodesData = useMemo(() => {
-    if (!data)
-      return []
-
-    return initialNodes(data.draft.graph.nodes, data.draft.graph.edges)
-  }, [data])
-  const draftEdgesData = useMemo(() => {
-    if (!data)
-      return []
-
-    return initialEdges(data.draft.graph.edges, data.draft.graph.nodes)
+    return initialEdges(data.graph.edges, data.graph.nodes)
   }, [data])
 
   if (!data || isLoading) {
@@ -62,23 +50,16 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
       section="orchestrate"
     >
       <WorkflowWithDefaultContext
-        edges={publishedEdgesData}
-        nodes={publishedNodesData}
+        edges={edgesData}
+        nodes={nodesData}
       >
         <SnippetMain
           key={snippetId}
           snippetId={snippetId}
-          payload={data.published}
-          draftPayload={data.draft}
-          hasInitialDraftChanges={data.hasDraftChanges}
-          publishedWorkflowHash={data.publishedWorkflow?.hash}
-          draftWorkflowHash={data.draftWorkflow?.hash}
-          nodes={publishedNodesData}
-          edges={publishedEdgesData}
-          viewport={data.published.graph.viewport}
-          draftNodes={draftNodesData}
-          draftEdges={draftEdgesData}
-          draftViewport={data.draft.graph.viewport}
+          payload={data}
+          nodes={nodesData}
+          edges={edgesData}
+          viewport={data.graph.viewport}
         />
       </WorkflowWithDefaultContext>
     </SnippetLayout>

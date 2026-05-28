@@ -135,17 +135,12 @@ vi.mock('@/app/components/workflow', () => ({
 vi.mock('@/app/components/snippets/components/snippet-children', () => ({
   default: ({
     onCancel,
-    onEdit,
     onPublish,
-    isEditing,
   }: {
-    isEditing: boolean
     onCancel: () => void
-    onEdit: () => void
     onPublish: () => void
   }) => (
     <div>
-      {!isEditing && <button type="button" onClick={onEdit}>edit</button>}
       <button type="button" onClick={onPublish}>publish</button>
       <button type="button" onClick={onCancel}>cancel</button>
     </div>
@@ -213,15 +208,10 @@ const renderSnippetMain = () => {
   return renderWorkflowComponent(
     <SnippetMain
       payload={payload}
-      draftPayload={payload}
-      hasInitialDraftChanges={false}
       snippetId="snippet-1"
       nodes={[] as WorkflowProps['nodes']}
       edges={[] as WorkflowProps['edges']}
       viewport={{ x: 0, y: 0, zoom: 1 }}
-      draftNodes={[] as WorkflowProps['nodes']}
-      draftEdges={[] as WorkflowProps['edges']}
-      draftViewport={{ x: 0, y: 0, zoom: 1 }}
     />,
   )
 }

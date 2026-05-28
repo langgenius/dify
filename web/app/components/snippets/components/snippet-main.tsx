@@ -7,13 +7,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
 } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useConfigsMap } from '../hooks/use-configs-map'
@@ -31,27 +29,13 @@ import SnippetSidebar from './snippet-sidebar'
 
 type SnippetMainProps = {
   payload: SnippetDetailPayload
-  draftPayload: SnippetDetailPayload
-  hasInitialDraftChanges: boolean
-  publishedWorkflowHash?: string
-  draftWorkflowHash?: string
   snippetId: string
-  draftNodes: WorkflowProps['nodes']
-  draftEdges: WorkflowProps['edges']
-  draftViewport?: WorkflowProps['viewport']
 } & Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 
 type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
-  hasDraftChanges: boolean
-  isEditing: boolean
   onCancel: () => void | Promise<void>
-  onDiscardAndExitEditing: () => void | Promise<void>
-  onEdit: () => void
-  onExitEditing: () => void | Promise<void>
-  onSaved: () => void
-  onSavedAndExitEditing: () => void
 }
 
 const unsupportedSnippetBlockTypes = new Set([
@@ -63,14 +47,7 @@ const unsupportedSnippetBlockTypes = new Set([
 const SnippetMainContent = ({
   snippetId,
   fields,
-  hasDraftChanges,
-  isEditing,
   onCancel,
-  onDiscardAndExitEditing,
-  onEdit,
-  onExitEditing,
-  onSaved,
-  onSavedAndExitEditing,
 }: SnippetMainContentProps) => {
   const {
     handlePublish,
@@ -79,83 +56,30 @@ const SnippetMainContent = ({
     snippetId,
   })
 
-  const handlePublishSnippet = useCallback(async () => {
-    const didSave = await handlePublish()
-    if (didSave)
-      onSaved()
-
-    return didSave
-  }, [handlePublish, onSaved])
-
-  const handleSaveAndExitEditing = useCallback(async () => {
-    const didSave = await handlePublishSnippet()
-    if (didSave)
-      onSavedAndExitEditing()
-  }, [handlePublishSnippet, onSavedAndExitEditing])
-
   return (
     <SnippetChildren
       snippetId={snippetId}
       fields={fields}
-      hasDraftChanges={hasDraftChanges}
-      isEditing={isEditing}
       isPublishing={isPublishing}
       onCancel={onCancel}
-      onDiscardAndExitEditing={onDiscardAndExitEditing}
-      onEdit={onEdit}
-      onExitEditing={onExitEditing}
-      onPublish={handlePublishSnippet}
-      onSaveAndExitEditing={handleSaveAndExitEditing}
+      onPublish={handlePublish}
     />
   )
 }
 
 const SnippetMain = ({
   payload,
-  draftPayload,
-  hasInitialDraftChanges,
-  publishedWorkflowHash,
-  draftWorkflowHash,
   snippetId,
   nodes,
   edges,
   viewport,
-  draftNodes,
-  draftEdges,
-  draftViewport,
 }: SnippetMainProps) => {
-  const [isEditing, setIsEditing] = useState(false)
-  const [draftChangeState, setDraftChangeState] = useState({
-    initial: hasInitialDraftChanges,
-    snippetId,
-    value: hasInitialDraftChanges,
-  })
-  if (draftChangeState.snippetId !== snippetId || draftChangeState.initial !== hasInitialDraftChanges) {
-    setDraftChangeState({
-      initial: hasInitialDraftChanges,
-      snippetId,
-      value: hasInitialDraftChanges,
-    })
-  }
-  const hasDraftChanges = draftChangeState.value
-  const setHasDraftChanges = useCallback((value: boolean) => {
-    setDraftChangeState(prev => ({
-      ...prev,
-      value,
-    }))
-  }, [])
-  const displayPayload = isEditing ? draftPayload : payload
-  const displayNodes = isEditing ? draftNodes : nodes
-  const displayEdges = isEditing ? draftEdges : edges
-  const displayViewport = isEditing ? draftViewport : viewport
-  const displayWorkflowHash = isEditing ? draftWorkflowHash : publishedWorkflowHash
-  const { graph, snippet } = displayPayload
+  const { graph, snippet } = payload
   const {
-    doSyncWorkflowDraft: syncWorkflowDraft,
+    doSyncWorkflowDraft,
     syncInputFieldsDraft,
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft(snippetId)
-  const workflowStore = useWorkflowStore()
   const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const {
@@ -230,42 +154,14 @@ const SnippetMain = ({
     inputFields: fields,
   })
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
+
   useEffect(() => {
     reset()
   }, [reset, snippetId])
 
   useEffect(() => {
-    setFields(displayPayload.inputFields)
-  }, [displayPayload.inputFields, setFields, snippetId])
-
-  useEffect(() => {
-    workflowStore.setState({ canvasReadOnly: !isEditing })
-
-    return () => {
-      workflowStore.setState({ canvasReadOnly: false })
-    }
-  }, [isEditing, workflowStore])
-
-  useEffect(() => {
-    workflowStore.temporal.getState().pause()
-    workflowStore.getState().setWorkflowHistory({
-      nodes: displayNodes,
-      edges: displayEdges,
-      workflowHistoryEvent: undefined,
-      workflowHistoryEventMeta: undefined,
-    })
-    workflowStore.temporal.getState().clear()
-    workflowStore.temporal.getState().resume()
-  }, [displayEdges, displayNodes, workflowStore])
-
-  const doSyncWorkflowDraft = useCallback((
-    ...args: Parameters<typeof syncWorkflowDraft>
-  ) => {
-    if (isEditing)
-      setHasDraftChanges(true)
-
-    return syncWorkflowDraft(...args)
-  }, [isEditing, setHasDraftChanges, syncWorkflowDraft])
+    setFields(payload.inputFields)
+  }, [payload.inputFields, setFields, snippetId])
 
   const handleCancelChanges = useCallback(async () => {
     const workflow = publishedWorkflow ?? (await refetchPublishedWorkflow()).data
@@ -281,25 +177,7 @@ const SnippetMain = ({
     void syncInputFieldsDraft(publishedInputFields, {
       onRefresh: setFields,
     })
-    setHasDraftChanges(false)
-  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, setHasDraftChanges, syncInputFieldsDraft])
-
-  const handleFieldsChangeInEditing = useCallback((nextFields: SnippetInputField[]) => {
-    handleFieldsChange(nextFields)
-    setHasDraftChanges(true)
-  }, [handleFieldsChange, setHasDraftChanges])
-
-  const handleExitEditing = useCallback(async () => {
-    if (hasDraftChanges)
-      return
-
-    setIsEditing(false)
-  }, [hasDraftChanges])
-
-  const handleDiscardAndExitEditing = useCallback(async () => {
-    await handleCancelChanges()
-    setIsEditing(false)
-  }, [handleCancelChanges])
+  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, syncInputFieldsDraft])
 
   const hooksStore = useMemo(() => {
     return {
@@ -368,31 +246,19 @@ const SnippetMain = ({
       <SnippetSidebar
         snippet={snippet}
         fields={fields}
-        readonly={!isEditing}
-        onFieldsChange={handleFieldsChangeInEditing}
+        onFieldsChange={handleFieldsChange}
       />
       <div className="relative min-h-0 min-w-0 grow">
         <WorkflowWithInnerContext
-          key={`${snippetId}-${isEditing ? 'draft' : 'published'}-${displayWorkflowHash ?? ''}`}
-          nodes={displayNodes}
-          edges={displayEdges}
-          viewport={displayViewport ?? graph.viewport}
+          nodes={nodes}
+          edges={edges}
+          viewport={viewport ?? graph.viewport}
           hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
         >
           <SnippetMainContent
             snippetId={snippetId}
             fields={fields}
-            hasDraftChanges={hasDraftChanges}
-            isEditing={isEditing}
             onCancel={handleCancelChanges}
-            onDiscardAndExitEditing={handleDiscardAndExitEditing}
-            onEdit={() => setIsEditing(true)}
-            onExitEditing={handleExitEditing}
-            onSaved={() => setHasDraftChanges(false)}
-            onSavedAndExitEditing={() => {
-              setHasDraftChanges(false)
-              setIsEditing(false)
-            }}
           />
         </WorkflowWithInnerContext>
       </div>
