@@ -1,4 +1,6 @@
 from __future__ import annotations
+from controllers.common.human_input import HumanInputFormSubmitPayload
+from flask import Flask
 
 import json
 from datetime import UTC, datetime
@@ -47,7 +49,7 @@ def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
         ConsoleHumanInputFormApi._ensure_console_access(form)
 
 
-def test_get_form_definition_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
     definition = SimpleNamespace(model_dump=lambda: {"fields": ["a"]})
     form = SimpleNamespace(tenant_id="tenant-1", get_definition=lambda: definition, expiration_time=expiration)
@@ -73,7 +75,7 @@ def test_get_form_definition_success(app, monkeypatch: pytest.MonkeyPatch) -> No
     assert payload["fields"] == ["a"]
 
 
-def test_get_form_definition_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class _ServiceStub:
         def __init__(self, *_args, **_kwargs):
             pass
@@ -93,7 +95,7 @@ def test_get_form_definition_not_found(app, monkeypatch: pytest.MonkeyPatch) -> 
             handler(api, form_token="token")
 
 
-def test_post_form_invalid_recipient_type(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.EMAIL_MEMBER)
 
     class _ServiceStub:
@@ -119,10 +121,10 @@ def test_post_form_invalid_recipient_type(app, monkeypatch: pytest.MonkeyPatch) 
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
         with pytest.raises(NotFoundError):
-            handler(api, form_token="token")
+            handler(api, HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}), form_token="token")
 
 
-def test_post_form_rejects_webapp_recipient_type(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.STANDALONE_WEB_APP)
 
     class _ServiceStub:
@@ -148,10 +150,10 @@ def test_post_form_rejects_webapp_recipient_type(app, monkeypatch: pytest.Monkey
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
         with pytest.raises(NotFoundError):
-            handler(api, form_token="token")
+            handler(api, HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}), form_token="token")
 
 
-def test_post_form_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     submit_mock = Mock()
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.CONSOLE)
 
@@ -180,13 +182,13 @@ def test_post_form_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
         method="POST",
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
-        response = handler(api, form_token="token")
+        response = handler(api, HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}), form_token="token")
 
     assert response.get_json() == {}
     submit_mock.assert_called_once()
 
 
-def test_workflow_events_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class _RepoStub:
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
             return None
@@ -210,7 +212,7 @@ def test_workflow_events_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None
             handler(api, workflow_run_id="run-1")
 
 
-def test_workflow_events_requires_account(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow_run = SimpleNamespace(
         id="run-1",
         created_by_role=CreatorUserRole.END_USER,
@@ -241,7 +243,7 @@ def test_workflow_events_requires_account(app, monkeypatch: pytest.MonkeyPatch) 
             handler(api, workflow_run_id="run-1")
 
 
-def test_workflow_events_requires_creator(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow_run = SimpleNamespace(
         id="run-1",
         created_by_role=CreatorUserRole.ACCOUNT,
@@ -272,7 +274,7 @@ def test_workflow_events_requires_creator(app, monkeypatch: pytest.MonkeyPatch) 
             handler(api, workflow_run_id="run-1")
 
 
-def test_workflow_events_finished(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow_run = SimpleNamespace(
         id="run-1",
         created_by_role=CreatorUserRole.ACCOUNT,

@@ -2,6 +2,7 @@
 Console/Studio Human Input Form APIs.
 """
 
+from controllers.console.wraps import model_validate
 import json
 import logging
 from collections.abc import Generator
@@ -75,8 +76,9 @@ class ConsoleHumanInputFormApi(Resource):
         return _jsonify_form_definition(form)
 
     @account_initialization_required
+    @model_validate(HumanInputFormSubmitPayload)
     @login_required
-    def post(self, form_token: str):
+    def post(self, payload: HumanInputFormSubmitPayload, form_token: str):
         """
         Submit human input form by form token.
 
@@ -90,7 +92,6 @@ class ConsoleHumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
         current_user, _ = current_account_with_tenant()
 
         service = HumanInputService(db.engine)
