@@ -202,14 +202,6 @@ describeSuite('E2E / difyctl run app --file', () => {
     const result = await r(['run', 'app', E.fileAppId, '--file', `doc=@${pdfPath}`, '--file', `picture=@${picPath}`])
     assertExitCode(result, 0)
   })
-
-  it.skip('[P0] oversized file upload returns error (exit code non-zero) (4.4.12)', () => {
-    // Spec 4.4.12: the current dev environment (console-platform-dev.dify.dev) does
-    // not enforce a strict upload size cap that causes a fast rejection.
-    // A 20 MB upload times out the test rather than returning a clear error.
-    // Skip until a fixture with a known size limit is available.
-  })
-
   itWithSso('[P0] SSO (dfoe_) token can execute file run (exit code 0) (4.4.23)', async () => {
     // Spec 4.4.23: an SSO-provisioned token must be able to run a file app.
     // Note: DIFY_E2E_SSO_TOKEN may be a dfoa_ token in dev environments;
