@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
+
+from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -17,11 +20,14 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
     AgentBackendValidationError,
+    CleanupLayerSpec,
+    extract_cleanup_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import WorkflowNodeJobConfig
 
@@ -40,10 +46,13 @@ from .runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
 )
+from .session_store import WorkflowAgentRuntimeSessionStore, WorkflowAgentSessionScope
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
     from graphon.runtime import GraphRuntimeState
+
+logger = logging.getLogger(__name__)
 
 
 # Stage 4 §5+§7: the terminal events that `_consume_event_stream` may return.
@@ -74,6 +83,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         output_adapter: WorkflowAgentOutputAdapter,
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
+        session_store: WorkflowAgentRuntimeSessionStore | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -88,6 +98,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._output_adapter = output_adapter
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
+        self._session_store = session_store
 
     @classmethod
     def version(cls) -> str:
@@ -134,6 +145,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             "agent_config_snapshot_id": bundle.snapshot.id,
             "binding_id": bundle.binding.id,
         }
+        session_scope = WorkflowAgentSessionScope(
+            tenant_id=dify_ctx.tenant_id,
+            app_id=dify_ctx.app_id,
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
+            node_id=self._node_id,
+            node_execution_id=self.id,
+            binding_id=bundle.binding.id,
+            agent_id=bundle.agent.id,
+            agent_config_snapshot_id=bundle.snapshot.id,
+        )
 
         # Stage 4 §4.1 (D-3): use effective outputs so defaults flow through both
         # the backend request and the post-run type check.
@@ -147,6 +169,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         attempt = 0
         while True:
             try:
+                session_snapshot = None
+                if self._session_store is not None:
+                    session_snapshot = self._session_store.load_active_snapshot(session_scope)
                 runtime_request = self._runtime_request_builder.build(
                     WorkflowAgentRuntimeBuildContext(
                         dify_context=dify_ctx,
@@ -159,6 +184,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
                         attempt=attempt,
+                        session_snapshot=session_snapshot,
                     )
                 )
             except WorkflowAgentRuntimeRequestBuildError as error:
@@ -221,9 +247,35 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 )
                 return
 
-            # Non-success terminal (failed / cancelled / paused) skips per-output
-            # post-processing — the backend itself already failed.
+            if isinstance(terminal_event, AgentBackendRunPausedInternalEvent):
+                self._save_session_snapshot(
+                    session_scope=session_scope,
+                    backend_run_id=terminal_event.run_id,
+                    snapshot=terminal_event.session_snapshot,
+                    composition_layer_specs=extract_cleanup_layer_specs(runtime_request.request.composition),
+                    metadata=metadata,
+                )
+                yield PauseRequestedEvent(
+                    reason=SchedulingPause(
+                        message=terminal_event.message
+                        or "Agent backend run requested workflow pause for external input."
+                    )
+                )
+                return
+
+            # Non-success terminal (failed / cancelled) skips per-output
+            # post-processing — the backend itself already failed. We also retire
+            # the local ACTIVE session row so a workflow loop back into the same
+            # Agent node cannot resume from a stale snapshot. The failed agent
+            # backend layers (suspended per ``on_exit``) are left for agent
+            # backend's own GC; this row will no longer be picked up by the
+            # workflow-terminal cleanup layer.
             if not isinstance(terminal_event, AgentBackendRunSucceededInternalEvent):
+                self._mark_session_cleaned_on_failure(
+                    session_scope=session_scope,
+                    backend_run_id=terminal_event.run_id,
+                    metadata=metadata,
+                )
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_failure_result(
                         event=terminal_event,
@@ -233,6 +285,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     )
                 )
                 return
+
+            self._save_session_snapshot(
+                session_scope=session_scope,
+                backend_run_id=terminal_event.run_id,
+                snapshot=terminal_event.session_snapshot,
+                composition_layer_specs=extract_cleanup_layer_specs(runtime_request.request.composition),
+                metadata=metadata,
+            )
 
             # ──── Stage 4: per-output type check ────
             type_check = self._type_checker.check(
@@ -383,6 +443,75 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 for r in outcome.results
             ],
         }
+
+    def _save_session_snapshot(
+        self,
+        *,
+        session_scope: WorkflowAgentSessionScope,
+        backend_run_id: str,
+        snapshot: CompositorSessionSnapshot | None,
+        composition_layer_specs: list[CleanupLayerSpec],
+        metadata: dict[str, Any],
+    ) -> None:
+        if self._session_store is None:
+            return
+        try:
+            self._session_store.save_active_snapshot(
+                scope=session_scope,
+                backend_run_id=backend_run_id,
+                snapshot=snapshot,
+                composition_layer_specs=composition_layer_specs,
+            )
+            agent_backend = dict(metadata.get("agent_backend") or {})
+            agent_backend["session_snapshot_persisted"] = snapshot is not None
+            metadata["agent_backend"] = agent_backend
+        except Exception:
+            logger.warning(
+                "Failed to persist workflow Agent runtime session snapshot: "
+                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
+                session_scope.tenant_id,
+                session_scope.workflow_run_id,
+                session_scope.node_id,
+                session_scope.binding_id,
+                session_scope.agent_id,
+                backend_run_id,
+                exc_info=True,
+            )
+            agent_backend = dict(metadata.get("agent_backend") or {})
+            agent_backend["session_snapshot_persisted"] = False
+            agent_backend["session_snapshot_persist_error"] = "workflow_agent_runtime_session_store_error"
+            metadata["agent_backend"] = agent_backend
+
+    def _mark_session_cleaned_on_failure(
+        self,
+        *,
+        session_scope: WorkflowAgentSessionScope,
+        backend_run_id: str,
+        metadata: dict[str, Any],
+    ) -> None:
+        if self._session_store is None:
+            return
+        try:
+            self._session_store.mark_cleaned(scope=session_scope, backend_run_id=backend_run_id)
+            agent_backend = dict(metadata.get("agent_backend") or {})
+            agent_backend["session_snapshot_cleaned_on_failure"] = True
+            metadata["agent_backend"] = agent_backend
+        except Exception:
+            logger.warning(
+                "Failed to mark workflow Agent runtime session cleaned on agent run failure: "
+                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
+                session_scope.tenant_id,
+                session_scope.workflow_run_id,
+                session_scope.node_id,
+                session_scope.binding_id,
+                session_scope.agent_id,
+                backend_run_id,
+                exc_info=True,
+            )
+            agent_backend = dict(metadata.get("agent_backend") or {})
+            agent_backend["session_snapshot_cleaned_on_failure"] = False
+            agent_backend["session_snapshot_cleanup_error"] = "workflow_agent_runtime_session_store_error"
+            metadata["agent_backend"] = agent_backend
 
     @staticmethod
     def _patch_event_with_defaults(

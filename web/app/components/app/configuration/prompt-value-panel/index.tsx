@@ -5,6 +5,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
@@ -19,7 +20,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -151,10 +151,11 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'paragraph' && (
                       <Textarea
+                        aria-label={name}
                         className="h-[120px] grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        onValueChange={(value) => { handleInputValueChange(key, value) }}
                         readOnly={readonly}
                       />
                     )}

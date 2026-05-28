@@ -357,6 +357,39 @@ describe('Header layout components', () => {
       expect(mockEmitRestoreComplete).not.toHaveBeenCalled()
       expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
     })
+
+    it('should restore snippet versions through snippet routes without emitting collaboration events', async () => {
+      const currentVersion = createCurrentVersion()
+
+      renderWorkflowComponent(
+        <HeaderInRestoring />,
+        {
+          initialStoreState: {
+            isRestoring: true,
+            showWorkflowVersionHistoryPanel: true,
+            backupDraft: createBackupDraft(),
+            currentVersion,
+          },
+          hooksStoreProps: {
+            configsMap: {
+              flowType: FlowType.snippet,
+              flowId: 'snippet-1',
+              fileSettings: {},
+            },
+          },
+        },
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+      await waitFor(() => {
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/snippets/snippet-1/workflows/version-1/restore')
+        expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
+      })
+      expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
+      expect(mockEmitRestoreComplete).not.toHaveBeenCalled()
+      expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+    })
   })
 
   describe('HeaderInHistory', () => {

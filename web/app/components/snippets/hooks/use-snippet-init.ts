@@ -1,4 +1,5 @@
 import type { SnippetWorkflow } from '@/types/snippet'
+import isEqual from 'fast-deep-equal'
 import {
   useEffect,
   useMemo,
@@ -39,6 +40,13 @@ const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
 
 const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
+}
+
+const getComparableWorkflowData = (workflow?: SnippetWorkflow) => {
+  return {
+    graph: workflow?.graph ?? {},
+    inputFields: Array.isArray(workflow?.input_fields) ? workflow.input_fields : [],
+  }
 }
 
 type DraftWorkflowState = {
@@ -112,18 +120,32 @@ export const useSnippetInit = (snippetId: string) => {
   const draftWorkflow = draftWorkflowState.snippetId === snippetId ? draftWorkflowState.data : undefined
 
   const data = useMemo(() => {
-    if (snippetApiDetail.data && !isDraftWorkflowLoading)
-      return buildSnippetDetailPayload(snippetApiDetail.data, draftWorkflow)
+    if (snippetApiDetail.data && !publishedWorkflowQuery.isLoading && !isDraftWorkflowLoading) {
+      const publishedWorkflow = publishedWorkflowQuery.data
+      const effectiveDraftWorkflow = draftWorkflow ?? publishedWorkflow
+
+      return {
+        snippet: buildSnippetDetailPayload(snippetApiDetail.data, publishedWorkflow).snippet,
+        published: buildSnippetDetailPayload(snippetApiDetail.data, publishedWorkflow),
+        draft: buildSnippetDetailPayload(snippetApiDetail.data, effectiveDraftWorkflow),
+        draftWorkflow,
+        publishedWorkflow,
+        hasDraftChanges: !!draftWorkflow && !isEqual(
+          getComparableWorkflowData(draftWorkflow),
+          getComparableWorkflowData(publishedWorkflow),
+        ),
+      }
+    }
 
     if (snippetApiDetail.error && isNotFoundError(snippetApiDetail.error))
       return null
 
     return undefined
-  }, [draftWorkflow, isDraftWorkflowLoading, snippetApiDetail.data, snippetApiDetail.error])
+  }, [draftWorkflow, isDraftWorkflowLoading, publishedWorkflowQuery.data, publishedWorkflowQuery.isLoading, snippetApiDetail.data, snippetApiDetail.error])
 
   return {
     ...snippetApiDetail,
     data,
-    isLoading: snippetApiDetail.isLoading || isDraftWorkflowLoading,
+    isLoading: snippetApiDetail.isLoading || publishedWorkflowQuery.isLoading || isDraftWorkflowLoading,
   }
 }

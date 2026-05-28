@@ -104,7 +104,6 @@ export function createReactFlowModuleMock() {
     useNodes: vi.fn(() => rfState.nodes),
     useEdges: vi.fn(() => rfState.edges),
     useViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
-    useKeyPress: vi.fn(() => false),
     useOnSelectionChange: vi.fn(),
     useOnViewportChange: vi.fn(),
     useUpdateNodeInternals: vi.fn(() => vi.fn()),

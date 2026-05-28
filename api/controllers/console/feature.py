@@ -2,11 +2,11 @@ from flask_restx import Resource
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
-from libs.login import current_account_with_tenant, current_user, login_required
+from libs.login import current_user, login_required
 from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
 
 from . import console_ns
-from .wraps import account_initialization_required, cloud_utm_record, setup_required
+from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
 
 register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel)
 
@@ -24,10 +24,9 @@ class FeatureApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_utm_record
-    def get(self):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         """Get feature configuration for current tenant"""
-        _, current_tenant_id = current_account_with_tenant()
-
         payload = FeatureService.get_features(
             current_tenant_id,
             exclude_vector_space=True,
@@ -49,10 +48,9 @@ class FeatureVectorSpaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_utm_record
-    def get(self):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         """Get vector-space usage and limit for current tenant"""
-        _, current_tenant_id = current_account_with_tenant()
-
         return FeatureService.get_vector_space(current_tenant_id).model_dump()
 
 

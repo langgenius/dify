@@ -2,6 +2,7 @@
 
 import type { InputVar } from '@/app/components/workflow/types'
 import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ import { hasDuplicateStr } from '@/utils/var'
 type SnippetSidebarProps = {
   snippet: SnippetDetail
   fields: SnippetInputField[]
+  readonly: boolean
   onFieldsChange: (fields: SnippetInputField[]) => void
 }
 
@@ -32,6 +34,7 @@ const toSnippetInputField = (field: InputVar): SnippetInputField => ({
 const SnippetSidebar = ({
   snippet,
   fields,
+  readonly,
   onFieldsChange,
 }: SnippetSidebarProps) => {
   const { t } = useTranslation()
@@ -108,19 +111,24 @@ const SnippetSidebar = ({
       <div className="flex min-h-0 grow flex-col px-6 pt-7">
         <Field
           title={t('inputVariables', { ns: 'snippet' })}
-          operations={(
-            <button
-              type="button"
-              aria-label={`${t('operation.add', { ns: 'common' })} ${t('inputVariables', { ns: 'snippet' })}`}
-              className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={showAddVarModal}
-            >
-              <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-            </button>
-          )}
+          operations={!readonly
+            ? (
+                <button
+                  type="button"
+                  aria-label={`${t('operation.add', { ns: 'common' })} ${t('inputVariables', { ns: 'snippet' })}`}
+                  className={cn(
+                    'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                    'cursor-pointer hover:bg-state-base-hover',
+                  )}
+                  onClick={showAddVarModal}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              )
+            : undefined}
         >
           <VarList
-            readonly={false}
+            readonly={readonly}
             list={workflowInputVars}
             onChange={handleVarListChange}
           />

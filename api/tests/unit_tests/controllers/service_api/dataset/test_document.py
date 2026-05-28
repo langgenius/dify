@@ -950,7 +950,8 @@ class TestDocumentAddByTextApi:
         """Configure mocks to neutralise billing/auth decorators.
 
         ``cloud_edition_billing_resource_check`` calls
-        ``FeatureService.get_features`` and
+        ``FeatureService.get_vector_space`` for vector-space checks and
+        ``FeatureService.get_features`` for other resource checks.
         ``cloud_edition_billing_rate_limit_check`` calls
         ``FeatureService.get_knowledge_rate_limit``.
         Both call ``validate_and_get_api_token`` first.
@@ -962,6 +963,11 @@ class TestDocumentAddByTextApi:
         mock_features = Mock()
         mock_features.billing.enabled = False
         mock_feature_svc.get_features.return_value = mock_features
+
+        mock_vector_space = Mock()
+        mock_vector_space.limit = 10
+        mock_vector_space.size = 0
+        mock_feature_svc.get_vector_space.return_value = mock_vector_space
 
         mock_rate_limit = Mock()
         mock_rate_limit.enabled = False
@@ -1140,6 +1146,10 @@ def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     mock_features = Mock()
     mock_features.billing.enabled = False
     mock_feature_svc.get_features.return_value = mock_features
+    mock_vector_space = Mock()
+    mock_vector_space.limit = 10
+    mock_vector_space.size = 0
+    mock_feature_svc.get_vector_space.return_value = mock_vector_space
     mock_rate_limit = Mock()
     mock_rate_limit.enabled = False
     mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit

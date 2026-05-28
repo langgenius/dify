@@ -14,11 +14,13 @@ import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECo
 import { consoleQuery } from '@/service/client'
 
 type SnippetTagsFilterProps = {
+  embedded?: boolean
   value: string[]
   onChange: (value: string[]) => void
 }
 
 const SnippetTagsFilter = ({
+  embedded = false,
   value,
   onChange,
 }: SnippetTagsFilterProps) => {
@@ -59,8 +61,16 @@ const SnippetTagsFilter = ({
             type="button"
             aria-label={triggerLabel}
             className={cn(
-              'relative flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-components-input-bg-normal px-2 text-text-tertiary hover:bg-components-input-bg-hover',
-              open && 'border-components-input-border-active bg-components-input-bg-active text-text-secondary',
+              'relative flex cursor-pointer items-center justify-center text-text-tertiary select-none',
+              embedded
+                ? 'h-7 rounded-md p-0.5'
+                : 'h-8 min-w-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-input-bg-normal px-2',
+              embedded && !value.length && 'py-1 pr-2 pl-1.5',
+              embedded && value.length > 0 && 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-1.5 pl-1 shadow-xs shadow-shadow-shadow-3',
+              !embedded && 'hover:bg-components-input-bg-hover',
+              open && (embedded
+                ? !value.length && 'bg-state-base-hover'
+                : 'border-components-input-border-active bg-components-input-bg-active text-text-secondary'),
               value.length > 0 && 'text-text-secondary',
             )}
           >

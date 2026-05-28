@@ -17,8 +17,8 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
   warning: vi.fn(),
 }))
-const ahooksMocks = vi.hoisted(() => ({
-  handlers: [] as Array<{ keys: unknown, handler: () => void }>,
+const hotkeyMocks = vi.hoisted(() => ({
+  handlers: new Map<string, { handler: () => void, options?: { enabled?: boolean } }>(),
 }))
 let mockPlanUsage = 0
 let mockPlanTotal = 10
@@ -33,10 +33,24 @@ vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: any[]) => any) => ({
     run: fn,
   }),
-  useKeyPress: (keys: unknown, handler: () => void) => {
-    ahooksMocks.handlers.push({ keys, handler })
-  },
 }))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (hotkey: string, handler: () => void, options?: { enabled?: boolean }) => {
+      hotkeyMocks.handlers.set(hotkey, { handler, options })
+    },
+  }
+})
+
+const triggerHotkey = (hotkey: string) => {
+  const registration = hotkeyMocks.handlers.get(hotkey)
+  if (registration?.options?.enabled === false)
+    return
+  registration?.handler()
+}
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -98,14 +112,10 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
-vi.mock('../../workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,
-}))
-
 describe('CreateFromDSLModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ahooksMocks.handlers.length = 0
+    hotkeyMocks.handlers.clear()
     mockPlanUsage = 0
     mockPlanTotal = 10
     localStorage.clear()
@@ -153,7 +163,7 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    ahooksMocks.handlers.find(item => Array.isArray(item.keys))?.handler()
+    triggerHotkey('Mod+Enter')
     expect(mockImportDSL).not.toHaveBeenCalled()
 
     await act(async () => {
@@ -164,6 +174,20 @@ describe('CreateFromDSLModal', () => {
     const closeTrigger = screen.getByText('importApp').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should render the import shortcut with kbd primitives', () => {
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_URL}
+        dslUrl="https://example.com/app.yml"
+      />,
+    )
+
+    const createButton = getCreateButton()
+    expect(createButton.querySelectorAll('kbd')).toHaveLength(2)
   })
 
   it('should import from a URL and redirect after a successful import', async () => {
@@ -258,8 +282,7 @@ describe('CreateFromDSLModal', () => {
       expect(getCreateButton())!.toBeDisabled()
     })
 
-    const latestHandlerAfterRemove = [...ahooksMocks.handlers].reverse().find(item => Array.isArray(item.keys))
-    latestHandlerAfterRemove?.handler()
+    triggerHotkey('Mod+Enter')
     expect(mockImportDSL).not.toHaveBeenCalled()
   })
 
@@ -418,7 +441,7 @@ describe('CreateFromDSLModal', () => {
     expect(toastMocks.error).not.toHaveBeenCalled()
   })
 
-  it('should handle keyboard shortcuts, quota guard, and escape close', async () => {
+  it('should handle keyboard shortcut and quota guard', async () => {
     const handleClose = vi.fn()
     mockImportDSL.mockResolvedValue({
       id: 'import-shortcut',
@@ -436,7 +459,7 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    ahooksMocks.handlers.find(item => Array.isArray(item.keys))?.handler()
+    triggerHotkey('Mod+Enter')
 
     await waitFor(() => {
       expect(mockImportDSL).toHaveBeenCalledWith({
@@ -444,9 +467,6 @@ describe('CreateFromDSLModal', () => {
         yaml_url: 'https://example.com/app.yml',
       })
     })
-
-    ahooksMocks.handlers.find(item => item.keys === 'esc')?.handler()
-    expect(handleClose).toHaveBeenCalled()
 
     mockPlanUsage = 1
     mockPlanTotal = 1
@@ -460,8 +480,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     expect(screen.getByText('apps-full'))!.toBeInTheDocument()
-    const latestPlanLimitHandler = [...ahooksMocks.handlers].reverse().find(item => Array.isArray(item.keys))
-    latestPlanLimitHandler?.handler()
+    triggerHotkey('Mod+Enter')
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
   })
 

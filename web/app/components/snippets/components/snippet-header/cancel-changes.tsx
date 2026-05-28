@@ -41,7 +41,7 @@ const CancelChanges = ({
         <AlertDialogTrigger
           className="system-sm-semibold text-text-accent hover:text-text-accent-secondary"
         >
-          {t('cancel')}
+          {t('discardDraft')}
         </AlertDialogTrigger>
         <AlertDialogContent className="w-160">
           <div className="space-y-2 p-8 pb-12">
@@ -67,7 +67,7 @@ const CancelChanges = ({
         </AlertDialogContent>
       </AlertDialog>
       <span className="text-text-quaternary">·</span>
-      <span className="text-text-tertiary">{t('unsavedChanges')}</span>
+      <span className="text-text-tertiary">{t('editingDraft')}</span>
     </div>
   )
 }
