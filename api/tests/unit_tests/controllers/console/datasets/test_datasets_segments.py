@@ -1036,6 +1036,48 @@ class TestSegmentListAdvancedCases:
         assert status == 200
         assert response["total"] == 1
 
+    def test_segment_list_postgres_keyword_filter_handles_scalar_keywords(self, app: Flask):
+        api = DatasetDocumentSegmentListApi()
+        method = unwrap(api.get)
+
+        dataset = MagicMock()
+        document = MagicMock()
+        pagination = MagicMock(items=[], total=0, pages=0)
+
+        with (
+            app.test_request_context("/?keyword=test"),
+            patch(
+                "controllers.console.datasets.datasets_segments.current_account_with_tenant",
+                return_value=(MagicMock(), "11111111-1111-1111-1111-111111111111"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.dify_config",
+                SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME="postgresql"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.db.paginate",
+                return_value=pagination,
+            ) as paginate_mock,
+        ):
+            method(api, "22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333")
+
+        query = paginate_mock.call_args.kwargs["select"]
+        sql = str(query.compile(compile_kwargs={"literal_binds": True}))
+        assert "jsonb_array_elements_text(CASE" in sql
+        assert "ELSE CAST('[]' AS JSONB)" in sql
+
     def test_segment_list_permission_denied(self, app: Flask):
         """Test segment list with permission denied"""
         api = DatasetDocumentSegmentListApi()
