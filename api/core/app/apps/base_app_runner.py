@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
@@ -292,46 +293,51 @@ class AppRunner:
         prompt_messages: list[PromptMessage] = []
         text = ""
         usage = None
-        for result in invoke_result:
-            if not agent:
-                queue_manager.publish(QueueLLMChunkEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
-            else:
-                queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
+        try:
+            for result in invoke_result:
+                if not agent:
+                    queue_manager.publish(QueueLLMChunkEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
+                else:
+                    queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
 
-            message = result.delta.message
-            if isinstance(message.content, str):
-                text += message.content
-            elif isinstance(message.content, list):
-                for content in message.content:
-                    if isinstance(content, str):
-                        text += content
-                    elif isinstance(content, TextPromptMessageContent):
-                        text += content.data
-                    elif isinstance(content, ImagePromptMessageContent):
-                        if message_id and user_id and tenant_id:
-                            try:
-                                self._handle_multimodal_image_content(
-                                    content=content,
-                                    message_id=message_id,
-                                    user_id=user_id,
-                                    tenant_id=tenant_id,
-                                    queue_manager=queue_manager,
-                                )
-                            except Exception:
-                                _logger.exception("Failed to handle multimodal image output")
+                message = result.delta.message
+                if isinstance(message.content, str):
+                    text += message.content
+                elif isinstance(message.content, list):
+                    for content in message.content:
+                        if isinstance(content, str):
+                            text += content
+                        elif isinstance(content, TextPromptMessageContent):
+                            text += content.data
+                        elif isinstance(content, ImagePromptMessageContent):
+                            if message_id and user_id and tenant_id:
+                                try:
+                                    self._handle_multimodal_image_content(
+                                        content=content,
+                                        message_id=message_id,
+                                        user_id=user_id,
+                                        tenant_id=tenant_id,
+                                        queue_manager=queue_manager,
+                                    )
+                                except Exception:
+                                    _logger.exception("Failed to handle multimodal image output")
+                            else:
+                                _logger.warning("Received multimodal output but missing required parameters")
                         else:
-                            _logger.warning("Received multimodal output but missing required parameters")
-                    else:
-                        text += content.data if hasattr(content, "data") else str(content)
+                            text += content.data if hasattr(content, "data") else str(content)
 
-            if not model:
-                model = result.model
+                if not model:
+                    model = result.model
 
-            if not prompt_messages:
-                prompt_messages = list(result.prompt_messages)
+                if not prompt_messages:
+                    prompt_messages = list(result.prompt_messages)
 
-            if result.delta.usage:
-                usage = result.delta.usage
+                if result.delta.usage:
+                    usage = result.delta.usage
+        except GenerateTaskStoppedError:
+            # Explicitly close provider stream to stop in-flight token generation ASAP.
+            invoke_result.close()
+            raise
 
         if usage is None:
             usage = LLMUsage.empty_usage()

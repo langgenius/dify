@@ -104,6 +104,9 @@ describe('snippet/use-nodes-sync-draft', () => {
       hash: 'next-hash',
       updated_at: 123,
     })
+    mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+      workflowStoreState.syncWorkflowDraftHash = hash
+    })
     useSnippetDetailStore.setState({
       fields: [createInputField('topic')],
     })
@@ -182,6 +185,42 @@ describe('snippet/use-nodes-sync-draft', () => {
         hash: 'draft-hash',
       },
     })
+  })
+
+  it('should serialize draft sync across hook instances and use the latest returned hash', async () => {
+    const { result: firstHook } = renderHook(() => useNodesSyncDraft('snippet-1'))
+    const { result: secondHook } = renderHook(() => useNodesSyncDraft('snippet-1'))
+
+    mockSyncDraftWorkflow
+      .mockResolvedValueOnce({
+        hash: 'hash-after-first-sync',
+        updated_at: 123,
+      })
+      .mockResolvedValueOnce({
+        hash: 'hash-after-second-sync',
+        updated_at: 124,
+      })
+
+    await act(async () => {
+      await Promise.all([
+        firstHook.current.doSyncWorkflowDraft(),
+        secondHook.current.doSyncWorkflowDraft(),
+      ])
+    })
+
+    expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(1, {
+      params: { snippetId: 'snippet-1' },
+      body: expect.objectContaining({
+        hash: 'draft-hash',
+      }),
+    })
+    expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(2, {
+      params: { snippetId: 'snippet-1' },
+      body: expect.objectContaining({
+        hash: 'hash-after-first-sync',
+      }),
+    })
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('hash-after-second-sync')
   })
 
   it('should send input_fields together with graph on page close', () => {

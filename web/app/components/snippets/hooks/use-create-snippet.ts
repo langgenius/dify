@@ -47,8 +47,8 @@ export const useCreateSnippet = () => {
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
     }
-    catch (error) {
-      toast.error(error instanceof Error ? error.message : t('createFailed', { ns: 'snippet' }))
+    catch {
+      // The API client surfaces the response message. Avoid showing a second generic create-failed toast here.
     }
     finally {
       setIsCreatingSnippet(false)

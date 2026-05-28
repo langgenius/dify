@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
+from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType, TokenType
 from services.oauth_device_flow import (
     list_active_sessions,
     revoke_oauth_token,
@@ -21,7 +21,7 @@ def _account_ctx() -> AuthContext:
         client_id="difyctl",
         scopes=frozenset({"full"}),
         token_id=uuid.uuid4(),
-        source="oauth_account",
+        token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
         token_hash="h1",
         verified_tenants={},
@@ -37,7 +37,7 @@ def _sso_ctx() -> AuthContext:
         client_id="difyctl",
         scopes=frozenset({"apps:run"}),
         token_id=uuid.uuid4(),
-        source="oauth_external_sso",
+        token_type=TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=None,
         token_hash="h1",
         verified_tenants={},

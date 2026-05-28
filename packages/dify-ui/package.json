@@ -69,6 +69,10 @@
       "types": "./src/input/index.tsx",
       "import": "./src/input/index.tsx"
     },
+    "./kbd": {
+      "types": "./src/kbd/index.tsx",
+      "import": "./src/kbd/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
@@ -129,6 +133,10 @@
       "types": "./src/tabs/index.tsx",
       "import": "./src/tabs/index.tsx"
     },
+    "./textarea": {
+      "types": "./src/textarea/index.tsx",
+      "import": "./src/textarea/index.tsx"
+    },
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"
@@ -167,6 +175,7 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-hotkeys": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

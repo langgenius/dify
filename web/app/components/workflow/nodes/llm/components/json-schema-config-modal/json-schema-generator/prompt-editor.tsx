@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Textarea from '@/app/components/base/textarea'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type ModelInfo = {
@@ -38,8 +38,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleInstructionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onInstructionChange(e.target.value)
+  const handleInstructionChange = useCallback((value: string) => {
+    onInstructionChange(value)
   }, [onInstructionChange])
 
   return (
@@ -90,10 +90,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
         </div>
         <div className="flex items-center">
           <Textarea
+            aria-label={t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}
             className="h-[364px] resize-none px-2 py-1"
             value={instruction}
             placeholder={t('nodes.llm.jsonSchema.promptPlaceholder', { ns: 'workflow' })}
-            onChange={handleInstructionChange}
+            onValueChange={handleInstructionChange}
           />
         </div>
       </div>

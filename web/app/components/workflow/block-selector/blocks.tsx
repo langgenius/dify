@@ -14,7 +14,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'

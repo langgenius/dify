@@ -71,10 +71,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: () => <span data-testid="shortcuts-name">Shortcut</span>,
-}))
-
 vi.mock('@/app/components/base/icons/src/vender/line/mediaAndDevices', () => ({
   StopCircle: () => <span data-testid="stop-circle" />,
 }))

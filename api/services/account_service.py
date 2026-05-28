@@ -1288,6 +1288,34 @@ class TenantService:
         return row is not None
 
     @staticmethod
+    def get_account_role_in_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> TenantAccountRole | None:
+        """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
+
+        Backs ``controllers.openapi.auth.role_gate.require_workspace_role``:
+        the gate maps ``None`` to 404 (non-member — no cross-tenant ID leak)
+        and an out-of-set role to 403, so it never touches the ORM itself.
+
+        ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
+        bearers (no account) collapse to the non-member path. Mirrors the
+        session-injection style of :meth:`account_belongs_to_tenant` rather
+        than :meth:`get_user_role`, which loads full ``Account``/``Tenant``
+        objects against the Flask-scoped ``db.session``.
+        """
+        if not account_id:
+            return None
+        role = session.execute(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return TenantAccountRole(role) if role is not None else None
+
+    @staticmethod
     def get_tenant_by_id(session: Session | scoped_session, tenant_id: str) -> Tenant | None:
         """Plain ``session.get(Tenant, tenant_id)`` — no status filter.
         Callers map ``status == ARCHIVE`` to their own error code (the

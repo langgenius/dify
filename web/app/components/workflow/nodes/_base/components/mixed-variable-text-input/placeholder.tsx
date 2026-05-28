@@ -1,3 +1,4 @@
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $insertNodes, FOCUS_COMMAND } from 'lexical'
 import { useCallback } from 'react'
@@ -27,7 +28,7 @@ const Placeholder = () => {
     >
       <div className="flex grow items-center">
         {t('nodes.tool.insertPlaceholder1', { ns: 'workflow' })}
-        <div className="mx-0.5 flex size-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
+        <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>
         <div
           className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
           onMouseDown={((e) => {

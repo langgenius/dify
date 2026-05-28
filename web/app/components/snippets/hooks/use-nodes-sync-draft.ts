@@ -4,7 +4,6 @@ import type { SnippetDraftSyncPayload, SnippetWorkflow } from '@/types/snippet'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
@@ -23,6 +22,25 @@ const isSyncConflictError = (error: unknown): error is { bodyUsed: boolean, json
 
 type SyncInputFieldsDraftCallback = SyncDraftCallback & {
   onRefresh?: (inputFields: SnippetInputField[]) => void
+}
+
+const snippetDraftSyncQueues = new Map<string, Promise<unknown>>()
+
+const enqueueSnippetDraftSync = <Result>(
+  snippetId: string,
+  task: () => Promise<Result> | Result,
+) => {
+  const previousTask = snippetDraftSyncQueues.get(snippetId)?.catch(() => undefined) ?? Promise.resolve()
+  const nextTask = previousTask.then(task)
+
+  snippetDraftSyncQueues.set(snippetId, nextTask)
+  const cleanup = () => {
+    if (snippetDraftSyncQueues.get(snippetId) === nextTask)
+      snippetDraftSyncQueues.delete(snippetId)
+  }
+  void nextTask.then(cleanup, cleanup)
+
+  return nextTask
 }
 
 export const useNodesSyncDraft = (snippetId: string) => {
@@ -135,7 +153,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
     })
   }, [getDraftSyncPayload, getNodesReadOnly, snippetId, workflowStore])
 
-  const performSync = useCallback(async (
+  const syncWorkflowDraftWithPayload = useCallback(async (
     draftPayload: Omit<SnippetDraftSyncPayload, 'hash'> | null,
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
@@ -143,17 +161,17 @@ export const useNodesSyncDraft = (snippetId: string) => {
     if (!draftPayload)
       return
 
-    await syncDraft(draftPayload, notRefreshWhenSyncError, callback)
-  }, [syncDraft])
+    await enqueueSnippetDraftSync(snippetId, () => syncDraft(draftPayload, notRefreshWhenSyncError, callback))
+  }, [snippetId, syncDraft])
 
-  const performInputFieldsSync = useCallback(async (
+  const syncInputFieldsDraftWithPayload = useCallback(async (
     draftPayload: Omit<SnippetDraftSyncPayload, 'hash'> | null,
     callback?: SyncInputFieldsDraftCallback,
   ) => {
     if (!draftPayload)
       return
 
-    await syncDraft(
+    await enqueueSnippetDraftSync(snippetId, () => syncDraft(
       draftPayload,
       false,
       callback,
@@ -163,11 +181,8 @@ export const useNodesSyncDraft = (snippetId: string) => {
           : []
         callback?.onRefresh?.(refreshedInputFields)
       },
-    )
-  }, [syncDraft])
-
-  const syncWorkflowDraftWithPayload = useSerialAsyncCallback(performSync, getNodesReadOnly)
-  const syncInputFieldsDraftWithPayload = useSerialAsyncCallback(performInputFieldsSync)
+    ))
+  }, [snippetId, syncDraft])
 
   const doSyncWorkflowDraft = useCallback((
     notRefreshWhenSyncError?: boolean,
