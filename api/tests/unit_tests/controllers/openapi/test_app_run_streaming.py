@@ -57,7 +57,11 @@ def test_stop_task_endpoint_registered(openapi_app):
 
 
 def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, monkeypatch):
+    import uuid
+
     from controllers.openapi.app_run import AppRunTaskStopApi
+    from controllers.openapi.auth.data import AuthData
+    from libs.oauth_bearer import Scope, TokenType
 
     queue_mock = Mock()
     graph_mock = Mock()
@@ -69,15 +73,23 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, mo
     monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
     monkeypatch.setattr(run_module, "redis_client", object())
 
+    auth_data = AuthData.model_construct(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        account_id=uuid.uuid4(),
+        token_hash="test",
+        scopes=frozenset({Scope.FULL}),
+        app=SimpleNamespace(id="app-1", tenant_id="t-1"),
+        caller=SimpleNamespace(id="acct-1"),
+        caller_kind="account",
+    )
+
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1/stop", method="POST"):
         result = api.post.__wrapped__(
             api,
             app_id="app-1",
             task_id="task-1",
-            app_model=SimpleNamespace(id="app-1", tenant_id="t-1"),
-            caller=SimpleNamespace(id="acct-1"),
-            caller_kind="account",
+            auth_data=auth_data,
         )
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")

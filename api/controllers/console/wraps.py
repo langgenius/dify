@@ -96,10 +96,19 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
-            features = FeatureService.get_features(
-                current_tenant_id,
-                exclude_vector_space=resource != "vector_space",
-            )
+            if resource == "vector_space":
+                if not dify_config.BILLING_ENABLED:
+                    return view(*args, **kwargs)
+
+                vector_space = FeatureService.get_vector_space(current_tenant_id)
+                if 0 < vector_space.limit <= vector_space.size:
+                    abort(
+                        403,
+                        "The capacity of the knowledge storage space has reached the limit of your subscription.",
+                    )
+                return view(*args, **kwargs)
+
+            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
@@ -109,14 +118,6 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                     abort(403, "The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     abort(403, "The number of apps has reached the limit of your subscription.")
-                elif resource == "vector_space":
-                    vector_space = features.vector_space
-                    assert vector_space is not None
-                    if 0 < vector_space.limit <= vector_space.size:
-                        abort(
-                            403,
-                            "The capacity of the knowledge storage space has reached the limit of your subscription.",
-                        )
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets

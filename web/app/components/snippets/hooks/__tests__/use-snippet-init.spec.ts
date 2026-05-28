@@ -94,7 +94,7 @@ describe('useSnippetInit', () => {
     expect(mockUseSnippetApiDetail).toHaveBeenCalledWith('snippet-1')
     expect(mockFetchSnippetDraftWorkflow).toHaveBeenCalledWith('snippet-1')
     expect(result.current.data?.snippet.id).toBe('snippet-1')
-    expect(result.current.data?.graph.viewport).toEqual({ x: 0, y: 0, zoom: 1 })
+    expect(result.current.data?.published.graph.viewport).toEqual({ x: 0, y: 0, zoom: 1 })
   })
 
   it('should use draft input_fields for snippet inputs', async () => {
@@ -141,7 +141,7 @@ describe('useSnippetInit', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    expect(result.current.data?.inputFields).toEqual([
+    expect(result.current.data?.draft.inputFields).toEqual([
       {
         label: 'Draft field',
         variable: 'draft_field',
@@ -170,7 +170,7 @@ describe('useSnippetInit', () => {
 
     expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(1_712_345_678)
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('fetched-draft-hash')
-    expect(result.current.data?.graph.viewport).toEqual({ x: 10, y: 20, zoom: 1.2 })
+    expect(result.current.data?.draft.graph.viewport).toEqual({ x: 10, y: 20, zoom: 1.2 })
   })
 
   it('should not return stale draft data while the draft workflow request is pending', () => {
@@ -191,7 +191,7 @@ describe('useSnippetInit', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    expect(result.current.data?.graph).toEqual({
+    expect(result.current.data?.published.graph).toEqual({
       nodes: [],
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
@@ -238,7 +238,7 @@ describe('useSnippetInit', () => {
     }))
     await Promise.resolve()
 
-    expect(result.current.data?.graph.nodes).toEqual([{ id: 'snippet-2-node' }])
+    expect(result.current.data?.draft.graph.nodes).toEqual([{ id: 'snippet-2-node' }])
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('snippet-2-hash')
     expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalledWith('stale-snippet-1-hash')
   })

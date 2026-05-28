@@ -79,8 +79,9 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         blocked_imports=[
             "anthropic",
             "dify_agent.adapters.llm",
+            "dify_agent.layers.execution_context.layer",
             "dify_agent.layers.dify_plugin.llm_layer",
-            "dify_agent.layers.dify_plugin.plugin_layer",
+            "dify_agent.layers.dify_plugin.tools_layer",
             "dify_agent.layers.output.output_layer",
             "dify_agent.runtime",
             "dify_agent.server",
@@ -91,10 +92,16 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "pydantic_settings",
             "redis",
         ],
-        imports=["dify_agent.protocol", "dify_agent.layers.dify_plugin", "dify_agent.layers.output"],
+        imports=[
+            "dify_agent.protocol",
+            "dify_agent.layers.execution_context",
+            "dify_agent.layers.dify_plugin",
+            "dify_agent.layers.output",
+        ],
         assertions=[
             "assert hasattr(dify_agent_protocol, 'PydanticAIStreamRunEvent')",
-            "assert dify_agent_layers_dify_plugin.__all__ == ['DIFY_PLUGIN_LAYER_TYPE_ID', 'DIFY_PLUGIN_LLM_LAYER_TYPE_ID', 'DifyPluginCredentialValue', 'DifyPluginLLMLayerConfig', 'DifyPluginLayerConfig']",
+            "assert dify_agent_layers_execution_context.__all__ == ['DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID', 'DifyExecutionContextInvokeFrom', 'DifyExecutionContextLayerConfig']",
+            "assert dify_agent_layers_dify_plugin.__all__ == ['DIFY_PLUGIN_LLM_LAYER_TYPE_ID', 'DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID', 'DifyPluginCredentialValue', 'DifyPluginLLMLayerConfig', 'DifyPluginToolCredentialType', 'DifyPluginToolConfig', 'DifyPluginToolOption', 'DifyPluginToolParameter', 'DifyPluginToolParameterForm', 'DifyPluginToolParameterType', 'DifyPluginToolsLayerConfig', 'DifyPluginToolValue']",
             "assert dify_agent_layers_output.__all__ == ['DIFY_OUTPUT_LAYER_TYPE_ID', 'DifyOutputLayerConfig']",
         ],
     )

@@ -1,11 +1,12 @@
-import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { DIR_PERM, FILE_PERM } from '../config/dir.js'
+import type { Store } from '../store/store.js'
+import { CACHE_NUDGE, getCache } from '../store/manager.js'
 
-const CACHE_FILE = 'nudge.json'
-const DISK_SCHEMA = 1
 export const WARN_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+// Single top-level key holding host→ISO map. Hosts contain dots
+// (cloud.dify.ai), so we cannot use them as Store paths directly —
+// `doSet` would split on dots and create nested objects.
+const WARNED_KEY = { key: 'warned', default: {} as Record<string, string> } as const
 
 export type NudgeStore = {
   readonly canWarn: (host: string, now?: Date) => boolean
@@ -13,25 +14,16 @@ export type NudgeStore = {
 }
 
 export type NudgeStoreOptions = {
-  readonly configDir: string
+  readonly store?: Store
   readonly now?: () => Date
   readonly intervalMs?: number
 }
 
-type DiskShape = {
-  schema?: number
-  warned?: Record<string, string>
-}
-
-export function nudgeStorePath(configDir: string): string {
-  return join(configDir, 'cache', CACHE_FILE)
-}
-
-export async function loadNudgeStore(opts: NudgeStoreOptions): Promise<NudgeStore> {
-  const path = nudgeStorePath(opts.configDir)
+export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<NudgeStore> {
+  const store = opts.store ?? getCache(CACHE_NUDGE)
   const intervalMs = opts.intervalMs ?? WARN_INTERVAL_MS
   const clock = opts.now ?? (() => new Date())
-  const memory = await readDisk(path)
+  const memory = readWarned(store)
 
   return {
     canWarn: (host, now) => {
@@ -47,34 +39,23 @@ export async function loadNudgeStore(opts: NudgeStoreOptions): Promise<NudgeStor
       // Re-read disk inside the write cycle so concurrent processes touching
       // different hosts don't clobber each other's stamps. Same-host writers
       // converge on a near-identical timestamp, so order doesn't matter.
-      const onDisk = await readDisk(path)
+      const onDisk = readWarned(store)
       onDisk.set(host, stamp)
-      await persist(path, onDisk)
+      writeWarned(store, onDisk)
     },
   }
 }
 
-async function readDisk(path: string): Promise<Map<string, number>> {
+function readWarned(store: Store): Map<string, number> {
   const out = new Map<string, number>()
-  let raw: string
+  let raw: Record<string, string>
   try {
-    raw = await readFile(path, 'utf8')
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT')
-      return out
-    throw err
-  }
-  let parsed: DiskShape
-  try {
-    parsed = JSON.parse(raw) as DiskShape
+    raw = store.get(WARNED_KEY)
   }
   catch {
     return out
   }
-  if (parsed.schema !== DISK_SCHEMA || parsed.warned === undefined)
-    return out
-  for (const [host, iso] of Object.entries(parsed.warned)) {
+  for (const [host, iso] of Object.entries(raw)) {
     const t = Date.parse(iso)
     if (!Number.isNaN(t))
       out.set(host, t)
@@ -82,15 +63,9 @@ async function readDisk(path: string): Promise<Map<string, number>> {
   return out
 }
 
-async function persist(path: string, state: Map<string, number>): Promise<void> {
-  const dir = dirname(path)
-  await mkdir(dir, { recursive: true, mode: DIR_PERM })
-  const disk: DiskShape = { schema: DISK_SCHEMA, warned: {} }
+function writeWarned(store: Store, state: Map<string, number>): void {
+  const warned: Record<string, string> = {}
   for (const [host, t] of state)
-    disk.warned![host] = new Date(t).toISOString()
-  // randomUUID is collision-proof even when two writers stamp the same
-  // millisecond — pid+timestamp alone can still collide under tight loops.
-  const tmp = `${path}.${randomUUID()}.tmp`
-  await writeFile(tmp, JSON.stringify(disk), { mode: FILE_PERM })
-  await rename(tmp, path)
+    warned[host] = new Date(t).toISOString()
+  store.set(WARNED_KEY, warned)
 }

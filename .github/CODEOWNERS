@@ -166,6 +166,7 @@
 
 # Frontend - App - API Documentation
 /web/app/components/develop/ @JzoNgKVO @iamjoel
+/web/app/components/develop/template/*.mdx @JzoNgKVO @iamjoel @RiskeyL
 
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel

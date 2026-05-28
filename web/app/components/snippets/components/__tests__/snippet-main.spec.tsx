@@ -3,6 +3,7 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetMain from '../snippet-main'
 
@@ -20,6 +21,7 @@ const mockHandleStartWorkflowRun = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
+const mockUseAvailableNodesMetaData = vi.hoisted(() => vi.fn())
 const mockInspectVarsCrud = {
   hasNodeInspectVars: vi.fn(),
   hasSetInspectVar: vi.fn(),
@@ -73,6 +75,10 @@ vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
+}))
+
+vi.mock('@/app/components/workflow-app/hooks', () => ({
+  useAvailableNodesMetaData: () => mockUseAvailableNodesMetaData(),
 }))
 
 vi.mock('@/app/components/snippets/hooks/use-inspect-vars-crud', () => ({
@@ -129,12 +135,17 @@ vi.mock('@/app/components/workflow', () => ({
 vi.mock('@/app/components/snippets/components/snippet-children', () => ({
   default: ({
     onCancel,
+    onEdit,
     onPublish,
+    isEditing,
   }: {
+    isEditing: boolean
     onCancel: () => void
+    onEdit: () => void
     onPublish: () => void
   }) => (
     <div>
+      {!isEditing && <button type="button" onClick={onEdit}>edit</button>}
       <button type="button" onClick={onPublish}>publish</button>
       <button type="button" onClick={onCancel}>cancel</button>
     </div>
@@ -202,13 +213,26 @@ const renderSnippetMain = () => {
   return renderWorkflowComponent(
     <SnippetMain
       payload={payload}
+      draftPayload={payload}
+      hasInitialDraftChanges={false}
       snippetId="snippet-1"
       nodes={[] as WorkflowProps['nodes']}
       edges={[] as WorkflowProps['edges']}
       viewport={{ x: 0, y: 0, zoom: 1 }}
+      draftNodes={[] as WorkflowProps['nodes']}
+      draftEdges={[] as WorkflowProps['edges']}
+      draftViewport={{ x: 0, y: 0, zoom: 1 }}
     />,
   )
 }
+
+const createNodeMetadata = (type: BlockEnum) => ({
+  metaData: {
+    type,
+  },
+  defaultValue: {},
+  checkValid: vi.fn(),
+})
 
 describe('SnippetMain', () => {
   beforeEach(() => {
@@ -221,6 +245,24 @@ describe('SnippetMain', () => {
         input_fields: payload.inputFields,
       },
       refetch: vi.fn(),
+    })
+    const llmNodeMetadata = createNodeMetadata(BlockEnum.LLM)
+    const humanInputNodeMetadata = createNodeMetadata(BlockEnum.HumanInput)
+    const endNodeMetadata = createNodeMetadata(BlockEnum.End)
+    const knowledgeRetrievalNodeMetadata = createNodeMetadata(BlockEnum.KnowledgeRetrieval)
+    mockUseAvailableNodesMetaData.mockReturnValue({
+      nodes: [
+        llmNodeMetadata,
+        humanInputNodeMetadata,
+        endNodeMetadata,
+        knowledgeRetrievalNodeMetadata,
+      ],
+      nodesMap: {
+        [BlockEnum.LLM]: llmNodeMetadata,
+        [BlockEnum.HumanInput]: humanInputNodeMetadata,
+        [BlockEnum.End]: endNodeMetadata,
+        [BlockEnum.KnowledgeRetrieval]: knowledgeRetrievalNodeMetadata,
+      },
     })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     capturedHooksStore = undefined
@@ -317,6 +359,23 @@ describe('SnippetMain', () => {
       expect(capturedHooksStore?.invalidateSysVarValues).toBe(mockInspectVarsCrud.invalidateSysVarValues)
       expect(capturedHooksStore?.resetConversationVar).toBe(mockInspectVarsCrud.resetConversationVar)
       expect(capturedHooksStore?.invalidateConversationVarValues).toBe(mockInspectVarsCrud.invalidateConversationVarValues)
+    })
+  })
+
+  describe('Block Selector', () => {
+    it('should filter unsupported snippet block types from available node metadata', () => {
+      renderSnippetMain()
+
+      const availableNodesMetaData = capturedHooksStore?.availableNodesMetaData as {
+        nodes: Array<{ metaData: { type: BlockEnum } }>
+        nodesMap: Partial<Record<BlockEnum, unknown>>
+      }
+
+      expect(availableNodesMetaData.nodes.map(node => node.metaData.type)).toEqual([BlockEnum.LLM])
+      expect(availableNodesMetaData.nodesMap[BlockEnum.LLM]).toBeDefined()
+      expect(availableNodesMetaData.nodesMap[BlockEnum.HumanInput]).toBeUndefined()
+      expect(availableNodesMetaData.nodesMap[BlockEnum.End]).toBeUndefined()
+      expect(availableNodesMetaData.nodesMap[BlockEnum.KnowledgeRetrieval]).toBeUndefined()
     })
   })
 

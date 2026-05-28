@@ -15,8 +15,12 @@ concurrency:
 
 jobs:
   test:
-    name: CLI Tests
-    runs-on: depot-ubuntu-24.04
+    name: CLI Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [depot-ubuntu-24.04, windows-latest, macos-latest]
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -37,7 +41,7 @@ jobs:
         run: pnpm ci
 
       - name: Report coverage
-        if: ${{ env.CODECOV_TOKEN != '' }}
+        if: ${{ env.CODECOV_TOKEN != '' && matrix.os == 'depot-ubuntu-24.04' }}
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           directory: cli/coverage
