@@ -28,15 +28,15 @@ const Row = ({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 py-3.5',
+        'flex items-center gap-3 rounded-xl bg-background-section-burn px-4 py-2.5',
         className,
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="system-sm-semibold text-text-secondary">
+        <div className="truncate system-md-medium text-text-secondary">
           {name}
         </div>
-        <p className="mt-1 system-sm-regular text-text-tertiary">
+        <p className="truncate system-xs-regular text-text-tertiary">
           {description || t('role.noDescription', { ns: 'permission' })}
         </p>
       </div>

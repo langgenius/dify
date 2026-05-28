@@ -28,22 +28,19 @@ const RoleList = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn('flex flex-col', className)}>
-      {groups.map((group, groupIndex) => (
+    <div className={cn('flex flex-col gap-y-6', className)}>
+      {groups.map(group => (
         <section
           key={group.id}
-          className={cn(groupIndex > 0 && 'mt-6')}
+          className="flex flex-col gap-y-1"
         >
-          <h3 className="mb-2 pr-3 system-xs-medium-uppercase tracking-wide text-text-tertiary">
+          <div className="flex h-6 items-center system-sm-medium text-text-secondary">
             {t(`role.groups.${group.id}`, { ns: 'permission', defaultValue: group.title })}
-          </h3>
-          <div className="overflow-hidden">
-            {group.items.map((row, rowIndex) => (
+          </div>
+          <div className="flex flex-col gap-2">
+            {group.items.map(row => (
               <Row
                 key={row.id}
-                className={cn(
-                  rowIndex > 0 && 'border-t border-divider-subtle',
-                )}
                 name={row.name}
                 description={row.description}
                 roleCategory={group.category}
