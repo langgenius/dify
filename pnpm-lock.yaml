@@ -210,6 +210,9 @@ catalogs:
     '@types/js-yaml':
       specifier: 4.0.9
       version: 4.0.9
+    '@types/lockfile':
+      specifier: 1.0.4
+      version: 1.0.4
     '@types/negotiator':
       specifier: 0.6.4
       version: 0.6.4
@@ -414,6 +417,9 @@ catalogs:
     lexical:
       specifier: 0.44.0
       version: 0.44.0
+    lockfile:
+      specifier: 1.0.4
+      version: 1.0.4
     loro-crdt:
       specifier: 1.12.1
       version: 1.12.1
@@ -471,9 +477,6 @@ catalogs:
     react-easy-crop:
       specifier: 5.5.7
       version: 5.5.7
-    react-hotkeys-hook:
-      specifier: 5.3.2
-      version: 5.3.2
     react-i18next:
       specifier: 16.6.6
       version: 16.6.6
@@ -623,6 +626,9 @@ importers:
       eslint-plugin-no-barrel-files:
         specifier: 'catalog:'
         version: 1.3.1(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3)
+      node:
+        specifier: runtime:^22.22.1
+        version: runtime:22.22.3
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.1.22
         version: '@voidzero-dev/vite-plus-core@0.1.22(@types/node@25.9.1)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3)(yaml@2.9.0)'
@@ -650,6 +656,9 @@ importers:
       ky:
         specifier: 'catalog:'
         version: 2.0.2
+      lockfile:
+        specifier: 'catalog:'
+        version: 1.0.4
       open:
         specifier: 'catalog:'
         version: 10.1.0
@@ -675,6 +684,9 @@ importers:
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
+      '@types/lockfile':
+        specifier: 'catalog:'
+        version: 1.0.4
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
@@ -840,6 +852,9 @@ importers:
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.0(@voidzero-dev/vite-plus-core@0.1.22(@types/node@25.9.1)(esbuild@0.27.2)(jiti@2.7.0)(tsx@4.22.3)(typescript@6.0.3)(yaml@2.9.0))
+      '@tanstack/react-hotkeys':
+        specifier: 'catalog:'
+        version: 0.10.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.13.25(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1197,9 +1212,6 @@ importers:
       react-easy-crop:
         specifier: 'catalog:'
         version: 5.5.7(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      react-hotkeys-hook:
-        specifier: 'catalog:'
-        version: 5.3.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react-i18next:
         specifier: 'catalog:'
         version: 16.6.6(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
@@ -4779,6 +4791,9 @@ packages:
   '@types/katex@0.16.8':
     resolution: {integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==}
 
+  '@types/lockfile@1.0.4':
+    resolution: {integrity: sha512-Q8oFIHJHr+htLrTXN2FuZfg+WXVHQRwU/hC2GpUu+Q8e3FUM9EDkS2pE3R2AO1ZGu56f479ybdMCNF1DAu8cAQ==}
+
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
 
@@ -7130,6 +7145,9 @@ packages:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
 
+  lockfile@1.0.4:
+    resolution: {integrity: sha512-cvbTwETRfsFh4nHsL1eGWapU1XFi5Ot9E85sWAwia7Y7EgB7vfqcZhTKZ+l7hCGxSPoushMv5GKhT5PdLv03WA==}
+
   lodash-es@4.18.0:
     resolution: {integrity: sha512-koAgswPPA+UTaPN64Etp+PGP+WT6oqOS2NMi5yDkMaiGw9qY4VxQbQF0mtKMyr4BlTznWyzePV5UpECTJQmSUA==}
     deprecated: Bad release. Please use lodash-es@4.17.23 instead.
@@ -7543,6 +7561,148 @@ packages:
   node-releases@2.0.36:
     resolution: {integrity: sha512-TdC8FSgHz8Mwtw9g5L4gR/Sh9XhSP/0DEkQxfEFXOpiul5IiHgHan2VhYYb6agDSfp4KuvltmGApc8HMgUrIkA==}
 
+  node@runtime:22.22.3:
+    resolution:
+      type: variations
+      variants:
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-QAJqz3ioCOQ9IioLDg5xG5X/J5NGlreSW1Mpi8fIxgo=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-aix-ppc64.tar.gz
+          targets:
+            - cpu: ppc64
+              os: aix
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-Daf/dO+GETKMghLxeUM2hxOirZU/t9iajIoOrofCMgc=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-darwin-arm64.tar.gz
+          targets:
+            - cpu: arm64
+              os: darwin
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-RYMLp1L6DYksbc1kCUZmmAEpPKyCCjNZHe1ArAdRmOw=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-darwin-x64.tar.gz
+          targets:
+            - cpu: x64
+              os: darwin
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-zIvIKy3QtZXDuVpMPJyMNQkHz/ARr73uPRN56BLh4+M=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-arm64.tar.gz
+          targets:
+            - cpu: arm64
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-GPvhv91CBFrxXwIlauPllJDRuf+T38J6IjrMLJJ0AlA=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-armv7l.tar.gz
+          targets:
+            - cpu: armv7l
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-qQ9SPPFk4cdhv0xZtcaqDZ1VKJJwGraUmeaD7h/Aa7w=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-ppc64le.tar.gz
+          targets:
+            - cpu: ppc64le
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-S4TkPCnZDk+QGBXDmRBqSa9O5zDRKTOvgsgtTcRQMIw=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-s390x.tar.gz
+          targets:
+            - cpu: s390x
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-x6ENaBbajqqnU03XPHHG4rLDkdu/hF42SQLRVmFd0bg=
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-x64.tar.gz
+          targets:
+            - cpu: x64
+              os: linux
+        - resolution:
+            archive: zip
+            bin:
+              node: node.exe
+            integrity: sha256-AL4SmgnohyzVLTu4u6EkEsVzPSIkEjpIKi3KSm+/JYY=
+            prefix: node-v22.22.3-win-arm64
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-win-arm64.zip
+          targets:
+            - cpu: arm64
+              os: win32
+        - resolution:
+            archive: zip
+            bin:
+              node: node.exe
+            integrity: sha256-bI1U9jX+/033bCyoD0UzLrL/V9JSJu3ONlkuUaF37jM=
+            prefix: node-v22.22.3-win-x64
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-win-x64.zip
+          targets:
+            - cpu: x64
+              os: win32
+        - resolution:
+            archive: zip
+            bin:
+              node: node.exe
+            integrity: sha256-e6QmD2nha6libQd8sRJPP7AfYEIa8qbHOWrrTi0Nja4=
+            prefix: node-v22.22.3-win-x86
+            type: binary
+            url: https://nodejs.org/download/release/v22.22.3/node-v22.22.3-win-x86.zip
+          targets:
+            - cpu: x86
+              os: win32
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-Cch6y6+uZeGPzA6xiDdsElTKt03HaRGPS2BHnF+jJs8=
+            type: binary
+            url: https://unofficial-builds.nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-arm64-musl.tar.gz
+          targets:
+            - cpu: arm64
+              os: linux
+              libc: musl
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-0idpJYPWrhfEQCj9jxfLGzZyFnprqgNYGCQMu5226ko=
+            type: binary
+            url: https://unofficial-builds.nodejs.org/download/release/v22.22.3/node-v22.22.3-linux-x64-musl.tar.gz
+          targets:
+            - cpu: x64
+              os: linux
+              libc: musl
+    version: 22.22.3
+    hasBin: true
+
   normalize-package-data@8.0.0:
     resolution: {integrity: sha512-RWk+PI433eESQ7ounYxIp67CYuVsS1uYSonX3kA6ps/3LWfjVQa/ptEg6Y3T6uAMq1mWpX9PQ+qx+QaHpsc7gQ==}
     engines: {node: ^20.17.0 || >=22.9.0}
@@ -7933,12 +8093,6 @@ packages:
   react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
 
-  react-hotkeys-hook@5.3.2:
-    resolution: {integrity: sha512-DDDy9xK6mbTQ6aPlQvIl0dA/a90T/AWml4Rm21JXFDLlRHalIg4/Rv3equUQYs5xPTWq+oEl6RD7mi/nBpU3Uw==}
-    peerDependencies:
-      react: '>=16.8.0'
-      react-dom: '>=16.8.0'
-
   react-i18next@16.6.6:
     resolution: {integrity: sha512-ZgL2HUoW34UKUkOV7uSQFE1CDnRPD+tCR3ywSuWH7u2iapnz86U8Bi3Vrs620qNDzCf1F47NxglCEkchCTDOHw==}
     peerDependencies:
@@ -8278,6 +8432,9 @@ packages:
   shiki@4.1.0:
     resolution: {integrity: sha512-l/ABZPUR5v70jI10EzqfMS/I96vjSGv2y0ihUV+WYFzv0EfvW4s54m0Lg8wCrrL+2IkwBzFTuxkZjPf8b2NX9Q==}
     engines: {node: '>=20'}
+
+  signal-exit@3.0.7:
+    resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
   signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
@@ -12247,6 +12404,8 @@ snapshots:
 
   '@types/katex@0.16.8': {}
 
+  '@types/lockfile@1.0.4': {}
+
   '@types/mdast@4.0.4':
     dependencies:
       '@types/unist': 3.0.3
@@ -14822,6 +14981,10 @@ snapshots:
     dependencies:
       p-locate: 5.0.0
 
+  lockfile@1.0.4:
+    dependencies:
+      signal-exit: 3.0.7
+
   lodash-es@4.18.0: {}
 
   lodash.merge@4.6.2: {}
@@ -15537,6 +15700,8 @@ snapshots:
 
   node-releases@2.0.36: {}
 
+  node@runtime:22.22.3: {}
+
   normalize-package-data@8.0.0:
     dependencies:
       hosted-git-info: 9.0.2
@@ -16079,11 +16244,6 @@ snapshots:
 
   react-fast-compare@3.2.2: {}
 
-  react-hotkeys-hook@5.3.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
-    dependencies:
-      react: 19.2.6
-      react-dom: 19.2.6(react@19.2.6)
-
   react-i18next@16.6.6(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3):
     dependencies:
       '@babel/runtime': 7.29.2
@@ -16530,6 +16690,8 @@ snapshots:
       '@shikijs/types': 4.1.0
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.4
+
+  signal-exit@3.0.7: {}
 
   signal-exit@4.1.0: {}
 
@@ -17493,6 +17655,7 @@ time:
   '@tsslint/config@3.1.3': '2026-05-16T14:17:56.687Z'
   '@types/js-cookie@3.0.6': '2023-11-07T08:41:16.889Z'
   '@types/js-yaml@4.0.9': '2023-11-07T20:20:13.264Z'
+  '@types/lockfile@1.0.4': '2023-11-07T20:23:21.070Z'
   '@types/negotiator@0.6.4': '2025-06-07T02:18:17.532Z'
   '@types/node@25.9.1': '2026-05-19T17:49:12.417Z'
   '@types/qs@6.15.1': '2026-05-06T23:46:01.024Z'
@@ -17564,6 +17727,7 @@ time:
   lamejs@1.2.1: '2021-12-02T15:44:40.036Z'
   lexical-code-no-prism@0.41.0: '2026-03-08T16:50:40.266Z'
   lexical@0.44.0: '2026-04-27T14:47:00.970Z'
+  lockfile@1.0.4: '2018-04-17T00:36:12.565Z'
   loro-crdt@1.12.1: '2026-04-29T20:11:51.397Z'
   mermaid@11.15.0: '2026-05-11T11:15:09.824Z'
   mime@4.1.0: '2025-09-12T17:53:01.376Z'
@@ -17582,7 +17746,6 @@ time:
   qs@6.15.2: '2026-05-16T23:19:19.539Z'
   react-dom@19.2.6: '2026-05-06T16:16:56.080Z'
   react-easy-crop@5.5.7: '2026-03-24T09:41:01.114Z'
-  react-hotkeys-hook@5.3.2: '2026-05-05T13:01:00.987Z'
   react-i18next@16.6.6: '2026-03-24T15:35:20.832Z'
   react-multi-email@1.0.25: '2024-07-18T04:31:06.176Z'
   react-papaparse@4.4.0: '2023-10-13T10:27:07.978Z'

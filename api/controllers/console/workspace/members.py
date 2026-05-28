@@ -224,8 +224,9 @@ class MemberInviteEmailApi(Resource):
 
         tenant_id = inviter.current_tenant.id
         with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
-            new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
-            _check_member_invite_limits(tenant_id, new_member_count)
+            if dify_config.ENTERPRISE_ENABLED is True or dify_config.BILLING_ENABLED is True:
+                new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
+                _check_member_invite_limits(tenant_id, new_member_count)
 
             for invitee_email in invitee_emails:
                 try:

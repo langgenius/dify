@@ -10,7 +10,7 @@ let mockAppSidebarExpand = 'expand'
 let mockPathname = '/app/app-1/logs'
 let mockSelectedSegment = 'logs'
 let mockIsHovering = true
-let keyPressHandler: ((event: { preventDefault: () => void }) => void) | null = null
+let hotkeyHandler: ((event: { preventDefault: () => void }) => void) | null = null
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -63,10 +63,17 @@ vi.mock('@/next/link', () => ({
 
 vi.mock('ahooks', () => ({
   useHover: () => mockIsHovering,
-  useKeyPress: (_key: string, handler: (event: { preventDefault: () => void }) => void) => {
-    keyPressHandler = handler
-  },
 }))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+      hotkeyHandler = handler
+    },
+  }
+})
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
@@ -88,11 +95,6 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
   }),
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-  getKeyboardKeyNameBySystem: (key: string) => key,
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
@@ -131,7 +133,7 @@ describe('App Sidebar Shell Flow', () => {
     mockPathname = '/app/app-1/logs'
     mockSelectedSegment = 'logs'
     mockIsHovering = true
-    keyPressHandler = null
+    hotkeyHandler = null
   })
 
   it('renders the expanded sidebar, marks the active nav item, and toggles collapse by click and shortcut', () => {
@@ -146,7 +148,7 @@ describe('App Sidebar Shell Flow', () => {
     expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
 
     const preventDefault = vi.fn()
-    keyPressHandler?.({ preventDefault })
+    hotkeyHandler?.({ preventDefault })
 
     expect(preventDefault).toHaveBeenCalled()
     expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')

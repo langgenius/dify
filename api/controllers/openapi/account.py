@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from flask import request
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
@@ -17,18 +17,17 @@ from controllers.openapi._models import (
     SessionRow,
     WorkspacePayload,
 )
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import (
-    ACCEPT_USER_ANY,
-    AuthContext,
-    SubjectType,
+    Scope,
+    TokenType,
     get_auth_ctx,
-    validate_bearer,
 )
 from libs.rate_limit import (
     LIMIT_ME_PER_ACCOUNT,
-    LIMIT_ME_PER_EMAIL,
     enforce,
 )
 from services.account_service import AccountService, TenantService
@@ -42,32 +41,18 @@ from services.oauth_device_flow import (
 @openapi_ns.route("/account")
 class AccountApi(Resource):
     @openapi_ns.response(200, "Account info", openapi_ns.models[AccountResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    def get(self):
-        ctx = get_auth_ctx()
+    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, *, auth_data: AuthData):
+        enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
 
-        if ctx.subject_type == SubjectType.EXTERNAL_SSO:
-            enforce(LIMIT_ME_PER_EMAIL, key=f"subject:{ctx.subject_email}")
-        else:
-            enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{ctx.account_id}")
-
-        if ctx.subject_type == SubjectType.EXTERNAL_SSO:
-            return AccountResponse(
-                subject_type=ctx.subject_type,
-                subject_email=ctx.subject_email,
-                subject_issuer=ctx.subject_issuer,
-                account=None,
-                workspaces=[],
-                default_workspace_id=None,
-            ).model_dump(mode="json")
-
-        account = AccountService.get_account_by_id(db.session, str(ctx.account_id)) if ctx.account_id else None
-        memberships = TenantService.get_account_memberships(db.session, str(ctx.account_id)) if ctx.account_id else []
+        account_id_str = str(auth_data.account_id) if auth_data.account_id else None
+        account = AccountService.get_account_by_id(db.session, account_id_str) if account_id_str else None
+        memberships = TenantService.get_account_memberships(db.session, account_id_str) if account_id_str else []
         default_ws_id = _pick_default_workspace(memberships)
 
         return AccountResponse(
-            subject_type=ctx.subject_type,
-            subject_email=ctx.subject_email or (account.email if account else None),
+            subject_type="account",
+            subject_email=account.email if account else None,
             account=_account_payload(account) if account else None,
             workspaces=[_workspace_payload(m) for m in memberships],
             default_workspace_id=default_ws_id,
@@ -77,19 +62,17 @@ class AccountApi(Resource):
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
     @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    def delete(self):
-        ctx = get_auth_ctx()
-        _require_oauth_subject(ctx)
-        revoke_oauth_token(db.session, redis_client, str(ctx.token_id))
+    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def delete(self, *, auth_data: AuthData):
+        revoke_oauth_token(db.session, redis_client, str(auth_data.token_id))
         return RevokeResponse(status="revoked").model_dump(mode="json"), 200
 
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
     @openapi_ns.response(200, "Session list", openapi_ns.models[SessionListResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    def get(self):
+    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def get(self, *, auth_data: AuthData):
         ctx = get_auth_ctx()
         now = datetime.now(UTC)
         page = int(request.args.get("page", "1"))
@@ -122,10 +105,9 @@ class AccountSessionsApi(Resource):
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
     @openapi_ns.response(200, "Session revoked", openapi_ns.models[RevokeResponse.__name__])
-    @validate_bearer(accept=ACCEPT_USER_ANY)
-    def delete(self, session_id: str):
+    @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    def delete(self, session_id: str, *, auth_data: AuthData):
         ctx = get_auth_ctx()
-        _require_oauth_subject(ctx)
 
         # 404 (not 403) on cross-subject so the endpoint doesn't leak
         # token IDs that belong to other subjects.
@@ -134,13 +116,6 @@ class AccountSessionByIdApi(Resource):
 
         revoke_oauth_token(db.session, redis_client, session_id)
         return RevokeResponse(status="revoked").model_dump(mode="json"), 200
-
-
-def _require_oauth_subject(ctx: AuthContext) -> None:
-    if not ctx.source.startswith("oauth"):
-        raise BadRequest(
-            "this endpoint revokes OAuth bearer tokens; use /openapi/v1/personal-access-tokens/self for PATs"
-        )
 
 
 def _iso(dt: datetime | None) -> str | None:

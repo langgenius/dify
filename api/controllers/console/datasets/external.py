@@ -278,6 +278,9 @@ class ExternalDatasetCreateApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
+        if not isinstance(getattr(dataset, "permission_keys", None), list):
+            setattr(dataset, "permission_keys", [])
+
         return marshal(dataset, dataset_detail_fields), 201
 
 

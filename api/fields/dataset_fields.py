@@ -15,7 +15,7 @@ dataset_fields = {
     "indexing_technique": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
-    "permission_keys": fields.List(fields.String),
+    "permission_keys": fields.List(fields.String()),
 }
 
 
@@ -144,7 +144,7 @@ dataset_detail_fields = {
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
     "is_multimodal": fields.Boolean,
-    "permission_keys": fields.List(fields.String),
+    "permission_keys": fields.List(fields.String()),
 }
 
 

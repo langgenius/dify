@@ -1344,6 +1344,24 @@ class TenantService:
         return row is not None
 
     @staticmethod
+    def get_account_role_in_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> TenantAccountRole | None:
+        """Return the caller's role in ``tenant_id``, or ``None`` if not a member."""
+        if not account_id:
+            return None
+
+        role = session.execute(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return TenantAccountRole(role) if role is not None else None
+
+    @staticmethod
     def get_tenant_by_id(session: Session | scoped_session, tenant_id: str) -> Tenant | None:
         """Plain ``session.get(Tenant, tenant_id)`` — no status filter.
         Callers map ``status == ARCHIVE`` to their own error code (the
