@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
@@ -21,9 +22,8 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useWorkspacesContext } from '@/context/workspace-context'
 import { useRouter } from '@/next/navigation'
-import { switchWorkspace } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
@@ -191,7 +191,9 @@ export function WorkspaceCard() {
   const { t } = useTranslation()
   const router = useRouter()
   const { currentWorkspace, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceManager, isLoadingCurrentWorkspace } = useAppContext()
-  const { workspaces } = useWorkspacesContext()
+  const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const workspaces = workspacesData?.workspaces ?? []
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const credits = getRemainingCredits(currentWorkspace.trial_credits, currentWorkspace.trial_credits_used)
@@ -212,7 +214,7 @@ export function WorkspaceCard() {
       if (currentWorkspace.id === tenant_id)
         return
 
-      await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
+      await switchWorkspaceMutation.mutateAsync({ body: { tenant_id } })
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       location.assign(`${location.origin}${basePath}`)
     }

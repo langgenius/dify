@@ -11,7 +11,6 @@ import type {
   CommonResponse,
   FileUploadConfigResponse,
   ICurrentWorkspace,
-  IWorkspace,
   LangGeniusVersionResponse,
   Member,
   PluginProvider,
@@ -40,7 +39,6 @@ export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
   userProfile: [NAME_SPACE, 'user-profile'] as const,
   currentWorkspace: [NAME_SPACE, 'current-workspace'] as const,
-  workspaces: [NAME_SPACE, 'workspaces'] as const,
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
@@ -128,13 +126,6 @@ export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
     queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
-  })
-}
-
-export const useWorkspaces = () => {
-  return useQuery<{ workspaces: IWorkspace[] }>({
-    queryKey: commonQueryKeys.workspaces,
-    queryFn: () => get<{ workspaces: IWorkspace[] }>('/workspaces'),
   })
 }
 

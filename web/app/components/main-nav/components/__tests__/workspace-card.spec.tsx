@@ -1,18 +1,22 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { IWorkspace } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useWorkspacesContext } from '@/context/workspace-context'
 import { useRouter } from '@/next/navigation'
-import { switchWorkspace } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 import { LicenseStatus } from '@/types/feature'
 import { WorkspaceCard } from '../workspace-card'
+
+const { mockSwitchWorkspace } = vi.hoisted(() => ({
+  mockSwitchWorkspace: vi.fn(),
+}))
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -34,17 +38,43 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/context/workspace-context', () => ({
-  useWorkspacesContext: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  switchWorkspace: vi.fn(),
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
+  const consoleQuery = new Proxy(actual.consoleQuery, {
+    get(target, prop, receiver) {
+      if (prop === 'workspaces') {
+        return {
+          get: {
+            queryKey: () => workspacesQueryKey,
+            queryOptions: () => ({
+              queryKey: workspacesQueryKey,
+              queryFn: () => new Promise(() => {}),
+            }),
+          },
+          switch: {
+            post: {
+              mutationOptions: () => ({
+                mutationFn: (variables: unknown) => mockSwitchWorkspace(variables),
+              }),
+            },
+          },
+        }
+      }
+
+      return Reflect.get(target, prop, receiver)
+    },
+  })
+
+  return {
+    ...actual,
+    consoleQuery,
+  }
+})
 
 const appContextValue: AppContextValue = {
   userProfile: {
@@ -89,10 +119,25 @@ const appContextValue: AppContextValue = {
 
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
+let mockWorkspaces: IWorkspace[] = []
+
+const renderWorkspaceCard = (options?: Parameters<typeof renderWithSystemFeatures>[1]) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  return renderWithSystemFeatures(<WorkspaceCard />, {
+    ...options,
+    queryClient,
+  })
+}
 
 describe('WorkspaceCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspaces = [
+      { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
+      { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 0, current: false },
+    ]
+    mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     vi.mocked(useAppContext).mockReturnValue(appContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
@@ -113,16 +158,10 @@ describe('WorkspaceCard', () => {
       forward: vi.fn(),
       refresh: vi.fn(),
     })
-    vi.mocked(useWorkspacesContext).mockReturnValue({
-      workspaces: [
-        { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
-        { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 0, current: false },
-      ],
-    })
   })
 
   it('hides cloud-only credits and upgrade actions outside cloud edition', () => {
-    renderWithSystemFeatures(<WorkspaceCard />)
+    renderWorkspaceCard()
 
     expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /common\.mainNav\.workspace\.credits/ })).not.toBeInTheDocument()
@@ -140,7 +179,7 @@ describe('WorkspaceCard', () => {
       isLoadingCurrentWorkspace: true,
     })
 
-    renderWithSystemFeatures(<WorkspaceCard />)
+    renderWorkspaceCard()
 
     expect(screen.getByTestId('workspace-card-skeleton')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
@@ -155,7 +194,7 @@ describe('WorkspaceCard', () => {
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
 
-    renderWithSystemFeatures(<WorkspaceCard />, {
+    renderWorkspaceCard({
       systemFeatures: {
         license: {
           status: LicenseStatus.ACTIVE,
@@ -169,7 +208,7 @@ describe('WorkspaceCard', () => {
   })
 
   it('opens workspace actions and switcher in a dropdown menu', async () => {
-    renderWithSystemFeatures(<WorkspaceCard />)
+    renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
@@ -181,7 +220,7 @@ describe('WorkspaceCard', () => {
   })
 
   it('opens account settings from workspace menu actions', async () => {
-    renderWithSystemFeatures(<WorkspaceCard />)
+    renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'common.mainNav.workspace.settings' }))
@@ -190,13 +229,12 @@ describe('WorkspaceCard', () => {
   })
 
   it('switches workspace from the dropdown item', async () => {
-    vi.mocked(switchWorkspace).mockReturnValue(new Promise(() => {}))
-    renderWithSystemFeatures(<WorkspaceCard />)
+    renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Evan Workspace' }))
 
-    await waitFor(() => expect(switchWorkspace).toHaveBeenCalledWith({ url: '/workspaces/switch', body: { tenant_id: 'workspace-2' } }))
+    await waitFor(() => expect(mockSwitchWorkspace).toHaveBeenCalledWith({ body: { tenant_id: 'workspace-2' } }))
   })
 
   it('hides workspace management actions for dataset operators', async () => {
@@ -206,7 +244,7 @@ describe('WorkspaceCard', () => {
       isCurrentWorkspaceManager: false,
     })
 
-    renderWithSystemFeatures(<WorkspaceCard />)
+    renderWorkspaceCard()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
