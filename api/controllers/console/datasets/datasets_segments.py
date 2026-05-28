@@ -5,7 +5,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, case, cast, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -169,12 +169,17 @@ class DatasetDocumentSegmentListApi(Resource):
             # Use database-specific methods for JSON array search
             if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
                 # PostgreSQL: Use jsonb_array_elements_text to properly handle Unicode/Chinese text
-                # Guard with jsonb_typeof to avoid "cannot extract elements from a scalar" error
-                # when keywords is null or a non-array JSON value.
+                # Feed the set-returning function a JSON array in every row. Filtering in
+                # the subquery is not enough because PostgreSQL can still evaluate the
+                # SRF on scalar JSON before applying the predicate.
+                keywords_jsonb = cast(DocumentSegment.keywords, JSONB)
+                keywords_array = case(
+                    (func.jsonb_typeof(keywords_jsonb) == "array", keywords_jsonb),
+                    else_=cast(literal("[]"), JSONB),
+                )
                 keywords_condition = func.array_to_string(
                     func.array(
-                        select(func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB)))
-                        .where(func.jsonb_typeof(cast(DocumentSegment.keywords, JSONB)) == "array")
+                        select(func.jsonb_array_elements_text(keywords_array))
                         .correlate(DocumentSegment)
                         .scalar_subquery()
                     ),
