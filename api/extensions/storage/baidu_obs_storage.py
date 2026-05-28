@@ -1,6 +1,7 @@
 import base64
 import hashlib
 from collections.abc import Generator
+from typing import override
 
 from baidubce.auth.bce_credentials import BceCredentials
 from baidubce.bce_client_configuration import BceClientConfiguration
@@ -26,6 +27,7 @@ class BaiduObsStorage(BaseStorage):
 
         self.client = BosClient(config=client_config)
 
+    @override
     def save(self, filename, data):
         md5 = hashlib.md5()
         md5.update(data)
@@ -34,24 +36,29 @@ class BaiduObsStorage(BaseStorage):
             bucket_name=self.bucket_name, key=filename, data=data, content_length=len(data), content_md5=content_md5
         )
 
+    @override
     def load_once(self, filename: str) -> bytes:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename)
         data: bytes = response.data.read()
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename).data
         while chunk := response.read(4096):
             yield chunk
 
+    @override
     def download(self, filename, target_filepath):
         self.client.get_object_to_file(bucket_name=self.bucket_name, key=filename, file_name=target_filepath)
 
+    @override
     def exists(self, filename):
         res = self.client.get_object_meta_data(bucket_name=self.bucket_name, key=filename)
         if res is None:
             return False
         return True
 
+    @override
     def delete(self, filename: str):
         self.client.delete_object(bucket_name=self.bucket_name, key=filename)
