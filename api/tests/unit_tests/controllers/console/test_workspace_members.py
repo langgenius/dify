@@ -1,6 +1,6 @@
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask, g
@@ -31,15 +31,6 @@ def _build_feature_flags():
     )
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
-
-
 class TestMemberInviteEmailApi:
     @pytest.fixture(autouse=True)
     def _mock_member_invite_lock(self):
@@ -48,7 +39,9 @@ class TestMemberInviteEmailApi:
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
     @patch("controllers.console.workspace.members.RegisterService.invite_new_member")
-    def test_invite_normalizes_emails(self, mock_invite_member, mock_get_features, app: Flask):
+    @patch("controllers.console.wraps.db")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    def test_invite_normalizes_emails(self, mock_csrf, mock_db, mock_invite_member, mock_get_features, app: Flask):
         mock_get_features.return_value = _build_feature_flags()
         mock_invite_member.return_value = "token-abc"
 
@@ -70,8 +63,7 @@ class TestMemberInviteEmailApi:
                 account._current_tenant = tenant
                 g._login_user = account
                 g._current_tenant = tenant
-                api = MemberInviteEmailApi()
-                response, status_code = _unwrap(api.post)(inviter)
+                response, status_code = MemberInviteEmailApi().post()
 
         assert status_code == 201
         assert response["invitation_results"][0]["email"] == "user@example.com"
@@ -82,4 +74,5 @@ class TestMemberInviteEmailApi:
         assert call_args.kwargs["email"] == "user@example.com"
         assert call_args.kwargs["language"] == "en-US"
         assert call_args.kwargs["role"] == TenantAccountRole.EDITOR
-        assert call_args.kwargs["inviter"] == inviter
+        assert call_args.kwargs["inviter"] == account
+        mock_csrf.assert_called_once_with(ANY, account.id)
