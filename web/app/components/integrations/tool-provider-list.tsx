@@ -1,8 +1,8 @@
 'use client'
 import type { RefObject } from 'react'
-import type { ToolsContentInset } from './content-inset'
-import type { Collection } from './types'
-import type { ToolCategory } from '@/app/components/tools/integration-routes'
+import type { ToolCategory } from '@/app/components/integrations/routes'
+import type { ToolsContentInset } from '@/app/components/tools/content-inset'
+import type { Collection } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ScrollAreaContent,
@@ -18,16 +18,16 @@ import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
+import Marketplace from '@/app/components/tools/marketplace'
+import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
+import { ToolProviderGrid } from '@/app/components/tools/tool-provider-grid'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
-import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from './content-inset'
 import { useToolMarketplacePanel } from './hooks/use-tool-marketplace-panel'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
-import Marketplace from './marketplace'
-import MCPList from './mcp'
-import { ToolProviderGrid } from './tool-provider-grid'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
 
 type ProviderListProps = {
@@ -137,7 +137,21 @@ const ProviderList = ({
 
   return (
     <>
-      <div className="relative flex h-0 shrink-0 grow overflow-hidden">
+      <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-components-panel-bg">
+        <ToolProviderToolbar
+          activeTab={activeTab}
+          currentProviderId={currentProviderId}
+          frameClassName={toolListFrameClassName}
+          isRouteCategory={isRouteCategory}
+          keywords={keywords}
+          options={options}
+          showLabelFilter={showLabelFilter}
+          showToolsUpdateSetting={showToolsUpdateSetting}
+          tagFilterValue={tagFilterValue}
+          onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
+          onKeywordsChange={handleKeywordsChange}
+          onTagsChange={handleTagsChange}
+        />
         <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
@@ -146,20 +160,6 @@ const ProviderList = ({
             role="region"
           >
             <ScrollAreaContent className="flex min-h-full flex-col">
-              <ToolProviderToolbar
-                activeTab={activeTab}
-                currentProviderId={currentProviderId}
-                frameClassName={toolListFrameClassName}
-                isRouteCategory={isRouteCategory}
-                keywords={keywords}
-                options={options}
-                showLabelFilter={showLabelFilter}
-                showToolsUpdateSetting={showToolsUpdateSetting}
-                tagFilterValue={tagFilterValue}
-                onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
-                onKeywordsChange={handleKeywordsChange}
-                onTagsChange={handleTagsChange}
-              />
               {activeTab !== 'mcp' && (
                 <ToolProviderGrid
                   activeTab={activeTab}

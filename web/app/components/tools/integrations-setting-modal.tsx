@@ -1,11 +1,11 @@
 'use client'
 
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import IntegrationsPage from './integrations-page'
+import IntegrationsPage from '@/app/components/integrations/page'
 
 type IntegrationsSettingModalProps = {
   section: IntegrationSection

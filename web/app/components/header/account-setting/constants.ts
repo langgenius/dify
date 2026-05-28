@@ -1,5 +1,5 @@
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
-import { INTEGRATION_SECTION_VALUES } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
+import { INTEGRATION_SECTION_VALUES } from '@/app/components/integrations/routes'
 
 export const ACCOUNT_SETTING_MODAL_ACTION = 'showSettings'
 

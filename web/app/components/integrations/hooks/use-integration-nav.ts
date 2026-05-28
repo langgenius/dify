@@ -1,5 +1,5 @@
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
-import type { IntegrationSidebarNavItemData } from '@/app/components/tools/integration-sidebar-nav-item'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
+import type { IntegrationSidebarNavItemData } from '@/app/components/integrations/sidebar-nav-item'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'

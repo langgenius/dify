@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type {
   ModelProvider,
 } from './declarations'
@@ -34,6 +35,7 @@ type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-co
 
 type Props = {
   fixedWarningAlignment?: 'viewport' | 'content-frame'
+  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
@@ -77,6 +79,7 @@ function ModelProviderListSkeleton() {
 
 const ModelProviderPage = ({
   fixedWarningAlignment = 'viewport',
+  layout,
   onSearchTextChange,
   searchText,
   stickyToolbar,
@@ -179,44 +182,49 @@ const ModelProviderPage = ({
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
-  return (
-    <div className="relative">
-      <div className={stickyToolbar
-        ? 'sticky top-0 z-5 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-        : 'mb-2 flex items-center justify-between gap-3'}
-      >
-        <SearchInput
-          className="w-50 shrink-0"
-          placeholder={t('modelProvider.searchModels', { ns: 'common' })}
-          value={searchText}
-          onChange={onSearchTextChange ?? noop}
-        />
-        <div className="flex shrink-0 items-center justify-end gap-2">
-          {canSetPermissions && (
-            <UpdateSettingPopover
-              category={PluginCategoryEnum.model}
-            />
-          )}
-          <SystemModelSelector
-            className="h-8 px-3 system-sm-medium"
-            notConfigured={showWarning}
-            textGenerationDefaultModel={textGenerationDefaultModel}
-            embeddingsDefaultModel={embeddingsDefaultModel}
-            rerankDefaultModel={rerankDefaultModel}
-            speech2textDefaultModel={speech2textDefaultModel}
-            ttsDefaultModel={ttsDefaultModel}
-            isLoading={isDefaultModelLoading}
-            hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+  const toolbar = (
+    <div className={stickyToolbar
+      ? layout
+        ? 'mb-2 flex items-center justify-between gap-3 bg-components-panel-bg pb-2'
+        : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+      : 'mb-2 flex items-center justify-between gap-3'}
+    >
+      <SearchInput
+        className="w-50 shrink-0"
+        placeholder={t('modelProvider.searchModels', { ns: 'common' })}
+        value={searchText}
+        onChange={onSearchTextChange ?? noop}
+      />
+      <div className="flex shrink-0 items-center justify-end gap-2">
+        {canSetPermissions && (
+          <UpdateSettingPopover
+            category={PluginCategoryEnum.model}
           />
-        </div>
+        )}
+        <SystemModelSelector
+          className="h-8 px-3 system-sm-medium"
+          notConfigured={showWarning}
+          textGenerationDefaultModel={textGenerationDefaultModel}
+          embeddingsDefaultModel={embeddingsDefaultModel}
+          rerankDefaultModel={rerankDefaultModel}
+          speech2textDefaultModel={speech2textDefaultModel}
+          ttsDefaultModel={ttsDefaultModel}
+          isLoading={isDefaultModelLoading}
+          hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+        />
       </div>
+    </div>
+  )
+
+  const body = (
+    <>
       {showWarning && !warningDismissed && (
         <div className={fixedWarningAlignment === 'content-frame'
-          ? 'pointer-events-none fixed top-2 right-0 left-(--model-provider-warning-left,0px) z-50'
+          ? 'pointer-events-none fixed top-2 right-0 left-[var(--model-provider-warning-left,0px)] z-50'
           : 'fixed top-2 right-2 z-50 p-2'}
         >
           <div className={fixedWarningAlignment === 'content-frame'
-            ? 'mx-auto box-border flex w-full max-w-400 justify-end px-6 py-2'
+            ? 'mx-auto box-border flex w-full max-w-[1600px] justify-end px-6 py-2'
             : undefined}
           >
             <div className="pointer-events-auto flex items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]">
@@ -281,6 +289,16 @@ const ModelProviderPage = ({
           />
         )
       }
+    </>
+  )
+
+  if (layout)
+    return <div className="relative flex min-h-0 flex-1 flex-col">{layout({ body, toolbar })}</div>
+
+  return (
+    <div className="relative">
+      {toolbar}
+      {body}
     </div>
   )
 }

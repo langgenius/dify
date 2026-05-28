@@ -42,7 +42,7 @@ export function ToolProviderToolbar({
   return (
     <div
       className={cn(
-        'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
+        'flex shrink-0 flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
         frameClassName,
         currentProviderId && 'pr-6',
       )}

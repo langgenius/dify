@@ -11,7 +11,7 @@ import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-se
 import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'

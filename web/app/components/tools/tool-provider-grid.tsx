@@ -1,8 +1,8 @@
 'use client'
 
 import type { Collection } from './types'
+import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { CardPayload } from '@/app/components/plugins/card'
-import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'

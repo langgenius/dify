@@ -1,6 +1,6 @@
 import type { AccountSettingTab } from './constants'
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
-import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { ACCOUNT_SETTING_TAB } from './constants'
 
 export const integrationSectionByMovedAccountSettingTab = {

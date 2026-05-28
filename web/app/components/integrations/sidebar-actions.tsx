@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { PermissionSettingKey } from './permission-quick-panel'
 import type { Permissions, PermissionType, PluginCategoryEnum } from '@/app/components/plugins/types'
-import type { PermissionSettingKey } from '@/app/components/tools/permission-quick-panel'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'

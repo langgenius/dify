@@ -1,16 +1,16 @@
 'use client'
 
 import type { ComponentType } from 'react'
-import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import type { IntegrationSection } from '@/app/components/integrations/routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
-import { buildIntegrationPath } from './integration-routes'
+import { buildIntegrationPath } from './routes'
 import {
   integrationSidebarActiveNavItemClassName,
   integrationSidebarDisabledNavItemClassName,
   integrationSidebarInactiveNavItemClassName,
   integrationSidebarNavItemClassName,
-} from './integration-sidebar-nav-item-styles'
+} from './sidebar-nav-item-styles'
 
 type IconComponent = ComponentType<{ className?: string }>
 
