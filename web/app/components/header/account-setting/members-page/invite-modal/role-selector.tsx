@@ -64,6 +64,9 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const roles = useMemo(() => rolesData?.pages.flatMap(page => page.data) ?? [], [rolesData])
   const selectedRole = roles.find(role => role.id === value)
   const selectedRoleName = selectedRole?.name || value
+  const triggerLabel = selectedRoleName
+    ? t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })
+    : t('members.selectRole', { ns: 'common' })
 
   const setContainerElement = useCallback((node: HTMLDivElement | null) => {
     containerRef.current = node
@@ -93,7 +96,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           open && 'bg-state-base-hover',
         )}
       >
-        <div className="mr-2 grow text-sm/5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })}</div>
+        <div className="mr-2 grow text-sm/5 text-text-primary">{triggerLabel}</div>
         <div className={cn('size-4 shrink-0 text-text-secondary', open ? 'i-ri-arrow-up-s-line' : 'i-ri-arrow-down-s-line')} />
       </DropdownMenuTrigger>
       <DropdownMenuContent

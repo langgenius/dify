@@ -107,6 +107,10 @@ describe('InviteModal', () => {
   const fillEmails = (value: string) => {
     fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
   }
+  const selectAdminRole = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /members\.selectRole/i }))
+    await user.click(screen.getByRole('menuitemradio', { name: /Admin/i }))
+  }
 
   it('should render invite modal content', async () => {
     renderModal()
@@ -121,9 +125,14 @@ describe('InviteModal', () => {
     expect(await screen.findByText(/members\.emailNotSetup$/i)).toBeInTheDocument()
   })
 
-  it('should enable send button after entering an email', async () => {
+  it('should enable send button after entering an email and selecting a role', async () => {
     renderModal()
     fillEmails('user@example.com')
+
+    expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeDisabled()
+
+    const user = userEvent.setup()
+    await selectAdminRole(user)
 
     expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeEnabled()
   })
@@ -135,6 +144,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -154,6 +164,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -164,7 +175,7 @@ describe('InviteModal', () => {
     })
   })
 
-  it('should submit the selected workspace role name', async () => {
+  it('should submit the selected workspace role id', async () => {
     const user = userEvent.setup()
     vi.mocked(inviteMember).mockResolvedValue({
       result: 'success',
@@ -174,8 +185,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
-    await user.click(screen.getByRole('button', { name: /members\.invitedAsRole/i }))
-    await user.click(screen.getByRole('menuitemradio', { name: /Admin/i }))
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -183,7 +193,7 @@ describe('InviteModal', () => {
         url: '/workspaces/current/members/invite-email',
         body: {
           emails: ['user@example.com'],
-          role: 'Admin',
+          role: 'admin',
           language: 'en-US',
         },
       })
@@ -218,6 +228,7 @@ describe('InviteModal', () => {
 
     // Use an email that passes basic validation but fails our strict regex (needs 2+ char TLD)
     fillEmails('invalid@email.c')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     expect(toast.error).toHaveBeenCalledWith('common.members.emailInvalid')
@@ -271,6 +282,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -306,6 +318,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 
@@ -354,6 +367,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 

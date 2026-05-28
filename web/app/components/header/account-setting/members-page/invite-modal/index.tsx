@@ -143,7 +143,7 @@ const InviteModal = ({
             tabIndex={0}
             className="w-full"
             onClick={handleSend}
-            disabled={!emails.length || isLimitExceeded || isSubmitting}
+            disabled={!emails.length || !role || isLimitExceeded || isSubmitting}
             variant="primary"
           >
             {t('members.sendInvite', { ns: 'common' })}

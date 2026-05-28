@@ -64,12 +64,12 @@ type WrapperProps = {
   initialRole?: string
 }
 
-const RoleSelectorWrapper = ({ initialRole = 'Normal' }: WrapperProps) => {
+const RoleSelectorWrapper = ({ initialRole = 'normal' }: WrapperProps) => {
   const [role, setRole] = useState(initialRole)
   return <RoleSelector value={role} onChange={setRole} />
 }
 
-const getTrigger = () => screen.getByRole('button', { name: /members\.invitedAsRole/i })
+const getTrigger = () => screen.getByRole('button', { name: /members\.(invitedAsRole|selectRole)/i })
 const getRoleMenu = () => screen.getByRole('menu')
 const getRoleOption = (role: string) => within(getRoleMenu()).getByRole('menuitemradio', { name: new RegExp(role, 'i') })
 
@@ -80,9 +80,16 @@ describe('RoleSelector', () => {
   })
 
   it('should show current role name in trigger text', () => {
-    render(<RoleSelectorWrapper initialRole="Admin" />)
+    render(<RoleSelectorWrapper initialRole="admin" />)
 
     expect(screen.getByText(/members\.invitedAsRole:\{"role":"Admin"\}/i)).toBeInTheDocument()
+  })
+
+  it('should ask users to select a role when no role is selected', () => {
+    render(<RoleSelectorWrapper initialRole="" />)
+
+    expect(screen.getByText(/members\.selectRole/i)).toBeInTheDocument()
+    expect(screen.queryByText(/members\.invitedAsRole:\{"role":""\}/i)).not.toBeInTheDocument()
   })
 
   it('should toggle dropdown when trigger is clicked', async () => {
@@ -100,7 +107,7 @@ describe('RoleSelector', () => {
 
   it('should show checkmark state for selected role', async () => {
     const user = userEvent.setup()
-    render(<RoleSelectorWrapper initialRole="Editor" />)
+    render(<RoleSelectorWrapper initialRole="editor" />)
 
     await user.click(getTrigger())
 
