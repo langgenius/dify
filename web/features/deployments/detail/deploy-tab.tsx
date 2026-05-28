@@ -8,6 +8,7 @@ import { consoleQuery } from '@/service/client'
 import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../runtime-status'
 import { openDeployDrawerAtom } from '../store'
 import {
+  DetailEmptyState,
   DetailListState,
 } from './common'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
@@ -127,12 +128,24 @@ export function DeployTab({ appInstanceId }: {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-6">
+      {!isLoading && !hasError && rows.length > 0 && (
+        <div className="flex justify-end">
+          <NewDeploymentButton appInstanceId={appInstanceId} />
+        </div>
+      )}
       {isLoading
         ? <DeploymentEnvironmentListSkeleton />
         : hasError
           ? <DetailListState>{t('common.loadFailed')}</DetailListState>
           : rows.length === 0
-            ? <DetailListState>{t('deployTab.empty')}</DetailListState>
+            ? (
+                <DetailEmptyState
+                  icon="i-ri-server-line"
+                  title={t('deployTab.emptyTitle')}
+                  description={t('deployTab.emptyDescription')}
+                  action={<NewDeploymentButton appInstanceId={appInstanceId} />}
+                />
+              )
             : (
                 <DeploymentEnvironmentList appInstanceId={appInstanceId} rows={rows} />
               )}

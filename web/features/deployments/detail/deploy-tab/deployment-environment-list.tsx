@@ -81,6 +81,43 @@ function CurrentReleaseSummary({ release }: {
   )
 }
 
+type DeploymentErrorDetailsProps = {
+  error?: EnvironmentDeployment['error']
+}
+
+function DeploymentErrorDetails({ error }: DeploymentErrorDetailsProps) {
+  const { t } = useTranslation('deployments')
+  const message = error?.message?.trim() || t('deployTab.panel.unknownError')
+  const metadata = [
+    error?.phase ? { label: t('deployTab.errorPhase'), value: error.phase } : undefined,
+    error?.code ? { label: t('deployTab.errorCode'), value: error.code } : undefined,
+  ].filter((item): item is { label: string, value: string } => Boolean(item))
+
+  return (
+    <div className="rounded-xl border border-divider-subtle bg-background-default-subtle p-3">
+      <div className="system-xs-medium-uppercase text-text-tertiary">
+        {t('deployTab.errorMessage')}
+      </div>
+      <div className="mt-1 whitespace-pre-wrap break-words system-sm-regular text-text-secondary">
+        {message}
+      </div>
+      {metadata.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {metadata.map(item => (
+            <span
+              key={item.label}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-divider-subtle bg-background-default px-2 py-1 system-xs-regular text-text-tertiary"
+            >
+              <span className="shrink-0 text-text-quaternary">{item.label}</span>
+              <span className="truncate font-mono text-text-secondary">{item.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DeploymentRowActions({ appInstanceId, envId, row }: {
   appInstanceId: string
   envId: string
@@ -92,21 +129,27 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
   const isUndeployed = isUndeployedDeploymentRow(row)
   const status = deploymentStatus(row)
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
+  const [showErrorDetail, setShowErrorDetail] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
   const undeployInFlightRef = useRef(false)
   const isUndeployRequesting = undeployDeployment.isPending || isUndeploying
   const undeployActionDisabled = isUndeployRequesting || !envId
   const isDeploying = status === 'deploying'
+  const isDeployFailed = status === 'deploy_failed'
+  const failedReleaseId = row.desiredRelease?.id || row.currentRelease?.id
   const deployActionLabel = isUndeployed
     ? t('deployDrawer.deploy')
-    : status === 'deploy_failed'
-      ? t('deployTab.viewError')
-      : t('deployTab.deployOtherVersion')
+    : t('deployTab.deployOtherVersion')
 
-  function handleDeployAction() {
-    openDeployDrawer({ appInstanceId, environmentId: envId })
+  function handleDeployAction(releaseId?: string) {
+    openDeployDrawer({ appInstanceId, environmentId: envId, releaseId })
     setActionsOpen(false)
+  }
+
+  function handleViewError() {
+    setActionsOpen(false)
+    setShowErrorDetail(true)
   }
 
   function handleUndeploy() {
@@ -149,13 +192,36 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
           </DropdownMenuTrigger>
           {actionsOpen && (
             <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44">
-              <DropdownMenuItem
-                className="gap-2 px-3"
-                onClick={handleDeployAction}
-              >
-                <span aria-hidden className="i-ri-rocket-line size-4 shrink-0 text-text-tertiary" />
-                <span className="system-sm-regular text-text-secondary">{deployActionLabel}</span>
-              </DropdownMenuItem>
+              {isDeployFailed
+                ? (
+                    <>
+                      <DropdownMenuItem
+                        className="gap-2 px-3"
+                        onClick={handleViewError}
+                      >
+                        <span aria-hidden className="i-ri-error-warning-line size-4 shrink-0 text-text-tertiary" />
+                        <span className="system-sm-regular text-text-secondary">{t('deployTab.viewError')}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="gap-2 px-3"
+                        onClick={() => handleDeployAction(failedReleaseId)}
+                      >
+                        <span aria-hidden className="i-ri-refresh-line size-4 shrink-0 text-text-tertiary" />
+                        <span className="system-sm-regular text-text-secondary">
+                          {failedReleaseId ? t('deployTab.retry') : t('deployTab.deployOtherVersion')}
+                        </span>
+                      </DropdownMenuItem>
+                    </>
+                  )
+                : (
+                    <DropdownMenuItem
+                      className="gap-2 px-3"
+                      onClick={() => handleDeployAction()}
+                    >
+                      <span aria-hidden className="i-ri-rocket-line size-4 shrink-0 text-text-tertiary" />
+                      <span className="system-sm-regular text-text-secondary">{deployActionLabel}</span>
+                    </DropdownMenuItem>
+                  )}
               {!isUndeployed && (
                 <>
                   <DropdownMenuSeparator />
@@ -182,6 +248,27 @@ function DeploymentRowActions({ appInstanceId, envId, row }: {
             </DropdownMenuContent>
           )}
         </DropdownMenu>
+      )}
+
+      {isDeployFailed && (
+        <AlertDialog open={showErrorDetail} onOpenChange={setShowErrorDetail}>
+          <AlertDialogContent className="w-120">
+            <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
+              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t('deployTab.errorDialogTitle', { name: environmentName(row.environment) })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+                {t('deployTab.errorDialogDesc')}
+              </AlertDialogDescription>
+              <DeploymentErrorDetails error={row.error} />
+            </div>
+            <AlertDialogActions className="pt-3">
+              <AlertDialogCancelButton variant="secondary">
+                {t('deployTab.closeError')}
+              </AlertDialogCancelButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {!isUndeployed && !isDeploying && (

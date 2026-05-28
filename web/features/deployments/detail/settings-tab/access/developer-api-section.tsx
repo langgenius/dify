@@ -5,7 +5,6 @@ import type {
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
-import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -17,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useClipboard } from '@/hooks/use-clipboard'
 import { consoleQuery } from '@/service/client'
-import { SectionState } from '../../common'
+import { DetailEmptyState, SectionState } from '../../common'
 import {
   DetailTable,
   DetailTableBody,
@@ -371,28 +370,6 @@ function ApiKeyDesktopRowSkeleton() {
   )
 }
 
-function DeveloperApiState({ icon, children, action }: {
-  icon: string
-  children: ReactNode
-  action?: ReactNode
-}) {
-  return (
-    <div className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-divider-subtle bg-background-default-subtle px-6 py-8 text-center">
-      <span className="flex size-10 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary">
-        <span className={cn(icon, 'size-5')} aria-hidden="true" />
-      </span>
-      <span className="max-w-120 system-sm-medium text-text-secondary">
-        {children}
-      </span>
-      {action && (
-        <div className="pt-1">
-          {action}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ApiKeyListSection({ apiKeys, environments }: {
   apiKeys: ApiKey[]
   environments: Environment[]
@@ -448,8 +425,15 @@ export function DeveloperApiSection({
                   )}
                   {apiKeys.length === 0
                     ? (
-                        <DeveloperApiState
+                        <DetailEmptyState
+                          variant="section"
                           icon={environments.length === 0 ? 'i-ri-rocket-line' : 'i-ri-key-2-line'}
+                          title={environments.length === 0
+                            ? t('access.api.emptyTitle')
+                            : t('access.api.noKeysTitle')}
+                          description={environments.length === 0
+                            ? t('access.api.empty')
+                            : t('access.api.noKeys')}
                           action={(
                             environments.length > 0
                               ? (
@@ -462,11 +446,7 @@ export function DeveloperApiSection({
                                 )
                               : undefined
                           )}
-                        >
-                          {environments.length === 0
-                            ? t('access.api.empty')
-                            : t('access.api.noKeys')}
-                        </DeveloperApiState>
+                        />
                       )
                     : (
                         <ApiKeyListSection
@@ -484,9 +464,12 @@ export function DeveloperApiSection({
                 </div>
               )
             : (
-                <DeveloperApiState icon="i-ri-toggle-line">
-                  {t('access.api.disabled')}
-                </DeveloperApiState>
+                <DetailEmptyState
+                  variant="section"
+                  icon="i-ri-toggle-line"
+                  title={t('access.api.disabled')}
+                  description={t('access.api.disabledHint')}
+                />
               )}
     </>
   )

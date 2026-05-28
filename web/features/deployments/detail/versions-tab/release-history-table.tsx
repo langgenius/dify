@@ -19,6 +19,7 @@ import {
 } from '../../release'
 import { isUndeployedDeploymentRow } from '../../runtime-status'
 import {
+  DetailEmptyState,
   DetailListState,
 } from '../common'
 import {
@@ -423,9 +424,11 @@ export function ReleaseHistoryTable({ appInstanceId }: {
 
   if (releaseRows.length === 0) {
     return (
-      <DetailListState>
-        {t('versions.emptyWithCreate')}
-      </DetailListState>
+      <DetailEmptyState
+        icon="i-ri-stack-line"
+        title={t('versions.emptyTitle')}
+        description={t('versions.emptyDescription')}
+      />
     )
   }
 

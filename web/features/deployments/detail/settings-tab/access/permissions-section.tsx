@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
-import { Section, SectionState } from '../../common'
+import { DetailEmptyState, Section, SectionState } from '../../common'
 import {
   DetailTable,
   DetailTableBody,
@@ -83,9 +83,12 @@ export function AccessPermissionsSection({
           ? <SectionState>{t('common.loadFailed')}</SectionState>
           : environments.length === 0
             ? (
-                <SectionState>
-                  {t('access.runAccess.noEnvs')}
-                </SectionState>
+                <DetailEmptyState
+                  variant="section"
+                  icon="i-ri-rocket-line"
+                  title={t('access.runAccess.noEnvsTitle')}
+                  description={t('access.runAccess.noEnvs')}
+                />
               )
             : (
                 <DetailTable className="block pc:table">
