@@ -92,6 +92,15 @@ class WorkflowAgentBindingType(StrEnum):
     INLINE_AGENT = "inline_agent"
 
 
+class WorkflowAgentRuntimeSessionStatus(StrEnum):
+    """Lifecycle state of an Agent backend session snapshot owned by a workflow run."""
+
+    # Snapshot can be reused by a later Agent run in the same workflow run.
+    ACTIVE = "active"
+    # Snapshot has been retired and must not be submitted to Agent backend again.
+    CLEANED = "cleaned"
+
+
 class Agent(DefaultFieldsMixin, Base):
     """Workspace-scoped Agent identity used by Agent Roster and workflow-only agents."""
 
@@ -273,3 +282,56 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
         if isinstance(self.node_job_config, str):
             return json.loads(self.node_job_config)
         return dict(self.node_job_config)
+
+
+class WorkflowAgentRuntimeSession(DefaultFieldsMixin, Base):
+    """Persisted Agent backend session snapshot for one workflow Agent node execution scope.
+
+    The snapshot is runtime state returned by Agent backend. It is intentionally
+    separate from Agent Soul snapshots and workflow node-job config.
+    """
+
+    __tablename__ = "workflow_agent_runtime_sessions"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_agent_runtime_session_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "workflow_run_id",
+            "node_id",
+            "binding_id",
+            "agent_id",
+            name="workflow_agent_runtime_session_scope_unique",
+        ),
+        Index(
+            "workflow_agent_runtime_session_lookup_idx",
+            "tenant_id",
+            "workflow_run_id",
+            "node_id",
+            "status",
+        ),
+        Index("workflow_agent_runtime_session_backend_run_idx", "backend_run_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_config_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    session_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
+    # JSON-encoded list of ``WorkflowAgentSessionLayerSpec`` ({name, type, deps,
+    # config}). Drives Agent backend cleanup-only runs: the agenton compositor
+    # rejects a session snapshot whose layer names do not match the cleanup
+    # composition, so we must replay the same layer graph (minus credential-
+    # bearing plugin layers) when issuing the cleanup request.
+    composition_layer_specs: Mapped[str] = mapped_column(LongText, nullable=False, server_default="[]")
+    status: Mapped[WorkflowAgentRuntimeSessionStatus] = mapped_column(
+        EnumText(WorkflowAgentRuntimeSessionStatus, length=32),
+        nullable=False,
+        default=WorkflowAgentRuntimeSessionStatus.ACTIVE,
+    )
+    cleaned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
