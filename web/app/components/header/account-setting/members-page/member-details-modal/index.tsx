@@ -9,7 +9,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import AssignRolesModal from '../assign-roles-modal'
@@ -33,7 +33,7 @@ const MemberDetailsModal = ({
 
   const { data: rolesOfMember } = useRolesOfMember(member.id)
 
-  const roles = rolesOfMember?.roles || []
+  const roles = useMemo(() => rolesOfMember?.roles ?? [], [rolesOfMember?.roles])
 
   const builtinRoles = roles.filter(role => role.is_builtin)
   const customRoles = roles.filter(role => !role.is_builtin)
@@ -48,9 +48,9 @@ const MemberDetailsModal = ({
   }, [onAssignSubmit])
 
   const handleRemove = useCallback((id: string) => {
-    const roleIds = member.roles.map(role => role.id).filter(roleId => roleId !== id)
+    const roleIds = roles.map(role => role.id).filter(roleId => roleId !== id)
     onAssignSubmit?.(roleIds)
-  }, [member.roles, onAssignSubmit])
+  }, [roles, onAssignSubmit])
 
   return (
     <>
@@ -134,7 +134,7 @@ const MemberDetailsModal = ({
                       label={role.name}
                       isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
-                      onRemove={handleRemove}
+                      onRemove={canAssignRoles ? handleRemove : undefined}
                     />
                   ))}
                 </div>
@@ -155,7 +155,7 @@ const MemberDetailsModal = ({
                       label={role.name}
                       isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
-                      onRemove={handleRemove}
+                      onRemove={canAssignRoles ? handleRemove : undefined}
                     />
                   ))}
                 </div>

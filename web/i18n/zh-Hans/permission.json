@@ -22,6 +22,7 @@
   "addRuleTargets.selectedSummary": "已选 {{roleCount}} 个角色、{{memberCount}} 个成员",
   "addRuleTargets.targetsAria": "目标",
   "addRuleTargets.title": "添加角色或成员",
+  "common.duplicateAction": "创建副本",
   "group.app": "应用",
   "group.app_acl": "应用访问权限",
   "group.credential": "凭据",

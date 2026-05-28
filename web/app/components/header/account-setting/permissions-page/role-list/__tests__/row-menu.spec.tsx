@@ -103,7 +103,7 @@ describe('RowMenu', () => {
 
       expect(screen.queryByRole('menuitem', { name: 'common.operation.view' })).not.toBeInTheDocument()
       expect(screen.getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'common.operation.duplicate' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
       expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
     })
   })

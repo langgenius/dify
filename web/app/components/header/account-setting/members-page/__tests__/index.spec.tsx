@@ -52,15 +52,35 @@ vi.mock('../invited-modal', () => ({
   ),
 }))
 vi.mock('../role-badges', () => ({
-  default: ({ roles }: { roles: string[] }) => (
-    <div data-testid="role-badges">{roles.join(',')}</div>
+  default: ({ roleNames }: { roleNames: string[] }) => (
+    <div data-testid="role-badges">{roleNames.join(',')}</div>
   ),
 }))
 vi.mock('../member-menu', () => ({
-  default: ({ member, onTransferOwnership, canTransferOwnership }: { member: Member, onTransferOwnership?: () => void, canTransferOwnership?: boolean }) => (
+  default: ({
+    member,
+    isCurrentUser,
+    onTransferOwnership,
+    canTransferOwnership,
+  }: {
+    member: Member
+    isCurrentUser?: boolean
+    onTransferOwnership?: () => void
+    canTransferOwnership?: boolean
+  }) => (
     <div data-testid="member-menu">
+      {member.role !== 'owner' && !isCurrentUser && (
+        <div>{`Member Operation ${member.role}`}</div>
+      )}
       {canTransferOwnership && member.role === 'owner' && onTransferOwnership && (
-        <button onClick={onTransferOwnership}>Transfer ownership</button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onTransferOwnership()
+          }}
+        >
+          Transfer ownership
+        </button>
       )}
     </div>
   ),
@@ -103,6 +123,7 @@ describe('MembersPage', () => {
       last_login_at: '1731000000',
       created_at: '1731000000',
       status: 'active',
+      roles: [{ id: 'owner-role', name: 'Owner' }],
     },
     {
       id: '2',
@@ -115,6 +136,7 @@ describe('MembersPage', () => {
       last_login_at: '1731000000',
       created_at: '1731000000',
       status: 'active',
+      roles: [{ id: 'admin-role', name: 'Admin' }],
     },
   ]
 
@@ -126,6 +148,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'owner' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
       isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as AppContextValue)
 
     vi.mocked(useMembers).mockReturnValue({
@@ -195,7 +218,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    expect(screen.getByText('common.members.owner'))!.toBeInTheDocument()
+    expect(screen.getByText('Owner'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
   })
 
@@ -306,6 +329,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as AppContextValue)
 
     renderMembersPage()
@@ -320,6 +344,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as AppContextValue)
     vi.mocked(useMembers).mockReturnValue({
       data: {
@@ -341,7 +366,6 @@ describe('MembersPage', () => {
     expect(screen.getByText('Member Operation normal'))!.toBeInTheDocument()
     expect(screen.getByText('Member Operation dataset_operator'))!.toBeInTheDocument()
     expect(screen.getByText('Member Operation admin'))!.toBeInTheDocument()
-    expect(screen.getAllByText('common.members.admin')).toHaveLength(1)
     expect(screen.queryByText('Member Operation owner')).not.toBeInTheDocument()
   })
 
@@ -392,7 +416,7 @@ describe('MembersPage', () => {
     expect(screen.getByText('1'))!.toBeInTheDocument()
   })
 
-  it('should show normal role as fallback for unknown role', () => {
+  it('should render role badge names from account roles', () => {
     vi.mocked(useAppContext).mockReturnValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
@@ -406,7 +430,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    expect(screen.getByText('common.members.normal'))!.toBeInTheDocument()
+    expect(screen.getByText('Admin'))!.toBeInTheDocument()
   })
 
   it('should open member details modal when a member row is clicked', async () => {
@@ -441,6 +465,23 @@ describe('MembersPage', () => {
     renderMembersPage()
 
     await user.click(screen.getByTestId('member-row-1'))
+
+    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+  })
+
+  it('should not allow assigning roles from member details when target is current user', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
+    } as unknown as AppContextValue)
+
+    renderMembersPage()
+
+    await user.click(screen.getByTestId('member-row-2'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })

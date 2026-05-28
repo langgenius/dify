@@ -1,4 +1,5 @@
 {
+  "common.duplicateAction": "建立副本",
   "group.app": "應用",
   "group.app_acl": "應用訪問權限",
   "group.credential": "憑據",

@@ -22,6 +22,7 @@
   "addRuleTargets.selectedSummary": "{{roleCount}} roles, {{memberCount}} members selected",
   "addRuleTargets.targetsAria": "Targets",
   "addRuleTargets.title": "Add Roles or Members",
+  "common.duplicateAction": "Duplicate",
   "group.app": "Applications",
   "group.app_acl": "App access permissions",
   "group.credential": "Credentials",

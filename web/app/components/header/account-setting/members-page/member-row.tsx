@@ -48,15 +48,6 @@ const MemberRow = ({
     }
   }, [openDetails])
 
-  const stopPropagationOnClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
-
-  const stopPropagationOnKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ')
-      e.stopPropagation()
-  }, [])
-
   return (
     <div
       role="button"
@@ -95,8 +86,6 @@ const MemberRow = ({
       </div>
       <div
         className="flex w-53.75 shrink-0 items-center gap-2 px-3"
-        onClick={stopPropagationOnClick}
-        onKeyDown={stopPropagationOnKeyDown}
         role="presentation"
       >
         <RoleBadges

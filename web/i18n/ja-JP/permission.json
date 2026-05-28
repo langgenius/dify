@@ -22,6 +22,7 @@
   "addRuleTargets.selectedSummary": "{{roleCount}} 件のロール、{{memberCount}} 件のメンバーを選択済み",
   "addRuleTargets.targetsAria": "対象",
   "addRuleTargets.title": "ロールまたはメンバーを追加",
+  "common.duplicateAction": "複製",
   "group.app": "アプリ",
   "group.app_acl": "アプリアクセス権限",
   "group.credential": "認証情報",

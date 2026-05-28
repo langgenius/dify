@@ -110,7 +110,7 @@ const AccessRuleRowMenu = ({
             className="system-sm-semibold text-text-secondary"
             onClick={handleCopyRules}
           >
-            {t('operation.copy', { ns: 'common' })}
+            {t('common.duplicateAction', { ns: 'permission' })}
           </DropdownMenuItem>
           {!isBuiltIn && (
             <>

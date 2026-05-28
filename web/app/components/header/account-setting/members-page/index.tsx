@@ -205,6 +205,7 @@ const MembersPage = () => {
           canAssignRoles={
             canManageMembers
             && detailsMember.role !== 'owner'
+            && userProfile.email !== detailsMember.email
           }
           onClose={handleCloseDetails}
           onAssignSubmit={handleAssignRolesSubmit}

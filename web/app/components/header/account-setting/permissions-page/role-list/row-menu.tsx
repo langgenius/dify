@@ -105,7 +105,7 @@ const RowMenu = ({
           {
             hasDuplicateAction && (
               <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleDuplicate}>
-                {t('operation.duplicate', { ns: 'common' })}
+                {t('common.duplicateAction', { ns: 'permission' })}
               </DropdownMenuItem>
             )
           }
