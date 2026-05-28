@@ -18,6 +18,7 @@ from controllers.web.error import WebFormRateLimitExceededError
 from graphon.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
 from graphon.nodes.human_input.enums import ValueSourceType
 from models.human_input import RecipientType
+from services.feature_service import FeatureModel
 from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
@@ -267,11 +268,11 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     service_mock.resolve_form_inputs.return_value = runtime_inputs
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
     monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({"App": app_model, "Site": site_model})))
-    monkeypatch.setattr(
-        site_module.FeatureService,
-        "get_features",
-        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
-    )
+
+    def mock_get_features(tenant_id: str, exclude_vector_space: bool = False):
+        return FeatureModel(can_replace_logo=True)
+
+    monkeypatch.setattr(site_module.FeatureService, "get_features", mock_get_features)
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
