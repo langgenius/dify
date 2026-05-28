@@ -50,7 +50,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
           {
             currentLogItem.log?.length === 1 && (
               <>
-                <CopyFeedbackNew className="h-6 w-6" content={currentLogItem.log[0]!.text} />
+                <CopyFeedbackNew className="size-6" content={currentLogItem.log[0]!.text} />
                 <div className="mx-2.5 h-[14px] w-px bg-divider-regular" />
               </>
             )
@@ -59,9 +59,9 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
             type="button"
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onCancel}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
+            className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
       </div>

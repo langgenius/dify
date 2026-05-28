@@ -143,9 +143,9 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                       render={(
                         <button
                           type="button"
-                          className="flex h-3.5 w-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="flex size-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                         >
-                          <RiInformation2Line className="h-3.5 w-3.5" />
+                          <RiInformation2Line className="size-3.5" />
                         </button>
                       )}
                     />
@@ -159,7 +159,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                         </div>
                         {datasetBindings?.map(binding => (
                           <div key={binding.id} className="flex items-center gap-1 self-stretch px-2 py-1">
-                            <RiBook2Line className="h-4 w-4 text-text-secondary" />
+                            <RiBook2Line className="size-4 text-text-secondary" />
                             <div className="system-sm-medium text-text-secondary">{binding.name}</div>
                           </div>
                         ))}
@@ -197,7 +197,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
           <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle
             bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary"
           >
-            <RiLock2Fill className="h-3 w-3 text-text-quaternary" />
+            <RiLock2Fill className="size-3 text-text-quaternary" />
             {t('externalAPIForm.encrypted.front', { ns: 'dataset' })}
             <a className="text-text-accent" target="_blank" rel="noopener noreferrer" href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html">
               PKCS1_OAEP

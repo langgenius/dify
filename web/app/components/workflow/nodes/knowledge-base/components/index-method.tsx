@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import {
   memo,
@@ -35,6 +36,7 @@ const IndexMethod = ({
   readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
+  const keywordNumberLabel = t('form.numberOfKeywords', { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
 
@@ -91,16 +93,17 @@ const IndexMethod = ({
               onClick={handleIndexMethodChange}
               effectColor="blue"
             >
-              <div className="flex items-center">
+              <FieldsetRoot className="flex items-center">
+                <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
                 <div className="flex grow items-center">
                   <div className="truncate system-xs-medium text-text-secondary">
-                    {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                    {keywordNumberLabel}
                   </div>
                   <Infotip
-                    aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-                    className="ml-0.5 h-3.5 w-3.5"
+                    aria-label={keywordNumberLabel}
+                    className="ml-0.5 size-3.5"
                   >
-                    {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                    {keywordNumberLabel}
                   </Infotip>
                 </div>
                 <Slider
@@ -108,9 +111,10 @@ const IndexMethod = ({
                   className="mr-3 w-24 shrink-0"
                   value={keywordNumber}
                   onValueChange={onKeywordNumberChange}
-                  aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                  aria-label={keywordNumberLabel}
                 />
                 <Input
+                  aria-label={keywordNumberLabel}
                   disabled={readonly}
                   className="shrink-0"
                   wrapperClassName="shrink-0 w-[72px]"
@@ -118,7 +122,7 @@ const IndexMethod = ({
                   value={keywordNumber}
                   onChange={handleInputChange}
                 />
-              </div>
+              </FieldsetRoot>
             </OptionCard>
           )
         }

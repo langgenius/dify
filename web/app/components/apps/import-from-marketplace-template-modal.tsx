@@ -75,10 +75,10 @@ const ImportFromMarketplaceTemplateModal = ({
         <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
           {t('marketplace.template.modalTitle', { ns: 'app' })}
           <div
-            className="flex h-8 w-8 cursor-pointer items-center"
+            className="flex size-8 cursor-pointer items-center"
             onClick={onClose}
           >
-            <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+            <RiCloseLine className="size-5 text-text-tertiary" />
           </div>
         </div>
 
@@ -105,12 +105,12 @@ const ImportFromMarketplaceTemplateModal = ({
                       <img
                         src={`${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`}
                         alt={template.template_name}
-                        className="h-10 w-10 rounded-lg object-cover"
+                        className="size-10 rounded-lg object-cover"
                       />
                     )
                   : (
                       <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg text-xl"
+                        className="flex size-10 items-center justify-center rounded-lg text-xl"
                         style={{ background: template.icon_background || '#F3F4F6' }}
                       >
                         {template.icon || '📄'}

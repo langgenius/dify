@@ -93,7 +93,7 @@ const Publisher = () => {
               variant="primary"
             >
               <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
-              <RiArrowDownSLine className="h-4 w-4" />
+              <RiArrowDownSLine className="size-4" />
             </Button>
           )}
         />

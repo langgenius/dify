@@ -1,12 +1,10 @@
 'use client'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import DisplayToggle from '../display-toggle'
-import StatusItem from '../status-item'
 import s from '../style.module.css'
 
 type Item = {
@@ -67,15 +65,14 @@ function MenuBar({
             onChangeStatus(nextItem)
         }}
       >
-        <SelectTrigger className={cn(s.select, 'mr-2 h-fit')}>
+        <SelectTrigger className="mr-2 w-[100px] shrink-0 shadow-none">
           {selectedStatus?.name ?? ''}
         </SelectTrigger>
         <SelectContent popupClassName="w-[160px]">
           {statusList.map(item => (
-            <SelectItem key={item.value} value={String(item.value)} className="h-auto p-0">
-              <SelectItemText className="sr-only m-0 p-0">{item.name}</SelectItemText>
-              <StatusItem item={item} selected={item.value === selectDefaultValue} />
-              {item.value === selectDefaultValue && <SelectItemIndicator className="hidden" />}
+            <SelectItem key={item.value} value={String(item.value)}>
+              <SelectItemText>{item.name}</SelectItemText>
+              <SelectItemIndicator />
             </SelectItem>
           ))}
         </SelectContent>

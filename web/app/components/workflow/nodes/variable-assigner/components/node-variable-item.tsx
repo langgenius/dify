@@ -50,26 +50,26 @@ const NodeVariableItem = ({
   const VariableIcon = useMemo(() => {
     if (isEnv) {
       return (
-        <Env className="h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600" />
+        <Env className="size-3.5 shrink-0 text-util-colors-violet-violet-600" />
       )
     }
 
     if (isChatVar) {
       return (
-        <BubbleX className="h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700" />
+        <BubbleX className="size-3.5 shrink-0 text-util-colors-teal-teal-700" />
       )
     }
 
     if (isRagVar) {
       return (
-        <InputField className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+        <InputField className="size-3.5 shrink-0 text-text-accent" />
       )
     }
 
     return (
       <Variable02
         className={cn(
-          'h-3.5 w-3.5 shrink-0 text-text-accent',
+          'size-3.5 shrink-0 text-text-accent',
           isException && 'text-text-warning',
         )}
       />

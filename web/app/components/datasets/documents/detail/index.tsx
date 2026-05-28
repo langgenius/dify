@@ -191,11 +191,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             aria-label={backButtonLabel}
             title={backButtonLabel}
             onClick={backToPrev}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           >
             <span
               aria-hidden="true"
-              className="i-ri-arrow-left-line h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary"
+              className="i-ri-arrow-left-line size-4 text-components-button-ghost-text hover:text-text-tertiary"
             />
           </button>
           <DocumentTitle
@@ -247,8 +247,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <span aria-hidden="true" className="i-ri-layout-left-2-line h-4 w-4 text-components-button-secondary-text" />
-                  : <span aria-hidden="true" className="i-ri-layout-right-2-line h-4 w-4 text-components-button-secondary-text" />
+                  ? <span aria-hidden="true" className="i-ri-layout-left-2-line size-4 text-components-button-secondary-text" />
+                  : <span aria-hidden="true" className="i-ri-layout-right-2-line size-4 text-components-button-secondary-text" />
               }
             </button>
           </div>
@@ -257,7 +257,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type="app" />
             : (
-                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative pt-4 pr-11 pl-11', !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5')}>
+                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative px-11 pt-4', !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5')}>
                   {embedding
                     ? (
                         <Embedding

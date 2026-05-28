@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -8,14 +9,14 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from constants import HIDDEN_VALUE
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
 from ..common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_models
 from . import console_ns
-from .wraps import account_initialization_required, setup_required
+from .wraps import account_initialization_required, setup_required, with_current_tenant_id
 
 
 class CodeBasedExtensionQuery(BaseModel):
@@ -115,11 +116,11 @@ class APIBasedExtensionAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         return [
             _serialize_api_based_extension(extension)
-            for extension in APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
+            for extension in APIBasedExtensionService.get_all_by_tenant_id(current_tenant_id)
         ]
 
     @console_ns.doc("create_api_based_extension")
@@ -129,9 +130,9 @@ class APIBasedExtensionAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
-        _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
             tenant_id=current_tenant_id,
@@ -152,12 +153,12 @@ class APIBasedExtensionDetailAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, id):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
-        _, tenant_id = current_account_with_tenant()
 
         return _serialize_api_based_extension(
-            APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
+            APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
         )
 
     @console_ns.doc("update_api_based_extension")
@@ -168,9 +169,9 @@ class APIBasedExtensionDetailAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, id):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
-        _, current_tenant_id = current_account_with_tenant()
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
@@ -196,12 +197,12 @@ class APIBasedExtensionDetailAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, id):
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
-        _, current_tenant_id = current_account_with_tenant()
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
         APIBasedExtensionService.delete(extension_data_from_db)
 
-        return {"result": "success"}, 204
+        return "", 204

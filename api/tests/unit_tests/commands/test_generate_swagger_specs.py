@@ -39,6 +39,7 @@ def test_generate_specs_writes_console_web_and_service_swagger_files(tmp_path):
         "console-swagger.json",
         "web-swagger.json",
         "service-swagger.json",
+        "openapi-swagger.json",
     ]
 
     for path in written_paths:

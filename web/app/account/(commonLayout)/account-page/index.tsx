@@ -159,14 +159,14 @@ export default function AccountPage() {
       <div className="pt-2 pb-3">
         <h4 className="title-2xl-semi-bold text-text-primary">{t('account.myAccount', { ns: 'common' })}</h4>
       </div>
-      <div className="mb-8 flex items-center rounded-xl bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
+      <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size="3xl" />
         <div className="ml-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}
             {isEducationAccount && (
-              <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
-                <RiGraduationCapFill aria-hidden="true" className="mr-1 h-3 w-3" />
+              <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
+                <RiGraduationCapFill aria-hidden="true" className="mr-1 size-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
             )}
@@ -209,7 +209,7 @@ export default function AccountPage() {
           </div>
         )
       }
-      <div className="mb-6 border-[1px] border-divider-subtle" />
+      <div className="mb-6 border border-divider-subtle" />
       <div className="mb-8">
         <div className={titleClassName}>{t('account.langGeniusAccount', { ns: 'common' })}</div>
         <div className={descriptionClassName}>{t('account.langGeniusAccountTip', { ns: 'common' })}</div>

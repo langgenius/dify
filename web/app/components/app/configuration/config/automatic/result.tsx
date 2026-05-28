@@ -57,7 +57,7 @@ const Result: FC<Props> = ({
               toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="h-4 w-4 text-text-secondary" />
+            <RiClipboardLine className="size-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
             {t('generate.apply', { ns: 'appDebug' })}

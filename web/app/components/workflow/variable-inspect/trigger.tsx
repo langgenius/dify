@@ -104,7 +104,7 @@ const VariableInspectTrigger: FC = () => {
             className="flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
-            <RiLoader2Line className="h-4 w-4 animate-spin" />
+            <RiLoader2Line className="size-4 animate-spin" />
             <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
           </div>
           {isPreviewRunning && (
@@ -115,7 +115,7 @@ const VariableInspectTrigger: FC = () => {
                     className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
                     onClick={handleStop}
                   >
-                    <RiStopCircleFill className="h-4 w-4 text-text-accent" />
+                    <RiStopCircleFill className="size-4 text-text-accent" />
                   </div>
                 )}
               />

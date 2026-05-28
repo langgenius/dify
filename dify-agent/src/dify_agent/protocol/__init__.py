@@ -1,6 +1,7 @@
 """Public protocol exports shared by the Dify Agent server and clients."""
 
 from .schemas import (
+    DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     RUN_EVENT_ADAPTER,
@@ -10,8 +11,6 @@ from .schemas import (
     CreateRunRequest,
     CreateRunResponse,
     EmptyRunEventData,
-    ExecutionContext,
-    InvokeFrom,
     LayerExitSignals,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
@@ -41,11 +40,10 @@ __all__ = [
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
-    "ExecutionContext",
-    "InvokeFrom",
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",

@@ -11,10 +11,6 @@ vi.mock('../../display-toggle', () => ({
   ),
 }))
 
-vi.mock('../../status-item', () => ({
-  default: ({ item }: { item: { name: string } }) => <div data-testid="status-item">{item.name}</div>,
-}))
-
 describe('MenuBar', () => {
   const defaultProps = {
     hasSelectableSegments: true,
@@ -87,22 +83,19 @@ describe('MenuBar', () => {
     expect(defaultProps.onInputChange).toHaveBeenCalledWith('')
   })
 
-  it('should render select with status items via renderOption', () => {
+  it('should render the selected status in the trigger', () => {
     renderMenuBar()
     expect(screen.getByText('All')).toBeInTheDocument()
   })
 
-  it('should call renderOption for each item when dropdown is opened', async () => {
+  it('should render status options when dropdown is opened', async () => {
     renderMenuBar()
 
     const selectButton = screen.getByRole('combobox')
     fireEvent.click(selectButton)
 
-    // After opening, renderOption is called for each item, rendering the mocked StatusItem
-    const statusItems = await screen.findAllByTestId('status-item')
-    expect(statusItems.length).toBe(3)
-    expect(statusItems[0]).toHaveTextContent('All')
-    expect(statusItems[1]).toHaveTextContent('Enabled')
-    expect(statusItems[2]).toHaveTextContent('Disabled')
+    expect(await screen.findByRole('option', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Enabled' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Disabled' })).toBeInTheDocument()
   })
 })

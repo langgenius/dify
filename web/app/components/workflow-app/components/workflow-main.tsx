@@ -319,7 +319,7 @@ const WorkflowMain = ({
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full"
+      className="relative size-full"
     >
       <WorkflowWithInnerContext
         nodes={nodes}

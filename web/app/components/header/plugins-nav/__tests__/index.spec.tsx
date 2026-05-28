@@ -5,6 +5,9 @@ import { useSelectedLayoutSegment } from '@/next/navigation'
 
 import PluginsNav from '../index'
 
+const queryErrorStatusDot = (container: HTMLElement) =>
+  container.querySelector('.shadow-status-indicator-red-shadow')
+
 vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
 }))
@@ -38,7 +41,7 @@ describe('PluginsNav', () => {
     const svg = linkElement.querySelector('svg')
     expect(svg).toBeInTheDocument()
 
-    expect(screen.queryByTestId('status-indicator')).not.toBeInTheDocument()
+    expect(queryErrorStatusDot(linkElement)).not.toBeInTheDocument()
   })
 
   describe('Active State', () => {
@@ -70,7 +73,7 @@ describe('PluginsNav', () => {
       expect(svgs.length).toBe(1)
       expect(svgs[0]).toHaveClass('install-icon')
 
-      expect(screen.queryByTestId('status-indicator')).not.toBeInTheDocument()
+      expect(queryErrorStatusDot(container)).not.toBeInTheDocument()
     })
 
     it('renders Installing With Error state (Inactive)', () => {
@@ -81,7 +84,7 @@ describe('PluginsNav', () => {
       const downloadingIcon = container.querySelector('.install-icon')
       expect(downloadingIcon).toBeInTheDocument()
 
-      expect(screen.getByTestId('status-indicator')).toBeInTheDocument()
+      expect(queryErrorStatusDot(container)).toBeInTheDocument()
     })
 
     it('renders Failed state (Inactive)', () => {
@@ -93,7 +96,7 @@ describe('PluginsNav', () => {
       expect(svg).toBeInTheDocument()
       expect(svg).not.toHaveClass('install-icon')
 
-      expect(screen.getByTestId('status-indicator')).toBeInTheDocument()
+      expect(queryErrorStatusDot(container)).toBeInTheDocument()
     })
 
     it('renders Default icon when Active even if installing', () => {

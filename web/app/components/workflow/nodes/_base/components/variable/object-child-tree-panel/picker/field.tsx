@@ -50,7 +50,7 @@ const Field: FC<Props> = ({
                 <TreeIndentLine depth={depth} />
                 {depth === MAX_DEPTH + 1
                   ? (
-                      <RiMoreFill className="h-3 w-3 text-text-tertiary" />
+                      <RiMoreFill className="size-3 text-text-tertiary" />
                     )
                   : (<div className={cn('h-6 w-0 grow truncate system-sm-medium leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 

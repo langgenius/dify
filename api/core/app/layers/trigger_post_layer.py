@@ -1,6 +1,6 @@
 import logging
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, override
 
 from pydantic import TypeAdapter
 
@@ -37,9 +37,11 @@ class TriggerPostLayer(GraphEngineLayer):
         self.start_time = start_time
         self.cfs_plan_scheduler_entity = cfs_plan_scheduler_entity
 
+    @override
     def on_graph_start(self):
         pass
 
+    @override
     def on_event(self, event: GraphEngineEvent):
         """
         Update trigger log with success or failure.
@@ -82,5 +84,6 @@ class TriggerPostLayer(GraphEngineLayer):
                 repo.update(trigger_log)
                 session.commit()
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         pass

@@ -62,7 +62,7 @@ export function ApiBasedExtensionPage() {
         className="w-full"
         onClick={handleOpenApiBasedExtensionModal}
       >
-        <span className="mr-1 i-ri-add-line h-4 w-4" aria-hidden="true" />
+        <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
         {t('apiBasedExtension.add', { ns: 'common' })}
       </Button>
       {

@@ -81,7 +81,7 @@ export const useImageFiles = () => {
           filesRef.current = newFiles
           setFiles(newFiles)
         },
-      }, !!params.token)
+      }, !!params?.token)
     }
   }
   const handleClear = () => {
@@ -145,13 +145,13 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
           toast.error(errorMessage)
           onUpload({ ...imageFile, progress: -1 })
         },
-      }, !!params.token)
+      }, !!params?.token)
     }, false)
     reader.addEventListener('error', () => {
       toast.error(t('imageUploader.uploadFromComputerReadError', { ns: 'common' }))
     }, false)
     reader.readAsDataURL(file)
-  }, [disabled, limit, t, onUpload, params.token])
+  }, [disabled, limit, t, onUpload, params?.token])
   return { disabled, handleLocalFileUpload }
 }
 type useClipboardUploaderProps = {

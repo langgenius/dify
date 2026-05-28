@@ -172,11 +172,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
-
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => {
     let value = initial
@@ -189,7 +184,6 @@ vi.mock('ahooks', () => ({
       },
     ]
   },
-  useKeyPress: vi.fn(),
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
@@ -408,10 +402,11 @@ describe('Popup', () => {
     })
 
     it('should render keyboard shortcuts', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
-      expect(screen.getByText('ctrl'))!.toBeInTheDocument()
-      expect(screen.getByText('⇧'))!.toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(3)
+      expect(screen.getByText('Ctrl'))!.toBeInTheDocument()
+      expect(screen.getByText('Shift'))!.toBeInTheDocument()
       expect(screen.getByText('P'))!.toBeInTheDocument()
     })
 
@@ -566,9 +561,10 @@ describe('RunMode', () => {
     })
 
     it('should render keyboard shortcuts when not disabled', () => {
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByText('alt'))!.toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByText('Alt'))!.toBeInTheDocument()
       expect(screen.getByText('R'))!.toBeInTheDocument()
     })
   })
@@ -1077,9 +1073,10 @@ describe('Edge Cases', () => {
       mockStoreState.workflowRunningData = null
       mockStoreState.isPreparingDataSource = false
 
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByText('alt'))!.toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByText('Alt'))!.toBeInTheDocument()
       expect(screen.getByText('R'))!.toBeInTheDocument()
     })
 

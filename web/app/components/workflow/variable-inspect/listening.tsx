@@ -166,7 +166,7 @@ const Listening: FC<ListeningProps> = ({
             type={icon.type}
             toolIcon={icon.toolIcon}
             size="md"
-            className="h-10! w-10! rounded-xl! [&_svg]:h-7! [&_svg]:w-7!"
+            className="size-10! rounded-xl! [&_svg]:size-7!"
           />
         ))}
       </div>

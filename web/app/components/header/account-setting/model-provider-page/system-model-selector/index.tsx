@@ -155,8 +155,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         onClick={() => setOpen(true)}
       >
         {isLoading
-          ? <span className="mr-1 i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
-          : <span className="mr-1 i-ri-equalizer-2-line h-3.5 w-3.5" />}
+          ? <span className="mr-1 i-ri-loader-2-line size-3.5 animate-spin" />
+          : <span className="mr-1 i-ri-equalizer-2-line size-3.5" />}
         {t('modelProvider.systemModelSettings', { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

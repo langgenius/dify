@@ -43,7 +43,7 @@ const CategoriesFilter = ({
           <div className={cn(
             'flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 py-1 text-text-tertiary hover:bg-state-base-hover-alt',
             selectedTagsLength && 'text-text-secondary',
-            open && 'bg-state-base-hover',
+            'data-popup-open:bg-state-base-hover',
           )}
           >
             <div className={cn(
@@ -68,7 +68,7 @@ const CategoriesFilter = ({
             {
               !!selectedTagsLength && (
                 <RiCloseCircleFill
-                  className="h-4 w-4 cursor-pointer text-text-quaternary"
+                  className="size-4 cursor-pointer text-text-quaternary"
                   onClick={
                     (e) => {
                       e.stopPropagation()
@@ -80,7 +80,7 @@ const CategoriesFilter = ({
             }
             {
               !selectedTagsLength && (
-                <RiArrowDownSLine className="h-4 w-4" />
+                <RiArrowDownSLine className="size-4" />
               )
             }
           </div>
