@@ -40,8 +40,12 @@ API for live resources. Agenton enters it before ``on_context_create`` or
 ``on_context_resume`` and exits it after ``on_context_suspend`` or
 ``on_context_delete``. Create-versus-resume differences stay in the business
 hooks; ``resource_context`` should manage only live resource setup and cleanup.
-Hooks own any business compensation or idempotency for partial side effects
-because Agenton guarantees resource cleanup, not hook rollback.
+Agenton marks a slot ``ACTIVE`` only after ``on_context_create`` or
+``on_context_resume`` returns successfully. If either enter hook raises, normal
+``on_context_suspend``/``on_context_delete`` hooks do not run for that failed
+attempt. Enter hooks therefore own any business compensation or idempotency for
+partial side effects, while Agenton guarantees only ``resource_context()``
+cleanup, not hook rollback.
 
 ``Layer`` is framework-neutral over system prompt, user prompt, and tool item
 types. The native ``prefix_prompts``, ``suffix_prompts``, ``user_prompts``, and
@@ -292,7 +296,8 @@ class Layer(
         """Run when the run slot enters from ``LifecycleState.NEW``.
 
         ``resource_context()`` is already active for this layer when this hook
-        runs.
+        runs. If this hook raises, the layer never becomes ``ACTIVE`` and no
+        normal ``on_context_delete()`` hook runs for that failed enter attempt.
         """
 
     async def on_context_delete(self) -> None:
@@ -311,7 +316,9 @@ class Layer(
         """Run when the run slot enters from ``LifecycleState.SUSPENDED``.
 
         ``resource_context()`` is already active for this layer when this hook
-        runs.
+        runs. If this hook raises, the layer never becomes ``ACTIVE`` and no
+        normal ``on_context_suspend()`` or ``on_context_delete()`` hook runs for
+        that failed resume attempt.
         """
 
     @property

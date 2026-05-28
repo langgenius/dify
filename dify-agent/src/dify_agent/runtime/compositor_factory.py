@@ -14,8 +14,10 @@ Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings are injected through the provider factory for
 ``DifyExecutionContextLayer`` and the optional shellctl entrypoint plus client
 factory are injected for ``DifyShellLayer``. The resulting ``Compositor``
-remains Agenton state-only: live resources such as HTTP clients are supplied
-later by the runtime and never enter providers, layers, or session snapshots.
+remains Agenton state-only at the snapshot boundary: live resources such as
+HTTP clients are injected by runtime-owned providers, may be held on active
+layer instances inside ``resource_context()``, and never enter session
+snapshots.
 """
 
 from collections.abc import Mapping, Sequence

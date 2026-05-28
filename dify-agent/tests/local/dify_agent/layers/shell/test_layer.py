@@ -229,7 +229,9 @@ def test_shell_layer_create_generates_5_plus_2_hex_session_id_and_retries_worksp
     layer = _shell_layer(client_factory=lambda _entrypoint: client)
 
     async def scenario() -> None:
-        await layer.on_context_create()
+        async with layer.resource_context():
+            await layer.on_context_create()
+            assert client.closed is False
 
     asyncio.run(scenario())
 
@@ -239,6 +241,22 @@ def test_shell_layer_create_generates_5_plus_2_hex_session_id_and_retries_worksp
     assert layer.runtime_state.job_offsets == {"mkdir-collision": 0, "mkdir-success": 8}
     assert 'mkdir "$HOME/workspace/2345fbb"' in client.run_calls[1].script
     assert 'mkdir -p "$HOME/workspace/2345fbb"' not in client.run_calls[1].script
+    assert client.closed is True
+
+
+def test_shell_layer_suspend_leaves_client_open_until_resource_context_exits() -> None:
+    client = FakeShellctlClient()
+    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            await layer.on_context_suspend()
+            assert client.closed is False
+
+    asyncio.run(scenario())
+
+    assert client.closed is True
 
 
 def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None:
@@ -259,7 +277,6 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
         return next(clients)
 
     compositor = Compositor([LayerNode("shell", _shell_provider(client_factory=factory))])
-
     async def scenario() -> None:
         async with compositor.enter(configs={"shell": DifyShellLayerConfig()}) as run:
             shell_layer = run.get_layer("shell", DifyShellLayer)
@@ -271,7 +288,7 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
                 **shell_layer.runtime_state.job_offsets,
                 "user-job": 42,
             }
-            assert shell_layer._shellctl_client is first_client
+            assert first_client.closed is False
             run.suspend_layer_on_exit("shell")
 
         assert run.session_snapshot is not None
@@ -283,7 +300,7 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
             session_snapshot=run.session_snapshot,
         ) as resumed_run:
             resumed_shell = resumed_run.get_layer("shell", DifyShellLayer)
-            assert resumed_shell._shellctl_client is second_client
+            assert second_client.closed is False
             assert resumed_shell.runtime_state.session_id == initial_session_id
             assert resumed_shell.runtime_state.workspace_cwd == f"~/workspace/{initial_session_id}"
             assert set(resumed_shell.runtime_state.job_ids) == {"mkdir-job", "user-job"}
@@ -312,13 +329,14 @@ def test_shell_layer_delete_removes_workspace_then_force_deletes_tracked_jobs_an
 
     client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
     layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-    layer.runtime_state.job_ids = ["user-job", "mkdir-job"]
-    layer.runtime_state.job_offsets = {"user-job": 9, "mkdir-job": 1}
-    layer._shellctl_client = client
 
     async def scenario() -> None:
-        await layer.on_context_delete()
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer.runtime_state.job_ids = ["user-job", "mkdir-job"]
+            layer.runtime_state.job_offsets = {"user-job": 9, "mkdir-job": 1}
+            await layer.on_context_delete()
+            assert client.closed is False
 
     asyncio.run(scenario())
 
@@ -329,7 +347,6 @@ def test_shell_layer_delete_removes_workspace_then_force_deletes_tracked_jobs_an
     assert layer.runtime_state.job_ids == []
     assert layer.runtime_state.job_offsets == {}
     assert client.closed is True
-    assert layer._shellctl_client is None
 
 
 def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising() -> None:
@@ -345,7 +362,8 @@ def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising
 
     async def scenario() -> None:
         with pytest.raises(RuntimeError, match="Failed to create shell workspace"):
-            await layer.on_context_create()
+            async with layer.resource_context():
+                await layer.on_context_create()
 
     asyncio.run(scenario())
 
@@ -353,7 +371,6 @@ def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising
     assert all(call.force is True for call in client.delete_calls)
     assert layer.runtime_state.job_ids == []
     assert layer.runtime_state.job_offsets == {}
-    assert layer._shellctl_client is None
     assert client.closed is True
 
 
@@ -414,90 +431,115 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
         terminate_handler=terminate_handler,
     )
     layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-    layer._shellctl_client = client
     tools = {tool.name: tool for tool in layer.tools}
 
     async def scenario() -> None:
-        run_tool_def = await tools["shell.run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-        wait_tool_def = await tools["shell.wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-        input_tool_def = await tools["shell.input"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-        interrupt_tool_def = await tools["shell.interrupt"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
-        run_result = await tools["shell.run"].function_schema.call(
-            {"script": "pwd", "timeout": 2.5},
-            None,  # pyright: ignore[reportArgumentType]
-        )
-        wait_result = await tools["shell.wait"].function_schema.call(
-            {"job_id": "user-job", "timeout": 4.0},
-            None,  # pyright: ignore[reportArgumentType]
-        )
-        input_result = await tools["shell.input"].function_schema.call(
-            {"job_id": "user-job", "text": "ls\n", "timeout": 5.0},
-            None,  # pyright: ignore[reportArgumentType]
-        )
-        interrupt_result = await tools["shell.interrupt"].function_schema.call(
-            {"job_id": "user-job", "grace_seconds": 1.5},
-            None,  # pyright: ignore[reportArgumentType]
-        )
+            run_tool_def = await tools["shell.run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            wait_tool_def = await tools["shell.wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            input_tool_def = await tools["shell.input"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            interrupt_tool_def = await tools["shell.interrupt"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
 
-        assert run_tool_def is not None
-        assert wait_tool_def is not None
-        assert input_tool_def is not None
-        assert interrupt_tool_def is not None
-        assert "offset" not in run_tool_def.parameters_json_schema.get("properties", {})
-        assert "offset" not in wait_tool_def.parameters_json_schema.get("properties", {})
-        assert "offset" not in input_tool_def.parameters_json_schema.get("properties", {})
-        assert "offset" not in interrupt_tool_def.parameters_json_schema.get("properties", {})
-        assert set(tools) == {"shell.run", "shell.wait", "shell.input", "shell.interrupt"}
-        assert run_result["job_id"] == "user-job"
-        assert run_result["offset"] == 10
-        assert wait_result["offset"] == 18
-        assert input_result["offset"] == 22
-        assert interrupt_result == {
-            "job_id": "user-job",
-            "status": "terminated",
-            "done": True,
-            "exit_code": 130,
-            "offset": 22,
-        }
+            run_result = await tools["shell.run"].function_schema.call(
+                {"script": "pwd", "timeout": 2.5},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            wait_result = await tools["shell.wait"].function_schema.call(
+                {"job_id": "user-job", "timeout": 4.0},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            input_result = await tools["shell.input"].function_schema.call(
+                {"job_id": "user-job", "text": "ls\n", "timeout": 5.0},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            interrupt_result = await tools["shell.interrupt"].function_schema.call(
+                {"job_id": "user-job", "grace_seconds": 1.5},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+
+            assert run_tool_def is not None
+            assert wait_tool_def is not None
+            assert input_tool_def is not None
+            assert interrupt_tool_def is not None
+            assert "offset" not in run_tool_def.parameters_json_schema.get("properties", {})
+            assert "offset" not in wait_tool_def.parameters_json_schema.get("properties", {})
+            assert "offset" not in input_tool_def.parameters_json_schema.get("properties", {})
+            assert "offset" not in interrupt_tool_def.parameters_json_schema.get("properties", {})
+            assert set(tools) == {"shell.run", "shell.wait", "shell.input", "shell.interrupt"}
+            assert run_result["job_id"] == "user-job"
+            assert run_result["offset"] == 10
+            assert wait_result["offset"] == 18
+            assert input_result["offset"] == 22
+            assert interrupt_result == {
+                "job_id": "user-job",
+                "status": "terminated",
+                "done": True,
+                "exit_code": 130,
+                "offset": 22,
+            }
+            assert client.closed is False
 
     asyncio.run(scenario())
 
     assert layer.runtime_state.job_ids == ["user-job"]
     assert layer.runtime_state.job_offsets == {"user-job": 22}
+    assert client.closed is True
 
 
 def test_shell_layer_tools_reject_untracked_job_ids_without_shellctl_calls() -> None:
     client = FakeShellctlClient()
     layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-    layer._shellctl_client = client
     tools = {tool.name: tool for tool in layer.tools}
 
     async def scenario() -> None:
-        wait_result = await tools["shell.wait"].function_schema.call(
-            {"job_id": "missing-job"},
-            None,  # pyright: ignore[reportArgumentType]
-        )
-        input_result = await tools["shell.input"].function_schema.call(
-            {"job_id": "missing-job", "text": "hello"},
-            None,  # pyright: ignore[reportArgumentType]
-        )
-        interrupt_result = await tools["shell.interrupt"].function_schema.call(
-            {"job_id": "missing-job"},
-            None,  # pyright: ignore[reportArgumentType]
-        )
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
-        _assert_error_observation(wait_result, job_id="missing-job")
-        _assert_error_observation(input_result, job_id="missing-job")
-        _assert_error_observation(interrupt_result, job_id="missing-job")
+            wait_result = await tools["shell.wait"].function_schema.call(
+                {"job_id": "missing-job"},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            input_result = await tools["shell.input"].function_schema.call(
+                {"job_id": "missing-job", "text": "hello"},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            interrupt_result = await tools["shell.interrupt"].function_schema.call(
+                {"job_id": "missing-job"},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+
+            _assert_error_observation(wait_result, job_id="missing-job")
+            _assert_error_observation(input_result, job_id="missing-job")
+            _assert_error_observation(interrupt_result, job_id="missing-job")
 
     asyncio.run(scenario())
 
     assert client.wait_calls == []
     assert client.input_calls == []
     assert client.terminate_calls == []
+
+
+def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_context() -> None:
+    client = FakeShellctlClient()
+    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        with pytest.raises(RuntimeError, match="resource_context"):
+            await layer.on_context_suspend()
+
+        run_result = await tools["shell.run"].function_schema.call(
+            {"script": "pwd"},
+            None,  # pyright: ignore[reportArgumentType]
+        )
+        _assert_error_observation(run_result, includes="resource_context")
+
+    asyncio.run(scenario())
+
+    assert client.run_calls == []
 
 
 def test_shell_runtime_state_rejects_unsafe_resumed_workspace_identity() -> None:

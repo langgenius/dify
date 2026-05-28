@@ -9,6 +9,11 @@ the layer remains active, and the layer's exit hook. Prompt aggregation
 preserves graph ordering: prefix prompts first-to-last, suffix prompts
 last-to-first, user prompts first-to-last, and tools in graph order.
 
+Enter hooks transition a slot to ``LifecycleState.ACTIVE`` only after returning
+successfully. If ``on_context_create`` or ``on_context_resume`` raises, the run
+still exits any already-entered resource contexts, but it does not call the
+layer's normal suspend/delete hook for that failed enter attempt.
+
 Prompt, user prompt, and tool transformers run only after layer-level wrapping
 and run-level aggregation. When no transformer is installed, the wrapped items
 are returned unchanged.

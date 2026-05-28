@@ -3,23 +3,28 @@
 ``DifyShellLayer`` is a stateful pydantic-ai tool layer that exposes exactly
 ``shell.run``, ``shell.wait``, ``shell.input``, and ``shell.interrupt``. The
 layer persists only JSON-safe shell session state in ``runtime_state`` and keeps
-its live shellctl HTTP client on the layer instance while the run slot is
-active. Create/resume therefore initialize a fresh client, while suspend/delete
-close it and clear the non-serializable reference.
+its live shellctl HTTP client on the layer instance only while
+``resource_context()`` is active. Agenton enters that resource scope before
+``on_context_create`` or ``on_context_resume`` and exits it after
+``on_context_suspend`` or ``on_context_delete``, so business hooks and shell
+tools can rely on a live client without ever serializing it into snapshots.
 
 The runtime state tracks shellctl job ids for both user-visible shell jobs and
 internal lifecycle jobs such as workspace mkdir/cleanup commands. Those internal
 jobs are intentionally not deleted ad hoc; shellctl job-state deletion is
 centralized in ``on_context_delete`` so one lifecycle hook owns exit-time
-cleanup for successful create/resume flows. The only exception is create-time
-failure after an internal shellctl job has already been issued: because Agenton
-never transitions that layer to ``ACTIVE``, delete hooks will not run, so the
-layer performs best-effort shellctl job cleanup before re-raising the failure.
+cleanup for successful create/resume flows. If ``on_context_create`` or a later
+side-effecting ``on_context_resume`` attempt fails after issuing shellctl jobs,
+Agenton still exits ``resource_context()`` but never transitions the layer to
+``ACTIVE``. In that failed-enter path, normal suspend/delete hooks do not run,
+so the enter hook itself must perform best-effort business compensation before
+re-raising the failure.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
+from contextlib import asynccontextmanager
 import logging
 import re
 import secrets
@@ -248,14 +253,40 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         ]
 
     @override
-    async def on_context_create(self) -> None:
-        """Allocate a new workspace session and initialize the live shellctl client."""
-        await self._open_client()
+    @asynccontextmanager
+    async def resource_context(self) -> AsyncGenerator[None]:
+        """Hold one live shellctl client for one active Agenton layer scope.
+
+        The shellctl client is a non-serializable live resource, so Agenton owns
+        only the timing of this scope, not the client itself. Business hooks and
+        tools should call ``_require_client()`` to ensure they are running inside
+        an active resource scope.
+        """
+        if self._shellctl_client is not None:
+            raise RuntimeError("DifyShellLayer resource_context() is already active for this layer instance.")
+
+        client = self.shellctl_client_factory(self.shellctl_entrypoint)
+        self._shellctl_client = client
         try:
+            yield
+        finally:
+            self._shellctl_client = None
+            await client.close()
+
+    @override
+    async def on_context_create(self) -> None:
+        """Allocate a new workspace session using the active live shellctl client.
+
+        If workspace setup partially succeeds and this hook later raises, the
+        layer never becomes ``ACTIVE``. In that path Agenton still exits
+        ``resource_context()``, but ``on_context_delete()`` will not run, so this
+        hook must clean up any tracked shellctl job artifacts before re-raising.
+        """
+        try:
+            _ = self._require_client()
             session_id, workspace_cwd = await self._allocate_workspace()
         except BaseException:
             await self._cleanup_create_failure()
-            await self._close_client()
             raise
         self.runtime_state = DifyShellRuntimeState.model_validate(
             {
@@ -267,58 +298,63 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
 
     @override
     async def on_context_resume(self) -> None:
-        """Rehydrate the live shellctl client for an existing serialized session."""
+        """Resume an existing serialized shell session inside an active resource scope.
+
+        If a future resume path adds self-heal side effects before raising, this
+        hook must compensate for them itself because failed resume attempts never
+        transition the slot back to ``ACTIVE`` and therefore do not receive a
+        normal suspend/delete hook.
+        """
+        _ = self._require_client()
         _ = self._require_session_identity()
-        await self._open_client()
 
     @override
     async def on_context_suspend(self) -> None:
-        """Close the live client without deleting workspace or job state."""
-        await self._close_client()
+        """Preserve workspace and job state while the live client remains active.
+
+        ``resource_context()`` owns client teardown after this hook returns.
+        """
+        _ = self._require_client()
 
     @override
     async def on_context_delete(self) -> None:
-        """Best-effort cleanup for workspace deletion, job deletion, and client close.
+        """Best-effort cleanup for workspace deletion and tracked shellctl jobs.
 
         Workspace removal must happen before tracked shellctl job deletion because
         the cleanup itself is implemented as an internal shellctl run. That means
         deleting job state first would prevent the layer from issuing the
         proposal-required ``rm -rf`` cleanup job and then cleaning up that final
         job record along with the rest of the session's tracked shellctl state.
+        ``resource_context()`` closes the live client only after this hook
+        finishes.
         """
-        client = self._shellctl_client
-        if client is None:
-            self._clear_tracked_jobs()
-            return
+        _ = self._require_client()
 
         cleanup_job_id: str | None = None
-        try:
-            identity = self._try_session_identity()
-            if identity is not None:
-                session_id, _workspace_cwd = identity
-                try:
-                    cleanup_result = await self._run_internal_job_to_completion(
-                        _workspace_cleanup_script(session_id=session_id),
-                        cwd=None,
+        identity = self._try_session_identity()
+        if identity is not None:
+            session_id, _workspace_cwd = identity
+            try:
+                cleanup_result = await self._run_internal_job_to_completion(
+                    _workspace_cleanup_script(session_id=session_id),
+                    cwd=None,
+                )
+                cleanup_job_id = cleanup_result["job_id"]
+                if cleanup_result["exit_code"] != 0:
+                    logger.warning(
+                        "Shell workspace cleanup job %s for session %s exited with code %s.",
+                        cleanup_job_id,
+                        session_id,
+                        cleanup_result["exit_code"],
                     )
-                    cleanup_job_id = cleanup_result["job_id"]
-                    if cleanup_result["exit_code"] != 0:
-                        logger.warning(
-                            "Shell workspace cleanup job %s for session %s exited with code %s.",
-                            cleanup_job_id,
-                            session_id,
-                            cleanup_result["exit_code"],
-                        )
-                except (RuntimeError, ValueError, ShellctlClientError) as exc:
-                    logger.warning("Failed to remove shell workspace for session %s: %s", session_id, exc)
+            except (RuntimeError, ValueError, ShellctlClientError) as exc:
+                logger.warning("Failed to remove shell workspace for session %s: %s", session_id, exc)
 
-            tracked_job_ids = _deduplicate_preserving_order(
-                [*self.runtime_state.job_ids, *([cleanup_job_id] if cleanup_job_id is not None else [])]
-            )
-            await self._delete_tracked_jobs_best_effort(tracked_job_ids)
-            self._clear_tracked_jobs()
-        finally:
-            await self._close_client()
+        tracked_job_ids = _deduplicate_preserving_order(
+            [*self.runtime_state.job_ids, *([cleanup_job_id] if cleanup_job_id is not None else [])]
+        )
+        await self._delete_tracked_jobs_best_effort(tracked_job_ids)
+        self._clear_tracked_jobs()
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         """Start a new shell job inside the session workspace."""
@@ -367,17 +403,6 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc), job_id=job_id)
 
-    async def _open_client(self) -> None:
-        """Create one live shellctl client for the active run slot."""
-        self._shellctl_client = self.shellctl_client_factory(self.shellctl_entrypoint)
-
-    async def _close_client(self) -> None:
-        """Close and clear the live shellctl client when the run slot stops."""
-        client = self._shellctl_client
-        self._shellctl_client = None
-        if client is not None:
-            await client.close()
-
     async def _allocate_workspace(self) -> tuple[str, str]:
         """Allocate a unique ``~/workspace/<session_id>`` directory by mkdir collision checks."""
         for _attempt in range(_SESSION_ID_ATTEMPT_LIMIT):
@@ -401,7 +426,9 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         Agenton only calls ``on_context_delete`` for layers that successfully
         entered ``ACTIVE``. If ``on_context_create`` fails after issuing one or
         more internal shellctl jobs, those tracked job artifacts would otherwise
-        leak because no later lifecycle hook owns them.
+        leak because no later lifecycle hook owns them. ``resource_context()``
+        still closes the live client for this failed enter attempt after the hook
+        unwinds.
         """
         if not self.runtime_state.job_ids:
             return
@@ -432,7 +459,10 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     def _require_client(self) -> ShellctlClientProtocol:
         """Return the live client or reject tool/lifecycle use without one."""
         if self._shellctl_client is None:
-            raise RuntimeError("DifyShellLayer requires an active shellctl client; create or resume the layer first.")
+            raise RuntimeError(
+                "DifyShellLayer requires an active shellctl client inside resource_context(); "
+                + "enter the layer through Agenton or wrap direct hook/tool usage in resource_context()."
+            )
         return self._shellctl_client
 
     def _require_workspace_cwd(self) -> str:
