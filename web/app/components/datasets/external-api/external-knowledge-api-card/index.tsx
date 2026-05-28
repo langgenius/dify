@@ -120,14 +120,14 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
       >
         <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
           <div className="flex items-center gap-1 self-stretch text-text-secondary">
-            <ApiConnectionMod className="h-4 w-4" />
+            <ApiConnectionMod className="size-4" />
             <div className="system-sm-medium">{api.name}</div>
           </div>
           <div className="self-stretch system-xs-regular text-text-tertiary">{api.settings.endpoint}</div>
         </div>
         <div className="flex items-start gap-1">
           <ActionButton onClick={handleEditClick}>
-            <RiEditLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
+            <RiEditLine className="size-4 text-text-tertiary hover:text-text-secondary" />
           </ActionButton>
           <ActionButton
             className="hover:bg-state-destructive-hover"
@@ -135,7 +135,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+            <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
           </ActionButton>
         </div>
       </div>

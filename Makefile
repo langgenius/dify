@@ -75,12 +75,18 @@ check:
 	@echo "✅ Code check complete"
 
 lint:
-	@echo "🔧 Running ruff format, check with fixes, import linter, and dotenv-linter..."
+	@echo "🔧 Running ruff format, check with fixes, response contract lint, import linter, and dotenv-linter..."
 	@uv run --project api --dev ruff format ./api
 	@uv run --project api --dev ruff check --fix ./api
+	@$(MAKE) api-contract-lint
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
+
+api-contract-lint:
+	@echo "🔎 Linting Flask response contracts..."
+	@uv run --project api --dev python api/dev/lint_response_contracts.py
+	@echo "✅ Response contract lint complete"
 
 type-check:
 	@echo "📝 Running type checks (pyrefly + mypy)..."
@@ -191,6 +197,7 @@ help:
 	@echo "  make format         - Format code with ruff"
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
+	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
 	@echo "  make type-check     - Run type checks (pyrefly, mypy)"
 	@echo "  make type-check-core - Run core type checks (pyrefly, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
@@ -204,4 +211,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check test test-all
+.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all

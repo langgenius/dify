@@ -11,7 +11,7 @@ from flask.views import MethodView as FlaskMethodView
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = FlaskMethodView
+    builtins.__dict__["MethodView"] = FlaskMethodView
     _NEEDS_METHOD_VIEW_CLEANUP = True
 
 from constants import HIDDEN_VALUE
@@ -22,7 +22,7 @@ from controllers.console.extension import (
 )
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
-    del builtins.MethodView
+    del builtins.__dict__["MethodView"]
 from models.account import AccountStatus
 from models.api_based_extension import APIBasedExtension
 
@@ -54,7 +54,6 @@ def _masked_api_key(api_key: str) -> str:
 def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Bypass console decorators so handlers can run in isolation."""
 
-    import controllers.console.extension as extension_module
     from controllers.console import wraps as wraps_module
 
     account = MagicMock()
@@ -66,7 +65,6 @@ def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     monkeypatch.setattr(wraps_module.dify_config, "EDITION", "CLOUD")
     monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
     monkeypatch.delenv("INIT_PASSWORD", raising=False)
-    monkeypatch.setattr(extension_module, "current_account_with_tenant", lambda: (account, "tenant-123"))
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (account, "tenant-123"))
 
     # The login_required decorator consults the shared LocalProxy in libs.login.
@@ -242,5 +240,5 @@ def test_api_based_extension_detail_delete_removes_extension(app: Flask, monkeyp
         response, status = APIBasedExtensionDetailAPI().delete(extension_id)
 
     delete_mock.assert_called_once_with(existing_extension)
-    assert response == {"result": "success"}
     assert status == 204
+    assert response == ""

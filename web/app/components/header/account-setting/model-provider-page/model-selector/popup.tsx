@@ -198,7 +198,7 @@ function Popup({
             />
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
-            <div className="px-3 py-1.5 text-center text-xs leading-4.5 break-all text-text-tertiary">
+            <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
               {`No model found for \u201C${inputValue}\u201D`}
             </div>
           )}
@@ -256,7 +256,7 @@ function ModelSelectorPreviewCard({
       <div className="flex flex-col gap-1">
         <div className="flex flex-col items-start gap-2">
           <ModelIcon
-            className="h-5 w-5 shrink-0"
+            className="size-5 shrink-0"
             provider={provider}
             modelName={modelItem.model}
           />

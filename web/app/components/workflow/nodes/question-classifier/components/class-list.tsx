@@ -129,7 +129,7 @@ const ClassList: FC<Props> = ({
           {list.length > 0 && (
             <ArrowDownRoundFill
               className={cn(
-                'h-4 w-4 text-text-quaternary transition-transform duration-200',
+                'size-4 text-text-quaternary transition-transform duration-200',
                 collapsed && '-rotate-90',
               )}
               aria-hidden="true"
@@ -174,7 +174,7 @@ const ClassList: FC<Props> = ({
                     <div>
                       {canDrag && (
                         <RiDraggable className={cn(
-                          'handle absolute top-3 left-2 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'handle absolute top-3 left-2 hidden size-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
                         )}
                         />

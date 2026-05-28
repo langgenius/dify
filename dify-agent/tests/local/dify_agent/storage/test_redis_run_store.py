@@ -30,6 +30,13 @@ class FakeRedis:
 
     async def xadd(self, key: str, fields: Mapping[str, object]) -> str:
         self.commands.append(("xadd", key, dict(fields)))
+        return self._append_stream_entry(key, fields)
+
+    def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> "FakeRedisPipeline":
+        self.commands.append(("pipeline", transaction, shard_hint))
+        return FakeRedisPipeline(self)
+
+    def _append_stream_entry(self, key: str, fields: Mapping[str, object]) -> str:
         entries = self.streams.setdefault(key, [])
         event_id = f"{len(entries) + 1}-0"
         entries.append((event_id, dict(fields)))
@@ -62,6 +69,35 @@ class FakeRedis:
     def _stream_id_value(event_id: str) -> tuple[int, int]:
         timestamp, sequence = event_id.split("-", maxsplit=1)
         return int(timestamp), int(sequence)
+
+
+class FakeRedisPipeline:
+    redis: FakeRedis
+    results: list[object]
+
+    def __init__(self, redis: FakeRedis) -> None:
+        self.redis = redis
+        self.results = []
+
+    async def __aenter__(self) -> "FakeRedisPipeline":
+        return self
+
+    async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        del exc_type, exc, traceback
+
+    def xadd(self, key: str, fields: Mapping[str, object]) -> "FakeRedisPipeline":
+        self.redis.commands.append(("xadd", key, dict(fields)))
+        self.results.append(self.redis._append_stream_entry(key, fields))
+        return self
+
+    def expire(self, key: str, seconds: int) -> "FakeRedisPipeline":
+        self.redis.commands.append(("expire", key, seconds))
+        self.results.append(True)
+        return self
+
+    async def execute(self) -> list[object]:
+        self.redis.commands.append(("execute",))
+        return list(self.results)
 
 
 def test_create_run_writes_running_record_without_job_queue_and_with_retention() -> None:
@@ -97,15 +133,21 @@ def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -
     event_id = asyncio.run(store.append_event(RunStartedEvent(id="local", run_id="run-1")))
 
     assert event_id == "1-0"
-    assert redis.commands[0][0] == "xadd"
-    fields = redis.commands[0][2]
+    pipeline_commands = [command for command in redis.commands if command[0] == "pipeline"]
+    assert len(pipeline_commands) == 1
+    assert pipeline_commands[0][1] is True
+    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
+    assert len(xadd_commands) == 1
+    fields = xadd_commands[0][2]
     assert isinstance(fields, dict)
     assert '"id"' not in str(fields["payload"])
     assert '"type":"run_started"' in str(fields["payload"])
-    assert redis.commands[1:] == [
+    expire_commands = {command for command in redis.commands if command[0] == "expire"}
+    assert expire_commands == {
         ("expire", "test:runs:run-1:events", 60),
         ("expire", "test:runs:run-1:record", 60),
-    ]
+    }
+    assert ("execute",) in redis.commands
 
 
 def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> None:

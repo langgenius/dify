@@ -96,6 +96,7 @@ export const useDatasetList = (params: DatasetListRequest) => {
     },
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
     initialPageParam: initialPage,
+    placeholderData: keepPreviousData,
   })
 }
 

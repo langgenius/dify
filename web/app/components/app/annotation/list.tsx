@@ -49,13 +49,13 @@ function AnnotationTableRow({
         </div>
       </td>
       <td
-        className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+        className="max-w-62.5 truncate p-3 pr-2"
         title={item.question}
       >
         <span id={questionId}>{item.question}</span>
       </td>
       <td
-        className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+        className="max-w-62.5 truncate p-3 pr-2"
         title={item.answer}
       >
         {item.answer}
@@ -65,13 +65,13 @@ function AnnotationTableRow({
       <td className="w-24 p-3 pr-2" onClick={e => e.stopPropagation()}>
         <div className="flex space-x-1 text-text-tertiary">
           <ActionButton aria-label={t('feature.annotation.edit', { ns: 'appDebug' })} onClick={() => onView(item)}>
-            <span aria-hidden className="i-ri-edit-line h-4 w-4" />
+            <span aria-hidden className="i-ri-edit-line size-4" />
           </ActionButton>
           <ActionButton
             aria-label={t('feature.annotation.remove', { ns: 'appDebug' })}
             onClick={() => onRemoveClick(item.id)}
           >
-            <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
           </ActionButton>
         </div>
       </td>

@@ -327,7 +327,7 @@ class TestInstalledAppApi:
             resp, status = method(installed_app)
 
         assert status == 204
-        assert resp["result"] == "success"
+        assert resp == ""
 
     def test_delete_owned_by_current_tenant(self, tenant_id: str):
         api = module.InstalledAppApi()

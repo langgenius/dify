@@ -37,12 +37,10 @@ const Operator = ({
       onOpenChange={setOpen}
     >
       <DropdownMenuTrigger
-        nativeButton={false}
-        render={<div />}
         aria-label={t('operation.more', { ns: 'common' })}
         className={cn(
-          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          open && 'bg-state-base-hover text-text-secondary',
+          'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
         )}
         onMouseDown={(event) => {
           event.preventDefault()
@@ -52,7 +50,7 @@ const Operator = ({
         }}
         onClick={event => event.stopPropagation()}
       >
-        <span aria-hidden className="i-ri-more-fill h-4 w-4" />
+        <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"

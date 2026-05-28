@@ -7,6 +7,27 @@ import { Plan } from '@/app/components/billing/type'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 
+const hotkeyMocks = vi.hoisted(() => ({
+  handlers: new Map<string, { handler: () => void, options?: { enabled?: boolean } }>(),
+}))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (hotkey: string, handler: () => void, options?: { enabled?: boolean }) => {
+      hotkeyMocks.handlers.set(hotkey, { handler, options })
+    },
+  }
+})
+
+const triggerHotkey = (hotkey: string) => {
+  const registration = hotkeyMocks.handlers.get(hotkey)
+  if (registration?.options?.enabled === false)
+    return
+  registration?.handler()
+}
+
 vi.mock('emoji-mart', () => ({
   init: vi.fn(),
   SearchIndex: { search: vi.fn().mockResolvedValue([]) },
@@ -100,6 +121,7 @@ describe('CreateAppModal', () => {
     mockPlanType = Plan.team
     mockUsagePlanInfo = createPlanInfo(1)
     mockTotalPlanInfo = createPlanInfo(10)
+    hotkeyMocks.handlers.clear()
   })
 
   describe('Rendering', () => {
@@ -109,6 +131,13 @@ describe('CreateAppModal', () => {
       expect(screen.getByText('explore.appCustomize.title:{"name":"My App"}'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.create/ }))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.cancel' }))!.toBeInTheDocument()
+    })
+
+    it('should render the submit shortcut with kbd primitives', async () => {
+      await setup()
+
+      const createButton = screen.getByRole('button', { name: /common\.operation\.create/ })
+      expect(createButton.querySelectorAll('kbd')).toHaveLength(2)
     })
 
     it('should render edit-only fields when editing a chat app', async () => {
@@ -214,13 +243,10 @@ describe('CreateAppModal', () => {
       vi.useRealTimers()
     })
 
-    it.each([
-      ['meta+enter', { metaKey: true }],
-      ['ctrl+enter', { ctrlKey: true }],
-    ])('should submit when %s is pressed while visible', async (_, modifier) => {
+    it('should submit when Mod+Enter is pressed while visible', async () => {
       const { onConfirm, onHide } = await setup()
 
-      fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, ...modifier })
+      triggerHotkey('Mod+Enter')
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -232,7 +258,7 @@ describe('CreateAppModal', () => {
     it('should not submit when modal is hidden', async () => {
       const { onConfirm, onHide } = await setup({ show: false })
 
-      fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
+      triggerHotkey('Mod+Enter')
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -249,7 +275,7 @@ describe('CreateAppModal', () => {
 
       const { onConfirm, onHide } = await setup({ isEditModal: false })
 
-      fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
+      triggerHotkey('Mod+Enter')
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -266,7 +292,7 @@ describe('CreateAppModal', () => {
 
       const { onConfirm, onHide } = await setup({ isEditModal: true })
 
-      fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
+      triggerHotkey('Mod+Enter')
       await act(async () => {
         vi.advanceTimersByTime(300)
       })
@@ -278,7 +304,7 @@ describe('CreateAppModal', () => {
     it('should not submit when name is empty', async () => {
       const { onConfirm, onHide } = await setup({ appName: '   ' })
 
-      fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
+      triggerHotkey('Mod+Enter')
       await act(async () => {
         vi.advanceTimersByTime(300)
       })

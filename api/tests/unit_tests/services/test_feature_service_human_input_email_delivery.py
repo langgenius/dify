@@ -102,3 +102,17 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
     )
 
     assert result is case.expected
+
+
+def test_get_vector_space_converts_billing_float_size(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(
+        feature_service_module.BillingService,
+        "get_vector_space",
+        lambda tenant_id: {"size": 5120.75, "limit": 20480},
+    )
+
+    result = FeatureService.get_vector_space("tenant-1")
+
+    assert result.size == 5120
+    assert result.limit == 20480

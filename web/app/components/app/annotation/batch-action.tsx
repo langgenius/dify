@@ -49,7 +49,7 @@ const BatchAction: FC<IBatchActionProps> = ({
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
       <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
         <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
+          <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}
           </span>
           <span className="system-sm-semibold text-text-accent">{t(`${i18nPrefix}.selected`, { ns: 'appAnnotation' })}</span>

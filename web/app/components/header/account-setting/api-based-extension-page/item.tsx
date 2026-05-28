@@ -50,13 +50,13 @@ export function Item({
         <Button
           onClick={handleOpenApiBasedExtensionModal}
         >
-          <span className="mr-1 i-ri-edit-line h-4 w-4" aria-hidden="true" />
+          <span className="mr-1 i-ri-edit-line size-4" aria-hidden="true" />
           {t('operation.edit', { ns: 'common' })}
         </Button>
         <Button
           onClick={() => setShowDeleteConfirm(true)}
         >
-          <span className="mr-1 i-ri-delete-bin-line h-4 w-4" aria-hidden="true" />
+          <span className="mr-1 i-ri-delete-bin-line size-4" aria-hidden="true" />
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>

@@ -139,7 +139,7 @@ const TriggerPluginItem: FC<Props> = ({
 
           <div className="ml-2 flex items-center">
             {hasAction && (
-              <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
+              <FoldIcon className={cn('size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
           </div>
         </div>

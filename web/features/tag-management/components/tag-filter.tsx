@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag01'
 import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import { consoleQuery } from '@/service/client'
-import { TagPanel } from './tag-panel'
+import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
 const tagToString = (tag: Tag) => tag.name
@@ -74,24 +74,24 @@ export const TagFilter = ({
           aria-label={triggerLabel}
           icon={false}
           className={cn(
-            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-open:bg-components-input-bg-normal',
+            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
           )}
         >
           <span className="flex w-full min-w-0 items-center gap-1">
             <span className="p-px">
-              <Tag01Icon className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
+              <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />
             </span>
             <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-secondary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
               {!!value.length && currentTagName}
             </span>
             {value.length > 1 && (
-              <span className="shrink-0 text-xs leading-4.5 font-medium text-text-tertiary">{`+${value.length - 1}`}</span>
+              <span className="shrink-0 text-xs/4.5 font-medium text-text-tertiary">{`+${value.length - 1}`}</span>
             )}
             {!value.length && (
               <span className="shrink-0 p-px">
-                <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" />
+                <span aria-hidden className="i-ri-arrow-down-s-line size-3.5 text-text-tertiary" />
               </span>
             )}
           </span>
@@ -106,7 +106,7 @@ export const TagFilter = ({
               onChange([])
             }}
           >
-            <XCircleIcon className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
+            <XCircleIcon className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
           </button>
         )}
         <ComboboxContent
@@ -114,7 +114,7 @@ export const TagFilter = ({
           sideOffset={4}
           popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
         >
-          <TagPanel
+          <TagSearchContent
             type={type}
             inputValue={inputValue}
             onInputValueChange={setInputValue}

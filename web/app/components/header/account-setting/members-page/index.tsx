@@ -79,7 +79,7 @@ const MembersPage = () => {
                         >
                           <span
                             aria-hidden="true"
-                            className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
+                            className="i-ri-pencil-line size-4 text-text-tertiary"
                           />
                         </button>
                       )}

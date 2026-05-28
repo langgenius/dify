@@ -118,7 +118,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
     <>
       {!isCallBatchAPI && !isWorkflow && ((runState.isResponding && !runState.completionRes)
         ? (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex size-full items-center justify-center">
               <Loading type="area" />
             </div>
           )
@@ -131,7 +131,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
           ))}
       {!isCallBatchAPI && isWorkflow && ((runState.isResponding && !runState.workflowProcessData)
         ? (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex size-full items-center justify-center">
               <Loading type="area" />
             </div>
           )

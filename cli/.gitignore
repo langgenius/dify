@@ -1,0 +1,7 @@
+dist/
+coverage/
+node_modules/
+*.tsbuildinfo
+.vitest-cache/
+docs/specs/
+context/

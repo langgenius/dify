@@ -23,22 +23,41 @@ type KeyPressEvent = {
   target?: EventTarget
 }
 
-const keyPressHandlers: Record<string, (event: KeyPressEvent) => void> = {}
+type HotkeyRegistration = {
+  handler: (event: KeyPressEvent) => void
+  options?: { enabled?: boolean }
+}
+
+const hotkeyHandlers: Record<string, HotkeyRegistration> = {}
 vi.mock('ahooks', () => ({
   useDebounce: <T,>(value: T) => value,
-  useKeyPress: (keys: string | string[], handler: (event: KeyPressEvent) => void) => {
-    const keyList = Array.isArray(keys) ? keys : [keys]
-    keyList.forEach((key) => {
-      keyPressHandlers[key] = handler
-    })
-  },
 }))
 
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (
+      hotkey: string,
+      handler: (event: KeyPressEvent) => void,
+      options?: HotkeyRegistration['options'],
+    ) => {
+      hotkeyHandlers[hotkey] = { handler, options }
+    },
+  }
+})
+
+const HOTKEY_ALIAS: Record<string, string> = {
+  'ctrl.k': 'Mod+K',
+  'esc': 'Escape',
+}
+
 const triggerKeyPress = (combo: string) => {
-  const handler = keyPressHandlers[combo]
-  if (handler) {
+  const hotkey = HOTKEY_ALIAS[combo] ?? combo
+  const registration = hotkeyHandlers[hotkey]
+  if (registration && registration.options?.enabled !== false) {
     act(() => {
-      handler({ preventDefault: vi.fn(), target: document.body })
+      registration.handler({ preventDefault: vi.fn(), target: document.body })
     })
   }
 }
@@ -56,10 +75,6 @@ const contextValue = { isWorkflowPage: false, isRagPipelinePage: false }
 vi.mock('../context', () => ({
   useGotoAnythingContext: () => contextValue,
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyNameBySystem: (key: string) => key,
 }))
 
 const createActionItem = (key: ActionItem['key'], shortcut: string): ActionItem => ({
@@ -106,13 +121,6 @@ vi.mock('../actions/commands/registry', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/utils/common', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-  getKeyboardKeyNameBySystem: (key: string) => key,
-  isEventTargetInputArea: () => false,
-  isMac: () => false,
-}))
-
 vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
   selectWorkflowNode: vi.fn(),
 }))
@@ -130,7 +138,7 @@ vi.mock('../../plugins/install-plugin/install-from-marketplace', () => ({
 describe('GotoAnything', () => {
   beforeEach(() => {
     routerPush.mockClear()
-    Object.keys(keyPressHandlers).forEach(key => delete keyPressHandlers[key])
+    Object.keys(hotkeyHandlers).forEach(key => delete hotkeyHandlers[key])
     mockQueryResult = { data: [], isLoading: false, isError: false, error: null }
     matchActionMock.mockReset()
     searchAnythingMock.mockClear()

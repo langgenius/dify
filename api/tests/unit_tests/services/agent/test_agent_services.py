@@ -73,6 +73,13 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch):
     assert result["binding"] is None
     assert result["save_options"] == ["node_job_only", "save_to_roster"]
     assert result["workflow_id"] == "workflow-1"
+    # Stage 4 §4.1 / §10.1 (D-3): empty state still surfaces PRD defaults so
+    # the front-end has stable output names to render before the user declares
+    # anything.
+    effective = result["effective_declared_outputs"]
+    assert [o["name"] for o in effective] == ["text", "files", "json"]
+    files_output = next(o for o in effective if o["name"] == "files")
+    assert files_output["array_item"] == {"type": "file", "description": None}
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
@@ -257,6 +264,37 @@ def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch):
     assert state["soul_lock"]["locked"] is True
     assert "save_as_new_version" in state["save_options"]
     assert state["agent_soul"]["app_features"] == {}
+    # Stage 4 §10.1 (D-3): binding with no declared_outputs → response surfaces
+    # PRD defaults via effective_declared_outputs (DB row remains untouched).
+    effective_names = [o["name"] for o in state["effective_declared_outputs"]]
+    assert effective_names == ["text", "files", "json"]
+
+
+def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(monkeypatch):
+    binding = WorkflowAgentNodeBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="agent-1",
+        current_snapshot_id="version-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        node_job_config=(
+            '{"workflow_prompt":"work","declared_outputs":[{"name":"summary","type":"string","required":true}]}'
+        ),
+    )
+    agent = Agent(id="agent-1", name="Analyst", description="", scope=AgentScope.ROSTER, status=AgentStatus.ACTIVE)
+    version = AgentConfigSnapshot(id="version-1", version=1, config_snapshot='{"prompt":{"system_prompt":"x"}}')
+    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
+
+    state = AgentComposerService._serialize_workflow_state(binding=binding, agent=agent, version=version)
+
+    # When the user has declared outputs, effective_declared_outputs is the same
+    # list (no defaults injected).
+    effective = state["effective_declared_outputs"]
+    assert [o["name"] for o in effective] == ["summary"]
+    assert effective[0]["type"] == "string"
+    assert effective[0]["required"] is True
 
 
 def test_composer_save_helpers_create_and_rebind_agents(monkeypatch):
@@ -573,3 +611,54 @@ def test_validator_dict_helpers_wrap_validation_errors():
 
     assert valid_soul.prompt.system_prompt == "x"
     assert valid_node_job.workflow_prompt == "x"
+
+
+def test_composer_validator_rejects_stage_4_declared_output_violations():
+    """Stage 4 §10.1: the model-layer validators surface stage-4-specific
+    violations through InvalidComposerConfigError so the Composer save endpoint
+    reports them with the same error shape as other shape failures.
+    """
+    # Output name violates the JSON-schema-friendly identifier pattern.
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_node_job_dict({"declared_outputs": [{"name": "1bad", "type": "string"}]})
+
+    # Output check is enabled on a non-file output.
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_node_job_dict(
+            {
+                "declared_outputs": [
+                    {
+                        "name": "text",
+                        "type": "string",
+                        "check": {
+                            "enabled": True,
+                            "prompt": "p",
+                            "benchmark_file_ref": {"file_id": "f"},
+                        },
+                    }
+                ]
+            }
+        )
+
+    # default_value shape doesn't match the declared type.
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_node_job_dict(
+            {
+                "declared_outputs": [
+                    {
+                        "name": "score",
+                        "type": "number",
+                        "failure_strategy": {
+                            "on_failure": "default_value",
+                            "default_value": "not a number",
+                        },
+                    }
+                ]
+            }
+        )
+
+    # Nested array_item is rejected outright.
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_node_job_dict(
+            {"declared_outputs": [{"name": "matrix", "type": "array", "array_item": {"type": "array"}}]}
+        )

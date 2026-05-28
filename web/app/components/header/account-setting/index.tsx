@@ -197,7 +197,7 @@ export default function AccountSetting({
               aria-label={t('operation.close', { ns: 'common' })}
               onClick={handleClose}
             >
-              <span className="i-ri-close-line h-5 w-5" />
+              <span className="i-ri-close-line size-5" />
             </Button>
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>

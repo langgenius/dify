@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 import sqlalchemy as sa
 from flask import abort, request
@@ -29,13 +30,10 @@ from fields.conversation_fields import (
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
-from fields.conversation_fields import (
-    ResultResponse,
-)
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
-from models.model import AppMode
+from models.model import App, AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 
@@ -77,7 +75,6 @@ register_schema_models(
     ConversationMessageDetailResponse,
     ConversationWithSummaryPaginationResponse,
     ConversationDetailResponse,
-    ResultResponse,
     CompletionConversationQuery,
     ChatConversationQuery,
 )
@@ -96,7 +93,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         current_user, _ = current_account_with_tenant()
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -137,7 +134,7 @@ class CompletionConversationApi(Resource):
                 .join(  # type: ignore
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                 )
-                .distinct()
+                .group_by(Conversation.id)
             )
         elif args.annotation_status == "not_annotated":
             query = (
@@ -168,10 +165,10 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def get(self, app_model, conversation_id):
-        conversation_id = str(conversation_id)
+    def get(self, app_model: App, conversation_id: UUID):
+        conversation_id_str = str(conversation_id)
         return ConversationMessageDetailResponse.model_validate(
-            _get_conversation(app_model, conversation_id), from_attributes=True
+            _get_conversation(app_model, conversation_id_str), from_attributes=True
         ).model_dump(mode="json")
 
     @console_ns.doc("delete_completion_conversation")
@@ -185,16 +182,16 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
-    def delete(self, app_model, conversation_id):
+    def delete(self, app_model: App, conversation_id: UUID):
         current_user, _ = current_account_with_tenant()
-        conversation_id = str(conversation_id)
+        conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
@@ -210,7 +207,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         current_user, _ = current_account_with_tenant()
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -275,7 +272,7 @@ class ChatConversationApi(Resource):
                     .join(  # type: ignore
                         MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                     )
-                    .distinct()
+                    .group_by(Conversation.id)
                 )
             case "not_annotated":
                 query = (
@@ -321,10 +318,10 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model, conversation_id):
-        conversation_id = str(conversation_id)
+    def get(self, app_model: App, conversation_id: UUID):
+        conversation_id_str = str(conversation_id)
         return ConversationDetailResponse.model_validate(
-            _get_conversation(app_model, conversation_id), from_attributes=True
+            _get_conversation(app_model, conversation_id_str), from_attributes=True
         ).model_dump(mode="json")
 
     @console_ns.doc("delete_chat_conversation")
@@ -338,16 +335,16 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model, conversation_id):
+    def delete(self, app_model: App, conversation_id: UUID):
         current_user, _ = current_account_with_tenant()
-        conversation_id = str(conversation_id)
+        conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 def _get_conversation(app_model, conversation_id):

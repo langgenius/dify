@@ -18,7 +18,7 @@ const NoData: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
-      <ClockPlay className="h-8 w-8 text-text-quaternary" />
+      <ClockPlay className="size-8 text-text-quaternary" />
       <div className="my-2 system-xs-regular text-text-tertiary">{t('debug.noData.description', { ns: 'workflow' })}</div>
       {canSingleRun && (
         <Button
@@ -26,7 +26,7 @@ const NoData: FC<Props> = ({
           size="small"
           onClick={onSingleRun}
         >
-          <RiPlayLine className="mr-1 h-3.5 w-3.5" />
+          <RiPlayLine className="mr-1 size-3.5" />
           <div>{t('debug.noData.runThisNode', { ns: 'workflow' })}</div>
         </Button>
       )}

@@ -167,7 +167,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         render={(
           <div className="flex h-8 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 select-none hover:bg-state-base-hover-alt">
             {icon && (
-              <div className="flex h-6 w-6 items-center justify-center">
+              <div className="flex size-6 items-center justify-center">
                 <img
                   src={icon}
                   width={20}

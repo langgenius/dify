@@ -341,7 +341,7 @@ const EmailSenderModal = ({
                 onClick={() => setCollapsed(!collapsed)}
               >
                 <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
-                <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} aria-hidden />
+                <RiArrowRightSFill className={cn('size-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} aria-hidden />
               </button>
               <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
               {!collapsed && (
