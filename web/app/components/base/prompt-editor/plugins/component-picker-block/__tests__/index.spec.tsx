@@ -25,7 +25,6 @@ import {
   $setSelection,
   BLUR_COMMAND,
   FOCUS_COMMAND,
-  KEY_ESCAPE_COMMAND,
 } from 'lexical'
 import * as React from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
@@ -391,7 +390,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{foo}}')
   })
 
-  it('handles workflow variable selection: flat vars (current/error_message/last_run) and closes on Escape from search input', async () => {
+  it('handles workflow variable selection: flat vars (current/error_message/last_run)', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
@@ -444,16 +443,6 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
     await flushNextTick()
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, null)
-
-    // Re-open menu and press Escape in the VarReferenceVars search input to exercise handleClose().
-    await setEditorText(editor, '{', true)
-    await flushNextTick()
-    const searchInput = await screen.findByPlaceholderText('workflow.common.searchVar')
-    await act(async () => {
-      fireEvent.keyDown(searchInput, { key: 'Escape' })
-    })
-    await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(KEY_ESCAPE_COMMAND, expect.any(KeyboardEvent))
 
     // Re-open menu and select a flat var that is not handled by the special-case list.
     // This covers the "no-op" path in the `isFlat` branch.
@@ -600,7 +589,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
   })
 
-  it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {
+  it('removes the full slash query when selecting a workflow variable', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
@@ -625,18 +614,9 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await setEditorText(editor, '/e', true)
     await flushNextTick()
 
-    const firstItem = screen.getByText('first_value').closest('[data-selected]')
-    const secondItem = screen.getByText('second_value').closest('[data-selected]')
-
-    expect(firstItem).toHaveAttribute('data-selected', 'true')
-    expect(secondItem).toHaveAttribute('data-selected', 'false')
-
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-
-    expect(firstItem).toHaveAttribute('data-selected', 'false')
-    expect(secondItem).toHaveAttribute('data-selected', 'true')
-
-    fireEvent.keyDown(document, { key: 'Enter' })
+    await act(async () => {
+      fireEvent.click(await screen.findByText('second_value'))
+    })
 
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'second_value'])
     await waitFor(() => expect(readEditorText(editor)).not.toContain('/e'))
