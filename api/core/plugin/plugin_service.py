@@ -91,15 +91,6 @@ class PluginService:
     def _get_plugin_model_providers_generation_cache_key(cls, tenant_id: str) -> str:
         return f"{cls.PLUGIN_MODEL_PROVIDERS_GENERATION_REDIS_KEY_PREFIX}{tenant_id}"
 
-    @classmethod
-    def _get_plugin_model_providers_memory_cache_key(
-        cls, *, tenant_id: str, client: PluginModelClient | None = None
-    ) -> str:
-        if client is None:
-            return tenant_id
-
-        return f"{tenant_id}:client:{id(client)}"
-
     @staticmethod
     def _get_provider_short_name_alias(provider: PluginModelProviderEntity) -> str:
         """
@@ -199,9 +190,8 @@ class PluginService:
         cls, tenant_id: str, *, client: PluginModelClient | None = None
     ) -> tuple[ProviderEntity, ...] | None:
         generation = cls._load_plugin_model_providers_generation(tenant_id)
-        memory_cache_key = cls._get_plugin_model_providers_memory_cache_key(tenant_id=tenant_id, client=client)
         if generation is not None:
-            in_memory_cached_providers = cls._load_in_memory_plugin_model_providers(memory_cache_key, generation)
+            in_memory_cached_providers = cls._load_in_memory_plugin_model_providers(tenant_id, generation)
             if in_memory_cached_providers is not None:
                 return in_memory_cached_providers
 
@@ -224,7 +214,7 @@ class PluginService:
             try:
                 providers = tuple(_provider_entities_adapter.validate_json(cached_providers))
                 if generation is not None:
-                    cls._store_in_memory_plugin_model_providers(memory_cache_key, generation, providers)
+                    cls._store_in_memory_plugin_model_providers(tenant_id, generation, providers)
                 return providers
             except (TypeError, ValueError, ValidationError):
                 logger.warning(
@@ -258,13 +248,7 @@ class PluginService:
     @classmethod
     def invalidate_plugin_model_providers_cache(cls, tenant_id: str) -> None:
         """Invalidate tenant-scoped provider metadata across Redis and worker-local mirrors."""
-        memory_cache_keys = [
-            cache_key
-            for cache_key in cls._plugin_model_providers_memory_cache
-            if cache_key == tenant_id or cache_key.startswith(f"{tenant_id}:client:")
-        ]
-        for cache_key in memory_cache_keys:
-            cls._plugin_model_providers_memory_cache.pop(cache_key, None)
+        cls._plugin_model_providers_memory_cache.pop(tenant_id, None)
         try:
             redis_client.delete(cls._get_plugin_model_providers_cache_key(tenant_id))
         except (RedisError, RuntimeError):
@@ -301,8 +285,7 @@ class PluginService:
             return providers
         generation = cls._load_plugin_model_providers_generation(tenant_id)
         if generation is not None:
-            memory_cache_key = cls._get_plugin_model_providers_memory_cache_key(tenant_id=tenant_id, client=client)
-            cls._store_in_memory_plugin_model_providers(memory_cache_key, generation, providers)
+            cls._store_in_memory_plugin_model_providers(tenant_id, generation, providers)
             cls._store_cached_plugin_model_providers(tenant_id, generation, providers)
         return providers
 

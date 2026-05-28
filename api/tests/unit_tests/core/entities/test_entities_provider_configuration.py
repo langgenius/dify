@@ -1534,25 +1534,22 @@ def test_system_and_custom_provider_model_helpers_cover_remaining_skip_paths() -
             return _build_ai_model("embed-model", model_type=ModelType.TEXT_EMBEDDING)
         return _build_ai_model("target")
 
-    with patch(
-        "core.entities.provider_configuration.original_provider_configurate_methods",
-        {"openai": [ConfigurateMethod.CUSTOMIZABLE_MODEL]},
-    ):
-        with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_system_schema):
-            system_models = configuration._get_system_provider_models(
-                model_types=[ModelType.LLM],
-                provider_schema=provider_schema,
-                model_setting_map={
-                    ModelType.LLM: {
-                        "target": ModelSettings(
-                            model="target",
-                            model_type=ModelType.LLM,
-                            enabled=False,
-                            load_balancing_configs=[],
-                        )
-                    }
-                },
-            )
+    configuration._original_provider_configurate_methods = (ConfigurateMethod.CUSTOMIZABLE_MODEL,)
+    with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_system_schema):
+        system_models = configuration._get_system_provider_models(
+            model_types=[ModelType.LLM],
+            provider_schema=provider_schema,
+            model_setting_map={
+                ModelType.LLM: {
+                    "target": ModelSettings(
+                        model="target",
+                        model_type=ModelType.LLM,
+                        enabled=False,
+                        load_balancing_configs=[],
+                    )
+                }
+            },
+        )
     assert any(model.model == "target" and model.status == ModelStatus.DISABLED for model in system_models)
 
     configuration.using_provider_type = ProviderType.CUSTOM
