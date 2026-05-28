@@ -13,25 +13,26 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import Loading from '@/app/components/base/loading'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverClose,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
+} from '@langgenius/dify-ui/popover'
+import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import Loading from '@/app/components/base/loading'
+import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '../hooks'
 import ModelSelector from '../model-selector'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
+import { getSupportedPresetConfig } from './presets-parameter-utils'
 import Trigger from './trigger'
 
 export type ModelParameterModalProps = {
@@ -75,10 +76,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const settingsIconRef = useRef<HTMLDivElement>(null)
   const {
     data: parameterRulesData,
-    isPending,
     isLoading,
   } = useModelParameterRules(provider, modelId)
-  const isRulesLoading = isPending || isLoading
+  const isRulesLoading = !!provider && !!modelId && isLoading
   const {
     currentProvider,
     currentModel,
@@ -90,6 +90,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
   }, [parameterRulesData])
+  const supportedPresetParameterNames = useMemo(() => {
+    return parameterRules.map(parameterRule => parameterRule.name)
+  }, [parameterRules])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -125,13 +128,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleSelectPresetParameter = (toneId: number) => {
-    const tone = TONE_LIST.find(tone => tone.id === toneId)
-    if (tone) {
-      onCompletionParamsChange({
-        ...completionParams,
-        ...tone.config,
-      })
-    }
+    onCompletionParamsChange({
+      ...completionParams,
+      ...getSupportedPresetConfig(toneId, supportedPresetParameterNames),
+    })
   }
 
   return (
@@ -175,16 +175,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         popupClassName={cn(popupClassName, 'w-[400px] rounded-2xl')}
         positionerProps={!renderTrigger ? { anchor: settingsIconRef } : undefined}
       >
-        <div className="relative px-3 pb-1 pt-3.5">
-          <div className="pl-1 pr-8 text-text-primary system-xl-semibold">
+        <div className="relative px-3 pt-3.5 pb-1">
+          <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
             {t('modelProvider.modelSettings', { ns: 'common' })}
           </div>
-          <PopoverClose className="absolute right-2.5 top-2.5 flex items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover">
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <PopoverClose className="absolute top-2.5 right-2.5 flex items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover">
+            <span className="i-ri-close-line size-4 text-text-tertiary" />
           </PopoverClose>
         </div>
         <div className="max-h-[420px] overflow-y-auto">
-          <div className="px-4 pb-4 pt-2">
+          <div className="px-4 pt-2 pb-4">
             <ModelSelector
               defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
               modelList={activeTextGenerationModelList}
@@ -194,12 +194,15 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           </div>
           {
             !!parameterRules.length && (
-              <div className="flex flex-col gap-2 border-t border-divider-subtle px-4 pb-4 pt-3">
+              <div className="flex flex-col gap-2 border-t border-divider-subtle px-4 pt-3 pb-4">
                 <div className="flex items-center gap-1">
-                  <div className="flex flex-1 items-center text-text-secondary system-sm-semibold-uppercase">{t('modelProvider.parameters', { ns: 'common' })}</div>
+                  <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">{t('modelProvider.parameters', { ns: 'common' })}</div>
                   {
                     PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                      <PresetsParameter onSelect={handleSelectPresetParameter} />
+                      <PresetsParameter
+                        onSelect={handleSelectPresetParameter}
+                        supportedParameterNames={supportedPresetParameterNames}
+                      />
                     )
                   }
                 </div>
@@ -235,7 +238,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </div>
         {!hideDebugWithMultipleModel && (
           <div
-            className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent system-sm-regular"
+            className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {
@@ -243,7 +246,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 ? t('debugAsSingleModel', { ns: 'appDebug' })
                 : t('debugAsMultipleModel', { ns: 'appDebug' })
             }
-            <ArrowNarrowLeft className="h-3 w-3 rotate-180" />
+            <ArrowNarrowLeft className="size-3 rotate-180" />
           </div>
         )}
       </PopoverContent>

@@ -57,7 +57,7 @@ export const useDocToc = ({ appDetail, locale }: UseDocTocOptions) => {
       const tocItems = extractTocFromArticle()
       setToc(tocItems)
       if (tocItems.length > 0)
-        setActiveSection(getTargetId(tocItems[0].href))
+        setActiveSection(getTargetId(tocItems[0]!.href))
     }, 0)
     return () => clearTimeout(timer)
   }, [appDetail, locale])

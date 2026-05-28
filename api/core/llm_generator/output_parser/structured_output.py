@@ -5,6 +5,11 @@ from enum import StrEnum
 from typing import Any, Literal, cast, overload
 
 import json_repair
+from pydantic import TypeAdapter, ValidationError
+
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
+from core.model_manager import ModelInstance
 from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -21,11 +26,6 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
-from pydantic import TypeAdapter, ValidationError
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
-from core.model_manager import ModelInstance
 
 
 class ResponseFormat(StrEnum):
@@ -200,9 +200,9 @@ def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
     structured_output_schema: Mapping,
-    model_parameters: dict,
+    model_parameters: dict[str, Any],
     rules: list[ParameterRule],
-):
+) -> dict[str, Any]:
     """
     Handle structured output for models with native JSON schema support.
 
@@ -224,7 +224,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict, rules: list):
+def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]) -> None:
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -288,11 +288,13 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
     except ValidationError:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
-        if not isinstance(temp_parsed, dict):
-            # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
-            if isinstance(temp_parsed, list):
+        match temp_parsed:
+            case dict():
+                pass
+            case list():
+                # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
-            else:
+            case _:
                 raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = cast(dict, temp_parsed)
     return structured_output
@@ -326,7 +328,7 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict):
+def remove_additional_properties(schema: dict[str, Any]) -> None:
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
@@ -341,15 +343,16 @@ def remove_additional_properties(schema: dict):
 
     # Process nested structures recursively
     for value in schema.values():
-        if isinstance(value, dict):
-            remove_additional_properties(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    remove_additional_properties(item)
+        match value:
+            case dict():
+                remove_additional_properties(value)
+            case list():
+                for item in value:
+                    if isinstance(item, dict):
+                        remove_additional_properties(item)
 
 
-def convert_boolean_to_string(schema: dict):
+def convert_boolean_to_string(schema: dict[str, Any]) -> None:
     """
     Convert boolean type specifications to string in JSON schema.
 
@@ -364,9 +367,10 @@ def convert_boolean_to_string(schema: dict):
 
     # Process nested dictionaries and lists recursively
     for value in schema.values():
-        if isinstance(value, dict):
-            convert_boolean_to_string(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    convert_boolean_to_string(item)
+        match value:
+            case dict():
+                convert_boolean_to_string(value)
+            case list():
+                for item in value:
+                    if isinstance(item, dict):
+                        convert_boolean_to_string(item)

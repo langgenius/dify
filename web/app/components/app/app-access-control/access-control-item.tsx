@@ -13,7 +13,7 @@ const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {
   if (currentMenu !== type) {
     return (
       <div
-        className="cursor-pointer radius-lg border
+        className="cursor-pointer rounded-[10px] border
       border-components-option-card-option-border bg-components-option-card-option-bg
       hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover"
         onClick={() => setCurrentMenu(type)}
@@ -24,7 +24,7 @@ const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {
   }
 
   return (
-    <div className="radius-lg border-[1.5px]
+    <div className="rounded-[10px] border-[1.5px]
   border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm"
     >
       {children}

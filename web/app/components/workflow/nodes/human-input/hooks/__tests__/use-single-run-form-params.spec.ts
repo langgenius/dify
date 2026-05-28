@@ -138,7 +138,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     }))
 
     act(() => {
-      result.current.forms[0].onChange?.({ topic: 'Updated' })
+      result.current.forms[0]!.onChange?.({ topic: 'Updated' })
     })
 
     expect(mockSetRunInputData).toHaveBeenCalledWith({ topic: 'Updated' })

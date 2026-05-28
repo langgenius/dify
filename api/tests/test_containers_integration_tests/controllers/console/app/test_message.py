@@ -148,14 +148,18 @@ def test_chat_message_list_success(
         account.id,
         created_at_offset_seconds=1,
     )
+    # Capture IDs before the HTTP request detaches ORM instances from the session
+    app_id = app.id
+    conversation_id = conversation.id
+    second_id = second.id
 
     with patch(
         "controllers.console.app.message.attach_message_extra_contents",
         side_effect=_attach_message_extra_contents,
     ):
         response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/chat-messages",
-            query_string={"conversation_id": conversation.id, "limit": 1},
+            f"/console/api/apps/{app_id}/chat-messages",
+            query_string={"conversation_id": conversation_id, "limit": 1},
             headers=authenticate_console_client(test_client_with_containers, account),
         )
 
@@ -165,7 +169,7 @@ def test_chat_message_list_success(
     assert payload["limit"] == 1
     assert payload["has_more"] is True
     assert len(payload["data"]) == 1
-    assert payload["data"][0]["id"] == second.id
+    assert payload["data"][0]["id"] == second_id
 
 
 def test_message_feedback_not_found(

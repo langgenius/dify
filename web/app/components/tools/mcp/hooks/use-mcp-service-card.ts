@@ -69,7 +69,7 @@ export const useMCPServiceCardState = (
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished
-    ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp`
+    ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${server_code}/mcp`
     : '***********'
 
   // App state checks
@@ -87,7 +87,7 @@ export const useMCPServiceCardState = (
     return (basicAppConfig.user_input_form as Array<Record<string, unknown>>).map((item) => {
       const type = Object.keys(item)[0]
       return {
-        ...(item[type] as object),
+        ...(item[type!] as object),
         type: type || 'text-input',
       }
     })

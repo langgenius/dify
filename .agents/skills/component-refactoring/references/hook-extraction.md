@@ -112,13 +112,13 @@ export const useModelConfig = ({
 
 ```typescript
 // Before: 50+ lines of state management
-const Configuration: FC = () => {
+function Configuration() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   // ... lots of related state and effects
 }
 
 // After: Clean component
-const Configuration: FC = () => {
+function Configuration() {
   const {
     modelConfig,
     setModelConfig,
@@ -159,8 +159,6 @@ const Configuration: FC = () => {
 
 When hook extraction touches query or mutation code, do not use this reference as the source of truth for data-layer patterns.
 
-- Follow `web/AGENTS.md` first.
-- Use `frontend-query-mutation` for contracts, query shape, data-fetching wrappers, query/mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
 - Do not introduce deprecated `useInvalid` / `useReset`.
 - Do not extract thin passthrough `useQuery` hooks; only extract orchestration hooks.
 

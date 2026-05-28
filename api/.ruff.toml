@@ -69,8 +69,6 @@ ignore = [
     "FURB152", # math-constant
     "UP007",   # non-pep604-annotation
     "UP032",   # f-string
-    "UP045",   # non-pep604-annotation-optional
-    "B005",    # strip-with-multi-characters
     "B006",    # mutable-argument-default
     "B007",    # unused-loop-control-variable
     "B026",    # star-arg-unpacking-after-keyword-arg
@@ -84,7 +82,6 @@ ignore = [
     "SIM102",  # collapsible-if
     "SIM103",  # needless-bool
     "SIM105",  # suppressible-exception
-    "SIM107",  # return-in-try-except-finally
     "SIM108",  # if-else-block-instead-of-if-exp
     "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
@@ -93,32 +90,22 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"__init__.py" = [
-    "F401", # unused-import
-    "F811", # redefined-while-unused
-]
 "configs/*" = [
     "N802", # invalid-function-name
 ]
-"graphon/model_runtime/callbacks/base_callback.py" = ["T201"]
-"core/workflow/callbacks/workflow_logging_callback.py" = ["T201"]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
 ]
 "tests/*" = [
-    "F811", # redefined-while-unused
     "T201", # allow print in tests,
     "S110", # allow ignoring exceptions in tests code (currently)
-
 ]
-"controllers/console/explore/trial.py" = ["TID251"]
-"controllers/console/human_input_form.py" = ["TID251"]
-"controllers/web/human_input_form.py" = ["TID251"]
-
-[lint.flake8-tidy-imports]
 
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse"]
 msg = "Use Pydantic payload/query models instead of reqparse."
 
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse.RequestParser"]
 msg = "Use Pydantic payload/query models instead of reqparse."
+
+[lint.isort]
+known-first-party = ["graphon"]

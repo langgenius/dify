@@ -14,20 +14,21 @@ describe('ScoreThresholdItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.score_threshold')
+  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.score_threshold', {
+    selector: 'input[type="range"]',
+  })
 
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
-      expect(screen.getByText('appDebug.datasetConfig.score_threshold')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.datasetConfig.score_threshold', { selector: 'span' })).toBeInTheDocument()
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<ScoreThresholdItem {...defaultProps} />)
+      render(<ScoreThresholdItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.score_thresholdTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {

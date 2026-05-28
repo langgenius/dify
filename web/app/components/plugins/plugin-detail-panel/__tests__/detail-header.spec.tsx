@@ -1,9 +1,18 @@
+import type { ReactElement } from 'react'
 import type { PluginDetail } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import * as amplitude from '@/app/components/base/amplitude'
 import { PluginSource } from '../../types'
 import DetailHeader from '../detail-header'
+
+let mockEnableMarketplace = true
+
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+  })
 
 const { mockToast } = vi.hoisted(() => ({
   mockToast: Object.assign(vi.fn(), {
@@ -17,7 +26,7 @@ const { mockToast } = vi.hoisted(() => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -70,13 +79,7 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
-// Global mock state for enable_marketplace
-let mockEnableMarketplace = true
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace } }),
-}))
+// Global mock state for enable_marketplace seeded into the QueryClient via the local render helper.
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -144,7 +147,7 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string>) => obj?.en_US || '',
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -297,13 +300,13 @@ describe('DetailHeader', () => {
     it('should render plugin title', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should render plugin icon with correct src', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('card-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('card-icon'))!.toBeInTheDocument()
     })
 
     it('should render icon with http url directly', () => {
@@ -315,13 +318,13 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('card-icon')).toHaveAttribute('data-src', 'https://example.com/icon.png')
+      expect(screen.getByTestId('card-icon'))!.toHaveAttribute('data-src', 'https://example.com/icon.png')
     })
 
     it('should render description when not in readme view', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('description')).toBeInTheDocument()
+      expect(screen.getByTestId('description'))!.toBeInTheDocument()
     })
 
     it('should not render description in readme view', () => {
@@ -333,7 +336,7 @@ describe('DetailHeader', () => {
     it('should render verified badge when verified', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('verified-badge')).toBeInTheDocument()
+      expect(screen.getByTestId('verified-badge'))!.toBeInTheDocument()
     })
   })
 
@@ -346,7 +349,8 @@ describe('DetailHeader', () => {
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       // Badge component should render with the version
-      expect(screen.getByText('1.0.0')).toBeInTheDocument()
+      // Badge component should render with the version
+      expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
     })
 
     it('should not show new version indicator when versions match', () => {
@@ -357,7 +361,8 @@ describe('DetailHeader', () => {
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       // Badge component should render with the version
-      expect(screen.getByText('1.0.0')).toBeInTheDocument()
+      // Badge component should render with the version
+      expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
     })
 
     it('should show update button when new version is available', () => {
@@ -367,7 +372,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByText('plugin.detailPanel.operation.update')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.update'))!.toBeInTheDocument()
     })
 
     it('should show update button for GitHub source', () => {
@@ -377,7 +382,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByText('plugin.detailPanel.operation.update')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.update'))!.toBeInTheDocument()
     })
   })
 
@@ -393,7 +398,7 @@ describe('DetailHeader', () => {
 
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should render component when strategy is disabled', () => {
@@ -407,7 +412,7 @@ describe('DetailHeader', () => {
 
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should enable auto upgrade for update_all mode', () => {
@@ -422,7 +427,8 @@ describe('DetailHeader', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       // Auto upgrade badge should be rendered
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      // Auto upgrade badge should be rendered
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should enable auto upgrade for partial mode when plugin is included', () => {
@@ -436,7 +442,7 @@ describe('DetailHeader', () => {
 
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should not enable auto upgrade for partial mode when plugin is not included', () => {
@@ -450,7 +456,7 @@ describe('DetailHeader', () => {
 
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should enable auto upgrade for exclude mode when plugin is not excluded', () => {
@@ -464,7 +470,7 @@ describe('DetailHeader', () => {
 
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should not enable auto upgrade for exclude mode when plugin is excluded', () => {
@@ -478,7 +484,7 @@ describe('DetailHeader', () => {
 
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should not enable auto upgrade for non-marketplace plugins', () => {
@@ -496,7 +502,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should not enable auto upgrade when marketplace feature is disabled', () => {
@@ -512,7 +518,8 @@ describe('DetailHeader', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       // Component should still render but auto upgrade should be disabled
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      // Component should still render but auto upgrade should be disabled
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
   })
 
@@ -522,7 +529,7 @@ describe('DetailHeader', () => {
 
       // Find the close button (ActionButton with action-btn class)
       const actionButtons = screen.getAllByRole('button').filter(btn => btn.classList.contains('action-btn'))
-      fireEvent.click(actionButtons[actionButtons.length - 1])
+      fireEvent.click(actionButtons[actionButtons.length - 1]!)
 
       expect(mockOnHide).toHaveBeenCalled()
     })
@@ -533,7 +540,7 @@ describe('DetailHeader', () => {
       const infoBtn = screen.getByTestId('info-btn')
       fireEvent.click(infoBtn)
 
-      expect(infoBtn).toBeInTheDocument()
+      expect(infoBtn)!.toBeInTheDocument()
     })
 
     it('should have check version button available', () => {
@@ -542,7 +549,7 @@ describe('DetailHeader', () => {
       const checkBtn = screen.getByTestId('check-version-btn')
       fireEvent.click(checkBtn)
 
-      expect(checkBtn).toBeInTheDocument()
+      expect(checkBtn)!.toBeInTheDocument()
     })
   })
 
@@ -557,7 +564,7 @@ describe('DetailHeader', () => {
       const updateBtn = screen.getByText('plugin.detailPanel.operation.update')
       fireEvent.click(updateBtn)
 
-      expect(updateBtn).toBeInTheDocument()
+      expect(updateBtn)!.toBeInTheDocument()
     })
 
     it('should have version picker select button', () => {
@@ -566,7 +573,7 @@ describe('DetailHeader', () => {
       const selectBtn = screen.getByTestId('select-version-btn')
       fireEvent.click(selectBtn)
 
-      expect(selectBtn).toBeInTheDocument()
+      expect(selectBtn)!.toBeInTheDocument()
     })
 
     it('should have downgrade button', () => {
@@ -575,7 +582,7 @@ describe('DetailHeader', () => {
       const downgradeBtn = screen.getByTestId('select-downgrade-btn')
       fireEvent.click(downgradeBtn)
 
-      expect(downgradeBtn).toBeInTheDocument()
+      expect(downgradeBtn)!.toBeInTheDocument()
     })
   })
 
@@ -651,7 +658,7 @@ describe('DetailHeader', () => {
       const removeBtn = screen.getByTestId('remove-btn')
       fireEvent.click(removeBtn)
 
-      expect(removeBtn).toBeInTheDocument()
+      expect(removeBtn)!.toBeInTheDocument()
     })
 
     it('should have uninstallPlugin mock defined', () => {
@@ -671,13 +678,13 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('remove-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('remove-btn'))!.toBeInTheDocument()
     })
 
     it('should render correctly for tool plugin delete', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('remove-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('remove-btn'))!.toBeInTheDocument()
     })
   })
 
@@ -689,21 +696,21 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should render local source icon', () => {
       const detail = createPluginDetail({ source: PluginSource.local })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should render debugging source icon', () => {
       const detail = createPluginDetail({ source: PluginSource.debugging })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should not render deprecation notice for non-marketplace source', () => {
@@ -722,20 +729,20 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
+      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
     })
 
     it('should render marketplace source correctly', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
+      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
     })
 
     it('should render local source correctly', () => {
       const detail = createPluginDetail({ source: PluginSource.local })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
+      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
     })
   })
 
@@ -743,7 +750,7 @@ describe('DetailHeader', () => {
     it('should render plugin auth for tool category', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('plugin-auth')).toBeInTheDocument()
+      expect(screen.getByTestId('plugin-auth'))!.toBeInTheDocument()
     })
 
     it('should not render plugin auth for non-tool category', () => {
@@ -770,7 +777,7 @@ describe('DetailHeader', () => {
       const detail = createPluginDetail({ version: '' })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('title')).toBeInTheDocument()
+      expect(screen.getByTestId('title'))!.toBeInTheDocument()
     })
 
     it('should handle plugin with name containing slash', () => {
@@ -782,7 +789,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('org-info')).toBeInTheDocument()
+      expect(screen.getByTestId('org-info'))!.toBeInTheDocument()
     })
 
     it('should handle empty icon', () => {
@@ -794,7 +801,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('card-icon')).toHaveAttribute('data-src', '')
+      expect(screen.getByTestId('card-icon'))!.toHaveAttribute('data-src', '')
     })
   })
 
@@ -805,7 +812,7 @@ describe('DetailHeader', () => {
       fireEvent.click(screen.getByTestId('remove-btn'))
 
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
     })
 
@@ -814,7 +821,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -829,7 +836,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -844,7 +851,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -865,7 +872,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -880,7 +887,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -895,7 +902,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -917,7 +924,7 @@ describe('DetailHeader', () => {
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('update-modal'))!.toBeInTheDocument()
       })
     })
 
@@ -930,7 +937,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
       await waitFor(() => {
-        expect(screen.getByTestId('update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('update-modal'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('update-modal-save'))
@@ -949,7 +956,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
       await waitFor(() => {
-        expect(screen.getByTestId('update-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('update-modal'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('update-modal-cancel'))
@@ -967,7 +974,7 @@ describe('DetailHeader', () => {
       fireEvent.click(screen.getByTestId('info-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
+        expect(screen.getByTestId('plugin-info'))!.toBeInTheDocument()
       })
     })
 
@@ -976,7 +983,7 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('info-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
+        expect(screen.getByTestId('plugin-info'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('plugin-info-close'))
@@ -993,7 +1000,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('info-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('info-btn'))!.toBeInTheDocument()
     })
   })
 })

@@ -3,9 +3,9 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import type { RetrievalConfig } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -203,7 +203,7 @@ describe('ConfigContent', () => {
       await waitFor(() => {
         expect(onChange).toHaveBeenCalled()
       })
-      const [nextConfigs] = onChange.mock.calls[0]
+      const [nextConfigs] = (onChange.mock.calls[0] ?? []) as [any]
       expect(nextConfigs.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
     })
   })
@@ -239,10 +239,11 @@ describe('ConfigContent', () => {
       )
 
       // Assert
-      expect(screen.getByText('dataset.weightedScore.title')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.rerankModel.key')).toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.semantic')).toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.keyword')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
     })
   })
 

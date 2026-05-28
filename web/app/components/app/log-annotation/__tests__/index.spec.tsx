@@ -15,19 +15,19 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/app/components/app/annotation', () => ({
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="annotation" data-app-id={appDetail.id} />
+    <section aria-label="Annotation log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/log', () => ({
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="log" data-app-id={appDetail.id} />
+    <section aria-label="App log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/workflow-log', () => ({
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="workflow-log" data-app-id={appDetail.id} />
+    <section aria-label="Workflow log">{appDetail.id}</section>
   ),
 }))
 
@@ -113,7 +113,7 @@ describe('LogAnnotation', () => {
 
       // Assert
       expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
-      expect(screen.getByTestId('workflow-log')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Workflow log' })).toBeInTheDocument()
     })
   })
 
@@ -127,8 +127,8 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByTestId('log')).toBeInTheDocument()
-      expect(screen.queryByTestId('annotation')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Annotation log' })).not.toBeInTheDocument()
     })
 
     it('should render annotation content when page type is annotation', () => {
@@ -139,8 +139,8 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.annotation} />)
 
       // Assert
-      expect(screen.getByTestId('annotation')).toBeInTheDocument()
-      expect(screen.queryByTestId('log')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Annotation log' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'App log' })).not.toBeInTheDocument()
     })
   })
 

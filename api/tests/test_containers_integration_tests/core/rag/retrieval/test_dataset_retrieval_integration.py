@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -15,7 +16,7 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 
 class TestGetAvailableDatasetsIntegration:
     def test_returns_datasets_with_available_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -77,7 +78,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].name == dataset.name
 
     def test_filters_out_datasets_with_only_archived_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -130,7 +131,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_filters_out_datasets_with_only_disabled_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -183,7 +184,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_filters_out_datasets_with_non_completed_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -236,7 +237,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_includes_external_datasets_without_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that external datasets are returned even with no available documents.
@@ -280,7 +281,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].id == dataset.id
         assert result[0].provider == "external"
 
-    def test_filters_by_tenant_id(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_filters_by_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
         # Arrange
         fake = Faker()
 
@@ -356,7 +357,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].tenant_id == tenant1.id
 
     def test_returns_empty_list_when_no_datasets_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -379,7 +380,9 @@ class TestGetAvailableDatasetsIntegration:
         # Assert
         assert result == []
 
-    def test_returns_only_requested_dataset_ids(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_returns_only_requested_dataset_ids(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         # Arrange
         fake = Faker()
 
@@ -439,7 +442,7 @@ class TestGetAvailableDatasetsIntegration:
 
 class TestKnowledgeRetrievalIntegration:
     def test_knowledge_retrieval_with_available_datasets(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -507,7 +510,7 @@ class TestKnowledgeRetrievalIntegration:
                     assert isinstance(result, list)
 
     def test_knowledge_retrieval_no_available_datasets(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -555,7 +558,7 @@ class TestKnowledgeRetrievalIntegration:
             assert result == []
 
     def test_knowledge_retrieval_rate_limit_exceeded(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()

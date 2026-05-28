@@ -60,8 +60,8 @@ const KeyInput = ({
         <input
           className="
             mr-2 w-full appearance-none
-            bg-transparent py-[9px] text-xs font-medium
-            leading-[18px] text-gray-700 outline-hidden
+            bg-transparent py-[9px] text-xs leading-[18px]
+            font-medium text-gray-700 outline-hidden
           "
           value={value}
           placeholder={placeholder}

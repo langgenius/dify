@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import httpx
 import pytest
@@ -14,7 +15,7 @@ from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvo
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 
 
-def _build_tool(*, openapi: dict | None = None) -> ApiTool:
+def _build_tool(*, openapi: dict[str, Any] | None = None) -> ApiTool:
     entity = ToolEntity(
         identity=ToolIdentity(
             author="author",
@@ -46,7 +47,7 @@ def test_parsed_response_to_string():
     assert ParsedResponse("ok", False).to_string() == "ok"
 
 
-def test_api_tool_fork_runtime_and_validate_credentials(monkeypatch):
+def test_api_tool_fork_runtime_and_validate_credentials(monkeypatch: pytest.MonkeyPatch):
     tool = _build_tool()
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant-2"))
     assert isinstance(forked, ApiTool)
@@ -183,7 +184,7 @@ def test_get_parameter_value_and_type_conversion_helpers():
     assert tool._convert_body_property_type({"anyOf": [{"type": "integer"}]}, "2") == 2
 
 
-def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch):
+def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch: pytest.MonkeyPatch):
     openapi = {
         "parameters": [
             {"name": "id", "in": "path", "required": True, "schema": {"type": "string"}},
@@ -235,7 +236,7 @@ def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch
         invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
 
-def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch):
+def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytest.MonkeyPatch):
     openapi = {
         "parameters": [],
         "requestBody": {

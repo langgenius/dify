@@ -323,6 +323,50 @@ class TestDeserializeResponse:
         with pytest.raises(ValueError, match="Invalid status line"):
             deserialize_response(raw_data)
 
+    def test_deserialize_response_preserves_duplicate_set_cookie_headers(self):
+        # Regression test for https://github.com/langgenius/dify/issues/35722
+        # Multiple Set-Cookie headers must be preserved per RFC 9110, not collapsed
+        # into a single value by dict-style assignment.
+        raw_data = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/plain\r\n"
+            b"Set-Cookie: session=abc; Path=/; HttpOnly\r\n"
+            b"Set-Cookie: tracking=xyz; Path=/; Secure\r\n"
+            b"\r\n"
+            b"ok"
+        )
+
+        response = deserialize_response(raw_data)
+
+        cookies = response.headers.getlist("Set-Cookie")
+        assert cookies == [
+            "session=abc; Path=/; HttpOnly",
+            "tracking=xyz; Path=/; Secure",
+        ]
+        # Single-valued headers should still be readable normally.
+        assert response.headers.get("Content-Type") == "text/plain"
+
+    def test_deserialize_response_preserves_duplicate_generic_headers(self):
+        # Any header name (not just Set-Cookie) may legitimately repeat; verify the
+        # parser preserves all values rather than overwriting earlier ones.
+        raw_data = b"HTTP/1.1 200 OK\r\nX-Custom: first\r\nX-Custom: second\r\n\r\n"
+
+        response = deserialize_response(raw_data)
+
+        assert response.headers.getlist("X-Custom") == ["first", "second"]
+
+    def test_deserialize_response_does_not_inject_default_content_type(self):
+        # Flask's Response constructor adds a default Content-Type header. When the
+        # raw response has no Content-Type, the parsed response should not silently
+        # gain one from the framework default.
+        raw_data = b"HTTP/1.1 204 No Content\r\nX-Trace-Id: abc\r\n\r\n"
+
+        response = deserialize_response(raw_data)
+
+        header_names = [name for name, _ in response.headers.items()]
+        assert "Content-Type" not in header_names
+        assert response.headers.get("X-Trace-Id") == "abc"
+
     def test_roundtrip_response(self):
         # Test that serialize -> deserialize produces equivalent response
         original_response = Response(

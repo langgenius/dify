@@ -6,8 +6,6 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus
 
 from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -19,6 +17,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import StreamEvent
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser

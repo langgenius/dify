@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, Union, cast
 
-from graphon.file import FileTransferMethod, FileType
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -33,6 +32,7 @@ from core.tools.errors import (
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from graphon.file import FileTransferMethod, FileType
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
@@ -47,7 +47,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(
         tool: Tool,
-        tool_parameters: Union[str, dict],
+        tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
         tenant_id: str,
         message: Message,
@@ -85,7 +85,8 @@ class ToolEngine:
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
-                invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]
+                invocation_meta_dict: dict[str, ToolInvokeMeta],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -200,7 +201,7 @@ class ToolEngine:
     @staticmethod
     def _invoke(
         tool: Tool,
-        tool_parameters: dict,
+        tool_parameters: dict[str, Any],
         user_id: str,
         conversation_id: str | None = None,
         app_id: str | None = None,
@@ -262,6 +263,8 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                continue
             else:
                 parts.append(str(response.message))
 

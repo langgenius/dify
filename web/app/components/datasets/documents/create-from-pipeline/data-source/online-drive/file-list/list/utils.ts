@@ -8,7 +8,7 @@ export const getFileExtension = (fileName: string): string => {
   if (parts.length <= 1 || (parts[0] === '' && parts.length === 2))
     return ''
 
-  return parts[parts.length - 1].toLowerCase()
+  return parts[parts.length - 1]!.toLowerCase()
 }
 
 export const getFileType = (fileName: string) => {
@@ -17,13 +17,13 @@ export const getFileType = (fileName: string) => {
   if (extension === 'gif')
     return FileAppearanceTypeEnum.gif
 
-  if (FILE_EXTS.image.includes(extension.toUpperCase()))
+  if (FILE_EXTS.image!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.image
 
-  if (FILE_EXTS.video.includes(extension.toUpperCase()))
+  if (FILE_EXTS.video!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.video
 
-  if (FILE_EXTS.audio.includes(extension.toUpperCase()))
+  if (FILE_EXTS.audio!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.audio
 
   if (extension === 'html' || extension === 'htm' || extension === 'xml' || extension === 'json')
@@ -44,7 +44,7 @@ export const getFileType = (fileName: string) => {
   if (extension === 'pptx' || extension === 'ppt')
     return FileAppearanceTypeEnum.ppt
 
-  if (FILE_EXTS.document.includes(extension.toUpperCase()))
+  if (FILE_EXTS.document!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.document
 
   return FileAppearanceTypeEnum.custom

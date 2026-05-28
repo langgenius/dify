@@ -1,8 +1,10 @@
+import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 
 import pytest
+from pytest_mock import MockerFixture
 
 from models.dataset import Dataset
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
@@ -514,3 +516,64 @@ def test_deal_document_data_upload_file_with_existing_file(mocker) -> None:
     assert document.data_source_type == "local_file"
     assert "real_file_id" in document.data_source_info
     assert add_mock.call_count >= 2
+
+
+def _make_service():
+    return RagPipelineTransformService.__new__(RagPipelineTransformService)
+
+
+def test_deal_dependencies_skips_marketplace_when_disabled(mocker: MockerFixture, caplog) -> None:
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
+        False,
+    )
+    installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
+    installer.list_plugins.return_value = []
+    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
+    install_call = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+    )
+
+    pipeline_yaml = {
+        "dependencies": [
+            {
+                "type": "marketplace",
+                "value": {"plugin_unique_identifier": "langgenius/openai:1.0.0@abc"},
+            }
+        ]
+    }
+
+    service = _make_service()
+    with caplog.at_level(logging.WARNING):
+        service._deal_dependencies(pipeline_yaml, "tenant-1")
+
+    install_call.assert_not_called()
+    assert any("Marketplace disabled" in rec.message for rec in caplog.records)
+
+
+def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture) -> None:
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
+        True,
+    )
+    installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
+    installer.list_plugins.return_value = []
+    migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value
+    migration._fetch_plugin_unique_identifier.return_value = "langgenius/openai:1.0.0@abc"
+    install_call = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+    )
+
+    pipeline_yaml = {
+        "dependencies": [
+            {
+                "type": "marketplace",
+                "value": {"plugin_unique_identifier": "langgenius/openai:1.0.0@abc"},
+            }
+        ]
+    }
+
+    service = _make_service()
+    service._deal_dependencies(pipeline_yaml, "tenant-1")
+
+    install_call.assert_called_once_with("tenant-1", ["langgenius/openai:1.0.0@abc"])

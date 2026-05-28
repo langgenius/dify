@@ -8,13 +8,13 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope
 from core.app.workflow import file_runtime
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime, bind_dify_workflow_file_runtime
 from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile, UploadFile
 
 
@@ -26,8 +26,8 @@ def _build_file(
     extension: str | None = None,
 ) -> File:
     return File(
-        id="file-id",
-        type=FileType.IMAGE,
+        file_id="file-id",
+        file_type=FileType.IMAGE,
         transfer_method=transfer_method,
         reference=reference,
         remote_url=remote_url,
@@ -351,7 +351,7 @@ def test_runtime_helper_wrappers_delegate_to_config_and_io(monkeypatch: pytest.M
 
     assert runtime.multimodal_send_format == "url"
 
-    with patch.object(file_runtime.ssrf_proxy, "get", return_value="response") as mock_get:
+    with patch.object(file_runtime.graphon_ssrf_proxy, "get", return_value="response") as mock_get:
         assert runtime.http_get("http://example", follow_redirects=False) == "response"
         mock_get.assert_called_once_with("http://example", follow_redirects=False)
 

@@ -47,7 +47,7 @@ const MarkdownDemo = ({
 
   return (
     <div className="flex w-full max-w-3xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Markdown renderer</div>
+      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Markdown renderer</div>
       <Markdown
         content={content}
         className={compact ? 'text-sm! leading-relaxed' : ''}

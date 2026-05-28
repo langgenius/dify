@@ -17,9 +17,14 @@ import {
 
 export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND')
-export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
+export type UpdateWorkflowNodesMapPayload = {
+  workflowNodesMap: NonNullable<WorkflowVariableBlockType['workflowNodesMap']>
+  availableVariables: NonNullable<WorkflowVariableBlockType['variables']>
+}
+export const UPDATE_WORKFLOW_NODES_MAP = createCommand<UpdateWorkflowNodesMapPayload>('UPDATE_WORKFLOW_NODES_MAP')
 const WorkflowVariableBlock = memo(({
-  workflowNodesMap,
+  workflowNodesMap = {},
+  variables: workflowAvailableVariables,
   onInsert,
   onDelete,
   getVarType,
@@ -28,9 +33,12 @@ const WorkflowVariableBlock = memo(({
 
   useEffect(() => {
     editor.update(() => {
-      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, workflowNodesMap)
+      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: workflowNodesMap || {},
+        availableVariables: workflowAvailableVariables || [],
+      })
     })
-  }, [editor, workflowNodesMap])
+  }, [editor, workflowNodesMap, workflowAvailableVariables])
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -40,7 +48,12 @@ const WorkflowVariableBlock = memo(({
       editor.registerCommand(
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
-          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap, getVarType)
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(
+            variables,
+            workflowNodesMap,
+            getVarType,
+            workflowAvailableVariables || [],
+          )
 
           $insertNodes([workflowVariableBlockNode])
           if (onInsert)
@@ -61,7 +74,7 @@ const WorkflowVariableBlock = memo(({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onInsert, onDelete, workflowNodesMap, getVarType])
+  }, [editor, onInsert, onDelete, workflowNodesMap, getVarType, workflowAvailableVariables])
 
   return null
 })

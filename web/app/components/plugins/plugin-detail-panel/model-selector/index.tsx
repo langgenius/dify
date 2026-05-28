@@ -8,14 +8,15 @@ import type {
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelList,
@@ -24,7 +25,6 @@ import AgentModelTrigger from '@/app/components/header/account-setting/model-pro
 import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
@@ -229,7 +229,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         >
           <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
             <div className="relative">
-              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">
+              <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
                 {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
               </div>
               <ModelSelector

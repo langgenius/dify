@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import type { inputType } from '@/hooks/use-metadata'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
 import { getTextWidthWithCanvas } from '@/utils'
-import { cn } from '@/utils/classnames'
 import s from '../style.module.css'
 
 type FieldInfoProps = {
@@ -36,6 +36,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
   const textNeedWrap = getTextWidthWithCanvas(displayedValue) > 190
   const editAlignTop = showEdit && inputType === 'textarea'
   const readAlignTop = !showEdit && textNeedWrap
+  const selectedOption = selectOptions.find(option => option.value === value)
 
   const renderContent = () => {
     if (!showEdit)
@@ -43,14 +44,26 @@ const FieldInfo: FC<FieldInfoProps> = ({
 
     if (inputType === 'select') {
       return (
-        <SimpleSelect
-          onSelect={({ value }) => onUpdate?.(value as string)}
-          items={selectOptions}
-          defaultValue={value}
-          className={s.select}
-          wrapperClassName={s.selectWrapper}
-          placeholder={`${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
-        />
+        <Select
+          value={selectedOption?.value ?? null}
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
+            onUpdate?.(nextValue)
+          }}
+        >
+          <SelectTrigger className={cn(s.select, s.selectWrapper)}>
+            {selectedOption?.name ?? `${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
+          </SelectTrigger>
+          <SelectContent>
+            {selectOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                <SelectItemText>{option.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
     }
 

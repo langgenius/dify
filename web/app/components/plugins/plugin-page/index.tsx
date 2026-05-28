@@ -2,28 +2,29 @@
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
-import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { sleep } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
@@ -121,7 +122,10 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const activeTab = usePluginPageContext(v => v.activeTab)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
 
   const isPluginsTab = useMemo(() => activeTab === PLUGIN_PAGE_TABS_MAP.plugins, [activeTab])
   const isExploringMarketplace = useMemo(() => {
@@ -155,7 +159,7 @@ const PluginPage = ({
     >
       <div
         className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4',
+          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
           isExploringMarketplace && 'bg-background-body',
         )}
       >
@@ -193,7 +197,7 @@ const PluginPage = ({
                       className="px-3"
                       variant="secondary-accent"
                     >
-                      <RiBookOpenLine className="mr-1 h-4 w-4" />
+                      <RiBookOpenLine className="mr-1 size-4" />
                       {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
@@ -214,16 +218,21 @@ const PluginPage = ({
             }
             {
               canSetPermissions && (
-                <Tooltip
-                  popupContent={t('privilege.title', { ns: 'plugin' })}
-                >
-                  <Button
-                    data-testid="plugin-settings-button"
-                    className="group h-full w-full p-2 text-components-button-secondary-text"
-                    onClick={setShowPluginSettingModal}
-                  >
-                    <RiEqualizer2Line className="h-4 w-4" />
-                  </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <Button
+                        aria-label={t('privilege.title', { ns: 'plugin' })}
+                        className="group size-full p-2 text-components-button-secondary-text"
+                        onClick={setShowPluginSettingModal}
+                      >
+                        <RiEqualizer2Line className="size-4" aria-hidden="true" />
+                      </Button>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('privilege.title', { ns: 'plugin' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }
@@ -241,7 +250,7 @@ const PluginPage = ({
             </div>
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-            <RiDragDropLine className="h-4 w-4" />
+            <RiDragDropLine className="size-4" />
             <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
           </div>
           {currentFile && (

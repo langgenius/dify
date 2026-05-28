@@ -1,4 +1,6 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
@@ -29,6 +31,10 @@ export const useWorkflowMoveMode = () => {
   const setControlMode = useStore(s => s.setControlMode)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
+  const { data: isCommentModeAvailable } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_collaboration_mode,
+  })
 
   const handleModePointer = useCallback(() => {
     if (getNodesReadOnly())
@@ -45,8 +51,18 @@ export const useWorkflowMoveMode = () => {
     handleSelectionCancel()
   }, [getNodesReadOnly, handleSelectionCancel, setControlMode])
 
+  const handleModeComment = useCallback(() => {
+    if (getNodesReadOnly() || !isCommentModeAvailable)
+      return
+
+    setControlMode(ControlMode.Comment)
+    handleSelectionCancel()
+  }, [getNodesReadOnly, handleSelectionCancel, isCommentModeAvailable, setControlMode])
+
   return {
     handleModePointer,
     handleModeHand,
+    handleModeComment,
+    isCommentModeAvailable,
   }
 }

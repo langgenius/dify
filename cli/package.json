@@ -1,0 +1,74 @@
+{
+  "name": "@langgenius/difyctl",
+  "type": "module",
+  "version": "0.1.0-rc.1",
+  "description": "Dify command-line interface",
+  "difyctl": {
+    "channel": "rc",
+    "compat": {
+      "minDify": "1.14.0",
+      "maxDify": "1.15.0"
+    }
+  },
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "README.md",
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": "^22.22.1"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "bun bin/dev.js",
+    "test": "vp test",
+    "test:coverage": "vp test --coverage",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "type-check": "tsc",
+    "tree:gen": "bun scripts/generate-command-tree.ts",
+    "tree:check": "bun scripts/generate-command-tree.ts --check",
+    "prebuild": "pnpm tree:gen",
+    "predev": "pnpm tree:gen",
+    "pretest": "pnpm tree:gen",
+    "ci": "pnpm tree:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
+    "clean": "rm -rf dist node_modules/.cache",
+    "version:info": "bun scripts/print-buildinfo.ts",
+    "build:bin": "scripts/release-build.sh"
+  },
+  "dependencies": {
+    "@dify/contracts": "workspace:*",
+    "@napi-rs/keyring": "catalog:",
+    "cli-table3": "catalog:",
+    "eventsource-parser": "catalog:",
+    "js-yaml": "catalog:",
+    "ky": "catalog:",
+    "lockfile": "catalog:",
+    "open": "catalog:",
+    "ora": "catalog:",
+    "picocolors": "catalog:",
+    "std-semver": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@hono/node-server": "catalog:",
+    "@types/js-yaml": "catalog:",
+    "@types/lockfile": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "hono": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

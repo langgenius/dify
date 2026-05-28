@@ -6,9 +6,6 @@ import re
 import threading
 from collections.abc import Iterable
 
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelType
-
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAgentMessageEvent,
@@ -18,6 +15,8 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:
@@ -96,13 +95,14 @@ class AppGeneratorTTSPublisher:
                     message_content = message.event.chunk.delta.message.content
                     if not message_content:
                         continue
-                    if isinstance(message_content, str):
-                        self.msg_text += message_content
-                    elif isinstance(message_content, list):
-                        for content in message_content:
-                            if not isinstance(content, TextPromptMessageContent):
-                                continue
-                            self.msg_text += content.data
+                    match message_content:
+                        case str():
+                            self.msg_text += message_content
+                        case list():
+                            for content in message_content:
+                                if not isinstance(content, TextPromptMessageContent):
+                                    continue
+                                self.msg_text += content.data
                 elif isinstance(message.event, QueueTextChunkEvent):
                     self.msg_text += message.event.text
                 elif isinstance(message.event, QueueNodeSucceededEvent):

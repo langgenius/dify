@@ -132,7 +132,7 @@ export const buildResultRequestData = ({
   promptConfig?.prompt_variables.forEach((variable) => {
     const value = processedInputs[variable.key]
     if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
-      processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]
+      processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]!
       return
     }
 

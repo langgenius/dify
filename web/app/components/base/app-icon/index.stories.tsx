@@ -52,7 +52,7 @@ export const Sizes: Story = {
         {sizes.map(size => (
           <div key={size} className="flex flex-col items-center gap-2">
             <AppIcon {...args} size={size} icon="🚀" background="#E5DEFF" />
-            <span className="text-xs uppercase text-text-tertiary">{size}</span>
+            <span className="text-xs text-text-tertiary uppercase">{size}</span>
           </div>
         ))}
       </div>

@@ -67,7 +67,7 @@ describe('PluginTaskList', () => {
     it('should render empty container when no plugins', () => {
       const { container } = render(<PluginTaskList {...defaultProps} />)
       const wrapper = container.firstElementChild!
-      expect(wrapper).toBeInTheDocument()
+      expect(wrapper)!.toBeInTheDocument()
       expect(wrapper.children).toHaveLength(0)
     })
 
@@ -77,9 +77,9 @@ describe('PluginTaskList', () => {
       // Header contains the title text
       const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
       expect(headers).toHaveLength(1)
-      expect(headers[0].textContent).toContain('plugin.task.installing')
-      expect(screen.getByText('OpenAI')).toBeInTheDocument()
-      expect(screen.getByText('Anthropic')).toBeInTheDocument()
+      expect(headers[0]!.textContent).toContain('plugin.task.installing')
+      expect(screen.getByText('OpenAI'))!.toBeInTheDocument()
+      expect(screen.getByText('Anthropic'))!.toBeInTheDocument()
     })
 
     it('should render success section when success plugins exist', () => {
@@ -87,8 +87,8 @@ describe('PluginTaskList', () => {
 
       const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
       expect(headers).toHaveLength(1)
-      expect(headers[0].textContent).toContain('plugin.task.installed')
-      expect(screen.getByText('Google')).toBeInTheDocument()
+      expect(headers[0]!.textContent).toContain('plugin.task.installed')
+      expect(screen.getByText('Google'))!.toBeInTheDocument()
     })
 
     it('should render error section when error plugins exist', () => {
@@ -96,8 +96,8 @@ describe('PluginTaskList', () => {
 
       const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
       expect(headers).toHaveLength(1)
-      expect(headers[0].textContent).toContain('plugin.task.installedError')
-      expect(screen.getByText('DALLE')).toBeInTheDocument()
+      expect(headers[0]!.textContent).toContain('plugin.task.installedError')
+      expect(screen.getByText('DALLE'))!.toBeInTheDocument()
     })
 
     it('should render all three sections simultaneously', () => {
@@ -110,9 +110,9 @@ describe('PluginTaskList', () => {
         />,
       )
 
-      expect(screen.getByText('OpenAI')).toBeInTheDocument()
-      expect(screen.getByText('Google')).toBeInTheDocument()
-      expect(screen.getByText('DALLE')).toBeInTheDocument()
+      expect(screen.getByText('OpenAI'))!.toBeInTheDocument()
+      expect(screen.getByText('Google'))!.toBeInTheDocument()
+      expect(screen.getByText('DALLE'))!.toBeInTheDocument()
     })
   })
 
@@ -184,6 +184,37 @@ describe('PluginTaskList', () => {
       render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
 
       // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
+      // Running section has no headerAction and no onClearSingle
       expect(screen.queryByText(/plugin\.task\.clearAll/)).not.toBeInTheDocument()
     })
 
@@ -243,9 +274,9 @@ describe('PluginTaskList', () => {
 
       render(<PluginTaskList {...defaultProps} errorPlugins={multipleErrors} />)
 
-      expect(screen.getByText('PluginA')).toBeInTheDocument()
-      expect(screen.getByText('PluginB')).toBeInTheDocument()
-      expect(screen.getByText('PluginC')).toBeInTheDocument()
+      expect(screen.getByText('PluginA'))!.toBeInTheDocument()
+      expect(screen.getByText('PluginB'))!.toBeInTheDocument()
+      expect(screen.getByText('PluginC'))!.toBeInTheDocument()
     })
   })
 })

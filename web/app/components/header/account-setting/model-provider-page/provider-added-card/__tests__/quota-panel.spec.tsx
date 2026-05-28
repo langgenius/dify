@@ -1,5 +1,7 @@
+import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import QuotaPanel from '../quota-panel'
 
 let mockWorkspaceData: {
@@ -37,11 +39,9 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: mockTrialModels ? { trial_models: mockTrialModels } : undefined,
-  }),
-}))
+const renderQuotaPanel = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: mockTrialModels === undefined ? null : { trial_models: mockTrialModels as never },
+})
 
 vi.mock('../../hooks', () => ({
   useMarketplaceAllPlugins: () => ({
@@ -89,12 +89,12 @@ describe('QuotaPanel', () => {
     mockWorkspaceData = undefined
     mockWorkspaceIsPending = true
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('should show remaining credits and reset date', () => {
-    render(
+    renderQuotaPanel(
       <QuotaPanel
         providers={mockProviders}
       />,
@@ -108,7 +108,7 @@ describe('QuotaPanel', () => {
   it('should keep quota content during background refetch when cached workspace exists', () => {
     mockWorkspaceIsPending = true
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.getByText('70')).toBeInTheDocument()
@@ -121,14 +121,14 @@ describe('QuotaPanel', () => {
       next_credit_reset_date: '',
     }
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.getByText(/modelProvider\.card\.quotaExhausted/)).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 
   it('should open install modal when clicking an unsupported trial provider', () => {
-    render(<QuotaPanel providers={[]} />)
+    renderQuotaPanel(<QuotaPanel providers={[]} />)
 
     fireEvent.click(screen.getByText('openai'))
 
@@ -136,7 +136,7 @@ describe('QuotaPanel', () => {
   })
 
   it('should close install modal when provider becomes installed', async () => {
-    const { rerender } = render(<QuotaPanel providers={[]} />)
+    const { rerender } = renderQuotaPanel(<QuotaPanel providers={[]} />)
 
     fireEvent.click(screen.getByText('openai'))
     expect(screen.getByText('install modal')).toBeInTheDocument()
@@ -151,13 +151,13 @@ describe('QuotaPanel', () => {
   it('should tolerate missing trial model configuration', () => {
     mockTrialModels = undefined
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
   })
 
   it('should render installed custom providers without opening the install modal', () => {
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.getByLabelText(/modelAPI/)).toBeInTheDocument()
 
@@ -167,7 +167,7 @@ describe('QuotaPanel', () => {
   })
 
   it('should show the supported-model tooltip for installed non-custom providers', () => {
-    render(
+    renderQuotaPanel(
       <QuotaPanel providers={[
         {
           provider: 'langgenius/openai/openai',

@@ -591,9 +591,10 @@ describe('DebugWithSingleModel', () => {
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       // Verify Chat component is rendered
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
-      expect(screen.getByTestId('chat-input')).toBeInTheDocument()
-      expect(screen.getByTestId('send-button')).toBeInTheDocument()
+      // Verify Chat component is rendered
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-input'))!.toBeInTheDocument()
+      expect(screen.getByTestId('send-button'))!.toBeInTheDocument()
     })
 
     it('should render with custom checkCanSend prop', () => {
@@ -601,7 +602,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -620,7 +621,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      expect(mockSsePost.mock.calls[0][0]).toBe('apps/test-app-id/chat-messages')
+      expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
     })
 
     it('should prevent send when checkCanSend returns false', async () => {
@@ -666,7 +667,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.model_config.opening_statement).toBe('Hello!')
       expect(body.model_config.suggested_questions).toEqual(['Q1'])
     })
@@ -685,7 +686,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.model_config.opening_statement).toBe('')
       expect(body.model_config.suggested_questions).toEqual([])
     })
@@ -717,7 +718,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing model in provider list', () => {
@@ -735,7 +736,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -759,7 +760,8 @@ describe('DebugWithSingleModel', () => {
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       // Component should render successfully with filtered variables
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      // Component should render successfully with filtered variables
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle empty prompt variables', () => {
@@ -775,7 +777,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -784,7 +786,7 @@ describe('DebugWithSingleModel', () => {
     it('should map tool icons from collection list', () => {
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle empty tools list', () => {
@@ -802,7 +804,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing collection for tool', () => {
@@ -829,7 +831,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -843,7 +845,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing user profile', () => {
@@ -859,7 +861,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle null completion params', () => {
@@ -870,7 +872,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -940,7 +942,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.files).toEqual([])
     })
 
@@ -989,7 +991,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.files).toHaveLength(1)
     })
   })

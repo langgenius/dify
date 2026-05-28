@@ -1,9 +1,9 @@
 'use client'
 import type { CommonResponse } from '@/models/common'
 import type { DocType, FullDocumentDetail } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { modifyDocMetadata } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
 import { useDocumentContext } from '../../context'
@@ -75,7 +75,7 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
     setEditStatus(true)
   }
   const cancelEdit = () => {
-    setMetadataParams({ documentType: docType || '', metadata: { ...(docDetail?.doc_metadata || {}) } })
+    setMetadataParams({ documentType: docType || '', metadata: { ...docDetail?.doc_metadata } })
     setEditStatus(!docType)
     if (!docType)
       setShowDocTypes(true)

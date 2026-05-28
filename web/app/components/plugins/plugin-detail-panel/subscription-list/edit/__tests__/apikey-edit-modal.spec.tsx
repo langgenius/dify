@@ -47,7 +47,7 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: [], isLoading: false }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign((args: { type: string, message: string }) => mockToast(args), {
     success: (message: string) => mockToast({ type: 'success', message }),
     error: (message: string) => mockToast({ type: 'error', message }),

@@ -1,6 +1,8 @@
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import HTTPException
 
 import services
@@ -34,7 +36,7 @@ def unwrap(func):
 
 
 class TestMemberListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = MemberListApi()
         method = unwrap(api.get)
 
@@ -59,7 +61,7 @@ class TestMemberListApi:
         assert status == 200
         assert len(result["accounts"]) == 1
 
-    def test_get_no_tenant(self, app):
+    def test_get_no_tenant(self, app: Flask):
         api = MemberListApi()
         method = unwrap(api.get)
 
@@ -74,13 +76,20 @@ class TestMemberListApi:
 
 
 class TestMemberInviteEmailApi:
-    def test_invite_success(self, app):
+    @pytest.fixture(autouse=True)
+    def _mock_member_invite_lock(self):
+        with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
+            yield
+
+    def test_invite_success(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
         payload = {
@@ -93,21 +102,26 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
             result, status = method(api)
 
         assert status == 201
         assert result["result"] == "success"
 
-    def test_invite_limit_exceeded(self, app):
+    def test_invite_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = True
         features.workspace_members.is_available.return_value = False
 
         payload = {
@@ -119,17 +133,51 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api)
 
-    def test_invite_already_member(self, app):
+    def test_invite_billing_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = True
+        features.members.size = 9
+        features.members.limit = 10
+        features.workspace_members.enabled = False
+
+        payload = {
+            "emails": ["a@test.com", "b@test.com"],
+            "role": "normal",
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
+            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=2),
+            patch("controllers.console.workspace.members._count_current_members", return_value=9),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", True),
+        ):
+            with pytest.raises(WorkspaceMembersLimitExceeded):
+                method(api)
+
+    def test_invite_already_member(self, app: Flask):
+        api = MemberInviteEmailApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock(id="t1")
+        user = MagicMock(current_tenant=tenant)
+        features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
         payload = {
@@ -141,17 +189,20 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=0),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=AccountAlreadyInTenantError(),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
             result, status = method(api)
 
         assert result["invitation_results"][0]["status"] == "success"
 
-    def test_invite_invalid_role(self, app):
+    def test_invite_invalid_role(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -166,13 +217,15 @@ class TestMemberInviteEmailApi:
         assert status == 400
         assert result["code"] == "invalid-role"
 
-    def test_invite_generic_exception(self, app):
+    def test_invite_generic_exception(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
+        features.billing.enabled = False
+        features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
         payload = {
@@ -184,11 +237,14 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=Exception("boom"),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
             result, _ = method(api)
 
@@ -196,7 +252,7 @@ class TestMemberInviteEmailApi:
 
 
 class TestMemberCancelInviteApi:
-    def test_cancel_success(self, app):
+    def test_cancel_success(self, app: Flask):
         api = MemberCancelInviteApi()
         method = unwrap(api.delete)
 
@@ -216,7 +272,7 @@ class TestMemberCancelInviteApi:
         assert status == 200
         assert result["result"] == "success"
 
-    def test_cancel_not_found(self, app):
+    def test_cancel_not_found(self, app: Flask):
         api = MemberCancelInviteApi()
         method = unwrap(api.delete)
 
@@ -233,7 +289,7 @@ class TestMemberCancelInviteApi:
             with pytest.raises(HTTPException):
                 method(api, "x")
 
-    def test_cancel_cannot_operate_self(self, app):
+    def test_cancel_cannot_operate_self(self, app: Flask):
         api = MemberCancelInviteApi()
         method = unwrap(api.delete)
 
@@ -255,7 +311,7 @@ class TestMemberCancelInviteApi:
 
         assert status == 400
 
-    def test_cancel_no_permission(self, app):
+    def test_cancel_no_permission(self, app: Flask):
         api = MemberCancelInviteApi()
         method = unwrap(api.delete)
 
@@ -277,7 +333,7 @@ class TestMemberCancelInviteApi:
 
         assert status == 403
 
-    def test_cancel_member_not_in_tenant(self, app):
+    def test_cancel_member_not_in_tenant(self, app: Flask):
         api = MemberCancelInviteApi()
         method = unwrap(api.delete)
 
@@ -301,7 +357,7 @@ class TestMemberCancelInviteApi:
 
 
 class TestMemberUpdateRoleApi:
-    def test_update_success(self, app):
+    def test_update_success(self, app: Flask):
         api = MemberUpdateRoleApi()
         method = unwrap(api.put)
 
@@ -324,7 +380,7 @@ class TestMemberUpdateRoleApi:
 
         assert result["result"] == "success"
 
-    def test_update_invalid_role(self, app):
+    def test_update_invalid_role(self, app: Flask):
         api = MemberUpdateRoleApi()
         method = unwrap(api.put)
 
@@ -335,7 +391,7 @@ class TestMemberUpdateRoleApi:
 
         assert status == 400
 
-    def test_update_member_not_found(self, app):
+    def test_update_member_not_found(self, app: Flask):
         api = MemberUpdateRoleApi()
         method = unwrap(api.put)
 
@@ -354,7 +410,7 @@ class TestMemberUpdateRoleApi:
 
 
 class TestDatasetOperatorMemberListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetOperatorMemberListApi()
         method = unwrap(api.get)
 
@@ -381,7 +437,7 @@ class TestDatasetOperatorMemberListApi:
         assert status == 200
         assert len(result["accounts"]) == 1
 
-    def test_get_no_tenant(self, app):
+    def test_get_no_tenant(self, app: Flask):
         api = DatasetOperatorMemberListApi()
         method = unwrap(api.get)
 
@@ -396,7 +452,7 @@ class TestDatasetOperatorMemberListApi:
 
 
 class TestSendOwnerTransferEmailApi:
-    def test_send_success(self, app):
+    def test_send_success(self, app: Flask):
         api = SendOwnerTransferEmailApi()
         method = unwrap(api.post)
 
@@ -419,7 +475,7 @@ class TestSendOwnerTransferEmailApi:
 
         assert result["result"] == "success"
 
-    def test_send_ip_limit(self, app):
+    def test_send_ip_limit(self, app: Flask):
         api = SendOwnerTransferEmailApi()
         method = unwrap(api.post)
 
@@ -433,7 +489,7 @@ class TestSendOwnerTransferEmailApi:
             with pytest.raises(EmailSendIpLimitError):
                 method(api)
 
-    def test_send_not_owner(self, app):
+    def test_send_not_owner(self, app: Flask):
         api = SendOwnerTransferEmailApi()
         method = unwrap(api.post)
 
@@ -452,7 +508,7 @@ class TestSendOwnerTransferEmailApi:
 
 
 class TestOwnerTransferCheckApi:
-    def test_check_invalid_code(self, app):
+    def test_check_invalid_code(self, app: Flask):
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
@@ -477,7 +533,7 @@ class TestOwnerTransferCheckApi:
             with pytest.raises(EmailCodeError):
                 method(api)
 
-    def test_rate_limited(self, app):
+    def test_rate_limited(self, app: Flask):
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
@@ -498,7 +554,7 @@ class TestOwnerTransferCheckApi:
             with pytest.raises(OwnerTransferLimitError):
                 method(api)
 
-    def test_invalid_token(self, app):
+    def test_invalid_token(self, app: Flask):
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
@@ -520,7 +576,7 @@ class TestOwnerTransferCheckApi:
             with pytest.raises(InvalidTokenError):
                 method(api)
 
-    def test_invalid_email(self, app):
+    def test_invalid_email(self, app: Flask):
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
@@ -547,7 +603,7 @@ class TestOwnerTransferCheckApi:
 
 
 class TestOwnerTransferApi:
-    def test_transfer_self(self, app):
+    def test_transfer_self(self, app: Flask):
         api = OwnerTransfer()
         method = unwrap(api.post)
 
@@ -564,7 +620,7 @@ class TestOwnerTransferApi:
             with pytest.raises(CannotTransferOwnerToSelfError):
                 method(api, "1")
 
-    def test_invalid_token(self, app):
+    def test_invalid_token(self, app: Flask):
         api = OwnerTransfer()
         method = unwrap(api.post)
 
@@ -582,7 +638,7 @@ class TestOwnerTransferApi:
             with pytest.raises(InvalidTokenError):
                 method(api, "2")
 
-    def test_member_not_in_tenant(self, app):
+    def test_member_not_in_tenant(self, app: Flask):
         api = OwnerTransfer()
         method = unwrap(api.post)
 

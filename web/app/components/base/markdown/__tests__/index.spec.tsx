@@ -32,7 +32,7 @@ type CapturedProps = {
 const getLastWrapperProps = (): CapturedProps => {
   const calls = mockReactMarkdownWrapper.mock.calls
   const lastCall = calls[calls.length - 1]
-  return lastCall[0] as CapturedProps
+  return lastCall![0] as CapturedProps
 }
 
 describe('Markdown', () => {
@@ -42,19 +42,19 @@ describe('Markdown', () => {
 
   it('should render wrapper content', () => {
     render(<Markdown content="Hello World" />)
-    expect(screen.getByTestId('react-markdown-wrapper')).toHaveTextContent('Hello World')
+    expect(screen.getByTestId('react-markdown-wrapper'))!.toHaveTextContent('Hello World')
   })
 
   it('should apply default classes', () => {
     const { container } = render(<Markdown content="Test" />)
     const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv).toHaveClass('markdown-body', 'text-text-primary!')
+    expect(markdownDiv)!.toHaveClass('markdown-body', 'text-text-primary!')
   })
 
   it('should merge custom className with default classes', () => {
     const { container } = render(<Markdown content="Test" className="custom another" />)
     const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv).toHaveClass('markdown-body', 'text-text-primary!', 'custom', 'another')
+    expect(markdownDiv)!.toHaveClass('markdown-body', 'text-text-primary!', 'custom', 'another')
   })
 
   it('should not include undefined in className', () => {

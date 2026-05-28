@@ -1,6 +1,6 @@
 import type { Credential, ModelProvider } from '../../../declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useActivateCredential } from '../use-activate-credential'
 
 const mockMutate = vi.fn()
@@ -92,7 +92,7 @@ describe('useActivateCredential', () => {
       }),
     )
 
-    const [, callbacks] = mockMutate.mock.calls[0]
+    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
 
     act(() => {
       callbacks.onSuccess()
@@ -113,7 +113,7 @@ describe('useActivateCredential', () => {
 
     expect(result.current.selectedCredentialId).toBe('cred-2')
 
-    const [, callbacks] = mockMutate.mock.calls[0]
+    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
 
     act(() => {
       callbacks.onError()

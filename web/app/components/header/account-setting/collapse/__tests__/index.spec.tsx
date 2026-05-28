@@ -68,12 +68,12 @@ describe('Collapse', () => {
       expect(screen.queryByTestId('item-1')).not.toBeInTheDocument()
 
       // Click to open
-      fireEvent.click(screen.getByText('Test Title'))
+      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
       expect(screen.getByTestId('item-1')).toBeInTheDocument()
       expect(screen.getByTestId('item-2')).toBeInTheDocument()
 
       // Click to close
-      fireEvent.click(screen.getByText('Test Title'))
+      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
       expect(screen.queryByTestId('item-1')).not.toBeInTheDocument()
     })
 
@@ -89,7 +89,7 @@ describe('Collapse', () => {
       )
 
       // Act
-      fireEvent.click(screen.getByText('Test Title'))
+      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
       const item1 = screen.getByTestId('item-1')
       fireEvent.click(item1)
 
@@ -109,7 +109,7 @@ describe('Collapse', () => {
       )
 
       // Act
-      fireEvent.click(screen.getByText('Test Title'))
+      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
       const item1 = screen.getByTestId('item-1')
       fireEvent.click(item1)
 

@@ -22,7 +22,7 @@ export enum PluginSource {
   debugging = 'remote',
 }
 
-export type PluginToolDeclaration = {
+type PluginToolDeclaration = {
   identity: {
     author: string
     name: string
@@ -34,12 +34,12 @@ export type PluginToolDeclaration = {
   credentials_schema: ToolCredential[] // TODO
 }
 
-export type PluginEndpointDeclaration = {
+type PluginEndpointDeclaration = {
   settings: ToolCredential[]
   endpoints: EndpointItem[]
 }
 
-export type EndpointItem = {
+type EndpointItem = {
   path: string
   method: string
   hidden?: boolean
@@ -60,7 +60,7 @@ export type EndpointListItem = {
   hook_id: string
 }
 
-export type PluginDeclarationMeta = {
+type PluginDeclarationMeta = {
   version: string
   minimum_dify_version?: string
 }
@@ -96,14 +96,14 @@ export type PluginTriggerSubscriptionConstructor = {
   parameters: ParametersSchema[]
 }
 
-export type PluginTriggerDefinition = {
+type PluginTriggerDefinition = {
   events: TriggerEvent[]
   identity: Identity
   subscription_constructor: PluginTriggerSubscriptionConstructor
   subscription_schema: ParametersSchema[]
 }
 
-export type CredentialsSchema = {
+type CredentialsSchema = {
   name: string
   label: Record<Locale, string>
   description: Record<Locale, string>
@@ -117,7 +117,7 @@ export type CredentialsSchema = {
   placeholder: Record<Locale, string>
 }
 
-export type OauthSchema = {
+type OauthSchema = {
   client_schema: CredentialsSchema[]
   credentials_schema: CredentialsSchema[]
 }
@@ -352,7 +352,7 @@ export enum InstallStep {
   installFailed = 'failed',
 }
 
-export type GitHubAsset = {
+type GitHubAsset = {
   id: number
   name: string
   browser_download_url: string
@@ -496,7 +496,7 @@ export type PackageDependency = {
 
 export type Dependency = GitHubItemAndMarketPlaceDependency | PackageDependency
 
-export type Version = {
+type Version = {
   plugin_org: string
   plugin_name: string
   version: string
@@ -554,7 +554,7 @@ export type StrategyDetail = {
   features: AgentFeature[]
 }
 
-export type Identity = {
+type Identity = {
   author: string
   name: string
   label: Record<Locale, string>
@@ -564,7 +564,7 @@ export type Identity = {
   tags: string[]
 }
 
-export type StrategyDeclaration = {
+type StrategyDeclaration = {
   identity: Identity
   plugin_id: string
   strategies: StrategyDetail[]

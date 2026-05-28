@@ -1,7 +1,7 @@
 import type { Credential, CustomModel, ModelProvider } from '../../declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import CredentialItem from '../../model-auth/authorized/credential-item'
 
 type ApiKeySectionProps = {
@@ -31,12 +31,12 @@ function ApiKeySection({
   if (!credentials.length) {
     return (
       <div className="flex flex-col gap-2 p-2">
-        <div className="radius-lg bg-linear-to-r from-state-base-hover to-transparent p-4">
+        <div className="rounded-[10px] bg-linear-to-r from-state-base-hover to-transparent p-4">
           <div className="flex flex-col gap-1">
-            <div className="text-text-secondary system-sm-medium">
+            <div className="system-sm-medium text-text-secondary">
               {t('modelProvider.card.noApiKeysTitle', { ns: 'common' })}
             </div>
-            <div className="text-text-tertiary system-xs-regular">
+            <div className="system-xs-regular text-text-tertiary">
               {t('modelProvider.card.noApiKeysDescription', { ns: 'common' })}
             </div>
           </div>
@@ -56,7 +56,7 @@ function ApiKeySection({
   return (
     <div className="border-t border-t-divider-subtle">
       <div className="px-1">
-        <div className="pb-1 pl-7 pr-2 pt-3 text-text-tertiary system-xs-medium-uppercase">
+        <div className="pt-3 pr-2 pb-1 pl-7 system-xs-medium-uppercase text-text-tertiary">
           {t('modelProvider.auth.apiKeys', { ns: 'common' })}
         </div>
         <div className="max-h-[200px] overflow-y-auto">

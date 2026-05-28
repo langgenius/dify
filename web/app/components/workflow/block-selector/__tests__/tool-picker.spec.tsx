@@ -2,14 +2,13 @@ import type { ToolWithProvider } from '../../types'
 import type { ToolValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Tool } from '@/app/components/tools/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { createCustomCollection } from '@/service/tools'
@@ -25,11 +24,9 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 import { Theme } from '@/types/app'
-import { defaultSystemFeatures } from '@/types/feature'
 import ToolPicker from '../tool-picker'
 
 const mockNotify = vi.fn()
-const mockSetSystemFeatures = vi.fn()
 const mockInvalidateBuiltInTools = vi.fn()
 const mockInvalidateCustomTools = vi.fn()
 const mockInvalidateWorkflowTools = vi.fn()
@@ -39,7 +36,6 @@ const mockInstallPackageFromMarketPlace = vi.fn()
 const mockCheckInstalled = vi.fn()
 const mockRefreshPluginList = vi.fn()
 
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 const mockUseTags = vi.mocked(useTags)
@@ -53,10 +49,6 @@ const mockUseInvalidateAllCustomTools = vi.mocked(useInvalidateAllCustomTools)
 const mockUseInvalidateAllWorkflowTools = vi.mocked(useInvalidateAllWorkflowTools)
 const mockUseInvalidateAllMCPTools = vi.mocked(useInvalidateAllMCPTools)
 const mockUseFeaturedToolsRecommendations = vi.mocked(useFeaturedToolsRecommendations)
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -114,7 +106,7 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllMCPTools: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -313,27 +305,18 @@ const mcpTools = [
 ]
 
 const renderToolPicker = (props: Partial<React.ComponentProps<typeof ToolPicker>> = {}) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ToolPicker
-        disabled={false}
-        trigger={<button type="button">open-picker</button>}
-        isShow={false}
-        onShowChange={vi.fn()}
-        onSelect={vi.fn()}
-        onSelectMultiple={vi.fn()}
-        selectedTools={[createToolValue()]}
-        {...props}
-      />
-    </QueryClientProvider>,
+  return renderWithSystemFeatures(
+    <ToolPicker
+      disabled={false}
+      trigger={<button type="button">open-picker</button>}
+      isShow={false}
+      onShowChange={vi.fn()}
+      onSelect={vi.fn()}
+      onSelectMultiple={vi.fn()}
+      selectedTools={[createToolValue()]}
+      {...props}
+    />,
+    { systemFeatures: { enable_marketplace: true } },
   )
 }
 
@@ -341,13 +324,6 @@ describe('ToolPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockUseGlobalPublicStore.mockImplementation(selector => selector({
-      systemFeatures: {
-        ...defaultSystemFeatures,
-        enable_marketplace: true,
-      },
-      setSystemFeatures: mockSetSystemFeatures,
-    }))
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseTags.mockReturnValue({
@@ -400,15 +376,15 @@ describe('ToolPicker', () => {
 
     renderToolPicker({ onShowChange })
 
-    await user.click(screen.getByRole('button', { name: 'open-picker' }))
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    await user.click(screen.getByText('open-picker').closest('[role="button"]')!)
+    expect(onShowChange.mock.calls[0]?.[0]).toBe(true)
 
     renderToolPicker({
       disabled: true,
       onShowChange: disabledOnShowChange,
     })
 
-    await user.click(screen.getAllByRole('button', { name: 'open-picker' })[1]!)
+    await user.click(screen.getAllByText('open-picker')[1]!.closest('[role="button"]')!)
     expect(disabledOnShowChange).not.toHaveBeenCalled()
   })
 
@@ -479,12 +455,12 @@ describe('ToolPicker', () => {
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()
-    const { container } = renderToolPicker({
+    renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
     })
 
-    const addCustomToolButton = Array.from(container.querySelectorAll('button')).find((button) => {
+    const addCustomToolButton = Array.from(document.querySelectorAll('button')).find((button) => {
       return button.className.includes('bg-components-button-primary-bg')
     })
 

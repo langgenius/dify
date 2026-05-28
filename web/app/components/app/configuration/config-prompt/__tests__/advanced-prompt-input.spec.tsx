@@ -59,7 +59,7 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -208,7 +208,7 @@ describe('AdvancedPromptInput', () => {
 
     fireEvent.click(screen.getByText('open-advanced-tool-modal'))
 
-    const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0][0]
+    const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'existing_var' })).toBe(false)
     expect(mockToastError).toHaveBeenCalledWith('varKeyError.keyAlreadyExists')
 

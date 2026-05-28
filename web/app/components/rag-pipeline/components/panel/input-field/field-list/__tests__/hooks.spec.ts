@@ -23,7 +23,7 @@ vi.mock('../../../../../hooks/use-pipeline', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (...args: unknown[]) => mockToastNotify(...args),
   },
@@ -141,7 +141,7 @@ describe('useFieldList', () => {
         ])
       })
 
-      const updatedFields = onInputFieldsChange.mock.calls[0][0]
+      const updatedFields = onInputFieldsChange.mock.calls[0]![0]
       expect(updatedFields[0]).not.toHaveProperty('id')
       expect(updatedFields[0]).not.toHaveProperty('chosen')
       expect(updatedFields[0]).not.toHaveProperty('selected')
@@ -282,7 +282,7 @@ describe('useFieldList', () => {
         result.current.handleOpenInputFieldEditor()
       })
 
-      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
       const newField = createInputVar({ variable: 'new_var', label: 'New' })
 
       act(() => {
@@ -307,7 +307,7 @@ describe('useFieldList', () => {
         result.current.handleOpenInputFieldEditor()
       })
 
-      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
       const duplicateField = createInputVar({ variable: 'existing_var' })
 
       act(() => {
@@ -336,7 +336,7 @@ describe('useFieldList', () => {
         result.current.handleOpenInputFieldEditor('old_name')
       })
 
-      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
+      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
       const updatedField = createInputVar({ variable: 'new_name' })
 
       act(() => {

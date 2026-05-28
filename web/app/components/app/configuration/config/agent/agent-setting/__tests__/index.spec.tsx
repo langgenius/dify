@@ -12,7 +12,7 @@ vi.mock('ahooks', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/ui/slider', () => ({
+vi.mock('@langgenius/dify-ui/slider', () => ({
   Slider: (props: { className?: string, min?: number, max?: number, value: number, onValueChange: (value: number) => void }) => (
     <input
       type="range"

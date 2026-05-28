@@ -1,12 +1,13 @@
 'use client'
 
 import type { PluginDetail } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -15,7 +16,6 @@ import { useAppContext } from '@/context/app-context'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useAllToolProviders } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { AutoUpdateLine } from '../../../base/icons/src/vender/system'
 import Verified from '../../base/badges/verified'
@@ -154,7 +154,7 @@ const DetailHeader = ({
           {/* Title Row */}
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+            {verified && !isReadmeView && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
 
             {/* Version Picker */}
             {!!version && (
@@ -176,7 +176,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="i-ri-arrow-left-right-line ml-1 h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -189,7 +189,6 @@ const DetailHeader = ({
             {isAutoUpgradeEnabled && !isReadmeView && (
               <Tooltip>
                 <TooltipTrigger
-                  delay={0}
                   render={(
                     <div>
                       <Badge className="mr-1 cursor-pointer px-1">
@@ -251,7 +250,7 @@ const DetailHeader = ({
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
-              <span aria-hidden className="i-ri-close-line h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
         )}
@@ -269,7 +268,7 @@ const DetailHeader = ({
       )}
 
       {/* Description */}
-      {!isReadmeView && <Description className="mb-2 mt-3 h-auto" text={description[locale]} descriptionLineRows={2} />}
+      {!isReadmeView && <Description className="mt-3 mb-2 h-auto" text={description[locale]} descriptionLineRows={2} />}
 
       {/* Plugin Auth for Tools */}
       {category === PluginCategoryEnum.tool && !isReadmeView && (

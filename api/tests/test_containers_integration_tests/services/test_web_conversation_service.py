@@ -6,12 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account
+from models import Account, App
 from models.enums import ConversationFromSource
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from services.web_conversation_service import WebConversationService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -77,23 +77,23 @@ class TestWebConversationService:
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers: Session, app):
+    def _create_test_end_user(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test end user for testing.
 

@@ -8,7 +8,7 @@ vi.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
   Trans: ({ i18nKey, components }: { i18nKey: string, components: Record<string, React.ReactNode> }) => (
-    <span data-testid="trans-component" data-i18n-key={i18nKey}>
+    <span>
       {i18nKey}
       {components.shareLink}
       {components.testLink}
@@ -54,8 +54,7 @@ describe('EmptyElement', () => {
       const appDetail = createMockAppDetail(AppModeEnum.CHAT)
       render(<EmptyElement appDetail={appDetail} />)
 
-      const transComponent = screen.getByTestId('trans-component')
-      expect(transComponent).toHaveAttribute('data-i18n-key', 'table.empty.element.content')
+      expect(screen.getByText('table.empty.element.content', { exact: false })).toBeInTheDocument()
     })
 
     it('should render ThreeDotsIcon SVG', () => {

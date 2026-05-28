@@ -63,14 +63,14 @@ export const AuthorizedItem = ({
             {
               model?.model && (
                 <ModelIcon
-                  className="mr-1 h-5 w-5 shrink-0"
+                  className="mr-1 size-5 shrink-0"
                   provider={provider}
                   modelName={model.model}
                 />
               )
             }
             <div
-              className="system-md-medium mx-1 grow truncate text-text-primary"
+              className="mx-1 grow truncate system-md-medium text-text-primary"
               title={title ?? model?.model}
             >
               {title ?? model?.model}

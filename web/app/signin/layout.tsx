@@ -1,12 +1,13 @@
 'use client'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 
 import useDocumentTitle from '@/hooks/use-document-title'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import Header from './_header'
 
 export default function SignInLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   return (
     <>
@@ -19,7 +20,7 @@ export default function SignInLayout({ children }: any) {
             </div>
           </div>
           {systemFeatures.branding.enabled === false && (
-            <div className="system-xs-regular px-8 py-6 text-text-tertiary">
+            <div className="px-8 py-6 system-xs-regular text-text-tertiary">
               ©
               {' '}
               {new Date().getFullYear()}

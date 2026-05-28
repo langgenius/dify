@@ -167,12 +167,12 @@ describe('useSingleRunFormParams', () => {
       expect.objectContaining({ variable: 'start-node.answer' }),
     ])
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0].inputs).toEqual([
+    expect(result.current.forms[0]!.inputs).toEqual([
       createInputVar('start-node.answer'),
       createInputVar('tool-a.result'),
       createInputVar('start-node.answer'),
     ])
-    expect(result.current.forms[0].values).toEqual({ question: 'hello' })
+    expect(result.current.forms[0]!.values).toEqual({ question: 'hello' })
     expect(result.current.allVarObject).toEqual({
       'start-node.answer@@@tool-a@@@0': {
         inSingleRunPassedKey: 'passed_key',
@@ -201,7 +201,7 @@ describe('useSingleRunFormParams', () => {
     }))
 
     act(() => {
-      result.current.forms[0].onChange({ retry: true })
+      result.current.forms[0]!.onChange({ retry: true })
     })
 
     expect(setRunInputData).toHaveBeenCalledWith({ retry: true })

@@ -65,15 +65,15 @@ describe('useWorkflowTemplate', () => {
       },
     ])
     expect(generateNewNodeCalls).toHaveLength(3)
-    expect(generateNewNodeCalls[0].data).toMatchObject({
+    expect(generateNewNodeCalls[0]!.data).toMatchObject({
       type: 'start',
       title: 'workflow.blocks.start',
     })
-    expect(generateNewNodeCalls[1].data).toMatchObject({
+    expect(generateNewNodeCalls[1]!.data).toMatchObject({
       type: 'llm',
       title: 'workflow.blocks.llm',
     })
-    expect(generateNewNodeCalls[2].data).toMatchObject({
+    expect(generateNewNodeCalls[2]!.data).toMatchObject({
       type: 'answer',
       title: 'workflow.blocks.answer',
       answer: '{{#llm.text#}}',

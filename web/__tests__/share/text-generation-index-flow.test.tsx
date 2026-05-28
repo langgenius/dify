@@ -1,6 +1,7 @@
 import type { AccessMode } from '@/models/access-control'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import TextGeneration from '@/app/components/share/text-generation'
 
 const useSearchParamsMock = vi.fn(() => new URLSearchParams())
@@ -117,7 +118,7 @@ vi.mock('@/service/share', async () => {
 const mockSystemFeatures = {
   branding: {
     enabled: false,
-    workspace_logo: null,
+    workspace_logo: '',
   },
 }
 
@@ -170,11 +171,6 @@ const mockWebAppState = {
   webAppAccessMode: 'public' as AccessMode,
 }
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: typeof mockSystemFeatures }) => unknown) =>
-    selector({ systemFeatures: mockSystemFeatures }),
-}))
-
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),
 }))
@@ -189,7 +185,7 @@ describe('TextGeneration', () => {
   })
 
   it('should switch between create, batch, and saved tabs after app state loads', async () => {
-    render(<TextGeneration />)
+    renderWithSystemFeatures(<TextGeneration />, { systemFeatures: mockSystemFeatures })
 
     await waitFor(() => {
       expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
@@ -212,7 +208,7 @@ describe('TextGeneration', () => {
   })
 
   it('should wire single-run stop control and clear it when batch execution starts', async () => {
-    render(<TextGeneration />)
+    renderWithSystemFeatures(<TextGeneration />, { systemFeatures: mockSystemFeatures })
 
     await waitFor(() => {
       expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()

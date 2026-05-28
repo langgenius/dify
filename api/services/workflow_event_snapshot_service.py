@@ -9,15 +9,12 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.task_entities import (
+    HumanInputRequiredResponse,
     MessageReplaceStreamResponse,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
@@ -26,6 +23,14 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import PauseReasonType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from models.human_input import HumanInputForm
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
@@ -59,8 +64,10 @@ def build_workflow_event_stream(
     tenant_id: str,
     app_id: str,
     session_maker: sessionmaker[Session],
+    human_input_surface: HumanInputSurface | None = None,
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
+    close_on_pause: bool = True,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -115,13 +122,15 @@ def build_workflow_event_stream(
                     message_context=message_context,
                     pause_entity=pause_entity,
                     resumption_context=resumption_context,
+                    session_maker=session_maker,
+                    human_input_surface=human_input_surface,
                 )
 
                 for event in snapshot_events:
                     last_msg_time = time.time()
                     last_ping_time = last_msg_time
                     yield event
-                    if _is_terminal_event(event, include_paused=True):
+                    if _is_terminal_event(event, close_on_pause=close_on_pause):
                         return
 
                 while True:
@@ -146,7 +155,7 @@ def build_workflow_event_stream(
                     last_msg_time = time.time()
                     last_ping_time = last_msg_time
                     yield event
-                    if _is_terminal_event(event, include_paused=True):
+                    if _is_terminal_event(event, close_on_pause=close_on_pause):
                         return
             finally:
                 buffer_state.stop_event.set()
@@ -207,6 +216,8 @@ def _build_snapshot_events(
     message_context: MessageContext | None,
     pause_entity: WorkflowPauseEntity | None,
     resumption_context: WorkflowResumptionContext | None,
+    session_maker: sessionmaker[Session] | None = None,
+    human_input_surface: HumanInputSurface | None = None,
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
 
@@ -241,12 +252,24 @@ def _build_snapshot_events(
             events.append(node_finished)
 
     if workflow_run.status == WorkflowExecutionStatus.PAUSED and pause_entity is not None:
+        for human_input_event in _build_human_input_required_events(
+            workflow_run_id=workflow_run.id,
+            task_id=task_id,
+            pause_entity=pause_entity,
+            session_maker=session_maker,
+            human_input_surface=human_input_surface,
+        ):
+            _apply_message_context(human_input_event, message_context)
+            events.append(human_input_event)
+
         pause_event = _build_pause_event(
             workflow_run=workflow_run,
             workflow_run_id=workflow_run.id,
             task_id=task_id,
             pause_entity=pause_entity,
             resumption_context=resumption_context,
+            session_maker=session_maker,
+            human_input_surface=human_input_surface,
         )
         if pause_event is not None:
             _apply_message_context(pause_event, message_context)
@@ -314,6 +337,97 @@ def _build_node_started_event(
     return response.to_ignore_detail_dict()
 
 
+def _build_human_input_required_events(
+    *,
+    workflow_run_id: str,
+    task_id: str,
+    pause_entity: WorkflowPauseEntity,
+    session_maker: sessionmaker[Session] | None,
+    human_input_surface: HumanInputSurface | None,
+) -> list[dict[str, Any]]:
+    reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
+    human_input_form_ids = [
+        form_id
+        for reason in reasons
+        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
+        for form_id in [reason.get("form_id")]
+        if isinstance(form_id, str)
+    ]
+
+    expiration_times_by_form_id: dict[str, int] = {}
+    display_in_ui_by_form_id: dict[str, bool] = {}
+    form_tokens_by_form_id: dict[str, str] = {}
+    if human_input_form_ids and session_maker is not None:
+        stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
+            HumanInputForm.id.in_(human_input_form_ids)
+        )
+        with session_maker() as session:
+            for form_id, expiration_time, form_definition in session.execute(stmt):
+                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                try:
+                    definition_payload = json.loads(form_definition) if form_definition else {}
+                except (TypeError, json.JSONDecodeError):
+                    definition_payload = {}
+                display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
+            form_tokens_by_form_id = load_form_tokens_by_form_id(
+                human_input_form_ids,
+                session=session,
+                surface=human_input_surface,
+            )
+
+    events: list[dict[str, Any]] = []
+    for reason in reasons:
+        if reason.get("TYPE") != PauseReasonType.HUMAN_INPUT_REQUIRED:
+            continue
+
+        form_id_raw = reason.get("form_id")
+        node_id_raw = reason.get("node_id")
+        node_title_raw = reason.get("node_title")
+        form_content_raw = reason.get("form_content")
+        if not isinstance(form_id_raw, str):
+            continue
+        if not isinstance(node_id_raw, str):
+            continue
+        if not isinstance(node_title_raw, str):
+            continue
+        if not isinstance(form_content_raw, str):
+            continue
+        form_id = form_id_raw
+        node_id = node_id_raw
+        node_title = node_title_raw
+        form_content = form_content_raw
+
+        inputs = reason.get("inputs")
+        actions = reason.get("actions")
+        resolved_default_values = reason.get("resolved_default_values")
+
+        expiration_time = expiration_times_by_form_id.get(form_id)
+        if expiration_time is None:
+            continue
+
+        response = HumanInputRequiredResponse(
+            task_id=task_id,
+            workflow_run_id=workflow_run_id,
+            data=HumanInputRequiredResponse.Data(
+                form_id=form_id,
+                node_id=node_id,
+                node_title=node_title,
+                form_content=form_content,
+                inputs=inputs if isinstance(inputs, list) else [],
+                actions=actions if isinstance(actions, list) else [],
+                display_in_ui=display_in_ui_by_form_id.get(form_id, False),
+                form_token=form_tokens_by_form_id.get(form_id),
+                resolved_default_values=(resolved_default_values if isinstance(resolved_default_values, dict) else {}),
+                expiration_time=expiration_time,
+            ),
+        )
+        payload = response.model_dump(mode="json")
+        payload["event"] = response.event.value
+        events.append(payload)
+
+    return events
+
+
 def _build_node_finished_event(
     *,
     workflow_run_id: str,
@@ -356,6 +470,8 @@ def _build_pause_event(
     task_id: str,
     pause_entity: WorkflowPauseEntity,
     resumption_context: WorkflowResumptionContext | None,
+    session_maker: sessionmaker[Session] | None,
+    human_input_surface: HumanInputSurface | None = None,
 ) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
@@ -365,6 +481,36 @@ def _build_pause_event(
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
 
     reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
+    human_input_form_ids = [
+        form_id
+        for reason in reasons
+        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
+        for form_id in [reason.get("form_id")]
+        if isinstance(form_id, str)
+    ]
+    form_tokens_by_form_id: dict[str, str] = {}
+    expiration_times_by_form_id: dict[str, int] = {}
+    if human_input_form_ids and session_maker is not None:
+        with session_maker() as session:
+            form_tokens_by_form_id = load_form_tokens_by_form_id(
+                human_input_form_ids,
+                session=session,
+                surface=human_input_surface,
+            )
+            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
+                HumanInputForm.id.in_(human_input_form_ids)
+            )
+            for row in session.execute(stmt):
+                form_id, expiration_time, *_rest = row
+                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+        # Reconnect paths must preserve the same pause-reason contract as live streams;
+        # otherwise clients see schema drift after resume.
+        reasons = enrich_human_input_pause_reasons(
+            reasons,
+            form_tokens_by_form_id=form_tokens_by_form_id,
+            expiration_times_by_form_id=expiration_times_by_form_id,
+        )
+
     response = WorkflowPauseStreamResponse(
         task_id=task_id,
         workflow_run_id=workflow_run_id,
@@ -449,12 +595,19 @@ def _parse_event_message(message: bytes) -> Mapping[str, Any] | None:
     return event
 
 
-def _is_terminal_event(event: Mapping[str, Any] | str, include_paused=False) -> bool:
+def _is_terminal_event(
+    event: Mapping[str, Any] | str,
+    close_on_pause: bool = True,
+    *,
+    include_paused: bool | None = None,
+) -> bool:
+    if include_paused is not None:
+        close_on_pause = include_paused
     if not isinstance(event, Mapping):
         return False
     event_type = event.get("event")
     if event_type == StreamEvent.WORKFLOW_FINISHED.value:
         return True
-    if include_paused:
+    if close_on_pause:
         return event_type == StreamEvent.WORKFLOW_PAUSED.value
     return False

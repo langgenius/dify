@@ -3,12 +3,12 @@ import type { ChatConfig, ChatItem, Feedback } from '../types'
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n-config'
 import type { AppData, ConversationItem } from '@/models/share'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -113,7 +113,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     })
   }, [setConversationIdInfo])
   const allowResetChat = !conversationId
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '', [appId, conversationIdInfo, userId, conversationId])
+  const currentConversationId = useMemo(() => conversationId || conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']

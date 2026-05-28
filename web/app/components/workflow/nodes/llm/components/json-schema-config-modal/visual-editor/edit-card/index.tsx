@@ -2,13 +2,13 @@ import type { FC } from 'react'
 import type { SchemaEnumType } from '../../../../types'
 import type { AdvancedOptionsType } from './advanced-options'
 import type { TypeItem } from './type-selector'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useUnmount } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { cn } from '@/utils/classnames'
 import { ArrayType, Type } from '../../../../types'
 import { useMittContext } from '../context'
 import { useVisualEditorStore } from '../store'
@@ -218,7 +218,7 @@ const EditCard: FC<EditCardProps> = ({
 
   return (
     <div className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4">
-      <div className="flex h-6 items-center pl-1 pr-0.5">
+      <div className="flex h-6 items-center pr-0.5 pl-1">
         <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
@@ -232,11 +232,10 @@ const EditCard: FC<EditCardProps> = ({
             currentValue={currentFields.type}
             items={maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS}
             onSelect={handleTypeChange}
-            popupClassName="z-1000"
           />
           {
             currentFields.required && (
-              <div className="system-2xs-medium-uppercase px-1 py-0.5 text-text-warning">
+              <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
                 {t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}
               </div>
             )
@@ -269,7 +268,7 @@ const EditCard: FC<EditCardProps> = ({
         <div className={cn('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
-            className="system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder"
+            className="h-4 w-full p-0 system-xs-regular text-text-tertiary caret-[#295EFF] outline-hidden placeholder:system-xs-regular placeholder:text-text-placeholder"
             placeholder={t('nodes.llm.jsonSchema.descriptionPlaceholder', { ns: 'workflow' })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}

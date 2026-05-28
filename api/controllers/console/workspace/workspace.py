@@ -1,8 +1,9 @@
 import logging
+from datetime import datetime
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource, fields, marshal
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
@@ -15,6 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -26,9 +28,10 @@ from controllers.console.wraps import (
 )
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
-from libs.helper import TimestampField
+from fields.base import ResponseModel
+from libs.helper import TimestampField, to_timestamp
 from libs.login import current_account_with_tenant, login_required
-from models.account import Tenant, TenantStatus
+from models.account import Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -37,7 +40,6 @@ from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkspaceListQuery(BaseModel):
@@ -58,14 +60,50 @@ class WorkspaceInfoPayload(BaseModel):
     name: str
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class TenantInfoResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    plan: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+    role: str | None = None
+    in_trial: bool | None = None
+    trial_end_reason: str | None = None
+    custom_config: dict | None = None
+    trial_credits: int | None = None
+    trial_credits_used: int | None = None
+    next_credit_reset_date: int | None = None
+
+    @field_validator("plan", "status", "trial_end_reason", mode="before")
+    @classmethod
+    def _normalize_enum_like(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None):
+        return to_timestamp(value)
 
 
-reg(WorkspaceListQuery)
-reg(SwitchWorkspacePayload)
-reg(WorkspaceCustomConfigPayload)
-reg(WorkspaceInfoPayload)
+class WorkspacePermissionResponse(ResponseModel):
+    workspace_id: str
+    allow_member_invite: bool
+    allow_owner_transfer: bool
+
+
+register_schema_models(
+    console_ns,
+    WorkspaceListQuery,
+    SwitchWorkspacePayload,
+    WorkspaceCustomConfigPayload,
+    WorkspaceInfoPayload,
+    TenantInfoResponse,
+)
+register_response_schema_models(console_ns, WorkspacePermissionResponse)
 
 provider_fields = {
     "provider_name": fields.String,
@@ -128,10 +166,10 @@ class TenantListApi(Resource):
                 if tenant_plan:
                     plan = tenant_plan["plan"] or CloudPlan.SANDBOX
                 else:
-                    features = FeatureService.get_features(tenant.id)
+                    features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
                     plan = features.billing.subscription.plan or CloudPlan.SANDBOX
             elif not is_enterprise_only:
-                features = FeatureService.get_features(tenant.id)
+                features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
                 plan = features.billing.subscription.plan or CloudPlan.SANDBOX
 
             # Create a dictionary with tenant attributes
@@ -180,7 +218,7 @@ class TenantApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(tenant_fields)
+    @console_ns.response(200, "Success", console_ns.models[TenantInfoResponse.__name__])
     def post(self):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
@@ -200,7 +238,13 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        return WorkspaceService.get_tenant_info(tenant), 200
+        return (
+            TenantInfoResponse.model_validate(
+                WorkspaceService.get_tenant_info(tenant),
+                from_attributes=True,
+            ).model_dump(mode="json"),
+            200,
+        )
 
 
 @console_ns.route("/workspaces/switch")
@@ -240,8 +284,10 @@ class CustomConfigWorkspaceApi(Resource):
         args = WorkspaceCustomConfigPayload.model_validate(payload)
         tenant = db.get_or_404(Tenant, current_tenant_id)
 
-        custom_config_dict = {
-            "remove_webapp_brand": args.remove_webapp_brand,
+        custom_config_dict: TenantCustomConfigDict = {
+            "remove_webapp_brand": args.remove_webapp_brand
+            if args.remove_webapp_brand is not None
+            else tenant.custom_config_dict.get("remove_webapp_brand", False),
             "replace_webapp_logo": args.replace_webapp_logo
             if args.replace_webapp_logo is not None
             else tenant.custom_config_dict.get("replace_webapp_logo"),
@@ -280,7 +326,7 @@ class WebappLogoWorkspaceApi(Resource):
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.read(),
+                content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=current_user,
             )
@@ -318,6 +364,7 @@ class WorkspaceInfoApi(Resource):
 class WorkspacePermissionApi(Resource):
     """Get workspace permissions for the current workspace."""
 
+    @console_ns.response(200, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

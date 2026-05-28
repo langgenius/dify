@@ -2,6 +2,7 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import opendal
 from dotenv import dotenv_values
@@ -19,7 +20,7 @@ def _get_opendal_kwargs(*, scheme: str, env_file_path: str = ".env", prefix: str
         if key.startswith(config_prefix):
             kwargs[key[len(config_prefix) :].lower()] = value
 
-    file_env_vars: dict = dotenv_values(env_file_path) or {}
+    file_env_vars: dict[str, Any] = dotenv_values(env_file_path) or {}
     for key, value in file_env_vars.items():
         if key.startswith(config_prefix) and key[len(config_prefix) :].lower() not in kwargs and value:
             kwargs[key[len(config_prefix) :].lower()] = value

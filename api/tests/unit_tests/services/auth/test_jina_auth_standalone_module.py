@@ -4,6 +4,7 @@ import importlib.util
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from unittest.mock import MagicMock
 
 import httpx
@@ -30,8 +31,8 @@ def jina_module() -> ModuleType:
     return module
 
 
-def _credentials(api_key: str | None = "test_api_key_123", auth_type: str = "bearer") -> dict:
-    config: dict = {} if api_key is None else {"api_key": api_key}
+def _credentials(api_key: str | None = "test_api_key_123", auth_type: str = "bearer") -> dict[str, Any]:
+    config: dict[str, Any] = {} if api_key is None else {"api_key": api_key}
     return {"auth_type": auth_type, "config": config}
 
 
@@ -47,7 +48,7 @@ def test_init_rejects_invalid_auth_type(jina_module: ModuleType) -> None:
 
 
 @pytest.mark.parametrize("credentials", [{"auth_type": "bearer", "config": {}}, {"auth_type": "bearer"}])
-def test_init_requires_api_key(jina_module: ModuleType, credentials: dict) -> None:
+def test_init_requires_api_key(jina_module: ModuleType, credentials: dict[str, Any]) -> None:
     with pytest.raises(ValueError, match="No API key provided"):
         jina_module.JinaAuth(credentials)
 

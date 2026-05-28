@@ -4,12 +4,12 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -29,6 +29,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
@@ -75,6 +76,7 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/completion-messages")
@@ -155,6 +157,7 @@ class CompletionStopApi(Resource):
             404: "Task not found",
         }
     )
+    @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running completion task."""
@@ -254,6 +257,7 @@ class ChatStopApi(Resource):
             404: "Task not found",
         }
     )
+    @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running chat message generation."""

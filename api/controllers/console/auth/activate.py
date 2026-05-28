@@ -1,8 +1,9 @@
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
@@ -10,8 +11,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
 from services.account_service import RegisterService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ActivateCheckQuery(BaseModel):
@@ -39,8 +38,29 @@ class ActivatePayload(BaseModel):
         return timezone(value)
 
 
-for model in (ActivateCheckQuery, ActivatePayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class ActivationResponse(BaseModel):
+    result: str = Field(description="Operation result")
+
+
+class ActivationCheckData(BaseModel):
+    workspace_name: str | None
+    workspace_id: str | None
+    email: str | None
+
+
+class ActivationCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether token is valid")
+    data: ActivationCheckData | None = Field(default=None, description="Activation data if valid")
+
+
+register_schema_models(
+    console_ns,
+    ActivateCheckQuery,
+    ActivatePayload,
+    ActivationCheckData,
+    ActivationCheckResponse,
+    ActivationResponse,
+)
 
 
 @console_ns.route("/activate/check")
@@ -51,16 +71,10 @@ class ActivateCheckApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.model(
-            "ActivationCheckResponse",
-            {
-                "is_valid": fields.Boolean(description="Whether token is valid"),
-                "data": fields.Raw(description="Activation data if valid"),
-            },
-        ),
+        console_ns.models[ActivationCheckResponse.__name__],
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
 
         workspaceId = args.workspace_id
         token = args.token
@@ -95,12 +109,7 @@ class ActivateApi(Resource):
     @console_ns.response(
         200,
         "Account activated successfully",
-        console_ns.model(
-            "ActivationResponse",
-            {
-                "result": fields.String(description="Operation result"),
-            },
-        ),
+        console_ns.models[ActivationResponse.__name__],
     )
     @console_ns.response(400, "Already activated or invalid token")
     def post(self):

@@ -1,7 +1,6 @@
-import json
 import logging
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 from yarl import URL
@@ -10,6 +9,7 @@ from configs import dify_config
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
+from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -21,13 +21,13 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolParameter,
     ToolProviderType,
+    emoji_icon_adapter,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -48,53 +48,63 @@ class ToolTransformService:
             URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
         )
 
-        if provider_type == ToolProviderType.BUILT_IN:
-            return str(url_prefix / "builtin" / provider_name / "icon")
-        elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
-            try:
-                if isinstance(icon, str):
-                    return json.loads(icon)
+        match provider_type:
+            case ToolProviderType.BUILT_IN:
+                return str(url_prefix / "builtin" / provider_name / "icon")
+            case ToolProviderType.API | ToolProviderType.WORKFLOW:
+                try:
+                    if isinstance(icon, str):
+                        parsed = emoji_icon_adapter.validate_json(icon)
+                        return {"background": parsed["background"], "content": parsed["content"]}
+                    return {"background": icon["background"], "content": icon["content"]}
+                except (ValueError, ValidationError, KeyError):
+                    return {"background": "#252525", "content": "\ud83d\ude01"}
+            case ToolProviderType.MCP:
+                if isinstance(icon, Mapping):
+                    return {"background": icon.get("background", ""), "content": icon.get("content", "")}
                 return icon
-            except (json.JSONDecodeError, ValueError):
-                return {"background": "#252525", "content": "\ud83d\ude01"}
-        elif provider_type == ToolProviderType.MCP:
-            return icon
-        return ""
+            case ToolProviderType.PLUGIN | ToolProviderType.APP | ToolProviderType.DATASET_RETRIEVAL:
+                return ""
+            case _:
+                return ""
 
     @staticmethod
-    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity, PluginDatasourceProviderEntity]):
+    def repack_provider(
+        tenant_id: str, provider: dict[str, Any] | ToolProviderApiEntity | PluginDatasourceProviderEntity
+    ):
         """
         repack provider
 
         :param tenant_id: the tenant id
         :param provider: the provider dict
         """
-        if isinstance(provider, dict) and "icon" in provider:
-            provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
-            )
-        elif isinstance(provider, ToolProviderApiEntity):
-            if provider.plugin_id:
-                if isinstance(provider.icon, str):
-                    provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
-                if isinstance(provider.icon_dark, str) and provider.icon_dark:
-                    provider.icon_dark = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.icon_dark
-                    )
-            else:
-                provider.icon = ToolTransformService.get_tool_provider_icon_url(
-                    provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+        match provider:
+            case dict() if "icon" in provider:
+                provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
+                    provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
                 )
-                if provider.icon_dark:
-                    provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
-                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+            case ToolProviderApiEntity():
+                if provider.plugin_id:
+                    if isinstance(provider.icon, str):
+                        provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
+                    if isinstance(provider.icon_dark, str) and provider.icon_dark:
+                        provider.icon_dark = PluginService.get_plugin_icon_url(
+                            tenant_id=tenant_id, filename=provider.icon_dark
+                        )
+                else:
+                    provider.icon = ToolTransformService.get_tool_provider_icon_url(
+                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
                     )
-        elif isinstance(provider, PluginDatasourceProviderEntity):
-            if provider.plugin_id:
-                if isinstance(provider.declaration.identity.icon, str):
-                    provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.declaration.identity.icon
-                    )
+                    if provider.icon_dark:
+                        provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
+                            provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+                        )
+            case PluginDatasourceProviderEntity():
+                if provider.plugin_id:
+                    if isinstance(provider.declaration.identity.icon, str):
+                        provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
+                            tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                        )
 
     @classmethod
     def builtin_provider_to_user_provider(
@@ -419,7 +429,7 @@ class ToolTransformService:
 
     @staticmethod
     def convert_builtin_provider_to_credential_entity(
-        provider: BuiltinToolProvider, credentials: dict
+        provider: BuiltinToolProvider, credentials: dict[str, Any]
     ) -> ToolProviderCredentialApiEntity:
         return ToolProviderCredentialApiEntity(
             id=provider.id,

@@ -88,7 +88,7 @@ export const buildInitialFeatures = (
       },
       enabled: !!(fileUpload?.enabled || imageUpload?.enabled),
       allowed_file_types: fileUpload?.allowed_file_types || [SupportUploadFileTypes.image],
-      allowed_file_extensions: fileUpload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+      allowed_file_extensions: fileUpload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image]!.map(ext => `.${ext}`),
       allowed_file_upload_methods: fileUpload?.allowed_file_upload_methods || imageUpload?.transfer_methods || [TransferMethod.local_file, TransferMethod.remote_url],
       number_limits: fileUpload?.number_limits || imageUpload?.number_limits || 3,
       fileUploadConfig: fileUploadConfigResponse,

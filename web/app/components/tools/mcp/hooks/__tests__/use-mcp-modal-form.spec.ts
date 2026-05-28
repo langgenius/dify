@@ -160,10 +160,10 @@ describe('useMCPModalForm', () => {
         const { result } = renderHook(() => useMCPModalForm(mockData))
 
         expect(result.current.state.headers).toHaveLength(2)
-        expect(result.current.state.headers[0].key).toBe('Authorization')
-        expect(result.current.state.headers[0].value).toBe('***')
-        expect(result.current.state.headers[1].key).toBe('X-Custom')
-        expect(result.current.state.headers[1].value).toBe('value')
+        expect(result.current.state.headers[0]!.key).toBe('Authorization')
+        expect(result.current.state.headers[0]!.value).toBe('***')
+        expect(result.current.state.headers[1]!.key).toBe('X-Custom')
+        expect(result.current.state.headers[1]!.value).toBe('value')
       })
 
       it('should initialize emoji icon from data', () => {

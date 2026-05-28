@@ -2,10 +2,12 @@
 
 import contextlib
 import logging
+from typing import override
 
 import flask
 
 from core.logging.context import get_request_id, get_trace_id
+from core.logging.structured_formatter import IdentityDict
 
 
 class TraceContextFilter(logging.Filter):
@@ -14,6 +16,7 @@ class TraceContextFilter(logging.Filter):
     Integrates with OpenTelemetry when available, falls back to ContextVar-based trace_id.
     """
 
+    @override
     def filter(self, record: logging.LogRecord) -> bool:
         # Get trace context from OpenTelemetry
         trace_id, span_id = self._get_otel_context()
@@ -53,6 +56,7 @@ class IdentityContextFilter(logging.Filter):
     Extracts tenant_id, user_id, and user_type from Flask-Login current_user.
     """
 
+    @override
     def filter(self, record: logging.LogRecord) -> bool:
         identity = self._extract_identity()
         record.tenant_id = identity.get("tenant_id", "")
@@ -60,7 +64,7 @@ class IdentityContextFilter(logging.Filter):
         record.user_type = identity.get("user_type", "")
         return True
 
-    def _extract_identity(self) -> dict[str, str]:
+    def _extract_identity(self) -> IdentityDict:
         """Extract identity from current_user if in request context."""
         try:
             if not flask.has_request_context():
@@ -77,7 +81,7 @@ class IdentityContextFilter(logging.Filter):
             from models import Account
             from models.model import EndUser
 
-            identity: dict[str, str] = {}
+            identity: IdentityDict = {}
 
             if isinstance(user, Account):
                 if user.current_tenant_id:

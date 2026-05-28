@@ -1,9 +1,9 @@
 import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithEdit, MetadataItemWithValue } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { useMemo } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import { UpdateType } from '../types'
 
@@ -45,7 +45,7 @@ const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds,
           }
         }
         if (itemInRes && itemInRes.value !== item.value) {
-          idNameValue[item.id].isMultipleValue = true
+          idNameValue[item.id]!.isMultipleValue = true
           itemInRes.isMultipleValue = true
           itemInRes.value = null
           return
@@ -82,7 +82,7 @@ const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds,
       // Find the document in docList to get its metadata
       const docIndex = docList.findIndex(doc => doc.id === documentId)
       const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
-      let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
+      let newMetadataList: MetadataItemWithValue[] = [...(oldMetadataList ?? []), ...addedList]
         .filter((item) => {
           return !removedList.find(removedItem => removedItem.id === item.id)
         })

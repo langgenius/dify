@@ -1,6 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import List from '../index'
+
+let mockBrandingEnabled = false
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { branding: { enabled: mockBrandingEnabled } },
+})
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -20,15 +27,6 @@ vi.mock('@/context/app-context', () => ({
   useSelector: () => true,
 }))
 
-// Mock global public context
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({
-    systemFeatures: {
-      branding: { enabled: false },
-    },
-  }),
-}))
-
 // Mock external api panel context
 const mockSetShowExternalApiPanel = vi.fn()
 vi.mock('@/context/external-api-panel-context', () => ({
@@ -36,11 +34,6 @@ vi.mock('@/context/external-api-panel-context', () => ({
     showExternalApiPanel: false,
     setShowExternalApiPanel: mockSetShowExternalApiPanel,
   }),
-}))
-
-// Mock tag management store
-vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: () => false,
 }))
 
 // Mock useDocumentTitle hook
@@ -101,16 +94,25 @@ vi.mock('../../external-api/external-api-panel', () => ({
   ),
 }))
 
+// Mock SecretKeyModal — it depends on user profile context and service APIs
+// not configured in this test. ServiceApi always mounts the modal (controlled
+// by `isShow`) so we provide a lightweight stub.
+vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
+  default: ({ isShow }: { isShow: boolean }) =>
+    isShow ? <div data-testid="secret-key-modal" /> : null,
+}))
+
 // Mock TagManagementModal
-vi.mock('@/app/components/base/tag-management', () => ({
-  default: () => <div data-testid="tag-management-modal" />,
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: ({ show }: { show: boolean }) => show ? <div data-testid="tag-management-modal" /> : null,
 }))
 
 // Mock TagFilter
-vi.mock('@/app/components/base/tag-management/filter', () => ({
-  default: ({ onChange }: { value: string[], onChange: (val: string[]) => void }) => (
+vi.mock('@/features/tag-management/components/tag-filter', () => ({
+  TagFilter: ({ onChange, onOpenTagManagement }: { value: string[], onChange: (val: string[]) => void, onOpenTagManagement: () => void }) => (
     <div data-testid="tag-filter">
       <button onClick={() => onChange(['tag-1', 'tag-2'])}>Select Tags</button>
+      <button onClick={onOpenTagManagement}>Manage Tags</button>
     </div>
   ),
 }))
@@ -133,6 +135,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBrandingEnabled = false
   })
 
   describe('Rendering', () => {
@@ -219,7 +222,7 @@ describe('List', () => {
     it('should have correct container styling', () => {
       const { container } = render(<List />)
       const mainContainer = container.firstChild as HTMLElement
-      expect(mainContainer).toHaveClass('scroll-container', 'relative', 'flex', 'grow', 'flex-col')
+      expect(mainContainer).toHaveClass('relative', 'flex', 'grow', 'flex-col')
     })
   })
 
@@ -305,32 +308,17 @@ describe('List', () => {
       expect(mockSetShowExternalApiPanel).toHaveBeenCalledWith(false)
     })
 
-    it('should show TagManagementModal when showTagManagementModal is true', async () => {
-      vi.doMock('@/app/components/base/tag-management/store', () => ({
-        useStore: () => true, // showTagManagementModal is true
-      }))
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
+    it('should show TagManagementModal when tag management is opened', () => {
+      render(<List />)
+      fireEvent.click(screen.getByText('Manage Tags'))
 
       expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
     })
 
     it('should not show DatasetFooter when branding is enabled', async () => {
-      vi.doMock('@/context/global-public-context', () => ({
-        useGlobalPublicStore: () => ({
-          systemFeatures: {
-            branding: { enabled: true },
-          },
-        }),
-      }))
+      mockBrandingEnabled = true
 
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
+      render(<List />)
 
       expect(screen.queryByTestId('dataset-footer')).not.toBeInTheDocument()
     })

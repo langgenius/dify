@@ -1,17 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import UndoRedo from '../undo-redo'
 
-type TemporalSnapshot = {
-  pastStates: unknown[]
-  futureStates: unknown[]
-}
-
 const mockUnsubscribe = vi.fn()
-const mockTemporalSubscribe = vi.fn()
 const mockHandleUndo = vi.fn()
 const mockHandleRedo = vi.fn()
 
-let latestTemporalListener: ((state: TemporalSnapshot) => void) | undefined
+let latestTemporalListener: ((state: { pastStates: unknown[], futureStates: unknown[] }) => void) | undefined
 let mockNodesReadOnly = false
 
 vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({
@@ -28,7 +22,10 @@ vi.mock('@/app/components/workflow/workflow-history-store', () => ({
   useWorkflowHistoryStore: () => ({
     store: {
       temporal: {
-        subscribe: mockTemporalSubscribe,
+        subscribe: (listener: (state: { pastStates: unknown[], futureStates: unknown[] }) => void) => {
+          latestTemporalListener = listener
+          return mockUnsubscribe
+        },
       },
     },
     shortcutsEnabled: true,
@@ -49,10 +46,6 @@ describe('UndoRedo', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     latestTemporalListener = undefined
-    mockTemporalSubscribe.mockImplementation((listener: (state: TemporalSnapshot) => void) => {
-      latestTemporalListener = listener
-      return mockUnsubscribe
-    })
   })
 
   it('enables undo and redo when history exists and triggers the callbacks', () => {

@@ -1,4 +1,5 @@
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.workflow_ui_based_app.variables.manager import (
     WorkflowVariablesConfigManager,
@@ -10,19 +11,19 @@ from core.app.app_config.workflow_ui_based_app.variables.manager import (
 
 
 @pytest.fixture
-def mock_workflow(mocker):
+def mock_workflow(mocker: MockerFixture):
     workflow = mocker.MagicMock()
     workflow.graph_dict = {"nodes": []}
     return workflow
 
 
 @pytest.fixture
-def mock_variable_entity(mocker):
+def mock_variable_entity(mocker: MockerFixture):
     return mocker.patch("core.app.app_config.workflow_ui_based_app.variables.manager.VariableEntity")
 
 
 @pytest.fixture
-def mock_rag_entity(mocker):
+def mock_rag_entity(mocker: MockerFixture):
     return mocker.patch("core.app.app_config.workflow_ui_based_app.variables.manager.RagPipelineVariableEntity")
 
 

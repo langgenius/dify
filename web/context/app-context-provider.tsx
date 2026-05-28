@@ -2,7 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -16,12 +16,12 @@ import {
   useSelector,
 } from '@/context/app-context'
 import { env } from '@/env'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
-  useUserProfile,
+  userProfileQueryOptions,
 } from '@/service/use-common'
-import { useGlobalPublicStore } from './global-public-context'
 
 type AppContextProviderProps = {
   children: ReactNode
@@ -29,8 +29,13 @@ type AppContextProviderProps = {
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const queryClient = useQueryClient()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const { data: userProfileResp } = useUserProfile()
+  // Boot point for the (commonLayout) tree:
+  // - useSuspenseQuery for systemFeatures triggers app/loading.tsx until cache is warm.
+  // - useSuspenseQuery for userProfile triggers (commonLayout)/loading.tsx until cache is warm.
+  // After this provider mounts, downstream components reading the same queryKeys hit cache
+  // and never suspend again, so their useSuspenseQuery calls return data synchronously.
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
@@ -145,7 +150,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     >
       <div className="flex h-full flex-col overflow-y-auto">
         {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
-        <div className="relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body">
+        <div className="relative flex grow flex-col overflow-x-hidden overflow-y-auto bg-background-body">
           {children}
         </div>
       </div>

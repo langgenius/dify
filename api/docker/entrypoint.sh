@@ -35,10 +35,10 @@ if [[ "${MODE}" == "worker" ]]; then
   if [[ -z "${CELERY_QUEUES}" ]]; then
     if [[ "${EDITION}" == "CLOUD" ]]; then
       # Cloud edition: separate queues for dataset and trigger tasks
-      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution"
+      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_publisher,trigger_refresh_executor,retention,workflow_based_app_execution"
     else
       # Community edition (SELF_HOSTED): dataset, pipeline and workflow have separate queues
-      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution"
+      DEFAULT_QUEUES="api_token,dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_publisher,trigger_refresh_executor,retention,workflow_based_app_execution"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
@@ -119,14 +119,16 @@ elif [[ "${MODE}" == "job" ]]; then
 
 else
   if [[ "${DEBUG}" == "true" ]]; then
-    exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
+    export HOST=${DIFY_BIND_ADDRESS:-0.0.0.0}
+    export PORT=${DIFY_PORT:-5001}
+    exec python -m app
   else
     exec gunicorn \
       --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
       --workers ${SERVER_WORKER_AMOUNT:-1} \
-      --worker-class ${SERVER_WORKER_CLASS:-gevent} \
+      --worker-class ${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker} \
       --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
       --timeout ${GUNICORN_TIMEOUT:-200} \
-      app:app
+      app:socketio_app
   fi
 fi

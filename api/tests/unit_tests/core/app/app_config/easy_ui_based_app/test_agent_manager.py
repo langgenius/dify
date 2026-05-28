@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 
@@ -84,7 +85,7 @@ class TestAgentConfigManagerConvert:
 
         assert result.strategy.name == "CHAIN_OF_THOUGHT"
 
-    def test_convert_skips_disabled_tools(self, mocker, base_config):
+    def test_convert_skips_disabled_tools(self, mocker: MockerFixture, base_config):
         # Patch AgentEntity to bypass pydantic validation
         mock_agent_entity = mocker.patch(
             "core.app.app_config.easy_ui_based_app.agent.manager.AgentEntity",
@@ -128,7 +129,7 @@ class TestAgentConfigManagerConvert:
         mock_validate.assert_called_once()
         mock_agent_entity.assert_called_once()
 
-    def test_convert_tool_requires_minimum_keys(self, mocker, base_config):
+    def test_convert_tool_requires_minimum_keys(self, mocker: MockerFixture, base_config):
         mock_validate = mocker.patch(
             "core.app.app_config.easy_ui_based_app.agent.manager.AgentToolEntity.model_validate",
             return_value=MagicMock(),

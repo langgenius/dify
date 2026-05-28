@@ -1,9 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from graphon.model_runtime.entities.model_entities import ModelType
-
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 def test_fetch_model_reuses_single_model_assembly():

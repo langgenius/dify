@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 from enum import StrEnum
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import NodeType
-from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field, field_validator
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
+from graphon.variables.types import SegmentType
 
 _WEBHOOK_HEADER_ALLOWED_TYPES: frozenset[SegmentType] = frozenset((SegmentType.STRING,))
 

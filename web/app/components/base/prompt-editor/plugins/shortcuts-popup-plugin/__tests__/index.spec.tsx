@@ -1,4 +1,4 @@
-import type { LexicalCommand } from 'lexical'
+import type { ShortcutPopupInsertHandler } from '../index'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -50,7 +50,7 @@ const CONTENT_EDITABLE_ID = 'ce'
 type MinimalEditorProps = {
   withContainer?: boolean
   hotkey?: string | string[] | string[][] | ((e: KeyboardEvent) => boolean)
-  children?: React.ReactNode | ((close: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void) => React.ReactNode)
+  children?: React.ReactNode | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
   className?: string
   onOpen?: () => void
   onClose?: () => void
@@ -316,7 +316,7 @@ describe('ShortcutsPopupPlugin', () => {
 
   it('renders children as render function and provides close/onInsert', async () => {
     const TEST_COMMAND = createCommand<unknown>('TEST_COMMAND')
-    const childrenFn = vi.fn((close: () => void, onInsert: (cmd: LexicalCommand<unknown>, params: unknown[]) => void) => (
+    const childrenFn = vi.fn((close: () => void, onInsert: ShortcutPopupInsertHandler) => (
       <div>
         <button type="button" data-testid="close-btn" onClick={close}>Close</button>
         <button type="button" data-testid="insert-btn" onClick={() => onInsert(TEST_COMMAND, ['param1'])}>Insert</button>
@@ -346,7 +346,7 @@ describe('ShortcutsPopupPlugin', () => {
     const TEST_COMMAND = createCommand<unknown>('TEST_INSERT_COMMAND')
     render(
       <MinimalEditor>
-        {(close: () => void, onInsert: (cmd: LexicalCommand<unknown>, params: unknown[]) => void) => (
+        {(close: () => void, onInsert: ShortcutPopupInsertHandler) => (
           <div>
             <button type="button" data-testid="insert-btn" onClick={() => onInsert(TEST_COMMAND, ['value'])}>Insert</button>
           </div>

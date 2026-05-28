@@ -12,10 +12,12 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
@@ -30,12 +32,12 @@ class DocumentIndexingSyncTaskTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
-        tenant = Tenant(name=f"tenant-{account.id}", status="normal")
+        tenant = Tenant(name=f"tenant-{account.id}", status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
 
@@ -161,7 +163,7 @@ class TestDocumentIndexingSyncTask:
                 "indexing_runner": indexing_runner,
             }
 
-    def _create_notion_sync_context(self, db_session_with_containers, *, data_source_info: dict | None = None):
+    def _create_notion_sync_context(self, db_session_with_containers: Session, *, data_source_info: dict | None = None):
         account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DocumentIndexingSyncTaskTestDataFactory.create_dataset(
             db_session_with_containers,
@@ -205,7 +207,7 @@ class TestDocumentIndexingSyncTask:
             "notion_info": notion_info,
         }
 
-    def test_document_not_found(self, db_session_with_containers, mock_external_dependencies):
+    def test_document_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task handles missing document gracefully."""
         # Arrange
         dataset_id = str(uuid4())
@@ -218,7 +220,7 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["datasource_service"].get_datasource_credentials.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
 
-    def test_missing_notion_workspace_id(self, db_session_with_containers, mock_external_dependencies):
+    def test_missing_notion_workspace_id(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task raises error when notion_workspace_id is missing."""
         # Arrange
         context = self._create_notion_sync_context(
@@ -234,7 +236,7 @@ class TestDocumentIndexingSyncTask:
         with pytest.raises(ValueError, match="no notion page found"):
             document_indexing_sync_task(context["dataset"].id, context["document"].id)
 
-    def test_missing_notion_page_id(self, db_session_with_containers, mock_external_dependencies):
+    def test_missing_notion_page_id(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task raises error when notion_page_id is missing."""
         # Arrange
         context = self._create_notion_sync_context(
@@ -250,12 +252,12 @@ class TestDocumentIndexingSyncTask:
         with pytest.raises(ValueError, match="no notion page found"):
             document_indexing_sync_task(context["dataset"].id, context["document"].id)
 
-    def test_empty_data_source_info(self, db_session_with_containers, mock_external_dependencies):
+    def test_empty_data_source_info(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task raises error when data_source_info is empty."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers, data_source_info=None)
-        db_session_with_containers.query(Document).where(Document.id == context["document"].id).update(
-            {"data_source_info": None}
+        db_session_with_containers.execute(
+            update(Document).where(Document.id == context["document"].id).values(data_source_info=None)
         )
         db_session_with_containers.commit()
 
@@ -263,7 +265,7 @@ class TestDocumentIndexingSyncTask:
         with pytest.raises(ValueError, match="no notion page found"):
             document_indexing_sync_task(context["dataset"].id, context["document"].id)
 
-    def test_credential_not_found(self, db_session_with_containers, mock_external_dependencies):
+    def test_credential_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task sets document error state when credential is missing."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -274,8 +276,8 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR
@@ -283,7 +285,7 @@ class TestDocumentIndexingSyncTask:
         assert updated_document.stopped_at is not None
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
 
-    def test_page_not_updated(self, db_session_with_containers, mock_external_dependencies):
+    def test_page_not_updated(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task exits early when notion page is unchanged."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -294,13 +296,13 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
-        remaining_segments = (
-            db_session_with_containers.query(DocumentSegment)
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
-            .count()
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
@@ -309,7 +311,7 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
 
-    def test_successful_sync_when_page_updated(self, db_session_with_containers, mock_external_dependencies):
+    def test_successful_sync_when_page_updated(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test full successful sync flow with SQL state updates and side effects."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -319,13 +321,13 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
-        remaining_segments = (
-            db_session_with_containers.query(DocumentSegment)
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
-            .count()
         )
 
         assert updated_document is not None
@@ -348,13 +350,13 @@ class TestDocumentIndexingSyncTask:
         assert len(run_documents) == 1
         assert getattr(run_documents[0], "id", None) == context["document"].id
 
-    def test_dataset_not_found_during_cleaning(self, db_session_with_containers, mock_external_dependencies):
+    def test_dataset_not_found_during_cleaning(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task still updates document and reindexes if dataset vanishes before clean."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
 
         def _delete_dataset_before_clean() -> str:
-            db_session_with_containers.query(Dataset).where(Dataset.id == context["dataset"].id).delete()
+            db_session_with_containers.execute(delete(Dataset).where(Dataset.id == context["dataset"].id))
             db_session_with_containers.commit()
             return "2024-01-02T00:00:00Z"
 
@@ -367,15 +369,17 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
         mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
-    def test_cleaning_error_continues_to_indexing(self, db_session_with_containers, mock_external_dependencies):
+    def test_cleaning_error_continues_to_indexing(
+        self, db_session_with_containers: Session, mock_external_dependencies
+    ):
         """Test that indexing continues when index cleanup fails."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -386,20 +390,22 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
-        remaining_segments = (
-            db_session_with_containers.query(DocumentSegment)
+        remaining_segments = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
-            .count()
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
         assert remaining_segments == 0
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
-    def test_indexing_runner_document_paused_error(self, db_session_with_containers, mock_external_dependencies):
+    def test_indexing_runner_document_paused_error(
+        self, db_session_with_containers: Session, mock_external_dependencies
+    ):
         """Test that DocumentIsPausedError does not flip document into error state."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -410,14 +416,14 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
         assert updated_document.error is None
 
-    def test_indexing_runner_general_error(self, db_session_with_containers, mock_external_dependencies):
+    def test_indexing_runner_general_error(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that indexing errors are persisted to document state."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -428,8 +434,8 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = (
-            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR

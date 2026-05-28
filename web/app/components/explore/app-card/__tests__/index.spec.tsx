@@ -1,13 +1,33 @@
 import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('../../../app/type-selector', () => ({
   AppTypeIcon: ({ type }: { type: string }) => <div data-testid="app-type-icon">{type}</div>,
 }))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: vi.fn(),
+}))
+
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() {
+      return mockConfig.isCloudEdition
+    },
+  }
+})
 
 const createApp = (overrides?: Partial<App>): App => ({
   can_trial: true,
@@ -16,7 +36,7 @@ const createApp = (overrides?: Partial<App>): App => ({
   copyright: '2024',
   privacy_policy: null,
   custom_disclaimer: null,
-  category: 'Assistant',
+  categories: ['Assistant'],
   position: 1,
   is_listed: true,
   install_count: 0,
@@ -41,6 +61,7 @@ const createApp = (overrides?: Partial<App>): App => ({
 describe('AppCard', () => {
   const onCreate = vi.fn()
   const onTry = vi.fn()
+  const mockTrackEvent = vi.mocked(trackEvent)
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
@@ -55,6 +76,7 @@ describe('AppCard', () => {
   }
 
   beforeEach(() => {
+    mockConfig.isCloudEdition = true
     vi.clearAllMocks()
   })
 
@@ -106,6 +128,13 @@ describe('AppCard', () => {
 
       expect(screen.getByText('explore.appCard.try')).toBeInTheDocument()
     })
+
+    it('should hide try button outside cloud edition', () => {
+      mockConfig.isCloudEdition = false
+      renderComponent({ canCreate: true, isExplore: true })
+
+      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
+    })
   })
 
   describe('Props', () => {
@@ -147,6 +176,22 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByText('explore.appCard.try'))
 
       expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
+    })
+
+    it('should track preview event when detail button is clicked', () => {
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true, isExplore: true })
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+
+      expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
+        template_id: app.app_id,
+        template_name: app.app.name,
+        template_mode: app.app.mode,
+        template_categories: app.categories,
+        page: 'explore',
+      })
     })
   })
 })

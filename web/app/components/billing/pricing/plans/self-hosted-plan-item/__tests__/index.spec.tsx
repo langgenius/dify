@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
+import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { toast, ToastHost } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../../config'
 import { SelfHostedPlan } from '../../../../type'

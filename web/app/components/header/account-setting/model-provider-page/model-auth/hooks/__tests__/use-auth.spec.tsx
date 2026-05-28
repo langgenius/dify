@@ -21,8 +21,8 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     default: {

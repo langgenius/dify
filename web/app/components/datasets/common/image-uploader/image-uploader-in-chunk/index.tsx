@@ -1,8 +1,8 @@
 import type { FileEntity } from '../types'
 import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
-import { cn } from '@/utils/classnames'
 import { useUpload } from '../hooks/use-upload'
 import {
   FileContextProvider,

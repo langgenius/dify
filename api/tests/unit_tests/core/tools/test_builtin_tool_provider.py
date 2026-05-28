@@ -78,7 +78,7 @@ def _tool_yaml() -> dict[str, Any]:
     }
 
 
-def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch):
+def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch: pytest.MonkeyPatch):
     yaml_payloads = [_provider_yaml(), _tool_yaml()]
 
     def _load_yaml(*args, **kwargs):

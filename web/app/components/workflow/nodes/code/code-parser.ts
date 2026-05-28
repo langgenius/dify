@@ -17,7 +17,7 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
     params.push(...match[1].split(',')
       .map(p => p.trim())
       .filter(Boolean)
-      .map(p => p.split(':')[0].trim()),
+      .map(p => p.split(':')[0]!.trim()),
     )
   }
 
@@ -74,7 +74,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   for (const match of matches) {
     // console.log(`Found key: "${match[1]}" from match: "${match[0]}"`)
     const key = match[1]
-    result[key] = {
+    result[key!] = {
       type: VarType.string,
       children: null,
     }

@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 import core.tools.utils.message_transformer as mt
@@ -13,7 +15,7 @@ class _FakeToolFile:
 class _FakeToolFileManager:
     """Fake ToolFileManager to capture the mimetype passed in."""
 
-    last_call: dict | None = None
+    last_call: dict[str, Any] | None = None
 
     def __init__(self, *args, **kwargs):
         pass
@@ -40,7 +42,7 @@ class _FakeToolFileManager:
 
 
 @pytest.fixture(autouse=True)
-def _patch_tool_file_manager(monkeypatch):
+def _patch_tool_file_manager(monkeypatch: pytest.MonkeyPatch):
     # Patch the manager used inside the transformer module
     monkeypatch.setattr(mt, "ToolFileManager", _FakeToolFileManager)
     # also ensure predictable URL generation (no need to patch; uses id and extension only)

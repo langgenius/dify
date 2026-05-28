@@ -74,7 +74,7 @@ after
         assert "[link]" not in tups[1][1]
         assert "img.png" not in tups[1][1]
 
-    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch):
+    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=True)
 
         calls: list[str | None] = []
@@ -99,7 +99,7 @@ after
         assert len(tups) == 2
         assert calls == [None, "bad-encoding", "utf-8"]
 
-    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch):
+    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=False)
 
         def raise_decode(self, encoding=None):
@@ -110,7 +110,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch):
+    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
         def raise_other(self, encoding=None):
@@ -121,7 +121,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch):
+    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch: pytest.MonkeyPatch):
         extractor = MarkdownExtractor(file_path="dummy_path")
         monkeypatch.setattr(extractor, "parse_tups", lambda _: [(None, "plain"), ("Header", "value")])
 

@@ -6,7 +6,7 @@ import LogViewer from '../log-viewer'
 const mockToastNotify = vi.fn()
 const mockWriteText = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
     {
@@ -145,7 +145,7 @@ describe('LogViewer', () => {
   })
 
   it('should parse request data when it is raw JSON', () => {
-    const log = createLog({ request: { ...createLog().request, data: '{\"hello\":1}' } })
+    const log = createLog({ request: { ...createLog().request, data: '{"hello":1}' } })
 
     render(<LogViewer logs={[log]} />)
 
