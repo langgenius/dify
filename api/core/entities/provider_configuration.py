@@ -1431,10 +1431,10 @@ class ProviderConfiguration(BaseModel):
         """
         if self._bound_model_runtime is not None:
             model_runtime = self._bound_model_runtime
-            provider_schema = self._get_provider_schema()
         else:
-            model_runtime, model_provider_factory = self._get_runtime_and_provider_factory()
-            provider_schema = self._get_provider_schema(model_provider_factory=model_provider_factory)
+            model_runtime, _ = self._get_runtime_and_provider_factory()
+
+        provider_schema = self._cached_provider_schema or self.provider
 
         return create_model_type_instance(
             runtime=model_runtime,
