@@ -54,11 +54,16 @@ def _parse_target_tenant(value: Any) -> TargetTenantSelector | None:
     if not isinstance(value, dict):
         raise MigrationDataError("metadata.target_tenant must be an object when provided.")
     target: TargetTenantSelector = {}
-    for key in ("id", "name"):
-        if key in value:
-            if not isinstance(value[key], str):
-                raise MigrationDataError(f"metadata.target_tenant.{key} must be a string.")
-            target[key] = value[key]
+    target_id = value.get("id")
+    if target_id is not None:
+        if not isinstance(target_id, str):
+            raise MigrationDataError("metadata.target_tenant.id must be a string.")
+        target["id"] = target_id
+    target_name = value.get("name")
+    if target_name is not None:
+        if not isinstance(target_name, str):
+            raise MigrationDataError("metadata.target_tenant.name must be a string.")
+        target["name"] = target_name
     unsupported_keys = sorted(set(value.keys()) - {"id", "name"})
     if unsupported_keys:
         raise MigrationDataError(f"metadata.target_tenant contains unsupported fields: {unsupported_keys}")

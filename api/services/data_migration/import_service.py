@@ -10,15 +10,16 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import sqlalchemy as sa
 import yaml
 from sqlalchemy import or_
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
+from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -311,7 +312,7 @@ class MigrationImportService:
         existing_app: App | None,
         options: ImportOptions,
     ) -> str:
-        import_service = AppDslService(db.session)
+        import_service = AppDslService(cast(Session, db.session))
         if existing_app is not None:
             import_result = import_service.import_app(
                 account=account,
@@ -457,21 +458,28 @@ class MigrationImportService:
                 continue
 
             schema_info = ApiToolManageService.parser_api_schema(schema=schema)
-            credentials = tool_data.get("credentials") if isinstance(tool_data.get("credentials"), dict) else {}
+            schema_type = cast(ApiProviderSchemaType, schema_info["schema_type"])
+            credentials = (
+                cast(dict[str, Any], tool_data.get("credentials"))
+                if isinstance(tool_data.get("credentials"), dict)
+                else {}
+            )
             credentials = credentials or {"auth_type": "none"}
+            raw_icon = tool_data.get("icon")
             icon = (
-                tool_data.get("icon")
-                if isinstance(tool_data.get("icon"), dict)
+                cast(dict[str, Any], raw_icon)
+                if isinstance(raw_icon, dict)
                 else {"content": "tool", "background": "#FEF7C3"}
             )
-            labels = tool_data.get("labels") if isinstance(tool_data.get("labels"), list) else []
+            raw_labels = tool_data.get("labels")
+            labels = [str(label) for label in raw_labels] if isinstance(raw_labels, list) else []
             if existing is not None:
                 ApiToolManageService.update_api_tool_provider(
                     user_id=target.operator_id,
                     tenant_id=target.tenant_id,
                     provider_name=provider_name,
                     original_provider=existing.name,
-                    _schema_type=schema_info["schema_type"],
+                    _schema_type=schema_type,
                     schema=schema,
                     privacy_policy=self._optional_string(tool_data.get("privacy_policy")) or "",
                     credentials=credentials,
@@ -485,7 +493,7 @@ class MigrationImportService:
                     user_id=target.operator_id,
                     tenant_id=target.tenant_id,
                     provider_name=provider_name,
-                    schema_type=schema_info["schema_type"],
+                    schema_type=schema_type,
                     schema=schema,
                     privacy_policy=self._optional_string(tool_data.get("privacy_policy")) or "",
                     credentials=credentials,
@@ -601,35 +609,54 @@ class MigrationImportService:
                     )
                 report_items.append(ResourceReportItem(ResourceType.WORKFLOW_TOOL, existing.id, tool_name, "skipped"))
                 continue
-            kwargs = {
-                "user_id": account.id,
-                "tenant_id": target.tenant_id,
-                "name": tool_name,
-                "label": self._optional_string(workflow_tool_data.get("label")) or tool_name,
-                "icon": workflow_tool_data.get("icon") or {"content": "🤖", "background": "#FFEAD5"},
-                "description": self._optional_string(workflow_tool_data.get("description")) or "",
-                "parameters": [
-                    parameter
-                    if isinstance(parameter, WorkflowToolParameterConfiguration)
-                    else WorkflowToolParameterConfiguration(**parameter)
-                    for parameter in workflow_tool_data.get("parameters", [])
-                    if isinstance(parameter, dict | WorkflowToolParameterConfiguration)
-                ],
-                "privacy_policy": self._optional_string(workflow_tool_data.get("privacy_policy")) or "",
-                "labels": workflow_tool_data.get("labels")
-                if isinstance(workflow_tool_data.get("labels"), list)
-                else [],
-            }
+            raw_icon = workflow_tool_data.get("icon")
+            icon = (
+                cast(dict[str, Any], raw_icon)
+                if isinstance(raw_icon, dict)
+                else {"content": "🤖", "background": "#FFEAD5"}
+            )
+            raw_parameters = workflow_tool_data.get("parameters")
+            parameters = [
+                parameter
+                if isinstance(parameter, WorkflowToolParameterConfiguration)
+                else WorkflowToolParameterConfiguration(**parameter)
+                for parameter in (raw_parameters if isinstance(raw_parameters, list) else [])
+                if isinstance(parameter, dict | WorkflowToolParameterConfiguration)
+            ]
+            raw_labels = workflow_tool_data.get("labels")
+            labels = [str(label) for label in raw_labels] if isinstance(raw_labels, list) else []
+            label = self._optional_string(workflow_tool_data.get("label")) or tool_name
+            description = self._optional_string(workflow_tool_data.get("description")) or ""
+            privacy_policy = self._optional_string(workflow_tool_data.get("privacy_policy")) or ""
             if existing is not None:
-                WorkflowToolManageService.update_workflow_tool(workflow_tool_id=existing.id, **kwargs)
+                WorkflowToolManageService.update_workflow_tool(
+                    user_id=account.id,
+                    tenant_id=target.tenant_id,
+                    workflow_tool_id=existing.id,
+                    name=tool_name,
+                    label=label,
+                    icon=icon,
+                    description=description,
+                    parameters=parameters,
+                    privacy_policy=privacy_policy,
+                    labels=labels,
+                )
                 status = "updated"
                 identifier = existing.id
             else:
                 import_id = workflow_tool_id if options.id_strategy == IdStrategy.PRESERVE_ID else ""
                 WorkflowToolManageService.create_workflow_tool(
+                    user_id=account.id,
+                    tenant_id=target.tenant_id,
                     workflow_app_id=resolved_app_id,
+                    name=tool_name,
+                    label=label,
+                    icon=icon,
+                    description=description,
+                    parameters=parameters,
+                    privacy_policy=privacy_policy,
+                    labels=labels,
                     import_id=import_id or "",
-                    **kwargs,
                 )
                 status = "created"
                 target_provider = self._find_existing_workflow_tool(
@@ -704,7 +731,7 @@ class MigrationImportService:
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, existing.id, name, "skipped"))
                 continue
 
-            service = MCPToolManageService(session=db.session)
+            service = MCPToolManageService(session=cast(Session, db.session))
             configuration = MCPConfiguration.model_validate(mcp_data.get("configuration") or {})
             authentication = (
                 MCPAuthentication.model_validate(mcp_data["authentication"]) if mcp_data.get("authentication") else None
@@ -741,10 +768,11 @@ class MigrationImportService:
                     configuration=configuration,
                     authentication=authentication,
                 )
-                provider = self._find_existing_mcp_tool(target.tenant_id, lookup_provider_id, server_identifier)
-                if provider is None:
+                created_provider = self._find_existing_mcp_tool(target.tenant_id, lookup_provider_id, server_identifier)
+                if created_provider is None:
                     raise MigrationDataError(f"MCP provider was not created: {name}")
                 status = "created"
+                provider = created_provider
                 identifier = provider.id
             self._restore_mcp_provider_tools(provider, mcp_data)
             db.session.commit()

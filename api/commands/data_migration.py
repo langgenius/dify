@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import click
@@ -496,7 +496,7 @@ def _print_auto_tool_category(label: str, values: dict[str, str | None]) -> None
 
 
 def _prompt_additional_tools(tenant_id: str, auto_tools: WizardToolMap) -> WizardToolSelection:
-    selections = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
+    selections: WizardToolSelection = {"api_tools": [], "workflow_tools": [], "mcp_tools": []}
     _print_wizard_step("Additional Tools")
     if not click.confirm(
         "Export additional tools manually? [y/n, default: n]",
@@ -616,7 +616,7 @@ def _prompt_tool_category(
     raw = click.prompt(
         f"Select {label.lower()} by number, comma-separated numbers, all, or empty",
         default="",
-        show_default="empty",
+        show_default=cast(Any, "empty"),
     )
     if not raw.strip():
         return []
