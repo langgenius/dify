@@ -839,8 +839,6 @@ class MigrationImportService:
         self, tenant_id: str, provider_id: str, provider_name: str | None
     ) -> MCPToolProvider | None:
         predicates = [MCPToolProvider.server_identifier == provider_id]
-        if provider_name:
-            predicates.append(MCPToolProvider.name == provider_name)
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
         return db.session.scalar(

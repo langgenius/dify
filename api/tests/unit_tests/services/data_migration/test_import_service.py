@@ -197,6 +197,7 @@ def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(monkeypatch):
 
     where_clause = str(captured[0].whereclause)
     assert f"{MCPToolProvider.__tablename__}.id" not in where_clause
+    assert f"{MCPToolProvider.__tablename__}.name" not in where_clause
 
 
 def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(monkeypatch):
@@ -863,7 +864,11 @@ def test_dependency_only_mcp_preflight_reports_available_target_provider(monkeyp
             "dependencies": [{"kind": "mcp_tool", "provider_id": "my-test-mcp-server"}],
         }
     )
-    provider = type("Provider", (), {"id": "target-provider-id", "name": "my-test-mcp"})()
+    provider = type(
+        "Provider",
+        (),
+        {"id": "target-provider-id", "name": "my-test-mcp", "server_identifier": "my-test-mcp-server"},
+    )()
 
     from services.data_migration import import_service
 
