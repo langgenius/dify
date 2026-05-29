@@ -31,8 +31,16 @@ const OPTIONS: CreateOption[] = [
 ]
 
 /**
- * `/create` command — generate a new Workflow or Chatflow app from a natural-
- * language description. See ``components/workflow/workflow-generator/``.
+ * `/create` command — generate a brand-new Workflow or Chatflow app from a
+ * natural-language description.
+ *
+ * This command is scoped to NEW-app creation only. Refining the current
+ * Studio draft is handled by the toolbar button in
+ * ``components/workflow-app/components/workflow-header/generate-trigger.tsx``,
+ * which opens the same modal with the app's real mode locked + currentAppId
+ * set. Keeping the two journeys separate avoids the mode-mismatch dead-end
+ * the URL-sniffing approach used to produce when /create was triggered from
+ * a Workflow Studio page with the "wrong" mode picked.
  */
 export const createCommand: SlashCommandHandler = {
   name: 'create',
@@ -63,25 +71,8 @@ export const createCommand: SlashCommandHandler = {
     registerCommands({
       'create.open': async (args) => {
         const mode: WorkflowGeneratorMode = (args?.mode ?? 'workflow') as WorkflowGeneratorMode
-        // Detect Studio context: /app/<appId>/workflow.
-        let currentAppId: string | null = null
-        let currentAppMode: WorkflowGeneratorMode | null = null
-        if (typeof window !== 'undefined') {
-          const match = window.location.pathname.match(/^\/app\/([^/]+)\/workflow/)
-          if (match) {
-            currentAppId = match[1] ?? null
-            // The /workflow path covers both Workflow and Advanced-Chat apps,
-            // so we don't know the mode for sure from the URL alone. We pass
-            // the requested mode as the "current" mode — the modal compares
-            // them and only enables "Apply to current draft" when they match.
-            currentAppMode = mode
-          }
-        }
-        useWorkflowGeneratorStore.getState().openGenerator({
-          mode,
-          currentAppId,
-          currentAppMode,
-        })
+        // No currentAppId / currentAppMode — /create is new-app only.
+        useWorkflowGeneratorStore.getState().openGenerator({ mode })
       },
     })
   },

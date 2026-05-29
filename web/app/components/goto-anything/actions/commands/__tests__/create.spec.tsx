@@ -67,27 +67,20 @@ describe('/create slash command', () => {
       createCommand.unregister?.()
     })
 
-    // Default path: when the user is not in a workflow Studio page, the
-    // handler must open the modal without a currentAppId so the modal only
-    // offers "Create new app".
-    it('should open the generator with no current-app context outside Studio', async () => {
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { pathname: '/apps' },
-      })
-
+    // /create is scoped to new-app creation — it MUST always open the modal
+    // with just the requested mode, never with currentAppId. Refining the
+    // current Studio draft is handled by the Studio toolbar button instead.
+    it('should open the generator with only the requested mode (no current-app context)', async () => {
       await executeCommand('create.open', { mode: 'workflow' })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({
-        mode: 'workflow',
-        currentAppId: null,
-        currentAppMode: null,
-      })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow' })
     })
 
-    // Studio path: the handler must read the app id straight out of the URL
-    // and pass it through so the modal can show "Apply to current draft".
-    it('should capture the current app id when invoked from a workflow Studio URL', async () => {
+    // Critical guarantee: even when invoked from a workflow Studio URL, the
+    // handler must NOT sniff the URL to inject currentAppId — that branch
+    // produced a mode-mismatch dead-end when the user picked the "wrong"
+    // mode from the submenu while inside Studio.
+    it('should NOT capture currentAppId even when invoked from a Studio URL', async () => {
       Object.defineProperty(window, 'location', {
         writable: true,
         value: { pathname: '/app/abc-123/workflow' },
@@ -95,46 +88,16 @@ describe('/create slash command', () => {
 
       await executeCommand('create.open', { mode: 'advanced-chat' })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({
-        mode: 'advanced-chat',
-        currentAppId: 'abc-123',
-        currentAppMode: 'advanced-chat',
-      })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'advanced-chat' })
     })
 
     // Defensive fallback: if a caller forgets to pass a mode (or passes none),
     // the handler must still open the generator with a safe default rather
     // than crashing the goto-anything dialog.
     it('should default to workflow mode when no args are passed', async () => {
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { pathname: '/apps' },
-      })
-
       await executeCommand('create.open')
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({
-        mode: 'workflow',
-        currentAppId: null,
-        currentAppMode: null,
-      })
-    })
-
-    // Studio sub-routes (/app/<id>/workflow/edit, etc.) still need to be
-    // treated as Studio context — the regex must anchor only at the start.
-    it('should still match Studio context for nested workflow sub-paths', async () => {
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { pathname: '/app/xyz/workflow/run-history' },
-      })
-
-      await executeCommand('create.open', { mode: 'workflow' })
-
-      expect(mockOpenGenerator).toHaveBeenCalledWith({
-        mode: 'workflow',
-        currentAppId: 'xyz',
-        currentAppMode: 'workflow',
-      })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow' })
     })
   })
 
