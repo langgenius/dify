@@ -31,7 +31,6 @@ export default function AppSelector() {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 

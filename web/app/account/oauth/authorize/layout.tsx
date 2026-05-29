@@ -4,7 +4,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 
 import Loading from '@/app/components/base/loading'
 import Header from '@/app/signin/_header'
-import { AppContextProvider } from '@/context/app-context-provider'
+import { AppContextProviderClientOnly } from '@/context/app-context-provider-client-only'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
@@ -37,9 +37,9 @@ export default function SignInLayout({ children }: any) {
             <div className="flex flex-col md:w-[400px]">
               {isLoggedIn
                 ? (
-                    <AppContextProvider>
+                    <AppContextProviderClientOnly>
                       {children}
-                    </AppContextProvider>
+                    </AppContextProviderClientOnly>
                   )
                 : children}
             </div>

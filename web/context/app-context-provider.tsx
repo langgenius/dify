@@ -29,11 +29,6 @@ type AppContextProviderProps = {
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const queryClient = useQueryClient()
-  // Boot point for the (commonLayout) tree:
-  // - useSuspenseQuery for systemFeatures triggers app/loading.tsx until cache is warm.
-  // - useSuspenseQuery for userProfile triggers (commonLayout)/loading.tsx until cache is warm.
-  // After this provider mounts, downstream components reading the same queryKeys hit cache
-  // and never suspend again, so their useSuspenseQuery calls return data synchronously.
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
