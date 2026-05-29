@@ -9,6 +9,8 @@ services:
     envVars:
       - key: MODE
         value: api
+      - key: MIGRATION_ENABLED
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
       - key: CONSOLE_WEB_URL
