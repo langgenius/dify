@@ -1,3 +1,4 @@
+
 """User-scoped workspace reads and member management under /openapi/v1/workspaces.
 
 Bearer-authed counterparts to the cookie-authed /console/api/workspaces

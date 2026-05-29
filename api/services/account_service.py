@@ -194,6 +194,23 @@ class AccountService:
         )
 
     @staticmethod
+    def get_workspace_permission_keys(tenant_id: str, account_id: str) -> set[str]:
+        permissions = RBACService.MyPermissions.get(tenant_id, account_id)
+        return set(getattr(getattr(permissions, "workspace", None), "permission_keys", []) or [])
+
+    @staticmethod
+    def is_rbac_workspace_owner(tenant_id: str, actor_account_id: str, member_account_id: str) -> bool:
+        roles = RBACService.MemberRoles.get(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            member_account_id=member_account_id,
+        ).roles
+        return any(
+            role.is_builtin and role.category == "global_system_default" and role.name in {"所有者", "owner"}
+            for role in roles
+        )
+
+    @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
         return f"{REFRESH_TOKEN_PREFIX}{refresh_token}"
 
@@ -1538,17 +1555,35 @@ class TenantService:
     @staticmethod
     def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str):
         """Check member permission"""
-        perms = {
-            "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "update": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-        }
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
 
         if member:
             if operator.id == member.id:
                 raise CannotOperateSelfError("Cannot operate self.")
+
+        if dify_config.RBAC_ENABLED:
+            workspace_permission_keys = AccountService.get_workspace_permission_keys(
+                str(tenant.id),
+                str(operator.id),
+            )
+            required_permission_key = (
+                "workspace.member.manage" if action in {"add", "remove"} else "workspace.role.manage"
+            )
+            if required_permission_key not in workspace_permission_keys:
+                raise NoPermissionError(f"No permission to {action} member.")
+
+            if action == "remove" and member and AccountService.is_rbac_workspace_owner(
+                str(tenant.id), str(operator.id), str(member.id)
+            ):
+                raise NoPermissionError(f"No permission to {action} member.")
+            return
+
+        perms = {
+            "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            "update": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+        }
 
         ta_operator = db.session.scalar(
             select(TenantAccountJoin)

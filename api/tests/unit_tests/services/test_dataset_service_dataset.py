@@ -15,6 +15,7 @@ from .dataset_service_test_helpers import (
     ProviderTokenNotInitError,
     RagPipelineDatasetCreateEntity,
     SimpleNamespace,
+    TenantAccountRole,
     _make_knowledge_configuration,
     _make_retrieval_model,
     _make_session_context,
@@ -165,6 +166,77 @@ class TestDatasetServiceValidation:
 
             with pytest.raises(ValueError, match="No Model available"):
                 DatasetService.check_is_multimodal_model("tenant-1", "provider", "embedding-model")
+
+
+class TestDatasetServiceRetrievalPermissions:
+    """Unit tests for dataset list permission branching."""
+
+    def test_get_datasets_rbac_include_all_uses_workspace_permission(self):
+        mock_db = MagicMock()
+        mock_db.session.scalars.return_value.all.return_value = []
+        mock_db.paginate.return_value.items = []
+        mock_db.paginate.return_value.total = 0
+
+        user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
+        mock_permissions = SimpleNamespace(workspace=SimpleNamespace(permission_keys=["dataset.create_and_management"]))
+
+        with (
+            patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=mock_permissions,
+            ),
+        ):
+            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user, include_all=True)
+
+        mock_db.session.scalars.assert_called_once()
+        mock_db.paginate.assert_called_once()
+        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        assert len(select_stmt._where_criteria) == 1
+
+    def test_get_datasets_rbac_include_all_falls_back_without_workspace_permission(self):
+        mock_db = MagicMock()
+        mock_db.session.scalars.return_value.all.return_value = []
+        mock_db.paginate.return_value.items = []
+        mock_db.paginate.return_value.total = 0
+
+        user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
+        mock_permissions = SimpleNamespace(workspace=SimpleNamespace(permission_keys=[]))
+
+        with (
+            patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=mock_permissions,
+            ),
+        ):
+            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user, include_all=True)
+
+        mock_db.session.scalars.assert_called_once()
+        mock_db.paginate.assert_called_once()
+        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        assert len(select_stmt._where_criteria) == 2
+
+    def test_get_datasets_legacy_owner_include_all_keeps_full_access(self):
+        mock_db = MagicMock()
+        mock_db.session.scalars.return_value.all.return_value = []
+        mock_db.paginate.return_value.items = []
+        mock_db.paginate.return_value.total = 0
+
+        user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.OWNER)
+
+        with (
+            patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.dify_config.RBAC_ENABLED", False),
+        ):
+            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user, include_all=True)
+
+        mock_db.session.scalars.assert_called_once()
+        mock_db.paginate.assert_called_once()
+        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        assert len(select_stmt._where_criteria) == 1
 
 
 class TestDatasetServiceCreationAndUpdate:

@@ -1061,6 +1061,64 @@ class TestTenantService:
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
 
+    def test_rbac_member_can_remove_non_owner_member(self):
+        """Test RBAC workspace.member.manage allows removing a non-owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+
+        mock_permissions = MagicMock()
+        mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+        ):
+            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_rbac_member_cannot_remove_without_permission(self):
+        """Test RBAC permission check rejects removal without workspace.member.manage."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+
+        mock_permissions = MagicMock()
+        mock_permissions.workspace = MagicMock(permission_keys=["workspace.role.manage"])
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+        ):
+            with pytest.raises(NoPermissionError):
+                TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_rbac_member_cannot_remove_owner_member(self):
+        """Test RBAC permission check rejects removing an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+
+        mock_permissions = MagicMock()
+        mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
+
+        mock_owner_role = MagicMock()
+        mock_owner_role.is_builtin = True
+        mock_owner_role.category = "global_system_default"
+        mock_owner_role.name = "所有者"
+        mock_member_roles = MagicMock()
+        mock_member_roles.roles = [mock_owner_role]
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+            patch("services.account_service.RBACService.MemberRoles.get", return_value=mock_member_roles),
+        ):
+            with pytest.raises(NoPermissionError):
+                TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
 
 class TestRegisterService:
     """

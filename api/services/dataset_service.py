@@ -67,6 +67,7 @@ from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -230,6 +231,15 @@ class _EstimateArgs(BaseModel):
 
 class DatasetService:
     @staticmethod
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
+        if not dify_config.RBAC_ENABLED:
+            return False
+
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
+        return "dataset.create_and_management" in workspace_permission_keys
+
+    @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
@@ -242,7 +252,7 @@ class DatasetService:
             ).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
 
-            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+            if not dify_config.RBAC_ENABLED and user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
                 # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                 if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
@@ -250,7 +260,13 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                if user.current_role != TenantAccountRole.OWNER or not include_all:
+                if dify_config.RBAC_ENABLED:
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
+                    should_show_all_datasets = include_all and can_manage_all_datasets
+                else:
+                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
+
+                if not should_show_all_datasets:
                     # show all datasets that the user has permission to access
                     # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                     if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
