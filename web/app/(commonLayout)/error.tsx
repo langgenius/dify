@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import RootLoading from '@/app/loading'
-import { isLegacyBase401 } from '@/service/use-common'
+import { isLegacyBase401 } from '@/features/account-profile/client'
 
 type Props = {
   error: Error & { digest?: string }

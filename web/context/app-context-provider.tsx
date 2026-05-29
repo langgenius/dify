@@ -16,11 +16,11 @@ import {
   useSelector,
 } from '@/context/app-context'
 import { env } from '@/env'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
-  userProfileQueryOptions,
 } from '@/service/use-common'
 
 type AppContextProviderProps = {
@@ -60,7 +60,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
 
   const mutateUserProfile = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['common', 'user-profile'] })
+    queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
   }, [queryClient])
 
   const mutateCurrentWorkspace = useCallback(() => {

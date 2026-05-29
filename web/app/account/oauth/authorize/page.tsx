@@ -16,8 +16,9 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { isLegacyBase401, useLogout, userProfileQueryOptions } from '@/service/use-common'
+import { useLogout } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
 function buildReturnUrl(pathname: string, search: string) {

@@ -10,38 +10,41 @@ import Header from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
-import { AppContextProviderClientOnly } from '@/context/app-context-provider-client-only'
+import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import PartnerStack from '../components/billing/partner-stack'
+import { CommonLayoutHydrationBoundary } from './hydration-boundary'
 import RoleRouteGuard from './role-route-guard'
 
-const Layout = ({ children }: { children: ReactNode }) => {
+const Layout = async ({ children }: { children: ReactNode }) => {
   return (
     <>
       <GoogleAnalyticsScripts />
       <AmplitudeProvider />
       <OAuthRegistrationAnalytics />
       <EducationVerifyActionRecorder />
-      <AppContextProviderClientOnly>
-        <EventEmitterContextProvider>
-          <ProviderContextProvider>
-            <ModalContextProvider>
-              <HeaderWrapper>
-                <Header />
-              </HeaderWrapper>
-              <RoleRouteGuard>
-                {children}
-              </RoleRouteGuard>
-              <InSiteMessageNotification />
-              <PartnerStack />
-              <ReadmePanel />
-              <GotoAnything />
-            </ModalContextProvider>
-          </ProviderContextProvider>
-        </EventEmitterContextProvider>
-      </AppContextProviderClientOnly>
+      <CommonLayoutHydrationBoundary>
+        <AppContextProvider>
+          <EventEmitterContextProvider>
+            <ProviderContextProvider>
+              <ModalContextProvider>
+                <HeaderWrapper>
+                  <Header />
+                </HeaderWrapper>
+                <RoleRouteGuard>
+                  {children}
+                </RoleRouteGuard>
+                <InSiteMessageNotification />
+                <PartnerStack />
+                <ReadmePanel />
+                <GotoAnything />
+              </ModalContextProvider>
+            </ProviderContextProvider>
+          </EventEmitterContextProvider>
+        </AppContextProvider>
+      </CommonLayoutHydrationBoundary>
       <Zendesk />
     </>
   )
