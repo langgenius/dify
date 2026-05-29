@@ -1,10 +1,9 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
-import type { ComponentPropsWithoutRef } from 'react'
+import type { ComponentPropsWithRef } from 'react'
 import type { DeploymentUiStatus } from './runtime-status'
 import { cn } from '@langgenius/dify-ui/cn'
-import { forwardRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   deploymentStatusIconClassName,
@@ -43,20 +42,21 @@ export function DeploymentStatusBadge({
   )
 }
 
-type EnvironmentDeploymentBadgeProps = Omit<ComponentPropsWithoutRef<'span'>, 'children' | 'title'> & {
+type EnvironmentDeploymentBadgeProps = Omit<ComponentPropsWithRef<'span'>, 'children' | 'title'> & {
   row: EnvironmentDeployment
   showStatus?: boolean
   summaryLabel?: string
 }
 
-export const EnvironmentDeploymentBadge = forwardRef<HTMLSpanElement, EnvironmentDeploymentBadgeProps>(function EnvironmentDeploymentBadge({
+export function EnvironmentDeploymentBadge({
   row,
   className,
   showStatus = true,
   summaryLabel,
   'aria-label': ariaLabel,
+  ref,
   ...props
-}, ref) {
+}: EnvironmentDeploymentBadgeProps) {
   const { t } = useTranslation('deployments')
   const name = environmentName(row.environment)
   const status = deploymentStatus(row)
@@ -80,4 +80,4 @@ export const EnvironmentDeploymentBadge = forwardRef<HTMLSpanElement, Environmen
       <span className="truncate">{visibleLabel}</span>
     </span>
   )
-})
+}

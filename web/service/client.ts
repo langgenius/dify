@@ -97,16 +97,22 @@ function shouldUseLocalDeploymentErrorToast(url: string, method?: string) {
     || /\/enterprise\/app-deploy\/app-instances\/[^/]+\/environments\/[^/]+\/deploy$/.test(pathname)
 }
 
+function getFetchRequestMethod(input: { method?: unknown }, init?: RequestInit) {
+  return typeof input.method === 'string' ? input.method : init?.method
+}
+
 const consoleLink = new OpenAPILink(consoleRouterContract, {
   url: getBaseURL(API_PREFIX),
   fetch: (input, init) => {
+    const method = getFetchRequestMethod(input, init)
+
     return request(
       input.url,
       init,
       {
         fetchCompat: true,
         request: input,
-        silent: shouldUseLocalDeploymentErrorToast(input.url, input.method || init?.method),
+        silent: shouldUseLocalDeploymentErrorToast(input.url, method),
       },
     )
   },

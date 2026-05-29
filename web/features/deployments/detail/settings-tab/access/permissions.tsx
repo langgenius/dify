@@ -4,9 +4,13 @@ import type {
   AccessPolicy,
   AccessSubject,
   Environment,
-  Subject,
 } from '@dify/contracts/enterprise/types.gen'
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type {
+  Subject as AccessControlSubject,
+  SubjectAccount as AccessControlSubjectAccount,
+  SubjectGroup as AccessControlSubjectGroup,
+} from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -37,6 +41,8 @@ import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { SubjectType as AccessControlSubjectType } from '@/models/access-control'
+import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
 import {
@@ -143,22 +149,30 @@ type SelectableAccessSubject = {
   memberCount?: number
 }
 
-function subjectTypeFromSubject(subject: Subject): AccessSubjectType {
-  if (subject.subjectType === SUBJECT_TYPE_GROUP || subject.groupData)
-    return SUBJECT_TYPE_GROUP
-  return SUBJECT_TYPE_ACCOUNT
-}
+function normalizeSubject(subject: AccessControlSubject): SelectableAccessSubject | undefined {
+  if (subject.subjectType === AccessControlSubjectType.GROUP) {
+    const groupSubject = subject as AccessControlSubjectGroup
+    const id = groupSubject.subjectId || groupSubject.groupData.id
+    if (!id)
+      return undefined
 
-function normalizeSubject(subject: Subject): SelectableAccessSubject | undefined {
-  const id = subject.subjectId || subject.accountData?.id || subject.groupData?.id
+    return {
+      id,
+      subjectType: SUBJECT_TYPE_GROUP,
+      name: groupSubject.groupData.name,
+      memberCount: groupSubject.groupData.groupSize,
+    }
+  }
+
+  const accountSubject = subject as AccessControlSubjectAccount
+  const id = accountSubject.subjectId || accountSubject.accountData.id
   if (!id)
     return undefined
 
   return {
     id,
-    subjectType: subjectTypeFromSubject(subject),
-    name: subject.accountData?.name || subject.accountData?.email || subject.groupData?.name || id,
-    memberCount: subject.groupData?.groupSize,
+    subjectType: SUBJECT_TYPE_ACCOUNT,
+    name: accountSubject.accountData.name || accountSubject.accountData.email,
   }
 }
 
@@ -236,20 +250,15 @@ function AccessSubjectCombobox({
   const searchKeyword = debouncedKeyword.trim()
   const isSearchDebouncing = trimmedKeyword !== searchKeyword
   const isInteractionDisabled = Boolean(disabled || loading)
-  const subjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
-    input: {
-      query: {
-        keyword: searchKeyword || undefined,
-        pageNumber: 1,
-        resultsPerPage: ACCESS_SUBJECT_SEARCH_PAGE_SIZE,
-      },
-    },
-    enabled: open && !isInteractionDisabled,
-  }))
+  const subjectsQuery = useSearchForWhiteListCandidates({
+    keyword: searchKeyword || undefined,
+    resultsPerPage: ACCESS_SUBJECT_SEARCH_PAGE_SIZE,
+  }, open && !isInteractionDisabled)
+  const candidateSubjects = subjectsQuery.data?.pages.flatMap(page => page.subjects ?? []) ?? []
   const subjects = isSearchDebouncing
     ? []
-    : subjectsQuery.data?.subjects
-      ?.map(normalizeSubject)
+    : candidateSubjects
+      .map(normalizeSubject)
       .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
   const selectedItems = selectedSubjects.filter(selectedSubject =>
     !subjects.some(subject => isSameSubject(subject, selectedSubject)),
@@ -430,17 +439,12 @@ export function EnvironmentPermissionRow({
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
   const policy = accessPolicyQuery.data?.policy ?? summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
-  const accessSubjectsQuery = useQuery(consoleQuery.enterprise.accessSubjectService.listAccessSubjects.queryOptions({
-    input: {
-      query: {
-        pageNumber: 1,
-        resultsPerPage: ACCESS_SUBJECT_LABEL_PAGE_SIZE,
-      },
-    },
-    enabled: policyKind === 'specific',
-  }))
-  const accessSubjects = accessSubjectsQuery.data?.subjects
-    ?.map(normalizeSubject)
+  const accessSubjectsQuery = useSearchForWhiteListCandidates({
+    resultsPerPage: ACCESS_SUBJECT_LABEL_PAGE_SIZE,
+  }, policyKind === 'specific')
+  const accessSubjectCandidates = accessSubjectsQuery.data?.pages.flatMap(page => page.subjects ?? []) ?? []
+  const accessSubjects = accessSubjectCandidates
+    .map(normalizeSubject)
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
   const policySubjectFingerprint = policy?.subjects
     ?.map(subject => `${subject.subjectType ?? ''}:${subject.subjectId ?? ''}`)
