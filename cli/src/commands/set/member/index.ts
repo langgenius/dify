@@ -1,8 +1,8 @@
-import { Args, Flags } from '../../../framework/flags.js'
-import { formatted, OutputFormat } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runSetMember } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { formatted, OutputFormat } from '@/framework/output'
+import { runSetMember } from './run'
 
 export default class SetMember extends DifyCommand {
   static override description = 'Change a member\'s role in the active (or specified) workspace'

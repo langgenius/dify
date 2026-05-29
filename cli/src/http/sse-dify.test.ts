@@ -1,6 +1,6 @@
-import type { SseEvent } from './sse.js'
+import type { SseEvent } from './sse'
 import { describe, expect, it } from 'vitest'
-import { eventNameFromDifyData, normalizeDifyStream } from './sse-dify.js'
+import { eventNameFromDifyData, normalizeDifyStream } from './sse-dify'
 
 const enc = new TextEncoder()
 

@@ -1,7 +1,7 @@
-import { Flags } from '../../../framework/flags.js'
-import { realStreams } from '../../../sys/io/streams'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runLogin } from './login.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { realStreams } from '@/sys/io/streams'
+import { runLogin } from './login'
 
 export default class Login extends DifyCommand {
   static override description = 'Sign in to Dify via OAuth device flow'

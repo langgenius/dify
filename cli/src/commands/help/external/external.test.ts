@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runHelpExternal } from './external.js'
+import { runHelpExternal } from './external'
 
 describe('runHelpExternal', () => {
   it('mentions external bearer prefix and login flag', () => {

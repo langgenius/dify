@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as info from '../../version/info.js'
-import * as probe from '../../version/probe.js'
-import Version, { COMPAT_FAIL_EXIT_CODE } from './index.js'
+import * as info from '@/version/info'
+import * as probe from '@/version/probe'
+import Version, { COMPAT_FAIL_EXIT_CODE } from './index'
 
 function fakeReport(overrides: {
   channel?: probe.VersionReport['client']['channel']

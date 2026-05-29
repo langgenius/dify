@@ -1,4 +1,4 @@
-import type { CommandOutput } from './output.js'
+import type { CommandOutput } from './output'
 
 export type ArgValueType = string | boolean | number | string[]
 export type OptionalArgValueType = ArgValueType | undefined

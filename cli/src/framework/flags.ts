@@ -1,5 +1,5 @@
-import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types.js'
-import { UnsupportedArgValueError } from './errors.js'
+import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types'
+import { UnsupportedArgValueError } from './errors'
 
 function stringFlag<const Opts extends {
   description: string

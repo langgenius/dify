@@ -1,5 +1,5 @@
 import type { AppDescribeInfo, TagItem } from '@dify/contracts/api/openapi/types.gen'
-import type { AppMeta } from '../../../types/app-meta.js'
+import type { AppMeta } from '@/types/app-meta'
 
 export const APP_DESCRIBE_MODE_KEY = 'app-describe'
 

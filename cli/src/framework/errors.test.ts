@@ -1,13 +1,12 @@
-import type { FlagDefinition } from './types.js'
+import type { FlagDefinition } from './types'
 import { describe, expect, it } from 'vitest'
-import { OutputFormatNotSupportedError, UnsupportedArgValueError } from './errors.js'
+import { OutputFormatNotSupportedError, UnsupportedArgValueError } from './errors'
 
 describe('OutputFormatNotSupportedError', () => {
   it('states the offending format in the message', () => {
     const err = new OutputFormatNotSupportedError('csv')
     expect(err.message).toBe('format csv is not supported by this command')
   })
-
 })
 
 describe('UnsupportedArgValueError', () => {
