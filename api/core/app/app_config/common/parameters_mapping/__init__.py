@@ -1,8 +1,11 @@
 from collections.abc import Mapping
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+
+if TYPE_CHECKING:
+    from models.model import App
 
 
 class FeatureToggleDict(TypedDict):
@@ -70,3 +73,39 @@ def get_parameters_from_feature_dict(
             "workflow_file_upload_limit": dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
         },
     }
+
+
+class AppParametersUnavailableError(Exception):
+    """Raised when an app cannot yet expose webapp parameters (no published config)."""
+
+
+def get_app_parameters(app_model: "App") -> AppParametersDict:
+    """Resolve the webapp parameters for any app type.
+
+    Workflow / advanced-chat apps read their feature flags from the bound
+    workflow; easy-UI apps (chat / agent-chat / completion) from their
+    ``app_model_config``. An Agent App has neither a workflow nor a legacy
+    ``app_model_config`` — its presentation features are not yet configurable,
+    so every toggle defaults to disabled with a free-form chat input.
+    """
+    from models.model import AppMode
+
+    features_dict: Mapping[str, Any]
+    user_input_form: list[dict[str, Any]]
+
+    if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        workflow = app_model.workflow
+        if workflow is None:
+            raise AppParametersUnavailableError()
+        features_dict = workflow.features_dict
+        user_input_form = workflow.user_input_form(to_old_structure=True)
+    elif app_model.app_model_config is not None:
+        features_dict = app_model.app_model_config.to_dict()
+        user_input_form = features_dict.get("user_input_form", [])
+    elif app_model.mode == AppMode.AGENT:
+        features_dict = {}
+        user_input_form = []
+    else:
+        raise AppParametersUnavailableError()
+
+    return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)

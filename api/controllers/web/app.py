@@ -1,5 +1,4 @@
 import logging
-from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
@@ -9,10 +8,10 @@ from werkzeug.exceptions import Unauthorized
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import AppParametersUnavailableError, get_app_parameters
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
-from models.model import App, AppMode, EndUser
+from models.model import App, EndUser
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -58,23 +57,10 @@ class AppParameterApi(WebApiResource):
     )
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                raise AppUnavailableError()
-
-            features_dict: dict[str, Any] = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        try:
+            parameters = get_app_parameters(app_model)
+        except AppParametersUnavailableError:
+            raise AppUnavailableError()
         return fields.Parameters.model_validate(parameters).model_dump(mode="json")
 
 

@@ -1,5 +1,3 @@
-from typing import Any, cast
-
 from flask_restx import Resource
 
 from controllers.common.fields import Parameters
@@ -7,9 +5,9 @@ from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import AppParametersUnavailableError, get_app_parameters
 from fields.base import ResponseModel
-from models.model import App, AppMode
+from models.model import App
 from services.app_service import AppService
 
 
@@ -43,23 +41,10 @@ class AppParameterApi(Resource):
 
         Returns the input form parameters and configuration for the application.
         """
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                raise AppUnavailableError()
-
-            features_dict: dict[str, Any] = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        try:
+            parameters = get_app_parameters(app_model)
+        except AppParametersUnavailableError:
+            raise AppUnavailableError()
         return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
