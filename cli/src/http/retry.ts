@@ -16,7 +16,8 @@ export function shouldRetry(target: Response | unknown, ctx: FetchContext): bool
   return true
 }
 
-// Exponential backoff matching ky's default (0.3s, 0.6s, 1.2s, ... capped).
+// Exponential backoff: 300ms base, doubling each attempt, capped at 30s
+// (300ms, 600ms, 1.2s, ...).
 const BACKOFF_BASE_MS = 300
 const BACKOFF_CAP_MS = 30_000
 

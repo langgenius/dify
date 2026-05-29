@@ -1,6 +1,6 @@
 import type { SearchParamValue } from './types.js'
 
-// Ported from ofetch/src/utils.url.ts (joinURL).
+// Joins a base URL and a path, collapsing/inserting a single slash at the seam.
 export function joinURL(base: string, path: string): string {
   if (base === '' || base === '/')
     return path === '' ? '/' : path

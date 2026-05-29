@@ -181,12 +181,23 @@ async function dispatch(state: ClientState, path: string, opts: RequestOptions, 
   return res
 }
 
+// 204/205 and empty 2xx bodies carry no JSON. Resolve to `undefined` instead of
+// letting `res.json()` throw an unclassified SyntaxError, so void-returning callers
+// (revoke, stopTask, …) stay safe when a server replies with No Content.
+async function parseJsonBody<T>(res: Response): Promise<T> {
+  if (res.status === 204 || res.status === 205)
+    return undefined as T
+  const text = await res.text()
+  return (text === '' ? undefined : JSON.parse(text)) as T
+}
+
 export function createHttpClient(opts: ClientOptions): HttpClient {
   const state = compileState(opts)
 
-  const typedCall = <T>(method: HttpMethod, path: string, callOpts?: RequestOptions): Promise<T> => {
+  const typedCall = async <T>(method: HttpMethod, path: string, callOpts?: RequestOptions): Promise<T> => {
     const finalOpts: RequestOptions = { ...callOpts, method }
-    return dispatch(state, path, finalOpts, 0, true).then(res => res.json() as Promise<T>)
+    const res = await dispatch(state, path, finalOpts, 0, true)
+    return parseJsonBody<T>(res)
   }
 
   const rawFetch = (path: string, callOpts?: RequestOptions): Promise<Response> => {

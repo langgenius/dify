@@ -287,6 +287,34 @@ describe('http client', () => {
   })
 })
 
+describe('empty / No-Content bodies', () => {
+  it('204 response resolves to undefined instead of throwing', async () => {
+    const stub = await startStub((_req, res) => {
+      res.writeHead(204).end()
+    })
+    try {
+      const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test' })
+      await expect(client.delete('account/sessions/abc')).resolves.toBeUndefined()
+    }
+    finally {
+      await stub.stop()
+    }
+  })
+
+  it('empty 200 body resolves to undefined instead of throwing', async () => {
+    const stub = await startStub((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' }).end()
+    })
+    try {
+      const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test' })
+      await expect(client.post('apps/app-1/tasks/t-1/stop', { json: {} })).resolves.toBeUndefined()
+    }
+    finally {
+      await stub.stop()
+    }
+  })
+})
+
 describe('classifyResponse internals', () => {
   it('strips Bearer from logged URLs', async () => {
     const mock = await startMock()

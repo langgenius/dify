@@ -1,6 +1,8 @@
 import type { BodyInit } from './types.js'
 
-// `isJSONSerializable` ported from ofetch/src/utils.ts.
+// Reports whether a value should be JSON-stringified for the wire: primitives,
+// plain objects, arrays, and anything with a `toJSON` method — but not typed
+// arrays/buffers, FormData, or URLSearchParams, which are sent as-is.
 export function isJSONSerializable(value: unknown): boolean {
   if (value === undefined)
     return false
