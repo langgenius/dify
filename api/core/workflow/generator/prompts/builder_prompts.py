@@ -122,6 +122,11 @@ correct.
 7. The "start" node owns input variables; downstream nodes reference them as
    ["<start-node-id>", "<var-name>"] for selectors or {#<start-node-id>.<var-name>#}
    inside prompt strings.
+8. NEVER emit "code" or "http-request" nodes if a tool from the "Available tools"
+   section below covers the same task — replace them with a "tool" node referencing
+   the exact provider/tool identifier from the catalogue. "code" / "http-request"
+   are last-resort escape hatches for arbitrary transformations and APIs that no
+   installed tool can express.
 
 """
 

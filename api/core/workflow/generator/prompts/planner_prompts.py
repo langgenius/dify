@@ -25,19 +25,34 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 - "code"                — run a Python/JavaScript snippet.
 - "template-transform"  — Jinja2 string templating.
 - "http-request"        — call an external HTTP API.
-- "tool"                — call a Dify built-in / plugin tool (e.g. web search).
-- "if-else"             — conditional branch.
-- "question-classifier" — route to a labelled branch based on the input.
+- "tool"                — call a Dify built-in / plugin tool (e.g. web search, time, audio).
+- "if-else"             — conditional branch on a value.
+- "iteration"           — run a sub-pipeline over each item of a list (parallel-friendly map).
+- "loop"                — repeat a sub-pipeline until an exit condition is met.
+- "question-classifier" — route to a labelled branch based on free-text intent.
 - "parameter-extractor" — extract structured params from free text using LLM.
 
 # Rules
 
 1. Always start with exactly one "start" node.
 2. End with exactly one "end" (Workflow mode) or "answer" (Advanced Chat mode).
-3. Keep it simple — prefer 3–6 nodes total. Do NOT add nodes "just in case".
-4. Each node "label" must be a short, human-readable, Title-Case name (≤ 25 chars).
-5. Each node "purpose" is one sentence explaining what it does in this workflow.
-6. Output strictly the JSON object — no prose, no Markdown, no code fences.
+3. Keep it minimal — prefer 3–6 nodes for simple flows. Do NOT add nodes "just in case".
+4. For COMPLEX scenes, reach for control-flow nodes instead of stuffing logic into
+   prompts:
+   - branching / mutually-exclusive paths → "if-else" (deterministic value check) or
+     "question-classifier" (semantic / intent routing)
+   - "for each item in a list" → "iteration"
+   - "keep going until condition" → "loop"
+5. PREFER "tool" over "http-request" or "code" whenever an installed tool from the
+   "Available tools" section below covers the task (e.g. web search, time lookup,
+   scraping, audio, translation, etc.). Only fall back to "http-request" for
+   arbitrary external APIs not provided by any installed tool, and to "code" for
+   genuine data transformations no tool can express.
+6. Each node "label" must be a short, human-readable, Title-Case name (≤ 25 chars).
+7. Each node "purpose" is one sentence explaining what it does in this workflow.
+   For "tool" nodes, name the chosen tool inside the purpose, e.g.
+   "Search the web using google/search.".
+8. Output strictly the JSON object — no prose, no Markdown, no code fences.
 
 # Output schema
 

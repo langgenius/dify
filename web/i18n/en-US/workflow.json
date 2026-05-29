@@ -1226,7 +1226,6 @@
   "workflowGenerator.applyFailed": "Failed to apply workflow",
   "workflowGenerator.applyToCurrent": "Apply to current draft",
   "workflowGenerator.applyToNew": "Create new app",
-  "workflowGenerator.copied": "Copied to clipboard",
   "workflowGenerator.description": "Describe what you want the workflow to do. Pick a model, write an instruction, and preview the generated graph before applying it to Studio.",
   "workflowGenerator.dismiss": "Dismiss",
   "workflowGenerator.generate": "Generate",

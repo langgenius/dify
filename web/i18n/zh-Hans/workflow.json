@@ -1226,7 +1226,6 @@
   "workflowGenerator.applyFailed": "应用工作流失败",
   "workflowGenerator.applyToCurrent": "应用到当前草稿",
   "workflowGenerator.applyToNew": "创建新应用",
-  "workflowGenerator.copied": "已复制到剪贴板",
   "workflowGenerator.description": "描述你希望工作流完成的任务。选择模型、撰写指令，预览生成的图后再应用到 Studio。",
   "workflowGenerator.dismiss": "关闭",
   "workflowGenerator.generate": "生成",

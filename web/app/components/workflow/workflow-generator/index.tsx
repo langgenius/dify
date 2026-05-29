@@ -15,9 +15,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiClipboardLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -176,13 +174,6 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const canApplyToCurrent = !!currentAppId && currentAppMode === mode
 
-  const handleCopy = useCallback(() => {
-    if (!current?.graph)
-      return
-    copy(JSON.stringify(current.graph, null, 2))
-    toast.success(t('workflowGenerator.copied'))
-  }, [current, t])
-
   const handleApplyToNew = useCallback(async () => {
     if (!current?.graph || isApplying)
       return
@@ -310,9 +301,6 @@ const WorkflowGeneratorModal: React.FC = () => {
                       onChange={setCurrentVersionIndex}
                     />
                     <div className="flex items-center space-x-2">
-                      <Button size="small" variant="ghost" onClick={handleCopy}>
-                        <RiClipboardLine className="size-4" />
-                      </Button>
                       {canApplyToCurrent && (
                         <Button size="small" onClick={showConfirmOverwrite} disabled={isApplying}>
                           {t('workflowGenerator.applyToCurrent')}
@@ -328,6 +316,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                       nodes={current.graph.nodes}
                       edges={current.graph.edges}
                       viewport={current.graph.viewport}
+                      miniMapToRight
                     />
                   </div>
                   {current.message && (
