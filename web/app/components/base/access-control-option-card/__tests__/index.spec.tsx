@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AccessControlOptionCard from '../index'
+import { AccessControlOptionCard } from '../index'
 
 describe('AccessControlOptionCard', () => {
   beforeEach(() => {

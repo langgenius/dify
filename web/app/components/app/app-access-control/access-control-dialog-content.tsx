@@ -22,7 +22,7 @@ type AccessControlDialogContentProps = {
   onConfirm: () => void
 }
 
-export default function AccessControlDialogContent({
+export function AccessControlDialogContent({
   title,
   description,
   accessLabel,

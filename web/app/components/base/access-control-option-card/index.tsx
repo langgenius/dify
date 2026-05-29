@@ -9,7 +9,7 @@ type AccessControlOptionCardProps = Omit<ComponentPropsWithoutRef<'div'>, 'onSel
   onSelect?: () => void
 }
 
-export default function AccessControlOptionCard({
+export function AccessControlOptionCard({
   selected = false,
   disabled = false,
   className,

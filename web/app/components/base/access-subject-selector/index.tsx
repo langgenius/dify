@@ -87,13 +87,13 @@ export function AccessSubjectAddButton({
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !isLoading && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && hasMore)
           fetchNextPage()
       }, { root: scrollRootRef.current, rootMargin: '20px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, fetchNextPage, hasMore])
+  }, [fetchNextPage, hasMore, isFetchingNextPage, isLoading])
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && disabled)

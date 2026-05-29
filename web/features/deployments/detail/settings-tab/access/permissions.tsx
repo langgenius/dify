@@ -15,11 +15,11 @@ import type {
 } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControlDialog from '@/app/components/app/app-access-control/access-control-dialog'
-import AccessControlDialogContent from '@/app/components/app/app-access-control/access-control-dialog-content'
+import { AccessControlDialogContent } from '@/app/components/app/app-access-control/access-control-dialog-content'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useAccessControlStore from '@/context/access-control-store'
 import { SubjectType as AccessControlSubjectType, AccessMode as AppAccessMode } from '@/models/access-control'
@@ -148,7 +148,7 @@ function selectableSubjectToGroup(subject: SelectableAccessSubject): AccessContr
     id: subject.id,
     name: getSubjectLabel(subject),
     groupSize: subject.memberCount ?? 0,
-  } as unknown as AccessControlGroup
+  }
 }
 
 function selectableSubjectToAccount(subject: SelectableAccessSubject): AccessControlAccount {
@@ -160,7 +160,7 @@ function selectableSubjectToAccount(subject: SelectableAccessSubject): AccessCon
     email: label,
     avatar: '',
     avatarUrl: '',
-  } as unknown as AccessControlAccount
+  }
 }
 
 function accessControlSelectionFromSubjects(subjects: SelectableAccessSubject[]): AccessSubjectSelectionValue {
@@ -369,13 +369,14 @@ export function EnvironmentPermissionRow({
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
   const accessPolicyQuery = useQuery(consoleQuery.enterprise.accessService.getAccessPolicy.queryOptions({
-    input: {
-      params: {
-        appInstanceId,
-        environmentId: environmentId ?? '',
-      },
-    },
-    enabled: Boolean(environmentId),
+    input: environmentId
+      ? {
+          params: {
+            appInstanceId,
+            environmentId,
+          },
+        }
+      : skipToken,
   }))
   const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.putAccessPolicy.mutationOptions())
   const policy = accessPolicyQuery.data?.policy ?? summaryPolicy

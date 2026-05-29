@@ -11,7 +11,7 @@ import type { InstanceDetailTabKey } from '../detail/tabs'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -306,29 +306,28 @@ export function InstanceCard({ app }: {
   const appInstanceId = app.id ?? ''
   const appName = app.name ?? appInstanceId
   const detailHref = getInstanceTabHref(appInstanceId, 'overview')
-  const input = { params: { appInstanceId } }
+  const input = appInstanceId ? { params: { appInstanceId } } : skipToken
+  const releaseHistoryInput = appInstanceId
+    ? {
+        params: { appInstanceId },
+        query: {
+          pageNumber: 1,
+          resultsPerPage: CARD_RELEASE_QUERY_PAGE_SIZE,
+        },
+      }
+    : skipToken
 
   const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input,
-    enabled: Boolean(appInstanceId),
   }))
   const accessChannelsQuery = useQuery(consoleQuery.enterprise.accessService.getAccessChannels.queryOptions({
     input,
-    enabled: Boolean(appInstanceId),
   }))
   const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
-    input: {
-      ...input,
-      query: {
-        pageNumber: 1,
-        resultsPerPage: CARD_RELEASE_QUERY_PAGE_SIZE,
-      },
-    },
-    enabled: Boolean(appInstanceId),
+    input: releaseHistoryInput,
   }))
   const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
     input,
-    enabled: Boolean(appInstanceId),
     refetchInterval: query => deploymentStatusPollingInterval(query.state.data),
   }))
 

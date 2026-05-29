@@ -34,7 +34,7 @@ async function fallbackCopyTextToClipboard(text: string): Promise<void> {
   }
 }
 
-function convertAnyToError(err: any): Error {
+function convertAnyToError(err: unknown): Error {
   if (err instanceof Error)
     return err
 

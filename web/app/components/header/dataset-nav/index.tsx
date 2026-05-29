@@ -3,7 +3,6 @@
 import type { NavItem } from '../nav/nav-selector'
 import type { DataSet, IconInfo } from '@/models/datasets'
 import { flatten } from 'es-toolkit/compat'
-import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
@@ -16,6 +15,44 @@ const DEFAULT_DATASET_ICON_INFO = {
   icon_background: '#FFF4ED',
   icon_url: '',
 } satisfies IconInfo
+
+function datasetLink(dataset: DataSet) {
+  const isPipelineUnpublished = dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
+  const link = isPipelineUnpublished
+    ? `/datasets/${dataset.id}/pipeline`
+    : `/datasets/${dataset.id}/documents`
+
+  return dataset.provider === 'external'
+    ? `/datasets/${dataset.id}/hitTesting`
+    : link
+}
+
+function currentDatasetNavItem(dataset: DataSet) {
+  const iconInfo = dataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
+
+  return {
+    id: dataset.id,
+    name: dataset.name,
+    icon: iconInfo.icon,
+    icon_type: iconInfo.icon_type,
+    icon_background: iconInfo.icon_background ?? null,
+    icon_url: iconInfo.icon_url ?? null,
+  } satisfies Omit<NavItem, 'link'>
+}
+
+function datasetNavItem(dataset: DataSet) {
+  const iconInfo = dataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
+
+  return {
+    id: dataset.id,
+    name: dataset.name,
+    link: datasetLink(dataset),
+    icon: iconInfo.icon,
+    icon_type: iconInfo.icon_type,
+    icon_background: iconInfo.icon_background ?? null,
+    icon_url: iconInfo.icon_url ?? null,
+  } satisfies NavItem
+}
 
 const DatasetNav = () => {
   const { t } = useTranslation()
@@ -33,58 +70,17 @@ const DatasetNav = () => {
   })
   const datasetItems = flatten(datasetList?.pages.map(datasetData => datasetData.data))
 
-  const curNav = useMemo(() => {
-    if (!currentDataset)
-      return
-    const iconInfo = currentDataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
-    return {
-      id: currentDataset.id,
-      name: currentDataset.name,
-      icon: iconInfo.icon,
-      icon_type: iconInfo.icon_type,
-      icon_background: iconInfo.icon_background,
-      icon_url: iconInfo.icon_url,
-    } as Omit<NavItem, 'link'>
-  }, [currentDataset])
+  const curNav = currentDataset ? currentDatasetNavItem(currentDataset) : undefined
+  const navigationItems = datasetItems.map(datasetNavItem)
+  const runtimeMode = currentDataset?.runtime_mode
+  const createRoute = runtimeMode === 'rag_pipeline'
+    ? `${basePath}/datasets/create-from-pipeline`
+    : `${basePath}/datasets/create`
 
-  const getDatasetLink = useCallback((dataset: DataSet) => {
-    const isPipelineUnpublished = dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
-    const link = isPipelineUnpublished
-      ? `/datasets/${dataset.id}/pipeline`
-      : `/datasets/${dataset.id}/documents`
-    return dataset.provider === 'external'
-      ? `/datasets/${dataset.id}/hitTesting`
-      : link
-  }, [])
-
-  const navigationItems = useMemo(() => {
-    return datasetItems.map((dataset) => {
-      const link = getDatasetLink(dataset)
-      const iconInfo = dataset.icon_info ?? DEFAULT_DATASET_ICON_INFO
-      return {
-        id: dataset.id,
-        name: dataset.name,
-        link,
-        icon: iconInfo.icon,
-        icon_type: iconInfo.icon_type,
-        icon_background: iconInfo.icon_background,
-        icon_url: iconInfo.icon_url,
-      }
-    }) as NavItem[]
-  }, [datasetItems, getDatasetLink])
-
-  const createRoute = useMemo(() => {
-    const runtimeMode = currentDataset?.runtime_mode
-    if (runtimeMode === 'rag_pipeline')
-      return `${basePath}/datasets/create-from-pipeline`
-    else
-      return `${basePath}/datasets/create`
-  }, [currentDataset?.runtime_mode])
-
-  const handleLoadMore = useCallback(() => {
-    if (hasNextPage)
-      fetchNextPage()
-  }, [hasNextPage, fetchNextPage])
+  function handleLoadMore() {
+    if (hasNextPage && !isFetchingNextPage)
+      void fetchNextPage()
+  }
 
   return (
     <Nav

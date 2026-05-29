@@ -10,7 +10,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitl
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -76,10 +76,9 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const latestSourceAppId = latestReleaseQuery.data?.data?.[0]?.sourceAppId
   const defaultSourceAppId = isCreating && latestSourceAppId && !sourceApp ? latestSourceAppId : ''
   const defaultSourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: {
-      params: { app_id: defaultSourceAppId },
-    },
-    enabled: Boolean(defaultSourceAppId),
+    input: defaultSourceAppId
+      ? { params: { app_id: defaultSourceAppId } }
+      : skipToken,
   }))
   const defaultSourceApp: SourceAppPickerValue | undefined = latestSourceAppId
     ? {

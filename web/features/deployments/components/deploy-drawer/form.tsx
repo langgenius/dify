@@ -1,40 +1,28 @@
 'use client'
 
 import type {
-  CredentialSlot,
-  Environment,
   EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { EnvVarValues } from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
+import type { EnvironmentOption } from './form-sections'
 import { Button } from '@langgenius/dify-ui/button'
-import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
-import { environmentBackend, environmentMode, environmentName } from '../../environment'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
-import { formatDate, releaseCommit, releaseLabel } from '../../release'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
-import { DeploymentStateMessage } from '../empty-state'
-import {
-  EnvVarBindingsPanel,
-} from '../env-var-bindings'
 import {
   hasEnvVarSlotKey,
   hasMissingRequiredEnvVarValue,
   selectedDeploymentEnvVars,
 } from '../env-var-bindings-utils'
-import {
-  RuntimeCredentialBindingsPanel,
-} from '../runtime-credential-bindings'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
@@ -42,10 +30,13 @@ import {
   selectedRuntimeCredentialSelections,
 } from '../runtime-credential-bindings-utils'
 import {
-  DeploymentSelect,
-  EnvironmentRow,
-  Field,
-} from './select'
+  DeployFormHeader,
+  DeployFormSkeleton,
+  DeploymentBindingsSection,
+  EnvironmentField,
+
+  ReleaseField,
+} from './form-sections'
 
 type DeployFormProps = {
   appInstanceId: string
@@ -59,29 +50,7 @@ type DeployReadyFormProps = DeployFormProps & {
   defaultReleaseId?: string
 }
 
-type EnvironmentOption = Environment & { id: string }
-
-const DEPLOY_FORM_FIELD_SKELETON_KEYS = ['environment', 'release']
-const DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME = 'max-h-none overflow-visible'
-
 type BindingSelections = RuntimeCredentialBindingSelections
-
-type BindingOptionsPanelProps = {
-  slots: CredentialSlot[]
-  selections: BindingSelections
-  isLoading: boolean
-  hasError: boolean
-  bindingCountLabel: string
-  onChange: (slot: string, value: string) => void
-}
-
-function environmentOptionLabel(env: EnvironmentOption, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
-  const description = env.description?.trim()
-  if (description)
-    return `${environmentName(env)} · ${description}`
-
-  return `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`
-}
 
 function requiredSlotEnvVarSlot(slot: NonNullable<Release['requiredSlots']>[number]): EnvVarSlot | undefined {
   if (slot.type !== 'SLOT_TYPE_ENV_VAR')
@@ -89,91 +58,6 @@ function requiredSlotEnvVarSlot(slot: NonNullable<Release['requiredSlots']>[numb
 
   const key = slot.name?.trim()
   return key ? { key } : undefined
-}
-
-function BindingOptionsPanel({
-  slots,
-  selections,
-  isLoading,
-  hasError,
-  bindingCountLabel,
-  onChange,
-}: BindingOptionsPanelProps) {
-  const { t } = useTranslation('deployments')
-
-  if (isLoading) {
-    return (
-      <div className="rounded-xl border border-divider-subtle bg-background-default-subtle px-3 py-4">
-        <SkeletonContainer className="gap-2">
-          <SkeletonRectangle className="h-3 w-32 animate-pulse" />
-          <SkeletonRectangle className="h-3 w-2/3 animate-pulse" />
-          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-        </SkeletonContainer>
-      </div>
-    )
-  }
-
-  if (hasError) {
-    return (
-      <div className="rounded-xl border border-divider-subtle bg-background-default-subtle px-3 py-4 system-sm-regular text-text-destructive">
-        {t('deployDrawer.bindingOptionsFailed')}
-      </div>
-    )
-  }
-
-  return (
-    <RuntimeCredentialBindingsPanel
-      slots={slots}
-      selections={selections}
-      title={t('deployDrawer.runtimeCredentials')}
-      hint={t('deployDrawer.bindingSelectionHint')}
-      requiredLabel={t('deployDrawer.requiredBinding')}
-      noBindingRequiredLabel={t('deployDrawer.noBindingRequired')}
-      noCredentialCandidatesLabel={t('deployDrawer.noCredentialCandidates')}
-      selectCredentialLabel={t('deployDrawer.selectCredential')}
-      missingRequiredLabel={t('deployDrawer.missingRequiredBinding')}
-      bindingCountLabel={bindingCountLabel}
-      listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
-      onChange={onChange}
-    />
-  )
-}
-
-function DeployFormSkeleton() {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-divider-subtle px-6 py-5 pr-14">
-        <SkeletonContainer className="gap-2">
-          <SkeletonRectangle className="h-5 w-44 animate-pulse" />
-          <SkeletonRectangle className="h-3 w-72 animate-pulse" />
-        </SkeletonContainer>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        <div className="flex flex-col gap-5">
-          {DEPLOY_FORM_FIELD_SKELETON_KEYS.map(key => (
-            <SkeletonContainer key={key} className="gap-2">
-              <SkeletonRectangle className="h-3 w-24 animate-pulse" />
-              <SkeletonRectangle className="my-0 h-9 w-full animate-pulse rounded-lg" />
-            </SkeletonContainer>
-          ))}
-
-          <div className="rounded-xl border border-divider-subtle bg-background-default-subtle px-3 py-4">
-            <SkeletonContainer className="gap-2">
-              <SkeletonRectangle className="h-3 w-32 animate-pulse" />
-              <SkeletonRectangle className="h-3 w-2/3 animate-pulse" />
-              <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-            </SkeletonContainer>
-          </div>
-        </div>
-      </div>
-
-      <SkeletonRow className="shrink-0 justify-end border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-        <SkeletonRectangle className="my-0 h-8 w-18 animate-pulse rounded-lg" />
-        <SkeletonRectangle className="my-0 h-8 w-22 animate-pulse rounded-lg" />
-      </SkeletonRow>
-    </div>
-  )
 }
 
 function DeployReadyForm({
@@ -203,13 +87,15 @@ function DeployReadyForm({
   const targetRelease = displayedRelease ?? selectedRelease
   const targetReleaseId = targetRelease?.id ?? selectedReleaseId
   const hasSelectedEnvironment = Boolean(selectedEnvironmentId && selectedEnvironment)
+  const shouldLoadBindingOptions = Boolean(appInstanceId && targetReleaseId && hasSelectedEnvironment)
   const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
-    input: {
-      params: {
-        releaseId: targetReleaseId || '',
-      },
-    },
-    enabled: Boolean(appInstanceId && targetReleaseId && hasSelectedEnvironment),
+    input: shouldLoadBindingOptions
+      ? {
+          params: {
+            releaseId: targetReleaseId,
+          },
+        }
+      : skipToken,
   }))
   const bindingSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const envVarSlots = targetRelease?.requiredSlots
@@ -236,8 +122,6 @@ function DeployReadyForm({
   )
 
   const lockedEnv = lockedEnvId ? environments.find(e => e.id === lockedEnvId) : undefined
-  const actionTitle = t('deployDrawer.title')
-  const actionDescription = t('deployDrawer.description')
   const submitLabel = isSubmitting ? t('deployDrawer.deploying') : t('deployDrawer.deploy')
 
   const handleDeploy = () => {
@@ -273,104 +157,37 @@ function DeployReadyForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-divider-subtle px-6 py-5 pr-14">
-        <DrawerTitle className="title-xl-semi-bold text-text-primary">
-          {actionTitle}
-        </DrawerTitle>
-        <DrawerDescription className="mt-1 system-sm-regular text-text-tertiary">
-          {actionDescription}
-        </DrawerDescription>
-      </div>
+      <DeployFormHeader />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="flex flex-col gap-5">
-          <Field label={t('deployDrawer.releaseLabel')}>
-            {isExistingRelease && displayedRelease
-              ? (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="shrink-0 font-mono system-sm-semibold text-text-primary">{releaseLabel(displayedRelease)}</span>
-                        <span className="shrink-0 system-xs-regular text-text-tertiary">·</span>
-                        <span className="shrink-0 font-mono system-xs-regular text-text-tertiary">{releaseCommit(displayedRelease)}</span>
-                      </div>
-                      <span className="shrink-0 system-xs-regular text-text-quaternary">{formatDate(displayedRelease.createdAt)}</span>
-                    </div>
-                    <span className="system-xs-regular text-text-tertiary">
-                      {t('deployDrawer.existingReleaseHint')}
-                    </span>
-                  </div>
-                )
-              : releases.length === 0
-                ? (
-                    <DeploymentStateMessage variant="compact">
-                      {t('deployDrawer.noReleaseAvailable')}
-                    </DeploymentStateMessage>
-                  )
-                : (
-                    <DeploymentSelect
-                      value={selectedReleaseId}
-                      onChange={setSelectedReleaseId}
-                      options={releases.filter(release => release.id).map(release => ({
-                        value: release.id!,
-                        label: `${releaseLabel(release)} · ${releaseCommit(release)}`,
-                      }))}
-                      placeholder={t('deployDrawer.selectRelease')}
-                    />
-                  )}
-          </Field>
+          <ReleaseField
+            displayedRelease={displayedRelease}
+            isExistingRelease={isExistingRelease}
+            releases={releases}
+            selectedReleaseId={selectedReleaseId}
+            onSelectRelease={setSelectedReleaseId}
+          />
 
-          <Field
-            label={t('deployDrawer.targetEnv')}
-            hint={lockedEnvId ? t('deployDrawer.lockedHint') : undefined}
-          >
-            {lockedEnv
-              ? <EnvironmentRow env={lockedEnv} />
-              : environments.length === 0
-                ? (
-                    <DeploymentStateMessage variant="compact">
-                      {t('deployDrawer.noNewEnvironmentAvailable')}
-                    </DeploymentStateMessage>
-                  )
-                : (
-                    <DeploymentSelect
-                      value={selectedEnvironmentId}
-                      onChange={setSelectedEnvId}
-                      options={environments.filter(env => env.id).map(env => ({
-                        value: env.id!,
-                        label: environmentOptionLabel(env, t),
-                      }))}
-                      placeholder={t('deployDrawer.selectEnv')}
-                    />
-                  )}
-          </Field>
+          <EnvironmentField
+            environments={environments}
+            lockedEnv={lockedEnv}
+            lockedEnvId={lockedEnvId}
+            selectedEnvironmentId={selectedEnvironmentId}
+            onSelectEnvironment={setSelectedEnvId}
+          />
 
           {targetReleaseId && hasSelectedEnvironment && (
-            <>
-              <BindingOptionsPanel
-                slots={bindingSlots}
-                selections={selectedBindings}
-                isLoading={bindingOptionsLoading}
-                hasError={bindingOptions.isError}
-                bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
-                onChange={(slot, value) => setManualBindings(prev => ({ ...prev, [slot]: value }))}
-              />
-              {!bindingOptionsLoading && !bindingOptions.isError && (
-                <EnvVarBindingsPanel
-                  slots={envVarSlots}
-                  values={envVarValues}
-                  title={t('deployDrawer.envVars')}
-                  hint={t('deployDrawer.envVarHint')}
-                  requiredLabel={t('deployDrawer.requiredBinding')}
-                  envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
-                  envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
-                  missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
-                  listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
-                  showMissingRequired
-                  onChange={(key, value) => setEnvVarValues(prev => ({ ...prev, [key]: value }))}
-                />
-              )}
-            </>
+            <DeploymentBindingsSection
+              bindingSlots={bindingSlots}
+              bindingSelections={selectedBindings}
+              bindingOptionsLoading={bindingOptionsLoading}
+              bindingOptionsError={bindingOptions.isError}
+              envVarSlots={envVarSlots}
+              envVarValues={envVarValues}
+              onBindingChange={(slot, value) => setManualBindings(prev => ({ ...prev, [slot]: value }))}
+              onEnvVarChange={(key, value) => setEnvVarValues(prev => ({ ...prev, [key]: value }))}
+            />
           )}
         </div>
       </div>

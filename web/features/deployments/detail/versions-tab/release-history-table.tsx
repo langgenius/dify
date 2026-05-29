@@ -4,7 +4,7 @@ import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/
 import type { ReleaseDeployment } from './release-deployments'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -262,10 +262,9 @@ function ReleaseSourceCell({ release }: {
   const { t } = useTranslation('deployments')
   const sourceAppId = release.sourceAppId
   const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: {
-      params: { app_id: sourceAppId ?? '' },
-    },
-    enabled: Boolean(sourceAppId),
+    input: sourceAppId
+      ? { params: { app_id: sourceAppId } }
+      : skipToken,
   }))
 
   if (!sourceAppId) {

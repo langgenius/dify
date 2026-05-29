@@ -1,6 +1,7 @@
 {
   "access.api.backendTitle": "Backend service API",
   "access.api.copyCurlExample": "Copy cURL example",
+  "access.api.createFailed": "Failed to generate API Token.",
   "access.api.createKey": "Generate API Token",
   "access.api.createKeyTitle": "Generate new API Token",
   "access.api.curlExampleTitle": "cURL example",

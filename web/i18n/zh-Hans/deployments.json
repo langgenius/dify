@@ -1,6 +1,7 @@
 {
   "access.api.backendTitle": "后端服务 API",
   "access.api.copyCurlExample": "复制 cURL 示例",
+  "access.api.createFailed": "生成 API 令牌失败。",
   "access.api.createKey": "生成 API 令牌",
   "access.api.createKeyTitle": "生成新 API 令牌",
   "access.api.curlExampleTitle": "cURL 示例",

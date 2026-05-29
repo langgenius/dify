@@ -3,7 +3,7 @@
 import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -116,10 +116,9 @@ function LatestReleaseSource({ release }: {
   const { t } = useTranslation('deployments')
   const sourceAppId = release.sourceAppId
   const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: {
-      params: { app_id: sourceAppId ?? '' },
-    },
-    enabled: Boolean(sourceAppId),
+    input: sourceAppId
+      ? { params: { app_id: sourceAppId } }
+      : skipToken,
   }))
 
   if (!sourceAppId) {

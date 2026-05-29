@@ -35,7 +35,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
@@ -130,31 +130,10 @@ function RevokeApiKeyButton({ apiKey }: {
   apiKey: ApiKey
 }) {
   const { t } = useTranslation('deployments')
-  const queryClient = useQueryClient()
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
   const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
   const isRevoking = revokeApiKey.isPending
   const apiKeyName = apiKey.name || apiKey.id || t('access.api.table.key')
-
-  function invalidateApiKeys() {
-    if (apiKey.appInstanceId && apiKey.environmentId) {
-      return queryClient.invalidateQueries({
-        queryKey: consoleQuery.enterprise.accessService.listApiKeys.key({
-          type: 'query',
-          input: {
-            params: {
-              appInstanceId: apiKey.appInstanceId,
-              environmentId: apiKey.environmentId,
-            },
-          },
-        }),
-      })
-    }
-
-    return queryClient.invalidateQueries({
-      queryKey: consoleQuery.enterprise.accessService.listApiKeys.key({ type: 'query' }),
-    })
-  }
 
   function handleRevoke() {
     if (!apiKey.id || isRevoking)
@@ -167,8 +146,7 @@ function RevokeApiKeyButton({ apiKey }: {
         },
       },
       {
-        onSuccess: async () => {
-          await invalidateApiKeys()
+        onSuccess: () => {
           setShowRevokeConfirm(false)
           toast.success(t('access.api.revokeSuccess'))
         },
@@ -426,6 +404,9 @@ export function ApiKeyGenerateMenu({
           if (response.token)
             onCreatedToken(response.token)
           resetCreateDialog()
+        },
+        onError: () => {
+          toast.error(t('access.api.createFailed'))
         },
       },
     )

@@ -1,7 +1,7 @@
 'use client'
 import type { PropsWithChildren } from 'react'
 import type { AccessMode } from '@/models/access-control'
-import AccessControlOptionCard from '@/app/components/base/access-control-option-card'
+import { AccessControlOptionCard } from '@/app/components/base/access-control-option-card'
 import useAccessControlStore from '@/context/access-control-store'
 
 type AccessControlItemProps = PropsWithChildren<{

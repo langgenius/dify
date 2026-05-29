@@ -10,7 +10,7 @@ import { useUpdateAccessMode } from '@/service/access-control'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import useAccessControlStore from '../../../../context/access-control-store'
 import AccessControlDialog from './access-control-dialog'
-import AccessControlDialogContent from './access-control-dialog-content'
+import { AccessControlDialogContent } from './access-control-dialog-content'
 
 type AccessControlProps = {
   app: App

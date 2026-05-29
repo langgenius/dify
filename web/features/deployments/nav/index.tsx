@@ -2,7 +2,7 @@
 
 import type { AppInstance } from '@dify/contracts/enterprise/types.gen'
 import type { NavItem } from '@/app/components/header/nav/nav-selector'
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Nav from '@/app/components/header/nav'
 import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigation'
@@ -51,11 +51,11 @@ export function DeploymentsNav() {
   const isActive = selectedSegment === 'deployments'
   const params = useParams<{ appInstanceId?: string }>()
   const appInstanceId = params?.appInstanceId
-  const hasAppInstanceId = Boolean(appInstanceId)
 
   const { data: currentInstance } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: { params: { appInstanceId: appInstanceId ?? '' } },
-    enabled: isActive && hasAppInstanceId,
+    input: isActive && appInstanceId
+      ? { params: { appInstanceId } }
+      : skipToken,
     select: data => data.appInstance,
   }))
 
