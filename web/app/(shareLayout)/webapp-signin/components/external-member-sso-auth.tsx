@@ -6,7 +6,7 @@ import { useCallback, useEffect } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { SSOProtocol } from '@/types/feature'
 
@@ -41,17 +41,17 @@ const ExternalMemberSSOAuth = () => {
 
     switch (systemFeatures.webapp_auth.sso_config.protocol) {
       case SSOProtocol.SAML: {
-        const samlRes = await fetchWebSAMLSSOUrl(appCode, redirectUrl)
+        const samlRes = await fetchMembersSAMLSSOUrl(appCode, redirectUrl)
         router.push(samlRes.url)
         break
       }
       case SSOProtocol.OIDC: {
-        const oidcRes = await fetchWebOIDCSSOUrl(appCode, redirectUrl)
+        const oidcRes = await fetchMembersOIDCSSOUrl(appCode, redirectUrl)
         router.push(oidcRes.url)
         break
       }
       case SSOProtocol.OAuth2: {
-        const oauth2Res = await fetchWebOAuth2SSOUrl(appCode, redirectUrl)
+        const oauth2Res = await fetchMembersOAuth2SSOUrl(appCode, redirectUrl)
         router.push(oauth2Res.url)
         break
       }
