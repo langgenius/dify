@@ -287,6 +287,7 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
         assert _unwrap(WorkflowAgentComposerImpactApi.post)(WorkflowAgentComposerImpactApi(), app_model, "node-1") == {
             "current_snapshot_id": "version-1",
             "workflow_node_count": 1,
+            "bindings": [],
         }
         assert _unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
             WorkflowAgentComposerSaveToRosterApi(), app_model, "node-1"
