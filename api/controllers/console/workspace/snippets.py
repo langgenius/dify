@@ -122,6 +122,9 @@ class CustomizedSnippetsApi(Resource):
             snippet_type = SnippetType.NODE
 
         try:
+            if payload.graph is not None:
+                SnippetService.validate_snippet_graph_forbidden_nodes(payload.graph)
+
             snippet = SnippetService.create_snippet(
                 tenant_id=current_tenant_id,
                 name=payload.name,
