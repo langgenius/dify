@@ -73,23 +73,26 @@ export function ExploreHeaderSkeleton() {
 function ExploreAppCardSkeleton() {
   return (
     <div className="col-span-1 flex h-[142px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
-      <SkeletonContainer className="h-full px-4 pt-4">
-        <SkeletonRow>
+      <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
+        <div className="relative shrink-0">
           <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <SkeletonRectangle className="h-4 w-2/3 animate-pulse" />
-            <SkeletonRectangle className="h-3 w-1/3 animate-pulse" />
-          </div>
-        </SkeletonRow>
-        <div className="mt-3 flex flex-col gap-1">
-          <SkeletonRectangle className="h-3 w-full animate-pulse" />
-          <SkeletonRectangle className="h-3 w-4/5 animate-pulse" />
         </div>
-        <div className="mt-auto flex gap-1 pb-1">
-          <SkeletonRectangle className="h-5 w-20 animate-pulse rounded-[5px]" />
-          <SkeletonRectangle className="h-5 w-16 animate-pulse rounded-[5px]" />
+        <div className="flex w-0 grow flex-col gap-1 py-px">
+          <SkeletonRectangle className="my-0 h-4 w-3/5 animate-pulse" />
+          <SkeletonRectangle className="my-0 h-3 w-16 animate-pulse" />
         </div>
-      </SkeletonContainer>
+      </div>
+      <div className="flex shrink-0 items-start px-4 py-1">
+        <div className="flex flex-1 flex-col gap-1">
+          <SkeletonRectangle className="my-0 h-3 w-full animate-pulse" />
+          <SkeletonRectangle className="my-0 h-3 w-4/5 animate-pulse" />
+        </div>
+      </div>
+      <div className="relative flex h-[26px] w-full shrink-0 flex-col gap-2 overflow-hidden px-3">
+        <div className="flex w-full shrink-0 items-center gap-1 rounded-lg p-1">
+          <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-[5px]" />
+        </div>
+      </div>
     </div>
   )
 }

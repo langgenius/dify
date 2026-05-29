@@ -20,7 +20,7 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
-import MainNavSearchButton from './components/search-button'
+import { MainNavSearchButton } from './components/search-button'
 import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 
@@ -174,7 +174,7 @@ const MainNav = ({
               </>
             )}
         {showEnvTag && (
-          <div className="relative z-30 px-3 pb-2">
+          <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
             <EnvNav />
           </div>
         )}

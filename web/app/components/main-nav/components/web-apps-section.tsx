@@ -34,7 +34,16 @@ const appNavItemGap = 2
 const appNavSeparatorHeight = 17
 const virtualizationThreshold = 50
 const webAppSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
-const webAppSkeletonWidths = ['w-24', 'w-32', 'w-20', 'w-28', 'w-36']
+const webAppSkeletonWidths = ['w-24', 'w-32', 'w-28']
+
+function WebAppsHeaderSkeleton() {
+  return (
+    <div aria-hidden="true" className="flex h-8 items-center justify-between py-1 pr-3.5 pl-4">
+      <div className={cn(webAppSkeletonClassName, 'h-3 w-20')} />
+      <div className={cn(webAppSkeletonClassName, 'size-4 rounded-md')} />
+    </div>
+  )
+}
 
 function WebAppsSkeleton() {
   return (
@@ -130,6 +139,9 @@ const WebAppsSection = () => {
     toast.success(t('api.success', { ns: 'common' }))
   }
 
+  if (!isPending && installedApps.length === 0)
+    return null
+
   const renderAppNavItem = ({ id, is_pinned, uninstallable, app }: (typeof filteredApps)[number]) => (
     <AppNavItem
       key={id}
@@ -162,33 +174,37 @@ const WebAppsSection = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between py-1 pr-2.5 pl-2">
-        <button
-          type="button"
-          aria-expanded={appsExpanded}
-          className="flex min-w-0 items-center rounded-md px-2 py-1 text-left system-xs-medium-uppercase text-text-tertiary hover:text-text-secondary"
-          onClick={() => setAppsExpanded(value => !value)}
-        >
-          <span>{t('sidebar.webApps', { ns: 'explore' })}</span>
-          <span aria-hidden className={cn('i-ri-arrow-down-s-fill h-4 w-4 shrink-0 transition-transform', !appsExpanded && '-rotate-90')} />
-        </button>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            aria-label={t('operation.search', { ns: 'common' })}
-            className={cn('flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', searchVisible && 'bg-state-base-hover text-text-secondary')}
-            onClick={() => {
-              setAppsExpanded(true)
-              setSearchVisible(value => !value)
-            }}
-          >
-            <span className="flex size-5 shrink-0 items-center justify-center">
-              <span aria-hidden className="i-ri-search-line size-3.5" />
-            </span>
-          </button>
-        </div>
-      </div>
-      {appsExpanded && searchVisible && (
+      {isPending
+        ? <WebAppsHeaderSkeleton />
+        : (
+            <div className="flex items-center justify-between py-1 pr-2.5 pl-2">
+              <button
+                type="button"
+                aria-expanded={appsExpanded}
+                className="flex min-w-0 items-center rounded-md px-2 py-1 text-left system-xs-medium-uppercase text-text-tertiary hover:text-text-secondary"
+                onClick={() => setAppsExpanded(value => !value)}
+              >
+                <span>{t('sidebar.webApps', { ns: 'explore' })}</span>
+                <span aria-hidden className={cn('i-ri-arrow-down-s-fill h-4 w-4 shrink-0 transition-transform', !appsExpanded && '-rotate-90')} />
+              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  aria-label={t('operation.search', { ns: 'common' })}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', searchVisible && 'bg-state-base-hover text-text-secondary')}
+                  onClick={() => {
+                    setAppsExpanded(true)
+                    setSearchVisible(value => !value)
+                  }}
+                >
+                  <span className="flex size-5 shrink-0 items-center justify-center">
+                    <span aria-hidden className="i-ri-search-line size-3.5" />
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+      {!isPending && appsExpanded && searchVisible && (
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
@@ -212,7 +228,7 @@ const WebAppsSection = () => {
               )}
               {!isPending && filteredApps.length === 0 && (
                 <div className="px-2 py-1 system-xs-regular">
-                  {searchText ? t('mainNav.webApps.noResults', { ns: 'common' }) : t('sidebar.noApps.title', { ns: 'explore' })}
+                  {t('mainNav.webApps.noResults', { ns: 'common' })}
                 </div>
               )}
               {!isPending && webAppRows.length > 0 && !shouldVirtualize && (

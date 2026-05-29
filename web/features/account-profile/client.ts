@@ -35,7 +35,5 @@ export const userProfileQueryOptions = () =>
         },
       }
     },
-    staleTime: 0,
-    gcTime: 0,
     retry: (failureCount, error) => !isLegacyBase401(error) && failureCount < 3,
   })

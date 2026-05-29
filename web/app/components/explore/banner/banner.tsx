@@ -6,24 +6,31 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useGetBanners } from '@/service/use-explore'
-import Loading from '../../base/loading'
 import { BannerItem } from './banner-item'
 
 const AUTOPLAY_DELAY = 5000
-const MIN_LOADING_HEIGHT = 168
 const RESIZE_DEBOUNCE_DELAY = 50
 
-const LoadingState: FC = () => (
-  <div
-    className="flex items-center justify-center rounded-[24px] bg-background-default-dodge shadow-xs"
-    style={{ minHeight: MIN_LOADING_HEIGHT }}
-  >
-    <Loading />
-  </div>
-)
+const LoadingState: FC = () => {
+  const { t } = useTranslation()
+
+  return (
+    <div
+      role="status"
+      aria-label={t('loading', { ns: 'common' })}
+      className="relative flex w-full flex-col items-start overflow-hidden rounded-[24px] bg-background-default-dodge shadow-xs"
+    >
+      <div className="flex w-full flex-col gap-1 px-8 pt-8 pb-8">
+        <SkeletonRectangle className="my-0 h-8 w-[360px] max-w-full animate-pulse" />
+        <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
+      </div>
+    </div>
+  )
+}
 
 type BannerImpressionTrackerProps = {
   banners: BannerType[]
