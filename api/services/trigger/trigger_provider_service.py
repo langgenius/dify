@@ -3,7 +3,10 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -69,8 +72,7 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        user_id: str = "",
-        is_admin: bool = False,
+        user: "Account | None" = None,
     ) -> list[TriggerProviderSubscriptionApiEntity]:
         """List all trigger subscriptions for the current tenant, filtered by visibility."""
         from models.credential_permission import CredentialType as CredPermType
@@ -88,15 +90,14 @@ class TriggerProviderService:
                 )
                 .order_by(desc(TriggerSubscription.created_at))
             )
-            if user_id:
+            if user is not None:
                 query = CredentialPermissionService.apply_visibility_filter(
                     query,
                     model_id_column=TriggerSubscription.id,
                     model_user_id_column=TriggerSubscription.user_id,
                     model_visibility_column=TriggerSubscription.visibility,
                     credential_type=CredPermType.TRIGGER_SUBSCRIPTION,
-                    user_id=user_id,
-                    is_admin=is_admin,
+                    user=user,
                 )
             subscriptions_db = session.scalars(query).all()
             subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]

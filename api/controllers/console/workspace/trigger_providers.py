@@ -130,8 +130,7 @@ class TriggerSubscriptionListApi(Resource):
                 TriggerProviderService.list_trigger_provider_subscriptions(
                     tenant_id=user.current_tenant_id,
                     provider_id=TriggerProviderID(provider),
-                    user_id=user.id,
-                    is_admin=user.is_admin_or_owner,
+                    user=user,
                 )
             )
         except ValueError as e:

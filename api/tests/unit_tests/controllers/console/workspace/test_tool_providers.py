@@ -207,8 +207,7 @@ def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeyp
     service_mock.assert_called_once_with(
         tenant_id="tenant-cred",
         provider_name="demo",
-        user_id="user-tenant-cred",
-        is_admin=False,
+        user=user,
         include_credential_ids=None,
     )
 

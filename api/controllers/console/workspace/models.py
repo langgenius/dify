@@ -299,8 +299,7 @@ class ModelProviderModelCredentialApi(Resource):
             available_credentials = model_provider_service.get_provider_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                user_id=user.id,
-                is_admin=user.is_admin_or_owner,
+                user=user,
             )
         else:
             available_credentials = model_provider_service.get_provider_model_available_credentials(

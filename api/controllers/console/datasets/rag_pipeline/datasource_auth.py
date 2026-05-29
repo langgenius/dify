@@ -204,8 +204,7 @@ class DatasourceAuth(Resource):
             tenant_id=current_tenant_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
-            user_id=user.id,
-            is_admin=user.is_admin_or_owner,
+            user=user,
         )
         return {"result": datasources}, 200
 

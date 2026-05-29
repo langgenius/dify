@@ -384,8 +384,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
-                user_id=user.id,
-                is_admin=user.is_admin_or_owner,
+                user=user,
                 include_credential_ids=include_credential_ids or None,
             )
         )
@@ -966,8 +965,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
-                user_id=user.id,
-                is_admin=user.is_admin_or_owner,
+                user=user,
                 include_credential_ids=include_credential_ids or None,
             )
         )

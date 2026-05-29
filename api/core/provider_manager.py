@@ -57,6 +57,7 @@ from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
+    from models.account import Account
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
@@ -575,16 +576,14 @@ class ProviderManager:
     def get_provider_available_credentials(
         tenant_id: str,
         provider_name: str,
-        user_id: str = "",
-        is_admin: bool = False,
+        user: "Account | None" = None,
     ) -> list[CredentialConfiguration]:
         """
         Get provider all credentials, filtered by visibility.
 
         :param tenant_id: workspace id
         :param provider_name: provider name
-        :param user_id: current user id for visibility filtering
-        :param is_admin: whether user is admin/owner (bypasses visibility)
+        :param user: current user (id + admin flag drive the visibility filter)
         :return:
         """
         from models.credential_permission import CredentialType as CredPermType
@@ -600,15 +599,14 @@ class ProviderManager:
                 .order_by(ProviderCredential.created_at.desc())
             )
 
-            if user_id:
+            if user is not None:
                 stmt = CredentialPermissionService.apply_visibility_filter(
                     stmt,
                     model_id_column=ProviderCredential.id,
                     model_user_id_column=ProviderCredential.user_id,
                     model_visibility_column=ProviderCredential.visibility,
                     credential_type=CredPermType.PROVIDER_CREDENTIAL,
-                    user_id=user_id,
-                    is_admin=is_admin,
+                    user=user,
                 )
 
             available_credentials = session.scalars(stmt).all()

@@ -30,6 +30,7 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.account import Account
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.tools.tools_transform_service import ToolTransformService
@@ -346,12 +347,16 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credentials(
         tenant_id: str,
         provider_name: str,
-        user_id: str = "",
-        is_admin: bool = False,
+        user: Account | None = None,
         include_credential_ids: list[str] | None = None,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
         get builtin tool provider credentials, filtered by visibility.
+
+        ``user`` is used to filter the result list by per-credential visibility
+        (only_me / all_team_members / legacy partial_members). When ``None`` the
+        query returns every credential for the tenant — meant for internal /
+        background callers that don't act on behalf of a specific user.
 
         ``include_credential_ids`` lets callers request specific credential IDs that should be
         returned even if the visibility filter would normally hide them (e.g. an only_me credential
@@ -369,15 +374,14 @@ class BuiltinToolManageService:
             )
             order = (BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
             visible_query = select(BuiltinToolProvider).where(*base_filter).order_by(*order)
-            if user_id:
+            if user is not None:
                 visible_query = CredentialPermissionService.apply_visibility_filter(
                     visible_query,
                     model_id_column=BuiltinToolProvider.id,
                     model_user_id_column=BuiltinToolProvider.user_id,
                     model_visibility_column=BuiltinToolProvider.visibility,
                     credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
-                    user_id=user_id,
-                    is_admin=is_admin,
+                    user=user,
                 )
             visible_providers = list(db.session.scalars(visible_query).all())
 
@@ -435,8 +439,7 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credential_info(
         tenant_id: str,
         provider: str,
-        user_id: str = "",
-        is_admin: bool = False,
+        user: Account | None = None,
         include_credential_ids: list[str] | None = None,
     ) -> ToolProviderCredentialInfoApiEntity:
         """
@@ -447,8 +450,7 @@ class BuiltinToolManageService:
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id,
             provider,
-            user_id=user_id,
-            is_admin=is_admin,
+            user=user,
             include_credential_ids=include_credential_ids,
         )
         credential_info = ToolProviderCredentialInfoApiEntity(

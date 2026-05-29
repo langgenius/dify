@@ -1,5 +1,8 @@
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
@@ -149,13 +152,12 @@ class ModelProviderService:
         ]
 
     def get_provider_available_credentials(
-        self, tenant_id: str, provider: str, user_id: str = "", is_admin: bool = False
+        self, tenant_id: str, provider: str, user: "Account | None" = None
     ):
         return self._get_provider_manager(tenant_id).get_provider_available_credentials(
             tenant_id=tenant_id,
             provider_name=provider,
-            user_id=user_id,
-            is_admin=is_admin,
+            user=user,
         )
 
     def get_provider_model_available_credentials(
