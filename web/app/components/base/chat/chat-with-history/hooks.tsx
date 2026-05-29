@@ -144,6 +144,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
+  const removeConversationIdInfo = useCallback((targetAppId: string) => {
+    setConversationIdInfo((prev) => {
+      const newInfo = { ...prev }
+      delete newInfo[targetAppId]
+      return newInfo
+    })
+  }, [setConversationIdInfo])
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
@@ -185,7 +192,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const { data: appChatListData, isLoading: appChatListDataLoading, error: appChatListDataError } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
@@ -194,6 +201,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
+  // When the backend reports the conversation no longer exists (404), clear
+  // the stale conversation_id from localStorage so the chatbot falls back to
+  // starting a new conversation. Without this, the user would be stuck in an
+  // infinite retry loop (GitHub issue #34731).
+  useEffect(() => {
+    if (appChatListDataError instanceof Response && appChatListDataError.status === 404 && appId)
+      removeConversationIdInfo(appId)
+  }, [appChatListDataError, appId, removeConversationIdInfo])
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
