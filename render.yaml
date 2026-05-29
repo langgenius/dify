@@ -212,8 +212,7 @@ services:
     ipAllowList: []
 
 databases:
-  # Pin PG 16: Dify's uuidv7 migration conflicts with PostgreSQL 18's built-in uuidv7().
+  # PostgreSQL Database (supports pgvector; major version defaults to Render latest)
   - name: dify-db
     plan: basic-256mb
-    postgresMajorVersion: "16"
     ipAllowList: []
