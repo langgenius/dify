@@ -1,4 +1,5 @@
 import { Args, Flags } from '../../../framework/flags.js'
+import { OutputFormat } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { agentGuide } from './guide.js'
@@ -32,7 +33,7 @@ export default class RunApp extends DifyCommand {
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive (default: collect and print at end)', default: false }),
     'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
     'http-retry': httpRetryFlag,
-    'output': Flags.string({ char: 'o', description: 'Output format (json|yaml|text)', default: '' }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
   }
 
   async run(argv: string[]): Promise<void> {
