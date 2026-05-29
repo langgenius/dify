@@ -10,6 +10,7 @@ from clients.agent_backend.request_builder import CleanupLayerSpec
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
+    AgentRuntimeSessionOwnerType,
     WorkflowAgentRuntimeSession,
     WorkflowAgentRuntimeSessionStatus,
 )
@@ -125,6 +126,7 @@ class WorkflowAgentRuntimeSessionStore:
                 row = WorkflowAgentRuntimeSession(
                     tenant_id=scope.tenant_id,
                     app_id=scope.app_id,
+                    owner_type=AgentRuntimeSessionOwnerType.WORKFLOW_RUN,
                     workflow_id=scope.workflow_id,
                     workflow_run_id=scope.workflow_run_id,
                     node_id=scope.node_id,
