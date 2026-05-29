@@ -6,9 +6,19 @@ from unittest.mock import Mock
 
 import pytest
 
+from models.snippet import SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from services.errors.app import WorkflowNotFoundError
 from services.snippet_service import SnippetService
+
+
+class _SessionWithoutNameLookup:
+    def __init__(self) -> None:
+        self.add = Mock()
+        self.commit = Mock()
+
+    def query(self, *args, **kwargs):
+        raise AssertionError("snippet name uniqueness lookup should not be used")
 
 
 def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
@@ -26,6 +36,49 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
+
+
+def test_create_snippet_allows_duplicate_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _SessionWithoutNameLookup()
+    account = SimpleNamespace(id="account-1")
+
+    monkeypatch.setattr("services.snippet_service.db.session", session)
+
+    snippet = SnippetService.create_snippet(
+        tenant_id="tenant-1",
+        name="shared name",
+        description=None,
+        snippet_type=SnippetType.NODE,
+        icon_info=None,
+        input_fields=None,
+        account=account,
+    )
+
+    assert snippet.name == "shared name"
+    session.add.assert_called_once_with(snippet)
+    session.commit.assert_called_once()
+
+
+def test_update_snippet_allows_duplicate_names() -> None:
+    session = _SessionWithoutNameLookup()
+    snippet = SimpleNamespace(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        name="old name",
+        description="",
+        icon_info=None,
+    )
+
+    result = SnippetService.update_snippet(
+        session=session,
+        snippet=snippet,
+        account_id="account-1",
+        data={"name": "shared name"},
+    )
+
+    assert result is snippet
+    assert snippet.name == "shared name"
+    session.add.assert_called_once_with(snippet)
 
 
 def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
