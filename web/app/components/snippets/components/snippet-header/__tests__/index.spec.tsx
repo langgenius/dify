@@ -52,6 +52,7 @@ describe('SnippetHeader', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
+          canDiscardChanges
           hasDraftChanges={false}
           isEditing={false}
           isPublishing={false}
@@ -80,6 +81,7 @@ describe('SnippetHeader', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
+          canDiscardChanges
           hasDraftChanges
           isEditing
           isPublishing={false}
@@ -97,6 +99,27 @@ describe('SnippetHeader', () => {
 
       expect(mockPublish).toHaveBeenCalledTimes(1)
       expect(mockCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should hide the discard draft action when there is no published workflow', () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges={false}
+          hasDraftChanges
+          isEditing
+          isPublishing={false}
+          onCancel={mockCancel}
+          onDiscardAndExitEditing={mockDiscardAndExit}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      expect(screen.queryByText('snippet.discardDraft')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.editingDraft')).toBeInTheDocument()
     })
   })
 })

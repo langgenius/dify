@@ -7,6 +7,7 @@ import SnippetWorkflowPanel from './workflow-panel'
 type SnippetChildrenProps = {
   snippetId: string
   fields: SnippetInputField[]
+  canDiscardChanges: boolean
   hasDraftChanges: boolean
   isEditing: boolean
   isPublishing: boolean
@@ -21,6 +22,7 @@ type SnippetChildrenProps = {
 const SnippetChildren = ({
   snippetId,
   fields,
+  canDiscardChanges,
   hasDraftChanges,
   isEditing,
   isPublishing,
@@ -37,6 +39,7 @@ const SnippetChildren = ({
 
       <SnippetHeader
         snippetId={snippetId}
+        canDiscardChanges={canDiscardChanges}
         hasDraftChanges={hasDraftChanges}
         isEditing={isEditing}
         isPublishing={isPublishing}

@@ -21,6 +21,7 @@ const mockHandleStartWorkflowRun = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
+const mockPush = vi.hoisted(() => vi.fn())
 const mockUseAvailableNodesMetaData = vi.hoisted(() => vi.fn())
 const mockInspectVarsCrud = {
   hasNodeInspectVars: vi.fn(),
@@ -47,6 +48,12 @@ let snippetDetailStoreState: {
 
 vi.mock('@/app/components/snippets/store', () => ({
   useSnippetDetailStore: (selector: (state: typeof snippetDetailStoreState) => unknown) => selector(snippetDetailStoreState),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 vi.mock('@/service/use-snippet-workflows', () => ({
@@ -215,6 +222,7 @@ const renderSnippetMain = () => {
       payload={payload}
       draftPayload={payload}
       hasInitialDraftChanges={false}
+      hasPublishedWorkflow
       snippetId="snippet-1"
       nodes={[] as WorkflowProps['nodes']}
       edges={[] as WorkflowProps['edges']}

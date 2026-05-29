@@ -1,16 +1,6 @@
 'use client'
 
 import type { HeaderProps } from '@/app/components/workflow/header'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
@@ -19,11 +9,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Header from '@/app/components/workflow/header'
+import SaveBeforeLeavingDialog from '../save-before-leaving-dialog'
 import CancelChanges from './cancel-changes'
 import RunMode from './run-mode'
 
 type SnippetHeaderProps = {
   snippetId: string
+  canDiscardChanges: boolean
   hasDraftChanges: boolean
   isEditing: boolean
   isPublishing: boolean
@@ -68,62 +60,36 @@ const EditActions = ({
 
   return (
     <>
-      <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
-        <AlertDialogTrigger
-          render={(
-            <Button
-              disabled={isPublishing}
-              onClick={(event) => {
-                if (!hasDraftChanges) {
-                  event.preventDefault()
-                  void onExitEditing()
-                  return
-                }
+      <SaveBeforeLeavingDialog
+        open={exitConfirmOpen}
+        onOpenChange={setExitConfirmOpen}
+        trigger={(
+          <Button
+            disabled={isPublishing}
+            onClick={(event) => {
+              if (!hasDraftChanges) {
+                event.preventDefault()
+                void onExitEditing()
+                return
+              }
 
-                setExitConfirmOpen(true)
-              }}
-            >
-              {t('exitEditing')}
-            </Button>
-          )}
-        />
-        <AlertDialogContent className="w-165">
-          <div className="space-y-2 p-8 pb-12">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('saveBeforeLeavingTitle')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-secondary">
-              {t('saveBeforeLeavingDescription')}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions className="px-8 pt-0">
-            <AlertDialogCancelButton disabled={isPublishing}>
-              {t('operation.cancel', { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              disabled={isPublishing}
-              onClick={async () => {
-                await onDiscardAndExitEditing()
-                setExitConfirmOpen(false)
-              }}
-            >
-              {t('doNotSave')}
-            </AlertDialogConfirmButton>
-            <AlertDialogConfirmButton
-              tone="default"
-              loading={isPublishing}
-              disabled={isPublishing}
-              onClick={async () => {
-                await onSaveAndExitEditing()
-                setExitConfirmOpen(false)
-              }}
-            >
-              {t('saveAndExit')}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+              setExitConfirmOpen(true)
+            }}
+          >
+            {t('exitEditing')}
+          </Button>
+        )}
+        disabled={isPublishing}
+        loading={isPublishing}
+        onDiscard={async () => {
+          await onDiscardAndExitEditing()
+          setExitConfirmOpen(false)
+        }}
+        onSave={async () => {
+          await onSaveAndExitEditing()
+          setExitConfirmOpen(false)
+        }}
+      />
       <Button
         variant="primary"
         loading={isPublishing}
@@ -138,6 +104,7 @@ const EditActions = ({
 
 const SnippetHeader = ({
   snippetId,
+  canDiscardChanges,
   hasDraftChanges,
   isEditing,
   isPublishing,
@@ -160,7 +127,7 @@ const SnippetHeader = ({
       normal: {
         components: {
           title: isEditing
-            ? (hasDraftChanges ? <CancelChanges onCancel={onCancel} /> : <></>)
+            ? (hasDraftChanges ? <CancelChanges canDiscardChanges={canDiscardChanges} onCancel={onCancel} /> : <></>)
             : <ViewOnlyBadge />,
           left: (
             <EditActions
@@ -192,7 +159,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [hasDraftChanges, isEditing, isPublishing, onCancel, onDiscardAndExitEditing, onEdit, onExitEditing, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
+  }, [canDiscardChanges, hasDraftChanges, isEditing, isPublishing, onCancel, onDiscardAndExitEditing, onEdit, onExitEditing, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
 
   return <Header {...headerProps} />
 }
