@@ -2715,9 +2715,6 @@
   "web/app/components/plugins/plugin-auth/authorized/item.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-auth/hooks/use-get-api.ts": {
