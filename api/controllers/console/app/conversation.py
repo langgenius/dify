@@ -205,7 +205,7 @@ class ChatConversationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def get(self, app_model: App):
         current_user, _ = current_account_with_tenant()
@@ -316,7 +316,7 @@ class ChatConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def get(self, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
@@ -332,7 +332,7 @@ class ChatConversationDetailApi(Resource):
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @account_initialization_required
     @edit_permission_required
     def delete(self, app_model: App, conversation_id: UUID):

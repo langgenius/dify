@@ -178,7 +178,7 @@ class ChatMessageListApi(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def get(self, app_model: App):
         args = ChatMessagesQuery.model_validate(request.args.to_dict())
