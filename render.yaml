@@ -97,7 +97,7 @@ services:
         value: /app/api/storage
     healthCheckPath: /health
     initialDeployHook: psql $DATABASE_URL -c 'CREATE EXTENSION IF NOT EXISTS vector;'
-    preDeployCommand: if [ "$RESET_DIFY_AUTH" = "true" ]; then psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM tenant_account_joins;" -c "DELETE FROM account_integrates;" -c "DELETE FROM accounts;" -c "DELETE FROM dify_setups;"; fi
+    preDeployCommand: if [ "$RESET_DIFY_AUTH" = "true" ]; then python -c "import os, psycopg2; conn=psycopg2.connect(os.environ['DATABASE_URL']); conn.autocommit=True; cur=conn.cursor(); [cur.execute(sql) for sql in ('DELETE FROM tenant_account_joins', 'DELETE FROM account_integrates', 'DELETE FROM accounts', 'DELETE FROM dify_setups')]; conn.close()"; fi
     disk:
       name: dify-storage
       mountPath: /app/api/storage
