@@ -90,22 +90,22 @@ function ReleaseHistoryTableSkeleton() {
           <DetailTableBody>
             {RELEASE_TABLE_ROW_SKELETON_KEYS.map(key => (
               <DetailTableRow key={key}>
-                <DetailTableCell>
+                <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
                 </DetailTableCell>
-                <DetailTableCell>
+                <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>
                   <SkeletonRectangle className="h-3 w-32 animate-pulse" />
                 </DetailTableCell>
-                <DetailTableCell>
+                <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
                 </DetailTableCell>
-                <DetailTableCell>
+                <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>
                   <SkeletonRectangle className="h-3 w-24 animate-pulse" />
                 </DetailTableCell>
-                <DetailTableCell>
+                <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
                   <ReleaseDeploymentsSkeleton />
                 </DetailTableCell>
-                <DetailTableCell>
+                <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
                   <div className="flex justify-end">
                     <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
                   </div>
@@ -332,7 +332,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
 
               return (
                 <DetailTableRow key={release.id}>
-                  <DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>
                     <Tooltip>
                       <TooltipTrigger
                         render={(
@@ -346,16 +346,16 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                       </TooltipContent>
                     </Tooltip>
                   </DetailTableCell>
-                  <DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>
                     <ReleaseSourceCell release={release} />
                   </DetailTableCell>
-                  <DetailTableCell className="text-text-secondary">
+                  <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt} text-text-secondary`}>
                     <CreatedAtCell createdAt={release.createdAt} />
                   </DetailTableCell>
-                  <DetailTableCell className="truncate text-text-secondary">
+                  <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author} truncate text-text-secondary`}>
                     {row.createdBy?.name ?? '—'}
                   </DetailTableCell>
-                  <DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
                     <div className="flex flex-wrap gap-1">
                       <ReleaseDeploymentsContent
                         items={releaseDeployments}
@@ -365,7 +365,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                       />
                     </div>
                   </DetailTableCell>
-                  <DetailTableCell>
+                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
                     <div className="flex justify-end">
                       <DeployReleaseMenu
                         releaseId={release.id}

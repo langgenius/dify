@@ -1,32 +1,32 @@
 import { cn } from '@langgenius/dify-ui/cn'
 
 export const DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  actions: 'w-14',
-  currentRelease: 'w-[34%]',
-  environment: 'w-[34%]',
-  status: 'w-[24%]',
+  actions: 'w-14 whitespace-nowrap',
+  currentRelease: '',
+  environment: 'whitespace-nowrap',
+  status: 'whitespace-nowrap',
 }
 
 export const RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  action: 'w-14',
-  author: 'w-[15%]',
-  createdAt: 'w-[16%]',
-  deployedTo: 'w-[22%]',
-  release: 'w-[24%]',
-  sourceApp: 'w-[18%]',
+  action: 'w-14 whitespace-nowrap',
+  author: 'whitespace-nowrap',
+  createdAt: 'whitespace-nowrap',
+  deployedTo: '',
+  release: 'whitespace-nowrap',
+  sourceApp: 'whitespace-nowrap',
 }
 
 export const ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  environment: 'w-[20%]',
-  permission: 'w-[36%]',
-  subjects: 'w-[44%]',
+  environment: 'whitespace-nowrap',
+  permission: '',
+  subjects: '',
 }
 
 export const API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  action: 'w-16',
-  environment: 'w-[20%]',
-  key: 'w-[38%]',
-  name: 'w-[28%]',
+  action: 'w-16 whitespace-nowrap',
+  environment: 'whitespace-nowrap',
+  key: '',
+  name: 'whitespace-nowrap',
 }
 
 export const DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME = cn(

@@ -4,6 +4,7 @@ import type {
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormEvent } from 'react'
 import {
   AlertDialog,
@@ -14,7 +15,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button, type ButtonProps } from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,

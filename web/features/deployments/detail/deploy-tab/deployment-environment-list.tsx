@@ -98,7 +98,7 @@ function DeploymentErrorDetails({ error }: DeploymentErrorDetailsProps) {
       <div className="system-xs-medium-uppercase text-text-tertiary">
         {t('deployTab.errorMessage')}
       </div>
-      <div className="mt-1 whitespace-pre-wrap break-words system-sm-regular text-text-secondary">
+      <div className="mt-1 system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
         {message}
       </div>
       {metadata.length > 0 && (
