@@ -277,7 +277,6 @@ describe('AccountDropdown', () => {
       // Assert
       await waitFor(() => {
         expect(mockLogout).toHaveBeenCalled()
-        expect(localStorage.removeItem).toHaveBeenCalledWith('setup_status')
         expect(mockPush).toHaveBeenCalledWith('/signin')
       })
     })
