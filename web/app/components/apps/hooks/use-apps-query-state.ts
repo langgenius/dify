@@ -1,5 +1,5 @@
-import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { debounce, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
+import { useCallback, useMemo } from 'react'
 import { AppModes } from '@/types/app'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
@@ -16,9 +16,6 @@ const appListQueryParsers = {
   category: parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
     .withDefault('all')
     .withOptions({ history: 'push' }),
-  tagIDs: parseAsArrayOf(parseAsString, ';')
-    .withDefault([])
-    .withOptions({ history: 'push' }),
   keywords: parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
   }),
@@ -28,16 +25,7 @@ const appListQueryParsers = {
 }
 
 export function useAppsQueryState() {
-  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
-  const [{ tagIDs: urlTagIDs, ...urlQuery }, setQuery] = useQueryStates(appListQueryParsers)
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-
-  useEffect(() => {
-    if (urlTagIDs.length) {
-      // eslint-disable-next-line react/set-state-in-effect -- removes legacy URL-only state while preserving other filters
-      setQuery({ tagIDs: null }, { history: 'replace' })
-    }
-  }, [setQuery, urlTagIDs])
+  const [query, setQuery] = useQueryStates(appListQueryParsers)
 
   const setCategory = useCallback((category: AppListCategory) => {
     setQuery({ category })
@@ -52,13 +40,9 @@ export function useAppsQueryState() {
   }, [setQuery])
 
   return useMemo(() => ({
-    query: {
-      ...urlQuery,
-      tagIDs,
-    },
+    query,
     setCategory,
     setKeywords,
-    setTagIDs,
     setIsCreatedByMe,
-  }), [urlQuery, tagIDs, setCategory, setKeywords, setTagIDs, setIsCreatedByMe])
+  }), [query, setCategory, setKeywords, setIsCreatedByMe])
 }
