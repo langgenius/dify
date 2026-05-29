@@ -130,6 +130,9 @@ const WebAppsSection = () => {
     toast.success(t('api.success', { ns: 'common' }))
   }
 
+  if (!isPending && installedApps.length === 0)
+    return null
+
   const renderAppNavItem = ({ id, is_pinned, uninstallable, app }: (typeof filteredApps)[number]) => (
     <AppNavItem
       key={id}
@@ -212,7 +215,7 @@ const WebAppsSection = () => {
               )}
               {!isPending && filteredApps.length === 0 && (
                 <div className="px-2 py-1 system-xs-regular">
-                  {searchText ? t('mainNav.webApps.noResults', { ns: 'common' }) : t('sidebar.noApps.title', { ns: 'explore' })}
+                  {t('mainNav.webApps.noResults', { ns: 'common' })}
                 </div>
               )}
               {!isPending && webAppRows.length > 0 && !shouldVirtualize && (

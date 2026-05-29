@@ -601,6 +601,15 @@ describe('MainNav', () => {
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
   })
 
+  it('hides the installed web apps section when no web apps are available', () => {
+    renderMainNav()
+
+    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.search' })).not.toBeInTheDocument()
+  })
+
   it('separates pinned and unpinned installed web apps', () => {
     mockInstalledApps = [
       createInstalledApp({ id: 'installed-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned App' } }),
