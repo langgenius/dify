@@ -12,11 +12,20 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CONSOLE_WEB_URL
-        sync: false
+        fromService:
+          name: dify-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: SERVICE_API_URL
-        sync: false
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: APP_WEB_URL
-        sync: false
+        fromService:
+          name: dify-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: DATABASE_URL
         fromDatabase:
           name: dify-db
@@ -44,22 +53,17 @@ services:
       - key: REDIS_HOST
         fromService:
           name: dify-redis
-          type: redis
+          type: keyvalue
           property: host
       - key: REDIS_PORT
         fromService:
           name: dify-redis
-          type: redis
+          type: keyvalue
           property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: dify-redis
-          type: redis
-          property: password
       - key: CELERY_BROKER_URL
         fromService:
           name: dify-redis
-          type: redis
+          type: keyvalue
           property: connectionString
       - key: VECTOR_STORE
         value: pgvector
@@ -128,22 +132,17 @@ services:
       - key: REDIS_HOST
         fromService:
           name: dify-redis
-          type: redis
+          type: keyvalue
           property: host
       - key: REDIS_PORT
         fromService:
           name: dify-redis
-          type: redis
+          type: keyvalue
           property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: dify-redis
-          type: redis
-          property: password
       - key: CELERY_BROKER_URL
         fromService:
           name: dify-redis
-          type: redis
+          type: keyvalue
           property: connectionString
       - key: VECTOR_STORE
         value: pgvector
@@ -184,15 +183,15 @@ services:
         fromService:
           name: dify-api
           type: web
-          property: url
+          envVarKey: RENDER_EXTERNAL_URL
       - key: APP_API_URL
         fromService:
           name: dify-api
           type: web
-          property: url
+          envVarKey: RENDER_EXTERNAL_URL
 
-  # Redis Cache
-  - type: redis
+  # Key Value (Celery broker + cache; internal network auth not required by default)
+  - type: keyvalue
     name: dify-redis
     plan: starter
     maxmemoryPolicy: allkeys-lru
