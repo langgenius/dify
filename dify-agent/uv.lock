@@ -587,7 +587,6 @@ dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim" },
-    { name = "shell-session-manager" },
     { name = "typing-extensions" },
 ]
 
@@ -599,6 +598,7 @@ server = [
     { name = "pydantic-ai-slim", extra = ["anthropic", "google", "openai"] },
     { name = "pydantic-settings" },
     { name = "redis" },
+    { name = "shell-session-manager" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -629,7 +629,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
-    { name = "shell-session-manager", specifier = ">=2.0.0" },
+    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.1.1" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
@@ -3014,7 +3014,7 @@ wheels = [
 
 [[package]]
 name = "shell-session-manager"
-version = "2.0.0"
+version = "2.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -3026,9 +3026,9 @@ dependencies = [
     { name = "typer" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/6f/bc4f0bdf56804870d84c3a2c980a9acfd971fc94830edd573e4cce9c8c4e/shell_session_manager-2.0.0.tar.gz", hash = "sha256:c57796a64ff22aea4ad933655cd3ce6c047dd797f348733b9b324e4caeb00aa1", size = 42464, upload-time = "2026-05-25T15:10:11.969Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/64/8d12611e48553d61423d5e302d178e67bd968a35f1709e26024f4e04fc3b/shell_session_manager-2.1.1.tar.gz", hash = "sha256:bf490809161244beb95cabad62d32a59b351b7b5993e375d49b6fcf3835ae31c", size = 47064, upload-time = "2026-05-29T20:04:27.625Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/db/3321fb97d81885c366d1945a633d8d79c99ecd17db7eb6baca509a62b4a3/shell_session_manager-2.0.0-py3-none-any.whl", hash = "sha256:db919cb4016173c9bc1b2ae4c1a924aeb1405d82058c00b4726e2aa061948c22", size = 43404, upload-time = "2026-05-25T15:10:10.331Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/74/64d6db5888f6e7c7dcf0b4960e9ffa8c38425fa906cd60e99ed0bd88def7/shell_session_manager-2.1.1-py3-none-any.whl", hash = "sha256:6b53c813ac386bbf3244c375edf9cce675c89a2041d33a969ef69d8d74f89ac6", size = 45742, upload-time = "2026-05-29T20:04:26.551Z" },
 ]
 
 [[package]]

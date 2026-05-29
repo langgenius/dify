@@ -26,6 +26,7 @@ class ServerSettings(BaseSettings):
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
     shellctl_entrypoint: str | None = None
+    shellctl_auth_token: str | None = None
     plugin_daemon_connect_timeout: float = Field(default=10.0, ge=0)
     plugin_daemon_read_timeout: float = Field(default=600.0, ge=0)
     plugin_daemon_write_timeout: float = Field(default=30.0, ge=0)

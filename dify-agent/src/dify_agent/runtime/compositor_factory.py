@@ -12,8 +12,8 @@ stateful Dify shell layer, and the Dify plugin business-layer family:
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings are injected through the provider factory for
-``DifyExecutionContextLayer`` and the optional shellctl entrypoint plus client
-factory are injected for ``DifyShellLayer``. The resulting ``Compositor``
+``DifyExecutionContextLayer`` and the optional shellctl entrypoint/auth token plus
+client factory are injected for ``DifyShellLayer``. The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
 layer instances inside ``resource_context()``, and never enter session
@@ -47,16 +47,17 @@ def create_default_layer_providers(
     plugin_daemon_url: str = "http://localhost:5002",
     plugin_daemon_api_key: str = "",
     shellctl_entrypoint: str | None = None,
+    shellctl_auth_token: str | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers.
 
-    The shell layer provider intentionally injects
-    ``create_shellctl_client_factory(token="")`` instead of omitting the token.
-    Passing the empty string prevents ``ShellctlClient`` from falling back to the
-    Dify Agent process's ``SHELLCTL_AUTH_TOKEN`` environment variable, keeping
-    this first shell-layer version aligned with the proposal's explicit no-token
-    public contract.
+    ``shellctl_auth_token`` defaults to no token. Passing an explicit empty string
+    to ``create_shellctl_client_factory`` prevents ``ShellctlClient`` from falling
+    back to the Dify Agent process's ``SHELLCTL_AUTH_TOKEN`` environment variable;
+    deployments that enable shellctl bearer auth must set the Dify Agent server
+    setting explicitly.
     """
+    shellctl_token = shellctl_auth_token or ""
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
@@ -74,7 +75,7 @@ def create_default_layer_providers(
             create=lambda config: DifyShellLayer.from_config_with_settings(
                 DifyShellLayerConfig.model_validate(config),
                 shellctl_entrypoint=shellctl_entrypoint,
-                shellctl_client_factory=create_shellctl_client_factory(token=""),
+                shellctl_client_factory=create_shellctl_client_factory(token=shellctl_token),
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),

@@ -44,7 +44,7 @@ from shell_session_manager.shellctl.shared import (
 )
 from typing_extensions import Self, override
 
-from agenton.layers import NoLayerDeps, PydanticAILayer, PydanticAITool
+from agenton.layers import NoLayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 
 
@@ -56,6 +56,75 @@ _SESSION_TIME_HEX_MASK = 0xFFFFF
 _SESSION_RANDOM_HEX_LENGTH = 2
 _SESSION_ID_ATTEMPT_LIMIT = 256
 _SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
+_SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
+
+1. shell.run
+   Start a new shell job in the current isolated workspace.
+   Use it to execute commands or scripts.
+
+2. shell.wait
+   Wait for more output or completion from an existing shell job.
+   Use it when shell.run returns done=false.
+
+3. shell.input
+   Send stdin text to a running shell job, then wait for new output.
+   Use it for interactive commands that are waiting for input.
+
+4. shell.interrupt
+   Interrupt a running shell job.
+   Use it to stop a long-running, stuck, or no-longer-needed command.
+
+Common arguments:
+
+- script:
+  The command or script to execute. Used by shell.run.
+
+- job_id:
+  The id of a shell job returned by shell.run.
+  Use it with shell.wait, shell.input, and shell.interrupt.
+  Never invent a job_id.
+
+- timeout:
+  Maximum time, in seconds, to wait for output or completion for this tool call.
+  A timeout does not necessarily mean the job has stopped; if done=false, use shell.wait again.
+
+- text:
+  Text to send to the running process stdin. Used by shell.input.
+  Include "\\n" if the process expects Enter.
+
+- grace_seconds:
+  Time to wait after interrupting before forceful cleanup. Used by shell.interrupt.
+
+Usage rules:
+
+- Start with shell.run.
+- If shell.run returns done=false, call shell.wait with the returned job_id.
+- Use shell.input only when the job is running and waiting for stdin.
+- Use shell.interrupt when a job is stuck or should be stopped.
+
+The script argument of shell.run can be a normal shell script, or a shebang script.
+If the first line is a shebang, the shell layer executes the script directly.
+
+Tips:
+
+- When using Python, prefer a uv script with a PEP 723 dependency header.
+
+  Example:
+
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "httpx==0.28.1",
+#   "rich>=13.8.0",
+# ]
+# ///
+
+import httpx
+from rich import print
+
+response = httpx.get("https://example.com", timeout=10)
+print(f"[green]status:[/green] {response.status_code}")"""
 
 
 class ShellJobObservation(TypedDict):
@@ -241,6 +310,11 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
             shellctl_entrypoint=normalized_entrypoint,
             shellctl_client_factory=shellctl_client_factory,
         )
+
+    @property
+    @override
+    def prefix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
+        return [_shell_layer_prefix_prompt]
 
     @property
     @override
@@ -551,6 +625,11 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     def _clear_tracked_jobs(self) -> None:
         self.runtime_state.job_offsets = {}
         self.runtime_state.job_ids = []
+
+
+def _shell_layer_prefix_prompt() -> str:
+    """Return the static model-facing shell tool usage guidance."""
+    return _SHELL_LAYER_PREFIX_PROMPT
 
 
 def create_shellctl_client_factory(*, token: str) -> ShellctlClientFactory:

@@ -31,6 +31,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
         shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
+        shellctl_auth_token=resolved_settings.shellctl_auth_token,
     )
     state: dict[str, object] = {}
 
