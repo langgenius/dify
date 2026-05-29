@@ -1,7 +1,6 @@
 {
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
-    "rootDir": "src",
     "paths": {
       "@/*": [
         "./src/*"
@@ -17,6 +16,5 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

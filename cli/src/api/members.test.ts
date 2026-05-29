@@ -84,7 +84,7 @@ describe('MembersClient.list', () => {
     const result = await makeClient(stub.url).list('ws-1')
     expect(captured.method).toBe('GET')
     expect(captured.url).toBe('/openapi/v1/workspaces/ws-1/members')
-    expect(result.data[0].email).toBe('mia@e.com')
+    expect(result.data[0]?.email).toBe('mia@e.com')
   })
 
   it('URL-encodes workspace id', async () => {
