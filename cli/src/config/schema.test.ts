@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { CONFIG_FILE_NAME } from '../store/manager.js'
 import {
   ALLOWED_FORMATS,
   ConfigFileSchema,
   CURRENT_SCHEMA_VERSION,
   emptyConfig,
-  FILE_NAME,
 } from './schema.js'
 
 describe('config schema', () => {
@@ -12,8 +12,8 @@ describe('config schema', () => {
     expect(CURRENT_SCHEMA_VERSION).toBe(1)
   })
 
-  it('FILE_NAME is config.yml', () => {
-    expect(FILE_NAME).toBe('config.yml')
+  it('CONFIG_FILE_NAME is config.yml', () => {
+    expect(CONFIG_FILE_NAME).toBe('config.yml')
   })
 
   it('ALLOWED_FORMATS matches Go set (json/yaml/table/wide/name/text)', () => {
