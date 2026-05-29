@@ -9,7 +9,7 @@ import {
 
 describe('error codes', () => {
   it('has correct number codes (parity with internal/api/errors)', () => {
-    expect(ALL_ERROR_CODES).toHaveLength(19)
+    expect(ALL_ERROR_CODES).toHaveLength(Object.keys(CODE_TO_EXIT_MAP).length)
   })
 
   it('has the expected ExitCode buckets', () => {
