@@ -1,3 +1,4 @@
+import type { RetryCondition } from './types'
 import type { WorkflowRetryConfig } from './types'
 import {
   useCallback,
@@ -20,7 +21,17 @@ export const useRetryConfig = (
     })
   }, [id, handleNodeDataUpdateWithSyncDraft])
 
+  const handleRetryConditionChange = useCallback((value?: RetryCondition) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        retry_condition: value,
+      },
+    })
+  }, [id, handleNodeDataUpdateWithSyncDraft])
+
   return {
     handleRetryConfigChange,
+    handleRetryConditionChange,
   }
 }
