@@ -15,6 +15,7 @@ from models.agent import (
     AgentStatus,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -202,6 +203,83 @@ class AgentRosterService:
             self._session.rollback()
             raise AgentNameConflictError() from exc
         return agent
+
+    def create_backing_agent_for_app(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        app_id: str,
+        name: str,
+        description: str = "",
+        icon_type: Any = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> Agent:
+        """Create the roster Agent that backs an Agent App, linked via ``app_id``.
+
+        Unlike :meth:`create_roster_agent`, this does not commit: the caller
+        (``AppService.create_app``) owns the surrounding transaction so the App
+        row and its backing Agent are persisted atomically. A default (empty)
+        Agent Soul is seeded; the user configures model/prompt/tools afterward in
+        the Composer.
+        """
+        agent = Agent(
+            tenant_id=tenant_id,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id=app_id,
+            created_by=account_id,
+            updated_by=account_id,
+        )
+        self._session.add(agent)
+        try:
+            self._session.flush()
+        except IntegrityError as exc:
+            self._session.rollback()
+            raise AgentNameConflictError() from exc
+
+        version = AgentConfigSnapshot(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+            created_by=account_id,
+        )
+        self._session.add(version)
+        self._session.flush()
+
+        revision = AgentConfigRevision(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            current_snapshot_id=version.id,
+            revision=1,
+            operation=AgentConfigRevisionOperation.CREATE_VERSION,
+            created_by=account_id,
+        )
+        self._session.add(revision)
+        agent.active_config_snapshot_id = version.id
+        self._session.flush()
+        return agent
+
+    def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
+        """Return the roster Agent that backs the given Agent App, if any."""
+        return self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.app_id == app_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
 
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)

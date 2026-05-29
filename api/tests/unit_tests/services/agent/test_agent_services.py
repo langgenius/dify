@@ -662,3 +662,55 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
         ComposerConfigValidator.validate_node_job_dict(
             {"declared_outputs": [{"name": "matrix", "type": "array", "array_item": {"type": "array"}}]}
         )
+
+
+class TestAgentAppBackingAgent:
+    """S1: an Agent App (mode=agent) is backed 1:1 by a roster Agent linked via
+    ``Agent.app_id``. ``AppService.create_app`` builds the backing agent inside
+    its own transaction, so the helper must add+flush without committing."""
+
+    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        agent = service.create_backing_agent_for_app(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            app_id="app-1",
+            name="Iris",
+            description="clarifier",
+        )
+
+        # Agent is bound to the app and is a roster/agent_app entry.
+        assert agent.app_id == "app-1"
+        assert agent.scope == AgentScope.ROSTER
+        assert agent.source == AgentSource.AGENT_APP
+        assert agent.status == AgentStatus.ACTIVE
+        assert agent.agent_kind == AgentKind.DIFY_AGENT
+        assert agent.name == "Iris"
+        # A v1 snapshot + revision are seeded and wired as the active version.
+        snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
+        assert len(snapshots) == 1
+        assert snapshots[0].version == 1
+        assert agent.active_config_snapshot_id == snapshots[0].id
+        revisions = [
+            a for a in session.added if getattr(a, "operation", None) == AgentConfigRevisionOperation.CREATE_VERSION
+        ]
+        assert len(revisions) == 1
+        # Caller (AppService.create_app) owns the commit — helper must not commit.
+        assert session.commits == 0
+
+    def test_get_app_backing_agent_queries_active_agent_app_agent(self):
+        sentinel = SimpleNamespace(id="agent-1", app_id="app-1")
+        session = FakeSession(scalar=[sentinel])
+        service = AgentRosterService(session)
+
+        result = service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert result is sentinel
+
+    def test_get_app_backing_agent_returns_none_when_unbound(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None

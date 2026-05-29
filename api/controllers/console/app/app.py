@@ -393,6 +393,8 @@ class AppDetailWithSite(AppDetail):
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
+    # For Agent App type: the roster Agent backing this app (None otherwise).
+    bound_agent_id: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
