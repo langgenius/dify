@@ -18,3 +18,9 @@ class RuleCodeGeneratePayload(RuleGeneratePayload):
 class RuleStructuredOutputPayload(BaseModel):
     instruction: str = Field(..., description="Structured output generation instruction")
     model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+
+
+class WorkflowGeneratePayload(BaseModel):
+    description: str = Field(..., description="Natural language description of the desired workflow")
+    app_mode: str = Field(default="advanced-chat", description="App mode: 'advanced-chat' (chatflow) or 'workflow'")
+    model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")

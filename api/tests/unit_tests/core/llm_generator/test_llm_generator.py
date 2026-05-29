@@ -683,3 +683,109 @@ class TestLLMGenerator:
                 "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
             )
             assert "An unexpected error occurred" in result["error"]
+
+    def test_generate_workflow_success(self, mock_model_instance, model_config_entity):
+        from core.llm_generator.entities import WorkflowGeneratePayload
+
+        graph_json = json.dumps({
+            "nodes": [
+                {"id": "start", "position": {"x": 80, "y": 282}, "data": {"type": "start", "title": "START", "variables": []}},
+                {"id": "llm", "position": {"x": 380, "y": 282}, "data": {"type": "llm", "title": "LLM", "model": {"provider": "", "name": "", "mode": "chat", "completion_params": {}}, "prompt_template": [{"role": "user", "text": "{{#start.query#}}"}]}},
+                {"id": "answer", "position": {"x": 680, "y": 282}, "data": {"type": "answer", "title": "Answer", "answer": "{{#llm.text#}}"}},
+            ],
+            "edges": [
+                {"id": "start-llm", "source": "start", "sourceHandle": "source", "target": "llm", "targetHandle": "target"},
+                {"id": "llm-answer", "source": "llm", "sourceHandle": "source", "target": "answer", "targetHandle": "target"},
+            ],
+        })
+
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = graph_json
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        args = WorkflowGeneratePayload(
+            description="A simple chatbot that answers questions",
+            app_mode="advanced-chat",
+            model_config=model_config_entity,
+        )
+        result = LLMGenerator.generate_workflow(tenant_id="tenant_id", args=args)
+
+        assert result["error"] == ""
+        assert "nodes" in result["graph"]
+        assert "edges" in result["graph"]
+        assert len(result["graph"]["nodes"]) == 3
+        assert len(result["graph"]["edges"]) == 2
+
+    def test_generate_workflow_with_markdown_fences(self, mock_model_instance, model_config_entity):
+        from core.llm_generator.entities import WorkflowGeneratePayload
+
+        graph = {
+            "nodes": [
+                {"id": "start", "position": {"x": 80, "y": 282}, "data": {"type": "start", "title": "START", "variables": []}},
+            ],
+            "edges": [],
+        }
+        # Wrap in markdown code fences
+        raw_response = f"```json\n{json.dumps(graph)}\n```"
+
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = raw_response
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        args = WorkflowGeneratePayload(
+            description="A simple workflow",
+            app_mode="workflow",
+            model_config=model_config_entity,
+        )
+        result = LLMGenerator.generate_workflow(tenant_id="tenant_id", args=args)
+
+        assert result["error"] == ""
+        assert result["graph"]["nodes"][0]["id"] == "start"
+
+    def test_generate_workflow_invoke_error(self, mock_model_instance, model_config_entity):
+        from core.llm_generator.entities import WorkflowGeneratePayload
+
+        mock_model_instance.invoke_llm.side_effect = InvokeError("Model unavailable")
+
+        args = WorkflowGeneratePayload(
+            description="A chatbot",
+            app_mode="advanced-chat",
+            model_config=model_config_entity,
+        )
+        result = LLMGenerator.generate_workflow(tenant_id="tenant_id", args=args)
+
+        assert result["graph"] == {}
+        assert "Failed to generate workflow" in result["error"]
+
+    def test_generate_workflow_invalid_json(self, mock_model_instance, model_config_entity):
+        from core.llm_generator.entities import WorkflowGeneratePayload
+
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = "This is not JSON at all and cannot be repaired"
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        args = WorkflowGeneratePayload(
+            description="A chatbot",
+            app_mode="advanced-chat",
+            model_config=model_config_entity,
+        )
+        result = LLMGenerator.generate_workflow(tenant_id="tenant_id", args=args)
+
+        # json_repair may return something unexpected, but we handle it
+        assert result["error"] != "" or result["graph"] == {}
+
+    def test_generate_workflow_missing_nodes_or_edges(self, mock_model_instance, model_config_entity):
+        from core.llm_generator.entities import WorkflowGeneratePayload
+
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = json.dumps({"nodes": []})
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        args = WorkflowGeneratePayload(
+            description="A chatbot",
+            app_mode="advanced-chat",
+            model_config=model_config_entity,
+        )
+        result = LLMGenerator.generate_workflow(tenant_id="tenant_id", args=args)
+
+        assert "missing" in result["error"].lower() or result["graph"] == {}
