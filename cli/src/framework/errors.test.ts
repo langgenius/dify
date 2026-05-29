@@ -7,7 +7,6 @@ describe('OutputFormatNotSupportedError', () => {
     const err = new OutputFormatNotSupportedError('csv')
     expect(err.message).toBe('format csv is not supported by this command')
   })
-
 })
 
 describe('UnsupportedArgValueError', () => {
