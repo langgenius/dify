@@ -7,6 +7,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { DeployDrawer } from '../components/deploy-drawer'
+import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
 import { DeploymentSidebar } from './deployment-sidebar'
 import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
@@ -74,11 +75,13 @@ export function InstanceDetail({ appInstanceId, children }: {
                     </div>
                     <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                   </div>
-                  {(activeTab === 'api-tokens' || activeTab === 'releases') && (
+                  {(activeTab === 'api-tokens' || activeTab === 'instances' || activeTab === 'releases') && (
                     <div className="w-full shrink-0 pt-1 sm:w-auto sm:pt-1.5 [&_button]:w-full sm:[&_button]:w-auto">
                       {activeTab === 'api-tokens'
                         ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
-                        : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+                        : activeTab === 'instances'
+                          ? <NewDeploymentHeaderAction appInstanceId={appInstanceId} />
+                          : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
                     </div>
                   )}
                 </div>

@@ -1,17 +1,15 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../runtime-status'
-import { openDeployDrawerAtom } from '../store'
 import {
   DetailEmptyState,
   DetailListState,
 } from './common'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
+import { NewDeploymentButton } from './deploy-tab/new-deployment-button'
 import {
   DetailTable,
   DetailTableBody,
@@ -25,25 +23,6 @@ import {
 import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
 } from './table-styles'
-
-export function NewDeploymentButton({ appInstanceId }: {
-  appInstanceId: string
-}) {
-  const { t } = useTranslation('deployments')
-  const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-
-  return (
-    <Button
-      size="medium"
-      variant="primary"
-      className="gap-1.5"
-      onClick={() => openDeployDrawer({ appInstanceId })}
-    >
-      <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
-      {t('deployTab.newDeployment')}
-    </Button>
-  )
-}
 
 const DEPLOYMENT_TABLE_ROW_SKELETON_KEYS = ['production', 'staging']
 
@@ -128,11 +107,6 @@ export function DeployTab({ appInstanceId }: {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-6">
-      {!isLoading && !hasError && rows.length > 0 && (
-        <div className="flex justify-end">
-          <NewDeploymentButton appInstanceId={appInstanceId} />
-        </div>
-      )}
       {isLoading
         ? <DeploymentEnvironmentListSkeleton />
         : hasError
