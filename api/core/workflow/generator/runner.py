@@ -415,9 +415,7 @@ class WorkflowGenerator:
     _VAR_REF_RE: ClassVar = re.compile(r"\{#([^.#]+)\.([^#]+)#\}")
 
     @classmethod
-    def _reconcile_variable_references(
-        cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode
-    ) -> None:
+    def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:
         """
         Walk every variable reference, ensure it resolves; auto-fix missing
         start-node variables (the safe, dominant case) by adding a stub
@@ -428,9 +426,7 @@ class WorkflowGenerator:
         references aren't validated here because we don't know each tool's
         schema — the run time validates those.
         """
-        nodes_by_id: dict[str, dict[str, Any]] = {
-            n.get("id", ""): n for n in nodes if n.get("id")
-        }
+        nodes_by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
         start_node = next(
             (n for n in nodes if n.get("data", {}).get("type") == BuiltinNodeTypes.START),
             None,
@@ -499,10 +495,7 @@ class WorkflowGenerator:
         data = node.get("data") or {}
         node_type = data.get("type")
         if node_type == BuiltinNodeTypes.START:
-            return any(
-                isinstance(v, dict) and v.get("variable") == var
-                for v in (data.get("variables") or [])
-            )
+            return any(isinstance(v, dict) and v.get("variable") == var for v in (data.get("variables") or []))
         if node_type == BuiltinNodeTypes.LLM:
             # Default LLM output is ``text``. Structured-output keys land
             # under ``structured_output.schema.properties`` when enabled.
@@ -515,10 +508,7 @@ class WorkflowGenerator:
         if node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
             return var == "result"
         if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-            return any(
-                isinstance(p, dict) and p.get("name") == var
-                for p in (data.get("parameters") or [])
-            )
+            return any(isinstance(p, dict) and p.get("name") == var for p in (data.get("parameters") or []))
         if node_type == BuiltinNodeTypes.HTTP_REQUEST:
             return var in {"body", "status_code", "headers", "files"}
         if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:

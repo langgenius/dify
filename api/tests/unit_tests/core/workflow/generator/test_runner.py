@@ -1112,22 +1112,37 @@ class TestWorkflowGeneratorVariableReferences:
         builder = json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "start", "title": "Start", "variables": []}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {
-                         "type": "code",
-                         "title": "Process",
-                         "code_language": "python3",
-                         "code": "def main(topic): return {'result': topic}",
-                         "variables": [
-                             {"variable": "topic", "value_selector": ["node-1", "topic"]},
-                         ],
-                         "outputs": {"result": {"type": "string", "children": None}},
-                     }},
-                    {"id": "node-3", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "end", "title": "End",
-                              "outputs": [{"variable": "out", "value_selector": ["node-2", "result"]}]}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "code",
+                            "title": "Process",
+                            "code_language": "python3",
+                            "code": "def main(topic): return {'result': topic}",
+                            "variables": [
+                                {"variable": "topic", "value_selector": ["node-1", "topic"]},
+                            ],
+                            "outputs": {"result": {"type": "string", "children": None}},
+                        },
+                    },
+                    {
+                        "id": "node-3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "out", "value_selector": ["node-2", "result"]}],
+                        },
+                    },
                 ],
                 "edges": [
                     {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
@@ -1174,11 +1189,23 @@ class TestWorkflowGeneratorVariableReferences:
         builder = json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "start", "title": "Start", "variables": []}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "answer", "title": "Reply",
-                              "variables": [], "answer": "You said: {#sys.query#}"}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "answer",
+                            "title": "Reply",
+                            "variables": [],
+                            "answer": "You said: {#sys.query#}",
+                        },
+                    },
                 ],
                 "edges": [
                     {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
@@ -1225,9 +1252,7 @@ class TestWorkflowGeneratorVariableReferences:
             instruction="Summarize a URL",
         )
 
-        builder_user_prompt = str(
-            model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content
-        )
+        builder_user_prompt = str(model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content)
         # The Start inputs section must list ``url`` with its declared type.
         assert "Start inputs" in builder_user_prompt
         assert "variable='url'" in builder_user_prompt
