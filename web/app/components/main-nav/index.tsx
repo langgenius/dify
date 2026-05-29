@@ -155,7 +155,7 @@ const MainNav = ({
               </>
             )}
         {showEnvTag && (
-          <div className="relative z-30 px-3 pb-2">
+          <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
             <EnvNav />
           </div>
         )}
