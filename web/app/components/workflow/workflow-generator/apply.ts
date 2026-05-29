@@ -8,13 +8,9 @@ const MODE_TO_APP_MODE: Record<WorkflowGeneratorMode, AppModeEnum> = {
   'advanced-chat': AppModeEnum.ADVANCED_CHAT,
 }
 
-/**
- * Derive a sane App name from the user's instruction.
- * - Trims whitespace.
- * - Caps length at 40 chars.
- * - Strips trailing punctuation.
- */
-export const deriveAppName = (instruction: string): string => {
+// Derive a sane App name from the user's instruction: trim, cap at 40 chars,
+// strip trailing punctuation.
+const deriveAppName = (instruction: string): string => {
   const trimmed = instruction.trim().slice(0, 40)
   return trimmed.replace(/[.,!?;:。，！？；：]+$/, '').trim() || 'Generated Workflow'
 }
