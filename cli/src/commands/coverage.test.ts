@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { describe, expect, it } from 'vitest'
 import { isExcludedCommandPath } from '@/framework/command-fs'
 

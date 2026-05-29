@@ -101,7 +101,7 @@ describe('Version command', () => {
     expect(spy).toHaveBeenCalledWith({ skipServer: true })
   })
 
-  function stubProcessExit(): ReturnType<typeof vi.spyOn<typeof process, 'exit'>> {
+  function stubProcessExit() {
     const impl = (() => {
       throw new Error('__exit__')
     }) as never

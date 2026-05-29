@@ -47,7 +47,7 @@ describe('getTokenStore', () => {
   it('falls back to file when probe round-trip mismatches', () => {
     const k = memStore('keyring')
     const f = memStore('file')
-    k.get = vi.fn(() => 'something-else')
+    k.get = vi.fn(() => 'something-else') as Store['get']
     const result = getTokenStore({
       factory: { keyring: () => k, file: () => f },
     })
