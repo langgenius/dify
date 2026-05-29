@@ -1,6 +1,7 @@
 {
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": [
         "./src/*"
