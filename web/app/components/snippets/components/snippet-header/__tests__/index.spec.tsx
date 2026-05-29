@@ -36,9 +36,9 @@ vi.mock('@/app/components/workflow/header', () => ({
 
 describe('SnippetHeader', () => {
   const mockCancel = vi.fn()
-  const mockDiscardAndExit = vi.fn()
   const mockEdit = vi.fn()
   const mockExitEditing = vi.fn()
+  const mockExitEditingWithoutSave = vi.fn()
   const mockPublish = vi.fn()
   const mockSaveAndExit = vi.fn()
 
@@ -57,9 +57,9 @@ describe('SnippetHeader', () => {
           isEditing={false}
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
           onEdit={mockEdit}
           onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
           onPublish={mockPublish}
           onSaveAndExitEditing={mockSaveAndExit}
         />,
@@ -86,9 +86,9 @@ describe('SnippetHeader', () => {
           isEditing
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
           onEdit={mockEdit}
           onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
           onPublish={mockPublish}
           onSaveAndExitEditing={mockSaveAndExit}
         />,
@@ -110,9 +110,9 @@ describe('SnippetHeader', () => {
           isEditing
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
           onEdit={mockEdit}
           onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
           onPublish={mockPublish}
           onSaveAndExitEditing={mockSaveAndExit}
         />,

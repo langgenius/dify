@@ -20,9 +20,9 @@ type SnippetHeaderProps = {
   isEditing: boolean
   isPublishing: boolean
   onCancel: () => void
-  onDiscardAndExitEditing: () => void | Promise<void>
   onEdit: () => void
   onExitEditing: () => void | Promise<void>
+  onExitEditingWithoutSave: () => void | Promise<void>
   onPublish: () => void
   onSaveAndExitEditing: () => void | Promise<void>
 }
@@ -43,10 +43,10 @@ const EditActions = ({
   isPublishing,
   onEdit,
   onExitEditing,
-  onDiscardAndExitEditing,
+  onExitEditingWithoutSave,
   onPublish,
   onSaveAndExitEditing,
-}: Pick<SnippetHeaderProps, 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onDiscardAndExitEditing' | 'onEdit' | 'onExitEditing' | 'onPublish' | 'onSaveAndExitEditing'>) => {
+}: Pick<SnippetHeaderProps, 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onEdit' | 'onExitEditing' | 'onExitEditingWithoutSave' | 'onPublish' | 'onSaveAndExitEditing'>) => {
   const { t } = useTranslation('snippet')
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
 
@@ -82,7 +82,7 @@ const EditActions = ({
         disabled={isPublishing}
         loading={isPublishing}
         onDiscard={async () => {
-          await onDiscardAndExitEditing()
+          await onExitEditingWithoutSave()
           setExitConfirmOpen(false)
         }}
         onSave={async () => {
@@ -109,9 +109,9 @@ const SnippetHeader = ({
   isEditing,
   isPublishing,
   onCancel,
-  onDiscardAndExitEditing,
   onEdit,
   onExitEditing,
+  onExitEditingWithoutSave,
   onPublish,
   onSaveAndExitEditing,
 }: SnippetHeaderProps) => {
@@ -134,9 +134,9 @@ const SnippetHeader = ({
               hasDraftChanges={hasDraftChanges}
               isEditing={isEditing}
               isPublishing={isPublishing}
-              onDiscardAndExitEditing={onDiscardAndExitEditing}
               onEdit={onEdit}
               onExitEditing={onExitEditing}
+              onExitEditingWithoutSave={onExitEditingWithoutSave}
               onPublish={onPublish}
               onSaveAndExitEditing={onSaveAndExitEditing}
             />
@@ -159,7 +159,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [canDiscardChanges, hasDraftChanges, isEditing, isPublishing, onCancel, onDiscardAndExitEditing, onEdit, onExitEditing, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
+  }, [canDiscardChanges, hasDraftChanges, isEditing, isPublishing, onCancel, onEdit, onExitEditing, onExitEditingWithoutSave, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
 
   return <Header {...headerProps} />
 }

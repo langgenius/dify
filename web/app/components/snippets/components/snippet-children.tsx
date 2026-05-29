@@ -12,9 +12,9 @@ type SnippetChildrenProps = {
   isEditing: boolean
   isPublishing: boolean
   onCancel: () => void
-  onDiscardAndExitEditing: () => void | Promise<void>
   onEdit: () => void
   onExitEditing: () => void | Promise<void>
+  onExitEditingWithoutSave: () => void | Promise<void>
   onPublish: () => void
   onSaveAndExitEditing: () => void | Promise<void>
 }
@@ -27,9 +27,9 @@ const SnippetChildren = ({
   isEditing,
   isPublishing,
   onCancel,
-  onDiscardAndExitEditing,
   onEdit,
   onExitEditing,
+  onExitEditingWithoutSave,
   onPublish,
   onSaveAndExitEditing,
 }: SnippetChildrenProps) => {
@@ -44,9 +44,9 @@ const SnippetChildren = ({
         isEditing={isEditing}
         isPublishing={isPublishing}
         onCancel={onCancel}
-        onDiscardAndExitEditing={onDiscardAndExitEditing}
         onEdit={onEdit}
         onExitEditing={onExitEditing}
+        onExitEditingWithoutSave={onExitEditingWithoutSave}
         onPublish={onPublish}
         onSaveAndExitEditing={onSaveAndExitEditing}
       />
