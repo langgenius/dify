@@ -162,21 +162,15 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                   type: 'string',
                   description: t(`${i18nPrefix}.outputVars.content`, { ns: 'workflow' }),
                 },
-                // url, title, link like bing search reference result: link, link page title, link page icon
                 {
                   name: 'title',
                   type: 'string',
                   description: t(`${i18nPrefix}.outputVars.title`, { ns: 'workflow' }),
                 },
                 {
-                  name: 'url',
+                  name: 'summary',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.url`, { ns: 'workflow' }),
-                },
-                {
-                  name: 'icon',
-                  type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.icon`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.summary`, { ns: 'workflow' }),
                 },
                 {
                   name: 'metadata',

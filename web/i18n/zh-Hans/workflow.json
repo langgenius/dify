@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "元数据过滤",
   "nodes.knowledgeRetrieval.outputVars.content": "分段内容",
   "nodes.knowledgeRetrieval.outputVars.files": "召回的文件",
-  "nodes.knowledgeRetrieval.outputVars.icon": "分段图标",
   "nodes.knowledgeRetrieval.outputVars.metadata": "其他元数据",
   "nodes.knowledgeRetrieval.outputVars.output": "召回的分段",
   "nodes.knowledgeRetrieval.outputVars.title": "分段标题",
-  "nodes.knowledgeRetrieval.outputVars.url": "分段链接",
   "nodes.knowledgeRetrieval.queryAttachment": "查询图片",
   "nodes.knowledgeRetrieval.queryText": "查询文本",
   "nodes.knowledgeRetrieval.queryVariable": "查询变量",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "命名",
   "versionHistory.releaseNotesPlaceholder": "请描述变更",
   "versionHistory.restorationTip": "版本回滚后，当前草稿将被覆盖。",
-  "versionHistory.title": "版本"
+  "versionHistory.title": "版本",
+  "nodes.knowledgeRetrieval.outputVars.summary": "内容摘要（如有）"
 }
