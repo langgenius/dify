@@ -1,35 +1,46 @@
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { FILE_NAME } from '../../../config/schema.js'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { loadConfig } from '../../../config/config-loader.js'
 import { isBaseError } from '../../../errors/base.js'
 import { ErrorCode, ExitCode } from '../../../errors/codes.js'
-import { YamlStore } from '../../../store/store.js'
+import { ENV_CONFIG_DIR } from '../../../store/dir.js'
+import { getConfigurationStore } from '../../../store/manager.js'
 import { runConfigSet } from './run.js'
-
-function makeStore(dir: string): YamlStore {
-  return new YamlStore(join(dir, FILE_NAME))
-}
 
 describe('runConfigSet', () => {
   let dir: string
+  let prevConfigDir: string | undefined
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-set-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = dir
   })
 
-  it('writes config.yml and returns "set k = v\\n"', async () => {
-    const out = runConfigSet({ store: makeStore(dir), key: 'defaults.format', value: 'json' })
+  afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('persists the value and returns "set k = v\\n"', () => {
+    const out = runConfigSet({ store: getConfigurationStore(), key: 'defaults.format', value: 'json' })
     expect(out).toBe('set defaults.format = json\n')
-    const raw = await readFile(join(dir, FILE_NAME), 'utf8')
-    expect(raw).toContain('format: json')
+
+    const r = loadConfig(getConfigurationStore())
+    expect(r.found).toBe(true)
+    if (r.found)
+      expect(r.config.defaults.format).toBe('json')
   })
 
-  it('rejects invalid format value with config_invalid_value', async () => {
+  it('rejects invalid format value with config_invalid_value', () => {
     let caught: unknown
     try {
-      runConfigSet({ store: makeStore(dir), key: 'defaults.format', value: 'csv' })
+      runConfigSet({ store: getConfigurationStore(), key: 'defaults.format', value: 'csv' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -40,7 +51,7 @@ describe('runConfigSet', () => {
   it('rejects unknown key with config_invalid_key', () => {
     let caught: unknown
     try {
-      runConfigSet({ store: makeStore(dir), key: 'bogus', value: 'x' })
+      runConfigSet({ store: getConfigurationStore(), key: 'bogus', value: 'x' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -48,18 +59,22 @@ describe('runConfigSet', () => {
       expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
   })
 
-  it('preserves prior keys when setting a new one', async () => {
-    runConfigSet({ store: makeStore(dir), key: 'defaults.format', value: 'yaml' })
-    runConfigSet({ store: makeStore(dir), key: 'defaults.limit', value: '40' })
-    const raw = await readFile(join(dir, FILE_NAME), 'utf8')
-    expect(raw).toContain('format: yaml')
-    expect(raw).toContain('limit: 40')
+  it('preserves prior keys when setting a new one', () => {
+    runConfigSet({ store: getConfigurationStore(), key: 'defaults.format', value: 'yaml' })
+    runConfigSet({ store: getConfigurationStore(), key: 'defaults.limit', value: '40' })
+
+    const r = loadConfig(getConfigurationStore())
+    expect(r.found).toBe(true)
+    if (r.found) {
+      expect(r.config.defaults.format).toBe('yaml')
+      expect(r.config.defaults.limit).toBe(40)
+    }
   })
 
   it('exit code for invalid value is Usage (2)', () => {
     let caught: unknown
     try {
-      runConfigSet({ store: makeStore(dir), key: 'defaults.format', value: 'csv' })
+      runConfigSet({ store: getConfigurationStore(), key: 'defaults.format', value: 'csv' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -70,7 +85,7 @@ describe('runConfigSet', () => {
   it('exit code for unknown key is Usage (2)', () => {
     let caught: unknown
     try {
-      runConfigSet({ store: makeStore(dir), key: 'bogus', value: 'x' })
+      runConfigSet({ store: getConfigurationStore(), key: 'bogus', value: 'x' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
@@ -81,7 +96,7 @@ describe('runConfigSet', () => {
   it('typed wrap chain: invalid defaults.limit surfaces ConfigInvalidValue (not UsageInvalidFlag)', () => {
     let caught: unknown
     try {
-      runConfigSet({ store: makeStore(dir), key: 'defaults.limit', value: 'abc' })
+      runConfigSet({ store: getConfigurationStore(), key: 'defaults.limit', value: 'abc' })
     }
     catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)

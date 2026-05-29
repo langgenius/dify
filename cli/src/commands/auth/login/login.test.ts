@@ -1,5 +1,5 @@
 import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { TokenStore } from '../../../auth/store.js'
+import type { Key, Store } from '../../../store/store.js'
 import type { Clock } from './device-flow.js'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { DeviceFlowApi } from '../../../api/oauth-device.js'
 import { createClient } from '../../../http/client.js'
+import { ENV_CONFIG_DIR } from '../../../store/dir.js'
+import { tokenKey } from '../../../store/manager.js'
 import { bufferStreams } from '../../../sys/io/streams'
 import { runLogin } from './login.js'
 
@@ -18,38 +20,38 @@ const noopClock: Clock = {
 
 const noopBrowser = async (): Promise<void> => { /* skip OS open */ }
 
-class MemStore implements TokenStore {
-  readonly entries = new Map<string, string>()
-  async put(host: string, accountId: string, token: string): Promise<void> {
-    this.entries.set(`${host}::${accountId}`, token)
+class MemStore implements Store {
+  readonly entries = new Map<string, unknown>()
+  get<T>(key: Key<T>): T {
+    return (this.entries.get(key.key) as T | undefined) ?? key.default
   }
 
-  async get(host: string, accountId: string): Promise<string | undefined> {
-    return this.entries.get(`${host}::${accountId}`)
+  set<T>(key: Key<T>, value: T): void {
+    this.entries.set(key.key, value)
   }
 
-  async delete(host: string, accountId: string): Promise<void> {
-    this.entries.delete(`${host}::${accountId}`)
-  }
-
-  async list(host: string): Promise<readonly string[]> {
-    const prefix = `${host}::`
-    return Array.from(this.entries.keys())
-      .filter(k => k.startsWith(prefix))
-      .map(k => k.slice(prefix.length))
+  unset<T>(key: Key<T>): void {
+    this.entries.delete(key.key)
   }
 }
 
 describe('runLogin', () => {
   let mock: DifyMock
   let configDir: string
+  let prevConfigDir: string | undefined
 
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
     configDir = await mkdtemp(join(tmpdir(), 'difyctl-login-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = configDir
   })
 
   afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await mock.stop()
     await rm(configDir, { recursive: true, force: true })
   })
@@ -58,7 +60,6 @@ describe('runLogin', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const bundle = await runLogin({
-      configDir,
       io,
       host: mock.url,
       noBrowser: true,
@@ -73,7 +74,7 @@ describe('runLogin', () => {
     expect(bundle.account?.email).toBe('tester@dify.ai')
     expect(bundle.workspace?.id).toBe('ws-1')
     expect(bundle.available_workspaces).toHaveLength(2)
-    const stored = await store.get(bundle.current_host, 'acct-1')
+    const stored = store.get(tokenKey(bundle.current_host, 'acct-1'))
     expect(stored).toBe('dfoa_test')
 
     const hostsRaw = await readFile(join(configDir, 'hosts.yml'), 'utf8')
@@ -91,7 +92,6 @@ describe('runLogin', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const bundle = await runLogin({
-      configDir,
       io,
       host: mock.url,
       noBrowser: true,
@@ -106,6 +106,8 @@ describe('runLogin', () => {
     expect(bundle.account).toBeUndefined()
     expect(bundle.external_subject?.email).toBe('sso@dify.ai')
     expect(bundle.external_subject?.issuer).toBe('https://issuer.example')
+    const stored = await store.get(bundle.current_host, 'sso@dify.ai')
+    expect(stored).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })
@@ -115,7 +117,6 @@ describe('runLogin', () => {
     const io = bufferStreams()
     const store = new MemStore()
     await expect(runLogin({
-      configDir,
       io,
       host: mock.url,
       noBrowser: true,
@@ -135,7 +136,6 @@ describe('runLogin', () => {
     const io = bufferStreams()
     const store = new MemStore()
     await expect(runLogin({
-      configDir,
       io,
       host: mock.url,
       noBrowser: true,
@@ -152,7 +152,6 @@ describe('runLogin', () => {
     const io = bufferStreams()
     const store = new MemStore()
     await expect(runLogin({
-      configDir,
       io,
       host: mock.url,
       noBrowser: true,
@@ -169,7 +168,6 @@ describe('runLogin', () => {
     const io = bufferStreams()
     const store = new MemStore()
     await runLogin({
-      configDir,
       io,
       host: mock.url,
       noBrowser: true,

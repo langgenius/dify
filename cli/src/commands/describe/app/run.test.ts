@@ -8,8 +8,8 @@ import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { loadAppInfoCache } from '../../../cache/app-info.js'
 import { formatted, stringifyOutput } from '../../../framework/output.js'
 import { createClient } from '../../../http/client.js'
-import { CACHE_APP_INFO, cachePath } from '../../../store/manager.js'
-import { YamlStore } from '../../../store/store.js'
+import { ENV_CACHE_DIR } from '../../../store/dir.js'
+import { CACHE_APP_INFO, getCache } from '../../../store/manager.js'
 import { runDescribeApp } from './run.js'
 
 function bundle(): HostsBundle {
@@ -29,17 +29,24 @@ function bundle(): HostsBundle {
 describe('runDescribeApp', () => {
   let mock: DifyMock
   let dir: string
+  let prevCacheDir: string | undefined
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
     dir = await mkdtemp(join(tmpdir(), 'difyctl-desc-'))
+    prevCacheDir = process.env[ENV_CACHE_DIR]
+    process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
+    if (prevCacheDir === undefined)
+      delete process.env[ENV_CACHE_DIR]
+    else
+      process.env[ENV_CACHE_DIR] = prevCacheDir
     await mock.stop()
     await rm(dir, { recursive: true, force: true })
   })
 
   async function render(opts: Parameters<typeof runDescribeApp>[0]): Promise<string> {
-    const cache = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     const data = await runDescribeApp(
       opts,
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
@@ -82,7 +89,7 @@ describe('runDescribeApp', () => {
   })
 
   it('refresh: bypasses cache', async () => {
-    const cache = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runDescribeApp(
       { appId: 'app-1' },
       { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },

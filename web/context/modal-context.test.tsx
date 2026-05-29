@@ -18,6 +18,10 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
+vi.mock('@/app/components/billing/pricing', () => ({
+  default: () => <div>billing.plansCommon.mostPopular</div>,
+}))
+
 const mockUseProviderContext = vi.fn()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockUseProviderContext(),

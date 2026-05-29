@@ -160,7 +160,8 @@ describe('runVersionProbe', () => {
     const url = new URL(mock.url)
     const prevConfig = process.env[ENV_CONFIG_DIR]
     try {
-      await saveHosts(configDir, {
+      process.env[ENV_CONFIG_DIR] = configDir
+      saveHosts({
         current_host: url.host,
         scheme: url.protocol.replace(':', ''),
         token_storage: 'file',

@@ -112,6 +112,14 @@ List annotations for the application
 
 List annotations for the application
 
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Keyword to search annotations | No | string |
+| limit | query | Number of annotations per page | No | integer |
+| page | query | Page number | No | integer |
+
 ##### Responses
 
 | Code | Description | Schema |
@@ -2168,6 +2176,14 @@ Returns a list of available models for the specified model type.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
+
+#### AnnotationListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Keyword to search annotations | No |
+| limit | integer | Number of annotations per page | No |
+| page | integer | Page number | No |
 
 #### AnnotationReplyActionPayload
 

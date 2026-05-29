@@ -356,6 +356,9 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         subject_type: 'external_sso',
         subject_email: 'sso@dify.ai',
         subject_issuer: 'https://issuer.example',
+        account: null,
+        workspaces: [],
+        default_workspace_id: null,
         token_id: 'tok-sso-1',
       })
     }
