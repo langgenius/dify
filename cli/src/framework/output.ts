@@ -37,7 +37,7 @@ export const OutputFormat = {
   JSON: 'json',
   YAML: 'yaml',
   TEXT: 'text',
-  WIDE: 'wide'
+  WIDE: 'wide',
 } as const
 
 export type TableOutput<TRow extends TablePrintable> = {

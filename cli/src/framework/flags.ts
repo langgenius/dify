@@ -1,12 +1,12 @@
-import { io } from '../sys/index.js'
-import { UnspoortedArgValueError } from './errors.js'
 import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types.js'
+import { UnsupportedArgValueError } from './errors.js'
 
-function stringFlag<const Opts extends { 
-  description: string, 
-  char?: string, 
-  default?: string, 
-  options?: readonly string[] }>(
+function stringFlag<const Opts extends {
+  description: string
+  char?: string
+  default?: string
+  options?: readonly string[]
+}>(
   opts: Opts,
 ): FlagDefinition<string> {
   return {
@@ -16,7 +16,7 @@ function stringFlag<const Opts extends {
   }
 }
 
-function outputFormatFlag<const Opts extends {options: readonly string[], default?: string }>(
+function outputFormatFlag<const Opts extends { options: readonly string[], default?: string }>(
   opts: Opts,
 ): FlagDefinition<string> {
   return {
@@ -110,7 +110,7 @@ function resolveByChar(char: string, meta: CommandMeta): [name: string, def: Fla
 
 function validateFlagOptions(name: string, raw: string, def: FlagDefinition): void {
   if (def.options !== undefined && !def.options.includes(raw))
-    throw new UnspoortedArgValueError(name, def, raw)
+    throw new UnsupportedArgValueError(name, def, raw)
 }
 
 type ResolvedFlag = { name: string, def: FlagDefinition, label: string, inlineRaw: string | undefined }

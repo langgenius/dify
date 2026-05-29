@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { UnsupportedArgValueError } from './errors.js'
 import { Args, Flags, parseArgv } from './flags.js'
-import { UnspoortedArgValueError } from './errors.js'
 
 const meta = {
   flags: {
@@ -191,13 +191,13 @@ describe('parseArgv', () => {
 
     it('rejects an invalid option value (space form)', () => {
       expect(() => parseArgv(['--mode', 'chatbot'], metaWithOptions)).toThrow(
-        UnspoortedArgValueError
+        UnsupportedArgValueError,
       )
     })
 
     it('rejects an invalid option value (= form)', () => {
       expect(() => parseArgv(['--mode=chatbot'], metaWithOptions)).toThrow(
-        UnspoortedArgValueError,
+        UnsupportedArgValueError,
       )
     })
   })

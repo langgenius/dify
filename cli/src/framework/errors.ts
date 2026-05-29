@@ -1,24 +1,23 @@
-import { BaseError } from "../errors/base";
-import { ErrorCode } from "../errors/codes";
-import { OutputFormat } from "./output";
-import type { FlagDefinition } from "./types";
+import type { FlagDefinition } from './types'
+import { BaseError } from '../errors/base'
+import { ErrorCode } from '../errors/codes'
 
 export class OutputFormatNotSupportedError extends BaseError {
-  constructor(format: string, supported?: string[]) {
+  constructor(format: string) {
     super({
       code: ErrorCode.IllegalArgumentError,
       message: `format ${format} is not supported by this command`,
-      hint: supported ? `supported: ${supported}` : ''
     })
   }
 }
 
-export class UnspoortedArgValueError extends BaseError {
+export class UnsupportedArgValueError extends BaseError {
   constructor(flagName: string, flagDef: FlagDefinition, givenValue: string) {
+    const flagLabel = flagDef.char ? `--${flagName} / -${flagDef.char}` : `--${flagName}`
     super({
       code: ErrorCode.IllegalArgumentError,
-      message: `illgal value: ${givenValue} --${flagName} / -${flagDef.char} has unsupported value ${givenValue}`,
-      hint: `supported value: ${flagDef.options}`
+      message: `illegal value ${givenValue} for flag ${flagLabel}`,
+      hint: flagDef.options ? `supported value: ${flagDef.options.join(', ')}` : '',
     })
   }
 }

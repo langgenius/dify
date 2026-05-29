@@ -17,7 +17,7 @@ export const ErrorCode = {
   Server4xxOther: 'server_4xx_other',
   ClientError: 'client_error',
   Unknown: 'unknown',
-  IllegalArgumentError: 'illegal_argument'
+  IllegalArgumentError: 'illegal_argument',
 } as const
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode]
