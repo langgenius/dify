@@ -94,3 +94,38 @@ class TestGetBuilderSystemPrompt:
         prompt = get_builder_system_prompt("advanced-chat")
         assert prompt is BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT
         assert 'exactly one "answer" node' in prompt
+
+
+class TestFormatPlanBlockParentHints:
+    def test_resolves_parent_label_to_node_id(self):
+        # The planner emits parent="Per Item" as a hint; the builder needs the
+        # resolved id ("node-N") to set parentId on the inner node.
+        from core.workflow.generator.prompts.builder_prompts import format_plan_block
+
+        out = format_plan_block(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Per Item", "node_type": "iteration", "purpose": "iterate"},
+                {"label": "Sum Item", "node_type": "llm", "purpose": "summarize one",
+                 "parent": "Per Item"},
+            ]
+        )
+        # The inner line should mention parent=node-2 (the iteration node).
+        assert "parent=node-2" in out
+        # Top-level nodes must not have a parent clause.
+        first_line = out.splitlines()[0]
+        assert "parent=" not in first_line
+
+    def test_omits_parent_clause_when_label_is_unknown(self):
+        # A typo / unknown parent label should degrade to quoting the raw
+        # label string rather than fabricating a node id.
+        from core.workflow.generator.prompts.builder_prompts import format_plan_block
+
+        out = format_plan_block(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Step", "node_type": "code", "purpose": "x",
+                 "parent": "Ghost Container"},
+            ]
+        )
+        assert "parent='Ghost Container'" in out

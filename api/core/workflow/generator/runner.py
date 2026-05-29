@@ -278,17 +278,42 @@ class WorkflowGenerator:
         nodes: list[dict[str, Any]] = list(cast(list[dict[str, Any]], graph.get("nodes", [])))
         edges: list[dict[str, Any]] = list(cast(list[dict[str, Any]], graph.get("edges", [])))
 
-        # Re-index node positions left-to-right in declaration order, regardless of
-        # whatever the LLM returned. The Studio canvas re-layouts in any case but
-        # this keeps the preview pane readable.
-        for index, node in enumerate(nodes):
+        # Container-child nodes carry their own relative positions inside the
+        # parent and have a special ``type`` (custom-iteration-start /
+        # custom-loop-start). We must not override their positions or wrapper
+        # ``type``; only top-level (parentId-less) nodes get the left-to-right
+        # auto layout.
+        top_level_index = 0
+        for node in nodes:
             cls._fill_node_defaults(node)
-            node["position"] = {"x": float(_NODE_X_OFFSET + _NODE_X_STEP * index), "y": float(_NODE_Y)}
+            if node.get("parentId"):
+                # Inner node — keep whatever the LLM emitted; only fill the
+                # absolutely-required defaults so the canvas can render it.
+                node.setdefault("position", {"x": 0.0, "y": 0.0})
+                node.setdefault("zIndex", 1002)
+                node.setdefault("extent", "parent")
+            else:
+                node["position"] = {
+                    "x": float(_NODE_X_OFFSET + _NODE_X_STEP * top_level_index),
+                    "y": float(_NODE_Y),
+                }
+                top_level_index += 1
             node.setdefault("positionAbsolute", dict(node["position"]))
             node.setdefault("width", _DEFAULT_NODE_WIDTH)
             node.setdefault("height", _DEFAULT_NODE_HEIGHT)
             node.setdefault("sourcePosition", "right")
             node.setdefault("targetPosition", "left")
+
+        # ``parentId`` → set of inner-node ids, so edges between siblings can be
+        # marked ``isInIteration`` / ``isInLoop`` with the right container id.
+        inner_node_to_parent: dict[str, str] = {
+            n["id"]: n["parentId"] for n in nodes if n.get("parentId") and n.get("id")
+        }
+        # Map parent id → its container node-type so we can pick the right flag.
+        parent_type: dict[str, str] = {}
+        for n in nodes:
+            if n.get("id") in inner_node_to_parent.values():
+                parent_type[n["id"]] = n.get("data", {}).get("type", "")
 
         # Dedupe edges (LLMs sometimes emit the same edge twice).
         seen: set[tuple[str, str, str, str]] = set()
@@ -314,6 +339,24 @@ class WorkflowGenerator:
             edge.setdefault("data", {})
             edge["data"].setdefault("sourceType", type_by_id.get(edge.get("source", ""), ""))
             edge["data"].setdefault("targetType", type_by_id.get(edge.get("target", ""), ""))
+
+            # An edge is "inside" a container iff both endpoints share the same
+            # parent. Set isInIteration / isInLoop + iteration_id / loop_id +
+            # zIndex so the canvas renders it inside the subgraph rather than
+            # at the top level. Edges connecting a container to the outside
+            # world keep the defaults (isInIteration=False, isInLoop=False).
+            src_parent = inner_node_to_parent.get(edge.get("source", ""))
+            tgt_parent = inner_node_to_parent.get(edge.get("target", ""))
+            in_iter = bool(src_parent and src_parent == tgt_parent and parent_type.get(src_parent) == "iteration")
+            in_loop = bool(src_parent and src_parent == tgt_parent and parent_type.get(src_parent) == "loop")
+            edge["data"].setdefault("isInIteration", in_iter)
+            edge["data"].setdefault("isInLoop", in_loop)
+            if in_iter:
+                edge["data"].setdefault("iteration_id", src_parent)
+                edge.setdefault("zIndex", 1002)
+            if in_loop:
+                edge["data"].setdefault("loop_id", src_parent)
+                edge.setdefault("zIndex", 1002)
 
         viewport = graph.get("viewport") or _DEFAULT_VIEWPORT
         # Coerce to floats in case the LLM emitted strings.

@@ -52,7 +52,17 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 7. Each node "purpose" is one sentence explaining what it does in this workflow.
    For "tool" nodes, name the chosen tool inside the purpose, e.g.
    "Search the web using google/search.".
-8. Output strictly the JSON object — no prose, no Markdown, no code fences.
+8. For "iteration" and "loop" nodes (containers), list the container node first
+   and then EACH inner-pipeline step as its own entry tagged with
+   ``"parent": "<container-label>"``. Container children execute in declaration
+   order from the container's auto-generated start node. Example:
+       {"label": "Per Item",  "node_type": "iteration", "purpose": "..."},
+       {"label": "Summarize Item", "node_type": "llm",  "purpose": "...",
+        "parent": "Per Item"},
+       {"label": "Store Item", "node_type": "code", "purpose": "...",
+        "parent": "Per Item"}
+   Nodes without a ``"parent"`` are top-level.
+9. Output strictly the JSON object — no prose, no Markdown, no code fences.
 
 # Output schema
 
