@@ -164,25 +164,11 @@ _SummaryIndexSetting = Annotated[
 ]
 
 
-def _normalize_optional_summary_index_setting(v: Any) -> Any:
-    """Treat legacy empty summary index payloads as disabled for estimate requests."""
-    if v is None:
-        return None
-    if isinstance(v, dict) and v.get("enable") is None:
-        return None
-    return v
-
-
 class _AutomaticProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     mode: Literal[ProcessRuleMode.AUTOMATIC]
     summary_index_setting: _SummaryIndexSetting | None = None
-
-    @field_validator("summary_index_setting", mode="before")
-    @classmethod
-    def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        return _normalize_optional_summary_index_setting(v)
 
 
 class _CustomProcessRule(BaseModel):
@@ -192,11 +178,6 @@ class _CustomProcessRule(BaseModel):
     rules: _EstimateRules
     summary_index_setting: _SummaryIndexSetting | None = None
 
-    @field_validator("summary_index_setting", mode="before")
-    @classmethod
-    def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        return _normalize_optional_summary_index_setting(v)
-
 
 class _HierarchicalProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -204,11 +185,6 @@ class _HierarchicalProcessRule(BaseModel):
     mode: Literal[ProcessRuleMode.HIERARCHICAL]
     rules: _EstimateRules
     summary_index_setting: _SummaryIndexSetting | None = None
-
-    @field_validator("summary_index_setting", mode="before")
-    @classmethod
-    def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        return _normalize_optional_summary_index_setting(v)
 
 
 _EstimateProcessRule = Annotated[

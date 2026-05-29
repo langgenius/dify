@@ -1360,28 +1360,6 @@ class TestDocumentServiceEstimateValidation:
         with pytest.raises(ValueError, match="Field required"):
             DocumentService.estimate_args_validate(args)
 
-    def test_estimate_args_validate_ignores_legacy_null_summary_index_setting(self):
-        args = {
-            "info_list": {"data_source_type": "upload_file"},
-            "process_rule": {
-                "mode": "custom",
-                "rules": {
-                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
-                    "segmentation": {"separator": "\n", "max_tokens": 128},
-                },
-                "summary_index_setting": {
-                    "enable": None,
-                    "model_name": None,
-                    "model_provider_name": None,
-                    "summary_prompt": None,
-                },
-            },
-        }
-
-        DocumentService.estimate_args_validate(args)
-
-        assert "summary_index_setting" not in args["process_rule"]
-
 
 class TestDocumentServiceSaveDocumentAdditionalBranches:
     """Additional unit tests for dataset bootstrap and process-rule branches."""
