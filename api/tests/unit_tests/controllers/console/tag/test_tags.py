@@ -271,6 +271,34 @@ class TestTagBindingCollectionApi:
         assert status == 200
         assert result["result"] == "success"
 
+    def test_create_snippet_binding_success(self, app: Flask, admin_user, payload_patch):
+        api = TagBindingCollectionApi()
+        method = unwrap(api.post)
+
+        payload = {
+            "tag_ids": ["tag-1"],
+            "target_id": "snippet-1",
+            "type": "snippet",
+        }
+
+        with app.test_request_context("/", json=payload):
+            with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(admin_user, None),
+                ),
+                payload_patch(payload),
+                patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
+            ):
+                result, status = method(api)
+
+        save_mock.assert_called_once()
+        binding_payload = save_mock.call_args.args[0]
+        assert binding_payload.type == TagType.SNIPPET
+        assert binding_payload.target_id == "snippet-1"
+        assert status == 200
+        assert result["result"] == "success"
+
     def test_create_forbidden(self, app: Flask, readonly_user, payload_patch):
         api = TagBindingCollectionApi()
         method = unwrap(api.post)
