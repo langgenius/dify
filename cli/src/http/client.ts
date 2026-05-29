@@ -13,6 +13,7 @@ import { userAgent as defaultUserAgent } from '../version/info.js'
 import { buildBody } from './body.js'
 import { classifyResponse } from './error-mapper.js'
 import { classifyTransport, logRequest, logResponse, setBearer, setUserAgent } from './hooks.js'
+import { proxyDispatcher } from './proxy.js'
 import { backoffDelay, shouldRetry } from './retry.js'
 import { redactBearer } from './sanitize.js'
 import { appendSearchParams, joinURL } from './url.js'
@@ -34,6 +35,7 @@ type ClientState = {
   readonly hooks: ResolvedHooks
   readonly logger: HttpLogger | undefined
   readonly originalOptions: ClientOptions
+  readonly dispatcher: ReturnType<typeof proxyDispatcher>
 }
 
 function toArray<T>(value: T | T[] | undefined): T[] {
@@ -70,6 +72,7 @@ function compileState(opts: ClientOptions): ClientState {
     hooks: { onRequest, onResponse, onRequestError, onResponseError },
     logger: opts.logger,
     originalOptions: opts,
+    dispatcher: proxyDispatcher(),
   }
 }
 
@@ -130,8 +133,14 @@ async function dispatch(state: ClientState, path: string, opts: RequestOptions, 
 
   await runHooks(state.hooks.onRequest, ctx)
 
+  // `dispatcher` is an undici extension to RequestInit, not in @types/node's fetch
+  // signature — hence the local type. Carries proxy routing when a proxy env var is set.
+  const init: RequestInit & { dispatcher?: unknown } = { signal }
+  if (state.dispatcher !== undefined)
+    init.dispatcher = state.dispatcher
+
   try {
-    ctx.response = await fetch(ctx.request, { signal })
+    ctx.response = await fetch(ctx.request, init)
   }
   catch (err) {
     ctx.error = err

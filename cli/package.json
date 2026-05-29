@@ -54,6 +54,7 @@
     "ora": "catalog:",
     "picocolors": "catalog:",
     "std-semver": "catalog:",
+    "undici": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
