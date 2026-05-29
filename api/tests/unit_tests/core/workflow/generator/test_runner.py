@@ -438,10 +438,18 @@ class TestWorkflowGeneratorEdgeCases:
         builder = json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "start", "title": "Start"}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "end", "title": "End"}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start"},
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End"},
+                    },
                 ],
                 "edges": [{"id": "x", "source": "node-1", "target": "node-2", "type": "custom"}],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
@@ -488,12 +496,24 @@ class TestWorkflowGeneratorEdgeCases:
         builder = json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 999, "y": 999},
-                     "data": {"type": "start", "title": "Start"}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 999, "y": 999},
-                     "data": {"type": "llm", "title": "Middle"}},
-                    {"id": "node-3", "type": "custom", "position": {"x": 999, "y": 999},
-                     "data": {"type": "end", "title": "End"}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 999, "y": 999},
+                        "data": {"type": "start", "title": "Start"},
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 999, "y": 999},
+                        "data": {"type": "llm", "title": "Middle"},
+                    },
+                    {
+                        "id": "node-3",
+                        "type": "custom",
+                        "position": {"x": 999, "y": 999},
+                        "data": {"type": "end", "title": "End"},
+                    },
                 ],
                 "edges": [
                     {"id": "a", "source": "node-1", "target": "node-2", "type": "custom"},
@@ -538,10 +558,18 @@ class TestWorkflowGeneratorEdgeCases:
         builder = json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "start", "title": "Start"}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "end", "title": "End"}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start"},
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End"},
+                    },
                 ],
                 "edges": [
                     {"id": "a", "source": "node-1", "target": "node-2", "type": "custom"},
