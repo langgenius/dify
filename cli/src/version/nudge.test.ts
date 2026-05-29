@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadNudgeStore } from '../cache/nudge-store.js'
-import { CACHE_NUDGE, cachePath } from '../store/manager.js'
-import { YamlStore } from '../store/store.js'
+import { ENV_CACHE_DIR } from '../store/dir.js'
+import { CACHE_NUDGE, getCache } from '../store/manager.js'
 import { maybeNudgeCompat } from './nudge.js'
 
 const HOST = 'https://cloud.dify.ai'
@@ -44,11 +44,18 @@ describe('maybeNudgeCompat', () => {
   let dir: string
   let store: NudgeStore
 
+  let prevCacheDir: string | undefined
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-nudge-'))
-    store = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: fixedNow })
+    prevCacheDir = process.env[ENV_CACHE_DIR]
+    process.env[ENV_CACHE_DIR] = dir
+    store = await loadNudgeStore({ store: getCache(CACHE_NUDGE), now: fixedNow })
   })
   afterEach(async () => {
+    if (prevCacheDir === undefined)
+      delete process.env[ENV_CACHE_DIR]
+    else
+      process.env[ENV_CACHE_DIR] = prevCacheDir
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -78,12 +85,12 @@ describe('maybeNudgeCompat', () => {
 
   it('warns again after the silence window has elapsed', async () => {
     const yesterday = new Date(NOW.getTime() - 25 * 60 * 60 * 1000)
-    const tStore = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: () => yesterday })
+    const tStore = await loadNudgeStore({ store: getCache(CACHE_NUDGE), now: () => yesterday })
     await tStore.markWarned(HOST)
     const probe = vi.fn(async () => UNSUPPORTED)
     const { emit, lines } = emitterSpy()
 
-    const freshStore = await loadNudgeStore({ store: new YamlStore(cachePath(dir, CACHE_NUDGE)), now: fixedNow })
+    const freshStore = await loadNudgeStore({ store: getCache(CACHE_NUDGE), now: fixedNow })
     await maybeNudgeCompat(HOST, baseDeps({ store: freshStore, probe, emit }))
 
     expect(probe).toHaveBeenCalledOnce()

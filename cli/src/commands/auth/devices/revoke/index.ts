@@ -1,4 +1,3 @@
-import { selectStore } from '../../../../auth/store.js'
 import { Args, Flags } from '../../../../framework/flags.js'
 import { DifyCommand } from '../../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../../_shared/global-flags.js'
@@ -25,13 +24,10 @@ export default class DevicesRevoke extends DifyCommand {
   async run(argv: string[]): Promise<void> {
     const { args, flags } = this.parse(DevicesRevoke, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
-    const { store } = await selectStore({ configDir: ctx.configDir })
     await runDevicesRevoke({
-      configDir: ctx.configDir,
       io: ctx.io,
       bundle: ctx.bundle,
       http: ctx.http,
-      store,
       target: args.target,
       all: flags.all,
       yes: flags.yes,

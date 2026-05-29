@@ -13,7 +13,6 @@ export type UseWorkspaceOptions = {
 }
 
 export type UseWorkspaceDeps = {
-  readonly configDir: string
   readonly bundle: HostsBundle
   readonly http: KyInstance
   readonly io: IOStreams
@@ -70,7 +69,7 @@ export async function runUseWorkspace(
       role: w.role,
     })),
   }
-  await saveHosts(deps.configDir, next)
+  saveHosts(next)
   deps.io.out.write(`${cs.successIcon()} Switched to ${matched.name} (${matched.id})\n`)
   return next
 }
