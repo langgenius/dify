@@ -576,7 +576,7 @@ class ProviderManager:
     def get_provider_available_credentials(
         tenant_id: str,
         provider_name: str,
-        user: "Account | None" = None,
+        user: Account | None = None,
     ) -> list[CredentialConfiguration]:
         """
         Get provider all credentials, filtered by visibility.

@@ -151,9 +151,7 @@ class ModelProviderService:
             for model in provider_configurations.get_models(provider=provider)
         ]
 
-    def get_provider_available_credentials(
-        self, tenant_id: str, provider: str, user: "Account | None" = None
-    ):
+    def get_provider_available_credentials(self, tenant_id: str, provider: str, user: "Account | None" = None):
         return self._get_provider_manager(tenant_id).get_provider_available_credentials(
             tenant_id=tenant_id,
             provider_name=provider,
