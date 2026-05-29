@@ -25,6 +25,7 @@ export enum FormTypeEnum {
   any = 'any',
   object = 'object',
   array = 'array',
+  date = 'date',
   dynamicSelect = 'dynamic-select',
 }
 

@@ -22,6 +22,9 @@ class CommonParameterType(StrEnum):
     # eg: Select a Slack channel from a Slack workspace
     DYNAMIC_SELECT = "dynamic-select"
 
+    # Date picker parameter
+    DATE = auto()
+
     # TOOL_SELECTOR = "tool-selector"
     # MCP object and array type parameters
     ARRAY = auto()

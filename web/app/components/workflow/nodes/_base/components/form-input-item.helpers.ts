@@ -48,6 +48,7 @@ type FormInputState = {
   isBoolean: boolean
   isCheckbox: boolean
   isConstant: boolean
+  isDate: boolean
   isDynamicSelect: boolean
   isFile: boolean
   isFiles: boolean
@@ -106,6 +107,7 @@ export const getFormInputState = (
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
+  const isDate = type === FormTypeEnum.date
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
@@ -118,6 +120,7 @@ export const getFormInputState = (
     isBoolean,
     isCheckbox,
     isConstant,
+    isDate,
     isDynamicSelect,
     isFile,
     isFiles,
@@ -152,6 +155,8 @@ export const getTargetVarType = (state: FormInputState) => {
     return VarType.object
   if (state.isArray)
     return VarType.arrayObject
+  if (state.isDate)
+    return VarType.string
   return VarType.string
 }
 
@@ -174,7 +179,7 @@ export const getFilterVar = (state: FormInputState) => {
 export const getVarKindType = (state: FormInputState) => {
   if (state.isFile)
     return VarKindType.variable
-  if (state.isSelect || state.isDynamicSelect || state.isBoolean || state.isNumber || state.isArray || state.isObject)
+  if (state.isSelect || state.isDynamicSelect || state.isBoolean || state.isNumber || state.isArray || state.isObject || state.isDate)
     return VarKindType.constant
   if (state.isString)
     return VarKindType.mixed

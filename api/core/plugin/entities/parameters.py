@@ -43,6 +43,9 @@ class PluginParameterType(StrEnum):
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
 
+    # Date picker parameter
+    DATE = CommonParameterType.DATE
+
     # MCP object and array type parameters
     ARRAY = CommonParameterType.ARRAY
     OBJECT = CommonParameterType.OBJECT
@@ -95,6 +98,7 @@ def as_normal_type(typ: StrEnum):
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
         PluginParameterType.CHECKBOX,
+        PluginParameterType.DATE,
     }:
         return "string"
     return typ.value
@@ -109,6 +113,7 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                 | PluginParameterType.SELECT
                 | PluginParameterType.CHECKBOX
                 | PluginParameterType.DYNAMIC_SELECT
+                | PluginParameterType.DATE
             ):
                 if value is None:
                     return ""

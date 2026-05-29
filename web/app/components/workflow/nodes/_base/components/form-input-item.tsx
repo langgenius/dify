@@ -7,8 +7,10 @@ import type { TriggerWithProvider } from '@/app/components/workflow/block-select
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -90,6 +92,7 @@ const FormInputItem: FC<Props> = ({
     isBoolean,
     isCheckbox,
     isConstant,
+    isDate,
     isDynamicSelect,
     isModelSelector,
     isMultipleSelect,
@@ -390,6 +393,17 @@ const FormInputItem: FC<Props> = ({
           value={(varInput?.value as string) || ''}
           onChange={handleValueChange}
           placeholder={<div className="whitespace-pre">{placeholder?.[language] || placeholder?.en_US}</div>}
+        />
+      )}
+      {isDate && isConstant && (
+        <DatePicker
+          value={varInput?.value ? dayjs(varInput.value as string) : undefined}
+          onChange={(date) => {
+            handleValueChange(date ? date.format('YYYY-MM-DD') : '')
+          }}
+          onClear={() => handleValueChange('')}
+          placeholder={placeholder?.[language] || placeholder?.en_US}
+          needTimePicker={false}
         />
       )}
       {isAppSelector && (

@@ -73,6 +73,8 @@ export const toType = (type: string) => {
       return 'number-input'
     case 'boolean':
       return 'checkbox'
+    case 'date':
+      return 'date'
     default:
       return type
   }
@@ -178,6 +180,11 @@ const correctInitialData = (type: string, target: FormValueInput, defaultValue: 
       target.value = Number.parseFloat(defaultValue)
   }
 
+  if (type === 'date') {
+    if (typeof defaultValue === 'string')
+      target.value = defaultValue
+  }
+
   if (type === 'app-selector' || type === 'model-selector')
     target.value = defaultValue
 
@@ -243,7 +250,7 @@ export const getConfiguredValue = (value: Record<string, unknown>, formSchemas: 
 const getVarKindType = (type: FormTypeEnum) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files)
     return VarKindType.variable
-  if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber)
+  if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.date)
     return VarKindType.constant
   if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
     return VarKindType.mixed
