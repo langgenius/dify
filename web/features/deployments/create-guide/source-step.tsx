@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { toAppMode } from '../app-mode'
+import { DeploymentStateMessage } from '../components/empty-state'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -135,9 +136,9 @@ export function SourceStep({
             ? <SourceAppSkeleton />
             : filteredApps.length === 0
               ? (
-                  <div className="px-4 py-10 text-center system-sm-regular text-text-tertiary">
+                  <DeploymentStateMessage variant="embedded">
                     {t('createGuide.source.empty')}
-                  </div>
+                  </DeploymentStateMessage>
                 )
               : (
                   <div>

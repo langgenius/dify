@@ -10,6 +10,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
+import { DetailEmptyState } from '../common'
 import { CreateReleaseControl } from '../versions-tab/create-release-control'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from './card-styles'
 
@@ -35,20 +36,14 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
 
   if (!latestRelease?.id) {
     return (
-      <div className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-h-32 flex-col items-center justify-center gap-4 border-dashed px-6 py-8 text-center')}>
-        <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
-          <span className="i-ri-stack-fill size-4" />
-        </span>
-        <div className="flex max-w-120 flex-col gap-1">
-          <h4 className="system-sm-medium text-text-primary">
-            {t('overview.hero.empty')}
-          </h4>
-          <p className="system-xs-regular text-text-tertiary">
-            {t('overview.hero.emptyDescription')}
-          </p>
-        </div>
-        <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />
-      </div>
+      <DetailEmptyState
+        variant="section"
+        icon="i-ri-stack-line"
+        title={t('overview.hero.empty')}
+        description={t('overview.hero.emptyDescription')}
+        action={<CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+        className="min-h-44"
+      />
     )
   }
 

@@ -23,6 +23,7 @@ import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
+import { DeploymentStateMessage } from '../empty-state'
 import {
   EnvVarBindingsPanel,
 } from '../env-var-bindings'
@@ -302,9 +303,9 @@ function DeployReadyForm({
                 )
               : releases.length === 0
                 ? (
-                    <div className="rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-3 py-3 system-sm-regular text-text-tertiary">
+                    <DeploymentStateMessage variant="compact">
                       {t('deployDrawer.noReleaseAvailable')}
-                    </div>
+                    </DeploymentStateMessage>
                   )
                 : (
                     <DeploymentSelect
@@ -327,9 +328,9 @@ function DeployReadyForm({
               ? <EnvironmentRow env={lockedEnv} />
               : environments.length === 0
                 ? (
-                    <div className="rounded-lg border border-dashed border-components-panel-border bg-components-panel-bg-blur px-3 py-3 system-sm-regular text-text-tertiary">
+                    <DeploymentStateMessage variant="compact">
                       {t('deployDrawer.noNewEnvironmentAvailable')}
-                    </div>
+                    </DeploymentStateMessage>
                   )
                 : (
                     <DeploymentSelect

@@ -2,6 +2,11 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DeploymentEmptyState,
+  DeploymentNoticeState,
+  DeploymentStateMessage,
+} from '../components/empty-state'
 
 type SectionProps = {
   title: string
@@ -13,99 +18,24 @@ type SectionProps = {
   showDivider?: boolean
 }
 
-type DetailEmptyStateProps = {
-  icon: string
-  title: ReactNode
-  description?: ReactNode
-  action?: ReactNode
-  variant?: 'list' | 'section'
-  className?: string
+export function DetailEmptyState(props: Parameters<typeof DeploymentEmptyState>[0]) {
+  return <DeploymentEmptyState {...props} />
 }
 
-type DetailNoticeStateProps = {
-  children: ReactNode
-  icon?: string
-  className?: string
+export function DetailNoticeState(props: Parameters<typeof DeploymentNoticeState>[0]) {
+  return <DeploymentNoticeState {...props} />
 }
 
 export function SectionState({ children }: {
   children: ReactNode
 }) {
-  return (
-    <div className="flex min-h-24 items-center justify-center border-y border-dashed border-divider-subtle px-4 py-6 text-center system-sm-regular text-text-tertiary">
-      {children}
-    </div>
-  )
+  return <DeploymentStateMessage variant="section">{children}</DeploymentStateMessage>
 }
 
 export function DetailListState({ children }: {
   children: ReactNode
 }) {
-  return (
-    <div className="flex min-h-36 items-center justify-center border-y border-dashed border-divider-subtle px-4 py-12 text-center system-sm-regular text-text-tertiary">
-      {children}
-    </div>
-  )
-}
-
-export function DetailEmptyState({
-  icon,
-  title,
-  description,
-  action,
-  variant = 'list',
-  className,
-}: DetailEmptyStateProps) {
-  const isList = variant === 'list'
-  const hasDescription = Boolean(description)
-  const hasAction = Boolean(action)
-
-  return (
-    <div
-      className={cn(
-        'flex flex-col items-center justify-center border-dashed text-center',
-        isList
-          ? 'min-h-60 border-y border-divider-subtle px-4 py-12'
-          : 'min-h-36 rounded-lg border border-divider-subtle bg-background-default-subtle px-6 py-8',
-        className,
-      )}
-    >
-      <span
-        className={cn(
-          'mb-4 flex items-center justify-center border border-components-panel-border bg-background-default-subtle text-text-tertiary',
-          isList ? 'size-11 rounded-xl' : 'size-10 rounded-lg bg-background-section-burn',
-        )}
-      >
-        <span className={cn(icon, isList ? 'size-5' : 'size-4.5')} aria-hidden="true" />
-      </span>
-      <div className={cn(isList ? 'system-md-semibold text-text-primary' : 'system-sm-medium text-text-secondary')}>
-        {title}
-      </div>
-      {hasDescription && (
-        <p className={cn('mt-1 max-w-120 text-text-tertiary', isList ? 'system-sm-regular' : 'system-xs-regular')}>
-          {description}
-        </p>
-      )}
-      {hasAction && (
-        <div className={isList ? 'mt-5' : 'mt-4'}>
-          {action}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function DetailNoticeState({
-  children,
-  icon = 'i-ri-information-line',
-  className,
-}: DetailNoticeStateProps) {
-  return (
-    <div className={cn('flex min-h-9 items-start gap-1.5 rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-2 system-xs-regular text-text-tertiary', className)}>
-      <span className={cn(icon, 'mt-0.5 size-3.5 shrink-0 text-text-quaternary')} aria-hidden="true" />
-      <span className="min-w-0">{children}</span>
-    </div>
-  )
+  return <DeploymentStateMessage variant="list">{children}</DeploymentStateMessage>
 }
 
 export function Section({

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DeployDrawer } from '../components/deploy-drawer'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../components/empty-state'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 import { CreateDeploymentButton } from './create-deployment-button'
 import { EnvironmentFilter } from './environment-filter'
@@ -27,11 +28,7 @@ const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fift
 function DeploymentsListState({ children }: {
   children: ReactNode
 }) {
-  return (
-    <div className="col-span-full rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-12 text-center system-sm-regular text-text-tertiary">
-      {children}
-    </div>
-  )
+  return <DeploymentStateMessage variant="page">{children}</DeploymentStateMessage>
 }
 
 function DeploymentsListEmpty() {
@@ -46,28 +43,19 @@ function DeploymentsListEmpty() {
   }
 
   return (
-    <div className="col-span-full flex min-h-80 items-center justify-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur px-6 py-12 text-center">
-      <div className="flex max-w-100 flex-col items-center gap-4">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary">
-          <span className="i-ri-rocket-line size-5" aria-hidden="true" />
-        </span>
-        <div className="flex flex-col gap-1">
-          <h2 className="system-md-semibold text-text-primary">
-            {hasFilter ? t('list.emptyFilteredTitle') : t('list.emptyTitle')}
-          </h2>
-          <p className="system-sm-regular text-text-tertiary">
-            {hasFilter ? t('list.emptyFilteredDescription') : t('list.emptyDescription')}
-          </p>
-        </div>
-        {hasFilter
-          ? (
-              <Button variant="secondary" size="small" onClick={clearFilters}>
-                {t('list.clearFilters')}
-              </Button>
-            )
-          : <CreateDeploymentButton />}
-      </div>
-    </div>
+    <DeploymentEmptyState
+      variant="page"
+      icon={hasFilter ? 'i-ri-search-line' : 'i-ri-rocket-line'}
+      title={hasFilter ? t('list.emptyFilteredTitle') : t('list.emptyTitle')}
+      description={hasFilter ? t('list.emptyFilteredDescription') : t('list.emptyDescription')}
+      action={hasFilter
+        ? (
+            <Button variant="secondary" size="small" onClick={clearFilters}>
+              {t('list.clearFilters')}
+            </Button>
+          )
+        : <CreateDeploymentButton />}
+    />
   )
 }
 

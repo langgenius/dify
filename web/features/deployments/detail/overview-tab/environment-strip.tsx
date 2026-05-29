@@ -81,6 +81,7 @@ function EnvironmentEmptyState({ appInstanceId, canDeploy }: {
       icon="i-ri-server-line"
       title={t('overview.strip.emptyTitle')}
       description={canDeploy ? t('overview.strip.emptyDeployableDescription') : t('overview.strip.emptyDescription')}
+      className="min-h-44"
       action={canDeploy
         ? (
             <Button
