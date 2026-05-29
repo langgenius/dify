@@ -34,6 +34,7 @@ export const setLocalStorageItem = (key: string, value: string) => {
   }
 }
 
+/* @public */
 export const removeLocalStorageItem = (key: string) => {
   if (!isClient)
     return
