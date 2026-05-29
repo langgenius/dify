@@ -111,7 +111,7 @@ function EnvironmentChip({ row }: {
   const statusLabel = t(deploymentStatusLabelKey(status))
   const tooltipSummary = [
     name,
-    row.currentRelease?.id ? releaseLabel(row.currentRelease) : undefined,
+    row.currentRelease ? releaseLabel(row.currentRelease) : undefined,
     statusLabel,
   ].filter(Boolean).join(' · ')
   const quietReadyStatusClassName = status === 'ready'
@@ -122,7 +122,12 @@ function EnvironmentChip({ row }: {
     <Tooltip>
       <TooltipTrigger
         render={(
-          <EnvironmentDeploymentBadge row={row} showStatus={false} className={cn('max-w-44', quietReadyStatusClassName)} />
+          <EnvironmentDeploymentBadge
+            row={row}
+            showStatus={false}
+            summaryLabel={tooltipSummary}
+            className={cn('max-w-44', quietReadyStatusClassName)}
+          />
         )}
       />
       <TooltipContent>
@@ -152,7 +157,7 @@ function EnvironmentOverflow({ rows }: {
             const status = deploymentStatus(row)
             const summary = [
               environmentName(row.environment),
-              row.currentRelease?.id ? releaseLabel(row.currentRelease) : undefined,
+              row.currentRelease ? releaseLabel(row.currentRelease) : undefined,
               t(deploymentStatusLabelKey(status)),
             ].filter(Boolean).join(' · ')
 
