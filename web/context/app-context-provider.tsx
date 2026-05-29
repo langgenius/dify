@@ -16,11 +16,11 @@ import {
   useSelector,
 } from '@/context/app-context'
 import { env } from '@/env'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
-  userProfileQueryOptions,
 } from '@/service/use-common'
 
 type AppContextProviderProps = {
@@ -29,11 +29,6 @@ type AppContextProviderProps = {
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const queryClient = useQueryClient()
-  // Boot point for the (commonLayout) tree:
-  // - useSuspenseQuery for systemFeatures triggers app/loading.tsx until cache is warm.
-  // - useSuspenseQuery for userProfile triggers (commonLayout)/loading.tsx until cache is warm.
-  // After this provider mounts, downstream components reading the same queryKeys hit cache
-  // and never suspend again, so their useSuspenseQuery calls return data synchronously.
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
@@ -65,7 +60,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
 
   const mutateUserProfile = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['common', 'user-profile'] })
+    queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
   }, [queryClient])
 
   const mutateCurrentWorkspace = useCallback(() => {

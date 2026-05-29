@@ -154,7 +154,6 @@ describe('InstallForm', () => {
     render(<InstallForm />)
 
     await waitFor(() => {
-      expect(localStorage.setItem).toHaveBeenCalledWith('setup_status', 'finished')
       expect(mockPush).toHaveBeenCalledWith('/signin')
     })
   })

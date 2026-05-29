@@ -513,6 +513,9 @@ catalogs:
     scheduler:
       specifier: 0.27.0
       version: 0.27.0
+    server-only:
+      specifier: 0.0.1
+      version: 0.0.1
     sharp:
       specifier: 0.34.5
       version: 0.34.5
@@ -1248,6 +1251,9 @@ importers:
       scheduler:
         specifier: 'catalog:'
         version: 0.27.0
+      server-only:
+        specifier: 'catalog:'
+        version: 0.0.1
       sharp:
         specifier: 'catalog:'
         version: 0.34.5
@@ -8423,6 +8429,9 @@ packages:
   seroval@1.5.1:
     resolution: {integrity: sha512-OwrZRZAfhHww0WEnKHDY8OM0U/Qs8OTfIDWhUD4BLpNJUfXK4cGmjiagGze086m+mhI+V2nD0gfbHEnJjb9STA==}
     engines: {node: '>=10'}
+
+  server-only@0.0.1:
+    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
 
   sharp@0.34.5:
     resolution: {integrity: sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg==}
@@ -16656,6 +16665,8 @@ snapshots:
 
   seroval@1.5.1: {}
 
+  server-only@0.0.1: {}
+
   sharp@0.34.5:
     dependencies:
       '@img/colour': 1.1.0
@@ -17774,6 +17785,7 @@ time:
   remark-breaks@4.0.0: '2023-09-22T16:45:41.061Z'
   remark-directive@4.0.0: '2025-02-27T15:15:20.630Z'
   scheduler@0.27.0: '2025-10-01T21:39:15.208Z'
+  server-only@0.0.1: '2022-09-03T01:07:26.139Z'
   sharp@0.34.5: '2025-11-06T14:19:40.989Z'
   shiki@4.1.0: '2026-05-19T07:51:34.358Z'
   socket.io-client@4.8.3: '2025-12-23T16:39:16.428Z'
