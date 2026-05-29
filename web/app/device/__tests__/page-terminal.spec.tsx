@@ -118,42 +118,40 @@ describe('error_lookup_failed terminal state', () => {
   })
 })
 
-describe('error_sso terminal state from sso_error param', () => {
-  it('shows "Single sign-on failed" heading when sso_error is present', async () => {
+describe('sso_error inline banner on the code-entry page', () => {
+  const SSO_BANNER_COPY = /identity is linked to a Dify account/i
+
+  it('shows the error banner with friendly copy when sso_error is present', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
     render(<DevicePage />)
-    await screen.findByText('Single sign-on failed')
+    expect(await screen.findByText(SSO_BANNER_COPY)).toBeInTheDocument()
   })
 
-  it('maps the error code to friendly copy', async () => {
+  it('keeps the code-entry screen visible (error on main page, not a separate view)', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
     render(<DevicePage />)
-    await screen.findByText('Single sign-on failed')
-    expect(screen.getByText(/Dify account/i)).toBeInTheDocument()
+    await screen.findByText(SSO_BANNER_COPY)
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Continue/i })).toBeInTheDocument()
+  })
+
+  it('does not surface the raw backend error code', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText(SSO_BANNER_COPY)
     expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
-  })
-
-  it('does not silently bounce to the code-entry screen', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
-    render(<DevicePage />)
-    await screen.findByText('Single sign-on failed')
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('does not scrub the param on mount (regression: error was wiped by router.replace)', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
     render(<DevicePage />)
-    await screen.findByText('Single sign-on failed')
+    await screen.findByText(SSO_BANNER_COPY)
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('ghost button resets to code_entry and clears the URL', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+  it('shows no banner when sso_error is absent', () => {
     render(<DevicePage />)
-    await screen.findByText('Single sign-on failed')
-    fireEvent.click(screen.getByRole('button', { name: /Try a different code/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Single sign-on failed')).not.toBeInTheDocument()
-    expect(mockReplace).toHaveBeenCalledWith('/device')
+    expect(screen.queryByText(SSO_BANNER_COPY)).not.toBeInTheDocument()
   })
 })
