@@ -31,6 +31,7 @@ import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp } from './apply'
+import ExamplePrompts from './example-prompts'
 import GenerationPhases from './generation-phases'
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
@@ -262,6 +263,8 @@ const WorkflowGeneratorModal: React.FC = () => {
                 value={instruction}
                 onValueChange={setInstruction}
               />
+
+              <ExamplePrompts mode={mode} onSelect={setInstruction} />
 
               <IdeaOutput
                 value={ideaOutput}
