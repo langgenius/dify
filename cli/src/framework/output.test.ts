@@ -6,6 +6,7 @@ import {
   stringifyOutput,
   table,
 } from './output.js'
+import { OutputFormatNotSupportedError } from './errors.js'
 
 function makeFormatted(opts: { text?: string, json?: unknown, name?: string }): FormattedPrintable & NamePrintable {
   return {
@@ -99,7 +100,7 @@ describe('stringifyOutput — formatted', () => {
       json: () => ({}),
     }
     const out = formatted({ format: 'name', data: noName })
-    expect(() => stringifyOutput(out)).toThrow('name output requires data.name()')
+    expect(() => stringifyOutput(out)).toThrow(OutputFormatNotSupportedError)
   })
 
   it('unknown format: throws with allowed list', () => {
@@ -175,7 +176,7 @@ describe('stringifyOutput — table', () => {
       json: () => [],
     }
     const out = table({ format: 'name', data: noName })
-    expect(() => stringifyOutput(out)).toThrow('name output requires data.name()')
+    expect(() => stringifyOutput(out)).toThrow(OutputFormatNotSupportedError)
   })
 
   it('unknown format: throws with allowed list', () => {

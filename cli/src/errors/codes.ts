@@ -17,6 +17,7 @@ export const ErrorCode = {
   Server4xxOther: 'server_4xx_other',
   ClientError: 'client_error',
   Unknown: 'unknown',
+  IllegalArgumentError: 'illegal_argument'
 } as const
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -50,6 +51,7 @@ const CODE_TO_EXIT: Readonly<Record<ErrorCodeValue, ExitCodeValue>> = {
   server_4xx_other: ExitCode.Generic,
   client_error: ExitCode.Generic,
   unknown: ExitCode.Generic,
+  illegal_argument: ExitCode.Usage,
 }
 
 export function exitFor(code: string): ExitCodeValue {
