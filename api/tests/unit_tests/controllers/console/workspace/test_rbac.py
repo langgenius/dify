@@ -63,14 +63,14 @@ class TestAccessMatrixAccountNames:
         ]
 
         with patch(
-            "controllers.console.workspace.rbac._account_names_by_ids", return_value={"acct-2": "Bob"}
+            "controllers.console.workspace.rbac._account_names_by_ids", return_value={"acct-2": {"name": "Bob", "avatar": "ava"}}
         ) as mock_names:
             rbac_mod._hydrate_access_matrix_account_names(items)
 
         mock_names.assert_called_once_with(["acct-2"])
         assert items[0].accounts == [
             {"account_id": "acct-1", "account_name": "Alice"},
-            {"account_id": "acct-2", "account_name": "Bob"},
+            {"account_id": "acct-2", "account_name": "Bob", "avatar": "ava"},
         ]
 
 
@@ -284,6 +284,32 @@ class TestPaginationMapping:
         assert options.page_number == 5
         assert options.results_per_page == 15
         assert options.reverse is True
+
+
+class TestAccessPolicyBindingLockUnlock:
+    def test_lock_forwards_binding_id(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/access-policy-bindings/binding-1/lock", method="PUT"),
+            _enabled(True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.lock") as mock_lock,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingLockApi.put)(rbac_mod.RBACAccessPolicyBindingLockApi(), "binding-1")
+
+        mock_lock.assert_called_once_with("tenant-1", "acct-1", "binding-1")
+
+    def test_unlock_forwards_binding_id(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/access-policy-bindings/binding-1/unlock", method="PUT"),
+            _enabled(True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.unlock") as mock_unlock,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACAccessPolicyBindingUnlockApi.put)(rbac_mod.RBACAccessPolicyBindingUnlockApi(), "binding-1")
+
+        mock_unlock.assert_called_once_with("tenant-1", "acct-1", "binding-1")
 
 
 class TestRoleCopy:

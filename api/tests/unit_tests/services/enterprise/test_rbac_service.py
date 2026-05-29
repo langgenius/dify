@@ -167,6 +167,32 @@ class TestRoles:
         assert call.account_id == "acct-1"
 
 
+class TestAccessPolicyBindings:
+    def test_lock_sends_put_with_binding_id(self, mock_send: MagicMock):
+        mock_send.return_value = {"binding_id": "binding-1", "is_locked": True}
+
+        out = svc.RBACService.AccessPolicyBindings.lock("tenant-1", "acct-1", "binding-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "PUT"
+        assert call.endpoint == "/rbac/access-policy-bindings/lock"
+        assert call.json == {"binding_id": "binding-1"}
+        assert out.binding_id == "binding-1"
+        assert out.is_locked is True
+
+    def test_unlock_sends_put_with_binding_id(self, mock_send: MagicMock):
+        mock_send.return_value = {"binding_id": "binding-1", "is_locked": False}
+
+        out = svc.RBACService.AccessPolicyBindings.unlock("tenant-1", "acct-1", "binding-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "PUT"
+        assert call.endpoint == "/rbac/access-policy-bindings/unlock"
+        assert call.json == {"binding_id": "binding-1"}
+        assert out.binding_id == "binding-1"
+        assert out.is_locked is False
+
+
 class TestAccessPolicies:
     def test_list_filters_by_resource_type(self, mock_send: MagicMock):
         mock_send.return_value = {"data": [], "pagination": None}

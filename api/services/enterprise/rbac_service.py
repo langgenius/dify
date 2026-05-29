@@ -129,10 +129,30 @@ class AccessPolicyMemberBinding(_RBACModel):
     created_at: int = 0
 
 
+class AccessPolicyBindingState(_RBACModel):
+    binding_id: str
+    is_locked: bool = False
+
+
+class AccessPolicyRole(BaseModel):
+    role_id: str
+    role_name: str
+    binding_id: str
+    is_locked: bool = False
+
+
+class AccessPolicyAccount(BaseModel):
+    account_id: str
+    account_name: str
+    binding_id: str
+    is_locked: bool = False
+    avatar: str = ""
+
+
 class AccessMatrixItem(_RBACModel):
     policy: AccessPolicy | None = None
-    roles: list[dict[str, Any]] = Field(default_factory=list)
-    accounts: list[dict[str, Any]] = Field(default_factory=list)
+    roles: list[AccessPolicyRole] = Field(default_factory=list)
+    accounts: list[AccessPolicyAccount] = Field(default_factory=list)
 
     @field_validator("roles", "accounts", mode="before")
     @classmethod
@@ -762,6 +782,32 @@ class RBACService:
                 account_id=account_id,
                 params={"id": policy_id},
             )
+
+    # ------------------------------------------------------------------
+    # Access-policy bindings (lock / unlock a single binding).
+    # ------------------------------------------------------------------
+    class AccessPolicyBindings:
+        @staticmethod
+        def lock(tenant_id: str, account_id: str | None, binding_id: str) -> AccessPolicyBindingState:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/access-policy-bindings/lock",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"binding_id": binding_id},
+            )
+            return AccessPolicyBindingState.model_validate(data or {})
+
+        @staticmethod
+        def unlock(tenant_id: str, account_id: str | None, binding_id: str) -> AccessPolicyBindingState:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/access-policy-bindings/unlock",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"binding_id": binding_id},
+            )
+            return AccessPolicyBindingState.model_validate(data or {})
 
     # ------------------------------------------------------------------
     # Per-app access (screenshot 1: App Access Config).

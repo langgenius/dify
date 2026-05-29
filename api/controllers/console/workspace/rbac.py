@@ -92,8 +92,8 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
     account_ids: list[str] = []
     for item in items:
         for account in item.accounts:
-            account_id = str(account.get("account_id") or "").strip()
-            if account_id and not account.get("account_name"):
+            account_id = account.account_id
+            if account_id and not account.account_name:
                 account_ids.append(account_id)
 
     account_names = _account_names_by_ids(account_ids)
@@ -102,10 +102,10 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
 
     for item in items:
         for account in item.accounts:
-            account_id = str(account.get("account_id") or "").strip()
-            if account_id and not account.get("account_name"):
-                account["account_name"] = account_names.get(account_id, {}).get("name", "")
-                account["avatar"] = account_names.get(account_id, {}).get("avatar", "")
+            account_id = str(account.account_id or "").strip()
+            if account_id and not account.account_name:
+                account.account_name = account_names.get(account_id, {}).get("name", "")
+                account.avatar = account_names.get(account_id, {}).get("avatar", "")
 
 
 class _PaginationQuery(BaseModel):
@@ -383,6 +383,22 @@ class RBACAccessPolicyCopyApi(Resource):
         tenant_id, account_id = _current_ids()
         policy = svc.RBACService.AccessPolicies.copy(tenant_id, account_id, str(policy_id))
         return _dump(policy), 201
+
+
+@console_ns.route("/workspaces/current/rbac/access-policy-bindings/<uuid:binding_id>/lock")
+class RBACAccessPolicyBindingLockApi(Resource):
+    @login_required
+    def put(self, binding_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AccessPolicyBindings.lock(tenant_id, account_id, str(binding_id)))
+
+
+@console_ns.route("/workspaces/current/rbac/access-policy-bindings/<uuid:binding_id>/unlock")
+class RBACAccessPolicyBindingUnlockApi(Resource):
+    @login_required
+    def put(self, binding_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AccessPolicyBindings.unlock(tenant_id, account_id, str(binding_id)))
 
 
 # ---------------------------------------------------------------------------
