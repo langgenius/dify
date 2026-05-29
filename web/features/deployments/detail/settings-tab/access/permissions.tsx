@@ -5,43 +5,24 @@ import type {
   AccessSubject,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { AccessSubjectSelectionValue } from '@/app/components/base/access-subject-selector'
 import type {
+  AccessControlAccount,
+  AccessControlGroup,
   Subject as AccessControlSubject,
   SubjectAccount as AccessControlSubjectAccount,
   SubjectGroup as AccessControlSubjectGroup,
 } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChipRemove,
-  ComboboxChips,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxInputGroup,
-  ComboboxInputTrigger,
-  ComboboxItem,
-  ComboboxItemIndicator,
-  ComboboxItemText,
-  ComboboxList,
-  ComboboxStatus,
-  ComboboxValue,
-} from '@langgenius/dify-ui/combobox'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { SubjectType as AccessControlSubjectType } from '@/models/access-control'
+import AccessControlDialog from '@/app/components/app/app-access-control/access-control-dialog'
+import AccessControlDialogContent from '@/app/components/app/app-access-control/access-control-dialog-content'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import useAccessControlStore from '@/context/access-control-store'
+import { SubjectType as AccessControlSubjectType, AccessMode as AppAccessMode } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { environmentName } from '../../../environment'
@@ -51,17 +32,15 @@ import {
 } from '../../table'
 
 type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
-type AccessMode = NonNullable<AccessPolicy['mode']>
+type AccessPolicyMode = NonNullable<AccessPolicy['mode']>
 type AccessSubjectType = NonNullable<AccessSubject['subjectType']>
 
-const ACCESS_MODE_PUBLIC = 'ACCESS_MODE_PUBLIC' satisfies AccessMode
-const ACCESS_MODE_PRIVATE = 'ACCESS_MODE_PRIVATE' satisfies AccessMode
-const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessMode
+const ACCESS_MODE_PUBLIC = 'ACCESS_MODE_PUBLIC' satisfies AccessPolicyMode
+const ACCESS_MODE_PRIVATE = 'ACCESS_MODE_PRIVATE' satisfies AccessPolicyMode
+const ACCESS_MODE_PRIVATE_ALL = 'ACCESS_MODE_PRIVATE_ALL' satisfies AccessPolicyMode
 const SUBJECT_TYPE_ACCOUNT = 'SUBJECT_TYPE_ACCOUNT' satisfies AccessSubjectType
 const SUBJECT_TYPE_GROUP = 'SUBJECT_TYPE_GROUP' satisfies AccessSubjectType
 const ACCESS_SUBJECT_LABEL_PAGE_SIZE = 100
-const ACCESS_SUBJECT_SEARCH_PAGE_SIZE = 50
-const ACCESS_SUBJECT_SEARCH_DEBOUNCE = 300
 
 function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissionKind {
   if (mode === ACCESS_MODE_PRIVATE)
@@ -71,7 +50,7 @@ function accessModeToPermissionKey(mode?: AccessPolicy['mode']): AccessPermissio
   return 'organization'
 }
 
-function permissionKeyToAccessMode(key: AccessPermissionKind): AccessMode {
+function permissionKeyToAccessMode(key: AccessPermissionKind): AccessPolicyMode {
   if (key === 'organization')
     return ACCESS_MODE_PRIVATE_ALL
   if (key === 'specific')
@@ -79,67 +58,26 @@ function permissionKeyToAccessMode(key: AccessPermissionKind): AccessMode {
   return ACCESS_MODE_PUBLIC
 }
 
+function permissionKeyToAppAccessMode(key: AccessPermissionKind): AppAccessMode {
+  if (key === 'organization')
+    return AppAccessMode.ORGANIZATION
+  if (key === 'specific')
+    return AppAccessMode.SPECIFIC_GROUPS_MEMBERS
+  return AppAccessMode.PUBLIC
+}
+
+function appAccessModeToPermissionKey(mode: AppAccessMode): AccessPermissionKind {
+  if (mode === AppAccessMode.SPECIFIC_GROUPS_MEMBERS)
+    return 'specific'
+  if (mode === AppAccessMode.PUBLIC)
+    return 'anyone'
+  return 'organization'
+}
+
 const permissionIcon: Record<AccessPermissionKind, string> = {
   organization: 'i-ri-team-line',
   specific: 'i-ri-lock-line',
   anyone: 'i-ri-global-line',
-}
-
-const permissionOrder: AccessPermissionKind[] = ['organization', 'specific', 'anyone']
-
-function PermissionPicker({ value, disabled, loading, onChange }: {
-  value: AccessPermissionKind
-  disabled?: boolean
-  loading?: boolean
-  onChange: (kind: AccessPermissionKind) => void
-}) {
-  const { t } = useTranslation('deployments')
-  const icon = permissionIcon[value]
-  const label = t(`access.permission.${value}`)
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        disabled={disabled}
-        className={cn(
-          'inline-flex h-8 w-full min-w-0 items-center gap-2 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary hover:bg-state-base-hover',
-          disabled && 'opacity-50',
-        )}
-      >
-        <span className={cn(icon, 'size-4 shrink-0 text-text-tertiary')} />
-        <span className="flex-1 truncate text-left">{label}</span>
-        <span className={cn(loading ? 'i-ri-loader-2-line animate-spin' : 'i-ri-arrow-down-s-line', 'size-4 shrink-0 text-text-tertiary motion-reduce:animate-none')} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" popupClassName="w-85 p-1">
-        {permissionOrder.map((kind) => {
-          const itemIcon = permissionIcon[kind]
-          const isSelected = kind === value
-          return (
-            <DropdownMenuItem
-              key={kind}
-              onClick={() => onChange(kind)}
-              className="mx-0 h-auto items-start gap-3 rounded-lg px-2.5 py-2"
-            >
-              <span className={cn(itemIcon, 'mt-0.5 size-4 shrink-0 text-text-tertiary')} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="truncate system-sm-medium text-text-primary">
-                    {t(`access.permission.${kind}`)}
-                  </span>
-                </div>
-                <span className="system-xs-regular text-text-tertiary">
-                  {t(`access.permission.${kind}Desc`)}
-                </span>
-              </div>
-              {isSelected && (
-                <span className="mt-0.5 i-ri-check-line size-4 shrink-0 text-text-accent" />
-              )}
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
 }
 
 type SelectableAccessSubject = {
@@ -176,23 +114,9 @@ function normalizeSubject(subject: AccessControlSubject): SelectableAccessSubjec
   }
 }
 
-function subjectKey(subject: Pick<SelectableAccessSubject, 'id' | 'subjectType'>) {
-  return `${subject.subjectType}:${subject.id}`
-}
-
 function getSubjectLabel(subject: SelectableAccessSubject) {
   return subject.name || subject.id
 }
-
-function getSubjectValue(subject: SelectableAccessSubject) {
-  return subjectKey(subject)
-}
-
-function isSameSubject(item: SelectableAccessSubject, value: SelectableAccessSubject) {
-  return item.id === value.id && item.subjectType === value.subjectType
-}
-
-const SUBJECT_PICKER_SKELETON_KEYS = ['first-subject', 'second-subject', 'third-subject']
 
 function policySubjects(subjects: SelectableAccessSubject[]): AccessSubject[] {
   return subjects.map(subject => ({
@@ -219,198 +143,215 @@ function selectedSubjectsFromPolicy(policy?: AccessPolicy, labelSubjects: Select
     .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
 }
 
-function SubjectIcon({ subject }: {
-  subject: SelectableAccessSubject
-}) {
-  const isGroup = subject.subjectType === SUBJECT_TYPE_GROUP
-
-  return (
-    <span className={cn(isGroup ? 'i-ri-group-line' : 'i-ri-user-line', 'size-3.5 shrink-0 text-text-tertiary')} aria-hidden="true" />
-  )
+function selectableSubjectToGroup(subject: SelectableAccessSubject): AccessControlGroup {
+  return {
+    id: subject.id,
+    name: getSubjectLabel(subject),
+    groupSize: subject.memberCount ?? 0,
+  } as unknown as AccessControlGroup
 }
 
-type AccessSubjectComboboxProps = {
-  disabled?: boolean
-  loading?: boolean
-  selectedSubjects: SelectableAccessSubject[]
-  onChange: (subjects: SelectableAccessSubject[]) => void
+function selectableSubjectToAccount(subject: SelectableAccessSubject): AccessControlAccount {
+  const label = getSubjectLabel(subject)
+
+  return {
+    id: subject.id,
+    name: label,
+    email: label,
+    avatar: '',
+    avatarUrl: '',
+  } as unknown as AccessControlAccount
 }
 
-function AccessSubjectCombobox({
+function accessControlSelectionFromSubjects(subjects: SelectableAccessSubject[]): AccessSubjectSelectionValue {
+  return {
+    groups: subjects
+      .filter(subject => subject.subjectType === SUBJECT_TYPE_GROUP)
+      .map(selectableSubjectToGroup),
+    members: subjects
+      .filter(subject => subject.subjectType === SUBJECT_TYPE_ACCOUNT)
+      .map(selectableSubjectToAccount),
+  }
+}
+
+function subjectsFromAccessControlSelection(value: AccessSubjectSelectionValue): SelectableAccessSubject[] {
+  return [
+    ...value.groups.map((group): SelectableAccessSubject => ({
+      id: group.id,
+      subjectType: SUBJECT_TYPE_GROUP,
+      name: group.name,
+      memberCount: group.groupSize,
+    })),
+    ...value.members.map((member): SelectableAccessSubject => ({
+      id: member.id,
+      subjectType: SUBJECT_TYPE_ACCOUNT,
+      name: member.name || member.email,
+    })),
+  ]
+}
+
+function PermissionSummaryButton({
+  value,
   disabled,
   loading,
-  selectedSubjects,
-  onChange,
-}: AccessSubjectComboboxProps) {
+  environmentLabel,
+  onClick,
+}: {
+  value: AccessPermissionKind
+  disabled?: boolean
+  loading?: boolean
+  environmentLabel: string
+  onClick: () => void
+}) {
   const { t } = useTranslation('deployments')
-  const [open, setOpen] = useState(false)
-  const [keyword, setKeyword] = useState('')
-  const debouncedKeyword = useDebounce(keyword, { wait: ACCESS_SUBJECT_SEARCH_DEBOUNCE })
-  const trimmedKeyword = keyword.trim()
-  const searchKeyword = debouncedKeyword.trim()
-  const isSearchDebouncing = trimmedKeyword !== searchKeyword
-  const isInteractionDisabled = Boolean(disabled || loading)
-  const subjectsQuery = useSearchForWhiteListCandidates({
-    keyword: searchKeyword || undefined,
-    resultsPerPage: ACCESS_SUBJECT_SEARCH_PAGE_SIZE,
-  }, open && !isInteractionDisabled)
-  const candidateSubjects = subjectsQuery.data?.pages.flatMap(page => page.subjects ?? []) ?? []
-  const subjects = isSearchDebouncing
-    ? []
-    : candidateSubjects
-      .map(normalizeSubject)
-      .filter((subject): subject is SelectableAccessSubject => Boolean(subject)) ?? []
-  const selectedItems = selectedSubjects.filter(selectedSubject =>
-    !subjects.some(subject => isSameSubject(subject, selectedSubject)),
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-label={t('access.permissions.editAriaLabel', { environment: environmentLabel })}
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-8 w-full min-w-0 items-center gap-2 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        disabled && 'cursor-not-allowed opacity-50 hover:bg-components-input-bg-normal',
+      )}
+    >
+      <span
+        className={cn(
+          loading ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none' : permissionIcon[value],
+          'size-4 shrink-0 text-text-tertiary',
+        )}
+        aria-hidden="true"
+      />
+      <span className="flex-1 truncate text-left">{t(`access.permission.${value}`)}</span>
+      <span className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+    </button>
   )
-  const items = [...subjects, ...selectedItems]
-  const isResultLoading = subjectsQuery.isLoading || isSearchDebouncing
-  const shouldShowEmpty = !isResultLoading && !subjectsQuery.isError && subjects.length === 0
+}
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && isInteractionDisabled)
-      return
-    if (!nextOpen)
-      setKeyword('')
-    setOpen(nextOpen)
+function SubjectsSummary({
+  permissionKind,
+  subjects,
+  loading,
+}: {
+  permissionKind: AccessPermissionKind
+  subjects: SelectableAccessSubject[]
+  loading?: boolean
+}) {
+  const { t } = useTranslation('deployments')
+
+  if (permissionKind !== 'specific') {
+    return (
+      <div className="flex min-h-8 items-center system-xs-regular text-text-tertiary">
+        <span className="min-w-0">
+          {t(`access.permission.${permissionKind}Desc`)}
+        </span>
+      </div>
+    )
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (!isInteractionDisabled && details.reason !== 'item-press')
-      setKeyword(inputValue)
+  if (loading) {
+    return (
+      <div className="flex min-h-8 items-center">
+        <SkeletonRectangle className="h-4 w-36 animate-pulse" />
+      </div>
+    )
   }
 
-  const handleValueChange = (nextSubjects: SelectableAccessSubject[]) => {
-    if (isInteractionDisabled)
+  const groupCount = subjects.filter(subject => subject.subjectType === SUBJECT_TYPE_GROUP).length
+  const memberCount = subjects.length - groupCount
+  const countLabels = [
+    groupCount > 0 ? t('access.members.groupCount', { count: groupCount }) : undefined,
+    memberCount > 0 ? t('access.members.memberCount', { count: memberCount }) : undefined,
+  ].filter((label): label is string => Boolean(label))
+
+  return (
+    <div className="flex min-h-8 min-w-0 items-center gap-1.5 system-xs-regular text-text-tertiary">
+      <span className="i-ri-lock-line size-3.5 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 truncate">
+        {countLabels.length > 0 ? countLabels.join(' · ') : t('access.permission.specificDesc')}
+      </span>
+    </div>
+  )
+}
+
+function DeploymentAccessControlDialog({
+  open,
+  value,
+  subjects,
+  subjectsLoading,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  value: AccessPermissionKind
+  subjects: AccessSubjectSelectionValue
+  subjectsLoading?: boolean
+  saving?: boolean
+  onClose: () => void
+  onSubmit: (kind: AccessPermissionKind, subjects: AccessSubjectSelectionValue) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const currentMenu = useAccessControlStore(s => s.currentMenu)
+  const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
+  const specificGroups = useAccessControlStore(s => s.specificGroups)
+  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
+  const specificMembers = useAccessControlStore(s => s.specificMembers)
+  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
+  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
+  const specificSelected = currentMenu === AppAccessMode.SPECIFIC_GROUPS_MEMBERS
+  const selectedSubjectCount = specificGroups.length + specificMembers.length
+  const specificEmpty = specificSelected && selectedSubjectCount === 0
+  const confirmDisabled = saving || (specificSelected && (subjectsLoading || specificEmpty))
+
+  useEffect(() => {
+    if (!open)
       return
 
-    setKeyword('')
-    onChange(nextSubjects)
+    setCurrentMenu(permissionKeyToAppAccessMode(value))
+    setSpecificGroups(subjects.groups)
+    setSpecificMembers(subjects.members)
+    setSelectedGroupsForBreadcrumb([])
+  }, [
+    open,
+    setCurrentMenu,
+    setSelectedGroupsForBreadcrumb,
+    setSpecificGroups,
+    setSpecificMembers,
+    subjects.groups,
+    subjects.members,
+    value,
+  ])
+
+  const handleConfirm = () => {
+    if (confirmDisabled)
+      return
+
+    onSubmit(
+      appAccessModeToPermissionKey(currentMenu),
+      specificSelected
+        ? { groups: specificGroups, members: specificMembers }
+        : { groups: [], members: [] },
+    )
   }
 
   return (
-    <Combobox<SelectableAccessSubject, true>
-      multiple
-      open={open}
-      value={selectedSubjects}
-      inputValue={keyword}
-      items={items}
-      disabled={disabled}
-      itemToStringLabel={getSubjectLabel}
-      itemToStringValue={getSubjectValue}
-      isItemEqualToValue={isSameSubject}
-      filter={null}
-      onOpenChange={handleOpenChange}
-      onInputValueChange={handleInputValueChange}
-      onValueChange={handleValueChange}
-    >
-      <ComboboxInputGroup className="h-auto min-h-8 w-full max-w-full items-start overflow-hidden py-1 pr-1">
-        <ComboboxChips>
-          <ComboboxValue>
-            {(selectedValue: SelectableAccessSubject[]) => (
-              <>
-                {selectedValue.map(subject => (
-                  <ComboboxChip
-                    key={subjectKey(subject)}
-                    className="shrink-0 cursor-default rounded-full border border-divider-subtle bg-components-badge-white-to-dark select-none"
-                  >
-                    <SubjectIcon subject={subject} />
-                    <span className="max-w-32 truncate">{getSubjectLabel(subject)}</span>
-                    {subject.subjectType === SUBJECT_TYPE_GROUP && subject.memberCount != null && (
-                      <span className="system-2xs-regular text-text-tertiary">{subject.memberCount}</span>
-                    )}
-                    <ComboboxChipRemove
-                      disabled={isInteractionDisabled}
-                      aria-label={t('operation.remove', { ns: 'common' })}
-                    >
-                      <span className="i-ri-close-circle-fill size-3.5" aria-hidden="true" />
-                    </ComboboxChipRemove>
-                  </ComboboxChip>
-                ))}
-                <ComboboxInput
-                  name="access-subjects"
-                  disabled={disabled}
-                  readOnly={isInteractionDisabled}
-                  aria-label={t('access.members.pickPlaceholder')}
-                  placeholder={selectedValue.length ? '' : t('access.members.pickPlaceholder')}
-                  className={cn('px-1 py-0.5 system-sm-medium', selectedValue.length ? 'min-w-16' : 'min-w-0')}
-                />
-              </>
-            )}
-          </ComboboxValue>
-        </ComboboxChips>
-        <ComboboxInputTrigger className="mt-0.5" disabled={isInteractionDisabled}>
-          {loading
-            ? (
-                <span
-                  className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-                  aria-hidden="true"
-                />
-              )
-            : undefined}
-        </ComboboxInputTrigger>
-      </ComboboxInputGroup>
-      <ComboboxContent
-        popupClassName="max-w-none p-0 aria-disabled:pointer-events-none"
-        popupProps={{
-          'aria-busy': subjectsQuery.isFetching || isSearchDebouncing || undefined,
-          'aria-disabled': isInteractionDisabled || undefined,
+    <AccessControlDialog show={open} onClose={onClose}>
+      <AccessControlDialogContent
+        title={t('access.permissions.editTitle')}
+        description={t('access.permissions.editDescription')}
+        hideExternal
+        saving={saving}
+        confirmDisabled={confirmDisabled}
+        specificGroupsOrMembersProps={{
+          loadSubjects: false,
+          loading: subjectsLoading,
         }}
-      >
-        {isResultLoading
-          ? (
-              <ComboboxStatus className="flex flex-col gap-2 px-3 py-3">
-                {SUBJECT_PICKER_SKELETON_KEYS.map(key => (
-                  <SkeletonRow key={key} className="h-6">
-                    <SkeletonRectangle className="h-3 w-full animate-pulse" />
-                  </SkeletonRow>
-                ))}
-              </ComboboxStatus>
-            )
-          : (
-              <>
-                {subjectsQuery.isFetching && (
-                  <ComboboxStatus className="border-b border-divider-subtle px-3 py-2 system-xs-regular">
-                    {t('common.loading')}
-                  </ComboboxStatus>
-                )}
-                <ComboboxList className="p-1">
-                  {items.map(subject => (
-                    <ComboboxItem
-                      key={subjectKey(subject)}
-                      value={subject}
-                      className="mx-0"
-                    >
-                      <ComboboxItemText className="flex items-center gap-2 px-0">
-                        <SubjectIcon subject={subject} />
-                        <span className="min-w-0 flex-1 truncate">{getSubjectLabel(subject)}</span>
-                        {subject.subjectType === SUBJECT_TYPE_GROUP && subject.memberCount != null && (
-                          <span className="shrink-0 system-xs-regular text-text-tertiary">
-                            {t('access.members.memberCount', { count: subject.memberCount })}
-                          </span>
-                        )}
-                      </ComboboxItemText>
-                      <ComboboxItemIndicator />
-                    </ComboboxItem>
-                  ))}
-                </ComboboxList>
-                {shouldShowEmpty && (
-                  selectedItems.length > 0
-                    ? (
-                        <ComboboxStatus className="px-3 py-5 text-center system-xs-regular">
-                          {t('access.members.empty')}
-                        </ComboboxStatus>
-                      )
-                    : (
-                        <ComboboxEmpty className="px-3 py-5 text-center system-xs-regular">
-                          {t('access.members.empty')}
-                        </ComboboxEmpty>
-                      )
-                )}
-              </>
-            )}
-      </ComboboxContent>
-    </Combobox>
+        onClose={onClose}
+        onConfirm={handleConfirm}
+      />
+    </AccessControlDialog>
   )
 }
 
@@ -458,6 +399,7 @@ export function EnvironmentPermissionRow({
     kind?: AccessPermissionKind
     subjects?: SelectableAccessSubject[]
   }>({})
+  const [dialogOpen, setDialogOpen] = useState(false)
   const subjectLabelCandidates = [
     ...(draft.subjects ?? []),
     ...accessSubjects,
@@ -466,14 +408,23 @@ export function EnvironmentPermissionRow({
   const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
   const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy, subjectLabelCandidates) : []
   const subjects = hasDraft && draft.subjects ? draft.subjects : accessSubjectsQuery.isLoading ? [] : policySelectedSubjects
+  const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
-  const controlsDisabled = isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError
+  const subjectsLoading = permissionKind === 'specific' && accessSubjectsQuery.isLoading
+  const controlsDisabled = isSaving || accessPolicyQuery.isLoading || accessPolicyQuery.isError || subjectsLoading
+  const envName = environmentName(environment)
 
-  const persistPolicy = (nextKind: AccessPermissionKind, nextSubjects: SelectableAccessSubject[]) => {
+  const persistPolicy = (
+    nextKind: AccessPermissionKind,
+    nextSubjects: SelectableAccessSubject[],
+    options?: {
+      onSuccess?: () => void
+    },
+  ) => {
     if (!environmentId)
-      return
+      return false
     if (nextKind === 'specific' && nextSubjects.length === 0)
-      return
+      return false
 
     setEnvironmentAccessPolicy.mutate(
       {
@@ -489,33 +440,25 @@ export function EnvironmentPermissionRow({
         },
       },
       {
+        onSuccess: options?.onSuccess,
         onError: () => {
           toast.error(t('access.permission.updateFailed'))
         },
       },
     )
+    return true
   }
 
-  const handlePermissionChange = (nextKind: AccessPermissionKind) => {
+  const handlePermissionSubmit = (nextKind: AccessPermissionKind, nextSelection: AccessSubjectSelectionValue) => {
+    const normalizedSubjects = nextKind === 'specific' ? subjectsFromAccessControlSelection(nextSelection) : []
     setDraft({
       fingerprint: policyFingerprint,
       kind: nextKind,
-      subjects: nextKind === 'specific' ? subjects : [],
+      subjects: normalizedSubjects,
     })
-    if (nextKind === 'specific') {
-      persistPolicy(nextKind, subjects)
-      return
-    }
-    persistPolicy(nextKind, [])
-  }
-
-  const handleSubjectsChange = (nextSubjects: SelectableAccessSubject[]) => {
-    setDraft({
-      fingerprint: policyFingerprint,
-      kind: 'specific',
-      subjects: nextSubjects,
+    persistPolicy(nextKind, normalizedSubjects, {
+      onSuccess: () => setDialogOpen(false),
     })
-    persistPolicy('specific', nextSubjects)
   }
 
   return (
@@ -526,7 +469,7 @@ export function EnvironmentPermissionRow({
         </div>
         <div className="mt-1 flex min-h-8 min-w-0 items-center pc:mt-0">
           <span className="min-w-0 truncate text-text-primary">
-            {environmentName(environment)}
+            {envName}
           </span>
         </div>
       </DetailTableCell>
@@ -534,43 +477,34 @@ export function EnvironmentPermissionRow({
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
-        <PermissionPicker
+        <PermissionSummaryButton
           value={permissionKind}
           disabled={controlsDisabled}
           loading={isSaving}
-          onChange={handlePermissionChange}
+          environmentLabel={envName}
+          onClick={() => setDialogOpen(true)}
         />
+        {dialogOpen && (
+          <DeploymentAccessControlDialog
+            open={dialogOpen}
+            value={permissionKind}
+            subjects={subjectSelection}
+            subjectsLoading={subjectsLoading}
+            saving={isSaving}
+            onClose={() => setDialogOpen(false)}
+            onSubmit={handlePermissionSubmit}
+          />
+        )}
       </DetailTableCell>
       <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.subjects')}
         </div>
-        {permissionKind === 'specific'
-          ? (
-              <>
-                <AccessSubjectCombobox
-                  selectedSubjects={subjects}
-                  disabled={accessPolicyQuery.isLoading || accessPolicyQuery.isError || accessSubjectsQuery.isLoading}
-                  loading={isSaving}
-                  onChange={handleSubjectsChange}
-                />
-                {!accessSubjectsQuery.isLoading && subjects.length === 0 && (
-                  <span className="mt-1.5 flex min-h-7 items-start gap-1.5 rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-2 py-1.5 system-xs-regular text-util-colors-warning-warning-700">
-                    <span className="mt-0.5 i-ri-error-warning-line size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0">
-                      {t('access.members.emptySelection')}
-                    </span>
-                  </span>
-                )}
-              </>
-            )
-          : (
-              <div className="flex min-h-8 items-center system-xs-regular text-text-tertiary">
-                <span className="min-w-0">
-                  {t(`access.permission.${permissionKind}Desc`)}
-                </span>
-              </div>
-            )}
+        <SubjectsSummary
+          permissionKind={permissionKind}
+          subjects={subjects}
+          loading={subjectsLoading}
+        />
       </DetailTableCell>
     </DetailTableRow>
   )

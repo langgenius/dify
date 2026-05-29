@@ -1,34 +1,25 @@
 'use client'
-import type { FC, PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 import type { AccessMode } from '@/models/access-control'
+import AccessControlOptionCard from '@/app/components/base/access-control-option-card'
 import useAccessControlStore from '@/context/access-control-store'
 
 type AccessControlItemProps = PropsWithChildren<{
   type: AccessMode
 }>
 
-const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {
+function AccessControlItem({ type, children }: AccessControlItemProps) {
   const currentMenu = useAccessControlStore(s => s.currentMenu)
   const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
-  if (currentMenu !== type) {
-    return (
-      <div
-        className="cursor-pointer rounded-[10px] border
-      border-components-option-card-option-border bg-components-option-card-option-bg
-      hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover"
-        onClick={() => setCurrentMenu(type)}
-      >
-        {children}
-      </div>
-    )
-  }
+  const selected = currentMenu === type
 
   return (
-    <div className="rounded-[10px] border-[1.5px]
-  border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm"
+    <AccessControlOptionCard
+      selected={selected}
+      onSelect={selected ? undefined : () => setCurrentMenu(type)}
     >
       {children}
-    </div>
+    </AccessControlOptionCard>
   )
 }
 
