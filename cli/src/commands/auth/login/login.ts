@@ -100,9 +100,8 @@ function renderCodePrompt(w: NodeJS.WritableStream, cs: ReturnType<typeof colorS
 
 function renderLoggedIn(w: NodeJS.WritableStream, cs: ReturnType<typeof colorScheme>, host: string, s: PollSuccess): void {
   const display = bareHost(host)
-  const account = s.account ?? undefined
-  if (account !== undefined && account.email !== '') {
-    w.write(`${cs.successIcon()} Logged in to ${display} as ${cs.bold(account.email)} (${account.name})\n`)
+  if (s.account && s.account.email !== '') {
+    w.write(`${cs.successIcon()} Logged in to ${display} as ${cs.bold(s.account.email)} (${s.account.name})\n`)
     const ws = findDefaultWorkspace(s)
     if (ws !== undefined)
       w.write(`  Workspace: ${ws.name}\n`)
@@ -141,12 +140,11 @@ function bundleFromSuccess(host: string, s: PollSuccess, mode: StorageMode): Hos
     token_id: s.token_id,
     tokens: { bearer: s.token },
   }
-  const account = s.account ?? undefined
-  if (account !== undefined) {
-    bundle.account = { id: account.id, email: account.email, name: account.name }
+  if (s.account) {
+    bundle.account = { id: s.account.id, email: s.account.email, name: s.account.name }
   }
   if (s.subject_email !== undefined && s.subject_email !== ''
-    && (account === undefined || account.id === '')) {
+    && (!s.account || s.account.id === '')) {
     bundle.external_subject = {
       email: s.subject_email,
       issuer: s.subject_issuer ?? '',
