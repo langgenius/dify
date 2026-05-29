@@ -5,9 +5,6 @@ import type { FlagDefinition } from "./types";
 
 export class OutputFormatNotSupportedError extends BaseError {
   constructor(format: string, supported?: string[]) {
-    if (!supported) {
-        supported = Object.values(OutputFormat)
-    }
     super({
       code: ErrorCode.IllegalArgumentError,
       message: `format ${format} is not supported by this command`,
