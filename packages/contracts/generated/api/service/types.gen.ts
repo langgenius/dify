@@ -340,7 +340,7 @@ export type DatasetRetrievalModelResponse = {
 }
 
 export type DatasetSummaryIndexSettingResponse = {
-  enable?: boolean | null
+  enable?: boolean
   model_name?: string | null
   model_provider_name?: string | null
   summary_prompt?: string | null
