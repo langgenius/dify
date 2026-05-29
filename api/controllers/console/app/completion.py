@@ -43,7 +43,11 @@ logger = logging.getLogger(__name__)
 
 class BaseMessagePayload(BaseModel):
     inputs: dict[str, Any]
-    model_config_data: dict[str, Any] = Field(..., alias="model_config")
+    # Agent Apps (AppMode.AGENT) derive their model + prompt from the bound Agent
+    # Soul, so no override ``model_config`` is sent; chat / agent-chat / completion
+    # debugging still pass it. Optional here, required in practice by those modes
+    # downstream when their config is built from args.
+    model_config_data: dict[str, Any] = Field(default_factory=dict, alias="model_config")
     files: list[Any] | None = Field(default=None, description="Uploaded files")
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
@@ -157,7 +161,7 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App):
         args_model = ChatMessagePayload.model_validate(console_ns.payload)

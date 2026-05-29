@@ -16,15 +16,24 @@ from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigM
 from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
 from core.app.app_config.easy_ui_based_app.prompt_template.manager import PromptTemplateConfigManager
 from core.app.app_config.easy_ui_based_app.variables.manager import BasicVariablesConfigManager
-from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    PromptTemplateEntity,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Conversation
 
 
 class AgentAppConfig(EasyUIBasedAppConfig):
-    """Agent App config entity (EasyUI-shaped so it rides the chat pipeline)."""
+    """Agent App config entity (EasyUI-shaped so it rides the chat pipeline).
 
-    pass
+    Unlike legacy EasyUI apps, an Agent App has no ``app_model_config`` row, so
+    the id may be absent; persistence stores ``NULL`` for the conversation's
+    ``app_model_config_id`` in that case.
+    """
+
+    app_model_config_id: str | None = None
 
 
 class AgentAppConfigManager(BaseAppConfigManager):
@@ -48,7 +57,7 @@ class AgentAppConfigManager(BaseAppConfigManager):
             # The config is derived from the Agent Soul snapshot, not a legacy
             # app_model_config row; the id is informational only.
             app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
-            app_model_config_id=app_model_config.id if app_model_config else "",
+            app_model_config_id=app_model_config.id if app_model_config else None,
             app_model_config_dict=config_dict,
             model=ModelConfigManager.convert(config=config_dict),
             prompt_template=PromptTemplateConfigManager.convert(config=config_dict),
@@ -83,6 +92,10 @@ class AgentAppConfigManager(BaseAppConfigManager):
                 "mode": "chat",
                 "completion_params": dict(model.model_settings or {}),
             }
+        # The Agent Soul system prompt rides the EasyUI "simple" prompt slot; the
+        # agent backend is the real prompt authority, this only feeds the chat
+        # pipeline's bookkeeping (token counting, persistence).
+        base["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE.value
         base["pre_prompt"] = agent_soul.prompt.system_prompt or ""
         # Agent App takes the user message directly; no completion-style inputs form.
         base.setdefault("user_input_form", [])

@@ -58,3 +58,27 @@ def test_missing_soul_model_leaves_no_model_key():
     d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None)
     assert "model" not in d
     assert d["pre_prompt"] == ""
+
+
+def test_prompt_type_defaults_to_simple():
+    # PromptTemplateConfigManager.convert requires prompt_type; an Agent App with
+    # no legacy app_model_config must still get the "simple" slot synthesized.
+    d = AgentAppConfigManager._synthesize_config_dict(_soul(), None)
+    assert d["prompt_type"] == "simple"
+
+
+def test_get_app_config_has_null_model_config_id_without_legacy_row():
+    # An Agent App has no app_model_config row; the conversation's
+    # app_model_config_id (a UUID column) must be NULL, not "".
+    app_model = SimpleNamespace(
+        tenant_id="11111111-1111-1111-1111-111111111111",
+        id="22222222-2222-2222-2222-222222222222",
+        mode="agent",
+    )
+    app_config = AgentAppConfigManager.get_app_config(
+        app_model=app_model,  # type: ignore[arg-type]
+        agent_soul=_soul(),
+        app_model_config=None,
+        conversation=None,
+    )
+    assert app_config.app_model_config_id is None
