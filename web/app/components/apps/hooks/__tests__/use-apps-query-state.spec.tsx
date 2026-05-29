@@ -28,14 +28,14 @@ describe('useAppsQueryState', () => {
     expect(typeof result.current.setIsCreatedByMe).toBe('function')
   })
 
-  it('should parse app list filters from URL', () => {
+  it('should parse app list URL filters and keep tag filter local', () => {
     const { result } = renderWithAdapter(
       '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
     )
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
-      tagIDs: ['tag1', 'tag2'],
+      tagIDs: [],
       keywords: 'search term',
       isCreatedByMe: true,
     })
@@ -117,31 +117,30 @@ describe('useAppsQueryState', () => {
     }
   })
 
-  it('should update tag filter URL state', async () => {
+  it('should update tag filter local state without writing URL state', () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
       result.current.setTagIDs(['tag1', 'tag2'])
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
-    expect(update.searchParams.get('tagIDs')).toBe('tag1;tag2')
-    expect(update.options.history).toBe('push')
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
-  it('should remove tagIDs from URL when empty', async () => {
+  it('should clear tag filter local state without writing URL state', () => {
     const { result, onUrlUpdate } = renderWithAdapter('?tagIDs=tag1;tag2')
+
+    act(() => {
+      result.current.setTagIDs(['tag1', 'tag2'])
+    })
 
     act(() => {
       result.current.setTagIDs([])
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(result.current.query.tagIDs).toEqual([])
-    expect(update.searchParams.has('tagIDs')).toBe(false)
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('should update created-by-me URL state', async () => {
