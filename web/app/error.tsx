@@ -2,7 +2,7 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import RootLoading from '@/app/loading'
+import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
 
 type Props = {
@@ -16,7 +16,7 @@ export default function AppError({ error, reset, unstable_retry }: Props) {
   const retry = reset ?? unstable_retry
 
   if (isLegacyBase401(error))
-    return <RootLoading />
+    return <FullScreenLoading />
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background-body">
