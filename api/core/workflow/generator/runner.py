@@ -307,6 +307,16 @@ class WorkflowGenerator:
         nodes: list[dict[str, Any]] = list(cast(list[dict[str, Any]], graph.get("nodes", [])))
         edges: list[dict[str, Any]] = list(cast(list[dict[str, Any]], graph.get("edges", [])))
 
+        # Defensive ID remap: Dify's run-time placeholder regex only accepts
+        # ``[a-zA-Z0-9_]`` in the node-id slot, so anything the LLM emits with
+        # hyphens (``node-1``, ``node-Kstart``, etc.) would break every
+        # placeholder pointing at it. Strip hyphens out of every id + every
+        # cross-reference (edges' ``source`` / ``target``, ``parentId``,
+        # ``start_node_id`` / ``iteration_id`` / ``loop_id`` on data, and the
+        # ``{{#…#}}`` and ``["node-id", "var"]`` references) BEFORE the rest
+        # of the postprocess pass touches them.
+        cls._strip_hyphens_from_node_ids(nodes=nodes, edges=edges)
+
         # Container-child nodes carry their own relative positions inside the
         # parent and have a special ``type`` (custom-iteration-start /
         # custom-loop-start). We must not override their positions or wrapper
@@ -410,14 +420,34 @@ class WorkflowGenerator:
     # Variable-reference reconciliation
     # ------------------------------------------------------------------
 
-    # Detects ``{{#node-id.var#}}`` placeholders inside strings. This matches
-    # the exact regex Dify's workflow runtime uses to interpolate values at
-    # run time (see ``graphon.runtime.variable_pool.VARIABLE_PATTERN``). The
-    # syntax is DOUBLE curly braces with ``#`` markers — single-brace
-    # ``{#…#}`` is NOT a Dify placeholder and would survive into the LLM's
-    # prompt literally, producing the "I got {{#node-1.text#}} back instead
-    # of real text" bug.
-    _VAR_REF_RE: ClassVar = re.compile(r"\{\{#([^.#]+)\.([^#]+)#\}\}")
+    # Detects ``{{#node_id.var#}}`` placeholders. We match the EXACT regex
+    # Dify's workflow runtime uses (see
+    # ``graphon.runtime.variable_pool.VARIABLE_PATTERN``):
+    #
+    #     \{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}
+    #
+    # Two consequences for the generator:
+    #   1. Node ids MUST be ``[a-zA-Z0-9_]`` — letters, digits, underscores.
+    #      A hyphenated id like ``node-1`` does NOT match at run time, so the
+    #      whole ``{{#node-1.var#}}`` survives into the LLM prompt literally
+    #      and the LLM at run time echoes it back as the answer. The
+    #      postprocess remap below defensively rewrites any hyphen the
+    #      builder LLM still produces.
+    #   2. The walker must match the same regex so we don't auto-fix
+    #      references the runtime would never resolve anyway.
+    _VAR_REF_RE: ClassVar = re.compile(
+        r"\{\{#([a-zA-Z0-9_]{1,50})\.([a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9})#\}\}"
+    )
+
+    # Lenient sibling used only by the defensive hyphen-strip pass — it
+    # allows hyphens in the node-id slot so we can rewrite the LLM's
+    # ``{{#node-1.var#}}`` outputs BEFORE the strict walker sees them.
+    # Never use this for validation, only for rewriting.
+    _LENIENT_VAR_REF_RE: ClassVar = re.compile(r"\{\{#([A-Za-z0-9_-]+)\.([^#]+)#\}\}")
+
+    # Strings inside ``data`` that look like node-id slugs and need
+    # remapping when we defensively strip hyphens out of LLM-emitted ids.
+    _ID_FIELDS: ClassVar = frozenset({"start_node_id", "iteration_id", "loop_id", "parentId"})
 
     @classmethod
     def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:
@@ -530,8 +560,105 @@ class WorkflowGenerator:
         return False
 
     @classmethod
+    def _strip_hyphens_from_node_ids(
+        cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
+    ) -> None:
+        """
+        Strip ``-`` out of every node id and rewrite every cross-reference.
+
+        Dify's run-time ``VARIABLE_PATTERN`` accepts only ``[a-zA-Z0-9_]`` in
+        the node-id slot of ``{{#…#}}`` placeholders. The builder LLM often
+        emits ``node-1`` style ids; left unfixed those make every placeholder
+        silently fail at run time, the literal ``{{#node-1.var#}}`` survives
+        into the prompt, and the LLM at run time echoes it back as the user's
+        output — the bug we are here to kill.
+
+        Approach: build a one-to-one ``old → new`` map by removing hyphens,
+        then rewrite (a) every node ``id``, (b) every edge ``source`` /
+        ``target``, (c) every ``parentId`` / ``start_node_id`` /
+        ``iteration_id`` / ``loop_id`` inside ``data``, (d) every
+        ``{{#…#}}`` reference in any string, (e) every ``["node-id", "var"]``
+        value-selector list. We do NOT rename variable names — only ids.
+        """
+        # Build id rewrite map. Collision-safe because we just strip a single
+        # character class — two different hyphenated ids ``node-1`` and
+        # ``node1`` would collide, but the builder LLM has been instructed
+        # to pick one style so in practice it's one or the other.
+        id_map: dict[str, str] = {}
+        for node in nodes:
+            old = node.get("id")
+            if not isinstance(old, str) or "-" not in old:
+                continue
+            new = old.replace("-", "")
+            id_map[old] = new
+            node["id"] = new
+        if not id_map:
+            return
+
+        # Rewrite edges' source / target.
+        for edge in edges:
+            for key in ("source", "target"):
+                v = edge.get(key)
+                if isinstance(v, str) and v in id_map:
+                    edge[key] = id_map[v]
+            # Also rewrite the edge id if the builder emitted one referencing
+            # the old ids; the dedupe pass later recomputes it anyway, but
+            # rewriting here keeps logs sane.
+            eid = edge.get("id")
+            if isinstance(eid, str):
+                for old, new in id_map.items():
+                    eid = eid.replace(old, new)
+                edge["id"] = eid
+
+        # Rewrite every reference inside any node's data (recursively).
+        for node in nodes:
+            data = node.get("data")
+            if isinstance(data, dict):
+                cls._rewrite_refs_in_data(data, id_map)
+
+    @classmethod
+    def _rewrite_refs_in_data(cls, value: Any, id_map: dict[str, str]) -> None:
+        """Recursive sibling of ``_collect_refs_in_data`` that does rewrites."""
+        if isinstance(value, dict):
+            for k, v in list(value.items()):
+                if k in cls._ID_FIELDS and isinstance(v, str):
+                    # Direct id field — apply the longest matching prefix
+                    # (handles ``"nodeKstart"`` where ``nodeK`` is the
+                    # container's old id).
+                    for old, new in sorted(id_map.items(), key=lambda kv: -len(kv[0])):
+                        if old in v:
+                            value[k] = v.replace(old, new)
+                            v = value[k]
+                if isinstance(v, str):
+                    rewritten = cls._LENIENT_VAR_REF_RE.sub(
+                        lambda m: cls._rewrite_var_ref(m, id_map), v
+                    )
+                    if rewritten != v:
+                        value[k] = rewritten
+                elif (
+                    isinstance(v, list)
+                    and len(v) == 2
+                    and all(isinstance(x, str) for x in v)
+                    and v[0] in id_map
+                ):
+                    # 2-element ``["node-id", "var"]`` selector list.
+                    value[k] = [id_map[v[0]], v[1]]
+                else:
+                    cls._rewrite_refs_in_data(v, id_map)
+        elif isinstance(value, list):
+            for item in value:
+                cls._rewrite_refs_in_data(item, id_map)
+
+    @classmethod
+    def _rewrite_var_ref(cls, m: "re.Match[str]", id_map: dict[str, str]) -> str:
+        node_id = m.group(1)
+        rest = m.group(2)
+        new_id = id_map.get(node_id, node_id)
+        return f"{{{{#{new_id}.{rest}#}}}}"
+
+    @classmethod
     def _inject_start_variable(cls, start_node: dict[str, Any], var: str) -> None:
-        """Add a default ``paragraph`` input so ``{#start.<var>#}`` resolves."""
+        """Add a default ``paragraph`` input so ``{{#start.<var>#}}`` resolves."""
         data = start_node.setdefault("data", {})
         existing = data.setdefault("variables", [])
         if any(isinstance(v, dict) and v.get("variable") == var for v in existing):

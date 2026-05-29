@@ -28,7 +28,7 @@ from typing import Any
 NODE_CONFIG_CHEATSHEET = """\
 ## Node wrapper (every node, top-level)
 
-    {"id": "node-N",
+    {"id": "node1" (digits + letters only — see "Node IDs" below),
      "type": "custom",                # ReactFlow renderer key. Iteration/loop
                                       # *start* children use special types
                                       # (see Containers below).
@@ -87,17 +87,17 @@ Children of iteration / loop containers additionally need
     Prompt-writing rules for the user-message text:
       * ``{{#node.var#}}`` placeholders are interpolated by Dify BEFORE the
         LLM sees them — at run time the model only sees the resolved value.
-        So an instruction like "Translate this: {{#node-1.text#}}" is read
+        So an instruction like "Translate this: {{#node1.text#}}" is read
         by the LLM as "Translate this: <the actual text>".
       * NEVER include placeholder syntax inside an "example output" block
         in your prompt — the LLM will treat the example as the literal
         answer template and echo placeholders back as output. Wrong:
-            Output JSON: {"en": "{{#node-1.text#}}", "es": "{{#node-1.text#}}"}
+            Output JSON: {"en": "{{#node1.text#}}", "es": "{{#node1.text#}}"}
         Right:
             Translate the input into English, Spanish, French, German.
             Output a JSON object with keys "en", "es", "fr", "de" whose
             values are the translations.
-            Input: {{#node-1.text#}}
+            Input: {{#node1.text#}}
       * Each placeholder only resolves the variable from its source node —
         it cannot be a Jinja template or call a function.
 
@@ -185,13 +185,13 @@ Children of iteration / loop containers additionally need
 These are SUBGRAPH nodes. To use one you MUST emit, in order:
 
 1. The container node itself, e.g. for iteration:
-       id: "node-K"
+       id: "nodeK"
        type: "custom"
        data: {"type": "iteration",
               "title": "<label>",
               "desc": "",
               "selected": false,
-              "start_node_id": "node-Kstart",
+              "start_node_id": "nodeKstart",
               "iterator_selector": ["<src>", "<list-var>"],
               "output_selector": ["<inner-last-node>", "<out-var>"],
               "is_parallel": false,
@@ -204,14 +204,14 @@ These are SUBGRAPH nodes. To use one you MUST emit, in order:
 
    For loop, swap "iteration" → "loop" and use:
        data: {"type": "loop", "title": "...", "desc": "",
-              "selected": false, "start_node_id": "node-Kstart",
+              "selected": false, "start_node_id": "nodeKstart",
               "break_conditions": [], "loop_count": 10,
               "logical_operator": "and"}
 
 2. The auto-start child (one per container):
-       id: "node-Kstart"
+       id: "nodeKstart"
        type: "custom-iteration-start"          # loop → "custom-loop-start"
-       parentId: "node-K"
+       parentId: "nodeK"
        extent: "parent"
        draggable: false
        selectable: false
@@ -223,22 +223,22 @@ These are SUBGRAPH nodes. To use one you MUST emit, in order:
               "selected": false}
 
 3. Each inner-pipeline node (any node type, follows normal data rules) MUST add:
-       parentId: "node-K"
+       parentId: "nodeK"
        extent: "parent"
        zIndex: 1002
        position: {x, y}                         # relative to parent
        data: {..., "isInIteration": true,       # loop → "isInLoop": true
-              "iteration_id": "node-K"}         # loop → "loop_id"
+              "iteration_id": "nodeK"}         # loop → "loop_id"
 
 4. Edges INSIDE a container must add to ``data``:
        "isInIteration": true                    # loop → "isInLoop": true
-       "iteration_id": "node-K"                 # loop → "loop_id"
+       "iteration_id": "nodeK"                 # loop → "loop_id"
    and use ``zIndex: 1002``. Edges OUTSIDE containers use the default
    ``isInIteration: false`` / ``isInLoop: false``.
 
 5. The container's incoming/outgoing edges connect to the container's id
-   (``node-K``), NOT to inner nodes. The first inner edge connects from
-   ``node-Kstart``.
+   (``nodeK``), NOT to inner nodes. The first inner edge connects from
+   ``nodeKstart``.
 
 ## Edge handles
 
@@ -263,8 +263,14 @@ correct.
 # Hard rules
 
 1. The output is a single JSON object — no prose, no Markdown, no code fences.
-2. Use the EXACT node IDs from the plan, formatted as "node-1", "node-2", ... in
-   plan order. Edge "source"/"target" must reference these IDs.
+2. NODE IDs MUST USE ONLY ALPHANUMERICS + UNDERSCORES — never hyphens.
+   Dify's run-time placeholder regex (see ``variable_pool.VARIABLE_PATTERN``)
+   is ``\\{\\{#([a-zA-Z0-9_]{1,50}(?:\\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\\}\\}``,
+   so any placeholder pointing at a hyphenated id (e.g. ``{{#node-1.text#}}``)
+   silently fails to match at run time and the literal string survives into
+   the prompt — the user then sees ``{{#node-1.text#}}`` in their output.
+   Use the EXACT ids from the plan, formatted as ``node1``, ``node2``, ... in
+   plan order. Edge ``source`` / ``target`` must reference these ids.
 3. Every node has top-level fields: id, type, position, data.
    - "type" is always "custom" (ReactFlow node renderer).
    - "data.type" is the actual node type ("llm", "start", etc.).
@@ -439,8 +445,14 @@ def format_plan_block(plan_nodes: list[dict[str, Any]]) -> str:
     """
     Render the planner output as a numbered list the builder can quote.
 
+    Node IDs use no separator (``node1``, ``node2``, ...) because Dify's
+    run-time placeholder regex requires ``[a-zA-Z0-9_]`` in the node-id
+    slot — a hyphenated id like ``node-1`` would silently fail to match
+    at run time and the literal ``{{#node-1.var#}}`` survives into the
+    LLM prompt.
+
     For container children (planner emitted a ``"parent": "<label>"`` key),
-    we resolve the parent label to its ``node-N`` id and surface it on the
+    we resolve the parent label to its ``nodeN`` id and surface it on the
     same line so the builder knows to set ``parentId`` and the
     ``isInIteration`` / ``isInLoop`` markers on inner nodes.
     """
@@ -449,11 +461,11 @@ def format_plan_block(plan_nodes: list[dict[str, Any]]) -> str:
     for idx, node in enumerate(plan_nodes, start=1):
         label = str(node.get("label") or "")
         if label and label not in label_to_id:
-            label_to_id[label] = f"node-{idx}"
+            label_to_id[label] = f"node{idx}"
 
     lines = []
     for idx, node in enumerate(plan_nodes, start=1):
-        node_id = f"node-{idx}"
+        node_id = f"node{idx}"
         label = node.get("label", "")
         node_type = node.get("node_type", "")
         purpose = node.get("purpose", "")

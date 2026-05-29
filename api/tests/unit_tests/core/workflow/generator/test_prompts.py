@@ -70,15 +70,15 @@ class TestFormatPlanBlock:
         )
         lines = out.split("\n")
         # Two nodes → 4 lines (each entry takes id-line + purpose-line).
-        assert any(line.startswith("1.") and "node-1" in line for line in lines)
-        assert any(line.startswith("2.") and "node-2" in line for line in lines)
+        assert any(line.startswith("1.") and "node1" in line for line in lines)
+        assert any(line.startswith("2.") and "node2" in line for line in lines)
         assert "purpose: Take input" in out
         assert "purpose: Summarize" in out
 
     def test_handles_missing_fields_gracefully(self):
         out = format_plan_block([{"node_type": "llm"}])
         # Missing label/purpose must not raise — they degrade to empty strings.
-        assert "node-1" in out
+        assert "node1" in out
         assert "type=llm" in out
 
 
@@ -109,8 +109,8 @@ class TestFormatPlanBlockParentHints:
                 {"label": "Sum Item", "node_type": "llm", "purpose": "summarize one", "parent": "Per Item"},
             ]
         )
-        # The inner line should mention parent=node-2 (the iteration node).
-        assert "parent=node-2" in out
+        # The inner line should mention parent=node2 (the iteration node).
+        assert "parent=node2" in out
         # Top-level nodes must not have a parent clause.
         first_line = out.splitlines()[0]
         assert "parent=" not in first_line

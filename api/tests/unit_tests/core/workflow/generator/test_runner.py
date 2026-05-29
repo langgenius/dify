@@ -45,13 +45,13 @@ class TestWorkflowGeneratorWorkflowMode:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start", "desc": "", "variables": []},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
@@ -66,25 +66,25 @@ class TestWorkflowGeneratorWorkflowMode:
                             },
                             "prompt_template": [
                                 {"role": "system", "text": "You summarize URLs."},
-                                {"role": "user", "text": "{{#node-1.url#}}"},
+                                {"role": "user", "text": "{{#node1.url#}}"},
                             ],
                         },
                     },
                     {
-                        "id": "node-3",
+                        "id": "node3",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "end",
                             "title": "End",
                             "desc": "",
-                            "outputs": [{"variable": "summary", "value_selector": ["node-2", "text"]}],
+                            "outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}],
                         },
                     },
                 ],
                 "edges": [
-                    {"id": "x", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "x", "source": "node-2", "target": "node-3", "type": "custom"},
+                    {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "x", "source": "node2", "target": "node3", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -135,19 +135,19 @@ class TestWorkflowGeneratorWorkflowMode:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "llm", "title": "Summarize"},
                     },
                 ],
-                "edges": [{"id": "x", "source": "node-1", "target": "node-2", "type": "custom"}],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
@@ -188,19 +188,19 @@ class TestWorkflowGeneratorAdvancedChatMode:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "answer", "title": "Reply", "answer": "Hi!"},
                     },
                 ],
-                "edges": [{"id": "x", "source": "node-1", "target": "node-2", "type": "custom"}],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
@@ -237,19 +237,19 @@ class TestWorkflowGeneratorAdvancedChatMode:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
-                "edges": [{"id": "x", "source": "node-1", "target": "node-2", "type": "custom"}],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
@@ -331,21 +331,21 @@ class TestWorkflowGeneratorFailurePaths:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
                 "edges": [
-                    {"id": "x", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "y", "source": "node-1", "target": "ghost", "type": "custom"},
+                    {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "y", "source": "node1", "target": "ghost", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -439,19 +439,19 @@ class TestWorkflowGeneratorEdgeCases:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
-                "edges": [{"id": "x", "source": "node-1", "target": "node-2", "type": "custom"}],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
@@ -497,27 +497,27 @@ class TestWorkflowGeneratorEdgeCases:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 999, "y": 999},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 999, "y": 999},
                         "data": {"type": "llm", "title": "Middle"},
                     },
                     {
-                        "id": "node-3",
+                        "id": "node3",
                         "type": "custom",
                         "position": {"x": 999, "y": 999},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
                 "edges": [
-                    {"id": "a", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "b", "source": "node-2", "target": "node-3", "type": "custom"},
+                    {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -559,21 +559,21 @@ class TestWorkflowGeneratorEdgeCases:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
                 "edges": [
-                    {"id": "a", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "b", "source": "node-1", "target": "node-2", "type": "custom"},
+                    {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "b", "source": "node1", "target": "node2", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -628,62 +628,62 @@ class TestWorkflowGeneratorContainerNodes:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "iteration",
                             "title": "Per URL",
-                            "start_node_id": "node-2start",
-                            "iterator_selector": ["node-1", "urls"],
-                            "output_selector": ["node-3", "text"],
+                            "start_node_id": "node2start",
+                            "iterator_selector": ["node1", "urls"],
+                            "output_selector": ["node3", "text"],
                         },
                         "width": 808,
                         "height": 204,
                         "zIndex": 1,
                     },
                     {
-                        "id": "node-2start",
+                        "id": "node2start",
                         "type": "custom-iteration-start",
-                        "parentId": "node-2",
+                        "parentId": "node2",
                         "extent": "parent",
                         "position": {"x": 60, "y": 78},
                         "data": {"type": "iteration-start", "title": "", "isInIteration": True},
                     },
                     {
-                        "id": "node-3",
+                        "id": "node3",
                         "type": "custom",
-                        "parentId": "node-2",
+                        "parentId": "node2",
                         "extent": "parent",
                         "position": {"x": 240, "y": 60},
                         "data": {
                             "type": "llm",
                             "title": "Summarize",
                             "isInIteration": True,
-                            "iteration_id": "node-2",
+                            "iteration_id": "node2",
                         },
                     },
                     {
-                        "id": "node-4",
+                        "id": "node4",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "end",
                             "title": "End",
-                            "outputs": [{"variable": "summaries", "value_selector": ["node-2", "output"]}],
+                            "outputs": [{"variable": "summaries", "value_selector": ["node2", "output"]}],
                         },
                     },
                 ],
                 "edges": [
-                    {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "e2", "source": "node-2start", "target": "node-3", "type": "custom"},
-                    {"id": "e3", "source": "node-2", "target": "node-4", "type": "custom"},
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2start", "target": "node3", "type": "custom"},
+                    {"id": "e3", "source": "node2", "target": "node4", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -710,7 +710,7 @@ class TestWorkflowGeneratorContainerNodes:
         )
 
         nodes_by_id = {n["id"]: n for n in result["graph"]["nodes"]}
-        inner = nodes_by_id["node-3"]
+        inner = nodes_by_id["node3"]
         # Position untouched (60, 60 — what the builder emitted, after the
         # iteration-start was (60, 78)).
         assert inner["position"]["x"] == 240
@@ -743,7 +743,7 @@ class TestWorkflowGeneratorContainerNodes:
         assert len(set(xs)) == 3
 
     def test_sibling_edges_inside_container_are_flagged(self):
-        # The iteration-start → llm edge (both children of node-2) must be
+        # The iteration-start → llm edge (both children of node2) must be
         # flagged isInIteration with iteration_id pointing at the container.
         # The edges crossing the container boundary must NOT be flagged.
         model_instance = MagicMock()
@@ -763,12 +763,12 @@ class TestWorkflowGeneratorContainerNodes:
         )
 
         edges_by_id = {e["id"]: e for e in result["graph"]["edges"]}
-        inner_edge = edges_by_id["node-2start-source-node-3-target"]
+        inner_edge = edges_by_id["node2start-source-node3-target"]
         assert inner_edge["data"]["isInIteration"] is True
-        assert inner_edge["data"]["iteration_id"] == "node-2"
+        assert inner_edge["data"]["iteration_id"] == "node2"
         assert inner_edge["zIndex"] == 1002
 
-        outside_edge = edges_by_id["node-1-source-node-2-target"]
+        outside_edge = edges_by_id["node1-source-node2-target"]
         assert outside_edge["data"]["isInIteration"] is False
         assert outside_edge["data"]["isInLoop"] is False
 
@@ -812,20 +812,20 @@ class TestWorkflowGeneratorAppMetadata:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start"},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
                 "edges": [
-                    {"id": "x", "source": "node-1", "target": "node-2", "type": "custom"},
+                    {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -916,7 +916,7 @@ class TestWorkflowGeneratorAppMetadata:
 
 class TestWorkflowGeneratorVariableReferences:
     """
-    The builder used to emit ``{{#node-1.url#}}`` inside an LLM prompt while
+    The builder used to emit ``{{#node1.url#}}`` inside an LLM prompt while
     the start node declared ``"variables": []`` — so the workflow saved
     fine but failed at run time with "variable not found" the moment the
     user clicked Run. Postprocess now walks every reference and auto-fixes
@@ -953,19 +953,19 @@ class TestWorkflowGeneratorVariableReferences:
         )
 
     def _builder_referencing_missing_start_var(self, var: str = "url") -> str:
-        # The LLM prompt references {{#node-1.<var>#}} but the start node was
+        # The LLM prompt references {{#node1.<var>#}} but the start node was
         # emitted with an empty variables array — the historical bug.
         return json.dumps(
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start", "variables": []},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
@@ -973,24 +973,24 @@ class TestWorkflowGeneratorVariableReferences:
                             "title": "Summarize",
                             "prompt_template": [
                                 {"role": "system", "text": "You summarize URLs."},
-                                {"role": "user", "text": f"Summarize this: {{{{#node-1.{var}#}}}}"},
+                                {"role": "user", "text": f"Summarize this: {{{{#node1.{var}#}}}}"},
                             ],
                         },
                     },
                     {
-                        "id": "node-3",
+                        "id": "node3",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "end",
                             "title": "End",
-                            "outputs": [{"variable": "summary", "value_selector": ["node-2", "text"]}],
+                            "outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}],
                         },
                     },
                 ],
                 "edges": [
-                    {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "e2", "source": "node-2", "target": "node-3", "type": "custom"},
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -1034,7 +1034,7 @@ class TestWorkflowGeneratorVariableReferences:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
@@ -1053,31 +1053,31 @@ class TestWorkflowGeneratorVariableReferences:
                         },
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "llm",
                             "title": "Summarize",
                             "prompt_template": [
-                                {"role": "user", "text": "Summarize {{#node-1.url#}}"},
+                                {"role": "user", "text": "Summarize {{#node1.url#}}"},
                             ],
                         },
                     },
                     {
-                        "id": "node-3",
+                        "id": "node3",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "end",
                             "title": "End",
-                            "outputs": [{"variable": "out", "value_selector": ["node-2", "text"]}],
+                            "outputs": [{"variable": "out", "value_selector": ["node2", "text"]}],
                         },
                     },
                 ],
                 "edges": [
-                    {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "e2", "source": "node-2", "target": "node-3", "type": "custom"},
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -1113,13 +1113,13 @@ class TestWorkflowGeneratorVariableReferences:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start", "variables": []},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
@@ -1128,25 +1128,25 @@ class TestWorkflowGeneratorVariableReferences:
                             "code_language": "python3",
                             "code": "def main(topic): return {'result': topic}",
                             "variables": [
-                                {"variable": "topic", "value_selector": ["node-1", "topic"]},
+                                {"variable": "topic", "value_selector": ["node1", "topic"]},
                             ],
                             "outputs": {"result": {"type": "string", "children": None}},
                         },
                     },
                     {
-                        "id": "node-3",
+                        "id": "node3",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
                             "type": "end",
                             "title": "End",
-                            "outputs": [{"variable": "out", "value_selector": ["node-2", "result"]}],
+                            "outputs": [{"variable": "out", "value_selector": ["node2", "result"]}],
                         },
                     },
                 ],
                 "edges": [
-                    {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
-                    {"id": "e2", "source": "node-2", "target": "node-3", "type": "custom"},
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -1190,13 +1190,13 @@ class TestWorkflowGeneratorVariableReferences:
             {
                 "nodes": [
                     {
-                        "id": "node-1",
+                        "id": "node1",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {"type": "start", "title": "Start", "variables": []},
                     },
                     {
-                        "id": "node-2",
+                        "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
                         "data": {
@@ -1208,7 +1208,7 @@ class TestWorkflowGeneratorVariableReferences:
                     },
                 ],
                 "edges": [
-                    {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
                 ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
@@ -1271,13 +1271,183 @@ class TestWorkflowGeneratorVariableReferences:
         WorkflowGenerator._collect_refs_in_data(
             {
                 "prompt_template": [
-                    {"role": "user", "text": "Bad single: {#node-1.url#}"},
-                    {"role": "user", "text": "Good double: {{#node-2.text#}}"},
+                    {"role": "user", "text": "Bad single: {#node1.url#}"},
+                    {"role": "user", "text": "Good double: {{#node2.text#}}"},
                 ],
             },
             refs,
         )
 
         # Single-brace entry is not picked up; only the double-brace one is.
-        assert ("node-2", "text") in refs
-        assert ("node-1", "url") not in refs
+        assert ("node2", "text") in refs
+        assert ("node1", "url") not in refs
+
+
+class TestWorkflowGeneratorNodeIdHyphens:
+    """
+    Dify's run-time placeholder regex
+    (``graphon.runtime.variable_pool.VARIABLE_PATTERN``) accepts only
+    ``[a-zA-Z0-9_]`` in the node-id slot. The builder LLM frequently
+    emits ``node-1`` style hyphenated ids — left unfixed, every
+    ``{{#node-1.var#}}`` placeholder silently fails to match at run time
+    and the literal string survives into the LLM prompt, producing the
+    "I got {{#node-1.text#}} back instead of real text" failure mode.
+
+    Postprocess defensively strips hyphens out of every id + cross-
+    reference before the rest of the pipeline touches them.
+    """
+
+    def _planner(self) -> str:
+        return json.dumps(
+            {
+                "title": "Translator",
+                "description": "Translate text.",
+                "start_inputs": [{"variable": "text", "label": "Text", "type": "paragraph"}],
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "Translate", "node_type": "llm", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+
+    def _hyphenated_builder(self) -> str:
+        # Mimics what the builder LLM actually emits — hyphenated ids
+        # everywhere, in node.id, edge.source/target, value_selector, and
+        # ``{{#…#}}`` placeholders.
+        return json.dumps(
+            {
+                "nodes": [
+                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "start", "title": "Start",
+                              "variables": [{"variable": "text", "label": "Text",
+                                             "type": "paragraph", "required": True,
+                                             "max_length": 4096, "options": []}]}},
+                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "llm", "title": "Translate",
+                              "prompt_template": [
+                                  {"role": "user", "text": "Translate {{#node-1.text#}} to en, es, fr, de."},
+                              ]}},
+                    {"id": "node-3", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "end", "title": "End",
+                              "outputs": [{"variable": "result",
+                                           "value_selector": ["node-2", "text"]}]}},
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
+                    {"id": "e2", "source": "node-2", "target": "node-3", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def test_strips_hyphens_from_every_node_id(self):
+        # After postprocess, no node id and no cross-reference should
+        # contain a hyphen — anything that did would fail at run time.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner()),
+            _llm_result(self._hyphenated_builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Translate text",
+        )
+
+        # Node ids re-mapped.
+        ids = [n["id"] for n in result["graph"]["nodes"]]
+        assert ids == ["node1", "node2", "node3"]
+        # Edge endpoints follow the rename.
+        edge_endpoints = [(e["source"], e["target"]) for e in result["graph"]["edges"]]
+        assert ("node1", "node2") in edge_endpoints
+        assert ("node2", "node3") in edge_endpoints
+
+    def test_rewrites_placeholder_string_when_id_is_remapped(self):
+        # The whole reason for the remap — placeholders in prompt_template
+        # must use the new id, otherwise the LLM at run time receives the
+        # unsubstituted literal.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner()),
+            _llm_result(self._hyphenated_builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Translate text",
+        )
+
+        llm_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "llm")
+        user_text = next(
+            p["text"] for p in llm_node["data"]["prompt_template"] if p["role"] == "user"
+        )
+        # Old form is gone; new form is in.
+        assert "{{#node-1.text#}}" not in user_text
+        assert "{{#node1.text#}}" in user_text
+
+    def test_rewrites_value_selector_lists(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner()),
+            _llm_result(self._hyphenated_builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Translate text",
+        )
+
+        end_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "end")
+        selector = end_node["data"]["outputs"][0]["value_selector"]
+        assert selector == ["node2", "text"]
+
+    def test_leaves_already_clean_ids_untouched(self):
+        # When the builder did the right thing the first time, the remap
+        # should be a no-op — no spurious churn, no surprising rewrites.
+        model_instance = MagicMock()
+        clean_builder = self._hyphenated_builder().replace("node-", "node")
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner()),
+            _llm_result(clean_builder),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        # No "node-" anywhere in the final graph.
+        graph_blob = json.dumps(result["graph"])
+        assert "node-" not in graph_blob
+
+    def test_walker_does_not_match_hyphenated_placeholders(self):
+        # The walker regex now mirrors Dify's run-time regex exactly, so a
+        # hyphenated placeholder ``{{#node-1.url#}}`` no longer counts as a
+        # detected reference. (The hyphen-strip pass runs first, so this
+        # case shouldn't arise in practice, but the contract matters.)
+        refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(
+            {"text": "Hyphenated: {{#node-1.url#}}. Clean: {{#node1.url#}}."}, refs
+        )
+        assert refs == {("node1", "url")}
