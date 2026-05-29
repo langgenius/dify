@@ -84,6 +84,8 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
 class SnippetPendingData(BaseModel):
     import_mode: str
     yaml_content: str
+    name: str | None = None
+    description: str | None = None
     snippet_id: str | None
 
 
@@ -255,6 +257,8 @@ class SnippetDslService:
                 pending_data = SnippetPendingData(
                     import_mode=import_mode,
                     yaml_content=content,
+                    name=name,
+                    description=description,
                     snippet_id=snippet_id,
                 )
                 redis_client.setex(
@@ -333,12 +337,37 @@ class SnippetDslService:
             pending_data_str = pending_data.decode("utf-8") if isinstance(pending_data, bytes) else pending_data
             pending = SnippetPendingData.model_validate_json(pending_data_str)
 
-            # Re-import with the pending data
-            return self.import_snippet(
+            data = yaml.safe_load(pending.yaml_content)
+            if not isinstance(data, dict):
+                return SnippetImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Invalid YAML format: expected a dictionary",
+                )
+
+            snippet = None
+            if pending.snippet_id:
+                stmt = select(CustomizedSnippet).where(
+                    CustomizedSnippet.id == pending.snippet_id,
+                    CustomizedSnippet.tenant_id == account.current_tenant_id,
+                )
+                snippet = self._session.scalar(stmt)
+
+            snippet = self._create_or_update_snippet(
+                snippet=snippet,
+                data=data,
                 account=account,
-                import_mode=pending.import_mode,
-                yaml_content=pending.yaml_content,
-                snippet_id=pending.snippet_id,
+                name=pending.name,
+                description=pending.description,
+            )
+
+            redis_client.delete(redis_key)
+
+            return SnippetImportInfo(
+                id=import_id,
+                status=ImportStatus.COMPLETED,
+                snippet_id=snippet.id,
+                imported_dsl_version=data.get("version", "0.1.0"),
             )
 
         except Exception as e:
