@@ -278,7 +278,9 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByText('common.environment.testing')).toBeInTheDocument()
+    const environmentTag = screen.getByText('common.environment.testing')
+    expect(environmentTag).toBeInTheDocument()
+    expect(environmentTag.closest('.relative.z-30')).toHaveClass('mt-auto', 'shrink-0')
   })
 
   it('does not reserve environment tag space when the environment is not shown', () => {
@@ -597,6 +599,8 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.search' })).not.toBeInTheDocument()
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
   })
