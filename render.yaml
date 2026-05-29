@@ -200,6 +200,6 @@ services:
 databases:
   # PostgreSQL Database (supports pgvector)
   - name: dify-db
-    plan: starter
+    plan: basic-256mb
     postgresMajorVersion: 15
     ipAllowList: []
