@@ -1,17 +1,18 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '../../../sys/io/streams.js'
 import { runCreateMember } from './run.js'
 
-function bundle(): HostsBundle {
+function active(): ActiveContext {
   return {
-    current_host: 'cloud.dify.ai',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 'inviter@example.com', name: 'Inviter' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+    host: 'cloud.dify.ai',
+    email: 'inviter@example.com',
+    ctx: {
+      account: { id: 'acct-1', email: 'inviter@example.com', name: 'Inviter' },
+      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+      available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+    },
   }
 }
 
@@ -35,7 +36,7 @@ describe('runCreateMember', () => {
     const result = await runCreateMember(
       { email: 'new@example.com', role: 'normal' },
       {
-        bundle: bundle(),
+        active: active(),
         http: {} as KyInstance,
         io: bufferStreams(),
         membersFactory: () => client as never,
@@ -60,7 +61,7 @@ describe('runCreateMember', () => {
       runCreateMember(
         { email: 'new@example.com', role: 'owner' },
         {
-          bundle: bundle(),
+          active: active(),
           http: {} as KyInstance,
           io: bufferStreams(),
           membersFactory: () => client as never,
@@ -76,7 +77,7 @@ describe('runCreateMember', () => {
       runCreateMember(
         { email: '', role: 'normal' },
         {
-          bundle: bundle(),
+          active: active(),
           http: {} as KyInstance,
           io: bufferStreams(),
           membersFactory: () => client as never,
@@ -91,7 +92,7 @@ describe('runCreateMember', () => {
     await runCreateMember(
       { email: 'new@example.com', role: 'admin', workspace: 'ws-9' },
       {
-        bundle: bundle(),
+        active: active(),
         http: {} as KyInstance,
         io: bufferStreams(),
         membersFactory: () => client as never,

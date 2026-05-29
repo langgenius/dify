@@ -1,5 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import type { AppInfoCache } from '../../../cache/app-info.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import { AppMetaClient } from '../../../api/app-meta.js'
@@ -19,7 +19,7 @@ export type DescribeAppOptions = {
 }
 
 export type DescribeAppDeps = {
-  readonly bundle: HostsBundle
+  readonly active: ActiveContext
   readonly http: KyInstance
   readonly host: string
   readonly io?: IOStreams
@@ -29,7 +29,7 @@ export type DescribeAppDeps = {
 
 export async function runDescribeApp(opts: DescribeAppOptions, deps: DescribeAppDeps): Promise<AppDescribeOutput> {
   const env = deps.envLookup ?? getEnv
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
+  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
   const io = deps.io ?? nullStreams()

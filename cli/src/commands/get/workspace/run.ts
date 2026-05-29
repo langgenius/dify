@@ -1,5 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import { WorkspacesClient } from '../../../api/workspaces.js'
 import { runWithSpinner } from '../../../sys/io/spinner.js'
@@ -14,7 +14,7 @@ export type GetWorkspaceOptions = {
 }
 
 export type GetWorkspaceDeps = {
-  readonly bundle: HostsBundle
+  readonly active: ActiveContext
   readonly http: KyInstance
   readonly io?: IOStreams
   readonly workspacesFactory?: (http: KyInstance) => WorkspacesClient
@@ -33,7 +33,7 @@ export async function runGetWorkspace(opts: GetWorkspaceOptions, deps: GetWorksp
   )
   if (env.workspaces.length === 0)
     return { kind: 'empty', message: EMPTY_WORKSPACES_MESSAGE }
-  const currentId = deps.bundle.workspace?.id ?? ''
+  const currentId = deps.active.ctx.workspace?.id ?? ''
   return {
     kind: 'output',
     data: new WorkspaceListOutput(env.workspaces.map(w => new WorkspaceRow(

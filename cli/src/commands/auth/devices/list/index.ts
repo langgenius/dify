@@ -25,7 +25,7 @@ export default class DevicesList extends DifyCommand {
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     await runDevicesList({
       io: ctx.io,
-      bundle: ctx.bundle,
+      tokenId: ctx.active.ctx.token_id ?? '',
       http: ctx.http,
       json: flags.json,
       page: flags.page,

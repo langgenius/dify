@@ -1,4 +1,4 @@
-import { loadHosts } from '../../../auth/hosts.js'
+import { Registry } from '../../../auth/hosts.js'
 import { Flags } from '../../../framework/flags.js'
 import { realStreams } from '../../../sys/io/streams'
 import { DifyCommand } from '../../_shared/dify-command.js'
@@ -20,7 +20,7 @@ export default class Status extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     const { flags } = this.parse(Status, argv)
-    const bundle = loadHosts()
-    await runStatus({ io: realStreams(), bundle, verbose: flags.verbose, json: flags.json })
+    const reg = Registry.load()
+    await runStatus({ io: realStreams(), reg, verbose: flags.verbose, json: flags.json })
   }
 }

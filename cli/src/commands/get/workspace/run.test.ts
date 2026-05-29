@@ -1,5 +1,5 @@
 import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
 import { stringifyOutput, table } from '../../../framework/output.js'
@@ -7,17 +7,18 @@ import { createClient } from '../../../http/client.js'
 import { WorkspaceListOutput } from './handlers.js'
 import { EMPTY_WORKSPACES_MESSAGE, runGetWorkspace } from './run.js'
 
-const baseBundle: HostsBundle = {
-  current_host: '127.0.0.1',
+const baseActive: ActiveContext = {
+  host: '127.0.0.1',
+  email: 'tester@dify.ai',
+  ctx: {
+    account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
+    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+    available_workspaces: [
+      { id: 'ws-1', name: 'Default', role: 'owner' },
+      { id: 'ws-2', name: 'Other', role: 'normal' },
+    ],
+  },
   scheme: 'http',
-  account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-  workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-  available_workspaces: [
-    { id: 'ws-1', name: 'Default', role: 'owner' },
-    { id: 'ws-2', name: 'Other', role: 'normal' },
-  ],
-  token_storage: 'file',
-  tokens: { bearer: 'dfoa_test' },
 }
 
 describe('runGetWorkspace', () => {
@@ -35,8 +36,8 @@ describe('runGetWorkspace', () => {
     return createClient({ host: mock.url, bearer: 'dfoa_test' })
   }
 
-  async function render(format = '', bundle = baseBundle): Promise<string> {
-    const result = await runGetWorkspace({ format }, { bundle, http: http() })
+  async function render(format = '', activeCtx = baseActive): Promise<string> {
+    const result = await runGetWorkspace({ format }, { active: activeCtx, http: http() })
     if (result.kind === 'empty')
       return result.message
     return stringifyOutput(table({
@@ -75,8 +76,8 @@ describe('runGetWorkspace', () => {
     }
   })
 
-  it('falls back to bundle workspace.id when server current=false', async () => {
-    const overridden: HostsBundle = { ...baseBundle, workspace: { id: 'ws-2', name: 'Other', role: 'normal' } }
+  it('falls back to active context workspace.id when server current=false', async () => {
+    const overridden: ActiveContext = { ...baseActive, ctx: { ...baseActive.ctx, workspace: { id: 'ws-2', name: 'Other', role: 'normal' } } }
     const out = await render('', overridden)
     for (const line of out.split('\n')) {
       if (line.includes('ws-2'))

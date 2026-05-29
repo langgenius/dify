@@ -1,5 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../sys/io/streams.js'
 import { MembersClient } from '../../../api/members.js'
 import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
@@ -16,7 +16,7 @@ export type GetMemberOptions = {
 }
 
 export type GetMemberDeps = {
-  readonly bundle: HostsBundle
+  readonly active: ActiveContext
   readonly http: KyInstance
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
@@ -39,7 +39,7 @@ export async function runGetMember(
   const wsId = resolveWorkspaceId({
     flag: opts.workspace,
     env: env('DIFY_WORKSPACE_ID'),
-    bundle: deps.bundle,
+    active: deps.active,
   })
 
   const limit = resolveLimit(opts.limitRaw, env)
@@ -50,7 +50,7 @@ export async function runGetMember(
     () => factory(deps.http).list(wsId, { page, limit }),
   )
 
-  const callerId = deps.bundle.account?.id ?? ''
+  const callerId = deps.active.ctx.account?.id ?? ''
   const rows = envelope.data.map(m => new MemberRow(m, callerId !== '' && m.id === callerId))
   return { data: new MemberListOutput(rows, envelope), workspaceId: wsId }
 }

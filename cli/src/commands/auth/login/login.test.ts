@@ -59,7 +59,7 @@ describe('runLogin', () => {
   it('happy: stores bearer + writes hosts.yml + greets account user', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const bundle = await runLogin({
+    const reg = await runLogin({
       io,
       host: mock.url,
       noBrowser: true,
@@ -70,16 +70,17 @@ describe('runLogin', () => {
       clock: noopClock,
       browserOpener: noopBrowser,
     })
-    expect(bundle.tokens?.bearer).toBe('dfoa_test')
-    expect(bundle.account?.email).toBe('tester@dify.ai')
-    expect(bundle.workspace?.id).toBe('ws-1')
-    expect(bundle.available_workspaces).toHaveLength(2)
-    const stored = store.get(tokenKey(bundle.current_host, 'acct-1'))
-    expect(stored).toBe('dfoa_test')
+    const active = reg.resolveActive()
+    expect(active?.ctx.account.email).toBe('tester@dify.ai')
+    expect(active?.ctx.workspace?.id).toBe('ws-1')
+    expect(active?.ctx.available_workspaces).toHaveLength(2)
+    expect(store.get(tokenKey(active!.host, 'tester@dify.ai'))).toBe('dfoa_test')
 
     const hostsRaw = await readFile(join(configDir, 'hosts.yml'), 'utf8')
     expect(hostsRaw).toContain('current_host:')
     expect(hostsRaw).toContain('tester@dify.ai')
+    expect(hostsRaw).not.toContain('dfoa_test')
+    expect(hostsRaw).not.toContain('bearer')
 
     expect(io.outBuf()).toContain('Logged in to')
     expect(io.outBuf()).toContain('tester@dify.ai')
@@ -91,7 +92,7 @@ describe('runLogin', () => {
     mock.setScenario('sso')
     const io = bufferStreams()
     const store = new MemStore()
-    const bundle = await runLogin({
+    const reg = await runLogin({
       io,
       host: mock.url,
       noBrowser: true,
@@ -102,10 +103,11 @@ describe('runLogin', () => {
       clock: noopClock,
       browserOpener: noopBrowser,
     })
-    expect(bundle.tokens?.bearer).toBe('dfoe_test')
-    expect(bundle.account).toBeUndefined()
-    expect(bundle.external_subject?.email).toBe('sso@dify.ai')
-    expect(bundle.external_subject?.issuer).toBe('https://issuer.example')
+    const active = reg.resolveActive()
+    expect(active?.ctx.external_subject?.email).toBe('sso@dify.ai')
+    expect(active?.ctx.external_subject?.issuer).toBe('https://issuer.example')
+    expect(active?.ctx.account.email).toBe('')
+    expect(store.get(tokenKey(active!.host, 'sso@dify.ai'))).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })
@@ -144,6 +146,24 @@ describe('runLogin', () => {
       clock: noopClock,
       browserOpener: noopBrowser,
     })).rejects.toThrow(/expired/)
+  })
+
+  it('rejects login when the account has no email', async () => {
+    mock.setScenario('no-email')
+    const io = bufferStreams()
+    const store = new MemStore()
+    await expect(runLogin({
+      io,
+      host: mock.url,
+      noBrowser: true,
+      insecure: true,
+      deviceLabel: 'difyctl on test',
+      api: new DeviceFlowApi(createClient({ host: mock.url })),
+      store: { store, mode: 'file' },
+      clock: noopClock,
+      browserOpener: noopBrowser,
+    })).rejects.toThrow(/no email/i)
+    expect(store.entries.size).toBe(0)
   })
 
   it('rejects http:// host without --insecure', async () => {

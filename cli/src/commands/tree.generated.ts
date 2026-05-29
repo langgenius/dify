@@ -26,6 +26,8 @@ import HelpExternal from './help/external/index.js'
 import ResumeApp from './resume/app/index.js'
 import RunApp from './run/app/index.js'
 import SetMember from './set/member/index.js'
+import UseAccount from './use/account/index.js'
+import UseHost from './use/host/index.js'
 import UseWorkspace from './use/workspace/index.js'
 import Version from './version/index.js'
 
@@ -104,6 +106,8 @@ export const commandTree: CommandTree = {
   },
   use: {
     subcommands: {
+      account: { command: UseAccount, subcommands: {} },
+      host: { command: UseHost, subcommands: {} },
       workspace: { command: UseWorkspace, subcommands: {} },
     },
   },

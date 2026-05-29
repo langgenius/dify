@@ -1,5 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../sys/io/streams.js'
 import * as readline from 'node:readline'
 import { MembersClient } from '../../../api/members.js'
@@ -19,7 +19,7 @@ export type DeleteMemberOptions = {
 }
 
 export type DeleteMemberDeps = {
-  readonly bundle: HostsBundle
+  readonly active: ActiveContext
   readonly http: KyInstance
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
@@ -51,7 +51,7 @@ export async function runDeleteMember(
   const wsId = resolveWorkspaceId({
     flag: opts.workspace,
     env: env('DIFY_WORKSPACE_ID'),
-    bundle: deps.bundle,
+    active: deps.active,
   })
 
   if (!opts.yes && io.isErrTTY) {

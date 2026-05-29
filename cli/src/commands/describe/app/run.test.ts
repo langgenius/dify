@@ -1,5 +1,5 @@
 import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { ActiveContext } from '../../../auth/hosts.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,17 +12,18 @@ import { ENV_CACHE_DIR } from '../../../store/dir.js'
 import { CACHE_APP_INFO, getCache } from '../../../store/manager.js'
 import { runDescribeApp } from './run.js'
 
-function bundle(): HostsBundle {
+function active(): ActiveContext {
   return {
-    current_host: 'http://localhost',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
-    ],
+    host: 'http://localhost',
+    email: 't@d.ai',
+    ctx: {
+      account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
+      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+      available_workspaces: [
+        { id: 'ws-1', name: 'Default', role: 'owner' },
+        { id: 'ws-2', name: 'Other', role: 'normal' },
+      ],
+    },
   }
 }
 
@@ -49,7 +50,7 @@ describe('runDescribeApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     const data = await runDescribeApp(
       opts,
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { active: active(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
     )
     return stringifyOutput(formatted({ format: opts.format ?? '', data }))
   }
@@ -92,13 +93,13 @@ describe('runDescribeApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runDescribeApp(
       { appId: 'app-1' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { active: active(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
     )
     const before = cache.get(mock.url, 'app-1')
     expect(before).toBeDefined()
     await runDescribeApp(
       { appId: 'app-1', refresh: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { active: active(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
     )
     const after = cache.get(mock.url, 'app-1')
     expect(after?.fetchedAt).not.toBe(before?.fetchedAt ?? '')
@@ -112,7 +113,7 @@ describe('runDescribeApp', () => {
     await expect(runDescribeApp(
       { appId: 'nope' },
       {
-        bundle: bundle(),
+        active: active(),
         http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }),
         host: mock.url,
       },

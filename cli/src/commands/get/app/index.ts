@@ -59,7 +59,7 @@ export default class GetApp extends DifyCommand {
       name: flags.name,
       tag: flags.tag,
       format,
-    }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
+    }, { active: ctx.active, http: ctx.http, io: ctx.io })
     return table({
       format,
       data: result.data,
