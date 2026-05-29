@@ -560,9 +560,7 @@ class WorkflowGenerator:
         return False
 
     @classmethod
-    def _strip_hyphens_from_node_ids(
-        cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
-    ) -> None:
+    def _strip_hyphens_from_node_ids(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
         """
         Strip ``-`` out of every node id and rewrite every cross-reference.
 
@@ -630,17 +628,10 @@ class WorkflowGenerator:
                             value[k] = v.replace(old, new)
                             v = value[k]
                 if isinstance(v, str):
-                    rewritten = cls._LENIENT_VAR_REF_RE.sub(
-                        lambda m: cls._rewrite_var_ref(m, id_map), v
-                    )
+                    rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), v)
                     if rewritten != v:
                         value[k] = rewritten
-                elif (
-                    isinstance(v, list)
-                    and len(v) == 2
-                    and all(isinstance(x, str) for x in v)
-                    and v[0] in id_map
-                ):
+                elif isinstance(v, list) and len(v) == 2 and all(isinstance(x, str) for x in v) and v[0] in id_map:
                     # 2-element ``["node-id", "var"]`` selector list.
                     value[k] = [id_map[v[0]], v[1]]
                 else:

@@ -1318,20 +1318,47 @@ class TestWorkflowGeneratorNodeIdHyphens:
         return json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "start", "title": "Start",
-                              "variables": [{"variable": "text", "label": "Text",
-                                             "type": "paragraph", "required": True,
-                                             "max_length": 4096, "options": []}]}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "llm", "title": "Translate",
-                              "prompt_template": [
-                                  {"role": "user", "text": "Translate {{#node-1.text#}} to en, es, fr, de."},
-                              ]}},
-                    {"id": "node-3", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "end", "title": "End",
-                              "outputs": [{"variable": "result",
-                                           "value_selector": ["node-2", "text"]}]}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [
+                                {
+                                    "variable": "text",
+                                    "label": "Text",
+                                    "type": "paragraph",
+                                    "required": True,
+                                    "max_length": 4096,
+                                    "options": [],
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "llm",
+                            "title": "Translate",
+                            "prompt_template": [
+                                {"role": "user", "text": "Translate {{#node-1.text#}} to en, es, fr, de."},
+                            ],
+                        },
+                    },
+                    {
+                        "id": "node-3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "result", "value_selector": ["node-2", "text"]}],
+                        },
+                    },
                 ],
                 "edges": [
                     {"id": "e1", "source": "node-1", "target": "node-2", "type": "custom"},
@@ -1389,9 +1416,7 @@ class TestWorkflowGeneratorNodeIdHyphens:
         )
 
         llm_node = next(n for n in result["graph"]["nodes"] if n["data"]["type"] == "llm")
-        user_text = next(
-            p["text"] for p in llm_node["data"]["prompt_template"] if p["role"] == "user"
-        )
+        user_text = next(p["text"] for p in llm_node["data"]["prompt_template"] if p["role"] == "user")
         # Old form is gone; new form is in.
         assert "{{#node-1.text#}}" not in user_text
         assert "{{#node1.text#}}" in user_text
@@ -1447,7 +1472,5 @@ class TestWorkflowGeneratorNodeIdHyphens:
         # detected reference. (The hyphen-strip pass runs first, so this
         # case shouldn't arise in practice, but the contract matters.)
         refs: set[tuple[str, str]] = set()
-        WorkflowGenerator._collect_refs_in_data(
-            {"text": "Hyphenated: {{#node-1.url#}}. Clean: {{#node1.url#}}."}, refs
-        )
+        WorkflowGenerator._collect_refs_in_data({"text": "Hyphenated: {{#node-1.url#}}. Clean: {{#node1.url#}}."}, refs)
         assert refs == {("node1", "url")}
