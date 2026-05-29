@@ -77,6 +77,16 @@ export type GenerateWorkflowResponse = {
     viewport: Viewport
   }
   message?: string
+  /**
+   * Planner-picked product-style name (e.g. "URL Summarizer"). Empty when
+   * the planner omits it; the caller (applyToNewApp) supplies a fallback.
+   */
+  app_name?: string
+  /**
+   * Planner-picked emoji that captures the workflow's purpose. Empty when
+   * the planner omits it; the caller supplies a 🤖 fallback.
+   */
+  icon?: string
   error?: string
 }
 

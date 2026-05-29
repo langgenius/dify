@@ -84,6 +84,42 @@ describe('applyToNewApp', () => {
 
     expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Generated Workflow' }))
   })
+
+  // When the planner picks a name + emoji, those win over the
+  // instruction-derived fallback so users see a real product name in the
+  // apps list (e.g. "URL Summarizer" + 📰 instead of "Summarize a URL" + 🤖).
+  it('should prefer planner-supplied app_name and icon over the fallbacks', async () => {
+    await applyToNewApp({
+      mode: 'workflow',
+      graph: makeGraph(),
+      instruction: 'Summarize a URL',
+      appName: 'URL Summarizer',
+      icon: '📰',
+    })
+
+    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'URL Summarizer',
+      icon: '📰',
+    }))
+  })
+
+  // When the planner returns whitespace-only values (older prompts / model
+  // drift), the fallbacks must kick in so we never POST an empty string to
+  // createApp.
+  it('should fall back when planner-supplied app_name / icon are blank', async () => {
+    await applyToNewApp({
+      mode: 'workflow',
+      graph: makeGraph(),
+      instruction: 'Summarize a URL',
+      appName: '   ',
+      icon: '',
+    })
+
+    expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Summarize a URL',
+      icon: '🤖',
+    }))
+  })
 })
 
 describe('applyToCurrentApp', () => {

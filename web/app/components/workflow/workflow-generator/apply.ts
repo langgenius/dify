@@ -19,6 +19,17 @@ type ApplyToNewAppParams = {
   mode: WorkflowGeneratorMode
   graph: GeneratedGraph
   instruction: string
+  /**
+   * Planner-picked product-style name (e.g. "URL Summarizer"). When empty,
+   * we fall back to ``deriveAppName(instruction)`` so the apps list never
+   * shows an empty title.
+   */
+  appName?: string
+  /**
+   * Planner-picked emoji (e.g. "📰"). When empty, we fall back to 🤖
+   * which is the historical default.
+   */
+  icon?: string
 }
 
 /**
@@ -30,13 +41,17 @@ export const applyToNewApp = async ({
   mode,
   graph,
   instruction,
+  appName,
+  icon,
 }: ApplyToNewAppParams): Promise<{ appId: string, appMode: AppModeEnum }> => {
   const appMode = MODE_TO_APP_MODE[mode]
+  const name = (appName ?? '').trim() || deriveAppName(instruction)
+  const appIcon = (icon ?? '').trim() || '🤖'
   const app = await createApp({
-    name: deriveAppName(instruction),
+    name,
     mode: appMode,
     icon_type: 'emoji',
-    icon: '🤖',
+    icon: appIcon,
     icon_background: '#FFEAD5',
     description: instruction.trim().slice(0, 200),
   })

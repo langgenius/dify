@@ -183,6 +183,8 @@ const WorkflowGeneratorModal: React.FC = () => {
         mode,
         graph: current.graph as GeneratedGraph,
         instruction,
+        appName: current.app_name,
+        icon: current.icon,
       })
       toast.success(t('workflowGenerator.applied'))
       closeGenerator()
