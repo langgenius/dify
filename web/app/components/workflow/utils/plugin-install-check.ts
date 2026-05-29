@@ -2,7 +2,8 @@ import type { TriggerWithProvider } from '../block-selector/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
-import type { CommonNodeType, ToolWithProvider } from '../types'
+import type { CommonNodeType, Node, ToolWithProvider } from '../types'
+import type { Dependency } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
 import { BlockEnum } from '../types'
@@ -59,6 +60,23 @@ type PluginInstallCheckContext = {
   dataSourceList?: ToolWithProvider[]
 }
 
+export function getVersionFromMarketplaceIdentifier(identifier: string): string | undefined {
+  const withoutHash = identifier.split('@')[0]
+  const [, version] = withoutHash!.split(':')
+  return version || undefined
+}
+
+export function createMarketplaceDependencyFromIdentifier(identifier: string): Dependency {
+  return {
+    type: 'marketplace',
+    value: {
+      marketplace_plugin_unique_identifier: identifier,
+      plugin_unique_identifier: identifier,
+      version: getVersionFromMarketplaceIdentifier(identifier),
+    },
+  }
+}
+
 export function isNodePluginMissing(
   data: CommonNodeType,
   context: PluginInstallCheckContext,
@@ -92,4 +110,22 @@ export function isNodePluginMissing(
     default:
       return false
   }
+}
+
+export function getMissingPluginDependenciesFromNodes(
+  nodes: Node[],
+  context: PluginInstallCheckContext,
+): Dependency[] {
+  const identifiers = new Set<string>()
+
+  nodes.forEach((node) => {
+    if (!isNodePluginMissing(node.data, context))
+      return
+
+    const identifier = (node.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
+    if (identifier)
+      identifiers.add(identifier)
+  })
+
+  return Array.from(identifiers).map(createMarketplaceDependencyFromIdentifier)
 }
