@@ -178,27 +178,14 @@ class SnippetService:
         Create a new snippet.
 
         :param tenant_id: Tenant ID
-        :param name: Snippet name (must be unique per tenant)
+        :param name: Snippet name
         :param description: Snippet description
         :param snippet_type: Type of snippet (node or group)
         :param icon_info: Icon information
         :param input_fields: Input field definitions
         :param account: Creator account
         :return: Created CustomizedSnippet
-        :raises ValueError: If name already exists
         """
-        # Check if name already exists for this tenant
-        existing = (
-            db.session.query(CustomizedSnippet)
-            .where(
-                CustomizedSnippet.tenant_id == tenant_id,
-                CustomizedSnippet.name == name,
-            )
-            .first()
-        )
-        if existing:
-            raise ValueError(f"Snippet with name '{name}' already exists")
-
         snippet = CustomizedSnippet(
             tenant_id=tenant_id,
             name=name,
@@ -232,18 +219,6 @@ class SnippetService:
         :return: Updated CustomizedSnippet
         """
         if "name" in data:
-            # Check if new name already exists for this tenant
-            existing = (
-                session.query(CustomizedSnippet)
-                .where(
-                    CustomizedSnippet.tenant_id == snippet.tenant_id,
-                    CustomizedSnippet.name == data["name"],
-                    CustomizedSnippet.id != snippet.id,
-                )
-                .first()
-            )
-            if existing:
-                raise ValueError(f"Snippet with name '{data['name']}' already exists")
             snippet.name = data["name"]
 
         if "description" in data:

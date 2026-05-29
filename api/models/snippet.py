@@ -35,7 +35,6 @@ class CustomizedSnippet(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="customized_snippet_pkey"),
         sa.Index("customized_snippet_tenant_idx", "tenant_id"),
-        sa.UniqueConstraint("tenant_id", "name", name="customized_snippet_tenant_name_key"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))

@@ -53,6 +53,7 @@ def _normalize_snippet_list_query_args(query_args: MultiDict[str, str]) -> dict[
 
     return normalized
 
+
 # Register Pydantic models with Swagger
 register_schema_models(
     console_ns,
@@ -104,7 +105,7 @@ class CustomizedSnippetsApi(Resource):
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
     @console_ns.response(201, "Snippet created successfully", snippet_model)
-    @console_ns.response(400, "Invalid request or name already exists")
+    @console_ns.response(400, "Invalid request")
     @setup_required
     @login_required
     @account_initialization_required
@@ -161,7 +162,7 @@ class CustomizedSnippetDetailApi(Resource):
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
     @console_ns.response(200, "Snippet updated successfully", snippet_model)
-    @console_ns.response(400, "Invalid request or name already exists")
+    @console_ns.response(400, "Invalid request")
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
