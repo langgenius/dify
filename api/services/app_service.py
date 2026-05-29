@@ -258,9 +258,7 @@ class AppService:
             # webapp /parameters endpoint and the chat pipeline. agent_mode is
             # left unset so App.is_agent stays False (this is the new Agent App
             # type, not a legacy function-call/react agent).
-            agent_app_model_config = AppModelConfig(
-                app_id=app.id, created_by=account.id, updated_by=account.id
-            )
+            agent_app_model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
             db.session.add(agent_app_model_config)
             db.session.flush()
 
