@@ -294,7 +294,7 @@
   "deployTab.cancelDeployment": "Cancel deployment",
   "deployTab.closeError": "Close",
   "deployTab.col.actions": "Actions",
-  "deployTab.col.currentRelease": "Current Version",
+  "deployTab.col.currentRelease": "Current Release",
   "deployTab.col.environment": "Environment",
   "deployTab.col.status": "Status",
   "deployTab.col.updated": "Updated",

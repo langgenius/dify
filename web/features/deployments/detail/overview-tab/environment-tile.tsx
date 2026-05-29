@@ -45,6 +45,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
   const currentReleaseId = row.currentRelease?.id
   const config = resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseId })
   const isDisabled = config.intent === 'disabled'
+  const showStatusSignal = config.kind !== 'deploying'
   const release = row.currentRelease
   const showRelease = config.showRelease && Boolean(release?.id)
   const commit = releaseCommit(release)
@@ -95,7 +96,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <RuntimeStatusSignal status={status} t={t} />
-          <StatusSignal config={config} drift={drift} t={t} />
+          {showStatusSignal && <StatusSignal config={config} drift={drift} t={t} />}
         </div>
       </div>
 
