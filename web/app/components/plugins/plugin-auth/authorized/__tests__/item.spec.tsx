@@ -1,6 +1,15 @@
 import type { Credential } from '../../types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Item uses useAppContextWithSelector(state => state.userProfile) for the
+// borrowed-row heuristic; provide a minimal mock so the selector resolves.
+const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
+    selector({ userProfile: mockUserProfile }),
+}))
+
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
 
@@ -56,21 +65,14 @@ describe('Item Component', () => {
       expect(screen.getByText('plugin.auth.enterprise')).toBeInTheDocument()
     })
 
-    it('should render personal badge when visibility is only_me', () => {
+    it('should not render personal/shared badge — the Personal/Shared tag was removed per product feedback', () => {
       const credential = createCredential({ from_enterprise: false, visibility: 'only_me' })
 
       render(<Item credential={credential} />)
 
-      expect(screen.getByText('plugin.auth.personal')).toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.personal')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.shared')).not.toBeInTheDocument()
       expect(screen.queryByText('plugin.auth.enterprise')).not.toBeInTheDocument()
-    })
-
-    it('should render shared badge when visibility is not only_me', () => {
-      const credential = createCredential({ from_enterprise: false, visibility: 'all_team_members' })
-
-      render(<Item credential={credential} />)
-
-      expect(screen.getByText('plugin.auth.shared')).toBeInTheDocument()
     })
 
     it('should render selected icon when showSelectedIcon is true and credential is selected', () => {
@@ -355,9 +357,6 @@ describe('Item Component', () => {
         api_key: 'secret',
         __name__: 'Edit Test',
         __credential_id__: 'edit-test-id',
-        __visibility__: 'all_team_members',
-        __created_by__: '',
-        __partial_member_list__: [],
       })
     })
 

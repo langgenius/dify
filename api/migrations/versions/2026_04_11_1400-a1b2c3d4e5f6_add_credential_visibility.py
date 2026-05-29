@@ -1,7 +1,7 @@
 """add credential visibility and permission table
 
 Revision ID: a1b2c3d4e5f6
-Revises: 6b5f9f8b1a2c
+Revises: 7885bd53f9a9
 Create Date: 2026-04-11 14:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "a1b2c3d4e5f6"
-down_revision = "227822d22895"
+down_revision = "7885bd53f9a9"
 branch_labels = None
 depends_on = None
 

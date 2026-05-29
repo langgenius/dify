@@ -156,7 +156,6 @@ def test_builtin_provider_add_passes_payload(
         name="MyTool",
         api_type=controller_module.CredentialType.API_KEY,
         visibility=None,
-        partial_member_list=None,
     )
 
 
@@ -210,6 +209,7 @@ def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeyp
         provider_name="demo",
         user_id="user-tenant-cred",
         is_admin=False,
+        include_credential_ids=None,
     )
 
 
