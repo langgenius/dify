@@ -1598,6 +1598,11 @@
       "count": 1
     }
   },
+  "web/app/components/base/permission-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/base/prompt-editor/index.stories.tsx": {
     "no-console": {
       "count": 1

@@ -271,10 +271,6 @@ class ModelProviderModelCredentialApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
-        # The decorator gives us tenant_id; we still need the account for
-        # visibility filtering (user_id + is_admin) when listing available
-        # credentials for a predefined model.
-        user, _ = current_account_with_tenant()
         args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
@@ -296,6 +292,10 @@ class ModelProviderModelCredentialApi(Resource):
         )
 
         if args.config_from == "predefined-model":
+            # Only the predefined-model branch needs visibility filtering by user.
+            # Defer the auth lookup so the other branch (and its tests) doesn't
+            # require flask-login setup.
+            user, _ = current_account_with_tenant()
             available_credentials = model_provider_service.get_provider_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
