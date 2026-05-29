@@ -108,6 +108,12 @@ function EnvironmentChip({ row }: {
   const { t } = useTranslation('deployments')
   const name = environmentName(row.environment)
   const status = deploymentStatus(row)
+  const statusLabel = t(deploymentStatusLabelKey(status))
+  const tooltipSummary = [
+    name,
+    row.currentRelease?.id ? releaseLabel(row.currentRelease) : undefined,
+    statusLabel,
+  ].filter(Boolean).join(' · ')
   const quietReadyStatusClassName = status === 'ready'
     ? 'border-divider-subtle bg-background-section-burn text-text-secondary'
     : undefined
@@ -120,18 +126,7 @@ function EnvironmentChip({ row }: {
         )}
       />
       <TooltipContent>
-        <div className="flex min-w-40 flex-col gap-1">
-          <div className="flex justify-between gap-3">
-            <span className="truncate text-text-secondary">{name}</span>
-            <span className="shrink-0">{t(deploymentStatusLabelKey(status))}</span>
-          </div>
-          {row.currentRelease?.id && (
-            <div className="flex justify-between gap-3 text-text-tertiary">
-              <span>{t('card.tooltip.release')}</span>
-              <span className="font-mono">{releaseLabel(row.currentRelease)}</span>
-            </div>
-          )}
-        </div>
+        <span className="whitespace-nowrap text-text-secondary">{tooltipSummary}</span>
       </TooltipContent>
     </Tooltip>
   )
@@ -153,12 +148,18 @@ function EnvironmentOverflow({ rows }: {
       />
       <TooltipContent>
         <div className="flex min-w-40 flex-col gap-1">
-          {rows.map(row => (
-            <div key={row.environment?.id} className="flex justify-between gap-3">
-              <span className="truncate text-text-secondary">{environmentName(row.environment)}</span>
-              <span className="shrink-0">{t(deploymentStatusLabelKey(deploymentStatus(row)))}</span>
-            </div>
-          ))}
+          {rows.map((row) => {
+            const status = deploymentStatus(row)
+            const summary = [
+              environmentName(row.environment),
+              row.currentRelease?.id ? releaseLabel(row.currentRelease) : undefined,
+              t(deploymentStatusLabelKey(status)),
+            ].filter(Boolean).join(' · ')
+
+            return (
+              <span key={row.environment?.id} className="whitespace-nowrap text-text-secondary">{summary}</span>
+            )
+          })}
         </div>
       </TooltipContent>
     </Tooltip>

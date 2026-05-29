@@ -3,9 +3,10 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { environmentHealth, environmentMode, environmentName } from '../../environment'
-import { HealthBadge, ModeBadge } from '../status-badge'
+import { environmentBackend, environmentHealth, environmentMode, environmentName } from '../../environment'
+import { ModeBadge } from '../status-badge'
 
 type EnvironmentOption = Environment & {
   disabled?: boolean
@@ -80,15 +81,52 @@ export function DeploymentSelect({ value, onChange, options, placeholder }: Sele
   )
 }
 
-export function EnvironmentRow({ env }: { env: EnvironmentOption }) {
+function EnvironmentHealthDot({ health }: {
+  health: ReturnType<typeof environmentHealth>
+}) {
+  const { t } = useTranslation('deployments')
+  const label = t(health === 'ready' ? 'health.ready' : 'health.degraded')
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">
-      <div className="flex items-center gap-2">
-        <span className="system-sm-semibold text-text-primary">{environmentName(env)}</span>
-        <ModeBadge mode={environmentMode(env)} />
-        <HealthBadge health={environmentHealth(env)} />
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span
+            aria-label={label}
+            className={cn(
+              'flex size-4 shrink-0 items-center justify-center rounded-full',
+              health === 'ready' ? 'bg-util-colors-green-green-50' : 'bg-util-colors-warning-warning-50',
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-1.5 rounded-full',
+                health === 'ready' ? 'bg-util-colors-green-green-500' : 'bg-util-colors-warning-warning-500',
+              )}
+            />
+          </span>
+        )}
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export function EnvironmentRow({ env }: { env: EnvironmentOption }) {
+  const summary = env.description?.trim() || environmentBackend(env).toUpperCase()
+  const health = environmentHealth(env)
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <EnvironmentHealthDot health={health} />
+          <span className="truncate system-sm-semibold text-text-primary">{environmentName(env)}</span>
+          <ModeBadge mode={environmentMode(env)} />
+        </div>
+        <span className="line-clamp-1 system-xs-regular text-text-tertiary">{summary}</span>
       </div>
-      <span className="system-xs-regular text-text-tertiary uppercase">{environmentMode(env)}</span>
     </div>
   )
 }

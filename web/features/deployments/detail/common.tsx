@@ -57,6 +57,8 @@ export function DetailEmptyState({
   className,
 }: DetailEmptyStateProps) {
   const isList = variant === 'list'
+  const hasDescription = Boolean(description)
+  const hasAction = Boolean(action)
 
   return (
     <div
@@ -79,12 +81,12 @@ export function DetailEmptyState({
       <div className={cn(isList ? 'system-md-semibold text-text-primary' : 'system-sm-medium text-text-secondary')}>
         {title}
       </div>
-      {description && (
+      {hasDescription && (
         <p className={cn('mt-1 max-w-120 text-text-tertiary', isList ? 'system-sm-regular' : 'system-xs-regular')}>
           {description}
         </p>
       )}
-      {action && (
+      {hasAction && (
         <div className={isList ? 'mt-5' : 'mt-4'}>
           {action}
         </div>

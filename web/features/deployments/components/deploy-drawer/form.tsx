@@ -3,8 +3,10 @@
 import type {
   CredentialSlot,
   Environment,
+  EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarValues } from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -21,6 +23,14 @@ import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
+import {
+  EnvVarBindingsPanel,
+} from '../env-var-bindings'
+import {
+  hasEnvVarSlotKey,
+  hasMissingRequiredEnvVarValue,
+  selectedDeploymentEnvVars,
+} from '../env-var-bindings-utils'
 import {
   RuntimeCredentialBindingsPanel,
 } from '../runtime-credential-bindings'
@@ -61,6 +71,22 @@ type BindingOptionsPanelProps = {
   hasError: boolean
   bindingCountLabel: string
   onChange: (slot: string, value: string) => void
+}
+
+function environmentOptionLabel(env: EnvironmentOption, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
+  const description = env.description?.trim()
+  if (description)
+    return `${environmentName(env)} · ${description}`
+
+  return `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`
+}
+
+function requiredSlotEnvVarSlot(slot: NonNullable<Release['requiredSlots']>[number]): EnvVarSlot | undefined {
+  if (slot.type !== 'SLOT_TYPE_ENV_VAR')
+    return undefined
+
+  const key = slot.name?.trim()
+  return key ? { key } : undefined
 }
 
 function BindingOptionsPanel({
@@ -165,7 +191,8 @@ function DeployReadyForm({
     () => displayedRelease?.id ?? defaultReleaseId ?? '',
   )
   const selectedRelease = releases.find(release => release.id === selectedReleaseId)
-  const targetReleaseId = displayedRelease?.id ?? selectedRelease?.id ?? selectedReleaseId
+  const targetRelease = displayedRelease ?? selectedRelease
+  const targetReleaseId = targetRelease?.id ?? selectedReleaseId
   const hasSelectedEnvironment = Boolean(selectedEnvironmentId && selectedEnvironment)
   const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
     input: {
@@ -176,12 +203,18 @@ function DeployReadyForm({
     enabled: Boolean(appInstanceId && targetReleaseId && hasSelectedEnvironment),
   }))
   const bindingSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+  const envVarSlots = targetRelease?.requiredSlots
+    ?.map(requiredSlotEnvVarSlot)
+    .filter((slot): slot is EnvVarSlot => hasEnvVarSlotKey(slot)) ?? []
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
+  const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
   const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
   const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
+  const deploymentEnvVars = selectedDeploymentEnvVars(envVarSlots, envVarValues)
   const bindingOptionsLoading = Boolean(targetReleaseId && hasSelectedEnvironment && (bindingOptions.isLoading || bindingOptions.isFetching))
   const bindingOptionsReady = Boolean(targetReleaseId && hasSelectedEnvironment && bindingOptions.data && !bindingOptionsLoading && !bindingOptions.isError)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]))
+  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, envVarValues))
   const isSubmitting = startDeploy.isPending
   const canDeploy = Boolean(
     selectedEnvironmentId
@@ -189,6 +222,7 @@ function DeployReadyForm({
     && targetReleaseId
     && bindingOptionsReady
     && requiredBindingsReady
+    && requiredEnvVarsReady
     && !isSubmitting,
   )
 
@@ -213,6 +247,7 @@ function DeployReadyForm({
           environmentId: selectedEnvironmentId,
           releaseId: targetReleaseId,
           credentials: deploymentCredentials,
+          envVars: deploymentEnvVars.length > 0 ? deploymentEnvVars : undefined,
           idempotencyKey,
         },
       },
@@ -292,7 +327,7 @@ function DeployReadyForm({
                   onChange={setSelectedEnvId}
                   options={environments.filter(env => env.id).map(env => ({
                     value: env.id!,
-                    label: `${environmentName(env)} · ${t(environmentMode(env) === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(env).toUpperCase()}`,
+                    label: environmentOptionLabel(env, t),
                   }))}
                   placeholder={t('deployDrawer.selectEnv')}
                 />
@@ -300,14 +335,30 @@ function DeployReadyForm({
       </Field>
 
       {targetReleaseId && hasSelectedEnvironment && (
-        <BindingOptionsPanel
-          slots={bindingSlots}
-          selections={selectedBindings}
-          isLoading={bindingOptionsLoading}
-          hasError={bindingOptions.isError}
-          bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
-          onChange={(slot, value) => setManualBindings(prev => ({ ...prev, [slot]: value }))}
-        />
+        <>
+          <BindingOptionsPanel
+            slots={bindingSlots}
+            selections={selectedBindings}
+            isLoading={bindingOptionsLoading}
+            hasError={bindingOptions.isError}
+            bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
+            onChange={(slot, value) => setManualBindings(prev => ({ ...prev, [slot]: value }))}
+          />
+          {!bindingOptionsLoading && !bindingOptions.isError && (
+            <EnvVarBindingsPanel
+              slots={envVarSlots}
+              values={envVarValues}
+              title={t('deployDrawer.envVars')}
+              hint={t('deployDrawer.envVarHint')}
+              requiredLabel={t('deployDrawer.requiredBinding')}
+              envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
+              envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
+              missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
+              showMissingRequired
+              onChange={(key, value) => setEnvVarValues(prev => ({ ...prev, [key]: value }))}
+            />
+          )}
+        </>
       )}
 
       <div className="flex justify-end gap-2 pt-4">

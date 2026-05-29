@@ -72,6 +72,31 @@ export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { pa
 const APP_DEPLOY_SOURCE_APPS_PAGE_SIZE = 100
 const APP_DEPLOY_READINESS_RETRY_DELAYS = [0, 300, 700, 1200]
 
+function getRequestPathname(url: string) {
+  try {
+    return new URL(url, 'http://localhost').pathname
+  }
+  catch {
+    return url
+  }
+}
+
+function shouldUseLocalDeploymentErrorToast(url: string, method?: string) {
+  const pathname = getRequestPathname(url)
+  const normalizedMethod = method?.toUpperCase()
+
+  return pathname.includes('/enterprise/app-deploy/initial-deployments/')
+    || (
+      normalizedMethod === 'POST'
+      && (
+        pathname.endsWith('/enterprise/app-deploy/app-instances')
+        || pathname.endsWith('/enterprise/app-deploy/releases/dsl')
+        || pathname.endsWith('/enterprise/app-deploy/releases/source-app')
+      )
+    )
+    || /\/enterprise\/app-deploy\/app-instances\/[^/]+\/environments\/[^/]+\/deploy$/.test(pathname)
+}
+
 const consoleLink = new OpenAPILink(consoleRouterContract, {
   url: getBaseURL(API_PREFIX),
   fetch: (input, init) => {
@@ -81,6 +106,7 @@ const consoleLink = new OpenAPILink(consoleRouterContract, {
       {
         fetchCompat: true,
         request: input,
+        silent: shouldUseLocalDeploymentErrorToast(input.url, input.method || init?.method),
       },
     )
   },

@@ -20,8 +20,9 @@ function MethodCard({ icon, title, description, badge, selected, onClick }: {
       className={cn(
         `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
-        text-left shadow-xs hover:shadow-md sm:w-[191px]`,
-        selected && 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid',
+        text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2
+        focus-visible:ring-state-accent-solid sm:w-[240px]`,
+        selected && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-md ring-[0.5px] ring-components-option-card-option-selected-border ring-inset',
       )}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-background-default-subtle">

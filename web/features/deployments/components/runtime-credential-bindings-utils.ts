@@ -1,4 +1,5 @@
 import type {
+  CredentialCandidate,
   CredentialSelectionInput,
   CredentialSlot,
 } from '@dify/contracts/enterprise/types.gen'
@@ -10,8 +11,60 @@ export type RuntimeCredentialSelectOption = {
   label: string
 }
 
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  azure_openai: 'Azure OpenAI',
+  bedrock: 'Amazon Bedrock',
+  gemini: 'Gemini',
+  google: 'Google',
+  openai: 'OpenAI',
+  vertex_ai: 'Vertex AI',
+  volcengine_maas: 'Volcengine',
+}
+
+function providerSlug(providerId?: string) {
+  const parts = providerId?.split('/').filter(Boolean) ?? []
+  return parts[parts.length - 1] ?? ''
+}
+
+function titleCaseProviderName(value: string) {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ')
+}
+
 export function runtimeCredentialSlotKey(slot: CredentialSlot) {
   return [slot.providerId ?? '', slot.category ?? ''].join(':')
+}
+
+export function runtimeCredentialProviderName(providerId?: string) {
+  const slug = providerSlug(providerId)
+  if (!slug)
+    return ''
+
+  return PROVIDER_DISPLAY_NAMES[slug.toLowerCase()] ?? titleCaseProviderName(slug)
+}
+
+function runtimeCredentialCandidateLabel(candidate: CredentialCandidate) {
+  const fallback = candidate.credentialId ?? ''
+  const rawLabel = candidate.displayName?.trim() || fallback
+  const providerId = candidate.providerId?.trim()
+  if (!providerId)
+    return rawLabel
+
+  const providerSuffixes = [
+    ` · ${providerId}`,
+    ` - ${providerId}`,
+    ` (${providerId})`,
+  ]
+  const label = providerSuffixes.reduce((nextLabel, suffix) => {
+    return nextLabel.endsWith(suffix)
+      ? nextLabel.slice(0, -suffix.length).trim()
+      : nextLabel
+  }, rawLabel)
+
+  return label || fallback
 }
 
 export function runtimeCredentialCandidateOptions(slot: CredentialSlot): RuntimeCredentialSelectOption[] {
@@ -19,10 +72,7 @@ export function runtimeCredentialCandidateOptions(slot: CredentialSlot): Runtime
     .filter(candidate => candidate.credentialId)
     .map(candidate => ({
       value: candidate.credentialId!,
-      label: [
-        candidate.displayName,
-        candidate.providerId,
-      ].filter(Boolean).join(' · ') || candidate.credentialId!,
+      label: runtimeCredentialCandidateLabel(candidate),
     }))
 }
 

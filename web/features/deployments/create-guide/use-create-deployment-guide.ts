@@ -3,6 +3,7 @@
 import type {
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarValues } from '../components/env-var-bindings-utils'
 import type {
   BindingSelections,
   EnvironmentOption,
@@ -16,14 +17,24 @@ import { load as yamlLoad } from 'js-yaml'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
+import {
+  hasEnvVarSlotKey,
+  hasMissingRequiredEnvVarValue,
+  selectedDeploymentEnvVars,
+} from '../components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
   selectedDeploymentRuntimeCredentials,
   selectedRuntimeCredentialSelections,
 } from '../components/runtime-credential-bindings-utils'
-import { SOURCE_APPS_PAGE_SIZE } from '../data'
+import { DEPLOYMENT_PAGE_SIZE, SOURCE_APPS_PAGE_SIZE } from '../data'
+import {
+  environmentDeploymentId,
+  environmentMatchesIdentifier,
+} from '../environment'
+import { deploymentErrorMessage } from '../error'
 import { createDeploymentIdempotencyKey } from '../idempotency'
 
 type DslMetadata = {
@@ -31,6 +42,11 @@ type DslMetadata = {
     name?: unknown
   }
 }
+
+const RANDOM_SUFFIX_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+const RANDOM_SUFFIX_LENGTH = 4
+const RANDOM_SUFFIX_FALLBACK_LENGTH = 6
+const RANDOM_SUFFIX_MAX_ATTEMPTS = 16
 
 function hasEnvironmentId(environment?: Environment): environment is EnvironmentOption {
   return Boolean(environment?.id)
@@ -59,6 +75,35 @@ function dslAppName(content: string) {
   }
 }
 
+function randomLetterCombination(length: number) {
+  const randomValues = new Uint8Array(length)
+
+  if (globalThis.crypto) {
+    globalThis.crypto.getRandomValues(randomValues)
+  }
+  else {
+    randomValues.forEach((_, index) => {
+      randomValues[index] = Math.floor(Math.random() * 256)
+    })
+  }
+
+  return Array.from(randomValues, value => RANDOM_SUFFIX_ALPHABET[value % RANDOM_SUFFIX_ALPHABET.length]).join('')
+}
+
+function availableInstanceName(baseName: string, existingNames: readonly string[]) {
+  const existingNameSet = new Set(existingNames)
+  if (!existingNameSet.has(baseName))
+    return baseName
+
+  for (let attempt = 0; attempt < RANDOM_SUFFIX_MAX_ATTEMPTS; attempt++) {
+    const candidate = `${baseName}-${randomLetterCombination(RANDOM_SUFFIX_LENGTH)}`
+    if (!existingNameSet.has(candidate))
+      return candidate
+  }
+
+  return `${baseName}-${randomLetterCombination(RANDOM_SUFFIX_FALLBACK_LENGTH)}`
+}
+
 export function useCreateDeploymentGuide() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
@@ -80,6 +125,8 @@ export function useCreateDeploymentGuide() {
   const [releaseDescription, setReleaseDescription] = useState('')
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('')
   const [manualBindingSelections, setManualBindingSelections] = useState<BindingSelections>({})
+  const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
+  const [isSkippingReleaseOnly, setIsSkippingReleaseOnly] = useState(false)
   const dslReadTokenRef = useRef(0)
 
   const sourceAppsQuery = useInfiniteQuery({
@@ -97,6 +144,17 @@ export function useCreateDeploymentGuide() {
     }),
   })
   const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
+  const appInstancesQuery = useQuery({
+    ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
+      input: {
+        query: {
+          pageNumber: 1,
+          resultsPerPage: DEPLOYMENT_PAGE_SIZE,
+        },
+      },
+    }),
+    placeholderData: keepPreviousData,
+  })
   const effectiveSelectedApp = selectedApp ?? sourceApps[0]
   const hasDslContent = Boolean(dslContent.trim())
   const encodedDslContent = hasDslContent ? encodeUtf8Base64(dslContent) : ''
@@ -136,13 +194,19 @@ export function useCreateDeploymentGuide() {
   const bindingSlots = shouldLoadDeploymentTarget
     ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
+  const envVarSlots = shouldLoadDeploymentTarget
+    ? deploymentOptions?.envVarSlots?.filter(hasEnvVarSlotKey) ?? []
+    : []
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
-  const selectedEnvironment = environments.find(env => env.id === effectiveSelectedEnvironmentId) ?? environments[0]
+  const selectedEnvironment = environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId)) ?? environments[0]
   const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
+  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, envVarValues))
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
-  const isDeploying = createInitialDeploymentFromSourceApp.isPending || createInitialDeploymentFromDsl.isPending
+  const isDeploying = isSkippingReleaseOnly
+    || createInitialDeploymentFromSourceApp.isPending
+    || createInitialDeploymentFromDsl.isPending
   const sourceName = method === 'importDsl'
     ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
     : method === 'bindApp'
@@ -152,14 +216,18 @@ export function useCreateDeploymentGuide() {
   const submittedInstanceName = instanceName.trim()
   const submittedReleaseName = releaseName.trim()
   const submittedReleaseDescription = releaseDescription.trim()
+  const existingInstanceNames = appInstancesQuery.data?.data?.map(appInstance => appInstance.name?.trim()).filter((name): name is string => Boolean(name)) ?? []
+  const hasInstanceNameConflict = Boolean(submittedInstanceName && existingInstanceNames.includes(submittedInstanceName))
+  const instanceNameError = hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined
   const isSourceReady = Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
-  const isInitialReleaseReady = Boolean(isSourceReady && submittedInstanceName && submittedReleaseName)
+  const isInitialReleaseReady = Boolean(isSourceReady && submittedInstanceName && submittedReleaseName && !hasInstanceNameConflict)
   const showTargetConfiguration = Boolean(method && step === 'target')
 
   function selectMethod(nextMethod: GuideMethod) {
     setMethod(nextMethod)
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
+    setEnvVarValues({})
   }
 
   function handleDslFileChange(file?: File) {
@@ -171,6 +239,7 @@ export function useCreateDeploymentGuide() {
     setDslReadError(false)
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
+    setEnvVarValues({})
 
     if (!file) {
       setIsReadingDsl(false)
@@ -218,6 +287,7 @@ export function useCreateDeploymentGuide() {
         selectedEnvironment?.id
         && deploymentTargetReady
         && requiredBindingsReady
+        && requiredEnvVarsReady
         && isInitialReleaseReady,
       )
     }
@@ -241,6 +311,7 @@ export function useCreateDeploymentGuide() {
 
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
+    setEnvVarValues({})
     setStep('target')
   }
 
@@ -248,15 +319,63 @@ export function useCreateDeploymentGuide() {
     const nextInstanceName = sourceName.trim()
 
     if (!instanceName.trim() && nextInstanceName)
-      setInstanceName(nextInstanceName)
+      setInstanceName(availableInstanceName(nextInstanceName, existingInstanceNames))
     if (!releaseName.trim())
       setReleaseName(defaultedReleaseName)
+  }
+
+  async function createInitialReleaseOnly() {
+    setIsSkippingReleaseOnly(true)
+
+    try {
+      const createdAppInstance = await consoleClient.enterprise.appInstanceService.createAppInstance({
+        body: {
+          name: submittedInstanceName,
+          description: instanceDescription.trim() || undefined,
+        },
+      })
+      const appInstanceId = createdAppInstance.appInstance?.id
+      if (!appInstanceId)
+        throw new Error('Create app instance did not return an app instance.')
+
+      const createdRelease = method === 'importDsl'
+        ? await consoleClient.enterprise.releaseService.createReleaseFromDsl({
+            body: {
+              appInstanceId,
+              dsl: encodedDslContent,
+              name: submittedReleaseName,
+              description: submittedReleaseDescription || undefined,
+              createAppInstance: false,
+            },
+          })
+        : effectiveSelectedApp?.id
+          ? await consoleClient.enterprise.releaseService.createReleaseFromSourceApp({
+              body: {
+                appInstanceId,
+                sourceAppId: effectiveSelectedApp.id,
+                name: submittedReleaseName,
+                description: submittedReleaseDescription || undefined,
+                createAppInstance: false,
+              },
+            })
+          : undefined
+
+      if (!createdRelease?.release?.id)
+        throw new Error('Create release did not return a release.')
+
+      router.push(`/deployments/${appInstanceId}/overview`)
+    }
+    finally {
+      setIsSkippingReleaseOnly(false)
+    }
   }
 
   async function createDeploymentAndRelease({ deployToEnvironment }: {
     deployToEnvironment: boolean
   }) {
     if (isDeploying || !isInitialReleaseReady)
+      return
+    if (hasInstanceNameConflict)
       return
     if (deployToEnvironment && !selectedEnvironment?.id)
       return
@@ -266,39 +385,53 @@ export function useCreateDeploymentGuide() {
       return
 
     try {
-      if (deployToEnvironment) {
-        const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
-        if (missingRequiredBinding)
-          throw new Error('Missing required deployment binding.')
+      if (!deployToEnvironment) {
+        await createInitialReleaseOnly()
+        return
       }
+
+      const targetEnvironmentId = await resolveSelectedDeploymentEnvironmentId()
+      if (!targetEnvironmentId) {
+        toast.error(t('createGuide.errors.deployFailed'))
+        return
+      }
+
+      const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
+      if (missingRequiredBinding)
+        throw new Error('Missing required deployment binding.')
+      const missingRequiredEnvVar = envVarSlots.some(slot => hasMissingRequiredEnvVarValue(slot, envVarValues))
+      if (missingRequiredEnvVar)
+        throw new Error('Missing required deployment environment variable.')
 
       const idempotencyKey = createDeploymentIdempotencyKey()
       const response = method === 'importDsl'
         ? await createInitialDeploymentFromDsl.mutateAsync({
             body: {
               dsl: encodedDslContent,
-              environmentId: deployToEnvironment ? selectedEnvironment?.id : undefined,
+              environmentId: targetEnvironmentId,
               appInstanceName: submittedInstanceName,
               appInstanceDescription: instanceDescription.trim() || undefined,
               releaseName: submittedReleaseName,
               releaseDescription: submittedReleaseDescription || undefined,
-              credentials: deployToEnvironment ? selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections) : undefined,
+              credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
+              envVars: selectedDeploymentEnvVars(envVarSlots, envVarValues),
               idempotencyKey,
-              expectedDslDigest: deployToEnvironment ? deploymentOptions?.dslDigest : undefined,
+              expectedDslDigest: deploymentOptions?.dslDigest,
             },
           })
         : effectiveSelectedApp?.id
           ? await createInitialDeploymentFromSourceApp.mutateAsync({
               body: {
                 sourceAppId: effectiveSelectedApp.id,
-                environmentId: deployToEnvironment ? selectedEnvironment?.id : undefined,
+                environmentId: targetEnvironmentId,
                 appInstanceName: submittedInstanceName,
                 appInstanceDescription: instanceDescription.trim() || undefined,
                 releaseName: submittedReleaseName,
                 releaseDescription: submittedReleaseDescription || undefined,
-                credentials: deployToEnvironment ? selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections) : undefined,
+                credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
+                envVars: selectedDeploymentEnvVars(envVarSlots, envVarValues),
                 idempotencyKey,
-                expectedDslDigest: deployToEnvironment ? deploymentOptions?.dslDigest : undefined,
+                expectedDslDigest: deploymentOptions?.dslDigest,
               },
             })
           : undefined
@@ -308,8 +441,9 @@ export function useCreateDeploymentGuide() {
 
       router.push(`/deployments/${appInstanceId}/overview`)
     }
-    catch {
-      toast.error(t(deployToEnvironment ? 'createGuide.errors.deployFailed' : 'createGuide.errors.createReleaseFailed'))
+    catch (error) {
+      const fallbackMessage = t(deployToEnvironment ? 'createGuide.errors.deployFailed' : 'createGuide.errors.createReleaseFailed')
+      toast.error(await deploymentErrorMessage(error) || fallbackMessage)
     }
   }
 
@@ -319,6 +453,23 @@ export function useCreateDeploymentGuide() {
 
   async function handleSkipDeployment() {
     await createDeploymentAndRelease({ deployToEnvironment: false })
+  }
+
+  async function resolveSelectedDeploymentEnvironmentId() {
+    const currentEnvironmentId = environmentDeploymentId(selectedEnvironment)
+    if (currentEnvironmentId)
+      return currentEnvironmentId
+
+    const selectedEnvironmentIdentifier = selectedEnvironmentId || selectedEnvironment?.id || selectedEnvironment?.name || ''
+    const selectedEnvironmentName = selectedEnvironment?.name || ''
+    const freshResult = await deployableEnvironmentsQuery.refetch()
+    const freshEnvironments = freshResult.data?.data?.filter(hasEnvironmentId) ?? []
+    const freshSelectedEnvironment = freshEnvironments.find(environment => (
+      environmentMatchesIdentifier(environment, selectedEnvironmentIdentifier)
+      || (selectedEnvironmentName && environment.name === selectedEnvironmentName)
+    )) ?? freshEnvironments[0]
+
+    return environmentDeploymentId(freshSelectedEnvironment)
   }
 
   function handlePrimaryAction() {
@@ -352,6 +503,7 @@ export function useCreateDeploymentGuide() {
       dslReadError,
       instanceDescription,
       instanceName,
+      instanceNameError,
       isReadingDsl,
       method,
       onDslFileChange: handleDslFileChange,
@@ -389,12 +541,15 @@ export function useCreateDeploymentGuide() {
     handlePrimaryAction,
     handleSkipDeployment,
     isDeploying,
+    isSkippingDeployment: isSkippingReleaseOnly,
     showTargetConfiguration,
     step,
     targetReviewSectionsProps: {
       bindingSelections,
       bindingSlots,
       environments,
+      envVarSlots,
+      envVarValues,
       isBindingError: deploymentOptionsQuery.isError,
       isBindingLoading,
       isEnvironmentError: deployableEnvironmentsQuery.isError,
@@ -403,6 +558,9 @@ export function useCreateDeploymentGuide() {
         setManualBindingSelections(prev => ({ ...prev, [slot]: value }))
       },
       onSelectEnvironment: setSelectedEnvironmentId,
+      onSetEnvVar: (key: string, value: string) => {
+        setEnvVarValues(prev => ({ ...prev, [key]: value }))
+      },
       selectedEnvironmentId: effectiveSelectedEnvironmentId,
     },
   }

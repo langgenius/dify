@@ -1,18 +1,37 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
-import type { ReactNode } from 'react'
+import type { DeploymentUiStatus } from '../../runtime-status'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import {
+  deploymentStatusIconClassName,
+  deploymentStatusToneClassNames,
+} from '../../deployment-ui-utils'
 import { releaseLabel } from '../../release'
 import {
   deploymentStatus,
   isUndeployedDeploymentRow,
 } from '../../runtime-status'
 
-const StatusIconSlot = ({ children }: { children: ReactNode }) => {
+function DeploymentStatusPill({ status, label }: {
+  status: DeploymentUiStatus
+  label: string
+}) {
+  const toneClassNames = deploymentStatusToneClassNames(status)
+
   return (
-    <span className="flex size-3 shrink-0 items-center justify-center">
-      {children}
+    <span
+      className={cn(
+        'inline-flex h-6 max-w-full items-center gap-1.5 rounded-md border px-2 system-xs-medium',
+        toneClassNames.badge,
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn('size-3.5 shrink-0', deploymentStatusIconClassName(status), toneClassNames.icon)}
+      />
+      <span className="truncate">{label}</span>
     </span>
   )
 }
@@ -23,12 +42,10 @@ export function DeploymentStatusSummary({ row }: {
   const { t } = useTranslation('deployments')
   if (isUndeployedDeploymentRow(row)) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-text-tertiary">
-        <StatusIconSlot>
-          <span className="size-1.5 rounded-full bg-text-quaternary" />
-        </StatusIconSlot>
-        {t('status.notDeployed')}
-      </span>
+      <DeploymentStatusPill
+        status="not_deployed"
+        label={t('status.notDeployed')}
+      />
     )
   }
 
@@ -37,70 +54,55 @@ export function DeploymentStatusSummary({ row }: {
   if (status === 'deploying') {
     const targetRelease = row.desiredRelease ?? row.currentRelease
     const hasTargetRelease = !!(targetRelease?.name || targetRelease?.id)
-    return (
-      <span className="inline-flex items-center gap-1.5 text-util-colors-blue-blue-700">
-        <StatusIconSlot>
-          <span className="i-ri-loader-4-line size-2 animate-spin" />
-        </StatusIconSlot>
-        {hasTargetRelease
-          ? t('deployTab.status.deployingRelease', { release: releaseLabel(targetRelease) })
-          : t('status.deploying')}
-      </span>
-    )
+    const statusLabel = hasTargetRelease
+      ? t('deployTab.status.deployingRelease', { release: releaseLabel(targetRelease) })
+      : t('status.undeploying')
+
+    return <DeploymentStatusPill status="deploying" label={statusLabel} />
   }
 
   if (status === 'deploy_failed') {
     const hasRunningRelease = !!row.currentRelease?.id
     return (
-      <span className="inline-flex items-center gap-1.5 text-util-colors-red-red-700">
-        <StatusIconSlot>
-          <span className="i-ri-alert-line size-3" />
-        </StatusIconSlot>
-        {t(hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed')}
-      </span>
+      <DeploymentStatusPill
+        status="deploy_failed"
+        label={t(hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed')}
+      />
     )
   }
 
   if (status === 'drifted') {
     const hasRunningRelease = !!row.currentRelease?.id
     return (
-      <span className="inline-flex items-center gap-1.5 text-util-colors-warning-warning-700">
-        <StatusIconSlot>
-          <span className="i-ri-error-warning-line size-3" />
-        </StatusIconSlot>
-        {t(hasRunningRelease ? 'deployTab.status.runningOutOfSync' : 'status.drifted')}
-      </span>
+      <DeploymentStatusPill
+        status="drifted"
+        label={t(hasRunningRelease ? 'deployTab.status.runningOutOfSync' : 'status.drifted')}
+      />
     )
   }
 
   if (status === 'invalid') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-util-colors-red-red-700">
-        <StatusIconSlot>
-          <span className="i-ri-error-warning-line size-3" />
-        </StatusIconSlot>
-        {t('status.invalid')}
-      </span>
+      <DeploymentStatusPill
+        status="invalid"
+        label={t('status.invalid')}
+      />
     )
   }
 
   if (status === 'unknown') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-text-tertiary">
-        <StatusIconSlot>
-          <span className="i-ri-question-line size-3" />
-        </StatusIconSlot>
-        {t('status.unknown')}
-      </span>
+      <DeploymentStatusPill
+        status="unknown"
+        label={t('status.unknown')}
+      />
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 text-util-colors-green-green-700">
-      <StatusIconSlot>
-        <span className="size-1.5 rounded-full bg-util-colors-green-green-500" />
-      </StatusIconSlot>
-      {t('status.ready')}
-    </span>
+    <DeploymentStatusPill
+      status="ready"
+      label={t('status.ready')}
+    />
   )
 }

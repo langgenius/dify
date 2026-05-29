@@ -10,6 +10,7 @@ export function ReleaseStep({
   releaseName,
   releaseDescription,
   instanceNamePlaceholder,
+  instanceNameError,
   releaseNamePlaceholder,
   onInstanceNameChange,
   onInstanceDescriptionChange,
@@ -21,6 +22,7 @@ export function ReleaseStep({
   releaseName: string
   releaseDescription: string
   instanceNamePlaceholder: string
+  instanceNameError?: string
   releaseNamePlaceholder: string
   onInstanceNameChange: (value: string) => void
   onInstanceDescriptionChange: (value: string) => void
@@ -28,6 +30,7 @@ export function ReleaseStep({
   onReleaseDescriptionChange: (value: string) => void
 }) {
   const { t } = useTranslation('deployments')
+  const instanceNameErrorId = 'create-guide-instance-name-error'
 
   return (
     <StepShell
@@ -50,8 +53,15 @@ export function ReleaseStep({
               onChange={event => onInstanceNameChange(event.target.value)}
               placeholder={instanceNamePlaceholder}
               required
+              aria-invalid={instanceNameError ? true : undefined}
+              aria-describedby={instanceNameError ? instanceNameErrorId : undefined}
               className="h-9"
             />
+            {instanceNameError && (
+              <div id={instanceNameErrorId} role="alert" className="system-xs-regular text-text-destructive">
+                {instanceNameError}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-1.5">

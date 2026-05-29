@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialCandidateOptions,
+  runtimeCredentialProviderName,
   runtimeCredentialSlotKey,
 } from './runtime-credential-bindings-utils'
 
@@ -34,6 +35,7 @@ type RuntimeCredentialBindingsPanelProps = {
   selectCredentialLabel: string
   missingRequiredLabel: string
   bindingCountLabel?: string
+  showMissingRequired?: boolean
   onChange: (slotKey: string, value: string) => void
   className?: string
   listClassName?: string
@@ -96,6 +98,7 @@ export function RuntimeCredentialBindingsPanel({
   selectCredentialLabel,
   missingRequiredLabel,
   bindingCountLabel,
+  showMissingRequired = false,
   onChange,
   className,
   listClassName,
@@ -127,8 +130,8 @@ export function RuntimeCredentialBindingsPanel({
                 const slotKey = runtimeCredentialSlotKey(slot)
                 const candidates = runtimeCredentialCandidateOptions(slot)
                 const selectedValue = selections[slotKey] ?? ''
-                const missing = hasMissingRequiredRuntimeCredentialBinding(slot, selectedValue)
-                const slotName = slot.providerId || slotKey
+                const missing = showMissingRequired && hasMissingRequiredRuntimeCredentialBinding(slot, selectedValue)
+                const slotName = runtimeCredentialProviderName(slot.providerId) || slotKey
                 const categoryLabel = slot.category === 'PLUGIN_CATEGORY_MODEL'
                   ? t('categorySingle.model')
                   : slot.category === 'PLUGIN_CATEGORY_TOOL'
@@ -140,7 +143,7 @@ export function RuntimeCredentialBindingsPanel({
                     <div className="flex min-w-0 flex-col gap-2.5">
                       <div className="flex min-w-0 flex-col gap-1.5">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate font-mono system-xs-semibold text-text-primary" title={slotName}>
+                          <span className="truncate system-sm-semibold text-text-primary" title={slotName}>
                             {slotName}
                           </span>
                         </div>

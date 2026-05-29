@@ -39,7 +39,7 @@ type EnvironmentOption = Environment & {
   id: string
 }
 
-type DeployMenuRowState = 'promote' | 'deploy' | 'rollback' | 'current' | 'deploying'
+type DeployMenuRowState = 'deploy' | 'rollback' | 'current' | 'deploying'
 
 type DeployMenuRow = {
   env: EnvironmentOption
@@ -48,13 +48,11 @@ type DeployMenuRow = {
   disabledReason?: string
 }
 
-type DeployMenuGroup = 'promote' | 'deploy' | 'rollback' | 'unavailable'
+type DeployMenuGroup = 'deploy' | 'rollback' | 'unavailable'
 
-const GROUP_ORDER: DeployMenuGroup[] = ['promote', 'deploy', 'rollback', 'unavailable']
+const GROUP_ORDER: DeployMenuGroup[] = ['deploy', 'rollback', 'unavailable']
 
 function stateToGroup(state: DeployMenuRowState): DeployMenuGroup {
-  if (state === 'promote')
-    return 'promote'
   if (state === 'rollback')
     return 'rollback'
   if (state === 'deploy')
@@ -244,8 +242,8 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
     }
     return {
       env,
-      state: 'promote',
-      label: t('versions.promoteTo', { name: envName }),
+      state: 'deploy',
+      label: t('versions.deployTo', { name: envName }),
     }
   })
 

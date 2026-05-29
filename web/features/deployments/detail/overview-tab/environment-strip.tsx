@@ -1,16 +1,20 @@
 'use client'
 
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import Link from '@/next/link'
 import { environmentId } from '../../environment'
 import { hasRuntimeInstanceDeployment } from '../../runtime-status'
-import { SectionState } from '../common'
+import { openDeployDrawerAtom } from '../../store'
+import { DetailEmptyState, SectionState } from '../common'
 import { OVERVIEW_CARD_CLASS_NAME } from './card-styles'
 import { EnvironmentTile } from './environment-tile'
 
-const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 3
+const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 4
 
 type EnvironmentStripProps = {
   appInstanceId: string
@@ -24,21 +28,32 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, 
   const { t } = useTranslation('deployments')
   const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
   const previewRows = runtimeRows.slice(0, OVERVIEW_RUNTIME_INSTANCE_LIMIT)
+  const hasRuntimeRows = runtimeRows.length > 0
+  const hasRelease = releaseRows.length > 0
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
+        <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
+        {hasRuntimeRows && (
+          <Link
+            href={`/deployments/${appInstanceId}/instances`}
+            className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
+          >
+            {t('overview.previousReleases.viewAll')}
+            <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
+          </Link>
+        )}
+      </div>
 
       {isLoading
         ? <CardSkeletons />
         : isError
           ? <SectionState>{t('common.loadFailed')}</SectionState>
-          : rows.length === 0
-            ? <SectionState>{t('overview.strip.empty')}</SectionState>
-            : runtimeRows.length === 0
-              ? <SectionState>{t('overview.strip.emptyDeployed')}</SectionState>
+          : !hasRuntimeRows
+              ? <EnvironmentEmptyState appInstanceId={appInstanceId} canDeploy={hasRelease} />
               : (
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3">
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
                     {previewRows.map(row => (
                       <EnvironmentTile
                         key={environmentId(row.environment)}
@@ -53,11 +68,42 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows, isLoading, 
   )
 }
 
+function EnvironmentEmptyState({ appInstanceId, canDeploy }: {
+  appInstanceId: string
+  canDeploy: boolean
+}) {
+  const { t } = useTranslation('deployments')
+  const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
+
+  return (
+    <DetailEmptyState
+      variant="section"
+      icon="i-ri-server-line"
+      title={t('overview.strip.emptyTitle')}
+      description={canDeploy ? t('overview.strip.emptyDeployableDescription') : t('overview.strip.emptyDescription')}
+      action={canDeploy
+        ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="medium"
+              className="gap-1.5"
+              onClick={() => openDeployDrawer({ appInstanceId })}
+            >
+              <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
+              {t('overview.strip.deployToNewEnvironment')}
+            </Button>
+          )
+        : undefined}
+    />
+  )
+}
+
 const SKELETON_KEYS = ['a', 'b', 'c']
 
 function CardSkeletons() {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
       {SKELETON_KEYS.map(key => (
         <EnvironmentTileSkeleton key={key} />
       ))}

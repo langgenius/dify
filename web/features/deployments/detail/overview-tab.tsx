@@ -5,9 +5,8 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { SectionState } from './common'
-import { AccessStatusSection, AccessStatusSectionSkeleton } from './overview-tab/access-status-section'
+import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './overview-tab/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
-import { computeOverviewStats } from './overview-tab/overview-drift'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
 
 const OVERVIEW_RELEASE_WINDOW = 20
@@ -20,7 +19,7 @@ function OverviewLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ReleaseOverviewSection({ appInstanceId, children }: {
+function LatestReleaseSection({ appInstanceId, children }: {
   appInstanceId: string
   children: React.ReactNode
 }) {
@@ -30,7 +29,7 @@ function ReleaseOverviewSection({ appInstanceId, children }: {
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <h3 className="system-sm-semibold text-text-primary">
-          {t('overview.recentReleases')}
+          {t('overview.latestReleaseTitle')}
         </h3>
         <Link
           href={`/deployments/${appInstanceId}/releases`}
@@ -53,11 +52,12 @@ function OverviewLoadingSkeleton({ appInstanceId }: {
   return (
     <OverviewLayout>
       <div className="flex min-w-0 flex-col gap-6">
-        <ReleaseOverviewSection appInstanceId={appInstanceId}>
-          <ReleaseHeroSkeleton />
-        </ReleaseOverviewSection>
         <EnvironmentStripSkeleton />
+        <LatestReleaseSection appInstanceId={appInstanceId}>
+          <ReleaseHeroSkeleton />
+        </LatestReleaseSection>
         <AccessStatusSectionSkeleton />
+        <ApiTokenSummarySectionSkeleton />
       </div>
     </OverviewLayout>
   )
@@ -110,21 +110,14 @@ export function OverviewTab({ appInstanceId }: {
   }
 
   const releaseRows = releasesQuery.data?.data ?? []
+  const releaseCount = releasesQuery.data?.pagination?.totalCount ?? releaseRows.length
   const runtimeRows = runtimeInstancesQuery.data?.data?.filter(row => row.environment?.id) ?? []
   const latestRelease = releaseRows[0]
-  const stats = computeOverviewStats(runtimeRows, releaseRows)
   const accessChannels = accessChannelsQuery.data?.accessChannels
 
   return (
     <OverviewLayout>
       <div className="flex min-w-0 flex-col gap-6">
-        <ReleaseOverviewSection appInstanceId={appInstanceId}>
-          <ReleaseHero
-            appInstanceId={appInstanceId}
-            latestRelease={latestRelease}
-            stats={stats}
-          />
-        </ReleaseOverviewSection>
         <EnvironmentStrip
           appInstanceId={appInstanceId}
           rows={runtimeRows}
@@ -132,7 +125,21 @@ export function OverviewTab({ appInstanceId }: {
           isLoading={runtimeInstancesQuery.isLoading}
           isError={runtimeInstancesQuery.isError}
         />
+        <LatestReleaseSection appInstanceId={appInstanceId}>
+          <ReleaseHero
+            appInstanceId={appInstanceId}
+            latestRelease={latestRelease}
+            releaseCount={releaseCount}
+          />
+        </LatestReleaseSection>
         <AccessStatusSection appInstanceId={appInstanceId} accessChannels={accessChannels} />
+        <ApiTokenSummarySection
+          appInstanceId={appInstanceId}
+          rows={runtimeRows}
+          accessChannels={accessChannels}
+          isEnvironmentLoading={runtimeInstancesQuery.isLoading}
+          isEnvironmentError={runtimeInstancesQuery.isError}
+        />
       </div>
     </OverviewLayout>
   )

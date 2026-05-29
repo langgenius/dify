@@ -38,9 +38,9 @@ function SourceAppTrigger({ open, app }: {
   return (
     <span
       className={cn(
-        'group flex cursor-pointer items-center gap-2 rounded-lg bg-components-input-bg-normal p-2 pl-3 hover:bg-state-base-hover-alt',
-        open && 'bg-state-base-hover-alt',
-        app && 'py-1.5 pl-1.5',
+        'group flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+        open && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
+        app && 'pl-2',
       )}
     >
       {app && (

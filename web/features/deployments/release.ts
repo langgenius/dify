@@ -1,4 +1,5 @@
 import type { Release } from '@dify/contracts/enterprise/types.gen'
+import { formatTime } from '@/utils/time'
 
 export function formatDate(value?: string) {
   if (!value)
@@ -8,10 +9,7 @@ export function formatDate(value?: string) {
   if (Number.isNaN(date.getTime()))
     return value.replace('T', ' ').replace(/\.\d+Z?$/, '').replace(/Z$/, '').slice(0, 16)
 
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
+  return formatTime({ date, dateFormat: 'YYYY-MM-DD HH:mm' })
 }
 
 export function releaseLabel(release?: Release) {

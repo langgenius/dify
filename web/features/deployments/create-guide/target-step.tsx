@@ -2,16 +2,26 @@
 
 import type {
   CredentialSlot,
+  EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
+import type { EnvVarValues } from '../components/env-var-bindings-utils'
 import type { BindingSelections, EnvironmentOption } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
+  EnvVarBindingsPanel,
+} from '../components/env-var-bindings'
+import {
   RuntimeCredentialBindingsPanel,
 } from '../components/runtime-credential-bindings'
 
-import { environmentBackend, environmentMode, environmentName } from '../environment'
+import {
+  environmentBackend,
+  environmentMatchesIdentifier,
+  environmentMode,
+  environmentName,
+} from '../environment'
 import { StepShell } from './layout'
 
 const targetEnvironmentSkeletonKeys = ['first-target-environment', 'second-target-environment']
@@ -24,6 +34,7 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
 }) {
   const { t } = useTranslation('deployments')
   const mode = environmentMode(environment)
+  const summary = environment.description?.trim() || `${t(mode === 'isolated' ? 'mode.isolated' : 'mode.shared')} · ${environmentBackend(environment).toUpperCase()}`
 
   return (
     <label
@@ -43,9 +54,8 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
       />
       <span className="flex min-w-0 grow flex-col gap-1">
         <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environmentName(environment)}</span>
-        <span className={cn('flex flex-wrap items-center gap-1.5 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>
-          <span>{t(mode === 'isolated' ? 'mode.isolated' : 'mode.shared')}</span>
-          <span>{environmentBackend(environment)}</span>
+        <span className={cn('line-clamp-1 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')} title={summary}>
+          {summary}
         </span>
       </span>
     </label>
@@ -87,25 +97,31 @@ function TargetBindingSkeleton() {
 function TargetStep({
   environments,
   bindingSlots,
+  envVarSlots,
   selectedEnvironmentId,
   bindingSelections,
+  envVarValues,
   isEnvironmentLoading,
   isEnvironmentError,
   isBindingLoading,
   isBindingError,
   onSelectEnvironment,
   onSelectBinding,
+  onSetEnvVar,
 }: {
   environments: EnvironmentOption[]
   bindingSlots: CredentialSlot[]
+  envVarSlots: EnvVarSlot[]
   selectedEnvironmentId: string
   bindingSelections: BindingSelections
+  envVarValues: EnvVarValues
   isEnvironmentLoading: boolean
   isEnvironmentError: boolean
   isBindingLoading: boolean
   isBindingError: boolean
   onSelectEnvironment: (environmentId: string) => void
   onSelectBinding: (slot: string, value: string) => void
+  onSetEnvVar: (key: string, value: string) => void
 }) {
   const { t } = useTranslation('deployments')
   const hasEnvironmentOptions = environments.length > 0
@@ -126,7 +142,7 @@ function TargetStep({
                     <EnvironmentOptionRow
                       key={environment.id}
                       environment={environment}
-                      selected={selectedEnvironmentId === environment.id}
+                      selected={environmentMatchesIdentifier(environment, selectedEnvironmentId)}
                       onSelect={() => onSelectEnvironment(environment.id)}
                     />
                   ))}
@@ -174,6 +190,19 @@ function TargetStep({
                 className="border-components-option-card-option-border bg-components-option-card-option-bg"
               />
             )}
+        {!isBindingLoading && !isBindingError && (
+          <EnvVarBindingsPanel
+            slots={envVarSlots}
+            values={envVarValues}
+            title={t('createGuide.target.envVars')}
+            hint={t('createGuide.target.envVarHint')}
+            requiredLabel={t('createGuide.target.required')}
+            envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
+            envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
+            onChange={onSetEnvVar}
+            className="border-components-option-card-option-border bg-components-option-card-option-bg"
+          />
+        )}
       </div>
     </StepShell>
   )
@@ -182,6 +211,8 @@ function TargetStep({
 export function TargetReviewSections({
   bindingSelections,
   bindingSlots,
+  envVarSlots,
+  envVarValues,
   environments,
   isBindingError,
   isBindingLoading,
@@ -189,10 +220,13 @@ export function TargetReviewSections({
   isEnvironmentLoading,
   onSelectBinding,
   onSelectEnvironment,
+  onSetEnvVar,
   selectedEnvironmentId,
 }: {
   bindingSelections: BindingSelections
   bindingSlots: CredentialSlot[]
+  envVarSlots: EnvVarSlot[]
+  envVarValues: EnvVarValues
   environments: EnvironmentOption[]
   isBindingError: boolean
   isBindingLoading: boolean
@@ -200,20 +234,24 @@ export function TargetReviewSections({
   isEnvironmentLoading: boolean
   onSelectBinding: (slot: string, value: string) => void
   onSelectEnvironment: (environmentId: string) => void
+  onSetEnvVar: (key: string, value: string) => void
   selectedEnvironmentId: string
 }) {
   return (
     <TargetStep
       environments={environments}
       bindingSlots={bindingSlots}
+      envVarSlots={envVarSlots}
       selectedEnvironmentId={selectedEnvironmentId}
       bindingSelections={bindingSelections}
+      envVarValues={envVarValues}
       isEnvironmentLoading={isEnvironmentLoading}
       isEnvironmentError={isEnvironmentError}
       isBindingLoading={isBindingLoading}
       isBindingError={isBindingError}
       onSelectEnvironment={onSelectEnvironment}
       onSelectBinding={onSelectBinding}
+      onSetEnvVar={onSetEnvVar}
     />
   )
 }

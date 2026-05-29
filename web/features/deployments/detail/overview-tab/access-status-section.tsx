@@ -1,20 +1,32 @@
 'use client'
 
-import type { AccessChannels } from '@dify/contracts/enterprise/types.gen'
+import type { AccessChannels, EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQueries } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
+import { environmentId } from '../../environment'
+import { hasRuntimeInstanceDeployment } from '../../runtime-status'
+import { SectionState } from '../common'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, OVERVIEW_STATUS_BADGE_CLASS_NAME } from './card-styles'
 
 type AccessStatusSectionProps = {
   appInstanceId: string
   accessChannels?: AccessChannels
-  apiKeyCount?: number
+}
+
+type ApiTokenSummarySectionProps = {
+  appInstanceId: string
+  rows: EnvironmentDeployment[]
+  accessChannels?: AccessChannels
+  isEnvironmentLoading: boolean
+  isEnvironmentError: boolean
 }
 
 type AccessStatusItem = {
-  key: 'webapp' | 'cli' | 'api-tokens'
+  key: 'webapp' | 'cli'
   href: string
   icon: string
   label: string
@@ -22,9 +34,9 @@ type AccessStatusItem = {
   meta: string
 }
 
-const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli', 'api-tokens']
+const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli']
 
-export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount }: AccessStatusSectionProps) {
+export function AccessStatusSection({ appInstanceId, accessChannels }: AccessStatusSectionProps) {
   const { t } = useTranslation('deployments')
   const items: AccessStatusItem[] = [
     {
@@ -42,16 +54,6 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
       label: t('card.access.cli'),
       enabled: Boolean(accessChannels?.webAppEnabled),
       meta: t('overview.accessMeta.cli'),
-    },
-    {
-      key: 'api-tokens',
-      href: `/deployments/${appInstanceId}/api-tokens`,
-      icon: 'i-ri-code-s-slash-line',
-      label: t('card.access.api'),
-      enabled: Boolean(accessChannels?.developerApiEnabled),
-      meta: accessChannels?.developerApiEnabled && apiKeyCount != null
-        ? t('overview.apiKeysCount', { count: apiKeyCount })
-        : t('overview.accessMeta.apiTokens'),
     },
   ]
 
@@ -114,6 +116,150 @@ export function AccessStatusSection({ appInstanceId, accessChannels, apiKeyCount
         ))}
       </div>
     </section>
+  )
+}
+
+export function ApiTokenSummarySection({
+  appInstanceId,
+  rows,
+  accessChannels,
+  isEnvironmentLoading,
+  isEnvironmentError,
+}: ApiTokenSummarySectionProps) {
+  const { t } = useTranslation('deployments')
+  const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
+  const apiEnabled = Boolean(accessChannels?.developerApiEnabled)
+  const apiKeyQueries = useQueries({
+    queries: runtimeRows.map(row => consoleQuery.enterprise.accessService.listApiKeys.queryOptions({
+      input: {
+        params: {
+          appInstanceId,
+          environmentId: environmentId(row.environment),
+        },
+      },
+      enabled: apiEnabled,
+    })),
+  })
+  const apiKeyCount = apiKeyQueries.reduce((count, query) => count + (query.data?.data?.length ?? 0), 0)
+  const apiKeysLoading = apiKeyQueries.some(query => query.isLoading)
+  const apiKeysError = apiKeyQueries.some(query => query.isError)
+  const isLoading = isEnvironmentLoading || (apiEnabled && apiKeysLoading)
+  const isError = isEnvironmentError || (apiEnabled && apiKeysError)
+
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <h3 className="system-sm-semibold text-text-primary">
+        {t('overview.api')}
+      </h3>
+
+      {isLoading
+        ? <ApiTokenSummaryCardSkeleton />
+        : isError
+          ? <SectionState>{t('common.loadFailed')}</SectionState>
+          : (
+              <Link
+                href={`/deployments/${appInstanceId}/api-tokens`}
+                className={cn(
+                  OVERVIEW_INTERACTIVE_CARD_CLASS_NAME,
+                  'group flex min-h-18 min-w-0 items-start gap-3',
+                )}
+              >
+                <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
+                  <span className="i-ri-code-s-slash-line size-4" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-2">
+                  <span className="flex min-w-0 items-center justify-between gap-3">
+                    <span className="truncate system-sm-medium text-text-primary">
+                      {t('card.access.api')}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <StatusBadge enabled={apiEnabled} />
+                      <span
+                        aria-hidden
+                        className="i-ri-arrow-right-line size-4 text-text-quaternary opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:translate-x-0.5 group-focus-visible:opacity-100"
+                      />
+                    </span>
+                  </span>
+                  {apiEnabled
+                    ? (
+                        <span className="flex min-w-0 flex-wrap gap-2">
+                          <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
+                            {t('overview.apiKeysCount', { count: apiKeyCount })}
+                          </span>
+                          <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
+                            {t('overview.apiTokenSummary.environments', { count: runtimeRows.length })}
+                          </span>
+                        </span>
+                      )
+                    : (
+                        <span className="truncate text-xs text-text-tertiary">
+                          {t('overview.accessMeta.apiTokens')}
+                        </span>
+                      )}
+                </span>
+              </Link>
+            )}
+    </section>
+  )
+}
+
+function StatusBadge({ enabled }: {
+  enabled: boolean
+}) {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <span
+      className={cn(
+        OVERVIEW_STATUS_BADGE_CLASS_NAME,
+        enabled
+          ? 'text-util-colors-green-green-700'
+          : 'text-text-tertiary',
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'size-1.5 shrink-0 rounded-full',
+          enabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
+        )}
+      />
+      {enabled ? t('overview.enabled') : t('overview.disabled')}
+    </span>
+  )
+}
+
+export function ApiTokenSummarySectionSkeleton() {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <h3 className="system-sm-semibold text-text-primary">
+        {t('overview.api')}
+      </h3>
+      <ApiTokenSummaryCardSkeleton />
+    </section>
+  )
+}
+
+function ApiTokenSummaryCardSkeleton() {
+  return (
+    <div
+      data-slot="deployment-overview-api-token-card-skeleton"
+      className={cn(OVERVIEW_CARD_CLASS_NAME, 'flex min-h-18 min-w-0 items-start gap-3')}
+    >
+      <SkeletonRectangle className="my-0 size-8 shrink-0 animate-pulse rounded-lg" />
+      <span className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="flex min-w-0 items-center justify-between gap-3">
+          <SkeletonRectangle className="my-0 h-3.5 w-20 animate-pulse" />
+          <SkeletonRectangle className="my-0 h-6 w-14 shrink-0 animate-pulse rounded-md" />
+        </span>
+        <span className="flex gap-2">
+          <SkeletonRectangle className="my-0 h-6 w-24 animate-pulse rounded-md" />
+          <SkeletonRectangle className="my-0 h-6 w-32 animate-pulse rounded-md" />
+        </span>
+      </span>
+    </div>
   )
 }
 

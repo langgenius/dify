@@ -1,6 +1,7 @@
 'use client'
 
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
+import type { DeploymentUiStatus } from '../../runtime-status'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -76,7 +77,10 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
             {environmentName(row.environment)}
           </h4>
         </div>
-        <StatusSignal config={config} drift={drift} t={t} />
+        <div className="flex shrink-0 items-center gap-2">
+          <RuntimeStatusSignal status={status} t={t} />
+          <StatusSignal config={config} drift={drift} t={t} />
+        </div>
       </div>
 
       <div className="flex min-w-0 items-end justify-between gap-3">
@@ -114,6 +118,24 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
   )
 }
 
+function RuntimeStatusSignal({ status, t }: {
+  status: DeploymentUiStatus
+  t: ReturnType<typeof useTranslation<'deployments'>>['t']
+}) {
+  const config = runtimeStatusConfig(status)
+  const label = runtimeStatusLabel(status, t)
+
+  return (
+    <span
+      title={label}
+      className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass)}
+    >
+      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
+      <span>{label}</span>
+    </span>
+  )
+}
+
 function StatusSignal({ className, config, drift, t }: {
   className?: string
   config: TileConfig
@@ -121,11 +143,79 @@ function StatusSignal({ className, config, drift, t }: {
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
   return (
-    <span className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass, className)}>
+    <span
+      title={renderDriftTitle(config.kind, drift, t)}
+      className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass, className)}
+    >
       <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
       <span>{renderStatus(config.kind, drift, t)}</span>
     </span>
   )
+}
+
+function runtimeStatusConfig(status: DeploymentUiStatus): {
+  dotClass: string
+  statusClass: string
+} {
+  switch (status) {
+    case 'ready':
+      return {
+        dotClass: 'bg-util-colors-green-green-500',
+        statusClass: 'text-util-colors-green-green-700',
+      }
+    case 'deploying':
+      return {
+        dotClass: 'bg-util-colors-blue-blue-500 animate-pulse',
+        statusClass: 'text-util-colors-blue-blue-700',
+      }
+    case 'deploy_failed':
+      return {
+        dotClass: 'bg-util-colors-red-red-500',
+        statusClass: 'text-util-colors-red-red-700',
+      }
+    case 'drifted':
+      return {
+        dotClass: 'bg-util-colors-warning-warning-500',
+        statusClass: 'text-util-colors-warning-warning-700',
+      }
+    case 'invalid':
+      return {
+        dotClass: 'bg-util-colors-red-red-500',
+        statusClass: 'text-util-colors-red-red-700',
+      }
+    case 'not_deployed':
+      return {
+        dotClass: 'bg-text-quaternary',
+        statusClass: 'text-text-tertiary',
+      }
+    case 'unknown':
+      return {
+        dotClass: 'bg-text-quaternary',
+        statusClass: 'text-text-tertiary',
+      }
+  }
+}
+
+function runtimeStatusLabel(
+  status: DeploymentUiStatus,
+  t: ReturnType<typeof useTranslation<'deployments'>>['t'],
+): string {
+  switch (status) {
+    case 'ready':
+      return t('status.ready')
+    case 'deploying':
+      return t('status.deploying')
+    case 'deploy_failed':
+      return t('status.deployFailed')
+    case 'drifted':
+      return t('status.drifted')
+    case 'invalid':
+      return t('status.invalid')
+    case 'not_deployed':
+      return t('status.notDeployed')
+    case 'unknown':
+      return t('status.unknown')
+  }
 }
 
 function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseId }: {
@@ -246,5 +336,26 @@ function renderStatus(
       return t('overview.chip.deploying')
     case 'failed':
       return t('overview.chip.failed')
+  }
+}
+
+function renderDriftTitle(
+  kind: TileKind,
+  drift: ReturnType<typeof computeDrift>,
+  t: ReturnType<typeof useTranslation<'deployments'>>['t'],
+): string {
+  switch (kind) {
+    case 'latest':
+      return t('overview.chip.latestTooltip')
+    case 'behind':
+      return t('overview.chip.behindTooltip', { count: drift.kind === 'behind' ? drift.steps : 0 })
+    case 'older':
+      return t('overview.chip.olderReleaseTooltip')
+    case 'empty':
+      return t('overview.chip.emptyTooltip')
+    case 'deploying':
+      return t('overview.chip.deployingTooltip')
+    case 'failed':
+      return t('overview.chip.failedTooltip')
   }
 }

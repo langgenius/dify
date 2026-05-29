@@ -3,9 +3,24 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 const ENVIRONMENT_MODE_ISOLATED = 'ENVIRONMENT_MODE_ISOLATED' satisfies NonNullable<Environment['mode']>
 const RUNTIME_BACKEND_EXTERNAL = 'RUNTIME_BACKEND_EXTERNAL' satisfies NonNullable<Environment['backend']>
 const ENVIRONMENT_STATUS_READY = 'ENVIRONMENT_STATUS_READY' satisfies NonNullable<Environment['status']>
+const UUID_PATTERN = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i
 
 export function environmentId(environment?: Environment) {
   return environment?.id ?? ''
+}
+
+export function environmentDeploymentId(environment?: Environment) {
+  const id = environment?.id?.trim()
+
+  return id && UUID_PATTERN.test(id) ? id : ''
+}
+
+export function environmentMatchesIdentifier(environment: Environment | undefined, identifier: string) {
+  const normalizedIdentifier = identifier.trim()
+  if (!environment || !normalizedIdentifier)
+    return false
+
+  return environment.id === normalizedIdentifier || environment.name === normalizedIdentifier
 }
 
 export function environmentName(environment?: Environment) {

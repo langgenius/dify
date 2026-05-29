@@ -13,6 +13,7 @@ export function CreationSections({
   defaultedReleaseName,
   instanceDescription,
   instanceName,
+  instanceNameError,
   method,
   onInstanceDescriptionChange,
   onInstanceNameChange,
@@ -38,6 +39,7 @@ export function CreationSections({
   defaultedReleaseName: string
   instanceDescription: string
   instanceName: string
+  instanceNameError?: string
   method?: GuideMethod
   onInstanceDescriptionChange: (value: string) => void
   onInstanceNameChange: (value: string) => void
@@ -62,7 +64,7 @@ export function CreationSections({
   return (
     <div className="flex flex-col gap-7 pb-4">
       {stage === 'source' && (
-        <>
+        <div className="flex flex-col gap-4">
           <MethodStep method={method} onSelect={onSelectMethod} />
           {method === 'bindApp' && (
             <SourceStep
@@ -82,7 +84,7 @@ export function CreationSections({
               onDslFileChange={onDslFileChange}
             />
           )}
-        </>
+        </div>
       )}
       {stage === 'release' && method && (
         <ReleaseStep
@@ -91,6 +93,7 @@ export function CreationSections({
           releaseName={releaseName}
           releaseDescription={releaseDescription}
           instanceNamePlaceholder={sourceName}
+          instanceNameError={instanceNameError}
           releaseNamePlaceholder={defaultedReleaseName}
           onInstanceNameChange={onInstanceNameChange}
           onInstanceDescriptionChange={onInstanceDescriptionChange}

@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { consoleQuery } from '@/service/client'
 import { SourceAppPicker } from '../../components/create-instance-modal'
+import { deploymentErrorMessage } from '../../error'
+import { releaseLabel } from '../../release'
 
 type ReleaseSourceMode = 'sourceApp' | 'dsl'
 
@@ -165,13 +167,15 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
         toast.error(t('versions.createFailed'))
         return
       }
-      const createdName = response.release.name ?? submittedReleaseName
+      const createdName = response.release.name || submittedReleaseName || releaseLabel(response.release)
       toast.success(t('versions.createSuccess', { name: createdName }))
       form.reset()
       closeDialog()
     }
-    const handleError = () => {
-      toast.error(t('versions.createFailed'))
+    const handleError = (error: unknown) => {
+      void deploymentErrorMessage(error).then((message) => {
+        toast.error(message || t('versions.createFailed'))
+      })
     }
 
     if (releaseSourceMode === 'dsl') {
@@ -382,10 +386,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-                <div className="system-xs-regular text-text-tertiary">
-                  {t('versions.createReleaseHint')}
-                </div>
+              <div className="flex items-center justify-end gap-4 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
                 <div className="flex shrink-0 justify-end gap-2">
                   <Button
                     type="button"

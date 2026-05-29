@@ -17,6 +17,7 @@ export function CreateDeploymentGuide() {
     handlePrimaryAction,
     handleSkipDeployment,
     isDeploying,
+    isSkippingDeployment,
     showTargetConfiguration,
     step,
     targetReviewSectionsProps,
@@ -54,6 +55,7 @@ export function CreateDeploymentGuide() {
                   canContinue={canContinue}
                   canSkipDeployment={canSkipDeployment}
                   isDeploying={isDeploying}
+                  isSkippingDeployment={isSkippingDeployment}
                   step={step}
                   onBack={handleBack}
                   onPrimaryAction={handlePrimaryAction}

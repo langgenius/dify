@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { GuideStep } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 
 const GUIDE_PROGRESS_STEPS: GuideStep[] = ['source', 'release', 'target']
@@ -157,9 +158,16 @@ export function GuideCard({ children, actions }: {
 }) {
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1">
+      <ScrollArea
+        className="min-h-0 flex-1"
+        slotClassNames={{
+          viewport: 'overscroll-contain',
+          content: 'min-h-full pt-0.5 pb-6',
+          scrollbar: 'data-[orientation=vertical]:-me-5 data-[orientation=vertical]:my-1',
+        }}
+      >
         {children}
-      </div>
+      </ScrollArea>
       {actions}
     </div>
   )
@@ -173,7 +181,7 @@ export function GuideFrame({ activeStep, children }: {
 
   return (
     <div className="relative flex h-full min-h-0 overflow-hidden bg-background-default-subtle">
-      <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-y-auto">
+      <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-hidden">
         <section
           aria-label={t('createGuide.title')}
           className="flex h-full w-full max-w-[840px] flex-col px-5 sm:px-8 lg:px-10"
@@ -181,7 +189,7 @@ export function GuideFrame({ activeStep, children }: {
           <div className="h-5 sm:h-8 lg:h-12" />
           <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
             <h1 className="title-2xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
-            <div className="hidden w-[148px] shrink-0 min-[1120px]:block">
+            <div className="hidden w-[184px] shrink-0 min-[1120px]:block">
               <GuideProgressSummary activeStep={activeStep} />
             </div>
           </div>
@@ -200,6 +208,7 @@ export function GuideActions({
   canContinue,
   canSkipDeployment,
   isDeploying,
+  isSkippingDeployment,
   step,
   onBack,
   onPrimaryAction,
@@ -208,6 +217,7 @@ export function GuideActions({
   canContinue: boolean
   canSkipDeployment: boolean
   isDeploying: boolean
+  isSkippingDeployment: boolean
   step: GuideStep
   onBack: () => void
   onPrimaryAction: () => void
@@ -215,10 +225,13 @@ export function GuideActions({
 }) {
   const { t } = useTranslation('deployments')
   const primaryLabel = step === 'target'
-    ? isDeploying ? t('createGuide.actions.deploying') : t('createGuide.actions.createAndDeploy')
+    ? isDeploying && !isSkippingDeployment ? t('createGuide.actions.deploying') : t('createGuide.actions.createAndDeploy')
     : step === 'release' && isDeploying
       ? t('createGuide.actions.creating')
       : t('createGuide.actions.next')
+  const skipLabel = isSkippingDeployment
+    ? t('createGuide.actions.creating')
+    : t('createGuide.actions.skipDeploy')
 
   return (
     <div className="sticky bottom-0 z-10 -mx-5 mt-auto flex items-center justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle/95 px-5 py-4 backdrop-blur-sm sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
@@ -229,7 +242,7 @@ export function GuideActions({
       )}
       {step === 'target' && (
         <Button type="button" variant="secondary" disabled={!canSkipDeployment || isDeploying} onClick={onSkipDeployment}>
-          {t('createGuide.actions.skipDeploy')}
+          {skipLabel}
         </Button>
       )}
       <Button type="button" variant="primary" disabled={!canContinue || isDeploying} onClick={onPrimaryAction}>

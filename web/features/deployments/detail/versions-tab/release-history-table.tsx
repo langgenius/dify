@@ -157,12 +157,12 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, deploymentRows, 
                     <CreatedAtCell createdAt={release.createdAt} />
                     <span aria-hidden>·</span>
                     <span>{row.createdBy?.name ?? '—'}</span>
-                    {release.sourceAppId && (
+                    {(release.sourceAppId || release.source === 'RELEASE_SOURCE_UPLOAD') && (
                       <>
                         <span aria-hidden>·</span>
                         <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
                           <span className="shrink-0">{t('versions.col.sourceApp')}</span>
-                          <SourceAppCell sourceAppId={release.sourceAppId} />
+                          <ReleaseSourceCell release={release} />
                         </span>
                       </>
                     )}
@@ -255,9 +255,11 @@ function CreatedAtCell({ createdAt }: {
   )
 }
 
-function SourceAppCell({ sourceAppId }: {
-  sourceAppId?: string
+function ReleaseSourceCell({ release }: {
+  release: Release
 }) {
+  const { t } = useTranslation('deployments')
+  const sourceAppId = release.sourceAppId
   const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
     input: {
       params: { app_id: sourceAppId ?? '' },
@@ -265,8 +267,13 @@ function SourceAppCell({ sourceAppId }: {
     enabled: Boolean(sourceAppId),
   }))
 
-  if (!sourceAppId)
-    return <span className="text-text-quaternary">—</span>
+  if (!sourceAppId) {
+    return (
+      <span className="text-text-tertiary">
+        {release.source === 'RELEASE_SOURCE_UPLOAD' ? t('versions.manualDslOption') : '—'}
+      </span>
+    )
+  }
 
   const sourceAppName = sourceAppQuery.data?.name
   const label = sourceAppName || sourceAppId
@@ -276,10 +283,12 @@ function SourceAppCell({ sourceAppId }: {
     <Link
       href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
       title={title}
-      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary hover:text-text-primary"
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-accent hover:underline"
     >
       <span className="min-w-0 truncate">{label}</span>
-      <span className="i-ri-external-link-line size-3.5 shrink-0 text-text-quaternary" aria-hidden="true" />
+      <span className="i-ri-external-link-line size-3.5 shrink-0 text-text-accent" aria-hidden="true" />
     </Link>
   )
 }
@@ -338,7 +347,7 @@ function ReleaseHistoryRows({ appInstanceId, releaseRows, deploymentRows, deploy
                     </Tooltip>
                   </DetailTableCell>
                   <DetailTableCell>
-                    <SourceAppCell sourceAppId={release.sourceAppId} />
+                    <ReleaseSourceCell release={release} />
                   </DetailTableCell>
                   <DetailTableCell className="text-text-secondary">
                     <CreatedAtCell createdAt={release.createdAt} />
