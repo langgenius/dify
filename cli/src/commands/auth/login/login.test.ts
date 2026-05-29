@@ -106,6 +106,8 @@ describe('runLogin', () => {
     expect(bundle.account).toBeUndefined()
     expect(bundle.external_subject?.email).toBe('sso@dify.ai')
     expect(bundle.external_subject?.issuer).toBe('https://issuer.example')
+    const stored = await store.get(bundle.current_host, 'sso@dify.ai')
+    expect(stored).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })
