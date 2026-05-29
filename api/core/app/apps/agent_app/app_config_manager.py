@@ -8,7 +8,7 @@ stored on ``app_model_config`` when present, then reuse the same sub-managers
 the chat app type uses.
 """
 
-from typing import Any, cast
+from typing import Any
 
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
