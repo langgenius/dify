@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import { AppInitializer } from '@/app/components/app-initializer'
 import InSiteMessageNotification from '@/app/components/app/in-site-message/notification'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
+import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import { GotoAnything } from '@/app/components/goto-anything'
 import Header from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
+import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import WorkflowGeneratorMount from '@/app/components/workflow/workflow-generator/mount'
 import { AppContextProvider } from '@/context/app-context-provider'
@@ -15,14 +16,17 @@ import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import PartnerStack from '../components/billing/partner-stack'
+import { CommonLayoutHydrationBoundary } from './hydration-boundary'
 import RoleRouteGuard from './role-route-guard'
 
-const Layout = ({ children }: { children: ReactNode }) => {
+const Layout = async ({ children }: { children: ReactNode }) => {
   return (
     <>
       <GoogleAnalyticsScripts />
       <AmplitudeProvider />
-      <AppInitializer>
+      <OAuthRegistrationAnalytics />
+      <EducationVerifyActionRecorder />
+      <CommonLayoutHydrationBoundary>
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
@@ -42,8 +46,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
-        <Zendesk />
-      </AppInitializer>
+      </CommonLayoutHydrationBoundary>
+      <Zendesk />
     </>
   )
 }
