@@ -5,6 +5,7 @@ import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useAppsQueryState } from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
+  // eslint-disable-next-line react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 
@@ -35,7 +36,7 @@ describe('useAppsQueryState', () => {
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
-      tagIDs: ['tag1', 'tag2'],
+      tagIDs: [],
       keywords: 'search term',
       isCreatedByMe: true,
     })
@@ -117,31 +118,30 @@ describe('useAppsQueryState', () => {
     }
   })
 
-  it('should update tag filter URL state', async () => {
+  it('should update tag filter state without writing to URL', async () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
       result.current.setTagIDs(['tag1', 'tag2'])
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
-    expect(update.searchParams.get('tagIDs')).toBe('tag1;tag2')
-    expect(update.options.history).toBe('push')
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
-  it('should remove tagIDs from URL when empty', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter('?tagIDs=tag1;tag2')
-
-    act(() => {
-      result.current.setTagIDs([])
-    })
+  it('should remove legacy tagIDs from URL while preserving other filters', async () => {
+    const { result, onUrlUpdate } = renderWithAdapter(
+      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
+    )
 
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
     const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(result.current.query.tagIDs).toEqual([])
     expect(update.searchParams.has('tagIDs')).toBe(false)
+    expect(update.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
+    expect(update.searchParams.get('keywords')).toBe('search term')
+    expect(update.searchParams.get('isCreatedByMe')).toBe('true')
+    expect(update.options.history).toBe('replace')
   })
 
   it('should update created-by-me URL state', async () => {

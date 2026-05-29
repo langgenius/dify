@@ -1,5 +1,5 @@
 import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppModes } from '@/types/app'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
@@ -28,7 +28,16 @@ const appListQueryParsers = {
 }
 
 export function useAppsQueryState() {
-  const [query, setQuery] = useQueryStates(appListQueryParsers)
+  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
+  const [{ tagIDs: urlTagIDs, ...urlQuery }, setQuery] = useQueryStates(appListQueryParsers)
+  const [tagIDs, setTagIDs] = useState<string[]>([])
+
+  useEffect(() => {
+    if (urlTagIDs.length) {
+      // eslint-disable-next-line react/set-state-in-effect -- removes legacy URL-only state while preserving other filters
+      setQuery({ tagIDs: null }, { history: 'replace' })
+    }
+  }, [setQuery, urlTagIDs])
 
   const setCategory = useCallback((category: AppListCategory) => {
     setQuery({ category })
@@ -38,19 +47,18 @@ export function useAppsQueryState() {
     setQuery({ keywords })
   }, [setQuery])
 
-  const setTagIDs = useCallback((tagIDs: string[]) => {
-    setQuery({ tagIDs })
-  }, [setQuery])
-
   const setIsCreatedByMe = useCallback((isCreatedByMe: boolean) => {
     setQuery({ isCreatedByMe })
   }, [setQuery])
 
   return useMemo(() => ({
-    query,
+    query: {
+      ...urlQuery,
+      tagIDs,
+    },
     setCategory,
     setKeywords,
     setTagIDs,
     setIsCreatedByMe,
-  }), [query, setCategory, setKeywords, setTagIDs, setIsCreatedByMe])
+  }), [urlQuery, tagIDs, setCategory, setKeywords, setTagIDs, setIsCreatedByMe])
 }
