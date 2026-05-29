@@ -285,10 +285,10 @@ function ReleaseSourceCell({ release }: {
       title={title}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-accent hover:underline"
+      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary transition-colors hover:text-text-accent"
     >
       <span className="min-w-0 truncate">{label}</span>
-      <span className="i-ri-external-link-line size-3.5 shrink-0 text-text-accent" aria-hidden="true" />
+      <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" aria-hidden="true" />
     </Link>
   )
 }
