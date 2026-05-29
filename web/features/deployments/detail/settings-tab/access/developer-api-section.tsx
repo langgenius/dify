@@ -12,6 +12,7 @@ import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { atom, useAtom, useSetAtom } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useClipboard } from '@/hooks/use-clipboard'
@@ -28,6 +29,7 @@ import {
   DetailTableRow,
 } from '../../table'
 import { API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../table-styles'
+import { DeveloperApiDocsDrawer } from './api-docs-drawer'
 import { ApiKeyGenerateMenu, ApiKeyList } from './api-keys'
 import { CopyPill } from './common'
 
@@ -396,6 +398,7 @@ export function DeveloperApiSection({
 }) {
   const { t } = useTranslation('deployments')
   const [createdApiToken, setCreatedApiToken] = useAtom(createdApiTokenAtom)
+  const [apiDocsOpen, setApiDocsOpen] = useState(false)
   const {
     apiEnabled,
     apiUrl,
@@ -418,10 +421,27 @@ export function DeveloperApiSection({
             ? (
                 <div className="flex flex-col gap-4">
                   {apiUrl && (
-                    <CopyPill
-                      label={t('access.api.endpoint')}
-                      value={apiUrl}
-                    />
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                      <CopyPill
+                        label={t('access.api.endpoint')}
+                        value={apiUrl}
+                        className="min-w-0 flex-1"
+                      />
+                      <Button
+                        variant="secondary"
+                        className="shrink-0 gap-1.5"
+                        onClick={() => setApiDocsOpen(true)}
+                      >
+                        <span className="i-ri-file-list-3-line size-3.5" />
+                        {t('access.api.docs')}
+                      </Button>
+                      <DeveloperApiDocsDrawer
+                        open={apiDocsOpen}
+                        appInstanceId={appInstanceId}
+                        apiBaseUrl={apiUrl}
+                        onOpenChange={setApiDocsOpen}
+                      />
+                    </div>
                   )}
                   {apiKeys.length === 0
                     ? (
