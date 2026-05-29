@@ -771,3 +771,136 @@ class TestWorkflowGeneratorContainerNodes:
         outside_edge = edges_by_id["node-1-source-node-2-target"]
         assert outside_edge["data"]["isInIteration"] is False
         assert outside_edge["data"]["isInLoop"] is False
+
+
+class TestWorkflowGeneratorAppMetadata:
+    """
+    Planner-supplied ``app_name`` / ``icon`` flow through to the result so
+    the frontend's ``applyToNewApp`` can use a meaningful product name and
+    emoji instead of the canned ``deriveAppName`` + 🤖 fallback.
+    """
+
+    def _planner_with_metadata(self) -> str:
+        return json.dumps(
+            {
+                "title": "URL Summarizer",
+                "description": "Fetch a URL and summarize it.",
+                "app_name": "URL Summarizer",
+                "icon": "📰",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "Take URL."},
+                    {"label": "Summarize", "node_type": "llm", "purpose": "Summarize the page."},
+                    {"label": "End", "node_type": "end", "purpose": "Return summary."},
+                ],
+            }
+        )
+
+    def _planner_without_metadata(self) -> str:
+        return json.dumps(
+            {
+                "title": "Untitled",
+                "description": "...",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+
+    def _minimal_builder(self) -> str:
+        return json.dumps(
+            {
+                "nodes": [
+                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "start", "title": "Start"}},
+                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "end", "title": "End"}},
+                ],
+                "edges": [
+                    {"id": "x", "source": "node-1", "target": "node-2", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+
+    def test_surfaces_planner_app_name_and_icon(self):
+        # When the planner emits ``app_name`` + ``icon``, the runner must
+        # forward them verbatim. The frontend uses them to name the new App
+        # and pick its display icon.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner_with_metadata()),
+            _llm_result(self._minimal_builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize a URL",
+        )
+
+        assert result["error"] == ""
+        assert result["app_name"] == "URL Summarizer"
+        assert result["icon"] == "📰"
+
+    def test_defaults_to_empty_strings_when_planner_omits_metadata(self):
+        # Older planner outputs (or any model that drops the optional fields)
+        # must NOT break the pipeline — both fields default to "" so the
+        # frontend can run its own ``deriveAppName`` + 🤖 fallback.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(self._planner_without_metadata()),
+            _llm_result(self._minimal_builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["error"] == ""
+        assert result["app_name"] == ""
+        assert result["icon"] == ""
+
+    def test_metadata_is_stripped_of_surrounding_whitespace(self):
+        # Some LLMs return ``"app_name": "  URL Summarizer  "`` — the runner
+        # must strip both ends so the frontend doesn't have to.
+        planner = json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "app_name": "   URL Summarizer   ",
+                "icon": "  📰  ",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(planner),
+            _llm_result(self._minimal_builder()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert result["app_name"] == "URL Summarizer"
+        assert result["icon"] == "📰"

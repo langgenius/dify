@@ -105,6 +105,8 @@ class WorkflowGenerator:
         empty_result: WorkflowGenerateResultDict = {
             "graph": {"nodes": [], "edges": [], "viewport": _DEFAULT_VIEWPORT},
             "message": "",
+            "app_name": "",
+            "icon": "",
             "error": "",
         }
 
@@ -150,6 +152,13 @@ class WorkflowGenerator:
         # ── 3. POSTPROC ───────────────────────────────────────────────────
         graph = cls._postprocess_graph(graph=graph, mode=mode)
 
+        # Surface the planner-supplied display metadata to the frontend so
+        # ``applyToNewApp`` can name the new app and pick a meaningful icon
+        # instead of the canned ``deriveAppName`` + 🤖 fallback. Both fields
+        # default to "" when the LLM omits them — the FE owns the fallback.
+        app_name = str(plan.get("app_name") or "").strip()
+        icon = str(plan.get("icon") or "").strip()
+
         # Final structural sanity check — fail closed if start/end shape is wrong.
         structural_error = cls._validate_structure(graph=graph, mode=mode)
         if structural_error:
@@ -157,12 +166,16 @@ class WorkflowGenerator:
             return {
                 "graph": graph,  # still return the partial graph so caller can debug
                 "message": plan.get("description", ""),
+                "app_name": app_name,
+                "icon": icon,
                 "error": structural_error,
             }
 
         return {
             "graph": graph,
             "message": plan.get("description", ""),
+            "app_name": app_name,
+            "icon": icon,
             "error": "",
         }
 

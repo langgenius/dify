@@ -62,13 +62,22 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
        {"label": "Store Item", "node_type": "code", "purpose": "...",
         "parent": "Per Item"}
    Nodes without a ``"parent"`` are top-level.
-9. Output strictly the JSON object — no prose, no Markdown, no code fences.
+9. Pick a short, human-readable ``app_name`` (≤ 30 chars, Title Case) and
+   exactly ONE ``icon`` emoji that captures the workflow's purpose at a
+   glance — these are used as the App's display name and icon when the user
+   applies the generation to a brand-new app. Prefer concise nouns
+   ("URL Summarizer", "Translator", "Issue Triage") and a topical emoji
+   (📰 for news/summary, 🌐 for translation, 🐛 for issues, 🎓 for
+   tutoring, 🔎 for search, 🗂️ for routing/classification).
+10. Output strictly the JSON object — no prose, no Markdown, no code fences.
 
 # Output schema
 
 {
   "title": "<≤ 40-char title of the workflow>",
   "description": "<one-sentence summary>",
+  "app_name": "<≤ 30-char product-style name, e.g. 'URL Summarizer'>",
+  "icon": "<single emoji that captures the workflow's purpose, e.g. '📰'>",
   "nodes": [
     {"label": "Start",      "node_type": "start", "purpose": "..."},
     {"label": "Summarize",  "node_type": "llm",   "purpose": "..."},

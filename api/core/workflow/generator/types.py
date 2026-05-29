@@ -25,6 +25,8 @@ class PlannerResultDict(TypedDict):
 
     title: str
     description: str
+    app_name: NotRequired[str]
+    icon: NotRequired[str]
     nodes: list[PlannerNodeDict]
 
 
@@ -76,8 +78,16 @@ class GraphDict(TypedDict):
 
 
 class WorkflowGenerateResultDict(TypedDict):
-    """What the runner returns. ``error`` is "" on success."""
+    """What the runner returns. ``error`` is "" on success.
+
+    ``app_name`` and ``icon`` are populated from the planner output when the
+    LLM emits them (newer prompts) and default to empty strings when it
+    doesn't. The frontend's ``applyToNewApp`` consumes them with its own
+    fallback so old prompts and missing fields stay safe.
+    """
 
     graph: GraphDict
     message: str
+    app_name: str
+    icon: str
     error: str
