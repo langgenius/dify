@@ -364,3 +364,207 @@ class TestWorkflowGeneratorFailurePaths:
         )
 
         assert "ghost" in result["error"]
+
+
+class TestWorkflowGeneratorEdgeCases:
+    """
+    Smaller behaviours that aren't part of the happy path but matter for
+    coverage and resilience.
+    """
+
+    def test_clamp_for_planner_lowers_high_temperature(self):
+        # The planner needs deterministic output — a permissive temperature
+        # would let it ramble. The runner pins it back down for the planner
+        # call while leaving the builder call alone.
+        from core.workflow.generator.runner import _clamp_for_planner
+
+        out = _clamp_for_planner({"temperature": 0.9, "max_tokens": 1024})
+        assert out["temperature"] == 0.2
+        # Other params must flow through unchanged so the model still gets
+        # provider-tuned defaults.
+        assert out["max_tokens"] == 1024
+
+    def test_clamp_for_planner_preserves_low_temperature(self):
+        # A user who already picked a tight temperature shouldn't have their
+        # setting overridden — clamping only kicks in above 0.5.
+        from core.workflow.generator.runner import _clamp_for_planner
+
+        out = _clamp_for_planner({"temperature": 0.3})
+        assert out["temperature"] == 0.3
+
+    def test_clamp_for_planner_injects_default_when_missing(self):
+        # No temperature → planner picks 0.2 so the output stays consistent
+        # across calls.
+        from core.workflow.generator.runner import _clamp_for_planner
+
+        out = _clamp_for_planner({})
+        assert out["temperature"] == 0.2
+
+    def test_planner_no_nodes_surfaces_clear_error(self):
+        # The planner returned a malformed plan (empty nodes list). The runner
+        # must refuse and tell the caller — never proceed to the builder.
+        planner = json.dumps({"title": "x", "description": "x", "nodes": []})
+        model_instance = MagicMock()
+        model_instance.invoke_llm.return_value = _llm_result(planner)
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert "no nodes" in result["error"].lower() or "no 'nodes'" in result["error"]
+        # Builder must NOT have been called.
+        assert model_instance.invoke_llm.call_count == 1
+
+    def test_tool_catalogue_text_propagates_into_both_prompts(self):
+        # The catalogue must reach the planner AND the builder so they share
+        # the same tool inventory. We capture both invocations and inspect
+        # the prompt strings.
+        planner = json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        builder = json.dumps(
+            {
+                "nodes": [
+                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "start", "title": "Start"}},
+                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "end", "title": "End"}},
+                ],
+                "edges": [{"id": "x", "source": "node-1", "target": "node-2", "type": "custom"}],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+
+        WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+            tool_catalogue_text="- google/search — Search.",
+        )
+
+        all_prompts = []
+        for call in model_instance.invoke_llm.call_args_list:
+            for msg in call.kwargs["prompt_messages"]:
+                all_prompts.append(str(msg.content))
+
+        joined = "\n".join(all_prompts)
+        # Catalogue must appear in both planner and builder user prompts.
+        assert joined.count("- google/search — Search.") >= 2
+
+    def test_postprocess_lays_out_nodes_left_to_right_regardless_of_input(self):
+        # The LLM often returns wildly overlapping positions. The postprocess
+        # step must override them with a clean horizontal layout so the
+        # preview pane is readable.
+        planner = json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "Middle", "node_type": "llm", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        builder = json.dumps(
+            {
+                "nodes": [
+                    {"id": "node-1", "type": "custom", "position": {"x": 999, "y": 999},
+                     "data": {"type": "start", "title": "Start"}},
+                    {"id": "node-2", "type": "custom", "position": {"x": 999, "y": 999},
+                     "data": {"type": "llm", "title": "Middle"}},
+                    {"id": "node-3", "type": "custom", "position": {"x": 999, "y": 999},
+                     "data": {"type": "end", "title": "End"}},
+                ],
+                "edges": [
+                    {"id": "a", "source": "node-1", "target": "node-2", "type": "custom"},
+                    {"id": "b", "source": "node-2", "target": "node-3", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        positions = [n["position"]["x"] for n in result["graph"]["nodes"]]
+        assert positions == sorted(positions)
+        # All on the same Y so the canvas reads as a horizontal chain.
+        ys = {n["position"]["y"] for n in result["graph"]["nodes"]}
+        assert len(ys) == 1
+
+    def test_postprocess_dedupes_repeated_edges(self):
+        # LLMs frequently emit the same edge twice (once per direction or per
+        # pass). The postprocess step must collapse them so the canvas
+        # doesn't render visual duplicates.
+        planner = json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        builder = json.dumps(
+            {
+                "nodes": [
+                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "start", "title": "Start"}},
+                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
+                     "data": {"type": "end", "title": "End"}},
+                ],
+                "edges": [
+                    {"id": "a", "source": "node-1", "target": "node-2", "type": "custom"},
+                    {"id": "b", "source": "node-1", "target": "node-2", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert len(result["graph"]["edges"]) == 1
+
+
+# Silence the unused-import warning — pytest is used implicitly via fixtures.
+_ = pytest
