@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { getQueryClientServer } from '@/context/query-client-server'
-import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { resolveServerConsoleApiUrl, serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -9,6 +9,7 @@ import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
+const ACCOUNT_PROFILE_PATH = '/account/profile'
 
 type ConsoleErrorPayload = {
   code?: string
@@ -56,6 +57,15 @@ const handleProfileError = async (error: unknown) => {
 
 export async function CommonLayoutHydrationBoundary({ children }: { children: ReactNode }) {
   const queryClient = getQueryClientServer()
+  const accountProfileUrl = resolveServerConsoleApiUrl(ACCOUNT_PROFILE_PATH)
+
+  if (!accountProfileUrl) {
+    return (
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        {children}
+      </HydrationBoundary>
+    )
+  }
 
   try {
     await Promise.all([

@@ -2,9 +2,14 @@ import type { AccountProfileResponse } from '@/contract/console/account'
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userProfileQueryOptions } from '../client'
+import { resolveServerConsoleApiUrl } from '../server'
 
 const headersMock = vi.fn()
 const cookiesMock = vi.fn()
+
+vi.mock('@/config/server', () => ({
+  SERVER_CONSOLE_API_PREFIX: undefined,
+}))
 
 vi.mock('@/next/headers', () => ({
   headers: () => headersMock(),
@@ -54,12 +59,21 @@ describe('serverUserProfileQueryOptions', () => {
       },
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/account/profile'),
+      'http://localhost:5001/console/api/account/profile',
       expect.objectContaining({
         method: 'GET',
         cache: 'no-store',
         headers: expect.any(Headers),
       }),
     )
+  })
+
+  it('should skip relative API prefixes unless a server API origin is configured', () => {
+    expect(resolveServerConsoleApiUrl('/account/profile', undefined, '/console/api')).toBeNull()
+    expect(resolveServerConsoleApiUrl('/account/profile', 'https://console.example.com/console/api', '/console/api')).toBe('https://console.example.com/console/api/account/profile')
+  })
+
+  it('should preserve absolute API prefixes', () => {
+    expect(resolveServerConsoleApiUrl('/account/profile', undefined, 'https://console.example.com/console/api')).toBe('https://console.example.com/console/api/account/profile')
   })
 })

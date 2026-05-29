@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
   headers: vi.fn(),
+  resolveServerConsoleApiUrl: vi.fn(),
 }))
 
 vi.mock('@/context/query-client-server', () => ({
@@ -26,6 +27,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/features/account-profile/server', () => ({
+  resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
   serverUserProfileQueryOptions: () => ({
     queryKey: ['common', 'user-profile'],
     queryFn: mocks.profileQueryFn,
@@ -49,6 +51,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       'x-dify-pathname': '/apps',
       'x-dify-search': '?tag=workflow',
     }))
+    mocks.resolveServerConsoleApiUrl.mockReturnValue('https://console.example.com/console/api/account/profile')
     mocks.profileQueryFn.mockResolvedValue({
       profile: {
         id: 'account-id',
@@ -99,5 +102,23 @@ describe('CommonLayoutHydrationBoundary', () => {
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mocks.redirect).toHaveBeenCalledWith('/install')
+  })
+
+  it('should render children without server prefetch when the server API URL is not resolvable', async () => {
+    mocks.resolveServerConsoleApiUrl.mockReturnValue(null)
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+    const element = await CommonLayoutHydrationBoundary({
+      children: <div>Common shell</div>,
+    })
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        {element as ReactElement}
+      </QueryClientProvider>,
+    )
+    expect(screen.getByText('Common shell')).toBeInTheDocument()
+    expect(mocks.profileQueryFn).not.toHaveBeenCalled()
+    expect(mocks.systemFeaturesQueryFn).not.toHaveBeenCalled()
   })
 })
