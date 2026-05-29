@@ -690,6 +690,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
+      '@typescript/native-preview':
+        specifier: 'catalog:'
+        version: 7.0.0-dev.20260523.1
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.7(@vitest/browser@4.1.7)(@voidzero-dev/vite-plus-test@0.1.22)
