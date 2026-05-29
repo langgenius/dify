@@ -20,6 +20,20 @@ class PlannerNodeDict(TypedDict):
     purpose: str
 
 
+class PlannerStartInputDict(TypedDict):
+    """One user-supplied input the start node will declare.
+
+    The planner emits this list so the builder can populate
+    ``start.data.variables`` and downstream ``{#start.<var>#}`` references
+    resolve at run time. Optional — older prompts may omit it; the runner's
+    postprocess walker still auto-fixes missing references.
+    """
+
+    variable: str
+    label: str
+    type: str  # "text-input" | "paragraph" | "number" | "select" | "file" | "file-list"
+
+
 class PlannerResultDict(TypedDict):
     """Top-level planner response."""
 
@@ -27,6 +41,7 @@ class PlannerResultDict(TypedDict):
     description: str
     app_name: NotRequired[str]
     icon: NotRequired[str]
+    start_inputs: NotRequired[list[PlannerStartInputDict]]
     nodes: list[PlannerNodeDict]
 
 

@@ -69,7 +69,22 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
    ("URL Summarizer", "Translator", "Issue Triage") and a topical emoji
    (📰 for news/summary, 🌐 for translation, 🐛 for issues, 🎓 for
    tutoring, 🔎 for search, 🗂️ for routing/classification).
-10. Output strictly the JSON object — no prose, no Markdown, no code fences.
+10. Declare the workflow's user-supplied inputs in ``start_inputs``. Every
+    user value a downstream node will reference (URLs, queries, topics,
+    file uploads, etc.) MUST appear here so the start node can expose it
+    at run time — otherwise the LLM / code / answer node's ``{#start.<var>#}``
+    reference will fail at run time with "variable not found". Each entry
+    is ``{"variable": "<snake_case>", "label": "<UI label>",
+    "type": "text-input" | "paragraph" | "number" | "select" | "file" |
+    "file-list"}``. Use:
+      - "text-input" for short single-line values (URLs, names),
+      - "paragraph" for free-form multi-line text (descriptions, queries),
+      - "number" / "select" / "file" / "file-list" for the obvious cases.
+    In Advanced-Chat mode the ``sys.query`` / ``sys.files`` system
+    variables are automatic — downstream nodes may reference them without
+    a ``start_inputs`` entry. In Workflow mode there is NO automatic
+    variable; everything the user supplies must be in ``start_inputs``.
+11. Output strictly the JSON object — no prose, no Markdown, no code fences.
 
 # Output schema
 
@@ -78,6 +93,9 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
   "description": "<one-sentence summary>",
   "app_name": "<≤ 30-char product-style name, e.g. 'URL Summarizer'>",
   "icon": "<single emoji that captures the workflow's purpose, e.g. '📰'>",
+  "start_inputs": [
+    {"variable": "url", "label": "URL", "type": "text-input"}
+  ],
   "nodes": [
     {"label": "Start",      "node_type": "start", "purpose": "..."},
     {"label": "Summarize",  "node_type": "llm",   "purpose": "..."},

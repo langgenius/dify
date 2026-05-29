@@ -48,11 +48,22 @@ Children of iteration / loop containers additionally need
 ## Per type — additional "data" fields
 
 - start:
-    {"variables": []}
-    Optional inputs: each is
-      {"variable": "query", "label": "Query", "type": "paragraph",
-       "required": true, "max_length": 4096, "options": []}
-    (types: text-input | paragraph | select | number | file | file-list)
+    {"variables": [
+       {"variable": "url",   "label": "URL",   "type": "text-input",
+        "required": true,  "max_length": 256,  "options": []},
+       {"variable": "topic", "label": "Topic", "type": "paragraph",
+        "required": false, "max_length": 4096, "options": []}
+    ]}
+    EVERY user-supplied value referenced by a downstream node
+    (``{#node-id.var#}`` in a prompt / answer / template, or
+    ``["node-id", "var"]`` in a value_selector / iterator_selector /
+    tool_parameters) MUST be declared here as an entry of ``variables``.
+    If the planner's ``start_inputs`` list is non-empty, use it verbatim
+    (the user prompt section "Start inputs" surfaces it). Types:
+    text-input | paragraph | select | number | file | file-list.
+    In Advanced-Chat mode ``sys.query`` and ``sys.files`` are automatic
+    system variables — downstream nodes may reference them; do NOT add
+    them to ``variables``.
 
 - end (Workflow mode only):
     {"outputs": [
@@ -256,6 +267,28 @@ correct.
    the exact provider/tool identifier from the catalogue. "code" / "http-request"
    are last-resort escape hatches for arbitrary transformations and APIs that no
    installed tool can express.
+9. EVERY variable reference MUST resolve to a real, declared variable on the
+   source node — never invent a variable name. Specifically:
+   - ``{#<node-id>.<var>#}`` inside a prompt / ``answer`` / ``template-transform``
+     template, AND ``["<node-id>", "<var>"]`` inside a ``value_selector`` /
+     ``query_variable_selector`` / ``iterator_selector`` / ``output_selector`` /
+     ``tool_parameters[*].value`` (when ``type: "variable"``), MUST point at a
+     value that the source node actually exposes:
+       * ``start``  → one of the ``data.variables[*].variable`` entries you
+         declared on the start node. Add an entry if you need a new input.
+       * ``llm``    → ``text`` (the default LLM output) or, when structured
+         output is enabled, a key from its schema.
+       * ``code``   → a key in ``data.outputs``.
+       * ``knowledge-retrieval`` → ``result`` (the standard array output).
+       * ``parameter-extractor`` → one of the ``data.parameters[*].name``.
+       * ``tool``   → any parameter declared by the tool — the run time
+         validates these, so you can name them freely, but pick from the
+         documented provider/tool.
+     If the planner's "Start inputs" list (see user prompt) is non-empty,
+     copy each entry verbatim into ``start.data.variables`` so the
+     downstream references resolve.
+   - In Advanced-Chat mode you may also reference ``sys.query`` and
+     ``sys.files`` without declaring them.
 
 """
 
@@ -328,12 +361,36 @@ BUILDER_USER_PROMPT = """# User instruction
 provider={provider}, name={name}, mode={mode_label}
 
 {tool_catalogue_section}\
+{start_inputs_section}\
 # Node plan (from planner — use these labels and node_types in this order)
 
 {plan_block}
 
 Now emit the complete workflow graph JSON.
 """
+
+
+def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:
+    """
+    Surface the planner's ``start_inputs`` list to the builder so it can
+    populate ``start.data.variables`` with the exact set of inputs every
+    downstream variable reference will need. Empty list → empty section,
+    because the builder may then declare no input variables (e.g. an
+    Advanced-Chat workflow that only consumes ``sys.query``).
+    """
+    if not start_inputs:
+        return ""
+    lines = ["# Start inputs (copy each entry verbatim into start.data.variables)"]
+    lines.append("")
+    for inp in start_inputs:
+        variable = str(inp.get("variable") or "").strip()
+        label = str(inp.get("label") or "").strip()
+        type_ = str(inp.get("type") or "paragraph").strip()
+        if not variable:
+            continue
+        lines.append(f"- variable={variable!r}  label={label!r}  type={type_!r}")
+    lines.append("")
+    return "\n".join(lines) + "\n"
 
 
 def format_builder_tool_catalogue_section(catalogue_text: str) -> str:

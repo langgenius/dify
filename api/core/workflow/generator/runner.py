@@ -25,7 +25,8 @@ single planner+builder pair shipped behind cmd+k `/create` is enough.
 
 import json
 import logging
-from typing import Any, cast
+import re
+from typing import Any, ClassVar, cast
 
 import json_repair
 
@@ -33,6 +34,7 @@ from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_USER_PROMPT,
     format_builder_tool_catalogue_section,
     format_plan_block,
+    format_start_inputs_section,
     get_builder_system_prompt,
 )
 from core.workflow.generator.prompts.planner_prompts import (
@@ -130,6 +132,17 @@ class WorkflowGenerator:
             empty_result["error"] = "Planner returned no nodes"
             return empty_result
 
+        # Planner-supplied user-input declarations. The builder uses these to
+        # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
+        # references resolve at run time. Optional field — older prompts may
+        # omit it, in which case the postprocess walker auto-fixes references.
+        start_inputs_raw = plan.get("start_inputs") or []
+        start_inputs: list[dict[str, Any]] = [
+            cast(dict[str, Any], item)
+            for item in start_inputs_raw
+            if isinstance(item, dict) and (item.get("variable") or "").strip()
+        ]
+
         # ── 2. BUILDER ────────────────────────────────────────────────────
         try:
             graph = cls._run_builder(
@@ -143,6 +156,7 @@ class WorkflowGenerator:
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
                 tool_catalogue_text=tool_catalogue_text,
+                start_inputs=start_inputs,
             )
         except Exception as e:
             logger.exception("Workflow generator: builder step failed")
@@ -239,6 +253,7 @@ class WorkflowGenerator:
         ideal_output: str,
         plan_nodes: list[dict[str, Any]],
         tool_catalogue_text: str,
+        start_inputs: list[dict[str, Any]] | None = None,
     ) -> GraphDict:
         user_prompt = BUILDER_USER_PROMPT.format(
             instruction=instruction.strip(),
@@ -248,6 +263,7 @@ class WorkflowGenerator:
             mode_label=model_mode,
             plan_block=format_plan_block(plan_nodes),
             tool_catalogue_section=format_builder_tool_catalogue_section(tool_catalogue_text),
+            start_inputs_section=format_start_inputs_section(start_inputs or []),
         )
         messages = [
             SystemPromptMessage(content=get_builder_system_prompt(mode)),
@@ -379,7 +395,162 @@ class WorkflowGenerator:
             "zoom": float(viewport.get("zoom", 0.7)),
         }
 
+        # Variable-reference walker: every ``{#node-id.var#}`` and every
+        # ``["node-id", "var"]`` selector must point at a variable the source
+        # node actually exposes — otherwise the workflow's variable resolver
+        # fails at run time with "variable not found". The dominant failure
+        # mode is a prompt that references ``{#start.url#}`` when the start
+        # node has ``variables: []``, so we auto-inject missing start-node
+        # variables before we surface them as errors.
+        cls._reconcile_variable_references(nodes=nodes, mode=mode)
+
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
+
+    # ------------------------------------------------------------------
+    # Variable-reference reconciliation
+    # ------------------------------------------------------------------
+
+    # Detects ``{#node-id.var#}`` placeholders inside strings — the same
+    # syntax the workflow runtime uses for prompt interpolation.
+    _VAR_REF_RE: ClassVar = re.compile(r"\{#([^.#]+)\.([^#]+)#\}")
+
+    @classmethod
+    def _reconcile_variable_references(
+        cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode
+    ) -> None:
+        """
+        Walk every variable reference, ensure it resolves; auto-fix missing
+        start-node variables (the safe, dominant case) by adding a stub
+        ``paragraph`` entry to ``start.data.variables``.
+
+        For Advanced-Chat mode, ``sys.query`` and ``sys.files`` are always
+        treated as resolved without any declaration. Tool nodes' parameter
+        references aren't validated here because we don't know each tool's
+        schema — the run time validates those.
+        """
+        nodes_by_id: dict[str, dict[str, Any]] = {
+            n.get("id", ""): n for n in nodes if n.get("id")
+        }
+        start_node = next(
+            (n for n in nodes if n.get("data", {}).get("type") == BuiltinNodeTypes.START),
+            None,
+        )
+
+        # Collect every (node_id, var) reference the builder emitted.
+        refs: set[tuple[str, str]] = set()
+        for node in nodes:
+            cls._collect_refs_in_data(node.get("data") or {}, refs)
+
+        for node_id, var in refs:
+            # Advanced-Chat system variables are always resolved.
+            if mode == "advanced-chat" and node_id == "sys":
+                continue
+            target = nodes_by_id.get(node_id)
+            if target is None:
+                # An edge / data dangling reference — we can't fix it; the
+                # structural validator picks this up if it's a topology issue.
+                continue
+            if cls._declares_variable(target, var):
+                continue
+            # Missing variable. Auto-fix start-node references; let everything
+            # else fall through and surface in the result's ``error`` field
+            # via the post-postprocess validator below.
+            if start_node is not None and target is start_node:
+                cls._inject_start_variable(start_node, var)
+                logger.info("Workflow generator: auto-injected missing start variable %r", var)
+
+    @classmethod
+    def _collect_refs_in_data(cls, value: Any, out: set[tuple[str, str]]) -> None:
+        """Recursively walk a node's ``data`` and harvest every reference."""
+        if isinstance(value, str):
+            for match in cls._VAR_REF_RE.finditer(value):
+                node_id, var = match.group(1).strip(), match.group(2).strip()
+                if node_id and var:
+                    out.add((node_id, var))
+            return
+        if isinstance(value, dict):
+            # Known selector shapes: 2-element [node_id, var] lists.
+            for k, v in value.items():
+                # ``value_selector`` / ``query_variable_selector`` / etc.: a
+                # flat 2-element list of strings.
+                if (
+                    isinstance(v, list)
+                    and len(v) == 2
+                    and all(isinstance(x, str) for x in v)
+                    and k != "default"  # default values for input variables are not selectors
+                ):
+                    node_id, var = v[0].strip(), v[1].strip()
+                    if node_id and var:
+                        out.add((node_id, var))
+                cls._collect_refs_in_data(v, out)
+            return
+        if isinstance(value, list):
+            for item in value:
+                cls._collect_refs_in_data(item, out)
+
+    @classmethod
+    def _declares_variable(cls, node: dict[str, Any], var: str) -> bool:
+        """
+        Does ``node`` expose a variable named ``var``? Each node type
+        publishes outputs differently — start exposes ``data.variables``,
+        llm exposes ``text``, code exposes ``data.outputs`` keys, etc.
+        Tool parameters are validated at run time, not here.
+        """
+        data = node.get("data") or {}
+        node_type = data.get("type")
+        if node_type == BuiltinNodeTypes.START:
+            return any(
+                isinstance(v, dict) and v.get("variable") == var
+                for v in (data.get("variables") or [])
+            )
+        if node_type == BuiltinNodeTypes.LLM:
+            # Default LLM output is ``text``. Structured-output keys land
+            # under ``structured_output.schema.properties`` when enabled.
+            if var == "text":
+                return True
+            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
+            return var in schema
+        if node_type == BuiltinNodeTypes.CODE:
+            return var in (data.get("outputs") or {})
+        if node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+            return var == "result"
+        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
+            return any(
+                isinstance(p, dict) and p.get("name") == var
+                for p in (data.get("parameters") or [])
+            )
+        if node_type == BuiltinNodeTypes.HTTP_REQUEST:
+            return var in {"body", "status_code", "headers", "files"}
+        if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
+            return var == "output"
+        if node_type == BuiltinNodeTypes.TOOL:
+            # Tool outputs are dynamic — validated at run time, not here.
+            return True
+        if node_type in (BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP):
+            return var == "output"
+        if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
+            return var in {"class_id", "class_name"}
+        # Other node types (if-else, iteration-start, loop-start, ...) don't
+        # produce outputs of their own.
+        return False
+
+    @classmethod
+    def _inject_start_variable(cls, start_node: dict[str, Any], var: str) -> None:
+        """Add a default ``paragraph`` input so ``{#start.<var>#}`` resolves."""
+        data = start_node.setdefault("data", {})
+        existing = data.setdefault("variables", [])
+        if any(isinstance(v, dict) and v.get("variable") == var for v in existing):
+            return
+        existing.append(
+            {
+                "variable": var,
+                "label": _label_from_variable(var),
+                "type": "paragraph",
+                "required": True,
+                "max_length": 4096,
+                "options": [],
+            }
+        )
 
     @classmethod
     def _fill_node_defaults(cls, node: dict[str, Any]) -> None:
@@ -448,6 +619,14 @@ def _clamp_for_planner(params: dict[str, Any]) -> dict[str, Any]:
     if "temperature" in out and isinstance(out["temperature"], (int, float)) and out["temperature"] > 0.5:
         out["temperature"] = 0.2
     return out
+
+
+def _label_from_variable(var: str) -> str:
+    """Turn ``snake_case`` / ``camelCase`` into a Title-Cased UI label."""
+    if not var:
+        return ""
+    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", var).lower()
+    return " ".join(part.capitalize() for part in snake.split("_") if part)
 
 
 # Re-export json for callers / tests; keeps ruff happy when only the module is imported.
