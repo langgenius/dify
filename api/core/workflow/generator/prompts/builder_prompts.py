@@ -55,7 +55,7 @@ Children of iteration / loop containers additionally need
         "required": false, "max_length": 4096, "options": []}
     ]}
     EVERY user-supplied value referenced by a downstream node
-    (``{#node-id.var#}`` in a prompt / answer / template, or
+    (``{{#node-id.var#}}`` in a prompt / answer / template, or
     ``["node-id", "var"]`` in a value_selector / iterator_selector /
     tool_parameters) MUST be declared here as an entry of ``variables``.
     If the planner's ``start_inputs`` list is non-empty, use it verbatim
@@ -83,6 +83,23 @@ Children of iteration / loop containers additionally need
      ],
      "context": {"enabled": false, "variable_selector": []},
      "vision": {"enabled": false}}
+
+    Prompt-writing rules for the user-message text:
+      * ``{{#node.var#}}`` placeholders are interpolated by Dify BEFORE the
+        LLM sees them — at run time the model only sees the resolved value.
+        So an instruction like "Translate this: {{#node-1.text#}}" is read
+        by the LLM as "Translate this: <the actual text>".
+      * NEVER include placeholder syntax inside an "example output" block
+        in your prompt — the LLM will treat the example as the literal
+        answer template and echo placeholders back as output. Wrong:
+            Output JSON: {"en": "{{#node-1.text#}}", "es": "{{#node-1.text#}}"}
+        Right:
+            Translate the input into English, Spanish, French, German.
+            Output a JSON object with keys "en", "es", "fr", "de" whose
+            values are the translations.
+            Input: {{#node-1.text#}}
+      * Each placeholder only resolves the variable from its source node —
+        it cannot be a Jinja template or call a function.
 
 - knowledge-retrieval:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -257,11 +274,17 @@ correct.
    - Edge id format: "<source>-<sourceHandle>-<target>-<targetHandle>".
 5. Use the model from the planner context for ALL "llm" / "question-classifier" /
    "parameter-extractor" nodes (provider, name, mode, completion_params).
-6. Reference upstream outputs with {#<node-id>.<output-var>#} (literal `{# … #}`)
-   inside prompts/templates, and ["<node-id>", "<output-var>"] for variable_selectors.
+6. Reference upstream outputs with the literal placeholder syntax
+   ``{{#<node-id>.<output-var>#}}`` — that's DOUBLE curly braces with ``#``
+   markers inside (matching Dify's runtime placeholder regex
+   ``\\{\\{#[^#]+#\\}\\}``). NEVER emit single-brace ``{#…#}`` — Dify will
+   not interpolate it, so the LLM at run time would see the literal
+   placeholder string in its prompt and echo it back as output. Use
+   ``["<node-id>", "<output-var>"]`` for ``value_selector`` /
+   ``query_variable_selector`` / etc.
 7. The "start" node owns input variables; downstream nodes reference them as
-   ["<start-node-id>", "<var-name>"] for selectors or {#<start-node-id>.<var-name>#}
-   inside prompt strings.
+   ``["<start-node-id>", "<var-name>"]`` for selectors or
+   ``{{#<start-node-id>.<var-name>#}}`` inside prompt strings.
 8. NEVER emit "code" or "http-request" nodes if a tool from the "Available tools"
    section below covers the same task — replace them with a "tool" node referencing
    the exact provider/tool identifier from the catalogue. "code" / "http-request"
@@ -269,8 +292,10 @@ correct.
    installed tool can express.
 9. EVERY variable reference MUST resolve to a real, declared variable on the
    source node — never invent a variable name. Specifically:
-   - ``{#<node-id>.<var>#}`` inside a prompt / ``answer`` / ``template-transform``
-     template, AND ``["<node-id>", "<var>"]`` inside a ``value_selector`` /
+   - ``{{#<node-id>.<var>#}}`` inside a prompt / ``answer`` / ``template-transform``
+     template (DOUBLE braces — single ``{#…#}`` is NOT a Dify placeholder
+     and will NOT be substituted), AND ``["<node-id>", "<var>"]`` inside a
+     ``value_selector`` /
      ``query_variable_selector`` / ``iterator_selector`` / ``output_selector`` /
      ``tool_parameters[*].value`` (when ``type: "variable"``), MUST point at a
      value that the source node actually exposes:

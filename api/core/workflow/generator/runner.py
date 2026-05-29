@@ -410,9 +410,14 @@ class WorkflowGenerator:
     # Variable-reference reconciliation
     # ------------------------------------------------------------------
 
-    # Detects ``{#node-id.var#}`` placeholders inside strings — the same
-    # syntax the workflow runtime uses for prompt interpolation.
-    _VAR_REF_RE: ClassVar = re.compile(r"\{#([^.#]+)\.([^#]+)#\}")
+    # Detects ``{{#node-id.var#}}`` placeholders inside strings. This matches
+    # the exact regex Dify's workflow runtime uses to interpolate values at
+    # run time (see ``graphon.runtime.variable_pool.VARIABLE_PATTERN``). The
+    # syntax is DOUBLE curly braces with ``#`` markers — single-brace
+    # ``{#…#}`` is NOT a Dify placeholder and would survive into the LLM's
+    # prompt literally, producing the "I got {{#node-1.text#}} back instead
+    # of real text" bug.
+    _VAR_REF_RE: ClassVar = re.compile(r"\{\{#([^.#]+)\.([^#]+)#\}\}")
 
     @classmethod
     def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:

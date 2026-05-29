@@ -916,7 +916,7 @@ class TestWorkflowGeneratorAppMetadata:
 
 class TestWorkflowGeneratorVariableReferences:
     """
-    The builder used to emit ``{#node-1.url#}`` inside an LLM prompt while
+    The builder used to emit ``{{#node-1.url#}}`` inside an LLM prompt while
     the start node declared ``"variables": []`` — so the workflow saved
     fine but failed at run time with "variable not found" the moment the
     user clicked Run. Postprocess now walks every reference and auto-fixes
@@ -953,7 +953,7 @@ class TestWorkflowGeneratorVariableReferences:
         )
 
     def _builder_referencing_missing_start_var(self, var: str = "url") -> str:
-        # The LLM prompt references {#node-1.<var>#} but the start node was
+        # The LLM prompt references {{#node-1.<var>#}} but the start node was
         # emitted with an empty variables array — the historical bug.
         return json.dumps(
             {
@@ -973,7 +973,7 @@ class TestWorkflowGeneratorVariableReferences:
                             "title": "Summarize",
                             "prompt_template": [
                                 {"role": "system", "text": "You summarize URLs."},
-                                {"role": "user", "text": f"Summarize this: {{#node-1.{var}#}}"},
+                                {"role": "user", "text": f"Summarize this: {{{{#node-1.{var}#}}}}"},
                             ],
                         },
                     },
@@ -1060,7 +1060,7 @@ class TestWorkflowGeneratorVariableReferences:
                             "type": "llm",
                             "title": "Summarize",
                             "prompt_template": [
-                                {"role": "user", "text": "Summarize {#node-1.url#}"},
+                                {"role": "user", "text": "Summarize {{#node-1.url#}}"},
                             ],
                         },
                     },
@@ -1173,7 +1173,7 @@ class TestWorkflowGeneratorVariableReferences:
 
     def test_sys_query_is_resolved_in_advanced_chat_mode(self):
         # In Advanced-Chat mode the answer node typically references
-        # ``{#sys.query#}`` — that's an automatic system variable, NOT
+        # ``{{#sys.query#}}`` — that's an automatic system variable, NOT
         # something the start node declares. The walker must not try to
         # auto-inject ``sys`` as a node-id or ``query`` as a start variable.
         planner = json.dumps(
@@ -1203,7 +1203,7 @@ class TestWorkflowGeneratorVariableReferences:
                             "type": "answer",
                             "title": "Reply",
                             "variables": [],
-                            "answer": "You said: {#sys.query#}",
+                            "answer": "You said: {{#sys.query#}}",
                         },
                     },
                 ],
@@ -1257,3 +1257,27 @@ class TestWorkflowGeneratorVariableReferences:
         assert "Start inputs" in builder_user_prompt
         assert "variable='url'" in builder_user_prompt
         assert "type='text-input'" in builder_user_prompt
+
+    def test_walker_matches_double_brace_placeholders_only(self):
+        # Dify's run-time placeholder is ``{{#node.var#}}`` (DOUBLE braces) —
+        # see graphon.runtime.variable_pool.VARIABLE_PATTERN. Single-brace
+        # ``{#…#}`` is NOT a Dify placeholder, so even if the LLM emits one,
+        # the walker should not treat it as a reference (the LLM-at-runtime
+        # will see the literal single-brace string and ignore it; nothing
+        # for us to validate).
+        from core.workflow.generator.runner import WorkflowGenerator
+
+        refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(
+            {
+                "prompt_template": [
+                    {"role": "user", "text": "Bad single: {#node-1.url#}"},
+                    {"role": "user", "text": "Good double: {{#node-2.text#}}"},
+                ],
+            },
+            refs,
+        )
+
+        # Single-brace entry is not picked up; only the double-brace one is.
+        assert ("node-2", "text") in refs
+        assert ("node-1", "url") not in refs
