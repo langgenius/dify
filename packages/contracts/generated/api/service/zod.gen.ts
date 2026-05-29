@@ -33,6 +33,15 @@ export const zAnnotationList = z.object({
 })
 
 /**
+ * AnnotationListQuery
+ */
+export const zAnnotationListQuery = z.object({
+  keyword: z.string().optional().default(''),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
  * AnnotationReplyActionPayload
  */
 export const zAnnotationReplyActionPayload = z.object({
@@ -1215,6 +1224,12 @@ export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse = z.record(
   z.string(),
   z.unknown(),
 )
+
+export const zGetAppsAnnotationsQuery = z.object({
+  keyword: z.string().optional().default(''),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
 
 /**
  * Annotations retrieved successfully

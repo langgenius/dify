@@ -42,6 +42,7 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
   }),
+  usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
 

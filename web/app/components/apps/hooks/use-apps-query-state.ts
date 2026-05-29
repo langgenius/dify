@@ -1,4 +1,4 @@
-import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
+import { debounce, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { AppModes } from '@/types/app'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
@@ -15,9 +15,6 @@ export const isAppListCategory = (value: string): value is AppListCategory => {
 const appListQueryParsers = {
   category: parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
     .withDefault('all')
-    .withOptions({ history: 'push' }),
-  tagIDs: parseAsArrayOf(parseAsString, ';')
-    .withDefault([])
     .withOptions({ history: 'push' }),
   keywords: parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
@@ -39,10 +36,6 @@ export function useAppsQueryState() {
     setQuery({ keywords })
   }, [setQuery])
 
-  const setTagIDs = useCallback((tagIDs: string[]) => {
-    setQuery({ tagIDs })
-  }, [setQuery])
-
   const setIsCreatedByMe = useCallback((isCreatedByMe: boolean) => {
     setQuery({ isCreatedByMe })
   }, [setQuery])
@@ -51,7 +44,6 @@ export function useAppsQueryState() {
     query,
     setCategory,
     setKeywords,
-    setTagIDs,
     setIsCreatedByMe,
-  }), [query, setCategory, setKeywords, setTagIDs, setIsCreatedByMe])
+  }), [query, setCategory, setKeywords, setIsCreatedByMe])
 }

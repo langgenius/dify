@@ -214,6 +214,7 @@ catalog:
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
   scheduler: 0.27.0
+  server-only: 0.0.1
   sharp: 0.34.5
   shiki: 4.1.0
   socket.io-client: 4.8.3

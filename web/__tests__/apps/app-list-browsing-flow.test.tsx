@@ -45,6 +45,7 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
   }),
+  usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
 
@@ -228,7 +229,7 @@ describe('App List Browsing Flow', () => {
       mockPages = [createPage([])]
       renderList()
 
-      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
     })
 
     it('should transition from loading to content when data loads', () => {
@@ -283,7 +284,7 @@ describe('App List Browsing Flow', () => {
 
       renderList()
 
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
     })
 
     it('should hide NewAppCard when user is not a workspace editor', () => {
@@ -294,7 +295,7 @@ describe('App List Browsing Flow', () => {
 
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.newApp.startFromBlank')).not.toBeInTheDocument()
     })
   })
 
@@ -340,16 +341,18 @@ describe('App List Browsing Flow', () => {
 
   // -- Tab navigation --
   describe('Tab Navigation', () => {
-    it('should render all category tabs', () => {
+    it('should render all category options', async () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('combobox', { name: 'app.types.all' }))
+
+      expect(await screen.findByRole('option', { name: 'app.types.all' })).toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.workflow' })).toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.advanced' })).toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.chatbot' })).toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.agent' })).toBeInTheDocument()
+      expect(await screen.findByRole('option', { name: 'app.types.completion' })).toBeInTheDocument()
     })
   })
 

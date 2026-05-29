@@ -1,6 +1,6 @@
-import Loading from '@/app/components/base/loading'
+import Loading from './base/loading'
 
-export default function CommonLayoutLoading() {
+export function FullScreenLoading() {
   return (
     <div className="flex min-h-0 w-full flex-1 items-center justify-center bg-background-body">
       <Loading />

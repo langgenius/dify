@@ -562,15 +562,16 @@ class WorkflowResponseConverter:
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
-        if isinstance(event, QueueNodeSucceededEvent):
-            status = WorkflowNodeExecutionStatus.SUCCEEDED
-            error_message = event.error
-        elif isinstance(event, QueueNodeFailedEvent):
-            status = WorkflowNodeExecutionStatus.FAILED
-            error_message = event.error
-        else:
-            status = WorkflowNodeExecutionStatus.EXCEPTION
-            error_message = event.error
+        match event:
+            case QueueNodeSucceededEvent():
+                status = WorkflowNodeExecutionStatus.SUCCEEDED
+                error_message = event.error
+            case QueueNodeFailedEvent():
+                status = WorkflowNodeExecutionStatus.FAILED
+                error_message = event.error
+            case _:
+                status = WorkflowNodeExecutionStatus.EXCEPTION
+                error_message = event.error
 
         return NodeFinishStreamResponse(
             task_id=task_id,

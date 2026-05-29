@@ -5,16 +5,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import Divider from '@/app/components/base/divider'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { post } from '@/service/base'
 import { deviceLookup } from '@/service/device-flow'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
+import { commonQueryKeys } from '@/service/use-common'
 import AuthorizeAccount from './components/authorize-account'
 import AuthorizeSSO from './components/authorize-sso'
 import Chooser from './components/chooser'
 import CodeInput from './components/code-input'
-import { classifyLookupError } from './utils/error-copy'
+import { classifyLookupError, ssoErrorCopy } from './utils/error-copy'
 import { isValidUserCode } from './utils/user-code'
 
 type View
@@ -33,6 +34,7 @@ export default function DevicePage() {
   const pathname = usePathname()
   const urlUserCode = (searchParams.get('user_code') || '').trim().toUpperCase()
   const ssoVerified = searchParams.get('sso_verified') === '1'
+  const ssoError = searchParams.get('sso_error') || ''
 
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<View>({ kind: 'code_entry' })
@@ -125,6 +127,12 @@ export default function DevicePage() {
     <>
       {view.kind === 'code_entry' && (
         <div className="flex flex-col gap-5">
+          {ssoError && (
+            <div className="flex items-start gap-2 rounded-lg bg-state-destructive-hover p-3">
+              <span className="mt-0.5 i-ri-close-circle-line h-4 w-4 shrink-0 text-util-colors-red-red-600" />
+              <p className="text-sm text-text-destructive">{ssoErrorCopy(ssoError)}</p>
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h1>
             <p className="mt-2 text-sm text-text-secondary">

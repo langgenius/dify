@@ -42,7 +42,6 @@ export default function AppSelector({
   const handleLogout = async () => {
     await logout()
     resetUser()
-    localStorage.removeItem('setup_status')
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info

@@ -3,19 +3,22 @@ import { useTranslation } from 'react-i18next'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { NOTICE_I18N } from '@/i18n-config/language'
+import { setLocalStorageItem, useLocalStorageItem } from '@/utils/local-storage'
 
 const MaintenanceNotice = () => {
   const { t } = useTranslation()
   const locale = useLanguage()
 
-  const [showNotice, setShowNotice] = useState(() => localStorage.getItem('hide-maintenance-notice') !== '1')
+  const hiddenNotice = useLocalStorageItem('hide-maintenance-notice') === '1'
+  const [closedInSession, setClosedInSession] = useState(false)
+  const showNotice = !hiddenNotice && !closedInSession
   const handleJumpNotice = () => {
     window.open(NOTICE_I18N.href, '_blank')
   }
 
   const handleCloseNotice = () => {
-    localStorage.setItem('hide-maintenance-notice', '1')
-    setShowNotice(false)
+    setLocalStorageItem('hide-maintenance-notice', '1')
+    setClosedInSession(true)
   }
 
   const titleByLocale: { [key: string]: string } = NOTICE_I18N.title

@@ -136,6 +136,7 @@
     "remark-breaks": "catalog:",
     "remark-directive": "catalog:",
     "scheduler": "catalog:",
+    "server-only": "catalog:",
     "sharp": "catalog:",
     "shiki": "catalog:",
     "socket.io-client": "catalog:",

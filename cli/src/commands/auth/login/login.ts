@@ -99,7 +99,7 @@ function renderCodePrompt(w: NodeJS.WritableStream, cs: ReturnType<typeof colorS
 
 function renderLoggedIn(w: NodeJS.WritableStream, cs: ReturnType<typeof colorScheme>, host: string, s: PollSuccess): void {
   const display = bareHost(host)
-  if (s.account !== undefined && s.account.email !== '') {
+  if (s.account && s.account.email !== '') {
     w.write(`${cs.successIcon()} Logged in to ${display} as ${cs.bold(s.account.email)} (${s.account.name})\n`)
     const ws = findDefaultWorkspace(s)
     if (ws !== undefined)
@@ -139,11 +139,11 @@ function bundleFromSuccess(host: string, s: PollSuccess, mode: StorageMode): Hos
     token_id: s.token_id,
     tokens: { bearer: s.token },
   }
-  if (s.account !== undefined) {
+  if (s.account) {
     bundle.account = { id: s.account.id, email: s.account.email, name: s.account.name }
   }
   if (s.subject_email !== undefined && s.subject_email !== ''
-    && (s.account === undefined || s.account.id === '')) {
+    && (!s.account || s.account.id === '')) {
     bundle.external_subject = {
       email: s.subject_email,
       issuer: s.subject_issuer ?? '',

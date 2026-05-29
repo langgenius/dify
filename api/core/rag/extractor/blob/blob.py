@@ -54,36 +54,39 @@ class Blob(BaseModel):
 
     def as_string(self) -> str:
         """Read data as a string."""
-        if self.data is None and self.path:
-            return Path(str(self.path)).read_text(encoding=self.encoding)
-        elif isinstance(self.data, bytes):
-            return self.data.decode(self.encoding)
-        elif isinstance(self.data, str):
-            return self.data
-        else:
-            raise ValueError(f"Unable to get string for blob {self}")
+        match self.data:
+            case None if self.path:
+                return Path(str(self.path)).read_text(encoding=self.encoding)
+            case bytes():
+                return self.data.decode(self.encoding)
+            case str():
+                return self.data
+            case _:
+                raise ValueError(f"Unable to get string for blob {self}")
 
     def as_bytes(self) -> bytes:
         """Read data as bytes."""
-        if isinstance(self.data, bytes):
-            return self.data
-        elif isinstance(self.data, str):
-            return self.data.encode(self.encoding)
-        elif self.data is None and self.path:
-            return Path(str(self.path)).read_bytes()
-        else:
-            raise ValueError(f"Unable to get bytes for blob {self}")
+        match self.data:
+            case bytes():
+                return self.data
+            case str():
+                return self.data.encode(self.encoding)
+            case None if self.path:
+                return Path(str(self.path)).read_bytes()
+            case _:
+                raise ValueError(f"Unable to get bytes for blob {self}")
 
     @contextlib.contextmanager
     def as_bytes_io(self) -> Generator[BytesIO | BufferedReader, None, None]:
         """Read data as a byte stream."""
-        if isinstance(self.data, bytes):
-            yield BytesIO(self.data)
-        elif self.data is None and self.path:
-            with open(str(self.path), "rb") as f:
-                yield f
-        else:
-            raise NotImplementedError(f"Unable to convert blob {self}")
+        match self.data:
+            case bytes():
+                yield BytesIO(self.data)
+            case None if self.path:
+                with open(str(self.path), "rb") as f:
+                    yield f
+            case _:
+                raise NotImplementedError(f"Unable to convert blob {self}")
 
     @classmethod
     def from_path(

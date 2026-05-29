@@ -5,6 +5,7 @@ import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useAppsQueryState } from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
+  // eslint-disable-next-line react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 
@@ -18,14 +19,12 @@ describe('useAppsQueryState', () => {
 
     expect(result.current.query).toEqual({
       category: 'all',
-      tagIDs: [],
       keywords: '',
       isCreatedByMe: false,
       emptyAppList: false,
     })
     expect(typeof result.current.setCategory).toBe('function')
     expect(typeof result.current.setKeywords).toBe('function')
-    expect(typeof result.current.setTagIDs).toBe('function')
     expect(typeof result.current.setIsCreatedByMe).toBe('function')
   })
 
@@ -36,7 +35,6 @@ describe('useAppsQueryState', () => {
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
-      tagIDs: ['tag1', 'tag2'],
       keywords: 'search term',
       isCreatedByMe: true,
       emptyAppList: true,
@@ -117,33 +115,6 @@ describe('useAppsQueryState', () => {
     finally {
       vi.useRealTimers()
     }
-  })
-
-  it('should update tag filter URL state', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter()
-
-    act(() => {
-      result.current.setTagIDs(['tag1', 'tag2'])
-    })
-
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
-    expect(update.searchParams.get('tagIDs')).toBe('tag1;tag2')
-    expect(update.options.history).toBe('push')
-  })
-
-  it('should remove tagIDs from URL when empty', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter('?tagIDs=tag1;tag2')
-
-    act(() => {
-      result.current.setTagIDs([])
-    })
-
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.tagIDs).toEqual([])
-    expect(update.searchParams.has('tagIDs')).toBe(false)
   })
 
   it('should update created-by-me URL state', async () => {

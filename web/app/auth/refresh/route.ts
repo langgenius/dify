@@ -1,0 +1,113 @@
+import { API_PREFIX } from '@/config'
+import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
+import { basePath } from '@/utils/var'
+
+const REFRESH_TOKEN_PATH = '/refresh-token'
+const AUTH_REFRESH_PATH = `${basePath}/auth/refresh`
+const DEFAULT_REDIRECT_PATH = `${basePath}/apps`
+
+const withTrailingSlash = (value: string) => value.endsWith('/') ? value : `${value}/`
+const withoutLeadingSlash = (value: string) => value.startsWith('/') ? value.slice(1) : value
+
+const resolveAbsoluteUrlPrefix = (value: string) => {
+  try {
+    return new URL(value).toString()
+  }
+  catch {
+    return null
+  }
+}
+
+const resolveServerConsoleApiUrl = (pathname: string, requestUrl: URL) => {
+  const requestPath = withoutLeadingSlash(pathname)
+  const apiPrefix = SERVER_CONSOLE_API_PREFIX
+    || resolveAbsoluteUrlPrefix(API_PREFIX)
+    || new URL(API_PREFIX, requestUrl.origin).toString()
+
+  if (!apiPrefix)
+    return null
+
+  return new URL(requestPath, withTrailingSlash(apiPrefix)).toString()
+}
+
+const resolveSafeRedirectPath = (request: Request) => {
+  const requestUrl = new URL(request.url)
+  const redirectUrl = requestUrl.searchParams.get('redirect_url')
+
+  if (!redirectUrl)
+    return DEFAULT_REDIRECT_PATH
+
+  try {
+    const target = new URL(redirectUrl, requestUrl.origin)
+    if (target.origin !== requestUrl.origin)
+      return DEFAULT_REDIRECT_PATH
+    if (target.pathname === AUTH_REFRESH_PATH)
+      return DEFAULT_REDIRECT_PATH
+
+    return `${target.pathname}${target.search}`
+  }
+  catch {
+    return DEFAULT_REDIRECT_PATH
+  }
+}
+
+const getSetCookieHeaders = (headers: Headers) => {
+  const getSetCookie = Reflect.get(headers, 'getSetCookie')
+
+  if (typeof getSetCookie === 'function') {
+    const values: unknown = getSetCookie.call(headers)
+    return Array.isArray(values)
+      ? values.filter((value): value is string => typeof value === 'string')
+      : []
+  }
+
+  const setCookie = headers.get('set-cookie')
+  return setCookie ? [setCookie] : []
+}
+
+const createRedirectResponse = (request: Request, pathname: string, setCookies: string[] = []) => {
+  const headers = new Headers({
+    'Cache-Control': 'no-store',
+    'Location': new URL(pathname, request.url).toString(),
+  })
+
+  for (const cookie of setCookies)
+    headers.append('Set-Cookie', cookie)
+
+  return new Response(null, {
+    status: 303,
+    headers,
+  })
+}
+
+const createSigninRedirectResponse = (request: Request, redirectPath: string) =>
+  createRedirectResponse(request, `${basePath}/signin?redirect_url=${encodeURIComponent(redirectPath)}`)
+
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url)
+  const redirectPath = resolveSafeRedirectPath(request)
+  const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH, requestUrl)
+  const cookie = request.headers.get('cookie')
+
+  if (!refreshUrl || !cookie)
+    return createSigninRedirectResponse(request, redirectPath)
+
+  try {
+    const response = await fetch(refreshUrl, {
+      method: 'POST',
+      headers: new Headers({
+        'Content-Type': 'application/json',
+        cookie,
+      }),
+      cache: 'no-store',
+    })
+
+    if (!response.ok)
+      return createSigninRedirectResponse(request, redirectPath)
+
+    return createRedirectResponse(request, redirectPath, getSetCookieHeaders(response.headers))
+  }
+  catch {
+    return createSigninRedirectResponse(request, redirectPath)
+  }
+}
