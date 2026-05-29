@@ -301,14 +301,32 @@ const WorkflowGeneratorModal: React.FC = () => {
                       onChange={setCurrentVersionIndex}
                     />
                     <div className="flex items-center space-x-2">
-                      {canApplyToCurrent && (
-                        <Button size="small" onClick={showConfirmOverwrite} disabled={isApplying}>
-                          {t('workflowGenerator.applyToCurrent')}
-                        </Button>
-                      )}
-                      <Button size="small" variant="primary" onClick={handleApplyToNew} disabled={isApplying}>
-                        {t('workflowGenerator.applyToNew')}
-                      </Button>
+                      {canApplyToCurrent
+                        ? (
+                            // Studio button entry — overwrite the current draft
+                            // is the only meaningful Apply action, so collapse
+                            // the two buttons into one primary "Apply".
+                            <Button
+                              size="small"
+                              variant="primary"
+                              onClick={showConfirmOverwrite}
+                              disabled={isApplying}
+                            >
+                              {t('workflowGenerator.studioApply')}
+                            </Button>
+                          )
+                        : (
+                            // cmd+k /create entry — no current-app context, so
+                            // the only path is "Create new app".
+                            <Button
+                              size="small"
+                              variant="primary"
+                              onClick={handleApplyToNew}
+                              disabled={isApplying}
+                            >
+                              {t('workflowGenerator.applyToNew')}
+                            </Button>
+                          )}
                     </div>
                   </div>
                   <div className="relative w-full grow overflow-hidden rounded-2xl border border-divider-subtle bg-background-default">
