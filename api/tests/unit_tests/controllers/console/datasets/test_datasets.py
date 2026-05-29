@@ -1221,6 +1221,21 @@ class TestDatasetIndexingEstimateApi:
             "dataset_id": None,
         }
 
+    def _base_process_rule(self):
+        return {
+            "mode": "custom",
+            "rules": {
+                "pre_processing_rules": [
+                    {"id": "remove_extra_spaces", "enabled": True},
+                    {"id": "remove_urls_emails", "enabled": False},
+                ],
+                "segmentation": {
+                    "separator": "\n\n",
+                    "max_tokens": 1024,
+                },
+            },
+        }
+
     def test_post_success_upload_file(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
@@ -1261,6 +1276,77 @@ class TestDatasetIndexingEstimateApi:
 
         assert status == 200
         assert response == {"tokens": 100}
+
+    def test_dataset_detail_summary_index_setting_round_trips_into_indexing_estimate(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, summary_index_setting=None)
+
+        dataset_api = DatasetApi()
+        dataset_get = unwrap(dataset_api.get)
+
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch(
+                "controllers.console.datasets.datasets.current_account_with_tenant",
+                return_value=(MagicMock(), "tenant-1"),
+            ),
+            patch.object(
+                DatasetService,
+                "get_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                DatasetService,
+                "check_dataset_permission",
+                return_value=None,
+            ),
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
+        ):
+            provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
+            dataset_detail, status = dataset_get(dataset_api, dataset_id)
+
+        assert status == 200
+        assert dataset_detail["summary_index_setting"]["enable"] is False
+
+        payload = self._base_payload()
+        payload["process_rule"] = {
+            **self._base_process_rule(),
+            "summary_index_setting": dataset_detail["summary_index_setting"],
+        }
+
+        mock_file = self._upload_file()
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {"tokens": 100}
+
+        estimate_api = DatasetIndexingEstimateApi()
+        estimate_post = unwrap(estimate_api.post)
+
+        with (
+            app.test_request_context("/datasets/indexing-estimate"),
+            patch(
+                "controllers.console.datasets.datasets.current_account_with_tenant",
+                return_value=(MagicMock(), "tenant-1"),
+            ),
+            patch.object(
+                type(console_ns),
+                "payload",
+                new_callable=PropertyMock,
+                return_value=payload,
+            ),
+            patch(
+                "controllers.console.datasets.datasets.db.session.scalars",
+                return_value=MagicMock(all=lambda: [mock_file]),
+            ),
+            patch(
+                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
+                return_value=mock_response,
+            ) as indexing_estimate,
+        ):
+            response, status = estimate_post(estimate_api)
+
+        assert status == 200
+        assert response == {"tokens": 100}
+        assert indexing_estimate.call_args.args[2]["summary_index_setting"] == {"enable": False}
 
     def test_post_file_not_found(self, app: Flask):
         api = DatasetIndexingEstimateApi()
