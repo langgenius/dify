@@ -7,6 +7,7 @@ import { setLocaleOnClient } from '@/i18n-config'
 import { accountCommand } from './account'
 import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
+import { createCommand } from './create'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
 import { goCommand } from './go'
@@ -50,6 +51,7 @@ const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
   slashCommandRegistry.register(goCommand, {})
+  slashCommandRegistry.register(createCommand, {})
 }
 
 const unregisterSlashCommands = () => {
@@ -62,6 +64,7 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
   slashCommandRegistry.unregister('go')
+  slashCommandRegistry.unregister('create')
 }
 
 export const SlashCommandProvider = () => {

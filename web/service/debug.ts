@@ -1,4 +1,6 @@
+import type { Viewport } from 'reactflow'
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
@@ -64,6 +66,29 @@ export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
 
 export const generateRule = (body: Record<string, any>) => {
   return post<GenRes>('/instruction-generate', {
+    body,
+  })
+}
+
+export type GenerateWorkflowResponse = {
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
+  }
+  message?: string
+  error?: string
+}
+
+export type GenerateWorkflowBody = {
+  mode: 'workflow' | 'advanced-chat'
+  instruction: string
+  ideal_output?: string
+  model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
+}
+
+export const generateWorkflow = (body: GenerateWorkflowBody) => {
+  return post<GenerateWorkflowResponse>('/workflow-generate', {
     body,
   })
 }

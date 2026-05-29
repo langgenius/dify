@@ -9,6 +9,7 @@ import { GotoAnything } from '@/app/components/goto-anything'
 import Header from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
+import WorkflowGeneratorMount from '@/app/components/workflow/workflow-generator/mount'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
@@ -36,6 +37,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 <PartnerStack />
                 <ReadmePanel />
                 <GotoAnything />
+                <WorkflowGeneratorMount />
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>
