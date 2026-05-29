@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
+import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
 
 type PluginItemProps = {
@@ -24,13 +25,20 @@ const PluginItem: FC<PluginItemProps> = ({
   action,
   onClear,
 }) => {
+  const hasPluginIcon = !!plugin.icon
+
   return (
     <div className="group/item flex gap-1 rounded-lg p-2 hover:bg-state-base-hover">
       <div className="relative shrink-0 self-start">
-        <CardIcon
-          size="small"
-          src={getIconUrl(plugin.icon)}
-        />
+        {hasPluginIcon
+          ? (
+              <CardIcon
+                size="small"
+                src={getIconUrl(plugin.icon)}
+              />
+            )
+          // eslint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
+          : <MagicBox className="size-8 text-text-tertiary" />}
         <div className="absolute -right-0.5 -bottom-0.5 z-10">
           {statusIcon}
         </div>

@@ -1,5 +1,5 @@
 import { Args, Flags } from '../../../framework/flags.js'
-import { formatted } from '../../../framework/output.js'
+import { formatted, OutputFormat } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runDeleteMember } from './run.js'
@@ -23,7 +23,7 @@ export default class DeleteMember extends DifyCommand {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
-    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|text)', default: '' }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
     'yes': Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
   }
 

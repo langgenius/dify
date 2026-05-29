@@ -124,7 +124,7 @@ function renderCodePrompt(w: NodeJS.WritableStream, cs: ReturnType<typeof colorS
 
 function renderLoggedIn(w: NodeJS.WritableStream, cs: ReturnType<typeof colorScheme>, host: string, s: PollSuccess): void {
   const display = bareHost(host)
-  if (s.account !== undefined && s.account.email !== '') {
+  if (s.account && s.account.email !== '') {
     w.write(`${cs.successIcon()} Logged in to ${display} as ${cs.bold(s.account.email)} (${s.account.name})\n`)
     const ws = findDefaultWorkspace(s)
     if (ws !== undefined)
@@ -161,13 +161,13 @@ function accountEmail(s: PollSuccess): string {
 
 function contextFromSuccess(s: PollSuccess): AccountContext {
   const ctx: AccountContext = {
-    account: s.account !== undefined
+    account: s.account
       ? { id: s.account.id, email: s.account.email, name: s.account.name }
       : { id: '', email: '', name: '' },
     token_id: s.token_id,
   }
   if (s.subject_email !== undefined && s.subject_email !== ''
-    && (s.account === undefined || s.account.id === '')) {
+    && (!s.account || s.account.id === '')) {
     ctx.external_subject = { email: s.subject_email, issuer: s.subject_issuer ?? '' }
   }
   const def = findDefaultWorkspace(s)

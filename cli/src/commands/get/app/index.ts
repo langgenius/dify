@@ -1,6 +1,6 @@
 import type { AppMode } from '@dify/contracts/api/openapi/types.gen'
 import { Args, Flags } from '../../../framework/flags.js'
-import { table } from '../../../framework/output.js'
+import { OutputFormat, table } from '../../../framework/output.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { httpRetryFlag } from '../../_shared/global-flags.js'
 import { runGetApp } from './run.js'
@@ -42,7 +42,7 @@ export default class GetApp extends DifyCommand {
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
     'tag': Flags.string({ description: 'filter by tag name (server-side exact match)' }),
     'http-retry': httpRetryFlag,
-    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|wide)', default: '' }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
   }
 
   async run(argv: string[]) {

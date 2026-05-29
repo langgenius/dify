@@ -24,6 +24,7 @@ import {
   zGetAppFeedbacksResponse,
   zGetAppsAnnotationReplyByActionStatusByJobIdPath,
   zGetAppsAnnotationReplyByActionStatusByJobIdResponse,
+  zGetAppsAnnotationsQuery,
   zGetAppsAnnotationsResponse,
   zGetConversationsByCIdVariablesPath,
   zGetConversationsByCIdVariablesQuery,
@@ -379,6 +380,7 @@ export const get4 = oc
     summary: 'List annotations for the application',
     tags: ['service_api'],
   })
+  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }))
   .output(zGetAppsAnnotationsResponse)
 
 /**
