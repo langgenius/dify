@@ -31,6 +31,7 @@ import json_repair
 
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_USER_PROMPT,
+    format_builder_tool_catalogue_section,
     format_plan_block,
     get_builder_system_prompt,
 )
@@ -38,6 +39,7 @@ from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
     PLANNER_USER_PROMPT,
     format_ideal_output_section,
+    format_tool_catalogue_section,
 )
 from core.workflow.generator.types import (
     GraphDict,
@@ -82,9 +84,17 @@ class WorkflowGenerator:
         mode: WorkflowGenerationMode,
         instruction: str,
         ideal_output: str = "",
+        tool_catalogue_text: str = "",
     ) -> WorkflowGenerateResultDict:
         """
         Run planner → builder → postprocess and return a graph payload.
+
+        ``tool_catalogue_text`` is the formatted list of installed tools for
+        the calling tenant (see ``tool_catalogue.build_tool_catalogue`` /
+        ``format_tool_catalogue``). It's injected into both the planner and
+        builder prompts so the LLM can pick concrete ``provider/tool``
+        identifiers instead of inventing names; an empty string skips the
+        section entirely (useful for unit tests).
 
         Returns a dict with ``graph``, ``message`` and ``error``. On any
         failure ``graph`` is an empty skeleton (single start node) and
@@ -106,6 +116,7 @@ class WorkflowGenerator:
                 mode=mode,
                 instruction=instruction,
                 ideal_output=ideal_output,
+                tool_catalogue_text=tool_catalogue_text,
             )
         except Exception as e:
             logger.exception("Workflow generator: planner step failed")
@@ -129,6 +140,7 @@ class WorkflowGenerator:
                 instruction=instruction,
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
+                tool_catalogue_text=tool_catalogue_text,
             )
         except Exception as e:
             logger.exception("Workflow generator: builder step failed")
@@ -166,11 +178,13 @@ class WorkflowGenerator:
         mode: WorkflowGenerationMode,
         instruction: str,
         ideal_output: str,
+        tool_catalogue_text: str,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
             mode=mode,
             instruction=instruction.strip(),
             ideal_output_section=format_ideal_output_section(ideal_output),
+            tool_catalogue_section=format_tool_catalogue_section(tool_catalogue_text),
         )
         messages = [
             SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT),
@@ -211,6 +225,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str,
         plan_nodes: list[dict[str, Any]],
+        tool_catalogue_text: str,
     ) -> GraphDict:
         user_prompt = BUILDER_USER_PROMPT.format(
             instruction=instruction.strip(),
@@ -219,6 +234,7 @@ class WorkflowGenerator:
             name=model_name,
             mode_label=model_mode,
             plan_block=format_plan_block(plan_nodes),
+            tool_catalogue_section=format_builder_tool_catalogue_section(tool_catalogue_text),
         )
         messages = [
             SystemPromptMessage(content=get_builder_system_prompt(mode)),

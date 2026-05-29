@@ -61,7 +61,7 @@ PLANNER_USER_PROMPT = """# Mode
 
 {instruction}
 
-{ideal_output_section}
+{ideal_output_section}{tool_catalogue_section}\
 Return the JSON plan now.
 """
 
@@ -71,3 +71,18 @@ def format_ideal_output_section(ideal_output: str) -> str:
     if not ideal_output.strip():
         return ""
     return f"# Ideal output\n\n{ideal_output}\n\n"
+
+
+def format_tool_catalogue_section(catalogue_text: str) -> str:
+    """
+    Embed the installed-tool catalogue so the planner can pick concrete
+    ``tool`` nodes by exact ``provider/tool`` identifier instead of inventing
+    names. Returns an empty string when no tools are installed.
+    """
+    if not catalogue_text.strip():
+        return ""
+    return (
+        "# Available tools (planner: when picking 'tool' nodes, choose "
+        "from this list and reference them by exact provider/tool name)\n\n"
+        f"{catalogue_text}\n\n"
+    )

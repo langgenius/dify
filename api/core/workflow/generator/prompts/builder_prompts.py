@@ -193,12 +193,30 @@ BUILDER_USER_PROMPT = """# User instruction
 
 provider={provider}, name={name}, mode={mode_label}
 
+{tool_catalogue_section}\
 # Node plan (from planner — use these labels and node_types in this order)
 
 {plan_block}
 
 Now emit the complete workflow graph JSON.
 """
+
+
+def format_builder_tool_catalogue_section(catalogue_text: str) -> str:
+    """
+    Builder-facing catalogue block. The builder needs the same identifiers
+    the planner saw, plus a stern reminder that ``tool`` nodes MUST set
+    ``provider_id`` / ``provider_name`` / ``tool_name`` to entries that
+    actually exist in this list — hallucinated tools fail at draft sync.
+    """
+    if not catalogue_text.strip():
+        return ""
+    return (
+        "# Available tools (use these exact provider/tool identifiers — "
+        "for each 'tool' node, set provider_id and provider_name to the "
+        "provider portion and tool_name to the tool portion)\n\n"
+        f"{catalogue_text}\n\n"
+    )
 
 
 def format_plan_block(plan_nodes: list[dict[str, Any]]) -> str:
