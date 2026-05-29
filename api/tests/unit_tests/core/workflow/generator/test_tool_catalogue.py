@@ -120,11 +120,7 @@ def _make_builtin_provider(name: str, tools: list, raises_on_get_tools: bool = F
     provider = SimpleNamespace(
         entity=SimpleNamespace(identity=SimpleNamespace(name=name)),
         provider_type=_FakeProviderType(value="builtin"),
-        get_tools=(
-            (lambda: (_ for _ in ()).throw(RuntimeError("boom")))
-            if raises_on_get_tools
-            else (lambda: tools)
-        ),
+        get_tools=((lambda: (_ for _ in ()).throw(RuntimeError("boom"))) if raises_on_get_tools else (lambda: tools)),
     )
     provider._is_builtin = True
     return provider

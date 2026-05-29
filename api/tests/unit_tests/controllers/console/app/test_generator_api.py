@@ -258,8 +258,11 @@ def _stub_workflow_service(monkeypatch: pytest.MonkeyPatch, returns=None, raises
     def _call(**_kwargs):
         if raises is not None:
             raise raises
-        return returns or {"graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
-                           "message": "", "error": ""}
+        return returns or {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
 
     monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph", _call)
 
@@ -365,8 +368,11 @@ def test_workflow_generate_accepts_advanced_chat_mode(app, monkeypatch: pytest.M
 
     def _capture(**kwargs):
         captured.update(kwargs)
-        return {"graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
-                "message": "", "error": ""}
+        return {
+            "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
+            "message": "",
+            "error": "",
+        }
 
     monkeypatch.setattr(generator_module.WorkflowGeneratorService, "generate_workflow_graph", _capture)
 
