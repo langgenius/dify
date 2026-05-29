@@ -811,10 +811,18 @@ class TestWorkflowGeneratorAppMetadata:
         return json.dumps(
             {
                 "nodes": [
-                    {"id": "node-1", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "start", "title": "Start"}},
-                    {"id": "node-2", "type": "custom", "position": {"x": 0, "y": 0},
-                     "data": {"type": "end", "title": "End"}},
+                    {
+                        "id": "node-1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start"},
+                    },
+                    {
+                        "id": "node-2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End"},
+                    },
                 ],
                 "edges": [
                     {"id": "x", "source": "node-1", "target": "node-2", "type": "custom"},
