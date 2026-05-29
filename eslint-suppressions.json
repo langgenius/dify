@@ -5150,11 +5150,6 @@
       "count": 1
     }
   },
-  "web/models/access-control.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -5560,11 +5555,6 @@
   "web/types/workflow.ts": {
     "ts/no-explicit-any": {
       "count": 17
-    }
-  },
-  "web/utils/clipboard.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/utils/completion-params.spec.ts": {
