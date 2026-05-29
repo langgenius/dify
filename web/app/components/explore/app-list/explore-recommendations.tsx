@@ -9,15 +9,11 @@ import { RecommendationSectionSkeleton } from './loading-skeletons'
 export function ExploreRecommendations({
   canCreate,
   isContinueWorkLoading,
-  isLearnDifyHidden,
-  isLearnDifyLoading,
   onCreate,
   onTry,
 }: {
   canCreate: boolean
   isContinueWorkLoading: boolean
-  isLearnDifyHidden: boolean
-  isLearnDifyLoading: boolean
   onCreate: (app: App) => void
   onTry: (params: TryAppSelection) => void
 }) {
@@ -26,21 +22,18 @@ export function ExploreRecommendations({
       {isContinueWorkLoading
         ? <RecommendationSectionSkeleton className="mt-10" />
         : <ContinueWork className="mt-10" />}
-      {!isLearnDifyHidden && isLearnDifyLoading
-        ? (
-            <RecommendationSectionSkeleton
-              className={isContinueWorkLoading ? 'mt-4' : 'mt-10'}
-              hasDescription
-            />
-          )
-        : (
-            <LearnDify
-              canCreate={canCreate}
-              className="mt-4"
-              onCreate={onCreate}
-              onTry={onTry}
-            />
-          )}
+      <LearnDify
+        canCreate={canCreate}
+        className="mt-4"
+        loadingFallback={(
+          <RecommendationSectionSkeleton
+            className={isContinueWorkLoading ? 'mt-4' : 'mt-10'}
+            hasDescription
+          />
+        )}
+        onCreate={onCreate}
+        onTry={onTry}
+      />
     </>
   )
 }

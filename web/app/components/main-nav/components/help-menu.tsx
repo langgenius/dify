@@ -15,7 +15,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLearnDifyHiddenState } from '@/app/components/explore/learn-dify/storage'
+import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/atoms'
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
@@ -32,7 +32,8 @@ const HelpMenu = () => {
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
-  const [learnDifyHidden, setLearnDifyHidden] = useLearnDifyHiddenState()
+  const learnDifyVisible = useLearnDifyVisibleValue()
+  const setLearnDifyHidden = useSetLearnDifyHidden()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -73,7 +74,7 @@ const HelpMenu = () => {
                 </span>
                 <Switch
                   size="md"
-                  checked={!learnDifyHidden}
+                  checked={learnDifyVisible}
                   aria-label={t('mainNav.help.learnDify', { ns: 'common' })}
                   onClick={event => event.stopPropagation()}
                   onCheckedChange={checked => setLearnDifyHidden(!checked)}

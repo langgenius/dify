@@ -7,37 +7,42 @@ import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLearnDifyAppList } from '@/service/use-explore'
+import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from './atoms'
 import LearnDifyItem from './item'
-import { useLearnDifyHiddenState } from './storage'
 
 type LearnDifyProps = {
   canCreate?: boolean
   className?: string
   dismissible?: boolean
   itemLimit?: number
+  loadingFallback?: React.ReactNode
   onCreate?: (app: App) => void
   onTry?: (params: TryAppSelection) => void
   showDescription?: boolean
   title?: string
 }
 
-const LearnDify = ({
+type LearnDifyContentProps = LearnDifyProps & {
+  onHide?: () => void
+}
+
+const LearnDifyContent = ({
   canCreate = false,
   className,
-  dismissible = true,
   itemLimit,
+  loadingFallback = null,
+  onHide,
   onCreate,
   onTry,
   showDescription = true,
   title,
-}: LearnDifyProps) => {
+}: LearnDifyContentProps) => {
   const { t } = useTranslation()
-  const [hidden, setHidden] = useLearnDifyHiddenState()
   const [isClosing, setIsClosing] = useState(false)
   const [collapseTransform, setCollapseTransform] = useState<string>()
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const { data: learnDifyItems = [] } = useLearnDifyAppList()
+  const { data: learnDifyItems = [], isLoading } = useLearnDifyAppList()
 
   useEffect(() => {
     return () => {
@@ -62,7 +67,7 @@ const LearnDify = ({
     }
     setIsClosing(true)
     hideTimerRef.current = setTimeout(() => {
-      setHidden(true)
+      onHide?.()
       setIsClosing(false)
       setCollapseTransform(undefined)
     }, 800)
@@ -70,8 +75,8 @@ const LearnDify = ({
 
   const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
 
-  if (dismissible && hidden)
-    return null
+  if (isLoading)
+    return loadingFallback
   if (visibleItems.length === 0)
     return null
 
@@ -92,7 +97,7 @@ const LearnDify = ({
             <h2 id="learn-dify-title" className="min-w-0 truncate system-xl-semibold text-text-primary">
               {title ?? t('learnDify.title', { ns: 'explore' })}
             </h2>
-            {dismissible && (
+            {onHide && (
               <button type="button" className="shrink-0 system-sm-medium text-text-primary" onClick={handleHide}>
                 {t('learnDify.hide', { ns: 'explore' })}
               </button>
@@ -120,6 +125,23 @@ const LearnDify = ({
       </div>
     </section>
   )
+}
+
+const DismissibleLearnDify = (props: LearnDifyProps) => {
+  const visible = useLearnDifyVisibleValue()
+  const setHidden = useSetLearnDifyHidden()
+
+  if (!visible)
+    return null
+
+  return <LearnDifyContent {...props} onHide={() => setHidden(true)} />
+}
+
+const LearnDify = (props: LearnDifyProps) => {
+  if (props.dismissible === false)
+    return <LearnDifyContent {...props} />
+
+  return <DismissibleLearnDify {...props} />
 }
 
 export default React.memo(LearnDify)
