@@ -85,9 +85,10 @@ export default antfu(
         patterns: [
           {
             group: ['../**', './*/**'],
-            message: 'Use the @/ (or @test/) alias for cross-directory imports; keep ./ only for same-folder siblings.',
+            message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
           },
         ],
+      }],
       }],
     },
   },
