@@ -125,7 +125,8 @@ class BroadcastChannel(Protocol):
     a specific topic, all subscription should receive the published message.
 
     There are no restriction for the persistence of messages. Once a subscription is created, it
-    should receive all subsequent messages published.
+    should receive all subsequent messages published. However, a subscription should not receive
+    any message published before the subscription is established.
 
     `BroadcastChannel` implementations must be thread-safe and support concurrent use by multiple threads.
     """

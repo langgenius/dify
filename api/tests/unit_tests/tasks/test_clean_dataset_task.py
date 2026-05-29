@@ -16,6 +16,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models.enums import DataSourceType
 from tasks.clean_dataset_task import clean_dataset_task
 
 # ============================================================================
@@ -50,19 +52,13 @@ def pipeline_id():
 @pytest.fixture
 def mock_db_session():
     """Mock database session via session_factory.create_session()."""
-    with patch("tasks.clean_dataset_task.session_factory") as mock_sf:
+    with patch("tasks.clean_dataset_task.session_factory", autospec=True) as mock_sf:
         mock_session = MagicMock()
         # context manager for create_session()
         cm = MagicMock()
         cm.__enter__.return_value = mock_session
         cm.__exit__.return_value = None
         mock_sf.create_session.return_value = cm
-
-        # Setup query chain
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.delete.return_value = 0
 
         # Setup scalars for select queries
         mock_session.scalars.return_value.all.return_value = []
@@ -79,7 +75,7 @@ def mock_db_session():
 @pytest.fixture
 def mock_storage():
     """Mock storage client."""
-    with patch("tasks.clean_dataset_task.storage") as mock_storage:
+    with patch("tasks.clean_dataset_task.storage", autospec=True) as mock_storage:
         mock_storage.delete.return_value = None
         yield mock_storage
 
@@ -87,7 +83,7 @@ def mock_storage():
 @pytest.fixture
 def mock_index_processor_factory():
     """Mock IndexProcessorFactory."""
-    with patch("tasks.clean_dataset_task.IndexProcessorFactory") as mock_factory:
+    with patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_factory:
         mock_processor = MagicMock()
         mock_processor.clean.return_value = None
         mock_factory_instance = MagicMock()
@@ -104,7 +100,7 @@ def mock_index_processor_factory():
 @pytest.fixture
 def mock_get_image_upload_file_ids():
     """Mock get_image_upload_file_ids function."""
-    with patch("tasks.clean_dataset_task.get_image_upload_file_ids") as mock_func:
+    with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_func:
         mock_func.return_value = []
         yield mock_func
 
@@ -116,7 +112,7 @@ def mock_document():
     doc.id = str(uuid.uuid4())
     doc.tenant_id = str(uuid.uuid4())
     doc.dataset_id = str(uuid.uuid4())
-    doc.data_source_type = "upload_file"
+    doc.data_source_type = DataSourceType.UPLOAD_FILE
     doc.data_source_info = '{"upload_file_id": "test-file-id"}'
     doc.data_source_info_dict = {"upload_file_id": "test-file-id"}
     return doc
@@ -155,9 +151,9 @@ class TestErrorHandling:
 
     def test_clean_dataset_task_rollback_failure_still_closes_session(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -182,10 +178,10 @@ class TestErrorHandling:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -202,9 +198,9 @@ class TestPipelineAndWorkflowDeletion:
 
     def test_clean_dataset_task_with_pipeline_id(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         pipeline_id,
         mock_db_session,
         mock_storage,
@@ -218,31 +214,26 @@ class TestPipelineAndWorkflowDeletion:
         - Pipeline record is deleted
         - Related workflow record is deleted
         """
-        # Arrange
-        mock_query = mock_db_session.session.query.return_value
-        mock_query.where.return_value = mock_query
-        mock_query.delete.return_value = 1
-
         # Act
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=pipeline_id,
         )
 
-        # Assert - verify delete was called for pipeline-related queries
-        # The actual count depends on total queries, but pipeline deletion should add 2 more
-        assert mock_query.delete.call_count >= 7  # 5 base + 2 pipeline/workflow
+        # Assert - verify execute was called for delete operations
+        # 1 attachment JOIN query + 5 base deletes + 2 pipeline/workflow deletes = 8
+        assert mock_db_session.session.execute.call_count >= 8
 
     def test_clean_dataset_task_without_pipeline_id(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -254,24 +245,20 @@ class TestPipelineAndWorkflowDeletion:
         Expected behavior:
         - Pipeline and workflow deletion queries are not executed
         """
-        # Arrange
-        mock_query = mock_db_session.session.query.return_value
-        mock_query.where.return_value = mock_query
-        mock_query.delete.return_value = 1
-
         # Act
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=None,
         )
 
-        # Assert - verify delete was called only for base queries (5 times)
-        assert mock_query.delete.call_count == 5
+        # Assert - verify execute was called for delete operations
+        # 1 attachment JOIN query + 5 base deletes = 6
+        assert mock_db_session.session.execute.call_count == 6
 
 
 # ============================================================================
@@ -284,9 +271,9 @@ class TestSegmentAttachmentCleanup:
 
     def test_clean_dataset_task_with_attachments(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -319,10 +306,10 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -334,9 +321,9 @@ class TestSegmentAttachmentCleanup:
 
     def test_clean_dataset_task_attachment_storage_failure(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -364,10 +351,10 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert - storage delete was attempted
@@ -388,9 +375,9 @@ class TestEdgeCases:
 
     def test_clean_dataset_task_session_always_closed(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -406,10 +393,10 @@ class TestEdgeCases:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -426,9 +413,9 @@ class TestIndexProcessorParameters:
 
     def test_clean_dataset_task_passes_correct_parameters_to_index_processor(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -443,7 +430,7 @@ class TestIndexProcessorParameters:
         - Dataset object with correct attributes is passed
         """
         # Arrange
-        indexing_technique = "high_quality"
+        indexing_technique = IndexTechniqueType.HIGH_QUALITY
         index_struct = '{"type": "paragraph"}'
 
         # Act
@@ -453,7 +440,7 @@ class TestIndexProcessorParameters:
             indexing_technique=indexing_technique,
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert

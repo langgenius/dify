@@ -63,7 +63,7 @@ class TestPrivateWorkflowPauseEntity:
 
         assert entity.resumed_at is None
 
-    @patch("repositories.sqlalchemy_api_workflow_run_repository.storage")
+    @patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True)
     def test_get_state_first_call(self, mock_storage):
         """Test get_state loads from storage on first call."""
         state_data = b'{"test": "data", "step": 5}'
@@ -81,7 +81,7 @@ class TestPrivateWorkflowPauseEntity:
         mock_storage.load.assert_called_once_with("test-state-key")
         assert entity._cached_state == state_data
 
-    @patch("repositories.sqlalchemy_api_workflow_run_repository.storage")
+    @patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True)
     def test_get_state_cached_call(self, mock_storage):
         """Test get_state returns cached data on subsequent calls."""
         state_data = b'{"test": "data", "step": 5}'
@@ -102,7 +102,7 @@ class TestPrivateWorkflowPauseEntity:
         # Storage should only be called once
         mock_storage.load.assert_called_once_with("test-state-key")
 
-    @patch("repositories.sqlalchemy_api_workflow_run_repository.storage")
+    @patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True)
     def test_get_state_with_pre_cached_data(self, mock_storage):
         """Test get_state returns pre-cached data."""
         state_data = b'{"test": "data", "step": 5}'
@@ -125,7 +125,7 @@ class TestPrivateWorkflowPauseEntity:
         # Test with binary data that's not valid JSON
         binary_data = b"\x00\x01\x02\x03\x04\x05\xff\xfe"
 
-        with patch("repositories.sqlalchemy_api_workflow_run_repository.storage") as mock_storage:
+        with patch("repositories.sqlalchemy_api_workflow_run_repository.storage", autospec=True) as mock_storage:
             mock_storage.load.return_value = binary_data
 
             mock_pause_model = MagicMock(spec=WorkflowPauseModel)

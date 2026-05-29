@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     documentError: null as Error | null,
     documentMetadata: null as Record<string, unknown> | null,
     media: 'desktop' as string,
+    searchParams: '' as string,
   }
   return {
     state,
@@ -24,8 +25,9 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
+  useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -72,7 +74,7 @@ vi.mock('@/service/use-base', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mocks.toastNotify },
 }))
 
@@ -112,24 +114,29 @@ vi.mock('../batch-modal', () => ({
 }))
 
 vi.mock('../document-title', () => ({
-  DocumentTitle: ({ name, extension }: { name?: string, extension?: string }) => (
-    <div data-testid="document-title" data-extension={extension}>{name}</div>
-  ),
+  DocumentTitle: ({
+    document,
+  }: {
+    document?: {
+      name?: string
+      data_source_detail_dict?: { upload_file?: { extension?: string } }
+      data_source_info?: { upload_file?: { extension?: string } }
+    } | null
+  }) => {
+    const extension = document?.data_source_detail_dict?.upload_file?.extension
+      ?? document?.data_source_info?.upload_file?.extension
+
+    return <div data-testid="document-title" data-extension={extension}>{document?.name}</div>
+  },
 }))
 
 vi.mock('../segment-add', () => ({
-  default: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
+  SegmentAdd: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
     <div data-testid="segment-add" data-embedding={embedding}>
       <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>New Segment</button>
       <button data-testid="batch-btn" onClick={showBatchModal}>Batch Import</button>
     </div>
   ),
-  ProcessStatus: {
-    WAITING: 'waiting',
-    PROCESSING: 'processing',
-    ERROR: 'error',
-    COMPLETED: 'completed',
-  },
 }))
 
 vi.mock('../../components/operations', () => ({
@@ -193,6 +200,7 @@ describe('DocumentDetail', () => {
     mocks.state.documentError = null
     mocks.state.documentMetadata = null
     mocks.state.media = 'desktop'
+    mocks.state.searchParams = ''
   })
 
   afterEach(() => {
@@ -286,13 +294,21 @@ describe('DocumentDetail', () => {
     })
 
     it('should toggle metadata panel when button clicked', () => {
-      const { container } = render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('metadata')).toBeInTheDocument()
 
-      const svgs = container.querySelectorAll('svg')
-      const toggleBtn = svgs[svgs.length - 1].closest('button')!
-      fireEvent.click(toggleBtn)
+      fireEvent.click(screen.getByTestId('document-detail-metadata-toggle'))
       expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
+    })
+
+    it('should expose aria semantics for metadata toggle button', () => {
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      const toggle = screen.getByTestId('document-detail-metadata-toggle')
+      expect(toggle).toHaveAttribute('aria-label')
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+      fireEvent.click(toggle)
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
     })
 
     it('should pass correct props to Metadata', () => {
@@ -305,20 +321,21 @@ describe('DocumentDetail', () => {
 
   describe('Navigation', () => {
     it('should navigate back when back button clicked', () => {
-      const { container } = render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const backBtn = container.querySelector('svg')!.parentElement!
-      fireEvent.click(backBtn)
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
+    it('should expose aria label for back button', () => {
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute('aria-label')
+    })
+
     it('should preserve query params when navigating back', () => {
-      const origLocation = window.location
-      window.history.pushState({}, '', '?page=2&status=active')
-      const { container } = render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const backBtn = container.querySelector('svg')!.parentElement!
-      fireEvent.click(backBtn)
+      mocks.state.searchParams = 'page=2&status=active'
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
-      window.history.pushState({}, '', origLocation.href)
     })
   })
 

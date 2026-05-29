@@ -5,18 +5,43 @@ This module provides a Django-like settings system for repository implementation
 allowing users to configure different repository backends through string paths.
 """
 
-from typing import Union
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Literal, Protocol
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+
+@dataclass
+class OrderConfig:
+    """Configuration for ordering node execution instances."""
+
+    order_by: list[str]
+    order_direction: Literal["asc", "desc"] | None = None
+
+
+class WorkflowExecutionRepository(Protocol):
+    def save(self, execution: WorkflowExecution): ...
+
+
+class WorkflowNodeExecutionRepository(Protocol):
+    def save(self, execution: WorkflowNodeExecution): ...
+
+    def save_execution_data(self, execution: WorkflowNodeExecution): ...
+
+    def get_by_workflow_execution(
+        self,
+        workflow_execution_id: str,
+        order_config: OrderConfig | None = None,
+    ) -> Sequence[WorkflowNodeExecution]: ...
 
 
 class RepositoryImportError(Exception):
@@ -36,8 +61,8 @@ class DifyCoreRepositoryFactory:
     @classmethod
     def create_workflow_execution_repository(
         cls,
-        session_factory: Union[sessionmaker, Engine],
-        user: Union[Account, EndUser],
+        session_factory: sessionmaker | Engine,
+        user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom,
     ) -> WorkflowExecutionRepository:
@@ -72,8 +97,8 @@ class DifyCoreRepositoryFactory:
     @classmethod
     def create_workflow_node_execution_repository(
         cls,
-        session_factory: Union[sessionmaker, Engine],
-        user: Union[Account, EndUser],
+        session_factory: sessionmaker | Engine,
+        user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowNodeExecutionTriggeredFrom,
     ) -> WorkflowNodeExecutionRepository:

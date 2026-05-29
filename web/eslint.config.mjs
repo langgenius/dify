@@ -1,39 +1,41 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
+
+import path from 'node:path'
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import dify from './eslint-rules/index.js'
-
-// Enable Tailwind CSS IntelliSense mode for ESLint runs
-// See: tailwind-css-plugin.ts
-process.env.TAILWIND_MODE ??= 'ESLINT'
+import {
+  GENERATED_IGNORES,
+  HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+  WEB_RESTRICTED_IMPORT_PATTERNS,
+  WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+  WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+} from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
 
 export default antfu(
   {
     react: {
-      // This react compiler rules are pretty slow
-      // We can wait for https://github.com/Rel1cx/eslint-react/issues/1237
-      reactCompiler: false,
       overrides: {
-        'react/no-context-provider': 'off',
-        'react/no-forward-ref': 'off',
-        'react/no-use-context': 'off',
-
-        // prefer react-hooks-extra/no-direct-set-state-in-use-effect
-        'react-hooks/set-state-in-effect': 'off',
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
+        'react/set-state-in-effect': 'error',
+        'react/no-unnecessary-use-prefix': 'error',
       },
     },
-    nextjs: true,
-    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json', ...GENERATED_IGNORES],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
+      erasableOnly: true,
     },
     test: {
       overrides: {
@@ -44,6 +46,43 @@ export default antfu(
       overrides: {
         'antfu/top-level-function': 'off',
       },
+    },
+    e18e: false,
+    pnpm: false,
+  },
+  {
+    files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
+    rules: {
+      'react/no-unnecessary-use-prefix': 'off',
+    },
+  },
+  {
+    plugins: {
+      'no-barrel-files': noBarrelFiles,
+    },
+    ignores: ['next/**'],
+    rules: {
+      'no-barrel-files/no-barrel-files': 'error',
+    },
+  },
+  markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/prefer-link-reference-definitions': [
+        'error',
+        {
+          minLinks: 1,
+        },
+      ],
+      'markdown-preferences/ordered-list-marker-sequence': [
+        'error',
+        { increment: 'never' },
+      ],
+      'markdown-preferences/definitions-last': 'error',
+      'markdown-preferences/sort-definitions': 'error',
     },
   },
   {
@@ -83,6 +122,12 @@ export default antfu(
       'tailwindcss/no-unnecessary-whitespace': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
+    settings: {
+      'better-tailwindcss': {
+        cwd: import.meta.dirname,
+        entryPoint: path.resolve(import.meta.dirname, './app/styles/globals.css'),
+      },
+    },
   },
   {
     name: 'dify/custom/setup',
@@ -94,37 +139,7 @@ export default antfu(
   {
     files: ['**/*.tsx'],
     rules: {
-      'hyoban/prefer-tailwind-icons': ['warn', {
-        prefix: 'i-',
-        propMappings: {
-          size: 'size',
-          width: 'w',
-          height: 'h',
-        },
-        libraries: [
-          {
-            prefix: 'i-custom-',
-            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-            name: '^(?<name>.*)$',
-          },
-          {
-            source: '^@remixicon/react$',
-            name: '^(?<set>Ri)(?<name>.+)$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/outline$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
-            name: '^(?<name>.*)Icon$',
-          },
-        ],
-      }],
+      'hyoban/prefer-tailwind-icons': ['warn', HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS],
     },
   },
   {
@@ -140,9 +155,28 @@ export default antfu(
     },
   },
   {
-    files: ['**/package.json'],
+    name: 'dify/restricted-imports',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
     rules: {
-      'hyoban/no-dependency-version-prefix': 'error',
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
+    name: 'dify/service-base-restricted-imports',
+    files: ['service/**/*.ts', 'service/**/*.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...WEB_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+        ],
+      }],
     },
   },
 )

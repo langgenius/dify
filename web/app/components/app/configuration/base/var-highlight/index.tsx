@@ -4,7 +4,7 @@ import * as React from 'react'
 
 import s from './style.module.css'
 
-export type IVarHighlightProps = {
+type IVarHighlightProps = {
   name: string
   className?: string
 }

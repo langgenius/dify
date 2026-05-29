@@ -1,7 +1,8 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from tasks.mail_inner_task import send_inner_email_task
 
@@ -13,18 +14,15 @@ class TestMailInnerTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_inner_task.mail") as mock_mail,
-            patch("tasks.mail_inner_task.get_email_i18n_service") as mock_get_email_i18n_service,
-            patch("tasks.mail_inner_task._render_template_with_strategy") as mock_render_template,
+            patch("tasks.mail_inner_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_inner_task.get_email_i18n_service", autospec=True) as mock_get_email_i18n_service,
+            patch("tasks.mail_inner_task._render_template_with_strategy", autospec=True) as mock_render_template,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
 
             # Setup mock email i18n service
-            mock_email_service = MagicMock()
-            mock_get_email_i18n_service.return_value = mock_email_service
-
-            # Setup mock template rendering
+            mock_email_service = mock_get_email_i18n_service.return_value  # Setup mock template rendering
             mock_render_template.return_value = "<html>Test email content</html>"
 
             yield {
@@ -54,7 +52,7 @@ class TestMailInnerTask:
             },
         }
 
-    def test_send_inner_email_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_send_inner_email_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful email sending with valid data.
 
@@ -93,7 +91,9 @@ class TestMailInnerTask:
             html_content="<html>Test email content</html>",
         )
 
-    def test_send_inner_email_single_recipient(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_send_inner_email_single_recipient(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test email sending with single recipient.
 
@@ -129,7 +129,9 @@ class TestMailInnerTask:
             html_content="<html>Test email content</html>",
         )
 
-    def test_send_inner_email_empty_substitutions(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_send_inner_email_empty_substitutions(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test email sending with empty substitutions.
 
@@ -166,7 +168,7 @@ class TestMailInnerTask:
         )
 
     def test_send_inner_email_mail_not_initialized(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email sending when mail service is not initialized.
@@ -196,7 +198,7 @@ class TestMailInnerTask:
         mock_external_service_dependencies["email_service"].send_raw_email.assert_not_called()
 
     def test_send_inner_email_template_rendering_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email sending when template rendering fails.
@@ -225,7 +227,9 @@ class TestMailInnerTask:
         # Verify no email service calls due to exception
         mock_external_service_dependencies["email_service"].send_raw_email.assert_not_called()
 
-    def test_send_inner_email_service_error(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_send_inner_email_service_error(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test email sending when email service fails.
 

@@ -111,8 +111,8 @@ class TestCreateSSRFProxyMCPHTTPClient:
 class TestSSRFProxySSEConnect:
     """Test ssrf_proxy_sse_connect function."""
 
-    @patch("core.mcp.utils.connect_sse")
-    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.utils.connect_sse", autospec=True)
+    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
     def test_sse_connect_with_provided_client(self, mock_create_client, mock_connect_sse):
         """Test SSE connection with pre-configured client."""
         # Setup mocks
@@ -138,8 +138,8 @@ class TestSSRFProxySSEConnect:
         # Verify result
         assert result == mock_context
 
-    @patch("core.mcp.utils.connect_sse")
-    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.utils.connect_sse", autospec=True)
+    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
     @patch("core.mcp.utils.dify_config")
     def test_sse_connect_without_client(self, mock_config, mock_create_client, mock_connect_sse):
         """Test SSE connection without pre-configured client."""
@@ -183,8 +183,8 @@ class TestSSRFProxySSEConnect:
         # Verify result
         assert result == mock_context
 
-    @patch("core.mcp.utils.connect_sse")
-    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.utils.connect_sse", autospec=True)
+    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
     def test_sse_connect_with_custom_timeout(self, mock_create_client, mock_connect_sse):
         """Test SSE connection with custom timeout."""
         # Setup mocks
@@ -209,8 +209,8 @@ class TestSSRFProxySSEConnect:
         # Verify result
         assert result == mock_context
 
-    @patch("core.mcp.utils.connect_sse")
-    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.utils.connect_sse", autospec=True)
+    @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
     def test_sse_connect_error_cleanup(self, mock_create_client, mock_connect_sse):
         """Test SSE connection cleans up client on error."""
         # Setup mocks
@@ -227,7 +227,7 @@ class TestSSRFProxySSEConnect:
         # Verify client was cleaned up
         mock_client.close.assert_called_once()
 
-    @patch("core.mcp.utils.connect_sse")
+    @patch("core.mcp.utils.connect_sse", autospec=True)
     def test_sse_connect_error_no_cleanup_with_provided_client(self, mock_connect_sse):
         """Test SSE connection doesn't clean up provided client on error."""
         # Setup mocks

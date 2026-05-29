@@ -87,6 +87,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from flask_restx import Api
 
 from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
@@ -146,7 +147,7 @@ class ControllerApiTestDataFactory:
         return app
 
     @staticmethod
-    def create_api_instance(app):
+    def create_api_instance(app: Flask):
         """
         Create a Flask-RESTX API instance.
 
@@ -160,7 +161,12 @@ class ControllerApiTestDataFactory:
         return api
 
     @staticmethod
-    def create_test_client(app, api, resource_class, route):
+    def create_test_client(
+        app: Flask,
+        api: Api,
+        resource_class: type,
+        route: str,
+    ):
         """
         Create a Flask test client with a resource registered.
 
@@ -302,7 +308,7 @@ class TestDatasetListApi:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """
         Create Flask-RESTX API instance.
 
@@ -311,7 +317,7 @@ class TestDatasetListApi:
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """
         Create test client with DatasetListApi registered.
 
@@ -334,7 +340,7 @@ class TestDatasetListApi:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_datasets_success(self, client, mock_current_user):
+    def test_get_datasets_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful retrieval of dataset list.
 
@@ -375,7 +381,7 @@ class TestDatasetListApi:
         # Verify service was called
         mock_get_datasets.assert_called_once()
 
-    def test_get_datasets_with_search(self, client, mock_current_user):
+    def test_get_datasets_with_search(self, client: FlaskClient, mock_current_user):
         """
         Test dataset listing with search keyword.
 
@@ -405,7 +411,7 @@ class TestDatasetListApi:
         call_args = mock_get_datasets.call_args
         assert call_args[1]["search"] == search_keyword
 
-    def test_get_datasets_with_pagination(self, client, mock_current_user):
+    def test_get_datasets_with_pagination(self, client: FlaskClient, mock_current_user):
         """
         Test dataset listing with pagination parameters.
 
@@ -472,12 +478,12 @@ class TestDatasetApiGet:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client with DatasetApi registered."""
         return ControllerApiTestDataFactory.create_test_client(app, api, DatasetApi, "/datasets/<uuid:dataset_id>")
 
@@ -490,7 +496,7 @@ class TestDatasetApiGet:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_dataset_success(self, client, mock_current_user):
+    def test_get_dataset_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful retrieval of a single dataset.
 
@@ -528,7 +534,7 @@ class TestDatasetApiGet:
         mock_get_dataset.assert_called_once_with(dataset_id)
         mock_check_perm.assert_called_once()
 
-    def test_get_dataset_not_found(self, client, mock_current_user):
+    def test_get_dataset_not_found(self, client: FlaskClient, mock_current_user):
         """
         Test error handling when dataset is not found.
 
@@ -588,12 +594,12 @@ class TestDatasetApiCreate:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client with DatasetApi registered."""
         return ControllerApiTestDataFactory.create_test_client(app, api, DatasetApi, "/datasets")
 
@@ -606,7 +612,7 @@ class TestDatasetApiCreate:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_create_dataset_success(self, client, mock_current_user):
+    def test_create_dataset_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful creation of a dataset.
 
@@ -681,12 +687,12 @@ class TestHitTestingApi:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client with HitTestingApi registered."""
         return ControllerApiTestDataFactory.create_test_client(
             app, api, HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing"
@@ -701,7 +707,7 @@ class TestHitTestingApi:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_hit_testing_success(self, client, mock_current_user):
+    def test_hit_testing_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful hit testing operation.
 
@@ -799,12 +805,12 @@ class TestExternalDatasetApi:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client_list(self, app, api):
+    def client_list(self, app: Flask, api: Api):
         """Create test client for external knowledge API list endpoint."""
         return ControllerApiTestDataFactory.create_test_client(
             app, api, ExternalApiTemplateListApi, "/datasets/external-knowledge-api"

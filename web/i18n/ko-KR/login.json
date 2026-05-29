@@ -35,6 +35,8 @@
   "error.emailEmpty": "이메일 주소를 입력하세요.",
   "error.emailInValid": "유효한 이메일 주소를 입력하세요.",
   "error.invalidEmailOrPassword": "유효하지 않은 이메일이나 비밀번호입니다.",
+  "error.invalidRedirectUrlOrAppCode": "유효하지 않은 리디렉션 URL 또는 앱 코드",
+  "error.invalidSSOProtocol": "유효하지 않은 SSO 프로토콜",
   "error.nameEmpty": "사용자 이름을 입력하세요.",
   "error.passwordEmpty": "비밀번호를 입력하세요.",
   "error.passwordInvalid": "비밀번호는 문자와 숫자를 포함하고 8 자 이상이어야 합니다.",

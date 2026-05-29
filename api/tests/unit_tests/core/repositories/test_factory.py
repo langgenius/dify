@@ -11,9 +11,12 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import DifyCoreRepositoryFactory, RepositoryImportError
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    RepositoryImportError,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -66,7 +69,7 @@ class TestRepositoryFactory:
         mock_repository_class.return_value = mock_repository_instance
 
         # Mock import_string
-        with patch("core.repositories.factory.import_string", return_value=mock_repository_class):
+        with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
                 user=mock_user,
@@ -115,7 +118,7 @@ class TestRepositoryFactory:
         mock_repository_class.side_effect = Exception("Instantiation failed")
 
         # Mock import_string to return a failing class
-        with patch("core.repositories.factory.import_string", return_value=mock_repository_class):
+        with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_execution_repository(
                     session_factory=mock_session_factory,
@@ -143,7 +146,7 @@ class TestRepositoryFactory:
         mock_repository_class.return_value = mock_repository_instance
 
         # Mock import_string
-        with patch("core.repositories.factory.import_string", return_value=mock_repository_class):
+        with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
                 user=mock_user,
@@ -192,7 +195,7 @@ class TestRepositoryFactory:
         mock_repository_class.side_effect = Exception("Instantiation failed")
 
         # Mock import_string to return a failing class
-        with patch("core.repositories.factory.import_string", return_value=mock_repository_class):
+        with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                     session_factory=mock_session_factory,
@@ -226,7 +229,7 @@ class TestRepositoryFactory:
         mock_repository_class.return_value = mock_repository_instance
 
         # Mock import_string
-        with patch("core.repositories.factory.import_string", return_value=mock_repository_class):
+        with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_engine,  # Using Engine instead of sessionmaker
                 user=mock_user,

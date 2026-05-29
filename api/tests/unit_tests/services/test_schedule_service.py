@@ -1,18 +1,16 @@
 import unittest
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, Mock, patch
+from types import SimpleNamespace
+from typing import Any, cast
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from core.workflow.nodes.trigger_schedule.entities import VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
-from events.event_handlers.sync_workflow_schedule_when_app_published import (
-    sync_schedule_from_workflow,
-)
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
-from models.account import Account, TenantAccountJoin
-from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
 
@@ -77,180 +75,6 @@ class TestScheduleService(unittest.TestCase):
 
         with pytest.raises(UnknownTimeZoneError):
             calculate_next_run_at(cron_expr, timezone)
-
-    @patch("libs.schedule_utils.calculate_next_run_at")
-    def test_create_schedule(self, mock_calculate_next_run):
-        """Test creating a new schedule."""
-        mock_session = MagicMock(spec=Session)
-        mock_calculate_next_run.return_value = datetime(2025, 8, 30, 10, 30, 0, tzinfo=UTC)
-
-        config = ScheduleConfig(
-            node_id="start",
-            cron_expression="30 10 * * *",
-            timezone="UTC",
-        )
-
-        schedule = ScheduleService.create_schedule(
-            session=mock_session,
-            tenant_id="test-tenant",
-            app_id="test-app",
-            config=config,
-        )
-
-        assert schedule is not None
-        assert schedule.tenant_id == "test-tenant"
-        assert schedule.app_id == "test-app"
-        assert schedule.node_id == "start"
-        assert schedule.cron_expression == "30 10 * * *"
-        assert schedule.timezone == "UTC"
-        assert schedule.next_run_at is not None
-        mock_session.add.assert_called_once()
-        mock_session.flush.assert_called_once()
-
-    @patch("services.trigger.schedule_service.calculate_next_run_at")
-    def test_update_schedule(self, mock_calculate_next_run):
-        """Test updating an existing schedule."""
-        mock_session = MagicMock(spec=Session)
-        mock_schedule = Mock(spec=WorkflowSchedulePlan)
-        mock_schedule.cron_expression = "0 12 * * *"
-        mock_schedule.timezone = "America/New_York"
-        mock_session.get.return_value = mock_schedule
-        mock_calculate_next_run.return_value = datetime(2025, 8, 30, 12, 0, 0, tzinfo=UTC)
-
-        updates = SchedulePlanUpdate(
-            cron_expression="0 12 * * *",
-            timezone="America/New_York",
-        )
-
-        result = ScheduleService.update_schedule(
-            session=mock_session,
-            schedule_id="test-schedule-id",
-            updates=updates,
-        )
-
-        assert result is not None
-        assert result.cron_expression == "0 12 * * *"
-        assert result.timezone == "America/New_York"
-        mock_calculate_next_run.assert_called_once()
-        mock_session.flush.assert_called_once()
-
-    def test_update_schedule_not_found(self):
-        """Test updating a non-existent schedule raises exception."""
-        from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
-
-        mock_session = MagicMock(spec=Session)
-        mock_session.get.return_value = None
-
-        updates = SchedulePlanUpdate(
-            cron_expression="0 12 * * *",
-        )
-
-        with pytest.raises(ScheduleNotFoundError) as context:
-            ScheduleService.update_schedule(
-                session=mock_session,
-                schedule_id="non-existent-id",
-                updates=updates,
-            )
-
-        assert "Schedule not found: non-existent-id" in str(context.value)
-        mock_session.flush.assert_not_called()
-
-    def test_delete_schedule(self):
-        """Test deleting a schedule."""
-        mock_session = MagicMock(spec=Session)
-        mock_schedule = Mock(spec=WorkflowSchedulePlan)
-        mock_session.get.return_value = mock_schedule
-
-        # Should not raise exception and complete successfully
-        ScheduleService.delete_schedule(
-            session=mock_session,
-            schedule_id="test-schedule-id",
-        )
-
-        mock_session.delete.assert_called_once_with(mock_schedule)
-        mock_session.flush.assert_called_once()
-
-    def test_delete_schedule_not_found(self):
-        """Test deleting a non-existent schedule raises exception."""
-        from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
-
-        mock_session = MagicMock(spec=Session)
-        mock_session.get.return_value = None
-
-        # Should raise ScheduleNotFoundError
-        with pytest.raises(ScheduleNotFoundError) as context:
-            ScheduleService.delete_schedule(
-                session=mock_session,
-                schedule_id="non-existent-id",
-            )
-
-        assert "Schedule not found: non-existent-id" in str(context.value)
-        mock_session.delete.assert_not_called()
-
-    @patch("services.trigger.schedule_service.select")
-    def test_get_tenant_owner(self, mock_select):
-        """Test getting tenant owner account."""
-        mock_session = MagicMock(spec=Session)
-        mock_account = Mock(spec=Account)
-        mock_account.id = "owner-account-id"
-
-        # Mock owner query
-        mock_owner_result = Mock(spec=TenantAccountJoin)
-        mock_owner_result.account_id = "owner-account-id"
-
-        mock_session.execute.return_value.scalar_one_or_none.return_value = mock_owner_result
-        mock_session.get.return_value = mock_account
-
-        result = ScheduleService.get_tenant_owner(
-            session=mock_session,
-            tenant_id="test-tenant",
-        )
-
-        assert result is not None
-        assert result.id == "owner-account-id"
-
-    @patch("services.trigger.schedule_service.select")
-    def test_get_tenant_owner_fallback_to_admin(self, mock_select):
-        """Test getting tenant owner falls back to admin if no owner."""
-        mock_session = MagicMock(spec=Session)
-        mock_account = Mock(spec=Account)
-        mock_account.id = "admin-account-id"
-
-        # Mock admin query (owner returns None)
-        mock_admin_result = Mock(spec=TenantAccountJoin)
-        mock_admin_result.account_id = "admin-account-id"
-
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [None, mock_admin_result]
-        mock_session.get.return_value = mock_account
-
-        result = ScheduleService.get_tenant_owner(
-            session=mock_session,
-            tenant_id="test-tenant",
-        )
-
-        assert result is not None
-        assert result.id == "admin-account-id"
-
-    @patch("services.trigger.schedule_service.calculate_next_run_at")
-    def test_update_next_run_at(self, mock_calculate_next_run):
-        """Test updating next run time after schedule triggered."""
-        mock_session = MagicMock(spec=Session)
-        mock_schedule = Mock(spec=WorkflowSchedulePlan)
-        mock_schedule.cron_expression = "30 10 * * *"
-        mock_schedule.timezone = "UTC"
-        mock_session.get.return_value = mock_schedule
-
-        next_time = datetime(2025, 8, 31, 10, 30, 0, tzinfo=UTC)
-        mock_calculate_next_run.return_value = next_time
-
-        result = ScheduleService.update_next_run_at(
-            session=mock_session,
-            schedule_id="test-schedule-id",
-        )
-
-        assert result == next_time
-        assert mock_schedule.next_run_at == next_time
-        mock_session.flush.assert_called_once()
 
 
 class TestVisualToCron(unittest.TestCase):
@@ -673,106 +497,101 @@ class TestScheduleWithTimezone(unittest.TestCase):
         assert summer_next.hour == 14
 
 
-class TestSyncScheduleFromWorkflow(unittest.TestCase):
-    """Test cases for syncing schedule from workflow."""
+@pytest.fixture
+def session_mock() -> MagicMock:
+    return MagicMock(spec=Session)
 
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
-    def test_sync_schedule_create_new(self, mock_select, mock_service, mock_db):
-        """Test creating new schedule when none exists."""
-        mock_session = MagicMock()
-        mock_db.engine = MagicMock()
-        mock_session.__enter__ = MagicMock(return_value=mock_session)
-        mock_session.__exit__ = MagicMock(return_value=None)
-        Session = MagicMock(return_value=mock_session)
-        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
-            mock_session.scalar.return_value = None  # No existing plan
 
-            # Mock extract_schedule_config to return a ScheduleConfig object
-            mock_config = Mock(spec=ScheduleConfig)
-            mock_config.node_id = "start"
-            mock_config.cron_expression = "30 10 * * *"
-            mock_config.timezone = "UTC"
-            mock_service.extract_schedule_config.return_value = mock_config
+def _workflow(**kwargs: Any) -> Workflow:
+    return cast(Workflow, SimpleNamespace(**kwargs))
 
-            mock_new_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_service.create_schedule.return_value = mock_new_plan
 
-            workflow = Mock(spec=Workflow)
-            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+def test_to_schedule_config_should_build_from_cron_mode() -> None:
+    # Arrange
+    node_config: dict[str, Any] = {
+        "id": "node-1",
+        "data": {
+            "mode": "cron",
+            "cron_expression": "0 12 * * *",
+            "timezone": "Asia/Kolkata",
+        },
+    }
 
-            assert result == mock_new_plan
-            mock_service.create_schedule.assert_called_once()
-            mock_session.commit.assert_called_once()
+    # Act
+    result = ScheduleService.to_schedule_config(node_config=node_config)
 
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
-    def test_sync_schedule_update_existing(self, mock_select, mock_service, mock_db):
-        """Test updating existing schedule."""
-        mock_session = MagicMock()
-        mock_db.engine = MagicMock()
-        mock_session.__enter__ = MagicMock(return_value=mock_session)
-        mock_session.__exit__ = MagicMock(return_value=None)
-        Session = MagicMock(return_value=mock_session)
+    # Assert
+    assert result.node_id == "node-1"
+    assert result.cron_expression == "0 12 * * *"
+    assert result.timezone == "Asia/Kolkata"
 
-        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
-            mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_existing_plan.id = "existing-plan-id"
-            mock_session.scalar.return_value = mock_existing_plan
 
-            # Mock extract_schedule_config to return a ScheduleConfig object
-            mock_config = Mock(spec=ScheduleConfig)
-            mock_config.node_id = "start"
-            mock_config.cron_expression = "0 12 * * *"
-            mock_config.timezone = "America/New_York"
-            mock_service.extract_schedule_config.return_value = mock_config
+def test_to_schedule_config_should_raise_for_cron_mode_without_expression() -> None:
+    # Arrange
+    node_config = {"id": "node-1", "data": {"mode": "cron", "cron_expression": ""}}
 
-            mock_updated_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_service.update_schedule.return_value = mock_updated_plan
+    # Act / Assert
+    with pytest.raises(ScheduleConfigError, match="Cron expression is required for cron mode"):
+        ScheduleService.to_schedule_config(node_config=node_config)
 
-            workflow = Mock(spec=Workflow)
-            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
-            assert result == mock_updated_plan
-            mock_service.update_schedule.assert_called_once()
-            # Verify the arguments passed to update_schedule
-            call_args = mock_service.update_schedule.call_args
-            assert call_args.kwargs["session"] == mock_session
-            assert call_args.kwargs["schedule_id"] == "existing-plan-id"
-            updates_obj = call_args.kwargs["updates"]
-            assert isinstance(updates_obj, SchedulePlanUpdate)
-            assert updates_obj.node_id == "start"
-            assert updates_obj.cron_expression == "0 12 * * *"
-            assert updates_obj.timezone == "America/New_York"
-            mock_session.commit.assert_called_once()
+def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Arrange
+    node_config = {
+        "id": "node-1",
+        "data": {
+            "mode": "visual",
+            "frequency": "daily",
+            "visual_config": {"time": "9:30 AM"},
+            "timezone": "UTC",
+        },
+    }
+    monkeypatch.setattr(ScheduleService, "visual_to_cron", MagicMock(return_value="30 9 * * *"))
 
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
-    def test_sync_schedule_remove_when_no_config(self, mock_select, mock_service, mock_db):
-        """Test removing schedule when no schedule config in workflow."""
-        mock_session = MagicMock()
-        mock_db.engine = MagicMock()
-        mock_session.__enter__ = MagicMock(return_value=mock_session)
-        mock_session.__exit__ = MagicMock(return_value=None)
-        Session = MagicMock(return_value=mock_session)
+    # Act
+    result = ScheduleService.to_schedule_config(node_config=node_config)
 
-        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
-            mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_existing_plan.id = "existing-plan-id"
-            mock_session.scalar.return_value = mock_existing_plan
+    # Assert
+    assert result.cron_expression == "30 9 * * *"
 
-            mock_service.extract_schedule_config.return_value = None  # No schedule config
 
-            workflow = Mock(spec=Workflow)
-            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+def test_to_schedule_config_should_raise_for_invalid_mode() -> None:
+    # Arrange
+    node_config = {"id": "node-1", "data": {"mode": "manual"}}
 
-            assert result is None
-            # Now using ScheduleService.delete_schedule instead of session.delete
-            mock_service.delete_schedule.assert_called_once_with(session=mock_session, schedule_id="existing-plan-id")
-            mock_session.commit.assert_called_once()
+    # Act / Assert
+    with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: manual"):
+        ScheduleService.to_schedule_config(node_config=node_config)
+
+
+def test_extract_schedule_config_should_raise_when_graph_is_empty() -> None:
+    # Arrange
+    workflow = _workflow(graph_dict={})
+
+    # Act / Assert
+    with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
+        ScheduleService.extract_schedule_config(workflow=workflow)
+
+
+def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
+    # Arrange
+    workflow = _workflow(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "schedule-1",
+                    "data": {
+                        "type": TRIGGER_SCHEDULE_NODE_TYPE,
+                        "mode": "invalid",
+                    },
+                }
+            ]
+        }
+    )
+
+    # Act / Assert
+    with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: invalid"):
+        ScheduleService.extract_schedule_config(workflow=workflow)
 
 
 if __name__ == "__main__":

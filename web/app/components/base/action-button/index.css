@@ -1,49 +1,60 @@
-@tailwind components;
+@utility action-btn {
+  @apply inline-flex justify-center items-center cursor-pointer text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover;
 
-@layer components {
-    .action-btn {
-        @apply inline-flex justify-center items-center cursor-pointer text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover
-    }
+  &.action-btn-active {
+    @apply text-text-accent bg-state-accent-active hover:bg-state-accent-active-alt;
+  }
 
-    .action-btn-hover {
-        @apply bg-state-base-hover
-    }
+  &.action-btn-disabled {
+    @apply text-text-disabled;
+  }
 
-    .action-btn-disabled {
-        @apply cursor-not-allowed
-    }
+  &.action-btn-destructive {
+    @apply text-text-destructive bg-state-destructive-hover;
+  }
+}
 
-    .action-btn-xl {
-        @apply p-2 w-9 h-9 rounded-lg
-    }
+@utility action-btn-hover {
+  @apply bg-state-base-hover;
+}
 
-    .action-btn-l {
-        @apply p-1.5 w-8 h-8 rounded-lg
-    }
+@utility action-btn-disabled {
+  @apply cursor-not-allowed;
 
-    /* m is for the regular button */
-    .action-btn-m {
-        @apply p-0.5 w-6 h-6 rounded-lg
-    }
+  &.action-btn {
+    @apply text-text-disabled;
+  }
+}
 
-    .action-btn-s {
-        @apply w-5 h-5 rounded-[6px]
-    }
+@utility action-btn-xl {
+  @apply p-2 w-9 h-9 rounded-lg;
+}
 
-    .action-btn-xs {
-        @apply p-0 w-4 h-4 rounded
-    }
+@utility action-btn-l {
+  @apply p-1.5 w-8 h-8 rounded-lg;
+}
 
-    .action-btn.action-btn-active {
-        @apply text-text-accent bg-state-accent-active hover:bg-state-accent-active-alt
-    }
+@utility action-btn-m {
+  /* m is for the regular button */
+  @apply p-0.5 w-6 h-6 rounded-lg;
+}
 
-    .action-btn.action-btn-disabled {
-        @apply text-text-disabled
-    }
+@utility action-btn-s {
+  @apply w-5 h-5 rounded-[6px];
+}
 
-    .action-btn.action-btn-destructive {
-        @apply text-text-destructive bg-state-destructive-hover
-    }
+@utility action-btn-xs {
+  @apply p-0 w-4 h-4 rounded-sm;
+}
 
+@utility action-btn-active {
+  &.action-btn {
+    @apply text-text-accent bg-state-accent-active hover:bg-state-accent-active-alt;
+  }
+}
+
+@utility action-btn-destructive {
+  &.action-btn {
+    @apply text-text-destructive bg-state-destructive-hover;
+  }
 }

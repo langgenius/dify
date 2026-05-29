@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Category } from '../index'
+import type { Category } from '../types'
 import type { PlanRange } from './plan-range-switcher'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'

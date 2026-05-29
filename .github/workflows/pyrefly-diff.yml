@@ -10,46 +10,63 @@ permissions:
 
 jobs:
   pyrefly-diff:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       issues: write
       pull-requests: write
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
       - name: Install dependencies
         run: uv sync --project api --dev
 
+      - name: Prepare diagnostics extractor
+        run: |
+          git show ${{ github.event.pull_request.head.sha }}:api/libs/pyrefly_diagnostics.py > /tmp/pyrefly_diagnostics.py
+
       - name: Run pyrefly on PR branch
         run: |
-          uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
+          uv run --directory api --dev pyrefly check 2>&1 \
+            | uv run --directory api python /tmp/pyrefly_diagnostics.py > /tmp/pyrefly_pr.txt || true
 
       - name: Checkout base branch
         run: git checkout ${{ github.base_ref }}
 
       - name: Run pyrefly on base branch
         run: |
-          uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
+          uv run --directory api --dev pyrefly check 2>&1 \
+            | uv run --directory api python /tmp/pyrefly_diagnostics.py > /tmp/pyrefly_base.txt || true
 
       - name: Compute diff
         run: |
-          diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
+          diff -u /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
+
+      - name: Check if line counts match
+        id: line_count_check
+        run: |
+          base_lines=$(wc -l < /tmp/pyrefly_base.txt)
+          pr_lines=$(wc -l < /tmp/pyrefly_pr.txt)
+          if [ "$base_lines" -eq "$pr_lines" ]; then
+            echo "same=true" >> $GITHUB_OUTPUT
+          else
+            echo "same=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Save PR number
         run: |
           echo ${{ github.event.pull_request.number }} > pr_number.txt
 
       - name: Upload pyrefly diff
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pyrefly_diff
           path: |
@@ -57,8 +74,8 @@ jobs:
             pr_number.txt
 
       - name: Comment PR with pyrefly diff
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: actions/github-script@v8
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && steps.line_count_check.outputs.same == 'false' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -74,12 +91,38 @@ jobs:
             }
 
             const body = diff.trim()
-              ? `### Pyrefly Diff (base → PR)\n\`\`\`diff\n${diff}\n\`\`\``
+              ? [
+                  '### Pyrefly Diff',
+                  '<details>',
+                  '<summary>base → PR</summary>',
+                  '',
+                  '```diff',
+                  diff,
+                  '```',
+                  '</details>',
+                ].join('\n')
               : '### Pyrefly Diff\nNo changes detected.';
 
-            await github.rest.issues.createComment({
+            const marker = '### Pyrefly Diff';
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body,
             });
+            const existing = comments.find((comment) => comment.body.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }

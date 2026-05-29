@@ -53,7 +53,7 @@ function buildFileConfig(fileConfig: FileUpload | undefined) {
     enabled: !!(fileConfig?.enabled || fileConfig?.image?.enabled),
     allowed_file_types: fileConfig?.allowed_file_types || [SupportUploadFileTypes.image],
     allowed_file_extensions: fileConfig?.allowed_file_extensions
-      || [...FILE_EXTS[SupportUploadFileTypes.image]].map(ext => `.${ext}`),
+      || [...(FILE_EXTS[SupportUploadFileTypes.image] ?? [])].map(ext => `.${ext}`),
     allowed_file_upload_methods: fileConfig?.allowed_file_upload_methods
       || fileConfig?.image?.transfer_methods
       || ['local_file', 'remote_url'],

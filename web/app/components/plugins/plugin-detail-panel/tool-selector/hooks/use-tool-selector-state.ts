@@ -18,7 +18,7 @@ import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'
 
-export type UseToolSelectorStateProps = {
+type UseToolSelectorStateProps = {
   value?: ToolValue
   onSelect: (tool: ToolValue) => void
   onSelectMultiple?: (tool: ToolValue[]) => void
@@ -144,14 +144,14 @@ export const useToolSelectorState = ({
     onSelectMultiple?.(toolValues)
   }, [getToolValue, onSelectMultiple])
 
-  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = useCallback((description: string) => {
     if (!value)
       return
     onSelect({
       ...value,
       extra: {
         ...value.extra,
-        description: e.target.value || '',
+        description: description || '',
       },
     })
   }, [value, onSelect])
@@ -247,5 +247,3 @@ export const useToolSelectorState = ({
     getSettingsValue,
   }
 }
-
-export type ToolSelectorState = ReturnType<typeof useToolSelectorState>

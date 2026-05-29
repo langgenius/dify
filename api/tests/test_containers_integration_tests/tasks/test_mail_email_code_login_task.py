@@ -14,8 +14,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
+from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
@@ -36,14 +39,14 @@ class TestSendEmailCodeLoginMailTask:
     """
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers):
+    def cleanup_database(self, db_session_with_containers: Session):
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 
         # Clear all test data
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.execute(delete(TenantAccountJoin))
+        db_session_with_containers.execute(delete(Tenant))
+        db_session_with_containers.execute(delete(Account))
         db_session_with_containers.commit()
 
         # Clear Redis cache
@@ -53,8 +56,8 @@ class TestSendEmailCodeLoginMailTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_email_code_login.mail") as mock_mail,
-            patch("tasks.mail_email_code_login.get_email_i18n_service") as mock_email_service,
+            patch("tasks.mail_email_code_login.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_email_code_login.get_email_i18n_service", autospec=True) as mock_email_service,
         ):
             # Setup default mock returns
             mock_mail.is_inited.return_value = True
@@ -70,7 +73,7 @@ class TestSendEmailCodeLoginMailTask:
                 "email_service_instance": mock_email_service_instance,
             }
 
-    def _create_test_account(self, db_session_with_containers, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test account for testing.
 
@@ -89,7 +92,7 @@ class TestSendEmailCodeLoginMailTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -97,7 +100,7 @@ class TestSendEmailCodeLoginMailTask:
 
         return account
 
-    def _create_test_tenant_and_account(self, db_session_with_containers, fake=None):
+    def _create_test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test tenant and account for testing.
 
@@ -118,7 +121,7 @@ class TestSendEmailCodeLoginMailTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="active",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)
@@ -137,7 +140,7 @@ class TestSendEmailCodeLoginMailTask:
         return account, tenant
 
     def test_send_email_code_login_mail_task_success_english(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful email code login mail sending in English.
@@ -181,7 +184,7 @@ class TestSendEmailCodeLoginMailTask:
         )
 
     def test_send_email_code_login_mail_task_success_chinese(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful email code login mail sending in Chinese.
@@ -220,7 +223,7 @@ class TestSendEmailCodeLoginMailTask:
         )
 
     def test_send_email_code_login_mail_task_success_multiple_languages(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful email code login mail sending with multiple languages.
@@ -260,7 +263,7 @@ class TestSendEmailCodeLoginMailTask:
             assert call_args[1]["template_context"]["code"] == test_codes[i]
 
     def test_send_email_code_login_mail_task_mail_not_initialized(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email code login mail task when mail service is not initialized.
@@ -298,7 +301,7 @@ class TestSendEmailCodeLoginMailTask:
         mock_email_service_instance.send_email.assert_not_called()
 
     def test_send_email_code_login_mail_task_email_service_exception(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email code login mail task when email service raises an exception.
@@ -345,7 +348,7 @@ class TestSendEmailCodeLoginMailTask:
         )
 
     def test_send_email_code_login_mail_task_invalid_parameters(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email code login mail task with invalid parameters.
@@ -387,7 +390,7 @@ class TestSendEmailCodeLoginMailTask:
             mock_email_service_instance.send_email.assert_called_once()
 
     def test_send_email_code_login_mail_task_edge_cases(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email code login mail task with edge cases and boundary conditions.
@@ -450,7 +453,7 @@ class TestSendEmailCodeLoginMailTask:
             )
 
     def test_send_email_code_login_mail_task_database_integration(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email code login mail task with database integration.
@@ -496,7 +499,7 @@ class TestSendEmailCodeLoginMailTask:
         assert account.status == "active"
 
     def test_send_email_code_login_mail_task_redis_integration(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email code login mail task with Redis integration.
@@ -540,7 +543,7 @@ class TestSendEmailCodeLoginMailTask:
         redis_client.delete(cache_key)
 
     def test_send_email_code_login_mail_task_error_handling_comprehensive(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test comprehensive error handling for email code login mail task.
@@ -573,7 +576,7 @@ class TestSendEmailCodeLoginMailTask:
             mock_email_service_instance.send_email.side_effect = exception
 
             # Mock logging to capture error messages
-            with patch("tasks.mail_email_code_login.logger") as mock_logger:
+            with patch("tasks.mail_email_code_login.logger", autospec=True) as mock_logger:
                 # Act: Execute the task - it should handle the exception gracefully
                 send_email_code_login_mail_task(
                     language=test_language,

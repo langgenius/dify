@@ -5,7 +5,7 @@ from base64 import b64encode
 from collections.abc import Mapping
 from typing import Any
 
-from core.variables.utils import dumps_with_segments
+from graphon.variables.utils import dumps_with_segments
 
 
 class TemplateTransformer(ABC):
@@ -102,7 +102,7 @@ class TemplateTransformer(ABC):
 
     @classmethod
     def serialize_inputs(cls, inputs: Mapping[str, Any]) -> str:
-        inputs_json_str = dumps_with_segments(inputs, ensure_ascii=False).encode()
+        inputs_json_str = dumps_with_segments(inputs).encode()
         input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 

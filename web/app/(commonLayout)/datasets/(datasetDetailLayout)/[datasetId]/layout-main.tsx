@@ -1,6 +1,7 @@
 'use client'
 import type { RemixiconComponentType } from '@remixicon/react'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -9,7 +10,6 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
-import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,30 +23,46 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
+import { getLocalStorageItem, useLocalStorageBoolean } from '@/utils/local-storage'
 
-export type IAppDetailLayoutProps = {
+type IAppDetailLayoutProps = {
   children: React.ReactNode
-  params: { datasetId: string }
+  datasetId: string
+}
+
+const getResponseStatus = (error: unknown) => {
+  if (error instanceof Response)
+    return error.status
+
+  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
+    return error.status
+}
+
+const shouldRedirectToDatasetList = (error: unknown) => {
+  const status = getResponseStatus(error)
+  return status === 403 || status === 404
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
-    params: { datasetId },
+    datasetId,
   } = props
   const { t } = useTranslation()
+  const router = useRouter()
   const pathname = usePathname()
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
-  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const storedHideHeader = useLocalStorageBoolean('workflow-canvas-maximize')
+  const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
+  const hideHeader = eventHideHeader ?? storedHideHeader
   const { eventEmitter } = useEventEmitterContextContext()
 
   eventEmitter?.useSubscription((v: any) => {
     if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload)
+      setEventHideHeader(v.payload)
   })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
@@ -54,8 +70,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const isMobile = media === MediaType.mobile
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
+  const shouldRedirect = shouldRedirectToDatasetList(error)
 
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId)
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)
@@ -110,12 +127,20 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
-    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+    const localeMode = getLocalStorageItem('app-detail-collapse-or-expand', 'expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])
 
+  useEffect(() => {
+    if (shouldRedirect)
+      router.replace('/datasets')
+  }, [router, shouldRedirect])
+
   if (!datasetRes && !error)
+    return <Loading type="app" />
+
+  if (shouldRedirect)
     return <Loading type="app" />
 
   return (

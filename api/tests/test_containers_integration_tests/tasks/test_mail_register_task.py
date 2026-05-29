@@ -5,10 +5,11 @@ This module provides integration tests for email registration tasks
 using TestContainers to ensure real database and service interactions.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
 from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
@@ -21,23 +22,21 @@ class TestMailRegisterTask:
     def mock_mail_dependencies(self):
         """Mock setup for mail service dependencies."""
         with (
-            patch("tasks.mail_register_task.mail") as mock_mail,
-            patch("tasks.mail_register_task.get_email_i18n_service") as mock_get_email_service,
+            patch("tasks.mail_register_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_register_task.get_email_i18n_service", autospec=True) as mock_get_email_service,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
 
             # Setup mock email i18n service
-            mock_email_service = MagicMock()
-            mock_get_email_service.return_value = mock_email_service
-
+            mock_email_service = mock_get_email_service.return_value
             yield {
                 "mail": mock_mail,
                 "email_service": mock_email_service,
                 "get_email_service": mock_get_email_service,
             }
 
-    def test_send_email_register_mail_task_success(self, db_session_with_containers, mock_mail_dependencies):
+    def test_send_email_register_mail_task_success(self, db_session_with_containers: Session, mock_mail_dependencies):
         """Test successful email registration mail sending."""
         fake = Faker()
         language = "en-US"
@@ -58,7 +57,7 @@ class TestMailRegisterTask:
         )
 
     def test_send_email_register_mail_task_mail_not_initialized(
-        self, db_session_with_containers, mock_mail_dependencies
+        self, db_session_with_containers: Session, mock_mail_dependencies
     ):
         """Test email registration task when mail service is not initialized."""
         mock_mail_dependencies["mail"].is_inited.return_value = False
@@ -68,7 +67,9 @@ class TestMailRegisterTask:
         mock_mail_dependencies["get_email_service"].assert_not_called()
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
-    def test_send_email_register_mail_task_exception_handling(self, db_session_with_containers, mock_mail_dependencies):
+    def test_send_email_register_mail_task_exception_handling(
+        self, db_session_with_containers: Session, mock_mail_dependencies
+    ):
         """Test email registration task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
 
@@ -76,12 +77,12 @@ class TestMailRegisterTask:
         to_email = fake.email()
         code = fake.numerify("######")
 
-        with patch("tasks.mail_register_task.logger") as mock_logger:
+        with patch("tasks.mail_register_task.logger", autospec=True) as mock_logger:
             send_email_register_mail_task(language="en-US", to=to_email, code=code)
             mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", to_email)
 
     def test_send_email_register_mail_task_when_account_exist_success(
-        self, db_session_with_containers, mock_mail_dependencies
+        self, db_session_with_containers: Session, mock_mail_dependencies
     ):
         """Test successful email registration mail sending when account exists."""
         fake = Faker()
@@ -107,7 +108,7 @@ class TestMailRegisterTask:
             )
 
     def test_send_email_register_mail_task_when_account_exist_mail_not_initialized(
-        self, db_session_with_containers, mock_mail_dependencies
+        self, db_session_with_containers: Session, mock_mail_dependencies
     ):
         """Test account exist email task when mail service is not initialized."""
         mock_mail_dependencies["mail"].is_inited.return_value = False
@@ -120,7 +121,7 @@ class TestMailRegisterTask:
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_email_register_mail_task_when_account_exist_exception_handling(
-        self, db_session_with_containers, mock_mail_dependencies
+        self, db_session_with_containers: Session, mock_mail_dependencies
     ):
         """Test account exist email task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
@@ -129,6 +130,6 @@ class TestMailRegisterTask:
         to_email = fake.email()
         account_name = fake.name()
 
-        with patch("tasks.mail_register_task.logger") as mock_logger:
+        with patch("tasks.mail_register_task.logger", autospec=True) as mock_logger:
             send_email_register_mail_task_when_account_exist(language="en-US", to=to_email, account_name=account_name)
             mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", to_email)

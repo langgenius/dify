@@ -3,7 +3,6 @@ import { useDebounceFn, useLocalStorageState } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { useRouter, useSearchParams } from 'next/navigation'
 import {
   useCallback,
   useEffect,
@@ -13,6 +12,7 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
 import {
   EDUCATION_RE_VERIFY_ACTION,

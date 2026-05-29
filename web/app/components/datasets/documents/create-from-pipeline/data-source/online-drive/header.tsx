@@ -1,6 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 
 type HeaderProps = {
@@ -33,7 +33,7 @@ const Header = ({
         </Button>
       </div>
       <a
-        className="system-xs-medium flex items-center gap-x-1 overflow-hidden text-text-accent"
+        className="flex items-center gap-x-1 overflow-hidden system-xs-medium text-text-accent"
         href={docLink}
         target="_blank"
         rel="noopener noreferrer"

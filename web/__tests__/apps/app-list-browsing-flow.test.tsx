@@ -1,3 +1,4 @@
+import type { ReactElement, ReactNode } from 'react'
 /**
  * Integration test: App List Browsing Flow
  *
@@ -8,11 +9,12 @@
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import List from '@/app/components/apps/list'
 import { AccessMode } from '@/models/access-control'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 let mockIsCurrentWorkspaceEditor = true
@@ -38,15 +40,16 @@ let mockShowTagManagementModal = false
 const mockRouterPush = vi.fn()
 const mockRouterReplace = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
   }),
+  usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (_loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComponent = (props: Record<string, unknown>) => {
       return <div data-testid="dynamic-component" {...props} />
@@ -62,13 +65,6 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { systemFeatures: mockSystemFeatures }
-    return selector ? selector(state) : state
-  },
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -93,16 +89,36 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: () => ({
+      data: [],
+    }),
+    useInfiniteQuery: () => ({
+      data: { pages: mockPages },
+      isLoading: mockIsLoading,
+      isFetching: mockIsFetching,
+      isFetchingNextPage: mockIsFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockHasNextPage,
+      error: mockError,
+      refetch: mockRefetch,
+    }),
+  }
+})
+
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: { pages: mockPages },
-    isLoading: mockIsLoading,
-    isFetching: mockIsFetching,
-    isFetchingNextPage: mockIsFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockHasNextPage,
-    error: mockError,
-    refetch: mockRefetch,
+  useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/app/components/apps/hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: () => ({
+    onlineUsersMap: {},
   }),
 }))
 
@@ -160,12 +176,21 @@ const createPage = (apps: App[], hasMore = false, page = 1): AppListResponse => 
   total: apps.length,
 })
 
-const renderList = (searchParams?: Record<string, string>) => {
-  return render(
-    <NuqsTestingAdapter searchParams={searchParams}>
-      <List controlRefreshList={0} />
-    </NuqsTestingAdapter>,
+const renderListUI = (ui: ReactElement, searchParams?: Record<string, string>) => {
+  const { wrapper: SysWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: mockSystemFeatures,
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsWrapper>
+      <SysWrapper>{children}</SysWrapper>
+    </NuqsWrapper>
   )
+  return { ...render(ui, { wrapper: Wrapper }), onUrlUpdate }
+}
+
+const renderList = (searchParams?: Record<string, string>) => {
+  return renderListUI(<List controlRefreshList={0} />, searchParams)
 }
 
 describe('App List Browsing Flow', () => {
@@ -209,11 +234,7 @@ describe('App List Browsing Flow', () => {
 
     it('should transition from loading to content when data loads', () => {
       mockIsLoading = true
-      const { rerender } = render(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={0} />
-        </NuqsTestingAdapter>,
-      )
+      const { rerender } = renderListUI(<List controlRefreshList={0} />)
 
       const skeletonCards = document.querySelectorAll('.animate-pulse')
       expect(skeletonCards.length).toBeGreaterThan(0)
@@ -224,11 +245,7 @@ describe('App List Browsing Flow', () => {
         createMockApp({ id: 'app-1', name: 'Loaded App' }),
       ])]
 
-      rerender(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={0} />
-        </NuqsTestingAdapter>,
-      )
+      rerender(<List controlRefreshList={0} />)
 
       expect(screen.getByText('Loaded App')).toBeInTheDocument()
     })
@@ -347,13 +364,18 @@ describe('App List Browsing Flow', () => {
       expect(input).toBeInTheDocument()
     })
 
-    it('should allow typing in search input', () => {
+    it('should update search query when typing in search input', async () => {
       mockPages = [createPage([createMockApp()])]
-      renderList()
+      const { onUrlUpdate } = renderList()
 
-      const input = document.querySelector('input')!
+      const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'test search' } })
-      expect(input.value).toBe('test search')
+
+      await waitFor(() => {
+        expect(onUrlUpdate).toHaveBeenCalled()
+      })
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
+      expect(lastCall.searchParams.get('keywords')).toBe('test search')
     })
   })
 
@@ -424,17 +446,9 @@ describe('App List Browsing Flow', () => {
     it('should call refetch when controlRefreshList increments', () => {
       mockPages = [createPage([createMockApp()])]
 
-      const { rerender } = render(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={0} />
-        </NuqsTestingAdapter>,
-      )
+      const { rerender } = renderListUI(<List controlRefreshList={0} />)
 
-      rerender(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={1} />
-        </NuqsTestingAdapter>,
-      )
+      rerender(<List controlRefreshList={1} />)
 
       expect(mockRefetch).toHaveBeenCalled()
     })

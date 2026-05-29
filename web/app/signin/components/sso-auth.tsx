@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Toast from '@/app/components/base/toast'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import { SSOProtocol } from '@/types/feature'
 
@@ -49,10 +49,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       })
     }
     else {
-      Toast.notify({
-        type: 'error',
-        message: 'invalid SSO protocol',
-      })
+      toast.error(t('error.invalidSSOProtocol', { ns: 'login' }))
       setIsLoading(false)
     }
   }
@@ -64,7 +61,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="mr-2 h-5 w-5 text-text-accent-light-mode-only" />
+      <Lock01 className="mr-2 size-5 text-text-accent-light-mode-only" />
       <span className="truncate">{t('withSSO', { ns: 'login' })}</span>
     </Button>
   )

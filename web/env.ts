@@ -20,6 +20,11 @@ const clientSchema = {
    */
   NEXT_PUBLIC_ALLOW_EMBED: coercedBoolean.default(false),
   /**
+   * Allow inline style attributes in Markdown rendering.
+   * Self-hosted opt-in for workflows using styled Jinja2 templates.
+   */
+  NEXT_PUBLIC_ALLOW_INLINE_STYLES: coercedBoolean.default(false),
+  /**
    * Allow rendering unsafe URLs which have "data:" scheme.
    */
   NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: coercedBoolean.default(false),
@@ -67,10 +72,6 @@ const clientSchema = {
   NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: coercedBoolean.default(false),
   /**
-   * Github Access Token, used for invoking Github API
-   */
-  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().optional(),
-  /**
    * The maximum number of tokens for segmentation
    */
   NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: coercedNumber.default(4000),
@@ -115,6 +116,8 @@ const clientSchema = {
    */
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_SITE_ABOUT: z.string().optional(),
+  NEXT_PUBLIC_SOCKET_URL: z.string().optional(),
+  NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: z.email().optional(),
   NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: coercedBoolean.default(false),
   /**
    * The timeout for the text generation in millisecond
@@ -139,6 +142,7 @@ const clientSchema = {
 
 export const env = createEnv({
   server: {
+    CONSOLE_API_URL: z.string().optional(),
     /**
      * Maximum length of segmentation tokens for indexing
      */
@@ -153,13 +157,10 @@ export const env = createEnv({
      */
     TEXT_GENERATION_TIMEOUT_MS: coercedNumber.default(60000),
   },
-  shared: {
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  },
   client: clientSchema,
   experimental__runtimeEnv: {
-    NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_ALLOW_EMBED: isServer ? process.env.NEXT_PUBLIC_ALLOW_EMBED : getRuntimeEnvFromBody('allowEmbed'),
+    NEXT_PUBLIC_ALLOW_INLINE_STYLES: isServer ? process.env.NEXT_PUBLIC_ALLOW_INLINE_STYLES : getRuntimeEnvFromBody('allowInlineStyles'),
     NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
     NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
@@ -174,7 +175,6 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
     NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER : getRuntimeEnvFromBody('enableWebsiteJinareader'),
     NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL : getRuntimeEnvFromBody('enableWebsiteWatercrawl'),
-    NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: isServer ? process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN : getRuntimeEnvFromBody('githubAccessToken'),
     NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: isServer ? process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH : getRuntimeEnvFromBody('indexingMaxSegmentationTokensLength'),
     NEXT_PUBLIC_IS_MARKETPLACE: isServer ? process.env.NEXT_PUBLIC_IS_MARKETPLACE : getRuntimeEnvFromBody('isMarketplace'),
     NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: isServer ? process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT : getRuntimeEnvFromBody('loopNodeMaxCount'),
@@ -188,6 +188,8 @@ export const env = createEnv({
     NEXT_PUBLIC_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('publicApiPrefix'),
     NEXT_PUBLIC_SENTRY_DSN: isServer ? process.env.NEXT_PUBLIC_SENTRY_DSN : getRuntimeEnvFromBody('sentryDsn'),
     NEXT_PUBLIC_SITE_ABOUT: isServer ? process.env.NEXT_PUBLIC_SITE_ABOUT : getRuntimeEnvFromBody('siteAbout'),
+    NEXT_PUBLIC_SOCKET_URL: isServer ? process.env.NEXT_PUBLIC_SOCKET_URL : getRuntimeEnvFromBody('socketUrl'),
+    NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: isServer ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS : getRuntimeEnvFromBody('supportEmailAddress'),
     NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: isServer ? process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN : getRuntimeEnvFromBody('supportMailLogin'),
     NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS: isServer ? process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS : getRuntimeEnvFromBody('textGenerationTimeoutMs'),
     NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE : getRuntimeEnvFromBody('topKMaxValue'),

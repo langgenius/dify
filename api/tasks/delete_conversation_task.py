@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import delete
 
 from core.db.session_factory import session_factory
 from models import ConversationVariable
@@ -29,29 +30,21 @@ def delete_conversation_related_data(conversation_id: str):
 
     with session_factory.create_session() as session:
         try:
-            session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id).delete(
-                synchronize_session=False
+            session.execute(delete(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id))
+
+            session.execute(delete(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id))
+
+            session.execute(
+                delete(ToolConversationVariables).where(ToolConversationVariables.conversation_id == conversation_id)
             )
 
-            session.query(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
+            session.execute(delete(ToolFile).where(ToolFile.conversation_id == conversation_id))
 
-            session.query(ToolConversationVariables).where(
-                ToolConversationVariables.conversation_id == conversation_id
-            ).delete(synchronize_session=False)
+            session.execute(delete(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id))
 
-            session.query(ToolFile).where(ToolFile.conversation_id == conversation_id).delete(synchronize_session=False)
+            session.execute(delete(Message).where(Message.conversation_id == conversation_id))
 
-            session.query(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
-
-            session.query(Message).where(Message.conversation_id == conversation_id).delete(synchronize_session=False)
-
-            session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
+            session.execute(delete(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id))
 
             session.commit()
 

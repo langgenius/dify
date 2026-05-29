@@ -2,12 +2,12 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
 import { ValueType, VarType } from '@/app/components/workflow/types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import FormItem from './form-item'
@@ -28,10 +28,7 @@ const Item = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
       return false
     }
     return true
@@ -101,7 +98,7 @@ const Item = ({
         size="l"
         onClick={() => handleRemoveLoopVariable(item.id)}
       >
-        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
+        <RiDeleteBinLine className="size-4 text-text-tertiary" />
       </ActionButton>
     </div>
   )

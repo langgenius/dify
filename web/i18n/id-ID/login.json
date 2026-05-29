@@ -35,6 +35,8 @@
   "error.emailEmpty": "Alamat email diperlukan",
   "error.emailInValid": "Silakan masukkan alamat email yang valid",
   "error.invalidEmailOrPassword": "Email atau kata sandi tidak valid.",
+  "error.invalidRedirectUrlOrAppCode": "URL pengalihan atau kode aplikasi tidak valid",
+  "error.invalidSSOProtocol": "Protokol SSO tidak valid",
   "error.nameEmpty": "Nama diperlukan",
   "error.passwordEmpty": "Kata sandi diperlukan",
   "error.passwordInvalid": "Kata sandi harus berisi huruf dan angka, dan panjangnya harus lebih besar dari 8",

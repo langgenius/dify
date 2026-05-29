@@ -41,7 +41,7 @@ describe('themeCommand', () => {
       const results = await themeCommand.search('dark', 'en')
 
       expect(results).toHaveLength(1)
-      expect(results[0].id).toBe('dark')
+      expect(results[0]!.id).toBe('dark')
     })
   })
 

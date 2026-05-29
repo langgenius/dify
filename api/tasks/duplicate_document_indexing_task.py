@@ -15,6 +15,7 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
 
     with session_factory.create_session() as session:
         try:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if dataset is None:
                 logger.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
@@ -91,6 +92,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             try:
                 if features.billing.enabled:
                     vector_space = features.vector_space
+                    assert vector_space is not None
                     count = len(document_ids)
                     if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                         raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
@@ -112,7 +114,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                 )
                 for document in documents:
                     if document:
-                        document.indexing_status = "error"
+                        document.indexing_status = IndexingStatus.ERROR
                         document.error = str(e)
                         document.stopped_at = naive_utc_now()
                         session.add(document)
@@ -136,7 +138,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     select(DocumentSegment).where(DocumentSegment.document_id == document.id)
                 ).all()
                 if segments:
-                    index_node_ids = [segment.index_node_id for segment in segments]
+                    index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
                     # delete from vector index
                     index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
@@ -146,7 +148,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     session.execute(segment_delete_stmt)
                     session.commit()
 
-                document.indexing_status = "parsing"
+                document.indexing_status = IndexingStatus.PARSING
                 document.processing_started_at = naive_utc_now()
                 session.add(document)
             session.commit()

@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TypedDict
 
 from core.rag.models.document import Document
+
+
+class VectorStoreDict(TypedDict):
+    class_prefix: str
+
+
+class VectorIndexStructDict(TypedDict):
+    type: str
+    vector_store: VectorStoreDict
 
 
 class BaseVector(ABC):

@@ -50,11 +50,11 @@ describe('Tool Data Processing Pipeline Integration', () => {
 
       const formSchemas = toolParametersToFormSchemas(rawParameters as unknown as Parameters<typeof toolParametersToFormSchemas>[0])
       expect(formSchemas).toHaveLength(2)
-      expect(formSchemas[0].variable).toBe('query')
-      expect(formSchemas[0].required).toBe(true)
-      expect(formSchemas[0].type).toBe('text-input')
-      expect(formSchemas[1].variable).toBe('limit')
-      expect(formSchemas[1].type).toBe('number-input')
+      expect(formSchemas[0]!.variable).toBe('query')
+      expect(formSchemas[0]!.required).toBe(true)
+      expect(formSchemas[0]!.type).toBe('text-input')
+      expect(formSchemas[1]!.variable).toBe('limit')
+      expect(formSchemas[1]!.type).toBe('number-input')
 
       const withDefaults = addDefaultValue({}, formSchemas)
       expect(withDefaults.query).toBe('hello')
@@ -83,9 +83,9 @@ describe('Tool Data Processing Pipeline Integration', () => {
 
       const credentialSchemas = toolCredentialToFormSchemas(rawCredentials as Parameters<typeof toolCredentialToFormSchemas>[0])
       expect(credentialSchemas).toHaveLength(1)
-      expect(credentialSchemas[0].variable).toBe('api_key')
-      expect(credentialSchemas[0].required).toBe(true)
-      expect(credentialSchemas[0].type).toBe('secret-input')
+      expect(credentialSchemas[0]!.variable).toBe('api_key')
+      expect(credentialSchemas[0]!.required).toBe(true)
+      expect(credentialSchemas[0]!.type).toBe('secret-input')
     })
 
     it('processes trigger event parameters through the pipeline', () => {
@@ -107,9 +107,9 @@ describe('Tool Data Processing Pipeline Integration', () => {
 
       const schemas = triggerEventParametersToFormSchemas(rawParams as unknown as Parameters<typeof triggerEventParametersToFormSchemas>[0])
       expect(schemas).toHaveLength(1)
-      expect(schemas[0].name).toBe('event_type')
-      expect(schemas[0].type).toBe('select')
-      expect(schemas[0].options).toHaveLength(2)
+      expect(schemas[0]!.name).toBe('event_type')
+      expect(schemas[0]!.type).toBe('select')
+      expect(schemas[0]!.options).toHaveLength(2)
     })
   })
 
@@ -189,16 +189,16 @@ describe('Tool Data Processing Pipeline Integration', () => {
       ] as Parameters<typeof addFileInfos>[1]
 
       const sorted = sortAgentSorts(thoughts)
-      expect(sorted[0].id).toBe('t1')
-      expect(sorted[1].id).toBe('t2')
-      expect(sorted[2].id).toBe('t3')
+      expect(sorted[0]!.id).toBe('t1')
+      expect(sorted[1]!.id).toBe('t2')
+      expect(sorted[2]!.id).toBe('t3')
 
       const enriched = addFileInfos(sorted, messageFiles)
-      expect(enriched[0].message_files).toBeUndefined()
-      expect(enriched[1].message_files).toHaveLength(1)
-      expect(enriched[1].message_files![0].id).toBe('f2')
-      expect(enriched[2].message_files).toHaveLength(1)
-      expect(enriched[2].message_files![0].id).toBe('f1')
+      expect(enriched[0]!.message_files).toBeUndefined()
+      expect(enriched[1]!.message_files).toHaveLength(1)
+      expect(enriched[1]!.message_files![0]!.id).toBe('f2')
+      expect(enriched[2]!.message_files).toHaveLength(1)
+      expect(enriched[2]!.message_files![0]!.id).toBe('f1')
     })
 
     it('handles null inputs gracefully in the pipeline', () => {

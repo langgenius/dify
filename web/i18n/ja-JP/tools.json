@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "例：ベアラートークン123",
   "mcp.modal.headers": "ヘッダー",
   "mcp.modal.headersTip": "MCPサーバーへのリクエストに送信する追加のHTTPヘッダー",
+  "mcp.modal.invalidServerIdentifier": "有効なサーバー識別子を入力してください",
+  "mcp.modal.invalidServerUrl": "有効なサーバーURLを入力してください",
   "mcp.modal.maskedHeadersTip": "ヘッダー値はセキュリティのためマスクされています。変更は実際の値を更新します。",
   "mcp.modal.name": "名前とアイコン",
   "mcp.modal.namePlaceholder": "MCP サーバーの名前を入力",

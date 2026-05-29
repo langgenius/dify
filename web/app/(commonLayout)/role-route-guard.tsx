@@ -1,10 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
+import { usePathname, useRouter } from '@/next/navigation'
 
 const datasetOperatorRedirectRoutes = ['/apps', '/app', '/explore', '/tools'] as const
 

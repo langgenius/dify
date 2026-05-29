@@ -104,7 +104,7 @@ class TestParseTimeRange:
     def test_parse_time_range_dst_ambiguous_time(self):
         """Test parsing during DST ambiguous time (fall back)."""
         # This test simulates DST fall back where 2:30 AM occurs twice
-        with patch("pytz.timezone") as mock_timezone:
+        with patch("pytz.timezone", autospec=True) as mock_timezone:
             # Mock timezone that raises AmbiguousTimeError
             mock_tz = mock_timezone.return_value
 
@@ -135,7 +135,7 @@ class TestParseTimeRange:
 
     def test_parse_time_range_dst_nonexistent_time(self):
         """Test parsing during DST nonexistent time (spring forward)."""
-        with patch("pytz.timezone") as mock_timezone:
+        with patch("pytz.timezone", autospec=True) as mock_timezone:
             # Mock timezone that raises NonExistentTimeError
             mock_tz = mock_timezone.return_value
 

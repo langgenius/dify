@@ -1,5 +1,5 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -10,7 +10,7 @@ import RagPipelineChildren from '../rag-pipeline-children'
 import PipelineScreenShot from '../screenshot'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))
@@ -278,8 +278,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
 vi.mock('@/app/components/workflow/utils', () => ({
   initialNodes: vi.fn(nodes => nodes),
   initialEdges: vi.fn(edges => edges),
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key,
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -352,6 +350,10 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 // Helper to find the name input in PublishAsKnowledgePipelineModal
 function getNameInput() {
   return screen.getByPlaceholderText('pipeline.common.publishAsPipeline.namePlaceholder')
@@ -363,7 +365,7 @@ function getDescriptionTextarea() {
 }
 
 // Helper to find the AppIcon span in PublishAsKnowledgePipelineModal
-// HeadlessUI Dialog renders via portal to document.body, so we search the full document
+// The modal renders via portal to document.body, so we search the full document.
 function getAppIcon() {
   const emoji = document.querySelector('em-emoji')
   return emoji?.closest('span') as HTMLElement
@@ -415,21 +417,23 @@ describe('Conversion', () => {
       const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
       fireEvent.click(convertButton)
 
-      // Real Confirm renders title and content via portal
+      // AlertDialog renders title and content via portal.
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.conversion.confirm.content')).toBeInTheDocument()
     })
 
-    it('should hide confirm modal when cancel is clicked', () => {
+    it('should hide confirm modal when cancel is clicked', async () => {
       render(<Conversion />)
 
       const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
       fireEvent.click(convertButton)
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-      // Real Confirm renders cancel button with i18n text
+      // AlertDialog close is async because it unmounts after state updates.
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+      })
     })
   })
 
@@ -628,7 +632,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       // Real AppIcon renders an em-emoji custom element inside a span
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
 
@@ -670,7 +674,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     it('should call onCancel when close icon is clicked', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -708,10 +712,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
 
-      // Click the first emoji in the grid (search full document since Dialog uses portal)
-      const gridEmojis = document.querySelectorAll('.grid em-emoji')
-      expect(gridEmojis.length).toBeGreaterThan(0)
-      fireEvent.click(gridEmojis[0].parentElement!.parentElement!)
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
 
       // Click OK to confirm selection
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
@@ -789,7 +790,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const { rerender } = render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       rerender(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
   })
@@ -868,9 +869,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -883,8 +886,10 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'OTHER_EVENT',
+        act(() => {
+          mockEventSubscriptionCallback?.({
+            type: 'OTHER_EVENT',
+          })
         })
       }
 
@@ -930,9 +935,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -949,9 +956,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -974,9 +983,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -1021,11 +1032,8 @@ describe('Integration Tests', () => {
       // Open picker and select an emoji
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
-      const gridEmojis = document.querySelectorAll('.grid em-emoji')
-      if (gridEmojis.length > 0) {
-        fireEvent.click(gridEmojis[0].parentElement!.parentElement!)
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-      }
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))
 

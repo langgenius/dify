@@ -197,8 +197,8 @@ describe('AppsFull', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should apply distinct progress bar styling at different usage levels', () => {
-      const renderWithUsage = (used: number, total: number) => {
+    it('applies neutral / warning / error tone at distinct usage levels', () => {
+      const findToneClass = (used: number, total: number) => {
         ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
           plan: {
             ...baseProviderContextValue.plan,
@@ -208,19 +208,18 @@ describe('AppsFull', () => {
             reset: { apiRateLimit: null, triggerEvents: null },
           },
         }))
-        const { unmount } = render(<AppsFull loc="billing_dialog" />)
-        const className = screen.getByTestId('billing-progress-bar').className
+        const { container, unmount } = render(<AppsFull loc="billing_dialog" />)
+        const indicator = container.querySelector(
+          '[class*="bg-components-progress-"]:not([class*="progress-bar-bg"])',
+        )
+        const className = indicator?.className ?? ''
         unmount()
         return className
       }
 
-      const normalClass = renderWithUsage(2, 10)
-      const warningClass = renderWithUsage(6, 10)
-      const errorClass = renderWithUsage(8, 10)
-
-      expect(normalClass).not.toBe(warningClass)
-      expect(warningClass).not.toBe(errorClass)
-      expect(normalClass).not.toBe(errorClass)
+      expect(findToneClass(2, 10)).toContain('bg-components-progress-bar-progress-solid')
+      expect(findToneClass(6, 10)).toContain('bg-components-progress-warning-progress')
+      expect(findToneClass(8, 10)).toContain('bg-components-progress-error-progress')
     })
   })
 })

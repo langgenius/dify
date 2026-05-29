@@ -7,8 +7,6 @@ import DocumentList from '../list'
 
 // Mock hooks used by DocumentList
 const mockHandleSort = vi.fn()
-const mockOnSelectAll = vi.fn()
-const mockOnSelectOne = vi.fn()
 const mockClearSelection = vi.fn()
 const mockHandleAction = vi.fn(() => vi.fn())
 const mockHandleBatchReIndex = vi.fn()
@@ -20,15 +18,10 @@ const mockHandleSave = vi.fn()
 vi.mock('../document-list/hooks', () => ({
   useDocumentSort: vi.fn(() => ({
     sortField: null,
-    sortOrder: null,
+    sortOrder: 'desc',
     handleSort: mockHandleSort,
-    sortedDocuments: [],
   })),
   useDocumentSelection: vi.fn(() => ({
-    isAllSelected: false,
-    isSomeSelected: false,
-    onSelectAll: mockOnSelectAll,
-    onSelectOne: mockOnSelectOne,
     hasErrorDocumentsSelected: false,
     downloadableSelectedIds: [],
     clearSelection: mockClearSelection,
@@ -125,8 +118,8 @@ const defaultProps = {
   pagination: { total: 0, current: 1, limit: 10, onChange: vi.fn() },
   onUpdate: vi.fn(),
   onManageMetadata: vi.fn(),
-  statusFilterValue: 'all',
-  remoteSortValue: '',
+  remoteSortValue: '-created_at',
+  onSortChange: vi.fn(),
 }
 
 describe('DocumentList', () => {
@@ -140,18 +133,14 @@ describe('DocumentList', () => {
       render(<DocumentList {...defaultProps} />)
 
       expect(screen.getByText('#')).toBeInTheDocument()
-      expect(screen.getByTestId('sort-name')).toBeInTheDocument()
-      expect(screen.getByTestId('sort-word_count')).toBeInTheDocument()
       expect(screen.getByTestId('sort-hit_count')).toBeInTheDocument()
       expect(screen.getByTestId('sort-created_at')).toBeInTheDocument()
     })
 
     it('should render select-all area when embeddingAvailable is true', () => {
-      const { container } = render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
+      render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
 
-      // Checkbox component renders inside the first td
-      const firstTd = container.querySelector('thead td')
-      expect(firstTd?.textContent).toContain('#')
+      expect(screen.getByRole('checkbox', { name: 'common.operation.selectAll' })).toBeInTheDocument()
     })
 
     it('should still render # column when embeddingAvailable is false', () => {
@@ -164,16 +153,26 @@ describe('DocumentList', () => {
     it('should render document rows from sortedDocuments', () => {
       const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
       vi.mocked(useDocumentSort).mockReturnValue({
-        sortField: null,
+        sortField: 'created_at',
         sortOrder: 'desc',
         handleSort: mockHandleSort,
-        sortedDocuments: docs,
       } as unknown as ReturnType<typeof useDocumentSort>)
 
       render(<DocumentList {...defaultProps} documents={docs} />)
 
       expect(screen.getByTestId('doc-row-a')).toBeInTheDocument()
       expect(screen.getByTestId('doc-row-b')).toBeInTheDocument()
+    })
+
+    it('should call onSelectedIdChange when select-all is clicked', () => {
+      const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
+      const onSelectedIdChange = vi.fn()
+
+      render(<DocumentList {...defaultProps} documents={docs} onSelectedIdChange={onSelectedIdChange} />)
+
+      fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+
+      expect(onSelectedIdChange).toHaveBeenCalledWith(['a', 'b'])
     })
   })
 
@@ -182,9 +181,9 @@ describe('DocumentList', () => {
     it('should call handleSort when sort header is clicked', () => {
       render(<DocumentList {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('sort-name'))
+      fireEvent.click(screen.getByTestId('sort-created_at'))
 
-      expect(mockHandleSort).toHaveBeenCalledWith('name')
+      expect(mockHandleSort).toHaveBeenCalledWith('created_at')
     })
   })
 
@@ -229,7 +228,6 @@ describe('DocumentList', () => {
         sortField: null,
         sortOrder: 'desc',
         handleSort: mockHandleSort,
-        sortedDocuments: [],
       } as unknown as ReturnType<typeof useDocumentSort>)
 
       render(<DocumentList {...defaultProps} documents={[]} />)

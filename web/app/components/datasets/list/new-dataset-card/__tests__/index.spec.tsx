@@ -21,7 +21,7 @@ describe('New Dataset Card Integration', () => {
 
       it('should render icon with correct sizing class', () => {
         const { container } = render(<Option Icon={RiAddLine} text="Test" href="/test" />)
-        const icon = container.querySelector('.h-4.w-4')
+        const icon = container.querySelector('.size-4')
         expect(icon).toBeInTheDocument()
       })
     })

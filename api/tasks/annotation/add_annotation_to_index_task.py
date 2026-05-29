@@ -5,6 +5,7 @@ import click
 from celery import shared_task
 
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
@@ -36,7 +37,7 @@ def add_annotation_to_index_task(
         dataset = Dataset(
             id=app_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider=dataset_collection_binding.provider_name,
             embedding_model=dataset_collection_binding.model_name,
             collection_binding_id=dataset_collection_binding.id,

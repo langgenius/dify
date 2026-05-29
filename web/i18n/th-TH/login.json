@@ -35,6 +35,8 @@
   "error.emailEmpty": "ต้องระบุที่อยู่อีเมล",
   "error.emailInValid": "โปรดป้อนที่อยู่อีเมลที่ถูกต้อง",
   "error.invalidEmailOrPassword": "อีเมลหรือรหัสผ่านไม่ถูกต้อง.",
+  "error.invalidRedirectUrlOrAppCode": "URL เปลี่ยนเส้นทางหรือรหัสแอปไม่ถูกต้อง",
+  "error.invalidSSOProtocol": "โปรโตคอล SSO ไม่ถูกต้อง",
   "error.nameEmpty": "ต้องระบุชื่อ",
   "error.passwordEmpty": "ต้องใช้รหัสผ่าน",
   "error.passwordInvalid": "รหัสผ่านต้องมีตัวอักษรและตัวเลข และความยาวต้องมากกว่า 8",

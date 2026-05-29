@@ -60,7 +60,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
               <NodeSourceHandle
                 {...props}
                 handleId={caseItem.case_id}
-                handleClassName="!top-1/2 !-right-[21px] !-translate-y-1/2"
+                handleClassName="top-1/2! -right-[21px]! -translate-y-1/2!"
               />
             </div>
             <div className="space-y-0.5">
@@ -85,7 +85,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                       : conditionNotSet
                   }
                   {i !== caseItem.conditions.length - 1 && (
-                    <div className="absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4 text-text-accent">{t(`${i18nPrefix}.${caseItem.logical_operator}`, { ns: 'workflow' })}</div>
+                    <div className="absolute right-1 bottom-[-10px] z-10 text-[10px] leading-4 font-medium text-text-accent uppercase">{t(`${i18nPrefix}.${caseItem.logical_operator}`, { ns: 'workflow' })}</div>
                   )}
                 </div>
               ))}
@@ -98,7 +98,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         <NodeSourceHandle
           {...props}
           handleId="false"
-          handleClassName="!top-1/2 !-right-[21px] !-translate-y-1/2"
+          handleClassName="top-1/2! -right-[21px]! -translate-y-1/2!"
         />
       </div>
     </div>

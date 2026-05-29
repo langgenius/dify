@@ -1,15 +1,16 @@
 from collections.abc import Mapping
 
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import NodeExecutionType, NodeType
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+
+from .entities import TriggerScheduleNodeData
 
 
 class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
-    node_type = NodeType.TRIGGER_SCHEDULE
+    node_type = TRIGGER_SCHEDULE_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
@@ -19,7 +20,7 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
-            "type": "trigger-schedule",
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "config": {
                 "mode": "visual",
                 "frequency": "daily",
@@ -29,13 +30,11 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
         }
 
     def _run(self) -> NodeRunResult:
-        node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
+        node_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
+        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
-        # TODO: System variables should be directly accessible, no need for special handling
-        # Set system variables as node outputs.
-        for var in system_inputs:
-            node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
+        for variable_name, value in system_inputs.items():
+            node_inputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value
         outputs = dict(node_inputs)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,

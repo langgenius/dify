@@ -1,13 +1,14 @@
 import json
+from typing import override
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 
 class CotCompletionAgentRunner(CotAgentRunner):
@@ -51,6 +52,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         return historic_prompt
 
+    @override
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
         Organize prompt messages

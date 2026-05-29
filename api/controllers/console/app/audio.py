@@ -22,7 +22,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from models import App, AppMode
 from services.audio_service import AudioService
@@ -70,7 +70,7 @@ class ChatMessageAudioApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model):
+    def post(self, app_model: App):
         file = request.files["file"]
 
         try:
@@ -171,9 +171,9 @@ class TextModesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         try:
-            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
 
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,

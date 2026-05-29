@@ -5,6 +5,8 @@ import type {
   ChatItemInTree,
   OnSend,
 } from '../types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
@@ -22,8 +24,6 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
-import Avatar from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -57,6 +57,15 @@ const ChatWrapper = () => {
     initUserVariables,
     appSourceType,
   } = useEmbeddedChatbotContext()
+
+  // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
+  const sendOnEnter = useMemo(() => {
+    if (typeof window === 'undefined')
+      return true
+    const urlParams = new URLSearchParams(window.location.search)
+    const param = urlParams.get('sendOnEnter')
+    return param !== 'false'
+  }, [])
 
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -253,7 +262,7 @@ const ChatWrapper = () => {
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
             />
-            <div className="body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary">
+            <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
             </div>
@@ -271,7 +280,7 @@ const ChatWrapper = () => {
           imageUrl={appData?.site.icon_url}
         />
         <div className="max-w-[768px] px-4">
-          <Markdown className="!body-2xl-regular !text-text-tertiary" content={welcomeMessage.content} />
+          <Markdown className="body-2xl-regular! text-text-tertiary!" content={welcomeMessage.content} />
         </div>
       </div>
     )
@@ -321,13 +330,14 @@ const ChatWrapper = () => {
       themeBuilder={themeBuilder}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
+      sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url
           ? (
               <Avatar
                 avatar={initUserVariables.avatar_url}
                 name={initUserVariables.name || 'user'}
-                size={40}
+                size="xl"
               />
             )
           : undefined

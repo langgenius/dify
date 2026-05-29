@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "مثلاً، Bearer 123",
   "mcp.modal.headers": "هدرها",
   "mcp.modal.headersTip": "هدرهای HTTP اضافی برای ارسال با درخواست‌های سرور MCP",
+  "mcp.modal.invalidServerIdentifier": "لطفاً یک شناسه سرور معتبر وارد کنید",
+  "mcp.modal.invalidServerUrl": "لطفاً یک URL سرور معتبر وارد کنید",
   "mcp.modal.maskedHeadersTip": "مقدارهای هدر به خاطر امنیت مخفی شده‌اند. تغییرات مقادیر واقعی را به‌روزرسانی خواهد کرد.",
   "mcp.modal.name": "نام و آیکون",
   "mcp.modal.namePlaceholder": "برای سرور MCP خود نام انتخاب کنید",

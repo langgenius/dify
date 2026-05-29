@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
-from models.workflow import WorkflowArchiveLog
 from tasks.remove_app_and_related_data_task import (
     _delete_app_workflow_archive_logs,
     _delete_archived_workflow_run_files,
@@ -83,16 +82,11 @@ class TestDeleteWorkflowArchiveLogs:
         assert params == {"tenant_id": tenant_id, "app_id": app_id}
         assert name == "workflow archive log"
 
-        mock_query = MagicMock()
-        mock_delete_query = MagicMock()
-        mock_query.where.return_value = mock_delete_query
-        mock_db.session.query.return_value = mock_query
+        mock_session = MagicMock()
 
-        delete_func(mock_db.session, "log-1")
+        delete_func(mock_session, "log-1")
 
-        mock_db.session.query.assert_called_once_with(WorkflowArchiveLog)
-        mock_query.where.assert_called_once()
-        mock_delete_query.delete.assert_called_once_with(synchronize_session=False)
+        mock_session.execute.assert_called_once()
 
 
 class TestDeleteArchivedWorkflowRunFiles:

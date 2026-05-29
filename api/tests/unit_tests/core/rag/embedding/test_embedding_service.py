@@ -52,14 +52,14 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from core.entities.embedding_type import EmbeddingInputType
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
-from core.model_runtime.errors.invoke import (
+from core.rag.embedding.cached_embedding import CacheEmbedding
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeConnectionError,
     InvokeRateLimitError,
 )
-from core.rag.embedding.cached_embedding import CacheEmbedding
 from models.dataset import Embedding
 
 
@@ -82,7 +82,7 @@ class TestCacheEmbeddingDocuments:
             Mock: Configured ModelInstance with text embedding capabilities
         """
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -134,12 +134,12 @@ class TestCacheEmbeddingDocuments:
         - Correct return value
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
+        cache_embedding = CacheEmbedding(mock_model_instance)
         texts = ["Python is a programming language"]
 
         # Mock database query to return no cached embedding (cache miss)
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model invocation
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
@@ -156,7 +156,6 @@ class TestCacheEmbeddingDocuments:
             # Verify model was invoked with correct parameters
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=texts,
-                user="test-user",
                 input_type=EmbeddingInputType.DOCUMENT,
             )
 
@@ -204,7 +203,7 @@ class TestCacheEmbeddingDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -241,7 +240,7 @@ class TestCacheEmbeddingDocuments:
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
             # Mock database to return cached embedding (cache hit)
-            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
+            mock_session.scalar.return_value = mock_cached_embedding
 
             # Act
             result = cache_embedding.embed_documents(texts)
@@ -314,19 +313,7 @@ class TestCacheEmbeddingDocuments:
                 mock_hash.side_effect = generate_hash
 
                 # Mock database to return cached embedding only for first text (hash_1)
-                call_count = [0]
-
-                def mock_filter_by(**kwargs):
-                    call_count[0] += 1
-                    mock_query = Mock()
-                    # First call (hash_1) returns cached, others return None
-                    if call_count[0] == 1:
-                        mock_query.first.return_value = mock_cached_embedding
-                    else:
-                        mock_query.first.return_value = None
-                    return mock_query
-
-                mock_session.query.return_value.filter_by = mock_filter_by
+                mock_session.scalar.side_effect = [mock_cached_embedding, None, None]
                 mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
                 # Act
@@ -393,7 +380,7 @@ class TestCacheEmbeddingDocuments:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to return appropriate batch results
             batch_results = [
@@ -456,7 +443,7 @@ class TestCacheEmbeddingDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
@@ -490,7 +477,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to raise connection error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeConnectionError("Failed to connect to API")
@@ -516,7 +503,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to raise rate limit error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeRateLimitError("Rate limit exceeded")
@@ -540,7 +527,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to raise authorization error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeAuthorizationError("Invalid API key")
@@ -565,7 +552,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
 
             # Mock database commit to raise IntegrityError
@@ -597,7 +584,7 @@ class TestCacheEmbeddingQuery:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
@@ -612,7 +599,7 @@ class TestCacheEmbeddingQuery:
         - Correct return value
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
+        cache_embedding = CacheEmbedding(mock_model_instance)
         query = "What is Python?"
 
         # Create embedding result
@@ -651,7 +638,6 @@ class TestCacheEmbeddingQuery:
             # Verify model was invoked with QUERY input type
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
-                user="test-user",
                 input_type=EmbeddingInputType.QUERY,
             )
 
@@ -830,7 +816,7 @@ class TestEmbeddingModelSwitching:
         """
         # Arrange
         model_instance_ada = Mock()
-        model_instance_ada.model = "text-embedding-ada-002"
+        model_instance_ada.model_name = "text-embedding-ada-002"
         model_instance_ada.provider = "openai"
 
         # Mock model type instance for ada
@@ -841,7 +827,7 @@ class TestEmbeddingModelSwitching:
         model_type_instance_ada.get_model_schema.return_value = model_schema_ada
 
         model_instance_3_small = Mock()
-        model_instance_3_small.model = "text-embedding-3-small"
+        model_instance_3_small.model_name = "text-embedding-3-small"
         model_instance_3_small.provider = "openai"
 
         # Mock model type instance for 3-small
@@ -886,7 +872,7 @@ class TestEmbeddingModelSwitching:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             model_instance_ada.invoke_text_embedding.return_value = result_ada
             model_instance_3_small.invoke_text_embedding.return_value = result_3_small
@@ -914,11 +900,11 @@ class TestEmbeddingModelSwitching:
         """
         # Arrange
         model_instance_openai = Mock()
-        model_instance_openai.model = "text-embedding-ada-002"
+        model_instance_openai.model_name = "text-embedding-ada-002"
         model_instance_openai.provider = "openai"
 
         model_instance_cohere = Mock()
-        model_instance_cohere.model = "embed-english-v3.0"
+        model_instance_cohere.model_name = "embed-english-v3.0"
         model_instance_cohere.provider = "cohere"
 
         cache_openai = CacheEmbedding(model_instance_openai)
@@ -1001,7 +987,7 @@ class TestEmbeddingDimensionValidation:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -1049,7 +1035,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1102,7 +1088,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1123,7 +1109,7 @@ class TestEmbeddingDimensionValidation:
         """
         # Arrange - OpenAI ada-002 (1536 dimensions)
         model_instance_ada = Mock()
-        model_instance_ada.model = "text-embedding-ada-002"
+        model_instance_ada.model_name = "text-embedding-ada-002"
         model_instance_ada.provider = "openai"
 
         # Mock model type instance for ada
@@ -1156,7 +1142,7 @@ class TestEmbeddingDimensionValidation:
 
         # Arrange - Cohere embed-english-v3.0 (1024 dimensions)
         model_instance_cohere = Mock()
-        model_instance_cohere.model = "embed-english-v3.0"
+        model_instance_cohere.model_name = "embed-english-v3.0"
         model_instance_cohere.provider = "cohere"
 
         # Mock model type instance for cohere
@@ -1188,7 +1174,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             model_instance_ada.invoke_text_embedding.return_value = result_ada
             model_instance_cohere.invoke_text_embedding.return_value = result_cohere
@@ -1225,7 +1211,7 @@ class TestEmbeddingEdgeCases:
                   - MAX_CHUNKS: 10
         """
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
 
         model_type_instance = Mock()
@@ -1286,7 +1272,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1329,7 +1315,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1377,7 +1363,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1429,7 +1415,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1485,7 +1471,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1553,7 +1539,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1568,25 +1554,16 @@ class TestEmbeddingEdgeCases:
                 norm = np.linalg.norm(emb)
                 assert abs(norm - 1.0) < 0.01
 
-    def test_embed_query_with_user_context(self, mock_model_instance):
-        """Test query embedding with user context parameter.
+    def test_embed_query_uses_bound_model_instance(self, mock_model_instance):
+        """Test query embedding using the provided model instance.
 
         Verifies:
-        - User parameter is passed correctly to model
-        - User context is used for tracking/logging
-        - Embedding generation works with user context
-
-        Context:
-        --------
-        The user parameter is important for:
-        1. Usage tracking per user
-        2. Rate limiting per user
-        3. Audit logging
-        4. Personalization (in some models)
+        - Embedding generation works with the injected model instance
+        - Query input type is preserved
+        - No extra binding step is required at call time
         """
         # Arrange
-        user_id = "user-12345"
-        cache_embedding = CacheEmbedding(mock_model_instance, user=user_id)
+        cache_embedding = CacheEmbedding(mock_model_instance)
         query = "What is machine learning?"
 
         # Create embedding
@@ -1620,24 +1597,20 @@ class TestEmbeddingEdgeCases:
             assert isinstance(result, list)
             assert len(result) == 1536
 
-            # Verify user parameter was passed to model
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
-                user=user_id,
                 input_type=EmbeddingInputType.QUERY,
             )
 
-    def test_embed_documents_with_user_context(self, mock_model_instance):
-        """Test document embedding with user context parameter.
+    def test_embed_documents_uses_bound_model_instance(self, mock_model_instance):
+        """Test document embedding using the provided model instance.
 
         Verifies:
-        - User parameter is passed correctly for document embeddings
-        - Batch processing maintains user context
-        - User tracking works across batches
+        - Batch processing uses the injected model instance
+        - Document input type is preserved
         """
         # Arrange
-        user_id = "user-67890"
-        cache_embedding = CacheEmbedding(mock_model_instance, user=user_id)
+        cache_embedding = CacheEmbedding(mock_model_instance)
         texts = ["Document 1", "Document 2"]
 
         # Create embeddings
@@ -1664,7 +1637,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1673,10 +1646,8 @@ class TestEmbeddingEdgeCases:
             # Assert
             assert len(result) == 2
 
-            # Verify user parameter was passed
             mock_model_instance.invoke_text_embedding.assert_called_once()
             call_args = mock_model_instance.invoke_text_embedding.call_args
-            assert call_args.kwargs["user"] == user_id
             assert call_args.kwargs["input_type"] == EmbeddingInputType.DOCUMENT
 
 
@@ -1702,7 +1673,7 @@ class TestEmbeddingCachePerformance:
                   - MAX_CHUNKS: 10
         """
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
 
         model_type_instance = Mock()
@@ -1745,7 +1716,7 @@ class TestEmbeddingCachePerformance:
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
             # First call: cache miss
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             usage = EmbeddingUsage(
                 tokens=5,
@@ -1773,7 +1744,7 @@ class TestEmbeddingCachePerformance:
             assert len(result1) == 1
 
             # Arrange - Second call: cache hit
-            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
+            mock_session.scalar.return_value = mock_cached_embedding
 
             # Act - Second call (cache hit)
             result2 = cache_embedding.embed_documents([text])
@@ -1833,7 +1804,7 @@ class TestEmbeddingCachePerformance:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             # Mock model to return appropriate batch results
             batch_results = [

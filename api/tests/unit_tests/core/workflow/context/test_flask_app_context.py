@@ -138,8 +138,8 @@ class TestFlaskExecutionContext:
 class TestCaptureFlaskContext:
     """Test capture_flask_context function."""
 
-    @patch("context.flask_app_context.current_app")
-    @patch("context.flask_app_context.g")
+    @patch("context.flask_app_context.current_app", autospec=True)
+    @patch("context.flask_app_context.g", autospec=True)
     def test_capture_flask_context_captures_app(self, mock_g, mock_current_app):
         """Test capture_flask_context captures Flask app."""
         mock_app = MagicMock()
@@ -152,8 +152,8 @@ class TestCaptureFlaskContext:
 
         assert ctx._flask_app == mock_app
 
-    @patch("context.flask_app_context.current_app")
-    @patch("context.flask_app_context.g")
+    @patch("context.flask_app_context.current_app", autospec=True)
+    @patch("context.flask_app_context.g", autospec=True)
     def test_capture_flask_context_captures_user_from_g(self, mock_g, mock_current_app):
         """Test capture_flask_context captures user from Flask g object."""
         mock_app = MagicMock()
@@ -170,7 +170,7 @@ class TestCaptureFlaskContext:
 
         assert ctx.user == mock_user
 
-    @patch("context.flask_app_context.current_app")
+    @patch("context.flask_app_context.current_app", autospec=True)
     def test_capture_flask_context_with_explicit_user(self, mock_current_app):
         """Test capture_flask_context uses explicit user parameter."""
         mock_app = MagicMock()
@@ -186,7 +186,7 @@ class TestCaptureFlaskContext:
 
         assert ctx.user == explicit_user
 
-    @patch("context.flask_app_context.current_app")
+    @patch("context.flask_app_context.current_app", autospec=True)
     def test_capture_flask_context_captures_contextvars(self, mock_current_app):
         """Test capture_flask_context captures context variables."""
         mock_app = MagicMock()
@@ -267,7 +267,7 @@ class TestFlaskExecutionContextIntegration:
             # Verify app context was entered
             assert mock_flask_app.app_context.called
 
-    @patch("context.flask_app_context.g")
+    @patch("context.flask_app_context.g", autospec=True)
     def test_enter_restores_user_in_g(self, mock_g, mock_flask_app):
         """Test that enter restores user in Flask g object."""
         mock_user = MagicMock()

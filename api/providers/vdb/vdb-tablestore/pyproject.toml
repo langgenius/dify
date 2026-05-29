@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-tablestore"
+version = "0.0.1"
+
+dependencies = [
+    "tablestore==6.4.4",
+]
+description = "Dify vector store backend (dify-vdb-tablestore)."
+
+[project.entry-points."dify.vector_backends"]
+tablestore = "dify_vdb_tablestore.tablestore_vector:TableStoreVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

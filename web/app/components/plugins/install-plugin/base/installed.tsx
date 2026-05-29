@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
 import Card from '../../card'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 
@@ -30,7 +30,7 @@ const Installed: FC<Props> = ({
   }
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <p className="system-md-regular text-text-secondary">{(isFailed && errMsg) ? errMsg : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}</p>
         {payload && (
           <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from fields.base import ResponseModel
 
 simple_end_user_fields = {
     "id": fields.String,
@@ -24,16 +26,6 @@ end_user_detail_fields = {
     "created_at": fields.DateTime,
     "updated_at": fields.DateTime,
 }
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
 
 
 class SimpleEndUser(ResponseModel):

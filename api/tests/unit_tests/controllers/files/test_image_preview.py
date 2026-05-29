@@ -107,7 +107,7 @@ class TestFilePreviewApi:
 
         response = get_fn("file-id")
 
-        assert response.mimetype == "text/plain"
+        assert response.mimetype == "application/octet-stream"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
         mock_enforce.assert_called_once()

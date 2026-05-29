@@ -7,10 +7,8 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
-  DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
@@ -19,25 +17,20 @@ import type {
   PluginProvider,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
-  UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { IS_DEV } from '@/config'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, post } from './base'
-import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
 
 export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
-  userProfile: [NAME_SPACE, 'user-profile'] as const,
   currentWorkspace: [NAME_SPACE, 'current-workspace'] as const,
   workspaces: [NAME_SPACE, 'workspaces'] as const,
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
-  isLogin: [NAME_SPACE, 'is-login'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
@@ -45,7 +38,6 @@ export const commonQueryKeys = {
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
-  apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
     NAME_SPACE,
@@ -65,35 +57,6 @@ export const useFileUploadConfig = () => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: commonQueryKeys.fileUploadConfig,
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
-  })
-}
-
-type UserProfileWithMeta = {
-  profile: UserProfileResponse
-  meta: {
-    currentVersion: string | null
-    currentEnv: string | null
-  }
-}
-
-export const useUserProfile = () => {
-  return useQuery<UserProfileWithMeta>({
-    queryKey: commonQueryKeys.userProfile,
-    queryFn: async () => {
-      const response = await get<Response>('/account/profile', {}, { needAllResponseContent: true }) as Response
-      const profile = await response.clone().json() as UserProfileResponse
-      return {
-        profile,
-        meta: {
-          currentVersion: response.headers.get('x-version'),
-          currentEnv: IS_DEV
-            ? 'DEVELOPMENT'
-            : response.headers.get('x-env'),
-        },
-      }
-    },
-    staleTime: 0,
-    gcTime: 0,
   })
 }
 
@@ -157,7 +120,13 @@ export type MailRegisterResponse = { result: string, data: {} }
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
+    mutationFn: (body: {
+      token: string
+      new_password: string
+      password_confirm: string
+      language?: string
+      timezone?: string
+    }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
   })
@@ -207,38 +176,25 @@ export const useSchemaTypeDefinitions = () => {
   })
 }
 
-type isLogin = {
-  logged_in: boolean
-}
-
-export const useIsLogin = () => {
-  return useQuery<isLogin>({
-    queryKey: commonQueryKeys.isLogin,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async (): Promise<isLogin> => {
-      try {
-        await get('/account/profile', {}, {
-          silent: true,
-        })
-        return { logged_in: true }
-      }
-      catch {
-        // Any error (401, 500, network error, etc.) means not logged in
-        return { logged_in: false }
-      }
+export const useLogout = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'logout'],
+    mutationFn: () => post('/logout'),
+    onSuccess: () => {
+      // Drop all cached queries so the post-logout /signin probe doesn't read
+      // the previous user's profile (the userProfile queryKey is shared with
+      // the (commonLayout) tree, which keeps observing it during React's
+      // concurrent transition — gcTime: 0 is not enough on its own).
+      // Nuclear over targeted: every new user-scoped query would otherwise
+      // need to be remembered here. systemFeatures (user-agnostic) just
+      // refetches once on the way to /signin, which is cheap.
+      queryClient.clear()
     },
   })
 }
 
-export const useLogout = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'logout'],
-    mutationFn: () => post('/logout'),
-  })
-}
-
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string, token: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -277,14 +233,6 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
   })
 }
 
-export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
-  return useQuery({
-    queryKey: commonQueryKeys.defaultModel(type),
-    queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
-    enabled,
-  })
-}
-
 export const useSupportRetrievalMethods = () => {
   return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
     queryKey: commonQueryKeys.retrievalMethods,
@@ -299,25 +247,6 @@ export const useAccountIntegrates = () => {
   })
 }
 
-type DataSourceIntegratesOptions = {
-  enabled?: boolean
-  initialData?: { data: DataSourceNotion[] }
-}
-
-export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {}) => {
-  const { enabled = true, initialData } = options
-  return useQuery<{ data: DataSourceNotion[] }>({
-    queryKey: commonQueryKeys.dataSourceIntegrates,
-    queryFn: () => get<{ data: DataSourceNotion[] }>('/data-source/integrates'),
-    enabled,
-    initialData,
-  })
-}
-
-export const useInvalidDataSourceIntegrates = () => {
-  return useInvalid(commonQueryKeys.dataSourceIntegrates)
-}
-
 export const usePluginProviders = () => {
   return useQuery<PluginProvider[] | null>({
     queryKey: commonQueryKeys.pluginProviders,
@@ -329,21 +258,6 @@ export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
     queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
-  })
-}
-
-export const useNotionConnection = (enabled: boolean) => {
-  return useQuery<{ data: string }>({
-    queryKey: commonQueryKeys.notionConnection,
-    queryFn: () => get<{ data: string }>('/oauth/data-source/notion'),
-    enabled,
-  })
-}
-
-export const useApiBasedExtensions = () => {
-  return useQuery<ApiBasedExtension[]>({
-    queryKey: commonQueryKeys.apiBasedExtensions,
-    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
   })
 }
 
@@ -371,7 +285,7 @@ export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
 export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
   return useQuery<{ data: ModelParameterRule[] }>({
     queryKey: commonQueryKeys.modelParameterRules(provider, model),
-    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model } }),
+    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model }, silent: true }),
     enabled: !!provider && !!model && (enabled ?? true),
   })
 }

@@ -4,7 +4,7 @@ import * as React from 'react'
 import CreateAppCard from '../new-app-card'
 
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
@@ -18,7 +18,7 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<{ default: React.ComponentType }>) => {
     const fnString = importFn.toString()
 

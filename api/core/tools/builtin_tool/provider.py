@@ -113,17 +113,26 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.get_credentials_schema_by_type(CredentialType.API_KEY)
 
-    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+    def get_credentials_schema_by_type(self, credential_type: CredentialType | str) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
-        :param credential_type: the type of the credential
-        :return: the credentials schema of the provider
+        :param credential_type: the type of the credential, as CredentialType or str; str values
+            are normalized via CredentialType.of and may raise ValueError for invalid values.
+        :return: list[ProviderConfig] for CredentialType.OAUTH2 or CredentialType.API_KEY, an
+            empty list for CredentialType.UNAUTHORIZED or missing schemas.
+
+        Reads from self.entity.oauth_schema and self.entity.credentials_schema.
+        Raises ValueError for invalid credential types.
         """
-        if credential_type == CredentialType.OAUTH2.value:
+        if isinstance(credential_type, str):
+            credential_type = CredentialType.of(credential_type)
+        if credential_type == CredentialType.OAUTH2:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
         if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        if credential_type == CredentialType.UNAUTHORIZED:
+            return []
         raise ValueError(f"Invalid credential type: {credential_type}")
 
     def get_oauth_client_schema(self) -> list[ProviderConfig]:
