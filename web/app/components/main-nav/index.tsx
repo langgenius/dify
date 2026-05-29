@@ -19,7 +19,7 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
-import MainNavSearchButton from './components/search-button'
+import { MainNavSearchButton } from './components/search-button'
 import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 
