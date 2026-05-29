@@ -18,7 +18,7 @@ import {
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
-import { systemFeaturesContract } from './console/system'
+import { systemFeaturesContract, trialModelsContract } from './console/system'
 import {
   tagBindingCreateContract,
   tagBindingRemoveContract,
@@ -77,6 +77,7 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
+  trialModels: trialModelsContract,
   apps: {
     ...communityContract.apps,
     list: appListContract,

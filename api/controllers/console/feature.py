@@ -3,12 +3,12 @@ from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
 from libs.login import current_user, login_required
-from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
+from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel, TrialModelsModel
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
 
-register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel)
+register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel, TrialModelsModel)
 
 
 @console_ns.route("/features")
@@ -52,6 +52,23 @@ class FeatureVectorSpaceApi(Resource):
     def get(self, current_tenant_id: str):
         """Get vector-space usage and limit for current tenant"""
         return FeatureService.get_vector_space(current_tenant_id).model_dump()
+
+
+@console_ns.route("/trial-models")
+class TrialModelsApi(Resource):
+    @console_ns.doc("get_trial_models")
+    @console_ns.doc(description="Get hosted trial model provider configuration")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[TrialModelsModel.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        """Get hosted trial model provider configuration for model-provider pages."""
+        return FeatureService.get_trial_models().model_dump()
 
 
 @console_ns.route("/system-features")

@@ -13,7 +13,7 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useSearchParams } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { trialModelsQueryOptions } from '@/service/trial-models'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
@@ -62,8 +62,7 @@ function Popup({
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const trialModels = systemFeatures.trial_models
+  const { data: trialModels } = useSuspenseQuery(trialModelsQueryOptions())
   const installedProviderMap = useMemo(() => new Map(
     modelProviders.map(provider => [provider.provider, provider]),
   ), [modelProviders])

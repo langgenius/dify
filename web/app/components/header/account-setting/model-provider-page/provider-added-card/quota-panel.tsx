@@ -13,7 +13,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import useTimestamp from '@/hooks/use-timestamp'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { trialModelsQueryOptions } from '@/service/trial-models'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
@@ -34,8 +34,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { credits, isExhausted, isLoading, nextCreditResetDate } = useTrialCredits()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const trialModels = systemFeatures.trial_models
+  const { data: trialModels } = useSuspenseQuery(trialModelsQueryOptions())
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])

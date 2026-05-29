@@ -70,6 +70,13 @@ export const seedSystemFeatures = (
   return data
 }
 
+export const seedTrialModels = (
+  queryClient: QueryClient,
+  trialModels: readonly string[] = [],
+) => {
+  queryClient.setQueryData(consoleQuery.trialModels.queryKey(), { trial_models: [...trialModels] })
+}
+
 type SystemFeaturesTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
@@ -78,6 +85,7 @@ type SystemFeaturesTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<SystemFeatures> | null
+  trialModels?: readonly string[] | null
   queryClient?: QueryClient
 }
 
@@ -94,6 +102,8 @@ export const createSystemFeaturesWrapper = (
   const systemFeatures = options.systemFeatures === null
     ? null
     : seedSystemFeatures(queryClient, options.systemFeatures)
+  if (options.trialModels !== null)
+    seedTrialModels(queryClient, options.trialModels)
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -104,9 +114,10 @@ export const renderWithSystemFeatures = (
   ui: ReactElement,
   options: SystemFeaturesTestOptions & Omit<RenderOptions, 'wrapper'> = {},
 ): RenderResult & { queryClient: QueryClient, systemFeatures: SystemFeatures | null } => {
-  const { systemFeatures: sf, queryClient: qc, ...renderOptions } = options
+  const { systemFeatures: sf, trialModels, queryClient: qc, ...renderOptions } = options
   const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
     systemFeatures: sf,
+    trialModels,
     queryClient: qc,
   })
   const rendered = render(ui, { wrapper, ...renderOptions })
@@ -117,9 +128,10 @@ export const renderHookWithSystemFeatures = <Result, Props = void>(
   callback: (props: Props) => Result,
   options: SystemFeaturesTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
 ): RenderHookResult<Result, Props> & { queryClient: QueryClient, systemFeatures: SystemFeatures | null } => {
-  const { systemFeatures: sf, queryClient: qc, ...hookOptions } = options
+  const { systemFeatures: sf, trialModels, queryClient: qc, ...hookOptions } = options
   const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
     systemFeatures: sf,
+    trialModels,
     queryClient: qc,
   })
   const rendered = renderHook(callback, { wrapper, ...hookOptions })

@@ -1,5 +1,3 @@
-import type { ModelProviderQuotaGetPaid } from './model-provider'
-
 export enum SSOProtocol {
   SAML = 'saml',
   OIDC = 'oidc',
@@ -29,7 +27,6 @@ type License = {
 
 export type SystemFeatures = {
   app_dsl_version: string
-  trial_models: ModelProviderQuotaGetPaid[]
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
@@ -71,7 +68,6 @@ export type SystemFeatures = {
 
 export const defaultSystemFeatures: SystemFeatures = {
   app_dsl_version: '',
-  trial_models: [],
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
     restrict_to_marketplace_only: false,

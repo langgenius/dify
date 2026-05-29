@@ -40,7 +40,7 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 const renderQuotaPanel = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: mockTrialModels === undefined ? null : { trial_models: mockTrialModels as never },
+  trialModels: mockTrialModels ?? [],
 })
 
 vi.mock('../../hooks', () => ({
