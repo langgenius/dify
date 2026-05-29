@@ -15,6 +15,7 @@ import {
 import {
   RuntimeCredentialBindingsPanel,
 } from '../components/runtime-credential-bindings'
+import { TitleTooltip } from '../components/title-tooltip'
 
 import {
   environmentBackend,
@@ -54,9 +55,11 @@ function EnvironmentOptionRow({ environment, selected, onSelect }: {
       />
       <span className="flex min-w-0 grow flex-col gap-1">
         <span className={cn('truncate system-sm-semibold', selected ? 'text-text-accent' : 'text-text-primary')}>{environmentName(environment)}</span>
-        <span className={cn('line-clamp-1 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')} title={summary}>
-          {summary}
-        </span>
+        <TitleTooltip content={summary}>
+          <span className={cn('line-clamp-1 system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>
+            {summary}
+          </span>
+        </TitleTooltip>
       </span>
     </label>
   )

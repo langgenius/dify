@@ -18,6 +18,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { TitleTooltip } from '../components/title-tooltip'
 import { EnvironmentDeploymentBadge } from '../deployment-ui'
 import { deploymentStatusLabelKey } from '../deployment-ui-utils'
 import { CreateReleaseControl } from '../detail/versions-tab/create-release-control'
@@ -364,9 +365,11 @@ export function InstanceCard({ app }: {
           href={detailHref}
           className="block min-w-0 rounded-t-xl px-4 pt-4 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
-          <h3 className="truncate title-md-semi-bold text-text-primary" title={appName}>
-            {appName}
-          </h3>
+          <TitleTooltip content={appName}>
+            <h3 className="truncate title-md-semi-bold text-text-primary">
+              {appName}
+            </h3>
+          </TitleTooltip>
           {instanceQuery.isLoading
             ? (
                 <div className="mt-2 flex flex-col gap-1.5">
@@ -376,12 +379,11 @@ export function InstanceCard({ app }: {
             : (
                 description
                   ? (
-                      <p
-                        className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary"
-                        title={description}
-                      >
-                        {description}
-                      </p>
+                      <TitleTooltip content={description}>
+                        <p className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary">
+                          {description}
+                        </p>
+                      </TitleTooltip>
                     )
                   : (
                       <p className="mt-2 truncate system-xs-regular text-text-quaternary">

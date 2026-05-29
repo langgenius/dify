@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
+import { TitleTooltip } from '../../components/title-tooltip'
 import { environmentId, environmentName } from '../../environment'
 import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus } from '../../runtime-status'
@@ -63,6 +64,21 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
     openDeployDrawer({ appInstanceId, environmentId: envId, releaseId: config.releaseId })
   }
 
+  const actionButton = (
+    <button
+      type="button"
+      disabled={isDisabled}
+      onClick={handleAction}
+      className={cn(
+        'inline-flex h-8 max-w-full min-w-0 shrink-0 items-center justify-center rounded-md px-2.5 system-xs-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
+        config.actionClass,
+        isDisabled && 'cursor-not-allowed opacity-60',
+      )}
+    >
+      <span className="whitespace-nowrap">{renderActionLabel(config.kind, Boolean(currentReleaseId), t)}</span>
+    </button>
+  )
+
   return (
     <article
       data-slot="deployment-overview-environment-tile"
@@ -100,19 +116,15 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={isDisabled}
-          title={tooltip}
-          onClick={handleAction}
-          className={cn(
-            'inline-flex h-8 max-w-full min-w-0 shrink-0 items-center justify-center rounded-md px-2.5 system-xs-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
-            config.actionClass,
-            isDisabled && 'cursor-not-allowed opacity-60',
-          )}
-        >
-          <span className="whitespace-nowrap">{renderActionLabel(config.kind, Boolean(currentReleaseId), t)}</span>
-        </button>
+        {tooltip
+          ? (
+              <TitleTooltip content={tooltip}>
+                <span className="inline-flex max-w-full min-w-0 shrink-0">
+                  {actionButton}
+                </span>
+              </TitleTooltip>
+            )
+          : actionButton}
       </div>
     </article>
   )
@@ -126,13 +138,12 @@ function RuntimeStatusSignal({ status, t }: {
   const label = runtimeStatusLabel(status, t)
 
   return (
-    <span
-      title={label}
-      className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass)}
-    >
-      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
-      <span>{label}</span>
-    </span>
+    <TitleTooltip content={label}>
+      <span className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass)}>
+        <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
+        <span>{label}</span>
+      </span>
+    </TitleTooltip>
   )
 }
 
@@ -142,14 +153,15 @@ function StatusSignal({ className, config, drift, t }: {
   drift: ReturnType<typeof computeDrift>
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
+  const title = renderDriftTitle(config.kind, drift, t)
+
   return (
-    <span
-      title={renderDriftTitle(config.kind, drift, t)}
-      className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass, className)}
-    >
-      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
-      <span>{renderStatus(config.kind, drift, t)}</span>
-    </span>
+    <TitleTooltip content={title}>
+      <span className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass, className)}>
+        <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
+        <span>{renderStatus(config.kind, drift, t)}</span>
+      </span>
+    </TitleTooltip>
   )
 }
 

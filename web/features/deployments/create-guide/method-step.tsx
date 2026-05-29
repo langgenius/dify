@@ -3,6 +3,7 @@
 import type { GuideMethod } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { TitleTooltip } from '../components/title-tooltip'
 import { StepShell } from './layout'
 
 function MethodCard({ icon, title, description, badge, selected, onClick }: {
@@ -37,9 +38,11 @@ function MethodCard({ icon, title, description, badge, selected, onClick }: {
         )}
       </span>
       <span className="flex min-w-0 items-start gap-1">
-        <span className="line-clamp-2 min-w-0 grow system-xs-regular text-text-tertiary" title={description}>
-          {description}
-        </span>
+        <TitleTooltip content={description}>
+          <span className="line-clamp-2 min-w-0 grow system-xs-regular text-text-tertiary">
+            {description}
+          </span>
+        </TitleTooltip>
       </span>
     </button>
   )

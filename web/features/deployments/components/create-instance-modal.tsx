@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { TitleTooltip } from './title-tooltip'
 
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -53,17 +54,18 @@ function SourceAppTrigger({ open, app }: {
           imageUrl={app.icon_url}
         />
       )}
-      <span
-        title={app?.name}
-        className={cn(
-          'min-w-0 grow truncate',
-          app
-            ? 'system-sm-medium text-components-input-text-filled'
-            : 'system-sm-regular text-components-input-text-placeholder',
-        )}
-      >
-        {app?.name ?? t('createModal.appPickerPlaceholder')}
-      </span>
+      <TitleTooltip content={app?.name}>
+        <span
+          className={cn(
+            'min-w-0 grow truncate',
+            app
+              ? 'system-sm-medium text-components-input-text-filled'
+              : 'system-sm-regular text-components-input-text-placeholder',
+          )}
+        >
+          {app?.name ?? t('createModal.appPickerPlaceholder')}
+        </span>
+      </TitleTooltip>
       <span
         className={cn(
           'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
@@ -95,14 +97,16 @@ function SourceAppOption({ app }: {
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
-        <span title={`${app.name} (${app.id})`} className="flex min-w-0 grow items-center gap-1 truncate system-sm-medium text-components-input-text-filled">
-          <span className="truncate">{app.name}</span>
-          <span className="shrink-0 text-text-tertiary">
-            (
-            {app.id.slice(0, 8)}
-            )
+        <TitleTooltip content={`${app.name} (${app.id})`}>
+          <span className="flex min-w-0 grow items-center gap-1 truncate system-sm-medium text-components-input-text-filled">
+            <span className="truncate">{app.name}</span>
+            <span className="shrink-0 text-text-tertiary">
+              (
+              {app.id.slice(0, 8)}
+              )
+            </span>
           </span>
-        </span>
+        </TitleTooltip>
       </ComboboxItemText>
       <span className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">{modeLabel}</span>
     </ComboboxItem>

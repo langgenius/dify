@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
+import { TitleTooltip } from '../components/title-tooltip'
 
 const GUIDE_PROGRESS_STEPS: GuideStep[] = ['source', 'release', 'target']
 
@@ -55,32 +56,32 @@ function GuideProgress({ activeStep }: {
         const label = t(`createGuide.steps.${step}`)
 
         return (
-          <li
-            key={step}
-            aria-current={isActive ? 'step' : undefined}
-            title={label}
-            className={cn(
-              'flex min-w-0 items-start gap-1.5 px-1 py-1.5 system-xs-medium sm:items-center sm:gap-2 sm:px-2',
-              isActive
-                ? 'text-text-primary'
-                : isComplete
-                  ? 'text-text-secondary'
-                  : 'text-text-quaternary',
-            )}
-          >
-            <span
-              aria-hidden
+          <TitleTooltip key={step} content={label}>
+            <li
+              aria-current={isActive ? 'step' : undefined}
               className={cn(
-                'mt-1 size-2 shrink-0 rounded-full border-[1.5px] sm:mt-0',
+                'flex min-w-0 items-start gap-1.5 px-1 py-1.5 system-xs-medium sm:items-center sm:gap-2 sm:px-2',
                 isActive
-                  ? 'border-text-primary bg-text-primary'
+                  ? 'text-text-primary'
                   : isComplete
-                    ? 'border-text-secondary bg-text-secondary'
-                    : 'border-text-quaternary bg-transparent',
+                    ? 'text-text-secondary'
+                    : 'text-text-quaternary',
               )}
-            />
-            <span className="line-clamp-2 min-w-0 leading-4">{label}</span>
-          </li>
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'mt-1 size-2 shrink-0 rounded-full border-[1.5px] sm:mt-0',
+                  isActive
+                    ? 'border-text-primary bg-text-primary'
+                    : isComplete
+                      ? 'border-text-secondary bg-text-secondary'
+                      : 'border-text-quaternary bg-transparent',
+                )}
+              />
+              <span className="line-clamp-2 min-w-0 leading-4">{label}</span>
+            </li>
+          </TitleTooltip>
         )
       })}
     </ol>

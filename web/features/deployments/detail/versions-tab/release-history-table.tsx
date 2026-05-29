@@ -11,6 +11,7 @@ import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { TitleTooltip } from '../../components/title-tooltip'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../data'
 import {
   formatDate,
@@ -280,16 +281,17 @@ function ReleaseSourceCell({ release }: {
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId
 
   return (
-    <Link
-      href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
-      title={title}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary transition-colors hover:text-text-accent"
-    >
-      <span className="min-w-0 truncate">{label}</span>
-      <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" aria-hidden="true" />
-    </Link>
+    <TitleTooltip content={title}>
+      <Link
+        href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary transition-colors hover:text-text-accent"
+      >
+        <span className="min-w-0 truncate">{label}</span>
+        <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" aria-hidden="true" />
+      </Link>
+    </TitleTooltip>
   )
 }
 

@@ -9,6 +9,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { TitleTooltip } from '../../components/title-tooltip'
 import { formatDate, releaseCommit, releaseLabel } from '../../release'
 import { DetailEmptyState } from '../common'
 import { CreateReleaseControl } from '../versions-tab/create-release-control'
@@ -32,6 +33,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
 
   const author = latestRelease?.createdBy?.name ?? ''
   const ago = latestRelease?.createdAt ? formatTimeFromNow(new Date(latestRelease.createdAt).getTime()) : ''
+  const createdAtTitle = latestRelease?.createdAt ? formatDate(latestRelease.createdAt) : undefined
   const commit = releaseCommit(latestRelease)
 
   if (!latestRelease?.id) {
@@ -59,18 +61,14 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
               {releaseLabel(latestRelease)}
             </h4>
             {commit !== '—' && (
-              <span
-                title={t('versions.commitTooltip', { commit })}
-                className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary"
-              >
-                {commit}
-              </span>
+              <TitleTooltip content={t('versions.commitTooltip', { commit })}>
+                <span className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">
+                  {commit}
+                </span>
+              </TitleTooltip>
             )}
           </div>
-          <p
-            className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 system-xs-regular text-text-tertiary"
-            title={latestRelease?.createdAt ? formatDate(latestRelease.createdAt) : undefined}
-          >
+          <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 system-xs-regular text-text-tertiary">
             <ReleaseMetaItem label={t('versions.col.sourceApp')} showSeparator={false}>
               <LatestReleaseSource release={latestRelease} />
             </ReleaseMetaItem>
@@ -81,7 +79,11 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
             )}
             {ago && (
               <ReleaseMetaItem>
-                {ago}
+                <TitleTooltip content={createdAtTitle}>
+                  <span>
+                    {ago}
+                  </span>
+                </TitleTooltip>
               </ReleaseMetaItem>
             )}
             <ReleaseMetaItem>
@@ -133,16 +135,17 @@ function LatestReleaseSource({ release }: {
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId
 
   return (
-    <Link
-      href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
-      title={title}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary transition-colors hover:text-text-accent"
-    >
-      <span className="min-w-0 truncate">{label}</span>
-      <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" aria-hidden="true" />
-    </Link>
+    <TitleTooltip content={title}>
+      <Link
+        href={`/app/${encodeURIComponent(sourceAppId)}/workflow`}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex max-w-full min-w-0 items-center gap-1 text-text-secondary transition-colors hover:text-text-accent"
+      >
+        <span className="min-w-0 truncate">{label}</span>
+        <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" aria-hidden="true" />
+      </Link>
+    </TitleTooltip>
   )
 }
 

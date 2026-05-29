@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useTranslation } from 'react-i18next'
 import { environmentBackend, environmentHealth, environmentMode, environmentName } from '../../environment'
 import { ModeBadge } from '../status-badge'
+import { TitleTooltip } from '../title-tooltip'
 
 type EnvironmentOption = Environment & {
   disabled?: boolean
@@ -70,9 +71,10 @@ export function DeploymentSelect({ value, onChange, options, placeholder }: Sele
             key={opt.value}
             value={opt.value}
             disabled={opt.disabled}
-            title={opt.disabled ? opt.disabledReason : undefined}
           >
-            <SelectItemText>{opt.label}</SelectItemText>
+            <TitleTooltip content={opt.disabled ? opt.disabledReason : undefined}>
+              <SelectItemText>{opt.label}</SelectItemText>
+            </TitleTooltip>
             <SelectItemIndicator />
           </SelectItem>
         ))}

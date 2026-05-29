@@ -18,6 +18,7 @@ import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/client'
 import { toAppMode } from '../app-mode'
+import { TitleTooltip } from '../components/title-tooltip'
 
 type TabDef = {
   key: InstanceDetailTabKey
@@ -153,9 +154,11 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
                       <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
                         {t('detail.notFound')}
                       </div>
-                      <div className="max-w-full truncate font-mono system-2xs-regular text-text-tertiary" title={appInstanceId}>
-                        {appInstanceId}
-                      </div>
+                      <TitleTooltip content={appInstanceId}>
+                        <div className="max-w-full truncate font-mono system-2xs-regular text-text-tertiary">
+                          {appInstanceId}
+                        </div>
+                      </TitleTooltip>
                     </div>
                   )}
                 </>
@@ -173,20 +176,21 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
                   {expand && (
                     <div className="flex flex-col items-start gap-1">
                       <div className="flex w-full">
-                        <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary" title={instanceName}>
-                          {instanceName}
-                        </div>
+                        <TitleTooltip content={instanceName}>
+                          <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
+                            {instanceName}
+                          </div>
+                        </TitleTooltip>
                       </div>
                       <div className="flex max-w-full items-center gap-1.5 system-2xs-medium-uppercase text-text-tertiary">
                         <span className="shrink-0 whitespace-nowrap">{appModeLabel}</span>
                       </div>
                       {app.description && (
-                        <div
-                          className="line-clamp-2 system-xs-regular text-text-tertiary"
-                          title={app.description}
-                        >
-                          {app.description}
-                        </div>
+                        <TitleTooltip content={app.description}>
+                          <div className="line-clamp-2 system-xs-regular text-text-tertiary">
+                            {app.description}
+                          </div>
+                        </TitleTooltip>
                       )}
                     </div>
                   )}

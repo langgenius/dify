@@ -27,6 +27,7 @@ import { useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { TitleTooltip } from '../../components/title-tooltip'
 import { environmentId, environmentName } from '../../environment'
 import { releaseLabel } from '../../release'
 import { releaseDeploymentAction } from '../../release-action'
@@ -287,50 +288,51 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
                 {section.rows.map((row) => {
                   const isDisabled = row.state === 'current' || row.state === 'deploying'
                   return (
-                    <DropdownMenuItem
-                      key={row.env.id}
-                      disabled={isDisabled}
-                      title={isDisabled ? row.disabledReason : undefined}
-                      aria-disabled={isDisabled}
-                      className={cn(
-                        'gap-2 px-3',
-                        isDisabled && 'cursor-not-allowed opacity-60',
-                      )}
-                      onClick={() => {
-                        if (isDisabled)
-                          return
-                        setOpen(false)
-                        openDeployDrawer({ appInstanceId, environmentId: row.env.id, releaseId })
-                      }}
-                    >
-                      <span className="system-sm-regular text-text-secondary">
-                        {row.label}
-                      </span>
-                    </DropdownMenuItem>
+                    <TitleTooltip key={row.env.id} content={isDisabled ? row.disabledReason : undefined}>
+                      <DropdownMenuItem
+                        disabled={isDisabled}
+                        aria-disabled={isDisabled}
+                        className={cn(
+                          'gap-2 px-3',
+                          isDisabled && 'cursor-not-allowed opacity-60',
+                        )}
+                        onClick={() => {
+                          if (isDisabled)
+                            return
+                          setOpen(false)
+                          openDeployDrawer({ appInstanceId, environmentId: row.env.id, releaseId })
+                        }}
+                      >
+                        <span className="system-sm-regular text-text-secondary">
+                          {row.label}
+                        </span>
+                      </DropdownMenuItem>
+                    </TitleTooltip>
                   )
                 })}
               </div>
             ))}
             <div className="my-1 border-t border-divider-subtle" aria-hidden />
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={deleteActionDisabled}
-              title={deleteDisabledReason}
-              aria-disabled={deleteActionDisabled}
-              className={cn(
-                'gap-2 px-3',
-                deleteActionDisabled && 'cursor-not-allowed opacity-60',
-              )}
-              onClick={() => {
-                if (deleteActionDisabled)
-                  return
-                setOpen(false)
-                setShowDeleteConfirm(true)
-              }}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              <span className="system-sm-regular">{t('versions.deleteRelease')}</span>
-            </DropdownMenuItem>
+            <TitleTooltip content={deleteDisabledReason}>
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={deleteActionDisabled}
+                aria-disabled={deleteActionDisabled}
+                className={cn(
+                  'gap-2 px-3',
+                  deleteActionDisabled && 'cursor-not-allowed opacity-60',
+                )}
+                onClick={() => {
+                  if (deleteActionDisabled)
+                    return
+                  setOpen(false)
+                  setShowDeleteConfirm(true)
+                }}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                <span className="system-sm-regular">{t('versions.deleteRelease')}</span>
+              </DropdownMenuItem>
+            </TitleTooltip>
           </DropdownMenuContent>
         )}
       </DropdownMenu>

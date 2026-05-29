@@ -8,6 +8,7 @@ import {
   envVarSlotKey,
   hasMissingRequiredEnvVarValue,
 } from './env-var-bindings-utils'
+import { TitleTooltip } from './title-tooltip'
 
 type EnvVarBindingsPanelProps = {
   slots: EnvVarSlot[]
@@ -68,9 +69,11 @@ export function EnvVarBindingsPanel({
             <div key={key} className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle px-3 py-3 last:border-b-0">
               <div className="flex min-w-0 flex-col gap-2.5">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <label className="truncate font-mono system-sm-semibold text-text-primary" htmlFor={inputId} title={key}>
-                    {key}
-                  </label>
+                  <TitleTooltip content={key}>
+                    <label className="truncate font-mono system-sm-semibold text-text-primary" htmlFor={inputId}>
+                      {key}
+                    </label>
+                  </TitleTooltip>
                   <span className="shrink-0 rounded-md bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                     {requiredLabel}
                   </span>

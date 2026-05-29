@@ -23,6 +23,7 @@ import {
   runtimeCredentialProviderName,
   runtimeCredentialSlotKey,
 } from './runtime-credential-bindings-utils'
+import { TitleTooltip } from './title-tooltip'
 
 type RuntimeCredentialBindingsPanelProps = {
   slots: CredentialSlot[]
@@ -77,8 +78,10 @@ function RuntimeCredentialSelect({
       </SelectTrigger>
       <SelectContent popupClassName="w-(--anchor-width)">
         {options.map(option => (
-          <SelectItem key={option.value} value={option.value} title={option.label}>
-            <SelectItemText>{option.label}</SelectItemText>
+          <SelectItem key={option.value} value={option.value}>
+            <TitleTooltip content={option.label}>
+              <SelectItemText>{option.label}</SelectItemText>
+            </TitleTooltip>
             <SelectItemIndicator />
           </SelectItem>
         ))}
@@ -143,9 +146,11 @@ export function RuntimeCredentialBindingsPanel({
                     <div className="flex min-w-0 flex-col gap-2.5">
                       <div className="flex min-w-0 flex-col gap-1.5">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate system-sm-semibold text-text-primary" title={slotName}>
-                            {slotName}
-                          </span>
+                          <TitleTooltip content={slotName}>
+                            <span className="truncate system-sm-semibold text-text-primary">
+                              {slotName}
+                            </span>
+                          </TitleTooltip>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           {categoryLabel && (
