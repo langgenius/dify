@@ -106,8 +106,7 @@ class TestFormatPlanBlockParentHints:
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
                 {"label": "Per Item", "node_type": "iteration", "purpose": "iterate"},
-                {"label": "Sum Item", "node_type": "llm", "purpose": "summarize one",
-                 "parent": "Per Item"},
+                {"label": "Sum Item", "node_type": "llm", "purpose": "summarize one", "parent": "Per Item"},
             ]
         )
         # The inner line should mention parent=node-2 (the iteration node).
@@ -124,8 +123,7 @@ class TestFormatPlanBlockParentHints:
         out = format_plan_block(
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
-                {"label": "Step", "node_type": "code", "purpose": "x",
-                 "parent": "Ghost Container"},
+                {"label": "Step", "node_type": "code", "purpose": "x", "parent": "Ghost Container"},
             ]
         )
         assert "parent='Ghost Container'" in out

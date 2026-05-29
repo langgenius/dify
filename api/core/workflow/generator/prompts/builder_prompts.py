@@ -383,9 +383,7 @@ def format_plan_block(plan_nodes: list[dict[str, Any]]) -> str:
                 parent_clause = f"  parent={parent_id}"
             else:
                 parent_clause = f"  parent={parent_label!r}"
-        lines.append(
-            f"{idx}. id={node_id}  type={node_type}  label={label!r}{parent_clause}\n   purpose: {purpose}"
-        )
+        lines.append(f"{idx}. id={node_id}  type={node_type}  label={label!r}{parent_clause}\n   purpose: {purpose}")
     return "\n".join(lines)
 
 

@@ -614,8 +614,7 @@ class TestWorkflowGeneratorContainerNodes:
                 "nodes": [
                     {"label": "Start", "node_type": "start", "purpose": "Take a list of URLs."},
                     {"label": "Per URL", "node_type": "iteration", "purpose": "Loop over each URL."},
-                    {"label": "Summarize", "node_type": "llm", "purpose": "Summarize one URL.",
-                     "parent": "Per URL"},
+                    {"label": "Summarize", "node_type": "llm", "purpose": "Summarize one URL.", "parent": "Per URL"},
                     {"label": "End", "node_type": "end", "purpose": "Return summaries."},
                 ],
             }
