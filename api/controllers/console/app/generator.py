@@ -51,9 +51,7 @@ class WorkflowGeneratePayload(BaseModel):
     can reuse its existing handler.
     """
 
-    mode: Literal["workflow", "advanced-chat"] = Field(
-        ..., description="Target app mode for the generated graph"
-    )
+    mode: Literal["workflow", "advanced-chat"] = Field(..., description="Target app mode for the generated graph")
     instruction: str = Field(..., description="Natural-language workflow description")
     ideal_output: str = Field(default="", description="Optional sample output for grounding")
     model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")

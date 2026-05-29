@@ -44,6 +44,7 @@ import { tags } from './tags/orpc.gen'
 import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
 import { website } from './website/orpc.gen'
+import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
 import { workspaces } from './workspaces/orpc.gen'
 
@@ -93,5 +94,6 @@ export const contract = {
   trialApps,
   website,
   workflow,
+  workflowGenerate,
   workspaces,
 }
