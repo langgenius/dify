@@ -4,6 +4,14 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AgentRosterListResponse = {
+  data: Array<AgentRosterResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type RosterAgentCreatePayload = {
   agent_soul?: AgentSoulConfig
   description?: string
@@ -14,12 +22,60 @@ export type RosterAgentCreatePayload = {
   version_note?: string | null
 }
 
+export type AgentRosterResponse = {
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse
+  active_config_snapshot_id?: string | null
+  agent_kind: AgentKind
+  app_id?: string | null
+  archived_at?: string | null
+  archived_by?: string | null
+  created_at?: string | null
+  created_by?: string | null
+  description: string
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType
+  id: string
+  name: string
+  scope: AgentScope
+  source: AgentSource
+  status: AgentStatus
+  updated_at?: string | null
+  updated_by?: string | null
+  workflow_id?: string | null
+  workflow_node_id?: string | null
+}
+
+export type AgentInviteOptionsResponse = {
+  data: Array<AgentInviteOptionResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type RosterAgentUpdatePayload = {
   description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: AgentIconType
   name?: string | null
+}
+
+export type AgentConfigSnapshotListResponse = {
+  data: Array<AgentConfigSnapshotSummaryResponse>
+}
+
+export type AgentConfigSnapshotDetailResponse = {
+  agent_id?: string | null
+  config_snapshot: AgentSoulConfig
+  created_at?: string | null
+  created_by?: string | null
+  id: string
+  revisions?: Array<AgentConfigRevisionResponse>
+  summary?: string | null
+  version: number
+  version_note?: string | null
 }
 
 export type AgentSoulConfig = {
@@ -43,6 +99,63 @@ export type AgentSoulConfig = {
 }
 
 export type AgentIconType = 'emoji' | 'image' | 'link'
+
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: string | null
+  created_by?: string | null
+  id: string
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentKind = 'dify_agent'
+
+export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentSource = 'agent_app' | 'imported' | 'system' | 'workflow'
+
+export type AgentStatus = 'active' | 'archived'
+
+export type AgentInviteOptionResponse = {
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse
+  active_config_snapshot_id?: string | null
+  agent_kind: AgentKind
+  app_id?: string | null
+  archived_at?: string | null
+  archived_by?: string | null
+  created_at?: string | null
+  created_by?: string | null
+  description: string
+  existing_node_ids?: Array<string>
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType
+  id: string
+  in_current_workflow_count?: number
+  is_in_current_workflow?: boolean
+  name: string
+  scope: AgentScope
+  source: AgentSource
+  status: AgentStatus
+  updated_at?: string | null
+  updated_by?: string | null
+  workflow_id?: string | null
+  workflow_node_id?: string | null
+}
+
+export type AgentConfigRevisionResponse = {
+  created_at?: string | null
+  created_by?: string | null
+  current_snapshot_id: string
+  id: string
+  operation: AgentConfigRevisionOperation
+  previous_snapshot_id?: string | null
+  revision: number
+  summary?: string | null
+  version_note?: string | null
+}
 
 export type AppVariableConfig = {
   default?: unknown
@@ -124,6 +237,13 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
+export type AgentConfigRevisionOperation
+  = | 'create_version'
+    | 'save_current_version'
+    | 'save_new_agent'
+    | 'save_new_version'
+    | 'save_to_roster'
+
 export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
 
 export type AgentSoulModelCredentialRef = {
@@ -157,14 +277,16 @@ export type AgentSoulDifyToolCredentialRef = {
 export type GetAgentsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
   url: '/agents'
 }
 
 export type GetAgentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentRosterListResponse
 }
 
 export type GetAgentsResponse = GetAgentsResponses[keyof GetAgentsResponses]
@@ -177,9 +299,7 @@ export type PostAgentsData = {
 }
 
 export type PostAgentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: AgentRosterResponse
 }
 
 export type PostAgentsResponse = PostAgentsResponses[keyof PostAgentsResponses]
@@ -187,14 +307,17 @@ export type PostAgentsResponse = PostAgentsResponses[keyof PostAgentsResponses]
 export type GetAgentsInviteOptionsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    app_id?: string
+    keyword?: string
+    limit?: number
+    page?: number
+  }
   url: '/agents/invite-options'
 }
 
 export type GetAgentsInviteOptionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentInviteOptionsResponse
 }
 
 export type GetAgentsInviteOptionsResponse
@@ -210,8 +333,8 @@ export type DeleteAgentsByAgentIdData = {
 }
 
 export type DeleteAgentsByAgentIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -228,9 +351,7 @@ export type GetAgentsByAgentIdData = {
 }
 
 export type GetAgentsByAgentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentRosterResponse
 }
 
 export type GetAgentsByAgentIdResponse
@@ -246,9 +367,7 @@ export type PatchAgentsByAgentIdData = {
 }
 
 export type PatchAgentsByAgentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentRosterResponse
 }
 
 export type PatchAgentsByAgentIdResponse
@@ -264,9 +383,7 @@ export type GetAgentsByAgentIdVersionsData = {
 }
 
 export type GetAgentsByAgentIdVersionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentConfigSnapshotListResponse
 }
 
 export type GetAgentsByAgentIdVersionsResponse
@@ -283,9 +400,7 @@ export type GetAgentsByAgentIdVersionsByVersionIdData = {
 }
 
 export type GetAgentsByAgentIdVersionsByVersionIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentConfigSnapshotDetailResponse
 }
 
 export type GetAgentsByAgentIdVersionsByVersionIdResponse

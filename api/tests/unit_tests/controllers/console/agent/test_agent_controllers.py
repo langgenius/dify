@@ -288,12 +288,9 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(app, monk
             "current_snapshot_id": "version-1",
             "workflow_node_count": 1,
         }
-        assert (
-            _unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
-                WorkflowAgentComposerSaveToRosterApi(), app_model, "node-1"
-            )["save_options"]
-            == ["node_job_only"]
-        )
+        assert _unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
+            WorkflowAgentComposerSaveToRosterApi(), app_model, "node-1"
+        )["save_options"] == ["node_job_only"]
 
 
 def test_workflow_impact_returns_empty_without_version(app):
