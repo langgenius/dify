@@ -15,6 +15,7 @@ import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
@@ -48,15 +49,18 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const { replace } = useRouter()
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, tagIDs, keywords, creatorID },
+    query: { category, keywords, creatorID },
     setCategory,
     setKeywords,
-    setTagIDs,
     setCreatorID,
   } = useAppsQueryState()
+  const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -74,6 +78,16 @@ const List: FC<Props> = ({
     containerRef,
     enabled: isCurrentWorkspaceEditor,
   })
+
+  useEffect(() => {
+    if (!searchParams.has('tagIDs'))
+      return
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('tagIDs')
+    const query = params.toString()
+    replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, replace, searchParams])
 
   const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
