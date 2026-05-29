@@ -19,7 +19,7 @@ export default class Logout extends DifyCommand {
     this.parse(Logout, argv)
     const io = realStreams()
     const reg = Registry.load()
-    const active = reg?.resolveActive()
+    const active = reg.resolveActive()
 
     let http: KyInstance | undefined
     if (active !== undefined) {

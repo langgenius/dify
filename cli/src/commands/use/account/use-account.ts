@@ -22,7 +22,7 @@ const USE_HOST_HINT = 'run \'difyctl use host\' or \'difyctl auth login\''
 export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
   const reg = Registry.load()
-  if (reg === undefined || reg.current_host === undefined)
+  if (reg.current_host === undefined)
     throw notLoggedInError(USE_HOST_HINT)
   const host = reg.current_host
   const entry = reg.hosts[host]

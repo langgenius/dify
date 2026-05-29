@@ -15,8 +15,8 @@ type HostChoice = { host: string, accounts: number, active: boolean }
 export async function runUseHost(opts: UseHostOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
   const reg = Registry.load()
-  const hosts = reg !== undefined ? Object.keys(reg.hosts) : []
-  if (reg === undefined || hosts.length === 0)
+  const hosts = Object.keys(reg.hosts)
+  if (hosts.length === 0)
     throw notLoggedInError()
 
   const target = opts.host ?? await pickHost(opts, reg, hosts)

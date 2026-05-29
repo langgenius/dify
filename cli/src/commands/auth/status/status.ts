@@ -5,15 +5,15 @@ import { ErrorCode } from '../../../errors/codes.js'
 
 export type StatusOptions = {
   readonly io: IOStreams
-  readonly reg: Registry | undefined
+  readonly reg: Registry
   readonly verbose?: boolean
   readonly json?: boolean
 }
 
 export async function runStatus(opts: StatusOptions): Promise<void> {
   const reg = opts.reg
-  const active = reg?.resolveActive()
-  if (reg === undefined || active === undefined) {
+  const active = reg.resolveActive()
+  if (active === undefined) {
     if (opts.json === true)
       opts.io.out.write(`${JSON.stringify({ host: null, logged_in: false })}\n`)
     else

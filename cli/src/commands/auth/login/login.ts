@@ -75,7 +75,7 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
 
   storeBundle.store.set(tokenKey(display, email), success.token)
 
-  const reg = Registry.load() ?? Registry.empty(storeBundle.mode)
+  const reg = Registry.load()
   reg.token_storage = storeBundle.mode
   reg.activate(display, email, ctx)
   applyScheme(reg, display, host)

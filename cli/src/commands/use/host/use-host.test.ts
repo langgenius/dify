@@ -30,7 +30,7 @@ describe('runUseHost', () => {
 
   it('switches current_host when host is valid', async () => {
     await runUseHost({ io: bufferStreams(), host: 'h2' })
-    expect(Registry.load()?.current_host).toBe('h2')
+    expect(Registry.load().current_host).toBe('h2')
   })
 
   it('errors when host is unknown, listing valid hosts', async () => {

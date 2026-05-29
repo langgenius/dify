@@ -28,7 +28,7 @@ function ssoReg(): Registry {
 
 describe('runWhoami', () => {
   it('throws NotLoggedIn when no active context', async () => {
-    await expect(runWhoami({ io: bufferStreams(), reg: undefined })).rejects.toThrow(/not logged in/i)
+    await expect(runWhoami({ io: bufferStreams(), reg: Registry.empty() })).rejects.toThrow(/not logged in/i)
   })
 
   it('prints email + name for an account', async () => {

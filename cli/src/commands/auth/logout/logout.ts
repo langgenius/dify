@@ -3,13 +3,12 @@ import type { Registry } from '../../../auth/hosts.js'
 import type { Store } from '../../../store/store.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import { AccountSessionsClient } from '../../../api/account-sessions.js'
-import { notLoggedInError } from '../../../auth/hosts.js'
 import { getTokenStore, tokenKey } from '../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 
 export type LogoutOptions = {
   readonly io: IOStreams
-  readonly reg: Registry | undefined
+  readonly reg: Registry
   readonly http?: KyInstance
   /** Optional override for tests; production resolves via `getTokenStore`. */
   readonly store?: Store
@@ -20,9 +19,7 @@ const REVOCABLE_PREFIXES = ['dfoa_', 'dfoe_'] as const
 export async function runLogout(opts: LogoutOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
   const reg = opts.reg
-  const active = reg?.resolveActive()
-  if (reg === undefined || active === undefined)
-    throw notLoggedInError()
+  const active = reg.requireActive()
 
   const store = opts.store ?? getTokenStore().store
   const bearer = store.get(tokenKey(active.host, active.email))

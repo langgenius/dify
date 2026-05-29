@@ -47,13 +47,13 @@ function ssoReg(): Registry {
 describe('runStatus', () => {
   it('logged-out: prints message + throws NotLoggedIn', async () => {
     const io = bufferStreams()
-    await expect(runStatus({ io, reg: undefined })).rejects.toThrow(/not logged in/)
+    await expect(runStatus({ io, reg: Registry.empty() })).rejects.toThrow(/not logged in/)
     expect(io.outBuf()).toContain('Not logged in')
   })
 
   it('logged-out json: emits {logged_in: false}', async () => {
     const io = bufferStreams()
-    await expect(runStatus({ io, reg: undefined, json: true })).rejects.toThrow(/not logged in/)
+    await expect(runStatus({ io, reg: Registry.empty(), json: true })).rejects.toThrow(/not logged in/)
     expect(JSON.parse(io.outBuf())).toEqual({ host: null, logged_in: false })
   })
 

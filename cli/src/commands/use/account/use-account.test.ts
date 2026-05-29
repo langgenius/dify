@@ -40,7 +40,7 @@ describe('runUseAccount', () => {
 
   it('switches current_account when email valid + token present', async () => {
     await runUseAccount({ io: bufferStreams(), email: 'b@x', store: memStore({ 'tokens.h1.b@x': 'dfoa_b' }) })
-    expect(Registry.load()?.hosts.h1?.current_account).toBe('b@x')
+    expect(Registry.load().hosts.h1?.current_account).toBe('b@x')
   })
 
   it('errors when the account has no stored token', async () => {

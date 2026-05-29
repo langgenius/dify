@@ -1,17 +1,14 @@
 import type { Registry } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../sys/io/streams'
-import { notLoggedInError } from '../../../auth/hosts.js'
 
 export type WhoamiOptions = {
   readonly io: IOStreams
-  readonly reg: Registry | undefined
+  readonly reg: Registry
   readonly json?: boolean
 }
 
 export async function runWhoami(opts: WhoamiOptions): Promise<void> {
-  const active = opts.reg?.resolveActive()
-  if (active === undefined)
-    throw notLoggedInError()
+  const active = opts.reg.requireActive()
 
   const sub = active.ctx.external_subject
   if (sub !== undefined) {

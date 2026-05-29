@@ -140,8 +140,10 @@ describe('Registry.load / Registry.save', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('returns undefined when nothing saved', () => {
-    expect(Registry.load()).toBeUndefined()
+  it('returns an empty registry when nothing saved', () => {
+    const reg = Registry.load()
+    expect(reg.current_host).toBeUndefined()
+    expect(Object.keys(reg.hosts)).toHaveLength(0)
   })
 
   it('round-trips a populated registry', () => {

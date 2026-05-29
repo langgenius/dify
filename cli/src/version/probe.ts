@@ -48,8 +48,7 @@ export type RunVersionProbeOptions = {
 }
 
 const defaultLoadActive = async (): Promise<ActiveContext | undefined> => {
-  const reg = Registry.load()
-  return reg?.resolveActive()
+  return Registry.load().resolveActive()
 }
 
 const defaultProbe: MetaProbe = async (endpoint) => {

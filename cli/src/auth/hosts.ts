@@ -69,14 +69,14 @@ export class Registry {
     this.data = data
   }
 
-  static load(): Registry | undefined {
+  static load(): Registry {
     const raw = getHostStore().getTyped<Record<string, unknown>>()
     if (raw === null)
-      return undefined
+      return Registry.empty()
     return new Registry(RegistrySchema.parse(raw))
   }
 
-  static empty(mode: StorageMode): Registry {
+  static empty(mode: StorageMode = 'file'): Registry {
     return new Registry(RegistrySchema.parse({ token_storage: mode, hosts: {} }))
   }
 

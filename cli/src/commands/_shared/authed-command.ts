@@ -40,8 +40,8 @@ export async function buildAuthedContext(
 ): Promise<AuthedContext> {
   const io = realStreams(opts.format ?? '')
   const reg = Registry.load()
-  const active = reg?.resolveActive()
-  if (reg === undefined || active === undefined)
+  const active = reg.resolveActive()
+  if (active === undefined)
     fail(cmd, opts, io)
 
   const { store } = getTokenStore()
