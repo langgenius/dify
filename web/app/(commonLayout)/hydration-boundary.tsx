@@ -10,6 +10,7 @@ import { basePath } from '@/utils/var'
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const ACCOUNT_PROFILE_PATH = '/account/profile'
+const AUTH_REFRESH_PATH = '/auth/refresh'
 
 type ConsoleErrorPayload = {
   code?: string
@@ -35,9 +36,9 @@ const getCurrentPath = async () => {
   return `${pathname}${search}`
 }
 
-const redirectToSignin = async () => {
+const redirectToAuthRefresh = async () => {
   const currentPath = await getCurrentPath()
-  redirect(`${basePath}/signin?redirect_url=${encodeURIComponent(currentPath)}`)
+  redirect(`${basePath}${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
 }
 
 const handleProfileError = async (error: unknown) => {
@@ -50,7 +51,7 @@ const handleProfileError = async (error: unknown) => {
   if (errorData?.code === 'not_init_validated')
     redirect(`${basePath}/init`)
   if (error.status === 401)
-    await redirectToSignin()
+    await redirectToAuthRefresh()
 
   throw error
 }

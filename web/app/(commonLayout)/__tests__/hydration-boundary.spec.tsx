@@ -86,13 +86,13 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.systemFeaturesQueryFn).toHaveBeenCalledTimes(1)
   })
 
-  it('should redirect unauthorized users to signin with the current path', async () => {
+  it('should redirect unauthorized users to the refresh route with the current path', async () => {
     mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }))
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow')
+    expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow')
   })
 
   it('should redirect setup errors to install', async () => {
