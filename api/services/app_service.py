@@ -249,6 +249,22 @@ class AppService:
             db.session.flush()
 
             app.app_model_config_id = app_model_config.id
+        elif app_mode == AppMode.AGENT:
+            # An Agent App keeps its model / prompt / tools in the bound Agent
+            # Soul, so the app_model_config row carries no model — only the
+            # app-level presentation features the PRD requires (conversation
+            # opener, follow-up suggestions, citations, moderation, annotation).
+            # They default to disabled/empty here and are read by both the
+            # webapp /parameters endpoint and the chat pipeline. agent_mode is
+            # left unset so App.is_agent stays False (this is the new Agent App
+            # type, not a legacy function-call/react agent).
+            agent_app_model_config = AppModelConfig(
+                app_id=app.id, created_by=account.id, updated_by=account.id
+            )
+            db.session.add(agent_app_model_config)
+            db.session.flush()
+
+            app.app_model_config_id = agent_app_model_config.id
 
         # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
         # Created in the same transaction so the App and its backing Agent persist

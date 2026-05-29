@@ -82,8 +82,9 @@ default_app_templates: Mapping[AppMode, Mapping] = {
         },
     },
     # agent default mode (new Agent App type). The runtime model / prompt / tools
-    # come from the bound Agent Soul snapshot, so no model_config is seeded here;
-    # app_model_config is created lazily when app-level feature flags are set.
+    # come from the bound Agent Soul snapshot, so no model_config is seeded in the
+    # template; create_app still creates a model-less app_model_config row to hold
+    # app-level presentation features (opener, follow-up, citations, ...).
     AppMode.AGENT: {
         "app": {
             "mode": AppMode.AGENT,
