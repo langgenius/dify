@@ -44,7 +44,7 @@ abstract class FileBasedStore implements Store {
   flush(): void {
     fs.mkdirSync(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
 
-    // we don't handle A-B-A scenario, 
+    // we don't handle A-B-A scenario,
     // which is not likely to happen in cli
     if (!this.dirty) {
       return

@@ -25,6 +25,12 @@ export type AnnotationList = {
   total: number
 }
 
+export type AnnotationListQuery = {
+  keyword?: string
+  limit?: number
+  page?: number
+}
+
 export type AnnotationReplyActionPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -969,7 +975,11 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
 export type GetAppsAnnotationsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
   url: '/apps/annotations'
 }
 
