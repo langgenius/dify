@@ -1,7 +1,7 @@
-import { waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { useSearchParams } from '@/next/navigation'
 import { OAuthRegistrationAnalytics } from '../oauth-registration-analytics'
 
 const { mockSendGAEvent, mockTrackEvent } = vi.hoisted(() => ({
@@ -13,15 +13,27 @@ vi.mock('@/utils/gtag', () => ({
   sendGAEvent: (...args: unknown[]) => mockSendGAEvent(...args),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: vi.fn(),
+}))
+
 vi.mock('../base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
+
+const mockUseSearchParams = vi.mocked(useSearchParams)
+
+const setSearchParams = (searchParams = '') => {
+  mockUseSearchParams.mockReturnValue(new URLSearchParams(searchParams) as unknown as ReturnType<typeof useSearchParams>)
+  window.history.replaceState(null, '', `/signin${searchParams ? `?${searchParams}` : ''}`)
+}
 
 describe('OAuthRegistrationAnalytics', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     Cookies.remove('utm_info')
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    setSearchParams()
   })
 
   it('should track oauth registration with utm info and clear the query flag', async () => {
@@ -30,9 +42,10 @@ describe('OAuthRegistrationAnalytics', () => {
       slug: 'agent-launch',
     }))
 
-    const { onUrlUpdate } = renderWithNuqs(<OAuthRegistrationAnalytics />, {
-      searchParams: 'oauth_new_user=true&source=signin',
-    })
+    setSearchParams('oauth_new_user=true&source=signin')
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+
+    render(<OAuthRegistrationAnalytics />)
 
     await waitFor(() => {
       expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
@@ -48,19 +61,16 @@ describe('OAuthRegistrationAnalytics', () => {
     })
     expect(Cookies.get('utm_info')).toBeUndefined()
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-    expect(update.searchParams.has('oauth_new_user')).toBe(false)
-    expect(update.searchParams.get('source')).toBe('signin')
-    expect(update.options.history).toBe('replace')
+    await waitFor(() => {
+      expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/signin?source=signin')
+    })
   })
 
   it('should fall back to the base registration event when the utm cookie is invalid', async () => {
     Cookies.set('utm_info', '{invalid-json')
 
-    renderWithNuqs(<OAuthRegistrationAnalytics />, {
-      searchParams: 'oauth_new_user=true',
-    })
+    setSearchParams('oauth_new_user=true')
+    render(<OAuthRegistrationAnalytics />)
 
     await waitFor(() => {
       expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', {
@@ -75,18 +85,21 @@ describe('OAuthRegistrationAnalytics', () => {
   })
 
   it('should do nothing without the oauth registration query flag', () => {
-    renderWithNuqs(<OAuthRegistrationAnalytics />)
+    render(<OAuthRegistrationAnalytics />)
 
     expect(mockTrackEvent).not.toHaveBeenCalled()
     expect(mockSendGAEvent).not.toHaveBeenCalled()
   })
 
   it('should clear a false oauth registration query flag without tracking', async () => {
-    const { onUrlUpdate } = renderWithNuqs(<OAuthRegistrationAnalytics />, {
-      searchParams: 'oauth_new_user=false',
-    })
+    setSearchParams('oauth_new_user=false')
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    render(<OAuthRegistrationAnalytics />)
+
+    await waitFor(() => {
+      expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/signin')
+    })
     expect(mockTrackEvent).not.toHaveBeenCalled()
     expect(mockSendGAEvent).not.toHaveBeenCalled()
   })
