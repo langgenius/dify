@@ -121,19 +121,21 @@ const MainNav = ({
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
 
     return (
-      <h1 className="min-w-0">
-        <Link href="/" className="flex h-8 shrink-0 items-center overflow-hidden px-2" aria-label={appTitle}>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-            ? (
-                <img
-                  src={systemFeatures.branding.workspace_logo}
-                  className="block h-5.5 w-auto object-contain"
-                  alt=""
-                />
-              )
-            : <DifyLogo alt="" />}
-        </Link>
-      </h1>
+      <Link
+        href="/"
+        className="flex h-8 shrink-0 items-center overflow-hidden px-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        aria-label={appTitle}
+      >
+        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+          ? (
+              <img
+                src={systemFeatures.branding.workspace_logo}
+                className="block h-5.5 w-auto object-contain"
+                alt=""
+              />
+            )
+          : <DifyLogo alt="" />}
+      </Link>
     )
   }
 

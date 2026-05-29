@@ -4,13 +4,14 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
-import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/atoms'
 import AppList from '../index'
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
@@ -252,7 +253,9 @@ const renderAppList = (
     systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
   })
   const Wrapped = ({ children }: { children: ReactNode }) => (
-    <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+    <JotaiProvider>
+      <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+    </JotaiProvider>
   )
   const rendered = renderWithNuqs(
     <Wrapped><AppList onSuccess={onSuccess} /></Wrapped>,

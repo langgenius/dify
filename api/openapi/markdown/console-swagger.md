@@ -343,11 +343,19 @@ Check if activation token is valid
 ### /agents
 
 #### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent roster list | [AgentRosterListResponse](#agentrosterlistresponse) |
 
 #### POST
 ##### Parameters
@@ -358,18 +366,27 @@ Check if activation token is valid
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent created | [AgentRosterResponse](#agentrosterresponse) |
 
 ### /agents/invite-options
 
 #### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | query | Workflow app id for in-current-workflow markers | No | string |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent invite options | [AgentInviteOptionsResponse](#agentinviteoptionsresponse) |
 
 ### /agents/{agent_id}
 
@@ -384,7 +401,7 @@ Check if activation token is valid
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Agent archived |
 
 #### GET
 ##### Parameters
@@ -395,9 +412,9 @@ Check if activation token is valid
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent detail | [AgentRosterResponse](#agentrosterresponse) |
 
 #### PATCH
 ##### Parameters
@@ -409,9 +426,9 @@ Check if activation token is valid
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent updated | [AgentRosterResponse](#agentrosterresponse) |
 
 ### /agents/{agent_id}/versions
 
@@ -424,9 +441,9 @@ Check if activation token is valid
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent versions | [AgentConfigSnapshotListResponse](#agentconfigsnapshotlistresponse) |
 
 ### /agents/{agent_id}/versions/{version_id}
 
@@ -440,9 +457,9 @@ Check if activation token is valid
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent version detail | [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse) |
 
 ### /all-workspaces
 
@@ -978,9 +995,9 @@ Run draft workflow for advanced chat application
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer state | [AgentAppComposerResponse](#agentappcomposerresponse) |
 
 #### PUT
 ##### Parameters
@@ -992,9 +1009,9 @@ Run draft workflow for advanced chat application
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer saved | [AgentAppComposerResponse](#agentappcomposerresponse) |
 
 ### /apps/{app_id}/agent-composer/candidates
 
@@ -1007,9 +1024,9 @@ Run draft workflow for advanced chat application
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer candidates | [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse) |
 
 ### /apps/{app_id}/agent-composer/validate
 
@@ -1023,9 +1040,9 @@ Run draft workflow for advanced chat application
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer validation result | [AgentComposerValidateResponse](#agentcomposervalidateresponse) |
 
 ### /apps/{app_id}/agent/logs
 
@@ -3224,9 +3241,9 @@ Run draft workflow loop node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer state | [WorkflowAgentComposerResponse](#workflowagentcomposerresponse) |
 
 #### PUT
 ##### Parameters
@@ -3239,9 +3256,9 @@ Run draft workflow loop node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer saved | [WorkflowAgentComposerResponse](#workflowagentcomposerresponse) |
 
 ### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
 
@@ -3255,9 +3272,9 @@ Run draft workflow loop node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer candidates | [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse) |
 
 ### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 
@@ -3268,12 +3285,13 @@ Run draft workflow loop node
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer impact | [AgentComposerImpactResponse](#agentcomposerimpactresponse) |
 
 ### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
 
@@ -3288,9 +3306,9 @@ Run draft workflow loop node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer saved to roster | [WorkflowAgentComposerResponse](#workflowagentcomposerresponse) |
 
 ### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
 
@@ -3305,9 +3323,9 @@ Run draft workflow loop node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer validation result | [AgentComposerValidateResponse](#agentcomposervalidateresponse) |
 
 ### /apps/{app_id}/workflows/draft/nodes/{node_id}/last-run
 
@@ -10672,6 +10690,150 @@ Get banner list
 | model_mode | string | Model mode | Yes |
 | model_name | string | Model name | Yes |
 
+#### AgentAppComposerResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | Yes |
+| agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
+| save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
+| variant | string |  | Yes |
+
+#### AgentComposerAgentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot_id | string |  | No |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| scope | [AgentScope](#agentscope) |  | Yes |
+| status | [AgentStatus](#agentstatus) |  | Yes |
+
+#### AgentComposerBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | No |
+| binding_type | [WorkflowAgentBindingType](#workflowagentbindingtype) |  | Yes |
+| current_snapshot_id | string |  | No |
+| id | string |  | Yes |
+| node_id | string |  | Yes |
+| workflow_id | string |  | Yes |
+
+#### AgentComposerCandidatesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_node_job_candidates | [AgentComposerNodeJobCandidatesResponse](#agentcomposernodejobcandidatesresponse) |  | No |
+| allowed_soul_candidates | [AgentComposerSoulCandidatesResponse](#agentcomposersoulcandidatesresponse) |  | No |
+| capabilities | [ComposerCandidateCapabilities](#composercandidatecapabilities) |  | No |
+| variant | [ComposerVariant](#composervariant) |  | Yes |
+
+#### AgentComposerImpactBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| node_id | string |  | Yes |
+| workflow_id | string |  | Yes |
+
+#### AgentComposerImpactResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bindings | [ [AgentComposerImpactBindingResponse](#agentcomposerimpactbindingresponse) ] |  | No |
+| current_snapshot_id | string |  | No |
+| workflow_node_count | integer |  | Yes |
+
+#### AgentComposerNodeJobCandidatesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| declare_output_types | [ [DeclaredOutputType](#declaredoutputtype) ] |  | No |
+| human_contacts | [ object ] |  | No |
+| previous_node_outputs | [ object ] |  | No |
+
+#### AgentComposerSoulCandidatesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cli_tools | [ object ] |  | No |
+| dify_tools | [ object ] |  | No |
+| human_contacts | [ object ] |  | No |
+| knowledge_datasets | [ object ] |  | No |
+| skills_files | [ object ] |  | No |
+
+#### AgentComposerSoulLockResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_unlock | boolean |  | No |
+| locked | boolean |  | Yes |
+| reason | string |  | No |
+
+#### AgentComposerValidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| errors | [ string ] |  | No |
+| result | string |  | Yes |
+
+#### AgentConfigRevisionOperation
+
+Audit operation recorded for Agent Soul version/revision changes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentConfigRevisionOperation | string | Audit operation recorded for Agent Soul version/revision changes. |  |
+
+#### AgentConfigRevisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | string |  | No |
+| created_by | string |  | No |
+| current_snapshot_id | string |  | Yes |
+| id | string |  | Yes |
+| operation | [AgentConfigRevisionOperation](#agentconfigrevisionoperation) |  | Yes |
+| previous_snapshot_id | string |  | No |
+| revision | integer |  | Yes |
+| summary | string |  | No |
+| version_note | string |  | No |
+
+#### AgentConfigSnapshotDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | No |
+| config_snapshot | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
+| created_at | string |  | No |
+| created_by | string |  | No |
+| id | string |  | Yes |
+| revisions | [ [AgentConfigRevisionResponse](#agentconfigrevisionresponse) ] |  | No |
+| summary | string |  | No |
+| version | integer |  | Yes |
+| version_note | string |  | No |
+
+#### AgentConfigSnapshotListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) ] |  | Yes |
+
+#### AgentConfigSnapshotSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | No |
+| created_at | string |  | No |
+| created_by | string |  | No |
+| id | string |  | Yes |
+| summary | string |  | No |
+| version | integer |  | Yes |
+| version_note | string |  | No |
+
 #### AgentIconType
 
 Supported icon storage formats for Agent roster entries.
@@ -10686,6 +10848,35 @@ Supported icon storage formats for Agent roster entries.
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | Yes |
 
+#### AgentInviteOptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
+| active_config_snapshot_id | string |  | No |
+| agent_kind | [AgentKind](#agentkind) |  | Yes |
+| app_id | string |  | No |
+| archived_at | string |  | No |
+| archived_by | string |  | No |
+| created_at | string |  | No |
+| created_by | string |  | No |
+| description | string |  | Yes |
+| existing_node_ids | [ string ] |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
+| id | string |  | Yes |
+| in_current_workflow_count | integer |  | No |
+| is_in_current_workflow | boolean |  | No |
+| name | string |  | Yes |
+| scope | [AgentScope](#agentscope) |  | Yes |
+| source | [AgentSource](#agentsource) |  | Yes |
+| status | [AgentStatus](#agentstatus) |  | Yes |
+| updated_at | string |  | No |
+| updated_by | string |  | No |
+| workflow_id | string |  | No |
+| workflow_node_id | string |  | No |
+
 #### AgentInviteOptionsQuery
 
 | Name | Type | Description | Required |
@@ -10694,6 +10885,27 @@ Supported icon storage formats for Agent roster entries.
 | keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
+
+#### AgentInviteOptionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentInviteOptionResponse](#agentinviteoptionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentKind
+
+Agent implementation family.
+
+This leaves room for future non-Dify agent implementations while keeping
+the current roster/workflow APIs scoped to Dify Agent.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentKind | string | Agent implementation family.  This leaves room for future non-Dify agent implementations while keeping the current roster/workflow APIs scoped to Dify Agent. |  |
 
 #### AgentKnowledgeQueryMode
 
@@ -10707,6 +10919,50 @@ Supported icon storage formats for Agent roster entries.
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | message_id | string | Message UUID | Yes |
+
+#### AgentRosterListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentRosterResponse](#agentrosterresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentRosterResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
+| active_config_snapshot_id | string |  | No |
+| agent_kind | [AgentKind](#agentkind) |  | Yes |
+| app_id | string |  | No |
+| archived_at | string |  | No |
+| archived_by | string |  | No |
+| created_at | string |  | No |
+| created_by | string |  | No |
+| description | string |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| scope | [AgentScope](#agentscope) |  | Yes |
+| source | [AgentSource](#agentsource) |  | Yes |
+| status | [AgentStatus](#agentstatus) |  | Yes |
+| updated_at | string |  | No |
+| updated_by | string |  | No |
+| workflow_id | string |  | No |
+| workflow_node_id | string |  | No |
+
+#### AgentScope
+
+Visibility and lifecycle scope of an Agent record.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentScope | string | Visibility and lifecycle scope of an Agent record. |  |
 
 #### AgentSoulConfig
 
@@ -10841,6 +11097,22 @@ Reference to model credentials resolved only at runtime.
 | ---- | ---- | ----------- | -------- |
 | cli_tools | [ object ] |  | No |
 | dify_tools | [ [AgentSoulDifyToolConfig](#agentsouldifytoolconfig) ] |  | No |
+
+#### AgentSource
+
+Origin that created or imported the Agent.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentSource | string | Origin that created or imported the Agent. |  |
+
+#### AgentStatus
+
+Soft lifecycle state for Agent records.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentStatus | string | Soft lifecycle state for Agent records. |  |
 
 #### AgentThought
 
@@ -11548,6 +11820,12 @@ Button styles for user actions.
 | agent_id | string |  | No |
 | binding_type | string | *Enum:* `"inline_agent"`, `"roster_agent"` | Yes |
 | current_snapshot_id | string |  | No |
+
+#### ComposerCandidateCapabilities
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| human_roster_available | boolean |  | No |
 
 #### ComposerSavePayload
 
@@ -15408,6 +15686,32 @@ in form definiton, or a variable while the workflow is running.
 | embedding_model_name | string |  | Yes |
 | embedding_provider_name | string |  | Yes |
 | vector_weight | number |  | Yes |
+
+#### WorkflowAgentBindingType
+
+How a workflow node is bound to an Agent.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowAgentBindingType | string | How a workflow node is bound to an Agent. |  |
+
+#### WorkflowAgentComposerResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
+| agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | No |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
+| app_id | string |  | No |
+| binding | [AgentComposerBindingResponse](#agentcomposerbindingresponse) |  | No |
+| effective_declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
+| impact_summary | [AgentComposerImpactResponse](#agentcomposerimpactresponse) |  | No |
+| node_id | string |  | No |
+| node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | Yes |
+| save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
+| soul_lock | [AgentComposerSoulLockResponse](#agentcomposersoullockresponse) |  | Yes |
+| variant | string |  | Yes |
+| workflow_id | string |  | No |
 
 #### WorkflowAppLogPaginationResponse
 

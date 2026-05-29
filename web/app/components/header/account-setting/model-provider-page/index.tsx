@@ -181,7 +181,6 @@ const ModelProviderPage = ({
 
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
-
   const toolbar = (
     <div className={stickyToolbar
       ? layout
@@ -246,7 +245,7 @@ const ModelProviderPage = ({
       )}
       {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {isLoadingModelProviders && <ModelProviderListSkeleton />}
-      {!isLoadingModelProviders && !filteredConfiguredProviders?.length && (
+      {!isLoadingModelProviders && !configuredProviders.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
             <span className="i-ri-brain-line size-5 text-text-primary" />

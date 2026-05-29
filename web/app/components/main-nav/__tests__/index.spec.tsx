@@ -5,9 +5,10 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
-import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/atoms'
 import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
@@ -209,7 +210,7 @@ const renderMainNav = (
 ) => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
-  return renderWithSystemFeatures(<MainNav />, { systemFeatures, queryClient })
+  return renderWithSystemFeatures(<JotaiProvider><MainNav /></JotaiProvider>, { systemFeatures, queryClient })
 }
 
 describe('MainNav', () => {
@@ -471,9 +472,9 @@ describe('MainNav', () => {
     expect(homeLink).toHaveAttribute('aria-current', 'page')
 
     mockPathname = '/installed/installed-1'
-    rerender(<MainNav />)
+    rerender(<JotaiProvider><MainNav /></JotaiProvider>)
 
-    expect(homeLink).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
   it('dispatches the goto anything open event from the search button', () => {

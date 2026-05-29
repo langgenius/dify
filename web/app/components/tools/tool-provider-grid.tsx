@@ -65,7 +65,9 @@ export function ToolProviderGrid({
   currentProviderId,
   frameClassName,
   getTagLabel,
+  hasCategoryCollections,
   isLoading,
+  isSearchResultEmpty,
   onRefreshData,
   onSelectProvider,
 }: {
@@ -74,16 +76,20 @@ export function ToolProviderGrid({
   currentProviderId?: string
   frameClassName: string
   getTagLabel: (label: string) => string
+  hasCategoryCollections: boolean
   isLoading: boolean
+  isSearchResultEmpty: boolean
   onRefreshData: () => void
   onSelectProvider: (providerId: string) => void
 }) {
+  const showWorkflowEmptyState = activeTab === 'workflow' && !hasCategoryCollections && !isSearchResultEmpty
+
   return (
     <div
       className={cn(
         'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
         frameClassName,
-        !collections.length && activeTab === 'workflow' && 'grow',
+        showWorkflowEmptyState && 'grow',
       )}
     >
       {isLoading
@@ -111,7 +117,7 @@ export function ToolProviderGrid({
                   />
                 </div>
               ))}
-              {!collections.length && activeTab === 'workflow' && (
+              {showWorkflowEmptyState && (
                 <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
                   <WorkflowToolEmpty type={getToolType(activeTab)} />
                 </div>

@@ -505,7 +505,7 @@ def _truncate_container_database(app: Flask) -> None:
     session_factory-created sessions. Truncating after each test gives the suite
     a central DB isolation contract that does not depend on which session a test used.
     This only covers SQLAlchemy application tables in db.metadata for now;
-    Redis, object storage, and custom ad hoc metadata still need their own cleanup.
+    object storage and custom ad hoc metadata still need their own cleanup.
     """
     with app.app_context():
         db.session.remove()
@@ -524,13 +524,27 @@ def _truncate_container_database(app: Flask) -> None:
         db.session.remove()
 
 
+def _flush_container_redis(app: Flask) -> None:
+    """
+    Reset Redis after a container integration test.
+
+    Tests in this package share one Redis container for performance. Application
+    code stores temporary tokens, rate-limit counters, locks, and cache entries
+    there, so flushing after each test gives Redis-backed state the same
+    isolation contract as the PostgreSQL container.
+    """
+    with app.app_context():
+        app.extensions["redis"].flushdb()
+
+
 @pytest.fixture(autouse=True)
 def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     """
-    Clean DB state after tests that use the containerized Flask app.
+    Clean DB and Redis state after tests that use the containerized Flask app.
 
     This fixture intentionally does not depend on flask_app_with_containers so
-    non-DB tests under this package do not start the full app/container stack.
+    tests under this package do not start the full app/container stack just to
+    run state cleanup.
     """
     yield
 
@@ -538,7 +552,10 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
         return
 
     app = request.getfixturevalue("flask_app_with_containers")
-    _truncate_container_database(app)
+    try:
+        _truncate_container_database(app)
+    finally:
+        _flush_container_redis(app)
 
 
 @pytest.fixture(scope="package", autouse=True)

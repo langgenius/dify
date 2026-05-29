@@ -15,7 +15,6 @@ import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-conf
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { useLearnDifyHiddenState } from '@/app/components/explore/learn-dify/storage'
 import { useAppContext } from '@/context/app-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
@@ -23,7 +22,7 @@ import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
-import { useExploreAppList, useLearnDifyAppList } from '@/service/use-explore'
+import { useExploreAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import TryApp from '../try-app'
 import { ExploreAppListHeader } from './explore-app-list-header'
@@ -79,8 +78,6 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const { data, isLoading, isError } = useExploreAppList()
   const { isLoading: isContinueWorkLoading } = useHomeContinueWorkApps()
-  const { isLoading: isLearnDifyLoading } = useLearnDifyAppList()
-  const [isLearnDifyHidden] = useLearnDifyHiddenState()
 
   const filteredList = useMemo(() => {
     if (!data)
@@ -230,8 +227,6 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         <ExploreRecommendations
           canCreate={hasEditPermission}
           isContinueWorkLoading={isContinueWorkLoading}
-          isLearnDifyHidden={isLearnDifyHidden}
-          isLearnDifyLoading={isLearnDifyLoading}
           onCreate={handleCreateFromLearnDify}
           onTry={handleTryApp}
         />

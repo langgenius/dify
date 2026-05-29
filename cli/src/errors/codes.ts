@@ -15,6 +15,7 @@ export const ErrorCode = {
   NetworkDns: 'network_dns',
   Server5xx: 'server_5xx',
   Server4xxOther: 'server_4xx_other',
+  ClientError: 'client_error',
   Unknown: 'unknown',
 } as const
 
@@ -47,6 +48,7 @@ const CODE_TO_EXIT: Readonly<Record<ErrorCodeValue, ExitCodeValue>> = {
   network_dns: ExitCode.Generic,
   server_5xx: ExitCode.Generic,
   server_4xx_other: ExitCode.Generic,
+  client_error: ExitCode.Generic,
   unknown: ExitCode.Generic,
 }
 

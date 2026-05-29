@@ -10,6 +10,7 @@ import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
@@ -84,19 +85,32 @@ const PluginsPanel = ({
     setFilters(filters)
   }, { wait: 500 })
 
+  const categoryList = useMemo(() => {
+    if (!fixedCategory)
+      return pluginListWithLatestVersion
+
+    return pluginListWithLatestVersion.filter(plugin => plugin.declaration.category === fixedCategory)
+  }, [fixedCategory, pluginListWithLatestVersion])
+
   const filteredList = useMemo(() => {
     const { categories, searchQuery, tags } = filters
-    const effectiveCategories = fixedCategory ? [fixedCategory] : categories
     const shouldApplyTagFilter = !fixedCategory || isTriggerIntegrationPage
-    const filteredList = pluginListWithLatestVersion.filter((plugin) => {
+    const filteredList = categoryList.filter((plugin) => {
       return (
-        (effectiveCategories.length === 0 || effectiveCategories.includes(plugin.declaration.category))
+        (fixedCategory || categories.length === 0 || categories.includes(plugin.declaration.category))
         && (!shouldApplyTagFilter || tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
         && matchesSearchQuery(plugin, searchQuery, locale)
       )
     })
     return filteredList
-  }, [fixedCategory, isTriggerIntegrationPage, pluginListWithLatestVersion, filters, locale])
+  }, [categoryList, fixedCategory, isTriggerIntegrationPage, filters, locale])
+  const isFilteringCategory = !!filters.searchQuery.trim() || (isTriggerIntegrationPage && filters.tags.length > 0)
+  const isIntegrationCategorySearchEmpty = isIntegrationCategoryPage && isSearchResultEmpty({
+    hasActiveFilter: isFilteringCategory,
+    isLoading: isPluginListLoading,
+    resultCount: filteredList.length,
+    sourceCount: categoryList.length,
+  })
 
   const currentPluginDetail = useMemo(() => {
     const detail = pluginListWithLatestVersion.find(plugin => plugin.plugin_id === currentPluginID)
@@ -177,15 +191,19 @@ const PluginsPanel = ({
                   )}
                 </ScrollArea>
               )
-            : (
-                <Empty
-                  canInstall={canInstall}
-                  contentInset={contentInset}
-                  onSwitchToMarketplace={onSwitchToMarketplace}
-                  installContextCategory={fixedCategory}
-                  variant={emptyVariant}
-                />
-              )}
+            : isIntegrationCategorySearchEmpty
+              ? (
+                  <div className={cn('min-h-0 grow bg-components-panel-bg', contentFrameClassName)} />
+                )
+              : (
+                  <Empty
+                    canInstall={canInstall}
+                    contentInset={contentInset}
+                    onSwitchToMarketplace={onSwitchToMarketplace}
+                    installContextCategory={fixedCategory}
+                    variant={emptyVariant}
+                  />
+                )}
         </>
       )}
       <PluginDetailPanel

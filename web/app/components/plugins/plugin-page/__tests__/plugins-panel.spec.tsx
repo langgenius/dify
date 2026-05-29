@@ -275,6 +275,19 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('plugin-list')).toHaveTextContent('rag-extension')
   })
 
+  it('leaves the result area blank when a fixed integrations category search has no matches', () => {
+    mockState.filters.searchQuery = 'missing'
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin('trigger-plugin', 'Trigger Plugin', [], PluginCategoryEnum.trigger),
+      createPlugin('agent-plugin', 'Agent Plugin', [], PluginCategoryEnum.agent),
+    ])
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+
+    expect(screen.queryByTestId('plugin-list')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+  })
+
   it('filters the list and exposes the load-more action', () => {
     mockState.filters.searchQuery = 'alpha'
     mockPluginListWithLatestVersion.mockReturnValue([

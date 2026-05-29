@@ -393,12 +393,13 @@ describe('ModelProviderPage', () => {
     expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
   })
 
-  it('should show empty state if no configured providers match', () => {
+  it('should not show not-set-up empty state when search has no matches', () => {
     renderModelProviderPage({ searchText: 'non-existent' })
     act(() => {
       vi.advanceTimersByTime(600)
     })
-    expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.emptyProviderTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.toBeConfigured')).not.toBeInTheDocument()
   })
 
   it('should hide marketplace section when marketplace feature is disabled', () => {

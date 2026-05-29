@@ -1,5 +1,4 @@
 import { Flags } from '../../../framework/flags.js'
-import { resolveConfigDir } from '../../../store/dir.js'
 import { realStreams } from '../../../sys/io/streams'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runLogin } from './login.js'
@@ -31,7 +30,6 @@ export default class Login extends DifyCommand {
   async run(argv: string[]): Promise<void> {
     const { flags } = this.parse(Login, argv)
     await runLogin({
-      configDir: resolveConfigDir(),
       io: realStreams(),
       host: flags.host,
       noBrowser: flags['no-browser'],
