@@ -121,7 +121,7 @@ describe('PluginItem', () => {
           plugin={createPlugin({ icon: '' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
-          statusIcon={<span />}
+          statusIcon={<span data-testid="status-icon" />}
           statusText="status"
         />,
       )
@@ -129,6 +129,7 @@ describe('PluginItem', () => {
       expect(mockGetIconUrl).not.toHaveBeenCalled()
       expect(screen.queryByTestId('card-icon')).not.toBeInTheDocument()
       expect(container.querySelector('[data-testid="magic-box-icon"]')).toHaveClass('size-8', 'text-text-tertiary')
+      expect(screen.getByTestId('status-icon').parentElement).toHaveClass('absolute', '-bottom-0.5', '-right-0.5', 'z-10')
     })
   })
 

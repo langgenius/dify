@@ -1,7 +1,6 @@
 import type { FC, ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { cn } from '@langgenius/dify-ui/cn'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
 
@@ -40,11 +39,7 @@ const PluginItem: FC<PluginItemProps> = ({
             )
           // eslint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
           : <MagicBox className="size-8 text-text-tertiary" />}
-        <div className={cn(
-          'absolute z-10',
-          hasPluginIcon ? '-right-0.5 -bottom-0.5' : '-right-1 -bottom-1',
-        )}
-        >
+        <div className="absolute -right-0.5 -bottom-0.5 z-10">
           {statusIcon}
         </div>
       </div>
