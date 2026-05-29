@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import override
 from uuid import uuid4
 
 import pytest
@@ -14,6 +15,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_adapter import DeliveryMethodType
+from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
@@ -33,6 +35,14 @@ from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
+class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
+    """Concrete repository for tests where save() is not under test."""
+
+    @override
+    def save(self, execution: WorkflowExecution) -> None:
+        return None
+
+
 def _create_app_with_site(session: Session) -> tuple[App, Account]:
     tenant = Tenant(name="Test Tenant")
     account = Account(name="Tester", email=f"tester-{uuid4()}@example.com")
@@ -44,7 +54,7 @@ def _create_app_with_site(session: Session) -> tuple[App, Account]:
             tenant_id=tenant.id,
             account_id=account.id,
             current=True,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
         )
     )
 
@@ -203,9 +213,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
     )
     engine = db_session_with_containers.get_bind()
     assert isinstance(engine, Engine)
-    workflow_run_repo = DifyAPISQLAlchemyWorkflowRunRepository(
-        session_maker=sessionmaker(bind=engine, expire_on_commit=False)
-    )
+    workflow_run_repo = _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
     workflow_run_repo.create_workflow_pause(
         workflow_run_id=workflow_run.id,
         state_owner_user_id=account.id,
