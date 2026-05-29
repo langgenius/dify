@@ -105,7 +105,7 @@ describe('to-form-schema utilities', () => {
       expect(result[0]!.tooltip).toEqual({ en_US: 'Enter text', zh_Hans: '输入文本' })
     })
 
-    it('maps options with show_on = []', () => {
+    it('maps options with show_on = [] when not provided', () => {
       const params: ToolParameter[] = [
         {
           name: 'mode',
@@ -126,6 +126,48 @@ describe('to-form-schema utilities', () => {
       const result = toolParametersToFormSchemas(params)
       expect(result[0]!.options).toHaveLength(2)
       expect(result[0]!.options![0]!.show_on).toEqual([])
+      expect(result[0]!.options![1]!.show_on).toEqual([])
+    })
+
+    it('passes through show_on from plugin parameters', () => {
+      const params: ToolParameter[] = [
+        {
+          name: 'advanced_option',
+          label: { en_US: 'Advanced', zh_Hans: '高级' },
+          human_description: { en_US: 'Advanced option', zh_Hans: '高级选项' },
+          type: 'string',
+          form: 'form',
+          llm_description: '',
+          required: false,
+          multiple: false,
+          default: '',
+          show_on: [{ variable: 'mode', value: 'advanced' }],
+        },
+      ]
+      const result = toolParametersToFormSchemas(params)
+      expect(result[0]!.show_on).toEqual([{ variable: 'mode', value: 'advanced' }])
+    })
+
+    it('passes through show_on on options from plugin parameters', () => {
+      const params: ToolParameter[] = [
+        {
+          name: 'sub_mode',
+          label: { en_US: 'Sub Mode', zh_Hans: '子模式' },
+          human_description: { en_US: 'Sub mode', zh_Hans: '子模式' },
+          type: 'select',
+          form: 'form',
+          llm_description: '',
+          required: false,
+          multiple: false,
+          default: '',
+          options: [
+            { label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a', show_on: [{ variable: 'mode', value: 'advanced' }] },
+            { label: { en_US: 'Option B', zh_Hans: '选项B' }, value: 'b' },
+          ],
+        },
+      ]
+      const result = toolParametersToFormSchemas(params)
+      expect(result[0]!.options![0]!.show_on).toEqual([{ variable: 'mode', value: 'advanced' }])
       expect(result[0]!.options![1]!.show_on).toEqual([])
     })
 
@@ -189,7 +231,7 @@ describe('to-form-schema utilities', () => {
       expect(result[0]!.tooltip).toBeUndefined()
     })
 
-    it('maps credential options with show_on = []', () => {
+    it('maps credential options with show_on = [] when not provided', () => {
       const creds: ToolCredential[] = [
         {
           name: 'auth_method',
@@ -208,6 +250,44 @@ describe('to-form-schema utilities', () => {
       const result = toolCredentialToFormSchemas(creds)
       expect(result[0]!.options).toHaveLength(2)
       result[0]!.options!.forEach(opt => expect(opt.show_on).toEqual([]))
+    })
+
+    it('passes through show_on from plugin credentials', () => {
+      const creds: ToolCredential[] = [
+        {
+          name: 'api_secret',
+          label: { en_US: 'API Secret', zh_Hans: 'API 密钥' },
+          help: null,
+          placeholder: { en_US: '', zh_Hans: '' },
+          type: 'secret-input',
+          required: true,
+          default: '',
+          show_on: [{ variable: 'auth_method', value: 'api_key' }],
+        },
+      ]
+      const result = toolCredentialToFormSchemas(creds)
+      expect(result[0]!.show_on).toEqual([{ variable: 'auth_method', value: 'api_key' }])
+    })
+
+    it('passes through show_on on credential options', () => {
+      const creds: ToolCredential[] = [
+        {
+          name: 'region',
+          label: { en_US: 'Region', zh_Hans: '区域' },
+          help: null,
+          placeholder: { en_US: '', zh_Hans: '' },
+          type: 'select',
+          required: true,
+          default: 'us',
+          options: [
+            { label: { en_US: 'US', zh_Hans: '美国' }, value: 'us', show_on: [{ variable: 'provider', value: 'aws' }] },
+            { label: { en_US: 'EU', zh_Hans: '欧洲' }, value: 'eu' },
+          ],
+        },
+      ]
+      const result = toolCredentialToFormSchemas(creds)
+      expect(result[0]!.options![0]!.show_on).toEqual([{ variable: 'provider', value: 'aws' }])
+      expect(result[0]!.options![1]!.show_on).toEqual([])
     })
   })
 

@@ -92,9 +92,11 @@ export type ToolParameter = {
   required: boolean
   multiple: boolean
   default: string
+  show_on?: { variable: string, value: string }[]
   options?: {
     label: LocalizedText
     value: string
+    show_on?: { variable: string, value: string }[]
   }[]
   min?: number
   max?: number
@@ -145,9 +147,11 @@ export type ToolCredential = {
   type: string
   required: boolean
   default: string
+  show_on?: { variable: string, value: string }[]
   options?: {
     label: LocalizedText
     value: string
+    show_on?: { variable: string, value: string }[]
   }[]
 }
 

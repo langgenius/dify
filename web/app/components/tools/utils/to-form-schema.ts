@@ -102,11 +102,11 @@ export const toolParametersToFormSchemas = (parameters: ToolParameter[]): ToolFo
       variable: parameter.name,
       type: toType(parameter.type),
       _type: parameter.type,
-      show_on: [],
+      show_on: parameter.show_on ?? [],
       options: parameter.options?.map((option) => {
         return {
           ...option,
-          show_on: [],
+          show_on: option.show_on ?? [],
         }
       }),
       tooltip: parameter.human_description,
@@ -126,11 +126,11 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]): ToolC
       type: toType(parameter.type),
       label: parameter.label,
       tooltip: parameter.help ?? undefined,
-      show_on: [],
+      show_on: parameter.show_on ?? [],
       options: parameter.options?.map((option) => {
         return {
           ...option,
-          show_on: [],
+          show_on: option.show_on ?? [],
         }
       }),
     }
