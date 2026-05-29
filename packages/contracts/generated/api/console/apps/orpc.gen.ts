@@ -352,6 +352,7 @@ import {
   zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunBody,
   zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunPath,
   zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse,
+  zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody,
   zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath,
   zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse,
   zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterBody,
@@ -3516,7 +3517,12 @@ export const post47 = oc
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath }))
+  .input(
+    z.object({
+      body: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody,
+      params: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath,
+    }),
+  )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
 
 export const impact = {
