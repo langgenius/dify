@@ -117,7 +117,7 @@ export default function AppSelector() {
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-  const canViewMembers = hasPermission(workspacePermissionKeys, ['workspace.member.view', 'workspace.member.manage'])
+  const canViewMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {

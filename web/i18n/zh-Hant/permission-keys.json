@@ -46,7 +46,5 @@
   "plugin.manage": "管理插件",
   "tool.manage": "管理工具",
   "workspace.member.manage": "管理成員",
-  "workspace.member.view": "查看成員列表",
-  "workspace.role.manage": "管理角色權限與資源訪問規則",
-  "workspace.role.view": "查看角色列表"
+  "workspace.role.manage": "管理角色權限與資源訪問規則"
 }

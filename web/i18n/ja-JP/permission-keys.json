@@ -46,7 +46,5 @@
   "plugin.manage": "プラグインを管理",
   "tool.manage": "ツールを管理",
   "workspace.member.manage": "メンバーを管理",
-  "workspace.member.view": "メンバー一覧を表示",
-  "workspace.role.manage": "ロール権限とリソースアクセスルールを管理",
-  "workspace.role.view": "ロール一覧を表示"
+  "workspace.role.manage": "ロール権限とリソースアクセスルールを管理"
 }

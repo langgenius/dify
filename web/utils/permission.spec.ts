@@ -104,11 +104,11 @@ describe('permission', () => {
     const permissionKey = 'workspace.member.manage'
 
     it('returns true when the permission key exists', () => {
-      expect(hasPermission(['workspace.member.view', permissionKey], permissionKey)).toBe(true)
+      expect(hasPermission(['workspace.role.manage', permissionKey], permissionKey)).toBe(true)
     })
 
     it('returns false when the permission key does not exist', () => {
-      expect(hasPermission(['workspace.member.view'], permissionKey)).toBe(false)
+      expect(hasPermission(['workspace.role.manage'], permissionKey)).toBe(false)
     })
   })
 

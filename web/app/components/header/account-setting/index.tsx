@@ -58,8 +58,8 @@ export default function AccountSetting({
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const containerRef = useRef<HTMLDivElement>(null)
-  const canViewMembers = hasPermission(workspacePermissionKeys, ['workspace.member.view', 'workspace.member.manage'])
-  const canViewRoles = hasPermission(workspacePermissionKeys, ['workspace.role.view', 'workspace.role.manage'])
+  const canViewMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+  const canViewRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
   const workplaceGroupItems: GroupItem[] = (() => {
     const items: GroupItem[] = [

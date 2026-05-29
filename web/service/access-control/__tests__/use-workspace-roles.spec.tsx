@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { del, get, post, put } from '@/service/base'
 import {
   useCopyWorkspaceRole,
   useCreateWorkspaceRole,
@@ -10,12 +9,14 @@ import {
   useWorkspaceRoleList,
 } from '../use-workspace-roles'
 
-vi.mock('@/service/base', () => ({
+const mockServiceBase = vi.hoisted(() => ({
   del: vi.fn(),
   get: vi.fn(),
   post: vi.fn(),
   put: vi.fn(),
 }))
+
+vi.mock('../../base', () => mockServiceBase)
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -43,10 +44,10 @@ const roleListResponse = {
 describe('use-workspace-roles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(get).mockResolvedValue(roleListResponse)
-    vi.mocked(post).mockResolvedValue({})
-    vi.mocked(put).mockResolvedValue({})
-    vi.mocked(del).mockResolvedValue({})
+    mockServiceBase.get.mockResolvedValue(roleListResponse)
+    mockServiceBase.post.mockResolvedValue({})
+    mockServiceBase.put.mockResolvedValue({})
+    mockServiceBase.del.mockResolvedValue({})
   })
 
   // Role list pagination starts from the provided page and passes query params through.
@@ -55,7 +56,7 @@ describe('use-workspace-roles', () => {
       renderHook(() => useWorkspaceRoleList({ page: 2, limit: 20 }), { wrapper: createWrapper() })
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/roles', {
+        expect(mockServiceBase.get).toHaveBeenCalledWith('/workspaces/current/rbac/roles', {
           params: {
             limit: 20,
             page: 2,
@@ -74,15 +75,15 @@ describe('use-workspace-roles', () => {
         await result.current.mutateAsync({
           name: 'Support',
           description: 'Support role',
-          permission_keys: ['workspace.member.view'],
+          permission_keys: ['workspace.member.manage'],
         })
       })
 
-      expect(post).toHaveBeenCalledWith('/workspaces/current/rbac/roles', {
+      expect(mockServiceBase.post).toHaveBeenCalledWith('/workspaces/current/rbac/roles', {
         body: {
           name: 'Support',
           description: 'Support role',
-          permission_keys: ['workspace.member.view'],
+          permission_keys: ['workspace.member.manage'],
         },
       })
     })
@@ -99,7 +100,7 @@ describe('use-workspace-roles', () => {
         })
       })
 
-      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-1', {
+      expect(mockServiceBase.put).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-1', {
         body: {
           id: 'role-1',
           name: 'Support',
@@ -118,8 +119,8 @@ describe('use-workspace-roles', () => {
         await copyHook.result.current.mutateAsync('role-2')
       })
 
-      expect(del).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-1')
-      expect(post).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-2/copy')
+      expect(mockServiceBase.del).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-1')
+      expect(mockServiceBase.post).toHaveBeenCalledWith('/workspaces/current/rbac/roles/role-2/copy')
     })
   })
 })

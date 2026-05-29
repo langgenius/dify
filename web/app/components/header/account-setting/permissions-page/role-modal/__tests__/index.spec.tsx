@@ -19,11 +19,6 @@ const createPermissionGroup = (overrides: Partial<PermissionGroup> = {}): Permis
   description: '',
   permissions: [
     {
-      key: 'workspace.member.view',
-      name: 'View members',
-      description: '',
-    },
-    {
       key: 'workspace.member.manage',
       name: 'Manage members',
       description: '',
@@ -40,7 +35,7 @@ const createRole = (overrides: Partial<Role> = {}): Role => ({
   name: 'Operator',
   description: 'Can operate workspace',
   is_builtin: false,
-  permission_keys: ['workspace.member.view'],
+  permission_keys: ['workspace.member.manage'],
   role_tag: '',
   ...overrides,
 })
@@ -68,7 +63,7 @@ describe('RoleModal', () => {
       expect(screen.getByLabelText('permission.role.modal.nameLabel')).toHaveValue('Operator')
       expect(screen.getByLabelText('permission.role.modal.descriptionLabel')).toHaveValue('Can operate workspace')
       expect(screen.getByRole('button', { name: /Workspace management/ })).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByText(/workspace\.member\.view/)).toBeInTheDocument()
+      expect(screen.getByText(/workspace\.member\.manage/)).toBeInTheDocument()
     })
 
     it('should disable confirm action when role name is empty', () => {
@@ -125,7 +120,7 @@ describe('RoleModal', () => {
           mode="edit"
           role={createRole({
             description: 'Original description',
-            permission_keys: ['workspace.member.view'],
+            permission_keys: ['workspace.member.manage'],
           })}
           onClose={vi.fn()}
           onSubmit={handleSubmit}
@@ -141,7 +136,7 @@ describe('RoleModal', () => {
       expect(handleSubmit).toHaveBeenCalledWith({
         name: 'Operator',
         description: 'Updated role description',
-        permissionKeys: ['workspace.member.view'],
+        permissionKeys: ['workspace.member.manage'],
       })
     })
   })

@@ -46,7 +46,5 @@
   "plugin.manage": "Manage plugins",
   "tool.manage": "Manage tools",
   "workspace.member.manage": "Manage members",
-  "workspace.member.view": "View members",
-  "workspace.role.manage": "Manage role permissions and resource access rules",
-  "workspace.role.view": "View roles"
+  "workspace.role.manage": "Manage role permissions and resource access rules"
 }
