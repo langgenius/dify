@@ -155,11 +155,10 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      const loadingWrapper = document.querySelector('[style*="min-height"]')
-      expect(loadingWrapper).toBeInTheDocument()
+      expect(screen.getByRole('status', { name: 'loading' })).toBeInTheDocument()
     })
 
-    it('shows loading indicator with correct minimum height', () => {
+    it('matches the loaded greeting card shell while loading', () => {
       mockUseGetBanners.mockReturnValue({
         data: null,
         isLoading: true,
@@ -168,39 +167,42 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      const loadingWrapper = document.querySelector('[style*="min-height: 168px"]')
-      expect(loadingWrapper).toBeInTheDocument()
+      const loadingWrapper = screen.getByRole('status', { name: 'loading' })
+      expect(loadingWrapper).toHaveClass('rounded-[24px]', 'bg-background-default-dodge')
+      expect(loadingWrapper.querySelector('.px-8.pt-8.pb-8')).toBeInTheDocument()
     })
   })
 
   describe('error state', () => {
-    it('returns null when isError is true', () => {
+    it('renders the greeting shell without slider when isError is true', () => {
       mockUseGetBanners.mockReturnValue({
         data: null,
         isLoading: false,
         isError: true,
       })
 
-      const { container } = render(<Banner />)
+      render(<Banner />)
 
-      expect(container.firstChild).toBeNull()
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+      expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
     })
   })
 
   describe('empty state', () => {
-    it('returns null when banners array is empty', () => {
+    it('renders the greeting shell without slider when banners array is empty', () => {
       mockUseGetBanners.mockReturnValue({
         data: [],
         isLoading: false,
         isError: false,
       })
 
-      const { container } = render(<Banner />)
+      render(<Banner />)
 
-      expect(container.firstChild).toBeNull()
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+      expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
     })
 
-    it('returns null when all banners are disabled', () => {
+    it('renders the greeting shell without slider when all banners are disabled', () => {
       mockUseGetBanners.mockReturnValue({
         data: [
           createMockBanner('1', 'disabled'),
@@ -210,21 +212,23 @@ describe('Banner', () => {
         isError: false,
       })
 
-      const { container } = render(<Banner />)
+      render(<Banner />)
 
-      expect(container.firstChild).toBeNull()
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+      expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
     })
 
-    it('returns null when data is undefined', () => {
+    it('renders the greeting shell without slider when data is undefined', () => {
       mockUseGetBanners.mockReturnValue({
         data: undefined,
         isLoading: false,
         isError: false,
       })
 
-      const { container } = render(<Banner />)
+      render(<Banner />)
 
-      expect(container.firstChild).toBeNull()
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+      expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
     })
   })
 
