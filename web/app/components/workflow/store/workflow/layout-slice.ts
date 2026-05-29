@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import { getLocalStorageBoolean, getLocalStorageNumber } from '@/utils/local-storage'
 
 export type LayoutSliceShape = {
   workflowCanvasWidth?: number
@@ -34,10 +35,10 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   rightPanelWidth: undefined,
   setRightPanelWidth: width => set(state =>
     state.rightPanelWidth === width ? state : ({ rightPanelWidth: width })),
-  nodePanelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 400,
+  nodePanelWidth: getLocalStorageNumber('workflow-node-panel-width', 400),
   setNodePanelWidth: width => set(state =>
     state.nodePanelWidth === width ? state : ({ nodePanelWidth: width })),
-  previewPanelWidth: localStorage.getItem('debug-and-preview-panel-width') ? Number.parseFloat(localStorage.getItem('debug-and-preview-panel-width')!) : 400,
+  previewPanelWidth: getLocalStorageNumber('debug-and-preview-panel-width', 400),
   setPreviewPanelWidth: width => set(state =>
     state.previewPanelWidth === width ? state : ({ previewPanelWidth: width })),
   otherPanelWidth: 400,
@@ -49,10 +50,10 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   bottomPanelHeight: 324,
   setBottomPanelHeight: height => set(state =>
     state.bottomPanelHeight === height ? state : ({ bottomPanelHeight: height })),
-  variableInspectPanelHeight: localStorage.getItem('workflow-variable-inpsect-panel-height') ? Number.parseFloat(localStorage.getItem('workflow-variable-inpsect-panel-height')!) : 320,
+  variableInspectPanelHeight: getLocalStorageNumber('workflow-variable-inpsect-panel-height', 320),
   setVariableInspectPanelHeight: height => set(state =>
     state.variableInspectPanelHeight === height ? state : ({ variableInspectPanelHeight: height })),
-  maximizeCanvas: localStorage.getItem('workflow-canvas-maximize') === 'true',
+  maximizeCanvas: getLocalStorageBoolean('workflow-canvas-maximize'),
   setMaximizeCanvas: maximize => set(state =>
     state.maximizeCanvas === maximize ? state : ({ maximizeCanvas: maximize })),
 })
