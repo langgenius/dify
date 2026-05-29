@@ -97,8 +97,6 @@ services:
         value: /app/api/storage
     healthCheckPath: /health
     initialDeployHook: psql $DATABASE_URL -c 'CREATE EXTENSION IF NOT EXISTS vector;'
-    # One-time auth reset: remove preDeployCommand after setup shows not_started.
-    preDeployCommand: /app/api/.venv/bin/python -c "import os,sys,psycopg2; c=psycopg2.connect(host=os.environ['DB_HOST'],port=os.environ['DB_PORT'],dbname=os.environ['DB_DATABASE'],user=os.environ['DB_USERNAME'],password=os.environ['DB_PASSWORD']); c.autocommit=True; cur=c.cursor(); cur.execute('SELECT COUNT(*) FROM dify_setups'); b=cur.fetchone()[0]; cur.execute('TRUNCATE tenants CASCADE'); cur.execute('TRUNCATE dify_setups'); cur.execute('SELECT COUNT(*) FROM dify_setups'); a=cur.fetchone()[0]; c.close(); sys.exit(1 if a else 0)"
     disk:
       name: dify-storage
       mountPath: /app/api/storage
