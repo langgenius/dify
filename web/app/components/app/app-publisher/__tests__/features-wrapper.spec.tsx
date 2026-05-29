@@ -85,7 +85,6 @@ describe('FeaturesWrappedAppPublisher', () => {
         allowed_file_upload_methods: ['remote_url'],
         number_limits: 5,
       },
-      resetAppConfig: vi.fn(),
     },
   }
 
@@ -110,9 +109,11 @@ describe('FeaturesWrappedAppPublisher', () => {
   })
 
   it('should restore published features after confirmation', async () => {
+    const resetAppConfig = vi.fn()
     render(
       <FeaturesWrappedAppPublisher
         publishedConfig={publishedConfig as any}
+        resetAppConfig={resetAppConfig}
       />,
     )
 
@@ -120,7 +121,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
 
     await waitFor(() => {
-      expect(publishedConfig.modelConfig.resetAppConfig).toHaveBeenCalledTimes(1)
+      expect(resetAppConfig).toHaveBeenCalledTimes(1)
       expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
         moreLikeThis: { enabled: true },
         opening: {
@@ -139,9 +140,11 @@ describe('FeaturesWrappedAppPublisher', () => {
   })
 
   it('should close restore confirmation without restoring when cancelled', async () => {
+    const resetAppConfig = vi.fn()
     render(
       <FeaturesWrappedAppPublisher
         publishedConfig={publishedConfig as any}
+        resetAppConfig={resetAppConfig}
       />,
     )
 
@@ -153,7 +156,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
-    expect(publishedConfig.modelConfig.resetAppConfig).not.toHaveBeenCalled()
+    expect(resetAppConfig).not.toHaveBeenCalled()
     expect(mockSetFeatures).not.toHaveBeenCalled()
   })
 })
