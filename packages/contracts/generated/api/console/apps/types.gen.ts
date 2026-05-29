@@ -80,6 +80,7 @@ export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
   app_model_config?: ModelConfig
+  bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
   deleted_tools?: Array<DeletedTool>

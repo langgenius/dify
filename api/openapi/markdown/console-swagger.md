@@ -11345,6 +11345,7 @@ Enum class for api provider schema type.
 | access_mode | string |  | No |
 | api_base_url | string |  | No |
 | app_model_config | [ModelConfig](#modelconfig) |  | No |
+| bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |

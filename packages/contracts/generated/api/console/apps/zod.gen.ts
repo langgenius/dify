@@ -1415,6 +1415,7 @@ export const zAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
   api_base_url: z.string().nullish(),
   app_model_config: zModelConfig.optional(),
+  bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   deleted_tools: z.array(zDeletedTool).optional(),
