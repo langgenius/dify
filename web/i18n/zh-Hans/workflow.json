@@ -1239,5 +1239,7 @@
   "workflowGenerator.overwriteMessage": "应用此工作流将覆盖当前草稿，操作不可撤销。",
   "workflowGenerator.overwriteTitle": "覆盖当前草稿？",
   "workflowGenerator.placeholder": "在左侧填写指令，点击「生成」预览工作流图。",
+  "workflowGenerator.studioApply": "应用",
+  "workflowGenerator.studioButton": "生成",
   "workflowGenerator.title": "生成 {{mode}}"
 }

@@ -1239,5 +1239,7 @@
   "workflowGenerator.overwriteMessage": "Applying this workflow will replace the current draft graph. This cannot be undone.",
   "workflowGenerator.overwriteTitle": "Overwrite the current draft?",
   "workflowGenerator.placeholder": "Write an instruction on the left, then click Generate to preview the workflow graph.",
+  "workflowGenerator.studioApply": "Apply",
+  "workflowGenerator.studioButton": "Generate",
   "workflowGenerator.title": "Generate {{mode}}"
 }
