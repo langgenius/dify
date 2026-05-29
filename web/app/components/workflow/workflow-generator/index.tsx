@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import IdeaOutput from '@/app/components/app/configuration/config/automatic/idea-output'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
-import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -32,17 +31,11 @@ import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp } from './apply'
+import GenerationPhases from './generation-phases'
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
 const STORAGE_MODEL_KEY = 'workflow-gen-model'
-
-const renderLoading = (label: string) => (
-  <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
-    <Loading />
-    <div className="text-[13px] text-text-tertiary">{label}</div>
-  </div>
-)
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -348,7 +341,7 @@ const WorkflowGeneratorModal: React.FC = () => {
               )
             : null}
 
-          {isLoading && renderLoading(t('workflowGenerator.loading'))}
+          {isLoading && <GenerationPhases />}
 
           {!isLoading && !current?.graph?.nodes?.length && renderPlaceholder(t('workflowGenerator.placeholder'))}
         </div>
