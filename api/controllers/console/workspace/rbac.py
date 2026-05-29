@@ -74,15 +74,18 @@ def _dump(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json")
 
 
-def _account_names_by_ids(account_ids: list[str]) -> dict[str, str]:
+def _account_names_by_ids(account_ids: list[str]) -> dict[str, dict[str, str]]:
     ids = sorted({account_id.strip() for account_id in account_ids if account_id and account_id.strip()})
     if not ids:
         return {}
 
     with session_factory.create_session() as session:
-        rows = session.execute(select(Account.id, Account.name).where(Account.id.in_(ids))).all()
+        rows = session.execute(select(Account.id, Account.name, Account.avatar).where(Account.id.in_(ids))).all()
 
-    return {account_id: name or "" for account_id, name in rows}
+    return {account_id: {
+        "name": name,
+        "avatar": avatar
+   } or "" for account_id, name, avatar in rows}
 
 
 def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> None:
@@ -101,7 +104,8 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
         for account in item.accounts:
             account_id = str(account.get("account_id") or "").strip()
             if account_id and not account.get("account_name"):
-                account["account_name"] = account_names.get(account_id, "")
+                account["account_name"] = account_names.get(account_id, {}).get("name", "")
+                account["avatar"] = account_names.get(account_id, {}).get("avatar", "")
 
 
 class _PaginationQuery(BaseModel):
