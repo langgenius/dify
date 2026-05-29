@@ -1,0 +1,75 @@
+import type { ReactNode } from 'react'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { getQueryClientServer } from '@/context/query-client-server'
+import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { headers } from '@/next/headers'
+import { redirect } from '@/next/navigation'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { basePath } from '@/utils/var'
+
+const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
+const CURRENT_SEARCH_HEADER = 'x-dify-search'
+
+type ConsoleErrorPayload = {
+  code?: string
+}
+
+const isConsoleErrorPayload = (value: unknown): value is ConsoleErrorPayload =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPayload | null> => {
+  try {
+    const payload: unknown = await error.clone().json()
+    return isConsoleErrorPayload(payload) ? payload : null
+  }
+  catch {
+    return null
+  }
+}
+
+const getCurrentPath = async () => {
+  const requestHeaders = await headers()
+  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/apps`
+  const search = requestHeaders.get(CURRENT_SEARCH_HEADER) || ''
+  return `${pathname}${search}`
+}
+
+const redirectToSignin = async () => {
+  const currentPath = await getCurrentPath()
+  redirect(`${basePath}/signin?redirect_url=${encodeURIComponent(currentPath)}`)
+}
+
+const handleProfileError = async (error: unknown) => {
+  if (!(error instanceof Response))
+    throw error
+
+  const errorData = await parseConsoleErrorPayload(error)
+  if (errorData?.code === 'not_setup')
+    redirect(`${basePath}/install`)
+  if (errorData?.code === 'not_init_validated')
+    redirect(`${basePath}/init`)
+  if (error.status === 401)
+    await redirectToSignin()
+
+  throw error
+}
+
+export async function CommonLayoutHydrationBoundary({ children }: { children: ReactNode }) {
+  const queryClient = getQueryClientServer()
+
+  try {
+    await Promise.all([
+      queryClient.fetchQuery(serverUserProfileQueryOptions()),
+      queryClient.prefetchQuery(systemFeaturesQueryOptions()),
+    ])
+  }
+  catch (error) {
+    await handleProfileError(error)
+  }
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      {children}
+    </HydrationBoundary>
+  )
+}

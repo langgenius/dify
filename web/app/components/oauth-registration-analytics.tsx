@@ -1,23 +1,35 @@
 'use client'
 
 import Cookies from 'js-cookie'
-import { parseAsBoolean, useQueryState } from 'nuqs'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
 import { trackEvent } from './base/amplitude'
 
+const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const removeOAuthNewUserParam = () => {
+  const url = new URL(window.location.href)
+  url.searchParams.delete(OAUTH_NEW_USER_PARAM)
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
 export function OAuthRegistrationAnalytics() {
-  const [oauthNewUser, setOAuthNewUser] = useQueryState(
-    'oauth_new_user',
-    parseAsBoolean.withOptions({ history: 'replace' }),
-  )
+  const searchParams = useSearchParams()
+  const oauthNewUserParam = searchParams.get(OAUTH_NEW_USER_PARAM)
+  const handledParamRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (oauthNewUser === null)
+    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam)
       return
 
+    handledParamRef.current = oauthNewUserParam
+    const oauthNewUser = oauthNewUserParam === 'true'
     if (!oauthNewUser) {
-      void setOAuthNewUser(null)
+      removeOAuthNewUserParam()
       return
     }
 
@@ -26,8 +38,8 @@ export function OAuthRegistrationAnalytics() {
     if (utmInfoStr) {
       try {
         const parsed: unknown = JSON.parse(utmInfoStr)
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
-          utmInfo = parsed as Record<string, unknown>
+        if (isRecord(parsed))
+          utmInfo = parsed
       }
       catch (e) {
         console.error('Failed to parse utm_info cookie:', e)
@@ -47,8 +59,8 @@ export function OAuthRegistrationAnalytics() {
     })
 
     Cookies.remove('utm_info')
-    void setOAuthNewUser(null)
-  }, [oauthNewUser, setOAuthNewUser])
+    removeOAuthNewUserParam()
+  }, [oauthNewUserParam])
 
   return null
 }
