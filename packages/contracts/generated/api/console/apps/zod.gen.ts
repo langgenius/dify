@@ -181,7 +181,7 @@ export const zSimpleResultResponse = z.object({
 export const zCompletionMessagePayload = z.object({
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()),
+  model_config: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
   retriever_from: z.string().optional().default('dev'),

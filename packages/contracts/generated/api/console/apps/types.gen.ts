@@ -324,7 +324,7 @@ export type CompletionMessagePayload = {
   inputs: {
     [key: string]: unknown
   }
-  model_config: {
+  model_config?: {
     [key: string]: unknown
   }
   query?: string
