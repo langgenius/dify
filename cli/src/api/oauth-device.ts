@@ -40,7 +40,7 @@ export type PollSuccess = {
   subject_type?: string
   subject_email?: string
   subject_issuer?: string
-  account?: PollAccount
+  account?: PollAccount | null
   workspaces?: readonly PollWorkspace[]
   default_workspace_id?: string
   token_id?: string

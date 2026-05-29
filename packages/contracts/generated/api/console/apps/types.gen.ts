@@ -167,6 +167,14 @@ export type AdvancedChatWorkflowRunPayload = {
   query?: string
 }
 
+export type AgentAppComposerResponse = {
+  active_config_snapshot: AgentConfigSnapshotSummaryResponse
+  agent: AgentComposerAgentResponse
+  agent_soul: AgentSoulConfig
+  save_options: Array<ComposerSaveStrategy>
+  variant: string
+}
+
 export type ComposerSavePayload = {
   agent_soul?: AgentSoulConfig
   binding?: ComposerBindingPayload
@@ -178,6 +186,18 @@ export type ComposerSavePayload = {
   soul_lock?: ComposerSoulLockPayload
   variant: ComposerVariant
   version_note?: string | null
+}
+
+export type AgentComposerCandidatesResponse = {
+  allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
+  allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
+  capabilities?: ComposerCandidateCapabilities
+  variant: ComposerVariant
+}
+
+export type AgentComposerValidateResponse = {
+  errors?: Array<string>
+  result: string
 }
 
 export type AnnotationReplyPayload = {
@@ -736,6 +756,28 @@ export type HumanInputDeliveryTestPayload = {
   }
 }
 
+export type WorkflowAgentComposerResponse = {
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse
+  agent?: AgentComposerAgentResponse
+  agent_soul: AgentSoulConfig
+  app_id?: string | null
+  binding?: AgentComposerBindingResponse
+  effective_declared_outputs?: Array<DeclaredOutputConfig>
+  impact_summary?: AgentComposerImpactResponse
+  node_id?: string | null
+  node_job: WorkflowNodeJobConfig
+  save_options: Array<ComposerSaveStrategy>
+  soul_lock: AgentComposerSoulLockResponse
+  variant: string
+  workflow_id?: string | null
+}
+
+export type AgentComposerImpactResponse = {
+  bindings?: Array<AgentComposerImpactBindingResponse>
+  current_snapshot_id?: string | null
+  workflow_node_count: number
+}
+
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccount
@@ -961,6 +1003,25 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: string | null
+  created_by?: string | null
+  id: string
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentComposerAgentResponse = {
+  active_config_snapshot_id?: string | null
+  description: string
+  id: string
+  name: string
+  scope: AgentScope
+  status: AgentStatus
+}
+
 export type AgentSoulConfig = {
   app_features?: {
     [key: string]: unknown
@@ -980,6 +1041,13 @@ export type AgentSoulConfig = {
   skills_files?: AgentSoulSkillsFilesConfig
   tools?: AgentSoulToolsConfig
 }
+
+export type ComposerSaveStrategy
+  = | 'node_job_only'
+    | 'save_as_new_agent'
+    | 'save_as_new_version'
+    | 'save_to_current_version'
+    | 'save_to_roster'
 
 export type ComposerBindingPayload = {
   agent_id?: string | null
@@ -1003,19 +1071,44 @@ export type WorkflowNodeJobConfig = {
   workflow_prompt?: string
 }
 
-export type ComposerSaveStrategy
-  = | 'node_job_only'
-    | 'save_as_new_agent'
-    | 'save_as_new_version'
-    | 'save_to_current_version'
-    | 'save_to_roster'
-
 export type ComposerSoulLockPayload = {
   locked?: boolean
   unlocked_from_version_id?: string | null
 }
 
 export type ComposerVariant = 'agent_app' | 'workflow'
+
+export type AgentComposerNodeJobCandidatesResponse = {
+  declare_output_types?: Array<DeclaredOutputType>
+  human_contacts?: Array<{
+    [key: string]: unknown
+  }>
+  previous_node_outputs?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type AgentComposerSoulCandidatesResponse = {
+  cli_tools?: Array<{
+    [key: string]: unknown
+  }>
+  dify_tools?: Array<{
+    [key: string]: unknown
+  }>
+  human_contacts?: Array<{
+    [key: string]: unknown
+  }>
+  knowledge_datasets?: Array<{
+    [key: string]: unknown
+  }>
+  skills_files?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type ComposerCandidateCapabilities = {
+  human_roster_available?: boolean
+}
 
 export type AnnotationHitHistory = {
   annotation_content?: string | null
@@ -1305,6 +1398,39 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
+export type AgentComposerBindingResponse = {
+  agent_id?: string | null
+  binding_type: WorkflowAgentBindingType
+  current_snapshot_id?: string | null
+  id: string
+  node_id: string
+  workflow_id: string
+}
+
+export type DeclaredOutputConfig = {
+  array_item?: DeclaredArrayItem
+  check?: DeclaredOutputCheckConfig
+  description?: string | null
+  failure_strategy?: DeclaredOutputFailureStrategy
+  file?: DeclaredOutputFileConfig
+  id?: string | null
+  name: string
+  required?: boolean
+  type: DeclaredOutputType
+}
+
+export type AgentComposerSoulLockResponse = {
+  can_unlock?: boolean
+  locked: boolean
+  reason?: string | null
+}
+
+export type AgentComposerImpactBindingResponse = {
+  app_id: string
+  node_id: string
+  workflow_id: string
+}
+
 export type WorkflowDraftVariableWithoutValue = {
   description?: string
   edited?: boolean
@@ -1352,6 +1478,10 @@ export type WorkflowOnlineUser = {
   user_id: string
   username: string
 }
+
+export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentStatus = 'active' | 'archived'
 
 export type AppVariableConfig = {
   default?: unknown
@@ -1433,19 +1563,9 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
-export type DeclaredOutputConfig = {
-  array_item?: DeclaredArrayItem
-  check?: DeclaredOutputCheckConfig
-  description?: string | null
-  failure_strategy?: DeclaredOutputFailureStrategy
-  file?: DeclaredOutputFileConfig
-  id?: string | null
-  name: string
-  required?: boolean
-  type: DeclaredOutputType
-}
-
 export type WorkflowNodeJobMode = 'let_agent_figure_it_out' | 'tell_agent_what_to_do'
+
+export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type SimpleModelConfig = {
   model_dict?: JsonValue
@@ -1515,29 +1635,7 @@ export type WorkflowRunForArchivedLogResponse = {
   triggered_from?: string | null
 }
 
-export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
-
-export type AgentSoulModelCredentialRef = {
-  id?: string | null
-  provider?: string | null
-  type: string
-}
-
-export type AgentSoulDifyToolConfig = {
-  credential_ref?: AgentSoulDifyToolCredentialRef
-  credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
-  description?: string | null
-  enabled?: boolean
-  name?: string | null
-  plugin_id?: string | null
-  provider?: string | null
-  provider_id?: string | null
-  provider_type?: string
-  runtime_parameters?: {
-    [key: string]: unknown
-  }
-  tool_name: string
-}
+export type WorkflowAgentBindingType = 'inline_agent' | 'roster_agent'
 
 export type DeclaredArrayItem = {
   description?: string | null
@@ -1566,7 +1664,29 @@ export type DeclaredOutputFileConfig = {
   mime_types?: Array<string>
 }
 
-export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
+
+export type AgentSoulDifyToolConfig = {
+  credential_ref?: AgentSoulDifyToolCredentialRef
+  credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  plugin_id?: string | null
+  provider?: string | null
+  provider_id?: string | null
+  provider_type?: string
+  runtime_parameters?: {
+    [key: string]: unknown
+  }
+  tool_name: string
+}
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -1576,18 +1696,18 @@ export type UserActionConfig = {
 
 export type FormInputConfig = unknown
 
-export type AgentSoulDifyToolCredentialRef = {
-  id?: string | null
-  provider?: string | null
-  type?: 'provider' | 'tool'
-}
-
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 
 export type DeclaredOutputRetryConfig = {
   enabled?: boolean
   max_retries?: number
   retry_interval_ms?: number
+}
+
+export type AgentSoulDifyToolCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type?: 'provider' | 'tool'
 }
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
@@ -2062,9 +2182,7 @@ export type GetAppsByAppIdAgentComposerData = {
 }
 
 export type GetAppsByAppIdAgentComposerResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentAppComposerResponse
 }
 
 export type GetAppsByAppIdAgentComposerResponse
@@ -2080,9 +2198,7 @@ export type PutAppsByAppIdAgentComposerData = {
 }
 
 export type PutAppsByAppIdAgentComposerResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentAppComposerResponse
 }
 
 export type PutAppsByAppIdAgentComposerResponse
@@ -2098,9 +2214,7 @@ export type GetAppsByAppIdAgentComposerCandidatesData = {
 }
 
 export type GetAppsByAppIdAgentComposerCandidatesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentComposerCandidatesResponse
 }
 
 export type GetAppsByAppIdAgentComposerCandidatesResponse
@@ -2116,9 +2230,7 @@ export type PostAppsByAppIdAgentComposerValidateData = {
 }
 
 export type PostAppsByAppIdAgentComposerValidateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentComposerValidateResponse
 }
 
 export type PostAppsByAppIdAgentComposerValidateResponse
@@ -4515,9 +4627,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowAgentComposerResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
@@ -4534,9 +4644,7 @@ export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowAgentComposerResponse
 }
 
 export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
@@ -4553,16 +4661,14 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesData
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentComposerCandidatesResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
   = GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
-  body?: never
+  body: ComposerSavePayload
   path: {
     app_id: string
     node_id: string
@@ -4572,9 +4678,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = 
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentComposerImpactResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse
@@ -4591,9 +4695,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterD
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowAgentComposerResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse
@@ -4610,9 +4712,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData 
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentComposerValidateResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse

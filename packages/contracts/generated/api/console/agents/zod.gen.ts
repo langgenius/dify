@@ -21,6 +21,136 @@ export const zRosterAgentUpdatePayload = z.object({
 })
 
 /**
+ * AgentConfigSnapshotSummaryResponse
+ */
+export const zAgentConfigSnapshotSummaryResponse = z.object({
+  agent_id: z.string().nullish(),
+  created_at: z.string().nullish(),
+  created_by: z.string().nullish(),
+  id: z.string(),
+  summary: z.string().nullish(),
+  version: z.int(),
+  version_note: z.string().nullish(),
+})
+
+/**
+ * AgentConfigSnapshotListResponse
+ */
+export const zAgentConfigSnapshotListResponse = z.object({
+  data: z.array(zAgentConfigSnapshotSummaryResponse),
+})
+
+/**
+ * AgentKind
+ *
+ * Agent implementation family.
+ *
+ * This leaves room for future non-Dify agent implementations while keeping
+ * the current roster/workflow APIs scoped to Dify Agent.
+ */
+export const zAgentKind = z.enum(['dify_agent'])
+
+/**
+ * AgentScope
+ *
+ * Visibility and lifecycle scope of an Agent record.
+ */
+export const zAgentScope = z.enum(['roster', 'workflow_only'])
+
+/**
+ * AgentSource
+ *
+ * Origin that created or imported the Agent.
+ */
+export const zAgentSource = z.enum(['agent_app', 'imported', 'system', 'workflow'])
+
+/**
+ * AgentStatus
+ *
+ * Soft lifecycle state for Agent records.
+ */
+export const zAgentStatus = z.enum(['active', 'archived'])
+
+/**
+ * AgentRosterResponse
+ */
+export const zAgentRosterResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.optional(),
+  active_config_snapshot_id: z.string().nullish(),
+  agent_kind: zAgentKind,
+  app_id: z.string().nullish(),
+  archived_at: z.string().nullish(),
+  archived_by: z.string().nullish(),
+  created_at: z.string().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zAgentIconType.optional(),
+  id: z.string(),
+  name: z.string(),
+  scope: zAgentScope,
+  source: zAgentSource,
+  status: zAgentStatus,
+  updated_at: z.string().nullish(),
+  updated_by: z.string().nullish(),
+  workflow_id: z.string().nullish(),
+  workflow_node_id: z.string().nullish(),
+})
+
+/**
+ * AgentRosterListResponse
+ */
+export const zAgentRosterListResponse = z.object({
+  data: z.array(zAgentRosterResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * AgentInviteOptionResponse
+ */
+export const zAgentInviteOptionResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.optional(),
+  active_config_snapshot_id: z.string().nullish(),
+  agent_kind: zAgentKind,
+  app_id: z.string().nullish(),
+  archived_at: z.string().nullish(),
+  archived_by: z.string().nullish(),
+  created_at: z.string().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string(),
+  existing_node_ids: z.array(z.string()).optional(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zAgentIconType.optional(),
+  id: z.string(),
+  in_current_workflow_count: z.int().optional().default(0),
+  is_in_current_workflow: z.boolean().optional().default(false),
+  name: z.string(),
+  scope: zAgentScope,
+  source: zAgentSource,
+  status: zAgentStatus,
+  updated_at: z.string().nullish(),
+  updated_by: z.string().nullish(),
+  workflow_id: z.string().nullish(),
+  workflow_node_id: z.string().nullish(),
+})
+
+/**
+ * AgentInviteOptionsResponse
+ */
+export const zAgentInviteOptionsResponse = z.object({
+  data: z.array(zAgentInviteOptionResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * AppVariableConfig
  */
 export const zAppVariableConfig = z.object({
@@ -76,6 +206,34 @@ export const zAgentSoulSandboxConfig = z.object({
 export const zAgentSoulSkillsFilesConfig = z.object({
   files: z.array(z.record(z.string(), z.unknown())).optional(),
   skills: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * AgentConfigRevisionOperation
+ *
+ * Audit operation recorded for Agent Soul version/revision changes.
+ */
+export const zAgentConfigRevisionOperation = z.enum([
+  'create_version',
+  'save_current_version',
+  'save_new_agent',
+  'save_new_version',
+  'save_to_roster',
+])
+
+/**
+ * AgentConfigRevisionResponse
+ */
+export const zAgentConfigRevisionResponse = z.object({
+  created_at: z.string().nullish(),
+  created_by: z.string().nullish(),
+  current_snapshot_id: z.string(),
+  id: z.string(),
+  operation: zAgentConfigRevisionOperation,
+  previous_snapshot_id: z.string().nullish(),
+  revision: z.int(),
+  summary: z.string().nullish(),
+  version_note: z.string().nullish(),
 })
 
 /**
@@ -196,39 +354,67 @@ export const zRosterAgentCreatePayload = z.object({
 })
 
 /**
- * Success
+ * AgentConfigSnapshotDetailResponse
  */
-export const zGetAgentsResponse = z.record(z.string(), z.unknown())
+export const zAgentConfigSnapshotDetailResponse = z.object({
+  agent_id: z.string().nullish(),
+  config_snapshot: zAgentSoulConfig,
+  created_at: z.string().nullish(),
+  created_by: z.string().nullish(),
+  id: z.string(),
+  revisions: z.array(zAgentConfigRevisionResponse).optional(),
+  summary: z.string().nullish(),
+  version: z.int(),
+  version_note: z.string().nullish(),
+})
+
+export const zGetAgentsQuery = z.object({
+  keyword: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Agent roster list
+ */
+export const zGetAgentsResponse = zAgentRosterListResponse
 
 export const zPostAgentsBody = zRosterAgentCreatePayload
 
 /**
- * Success
+ * Agent created
  */
-export const zPostAgentsResponse = z.record(z.string(), z.unknown())
+export const zPostAgentsResponse = zAgentRosterResponse
+
+export const zGetAgentsInviteOptionsQuery = z.object({
+  app_id: z.string().optional(),
+  keyword: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
 
 /**
- * Success
+ * Agent invite options
  */
-export const zGetAgentsInviteOptionsResponse = z.record(z.string(), z.unknown())
+export const zGetAgentsInviteOptionsResponse = zAgentInviteOptionsResponse
 
 export const zDeleteAgentsByAgentIdPath = z.object({
   agent_id: z.string(),
 })
 
 /**
- * Success
+ * Agent archived
  */
-export const zDeleteAgentsByAgentIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAgentsByAgentIdResponse = z.record(z.string(), z.never())
 
 export const zGetAgentsByAgentIdPath = z.object({
   agent_id: z.string(),
 })
 
 /**
- * Success
+ * Agent detail
  */
-export const zGetAgentsByAgentIdResponse = z.record(z.string(), z.unknown())
+export const zGetAgentsByAgentIdResponse = zAgentRosterResponse
 
 export const zPatchAgentsByAgentIdBody = zRosterAgentUpdatePayload
 
@@ -237,18 +423,18 @@ export const zPatchAgentsByAgentIdPath = z.object({
 })
 
 /**
- * Success
+ * Agent updated
  */
-export const zPatchAgentsByAgentIdResponse = z.record(z.string(), z.unknown())
+export const zPatchAgentsByAgentIdResponse = zAgentRosterResponse
 
 export const zGetAgentsByAgentIdVersionsPath = z.object({
   agent_id: z.string(),
 })
 
 /**
- * Success
+ * Agent versions
  */
-export const zGetAgentsByAgentIdVersionsResponse = z.record(z.string(), z.unknown())
+export const zGetAgentsByAgentIdVersionsResponse = zAgentConfigSnapshotListResponse
 
 export const zGetAgentsByAgentIdVersionsByVersionIdPath = z.object({
   agent_id: z.string(),
@@ -256,6 +442,6 @@ export const zGetAgentsByAgentIdVersionsByVersionIdPath = z.object({
 })
 
 /**
- * Success
+ * Agent version detail
  */
-export const zGetAgentsByAgentIdVersionsByVersionIdResponse = z.record(z.string(), z.unknown())
+export const zGetAgentsByAgentIdVersionsByVersionIdResponse = zAgentConfigSnapshotDetailResponse
