@@ -202,6 +202,17 @@ describe('useShortcuts', () => {
     expect(mockHandleEdgeDelete).toHaveBeenCalledTimes(1)
   })
 
+  it('saves the workflow draft from the keyboard shortcut', () => {
+    renderWorkflowHook(() => useWorkflowHotkeys())
+
+    const saveShortcut = findRegistration(registration => registration.keyFilter === 'Mod+S')
+    const event = createKeyboardEvent()
+    triggerShortcut(saveShortcut, event)
+
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+  })
+
   it('runs layout and zoom shortcuts through the workflow actions', () => {
     renderWorkflowHook(() => useWorkflowHotkeys())
 

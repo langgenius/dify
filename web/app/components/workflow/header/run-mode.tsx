@@ -1,11 +1,11 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
@@ -47,10 +47,9 @@ const RunMode = ({
   }, [])
 
   useWorkflowShortcut('workflow.open-test-run-menu', handleToggleTestRunMenu)
-
-  const handleStop = useCallback(() => {
-    handleStopRun(workflowRunningData?.task_id || '')
-  }, [handleStopRun, workflowRunningData?.task_id])
+  useWorkflowShortcut('workflow.run', handleToggleTestRunMenu, {
+    enabled: !isRunning,
+  })
 
   const handleTriggerSelect = useCallback((option: TriggerOption) => {
     // Validate checklist before running any workflow
@@ -88,15 +87,19 @@ const RunMode = ({
         handleWorkflowRunAllTriggersInWorkflow(targetNodeIds)
       trackEvent('app_start_action_time', { action_type: 'all' })
     }
-    else {
-      // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
-      console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
-    }
   }, [warningNodes, t, handleWorkflowStartRunInWorkflow, handleWorkflowTriggerScheduleRunInWorkflow, handleWorkflowTriggerWebhookRunInWorkflow, handleWorkflowTriggerPluginRunInWorkflow, handleWorkflowRunAllTriggersInWorkflow])
 
+  const handleStop = useCallback(() => {
+    handleStopRun(workflowRunningData?.task_id || '')
+  }, [handleStopRun, workflowRunningData?.task_id])
+
+  useWorkflowShortcut('workflow.stop-run', handleStop, {
+    enabled: isRunning,
+  })
+
   const { eventEmitter } = useEventEmitterContextContext()
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === EVENT_WORKFLOW_STOP)
+  eventEmitter?.useSubscription((event: EventEmitterValue) => {
+    if (typeof event !== 'string' && event.type === EVENT_WORKFLOW_STOP)
       handleStop()
   })
 
@@ -131,7 +134,7 @@ const RunMode = ({
                 >
                   <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
                   {text ?? t('common.run', { ns: 'workflow' })}
-                  <ShortcutKbd shortcut="workflow.open-test-run-menu" textColor="secondary" />
+                  <ShortcutKbd shortcut="workflow.run" textColor="secondary" />
                 </button>
               </TestRunMenu>
             )
@@ -140,12 +143,13 @@ const RunMode = ({
         isRunning && (
           <button
             type="button"
+            aria-label={t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
             className={cn(
               'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
             )}
             onClick={handleStop}
           >
-            <StopCircle className="size-4 text-text-accent" />
+            <span aria-hidden className="i-custom-vender-line-mediaAndDevices-stop-circle size-4 text-text-accent" />
           </button>
         )
       }
