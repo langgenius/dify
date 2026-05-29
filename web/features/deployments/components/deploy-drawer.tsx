@@ -1,10 +1,14 @@
 'use client'
 
 import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-} from '@langgenius/dify-ui/dialog'
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
@@ -26,25 +30,35 @@ export function DeployDrawer() {
   const formKey = `${drawerAppInstanceId ?? 'none'}-${drawerEnvironmentId ?? 'any'}-${drawerReleaseId ?? 'new'}-${open ? '1' : '0'}`
 
   return (
-    <Dialog
+    <Drawer
       open={open}
+      modal
+      swipeDirection="right"
       onOpenChange={next => !next && closeDeployDrawer()}
     >
-      <DialogContent className="w-140 max-w-[calc(100vw-32px)] overflow-hidden p-0">
-        <DialogCloseButton aria-label={t('deployDrawer.close')} />
-        <div className="max-h-[calc(100vh-120px)] overflow-y-auto p-5 sm:p-6">
-          {!drawerAppInstanceId
-            ? <div className="p-4 text-text-tertiary">{t('deployDrawer.notFound')}</div>
-            : (
-                <DeployForm
-                  key={formKey}
-                  appInstanceId={drawerAppInstanceId}
-                  lockedEnvId={drawerEnvironmentId}
-                  presetReleaseId={drawerReleaseId}
-                />
-              )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      <DrawerPortal>
+        <DrawerBackdrop />
+        <DrawerViewport>
+          <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[640px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-[0.5px]">
+            <DrawerCloseButton
+              aria-label={t('deployDrawer.close')}
+              className="absolute top-4 right-5 size-6 rounded-md"
+            />
+            <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
+              {!drawerAppInstanceId
+                ? <div className="p-6 text-text-tertiary">{t('deployDrawer.notFound')}</div>
+                : (
+                    <DeployForm
+                      key={formKey}
+                      appInstanceId={drawerAppInstanceId}
+                      lockedEnvId={drawerEnvironmentId}
+                      presetReleaseId={drawerReleaseId}
+                    />
+                  )}
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
+    </Drawer>
   )
 }
