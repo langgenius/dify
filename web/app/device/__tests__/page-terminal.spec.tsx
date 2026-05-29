@@ -6,9 +6,10 @@ import DevicePage from '../page'
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 const mockDeviceLookup = vi.fn()
+let mockSearchParams: Record<string, string | null> = {}
 
 vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({ get: (key: string) => mockSearchParams[key] ?? null }),
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => '/device',
 }))
@@ -53,6 +54,12 @@ let MockDeviceFlowError: MockDeviceFlowErrorCtor
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  mockSearchParams = {}
+  // router.replace(pathname) in the real app drops the query string; mirror
+  // that so useSearchParams reflects the cleared URL on the next render.
+  mockReplace.mockImplementation(() => {
+    mockSearchParams = {}
+  })
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
   const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
   MockDeviceFlowError = mod.DeviceFlowError
@@ -108,5 +115,45 @@ describe('error_lookup_failed terminal state', () => {
     fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText('Could not verify the code')).not.toBeInTheDocument()
+  })
+})
+
+describe('error_sso terminal state from sso_error param', () => {
+  it('shows "Single sign-on failed" heading when sso_error is present', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText('Single sign-on failed')
+  })
+
+  it('maps the error code to friendly copy', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText('Single sign-on failed')
+    expect(screen.getByText(/Dify account/i)).toBeInTheDocument()
+    expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
+  })
+
+  it('does not silently bounce to the code-entry screen', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText('Single sign-on failed')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('does not scrub the param on mount (regression: error was wiped by router.replace)', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText('Single sign-on failed')
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('ghost button resets to code_entry and clears the URL', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText('Single sign-on failed')
+    fireEvent.click(screen.getByRole('button', { name: /Try a different code/i }))
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.queryByText('Single sign-on failed')).not.toBeInTheDocument()
+    expect(mockReplace).toHaveBeenCalledWith('/device')
   })
 })
