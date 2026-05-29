@@ -1,6 +1,6 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
 import { createApp } from '@/service/apps'
-import { syncWorkflowDraft } from '@/service/workflow'
+import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 
 const MODE_TO_APP_MODE: Record<WorkflowGeneratorMode, AppModeEnum> = {
@@ -61,20 +61,45 @@ type ApplyToCurrentAppParams = {
 
 /**
  * Apply path B — overwrite the current Workflow Studio's draft graph.
+ *
+ * The backend's ``sync_draft_workflow`` rejects writes whose ``hash`` doesn't
+ * match the existing draft's ``unique_hash`` (WorkflowHashNotEqualError), so we
+ * must read the current draft first to grab its hash. We also preserve the
+ * existing ``features``, ``environment_variables`` and ``conversation_variables``
+ * — only nodes / edges / viewport (the ``graph`` field) get replaced by the
+ * generated graph.
+ *
  * Caller is responsible for showing the overwrite confirmation dialog before
- * calling this.
+ * invoking this.
  */
 export const applyToCurrentApp = async ({
   appId,
   graph,
 }: ApplyToCurrentAppParams): Promise<void> => {
+  const url = `apps/${appId}/workflows/draft`
+
+  // First sync may have no existing draft (workflow apps are created with no
+  // draft and Studio lazy-creates one on the first save). fetchWorkflowDraft
+  // is silent — on a 404 it returns null/undefined, so we treat missing as
+  // "no existing draft" and sync without a hash.
+  let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
+  try {
+    existing = await fetchWorkflowDraft(url)
+  }
+  catch {
+    existing = null
+  }
+
   await syncWorkflowDraft({
-    url: `apps/${appId}/workflows/draft`,
+    url,
     params: {
       graph,
-      features: {},
-      environment_variables: [],
-      conversation_variables: [],
-    },
+      features: existing?.features ?? {},
+      environment_variables: existing?.environment_variables ?? [],
+      conversation_variables: existing?.conversation_variables ?? [],
+      // Field is accepted by the backend but not typed in the Pick<> shape of
+      // ``syncWorkflowDraft``'s params — spread it in so it reaches the wire.
+      ...(existing?.hash ? { hash: existing.hash } : {}),
+    } as Parameters<typeof syncWorkflowDraft>[0]['params'],
   })
 }

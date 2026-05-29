@@ -215,8 +215,11 @@ const WorkflowGeneratorModal: React.FC = () => {
       await applyToCurrentApp({ appId: currentAppId, graph: current.graph as GeneratedGraph })
       toast.success(t('workflowGenerator.applied'))
       closeGenerator()
-      // Reload the workflow page so the canvas picks up the new draft.
-      router.refresh()
+      // Hard reload the workflow page so the canvas picks up the new draft —
+      // ``router.refresh()`` only revalidates server-rendered route data, and
+      // the Studio canvas is hydrated client-side via react-query / zustand.
+      if (typeof window !== 'undefined')
+        window.location.reload()
     }
     catch (e: unknown) {
       const message = e instanceof Error ? e.message : ''
@@ -225,7 +228,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     finally {
       setApplyingFalse()
     }
-  }, [current, currentAppId, router, hideConfirmOverwrite, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
+  }, [current, currentAppId, hideConfirmOverwrite, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
 
   const modeLabel = mode === 'workflow' ? t('workflowGenerator.modes.workflow') : t('workflowGenerator.modes.chatflow')
 
