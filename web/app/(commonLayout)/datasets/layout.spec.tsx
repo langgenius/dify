@@ -43,7 +43,7 @@ const baseContext: AppContextMock = {
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
-  workspacePermissionKeys: ['page.datasets.access'],
+  workspacePermissionKeys: [],
   currentWorkspace: {
     id: 'workspace-1',
   },
@@ -97,7 +97,7 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect users without dataset page access to /apps', async () => {
+  it('should render children without a page-level dataset permission', () => {
     setAppContext({
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceDatasetOperator: true,
@@ -110,17 +110,15 @@ describe('DatasetsLayout', () => {
       </DatasetsLayout>
     ))
 
-    expect(screen.queryByText('datasets')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
-    })
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should render children when workspace has dataset page access', () => {
+  it('should render children on the dataset list route without dataset permissions', () => {
     setAppContext({
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceDatasetOperator: false,
-      workspacePermissionKeys: ['page.datasets.access'],
+      workspacePermissionKeys: [],
     })
 
     render((
@@ -139,7 +137,7 @@ describe('DatasetsLayout', () => {
   ])('should redirect direct dataset creation route to /datasets without dataset.create_and_management: %s', async (pathname) => {
     mockPathname = pathname
     setAppContext({
-      workspacePermissionKeys: ['page.datasets.access'],
+      workspacePermissionKeys: [],
     })
 
     render((
@@ -157,7 +155,7 @@ describe('DatasetsLayout', () => {
   it('should render direct dataset creation route when workspace has dataset.create_and_management', () => {
     mockPathname = '/datasets/create'
     setAppContext({
-      workspacePermissionKeys: ['page.datasets.access', 'dataset.create_and_management'],
+      workspacePermissionKeys: ['dataset.create_and_management'],
     })
 
     render((
@@ -173,7 +171,7 @@ describe('DatasetsLayout', () => {
   it('should redirect direct external dataset connection route to /datasets without dataset.external.connect', async () => {
     mockPathname = '/datasets/connect'
     setAppContext({
-      workspacePermissionKeys: ['page.datasets.access'],
+      workspacePermissionKeys: [],
     })
 
     render((
@@ -191,7 +189,7 @@ describe('DatasetsLayout', () => {
   it('should render direct external dataset connection route when workspace has dataset.external.connect', () => {
     mockPathname = '/datasets/connect'
     setAppContext({
-      workspacePermissionKeys: ['page.datasets.access', 'dataset.external.connect'],
+      workspacePermissionKeys: ['dataset.external.connect'],
     })
 
     render((

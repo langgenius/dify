@@ -7,23 +7,20 @@ import { useAppContext } from '@/context/app-context'
 import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 
-const pageRoutePermissionGuards = [
-  { route: '/explore', permissionKey: 'page.explore.access' },
-  { route: '/datasets', permissionKey: 'page.datasets.access' },
-  { route: '/tools', permissionKey: 'page.tool.access' },
-] as const
+type PageRoutePermissionGuard = {
+  route: string
+  permissionKey: string | string[]
+}
+
+const pageRoutePermissionGuards: PageRoutePermissionGuard[] = [
+  { route: '/explore', permissionKey: 'app_library.access' },
+  { route: '/tools', permissionKey: ['tool.manage', 'mcp.manage'] },
+]
 
 const isPathUnderRoute = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`)
 
 const getPageRoutePermissionGuard = (pathname: string) => {
   return pageRoutePermissionGuards.find(({ route }) => isPathUnderRoute(pathname, route))
-}
-
-const getRedirectPath = (pathname: string, workspacePermissionKeys: string[]) => {
-  if (!isPathUnderRoute(pathname, '/datasets') && hasPermission(workspacePermissionKeys, 'page.datasets.access'))
-    return '/datasets'
-
-  return '/apps'
 }
 
 export default function RoleRouteGuard({ children }: { children: ReactNode }) {
@@ -37,12 +34,11 @@ export default function RoleRouteGuard({ children }: { children: ReactNode }) {
     ? hasPermission(workspacePermissionKeys, routePermissionGuard.permissionKey)
     : true
   const shouldRedirect = shouldGuardRoute && !isLoadingAccess && !canAccessRoute
-  const redirectPath = getRedirectPath(pathname, workspacePermissionKeys)
 
   useEffect(() => {
     if (shouldRedirect)
-      router.replace(redirectPath)
-  }, [shouldRedirect, redirectPath, router])
+      router.replace('/apps')
+  }, [shouldRedirect, router])
 
   // Block rendering only for guarded routes to avoid permission flicker.
   if (shouldGuardRoute && isLoadingAccess)

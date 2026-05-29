@@ -21,6 +21,7 @@ import { AppModeEnum } from '@/types/app'
 let mockIsCurrentWorkspaceEditor = true
 let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockSystemFeatures = {
   branding: { enabled: false },
   webapp_auth: { enabled: false },
@@ -50,6 +51,11 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -247,6 +253,7 @@ describe('Create App Flow', () => {
     mockIsCurrentWorkspaceEditor = true
     mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -267,8 +274,9 @@ describe('Create App Flow', () => {
       expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
-    it('should not render NewAppCard when user is not an editor', () => {
+    it('should not render NewAppCard when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       renderList()
 
       expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()

@@ -28,7 +28,7 @@ const baseContext: AppContextMock = {
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
-  workspacePermissionKeys: ['page.explore.access', 'page.datasets.access', 'page.tool.access'],
+  workspacePermissionKeys: ['app_library.access', 'tool.manage'],
 }
 
 const setAppContext = (overrides: Partial<AppContextMock> = {}) => {
@@ -80,46 +80,10 @@ describe('RoleRouteGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect explore route without explore page access to an accessible page', async () => {
+  it('should redirect explore route without app library access to an accessible page', async () => {
     mockPathname = '/explore/apps'
     setAppContext({
-      workspacePermissionKeys: ['page.datasets.access'],
-    })
-
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
-
-    expect(screen.queryByText('content')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
-    })
-  })
-
-  it('should redirect tools route without tools page access to an accessible page', async () => {
-    mockPathname = '/tools'
-    setAppContext({
-      workspacePermissionKeys: ['page.datasets.access'],
-    })
-
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
-
-    expect(screen.queryByText('content')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
-    })
-  })
-
-  it('should redirect datasets route without dataset page access to apps', async () => {
-    mockPathname = '/datasets'
-    setAppContext({
-      workspacePermissionKeys: ['page.explore.access', 'page.tool.access'],
+      workspacePermissionKeys: [],
     })
 
     render((
@@ -134,10 +98,76 @@ describe('RoleRouteGuard', () => {
     })
   })
 
+  it('should redirect tools route without tool or MCP management access to an accessible page', async () => {
+    mockPathname = '/tools'
+    setAppContext({
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <RoleRouteGuard>
+        <div>content</div>
+      </RoleRouteGuard>
+    ))
+
+    expect(screen.queryByText('content')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
+    })
+  })
+
+  it('should allow datasets routes without a page-level dataset permission', () => {
+    mockPathname = '/datasets'
+    setAppContext({
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <RoleRouteGuard>
+        <div>content</div>
+      </RoleRouteGuard>
+    ))
+
+    expect(screen.getByText('content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
   it('should allow guarded routes when workspace has the matching page access', () => {
     mockPathname = '/tools'
     setAppContext({
-      workspacePermissionKeys: ['page.tool.access'],
+      workspacePermissionKeys: ['tool.manage'],
+    })
+
+    render((
+      <RoleRouteGuard>
+        <div>content</div>
+      </RoleRouteGuard>
+    ))
+
+    expect(screen.getByText('content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should allow tools routes when workspace has MCP management access', () => {
+    mockPathname = '/tools'
+    setAppContext({
+      workspacePermissionKeys: ['mcp.manage'],
+    })
+
+    render((
+      <RoleRouteGuard>
+        <div>content</div>
+      </RoleRouteGuard>
+    ))
+
+    expect(screen.getByText('content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should allow explore routes when workspace has app library access', () => {
+    mockPathname = '/explore/apps'
+    setAppContext({
+      workspacePermissionKeys: ['app_library.access'],
     })
 
     render((

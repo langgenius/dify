@@ -45,10 +45,8 @@ const Header = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
-  const canAccessExplorePage = hasPermission(workspacePermissionKeys, 'page.explore.access')
-  const canAccessAppsPage = hasPermission(workspacePermissionKeys, 'page.apps.access')
-  const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
-  const canAccessToolsPage = hasPermission(workspacePermissionKeys, 'page.tool.access')
+  const canAccessExplorePage = hasPermission(workspacePermissionKeys, 'app_library.access')
+  const canAccessToolsPage = hasPermission(workspacePermissionKeys, ['tool.manage', 'mcp.manage'])
 
   const logoLabel = isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
   const renderLogo = () => (
@@ -90,8 +88,8 @@ const Header = () => {
         </div>
         <div className="my-1 flex items-center justify-center space-x-1">
           {canAccessExplorePage && <ExploreNav className={navClassName} />}
-          {canAccessAppsPage && <AppNav />}
-          {canAccessDatasetsPage && <DatasetNav />}
+          <AppNav />
+          <DatasetNav />
           {canAccessToolsPage && <ToolsNav className={navClassName} />}
         </div>
       </div>
@@ -110,8 +108,8 @@ const Header = () => {
       </div>
       <div className="flex items-center space-x-2">
         {canAccessExplorePage && <ExploreNav className={navClassName} />}
-        {canAccessAppsPage && <AppNav />}
-        {canAccessDatasetsPage && <DatasetNav />}
+        <AppNav />
+        <DatasetNav />
         {canAccessToolsPage && <ToolsNav className={navClassName} />}
       </div>
       <div className="flex min-w-0 flex-1 items-center justify-end pr-3 pl-2 min-[1280px]:pl-3">

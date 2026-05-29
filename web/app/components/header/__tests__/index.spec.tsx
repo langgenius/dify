@@ -115,7 +115,7 @@ describe('Header', () => {
     vi.clearAllMocks()
     mockIsWorkspaceEditor = false
     mockIsDatasetOperator = false
-    mockWorkspacePermissionKeys = ['page.explore.access', 'page.apps.access', 'page.datasets.access', 'page.tool.access']
+    mockWorkspacePermissionKeys = ['app_library.access', 'tool.manage']
     mockMedia = 'desktop'
     mockEnableBilling = false
     mockPlanType = 'sandbox'
@@ -131,6 +131,7 @@ describe('Header', () => {
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
     expect(screen.getByTestId('workplace-selector')).toBeInTheDocument()
+    expect(screen.getByTestId('explore-nav')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('account-dropdown')).toBeInTheDocument()
   })
@@ -147,8 +148,8 @@ describe('Header', () => {
     expect(screen.getByTestId('plan-badge')).toBeInTheDocument()
   })
 
-  it('should hide explore nav when workspace lacks explore page access', () => {
-    mockWorkspacePermissionKeys = ['page.datasets.access', 'page.tool.access']
+  it('should hide explore nav when workspace lacks app library access', () => {
+    mockWorkspacePermissionKeys = ['tool.manage']
     renderHeader()
 
     expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
@@ -210,8 +211,8 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: 'Dify' })).toHaveAttribute('href', '/apps')
   })
 
-  it('should show dataset nav when workspace has dataset page access', () => {
-    mockWorkspacePermissionKeys = ['page.apps.access', 'page.datasets.access']
+  it('should show app and dataset nav without page-level permissions', () => {
+    mockWorkspacePermissionKeys = []
 
     renderHeader()
 
@@ -219,23 +220,32 @@ describe('Header', () => {
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
   })
 
-  it('should hide dataset nav when workspace only has dataset mutation permissions', () => {
+  it('should show dataset nav when workspace only has dataset mutation permissions', () => {
     mockWorkspacePermissionKeys = ['dataset.create_and_management', 'dataset.tag.manage', 'dataset.external.connect']
 
     renderHeader()
 
-    expect(screen.queryByTestId('dataset-nav')).not.toBeInTheDocument()
+    expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
   })
 
   it('should render mobile layout with page permission nav restrictions', () => {
     mockMedia = 'mobile'
-    mockWorkspacePermissionKeys = ['page.datasets.access']
+    mockWorkspacePermissionKeys = []
 
     renderHeader()
 
     expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tools-nav')).not.toBeInTheDocument()
+    expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
+  })
+
+  it('should show tools nav when workspace has MCP management access', () => {
+    mockWorkspacePermissionKeys = ['mcp.manage']
+
+    renderHeader()
+
+    expect(screen.getByTestId('tools-nav')).toBeInTheDocument()
   })
 
   it('should render mobile layout with billing enabled', () => {

@@ -28,29 +28,22 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
   const router = useRouter()
   const pathname = usePathname()
   const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
-  const canAccessDatasetsPage = hasPermission(workspacePermissionKeys, 'page.datasets.access')
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const shouldRedirectToApps = !isLoadingAccess
-    && !!currentWorkspaceId
-    && !canAccessDatasetsPage
   const shouldRedirectToDatasets = !isLoadingAccess
     && !!currentWorkspaceId
-    && canAccessDatasetsPage
     && ((isDatasetCreatePath(pathname) && !canCreateDataset)
       || (isDatasetExternalConnectPath(pathname) && !canConnectExternalDataset))
 
   useEffect(() => {
-    if (shouldRedirectToApps)
-      router.replace('/apps')
-    else if (shouldRedirectToDatasets)
+    if (shouldRedirectToDatasets)
       router.replace('/datasets')
-  }, [shouldRedirectToApps, shouldRedirectToDatasets, router])
+  }, [shouldRedirectToDatasets, router])
 
   if (isLoadingAccess || !currentWorkspaceId)
     return <Loading type="app" />
 
-  if (shouldRedirectToApps || shouldRedirectToDatasets) {
+  if (shouldRedirectToDatasets) {
     return null
   }
 

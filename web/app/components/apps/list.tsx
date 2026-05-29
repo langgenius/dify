@@ -4,11 +4,11 @@ import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -46,7 +46,6 @@ const List: FC<Props> = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isLoadingCurrentWorkspace, workspacePermissionKeys } = useAppContext()
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const canAccessAppList = hasPermission(workspacePermissionKeys, 'page.apps.access')
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -104,7 +103,6 @@ const List: FC<Props> = ({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: canAccessAppList,
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
@@ -132,8 +130,6 @@ const List: FC<Props> = ({
   }, [refetch])
 
   useEffect(() => {
-    if (!canAccessAppList)
-      return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
@@ -159,7 +155,7 @@ const List: FC<Props> = ({
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, canAccessAppList])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const handleCreatedByMeChange = useCallback((checked: boolean) => {
     setIsCreatedByMe(checked)
@@ -213,14 +209,25 @@ const List: FC<Props> = ({
               </div>
             </label>
             <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px]"
-              value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-              onClear={() => setKeywords('')}
-            />
+            <div className="relative w-[200px]">
+              <span className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+              <Input
+                className={cn('pr-[26px] pl-[26px]', !keywords && 'pr-3')}
+                placeholder={t('operation.search', { ns: 'common' })}
+                value={keywords}
+                onChange={e => setKeywords(e.target.value)}
+              />
+              {!!keywords && (
+                <button
+                  type="button"
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px"
+                  onClick={() => setKeywords('')}
+                >
+                  <span className="i-ri-close-circle-fill size-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" aria-hidden="true" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className={cn(
