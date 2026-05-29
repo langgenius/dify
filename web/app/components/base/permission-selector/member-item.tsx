@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@langgenius/dify-ui/cn'
 
 type MemberItemProps = {
   leftIcon: React.ReactNode
@@ -26,20 +26,20 @@ const MemberItem = ({
 
   return (
     <div
-      className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-[10px] hover:bg-state-base-hover"
+      className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pr-[10px] pl-2 hover:bg-state-base-hover"
       onClick={onClick}
     >
       {leftIcon}
       <div className="grow">
-        <div className="truncate text-text-secondary system-sm-medium">
+        <div className="truncate system-sm-medium text-text-secondary">
           {name}
           {isMe && (
-            <span className="text-text-tertiary system-xs-regular">
+            <span className="system-xs-regular text-text-tertiary">
               {t('form.me', { ns: i18nNamespace })}
             </span>
           )}
         </div>
-        <div className="truncate text-text-tertiary system-xs-regular">{email}</div>
+        <div className="truncate system-xs-regular text-text-tertiary">{email}</div>
       </div>
       {isSelected && <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />}
     </div>

@@ -2,6 +2,9 @@ import type { Credential } from '../../types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CredentialTypeEnum } from '../../types'
+import Item from '../item'
+
 // Item uses useAppContextWithSelector(state => state.userProfile) for the
 // borrowed-row heuristic; provide a minimal mock so the selector resolves.
 const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
@@ -9,9 +12,6 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
     selector({ userProfile: mockUserProfile }),
 }))
-
-import { CredentialTypeEnum } from '../../types'
-import Item from '../item'
 
 // ==================== Test Utilities ====================
 

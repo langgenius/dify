@@ -18,7 +18,7 @@ export enum DataSourceType {
 
 // Re-export PermissionLevel as DatasetPermission for backward compatibility
 export const DatasetPermission = PermissionLevel
-// eslint-disable-next-line ts/no-redeclare -- intentional: merging const + type under one name
+
 export type DatasetPermission = PermissionLevel
 
 export enum ChunkingMode {

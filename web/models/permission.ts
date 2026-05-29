@@ -8,5 +8,4 @@ export const PermissionLevel = {
   partialMembers: 'partial_members',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- intentional: merging const + type under one name
 export type PermissionLevel = typeof PermissionLevel[keyof typeof PermissionLevel]

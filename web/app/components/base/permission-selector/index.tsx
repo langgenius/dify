@@ -1,19 +1,19 @@
 import type { Member } from '@/models/common'
-import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
-import { useDebounceFn } from 'ahooks'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import Input from '@/app/components/base/input'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { PermissionLevel } from '@/models/permission'
-import { cn } from '@langgenius/dify-ui/cn'
 import MemberItem from './member-item'
 import Item from './permission-item'
 
@@ -120,7 +120,7 @@ const PermissionSelector = ({
                 <div className="flex size-6 shrink-0 items-center justify-center">
                   <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
                 </div>
-                <div className="grow p-1 text-components-input-text-filled system-sm-regular">
+                <div className="grow p-1 system-sm-regular text-components-input-text-filled">
                   {t('form.permissionsOnlyMe', { ns: i18nNamespace })}
                 </div>
               </>
@@ -132,7 +132,7 @@ const PermissionSelector = ({
                 <div className="flex size-6 shrink-0 items-center justify-center">
                   <RiGroup2Line className="size-4 text-text-secondary" />
                 </div>
-                <div className="grow p-1 text-components-input-text-filled system-sm-regular">
+                <div className="grow p-1 system-sm-regular text-components-input-text-filled">
                   {t('form.permissionsAllMember', { ns: i18nNamespace })}
                 </div>
               </>
@@ -157,13 +157,13 @@ const PermissionSelector = ({
                         <Avatar
                           avatar={selectedMembers[0].avatar_url}
                           name={selectedMembers[0].name}
-                          className="absolute left-0 top-0 z-0"
+                          className="absolute top-0 left-0 z-0"
                           size="xxs"
                         />
                         <Avatar
                           avatar={selectedMembers[1].avatar_url}
                           name={selectedMembers[1].name}
-                          className="absolute bottom-0 right-0 z-10"
+                          className="absolute right-0 bottom-0 z-10"
                           size="xxs"
                         />
                       </>
@@ -172,7 +172,7 @@ const PermissionSelector = ({
                 </div>
                 <div
                   title={selectedMemberNames}
-                  className="grow truncate p-1 text-components-input-text-filled system-sm-regular"
+                  className="grow truncate p-1 system-sm-regular text-components-input-text-filled"
                 >
                   {selectedMemberNames}
                 </div>
@@ -224,8 +224,8 @@ const PermissionSelector = ({
             )}
           </div>
           {!hidePartialMembers && isPartialMembers && (
-            <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pb-1 pl-1 pr-1">
-              <div className="sticky left-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
+            <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
+              <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                 <Input
                   showLeftIcon
                   showClearIcon
@@ -262,7 +262,7 @@ const PermissionSelector = ({
                 ))}
                 {
                   !showMe && filteredMemberList.length === 0 && (
-                    <div className="flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary system-xs-regular">
+                    <div className="flex items-center justify-center px-1 py-6 text-center system-xs-regular whitespace-pre-wrap text-text-tertiary">
                       {t('form.onSearchResults', { ns: i18nNamespace })}
                     </div>
                   )
