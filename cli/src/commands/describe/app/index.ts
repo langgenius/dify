@@ -20,12 +20,7 @@ export default class DescribeApp extends DifyCommand {
   static override flags = {
     'workspace': Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
     'http-retry': httpRetryFlag,
-    'output': Flags.string({ 
-      char: 'o', 
-      description: 'output format (json|yaml|text)', 
-      default: '', 
-      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT],
-    }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
     'refresh': Flags.boolean({ description: 'bypass app-info cache and fetch fresh', default: false }),
   }
 

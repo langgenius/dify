@@ -6,7 +6,6 @@ function stringFlag<const Opts extends {
   description: string, 
   char?: string, 
   default?: string, 
-  helpGroup?: string, 
   options?: readonly string[] }>(
   opts: Opts,
 ): FlagDefinition<string> {
@@ -17,7 +16,19 @@ function stringFlag<const Opts extends {
   }
 }
 
-function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean, helpGroup?: string }>(
+function outputFormatFlag<const Opts extends {options: readonly string[], default?: string }>(
+  opts: Opts,
+): FlagDefinition<string> {
+  return {
+    type: 'string',
+    description: `output format (${opts.options.join('|')})`,
+    char: 'o',
+    multiple: false,
+    ...opts,
+  }
+}
+
+function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean }>(
   opts: Opts,
 ): FlagDefinition<string[]> {
   return {
@@ -27,11 +38,11 @@ function stringRepeatedFlag<const Opts extends { description: string, char?: str
   }
 }
 
-function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: string }): FlagDefinition<boolean> {
+function booleanFlag(opts: { description: string, char?: string, default?: boolean }): FlagDefinition<boolean> {
   return { type: 'boolean', ...opts }
 }
 
-function integerFlag<const Opts extends { description: string, char?: string, default?: number, helpGroup?: string }>(
+function integerFlag<const Opts extends { description: string, char?: string, default?: number }>(
   opts: Opts,
 ): FlagDefinition<Opts extends { default: number } ? number : number | undefined> {
   return { type: 'integer', ...opts } as FlagDefinition<Opts extends { default: number } ? number : number | undefined>
@@ -42,6 +53,7 @@ export const Flags = {
   stringArray: stringRepeatedFlag,
   boolean: booleanFlag,
   integer: integerFlag,
+  outputFormat: outputFormatFlag,
 }
 
 function stringArg<const Opts extends { description: string, required?: boolean }>(
