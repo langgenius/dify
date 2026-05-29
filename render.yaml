@@ -212,8 +212,7 @@ services:
     ipAllowList: []
 
 databases:
-  # PostgreSQL Database (supports pgvector)
+  # PostgreSQL Database (supports pgvector; major version defaults to Render latest)
   - name: dify-db
     plan: basic-256mb
-    postgresMajorVersion: 15
     ipAllowList: []
