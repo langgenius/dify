@@ -806,10 +806,8 @@ services:
 
   # Valkey vector store (with valkey-search module for vector similarity search).
   # (if used, you need to set VECTOR_STORE to valkey in the api & worker service.)
-  # Requires valkey-search module >= 1.2.0, included in valkey-bundle 9.1.0-rc1+.
-  # Use valkey/valkey-bundle:unstable or valkey/valkey-bundle:9.1.0-rc1 until a stable release ships.
   valkey:
-    image: valkey/valkey-bundle:9.1.0-rc1
+    image: valkey/valkey-bundle:latest
     profiles:
       - valkey
     restart: always

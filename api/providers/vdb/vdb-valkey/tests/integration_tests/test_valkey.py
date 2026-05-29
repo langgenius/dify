@@ -3,9 +3,7 @@
 Requires a running Valkey instance with the valkey-search module loaded
 on localhost:6379 (standard port). Start one with:
 
-    docker run -d --name valkey-search -p 6379:6379 valkey/valkey-bundle:9.1.0-rc1
-
-(Requires valkey-search module >= 1.2.0, included in valkey-bundle 9.1.0-rc1+.)
+    docker run -d --name valkey-search -p 6379:6379 valkey/valkey-bundle:latest
 """
 
 from __future__ import annotations
