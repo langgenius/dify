@@ -7,7 +7,9 @@ from functools import wraps
 from typing import Concatenate
 
 from flask import abort, request
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
+from werkzeug.exceptions import UnprocessableEntity
 
 from configs import dify_config
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
@@ -518,3 +520,38 @@ def with_current_user[T, **P, R](
         return view(self, current_user, *args, **kwargs)
 
     return decorated
+
+
+def model_validate[T, M: BaseModel, **P, R](
+    model: type[M],
+) -> Callable[
+    [Callable[Concatenate[T, M, P], R]],
+    Callable[Concatenate[T, P], R],
+]:
+    """Validate request data and inject the model instance as the first arg after self.
+
+    Source is determined by HTTP method:
+      GET/DELETE -> request.args
+      POST/PUT/PATCH -> JSON body
+    """
+
+    def decorator(
+        view: Callable[Concatenate[T, M, P], R],
+    ) -> Callable[Concatenate[T, P], R]:
+        @wraps(view)
+        def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+            if request.method in ("GET", "DELETE"):
+                raw = request.args.to_dict(flat=True)
+            else:
+                raw = request.get_json(silent=True) or {}
+
+            try:
+                validated = model.model_validate(raw)
+            except ValidationError as exc:
+                raise UnprocessableEntity(exc.json())
+
+            return view(self, validated, *args, **kwargs)
+
+        return wrapper
+
+    return decorator

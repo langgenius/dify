@@ -6051,6 +6051,7 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
+| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 
 ##### Responses
 
@@ -13719,6 +13720,12 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JSONValue |  |  |  |
+
+#### JsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JsonValue |  |  |  |
 
 #### KnowledgeConfig
 
