@@ -701,7 +701,7 @@ class ChildChunkAddApi(Resource):
         )
         if not segment:
             raise NotFound("Segment not found.")
-        args = query_params_from_request(ChildChunkListQuery)
+        args = query_params_from_request(ChildChunkListQuery, use_defaults_for_malformed_ints=True)
 
         page = args.page
         limit = min(args.limit, 100)

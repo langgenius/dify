@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -843,6 +844,46 @@ class TestChildChunkAddApi:
         expected_model = ChildChunkBatchUpdatePayload.__name__
 
         assert [model.name for model in api_doc["expect"]] == [expected_model]
+
+    def test_get_uses_default_pagination_for_malformed_ints(self, app: Flask):
+        api = ChildChunkAddApi()
+        method = unwrap(api.get)
+
+        pagination = MagicMock(items=[], total=0, pages=0)
+
+        with (
+            app.test_request_context("/?page=bad&limit="),
+            patch(
+                "controllers.console.datasets.datasets_segments.current_account_with_tenant",
+                return_value=(MagicMock(), "tenant-1"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunks",
+                return_value=pagination,
+            ) as get_child_chunks,
+        ):
+            response, status = method(api, "ds-1", "doc-1", "seg-1")
+
+        assert status == 200
+        assert response["page"] == 1
+        assert response["limit"] == 20
+        get_child_chunks.assert_called_once_with("seg-1", "doc-1", "ds-1", 1, 20, None)
 
     def test_post_success(self, app: Flask):
         api = ChildChunkAddApi()
