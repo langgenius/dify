@@ -4,7 +4,12 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import login_required

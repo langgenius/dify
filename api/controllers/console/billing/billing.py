@@ -8,7 +8,13 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required, with_current_tenant_id, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    only_edition_cloud,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from enums.cloud_plan import CloudPlan
 from libs.login import login_required
 from models import Account

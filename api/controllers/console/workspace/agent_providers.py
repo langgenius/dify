@@ -1,7 +1,12 @@
 from flask_restx import Resource, fields
 
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from models import Account
