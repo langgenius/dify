@@ -107,9 +107,7 @@ def _replace_schema_table_type(markdown: str, definition_name: str, row_name: st
 
 
 def _has_union_schema(schema: object) -> bool:
-    return isinstance(schema, dict) and (
-        isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list)
-    )
+    return isinstance(schema, dict) and (isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list))
 
 
 def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
