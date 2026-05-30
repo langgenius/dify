@@ -17,6 +17,7 @@ from controllers.console.human_input_form import (
     _jsonify_form_definition,
 )
 from controllers.web.error import NotFoundError
+from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
 from models.model import AppMode
@@ -197,6 +198,50 @@ def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert response.get_json() == {}
     submit_mock.assert_called_once()
+
+
+def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    submit_mock = Mock()
+    form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.CONSOLE)
+    current_user = SimpleNamespace(id="user-1", status=AccountStatus.ACTIVE)
+
+    class _ServiceStub:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def get_form_by_token(self, _token):
+            return form
+
+        def submit_form_by_token(self, **kwargs):
+            submit_mock(**kwargs)
+
+    monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
+    monkeypatch.setattr(
+        "controllers.console.human_input_form.current_account_with_tenant",
+        lambda: (current_user, "tenant-1"),
+    )
+    monkeypatch.setattr(
+        "controllers.console.wraps.current_account_with_tenant",
+        lambda: (current_user, "tenant-1"),
+    )
+    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
+
+    with app.test_request_context(
+        "/console/api/form/human_input/token",
+        method="POST",
+        json={"inputs": {"content": "ok"}, "action": "approve"},
+    ):
+        response = ConsoleHumanInputFormApi().post(form_token="token")
+
+    assert response.get_json() == {}
+    submit_mock.assert_called_once_with(
+        recipient_type=RecipientType.CONSOLE,
+        form_token="token",
+        selected_action_id="approve",
+        form_data={"content": "ok"},
+        submission_user_id="user-1",
+    )
 
 
 def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

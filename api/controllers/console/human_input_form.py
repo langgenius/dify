@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -32,6 +33,8 @@ from services.human_input_service import Form, HumanInputService
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
+
+register_schema_models(console_ns, HumanInputFormSubmitPayload)
 
 
 def _jsonify_form_definition(form: Form) -> Response:
@@ -75,8 +78,9 @@ class ConsoleHumanInputFormApi(Resource):
         return _jsonify_form_definition(form)
 
     @account_initialization_required
-    @model_validate(HumanInputFormSubmitPayload)
     @login_required
+    @model_validate(HumanInputFormSubmitPayload)
+    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
     def post(self, payload: HumanInputFormSubmitPayload, form_token: str):
         """
         Submit human input form by form token.
