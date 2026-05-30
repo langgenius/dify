@@ -54,6 +54,14 @@ class ToolProviderApiEntity(BaseModel):
     configuration: MCPConfiguration | None = Field(
         default=None, description="The timeout and sse_read_timeout of the MCP tool"
     )
+    # M3 — user-identity forwarding flags. Round-tripped through the console
+    # API so the create/edit modal can hydrate the toggle state.
+    forward_user_identity: bool = Field(
+        default=False, description="Whether Dify forwards the calling user's SSO identity to this MCP server"
+    )
+    identity_mode: str = Field(
+        default="off", description="Identity-forwarding mechanism: 'off' or 'idp_token'"
+    )
     # Workflow
     workflow_app_id: str | None = Field(default=None, description="The app id of the workflow tool")
 
@@ -92,6 +100,10 @@ class ToolProviderApiEntity(BaseModel):
                 optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
                 optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
                 optional_fields.update(self.optional_field("original_headers", self.original_headers))
+                # M3 — forwarding flags. Always emit (False/"off" are valid
+                # values that the UI must hydrate, not skip).
+                optional_fields["forward_user_identity"] = self.forward_user_identity
+                optional_fields["identity_mode"] = self.identity_mode
             case ToolProviderType.WORKFLOW:
                 optional_fields.update(self.optional_field("workflow_app_id", self.workflow_app_id))
             case _:

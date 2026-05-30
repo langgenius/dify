@@ -343,6 +343,21 @@ class MCPToolProvider(TypeBase):
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
 
+    # M2 (MCP user-identity forwarding) — master switch per provider. When True
+    # AND identity_mode is "idp_token", workflows that invoke tools on this
+    # provider will have the caller's SSO id_token stamped on the outbound
+    # request as `Authorization: Bearer …`. Off by default so existing
+    # providers retain pre-M2 behaviour.
+    forward_user_identity: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    # M2 — which identity-forwarding mechanism to use. Reserved values:
+    #   "off"       — no forwarding (default).
+    #   "idp_token" — forward a Bearer id_token minted by dify-enterprise.
+    identity_mode: Mapped[str] = mapped_column(
+        sa.String(32), nullable=False, server_default=sa.text("'off'"), default="off"
+    )
+
     def load_user(self) -> Account | None:
         return db.session.scalar(select(Account).where(Account.id == self.user_id))
 

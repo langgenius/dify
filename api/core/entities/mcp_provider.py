@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -76,6 +76,14 @@ class MCPProviderEntity(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # M2 — user-identity forwarding. When forward_user_identity is True AND
+    # identity_mode is "idp_token", the MCP tool runtime asks dify-enterprise
+    # to mint a fresh SSO id_token for the calling user and stamps it on the
+    # outbound MCP request as `Authorization: Bearer <token>`. Defaults keep
+    # pre-M2 providers unchanged (no forwarding).
+    forward_user_identity: bool = False
+    identity_mode: Literal["off", "idp_token"] = "off"
+
     @classmethod
     def from_db_model(cls, db_provider: MCPToolProvider) -> MCPProviderEntity:
         """Create entity from database model with decryption"""
@@ -96,6 +104,8 @@ class MCPProviderEntity(BaseModel):
             icon=db_provider.icon or "",
             created_at=db_provider.created_at,
             updated_at=db_provider.updated_at,
+            forward_user_identity=db_provider.forward_user_identity,
+            identity_mode=db_provider.identity_mode,  # type: ignore[arg-type]
         )
 
     @property
@@ -170,6 +180,8 @@ class MCPProviderEntity(BaseModel):
             "updated_at": int(self.updated_at.timestamp()),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
+            "forward_user_identity": self.forward_user_identity,
+            "identity_mode": self.identity_mode,
         }
 
         # Add configuration

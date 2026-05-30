@@ -12,7 +12,32 @@ from services.errors.enterprise import (
     EnterpriseAPIForbiddenError,
     EnterpriseAPINotFoundError,
     EnterpriseAPIUnauthorizedError,
+    EnterpriseServiceError,
 )
+
+
+# M2 — IssueMCPToken specific errors. Co-located here (rather than in
+# services/errors/enterprise.py) because services.enterprise.base is part of
+# the leaf-mounted file set the local dev override applies; the errors module
+# stays at the EE image's baked-in version.
+class MCPTokenError(EnterpriseServiceError):
+    """Generic failure of the IssueMCPToken RPC."""
+
+
+class MCPNoRefreshTokenError(MCPTokenError):
+    """The user has no stored SSO refresh_token on the enterprise side.
+    The workflow should ask them to re-authenticate."""
+
+    def __init__(self, description: str = ""):
+        super().__init__(description, status_code=428)
+
+
+class MCPIdentityRefreshError(MCPTokenError):
+    """The enterprise side tried to refresh the user's SSO refresh_token
+    against the IdP and failed (revoked/expired/IdP error)."""
+
+    def __init__(self, description: str = ""):
+        super().__init__(description, status_code=401)
 
 logger = logging.getLogger(__name__)
 

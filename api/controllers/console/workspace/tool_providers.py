@@ -209,6 +209,11 @@ class MCPProviderBasePayload(BaseModel):
     configuration: dict[str, Any] | None = Field(default_factory=dict)
     headers: dict[str, Any] | None = Field(default_factory=dict)
     authentication: dict[str, Any] | None = Field(default_factory=dict)
+    # M3 — user-identity forwarding (M2 backend already supports these on the
+    # service layer). Defaults preserve pre-M3 behavior for clients that don't
+    # send the fields yet.
+    forward_user_identity: bool = False
+    identity_mode: Literal["off", "idp_token"] = "off"
 
 
 class MCPProviderCreatePayload(MCPProviderBasePayload):
@@ -985,6 +990,8 @@ class ToolProviderMCPApi(Resource):
                 headers=payload.headers or {},
                 configuration=configuration,
                 authentication=authentication,
+                forward_user_identity=payload.forward_user_identity,
+                identity_mode=payload.identity_mode,
             )
 
         # 2) Try to fetch tools immediately after creation so they appear without a second save.
@@ -1052,6 +1059,8 @@ class ToolProviderMCPApi(Resource):
                 configuration=configuration,
                 authentication=authentication,
                 validation_result=validation_result,
+                forward_user_identity=payload.forward_user_identity,
+                identity_mode=payload.identity_mode,
             )
 
         return {"result": "success"}

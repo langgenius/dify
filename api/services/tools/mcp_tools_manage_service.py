@@ -4,7 +4,7 @@ import logging
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
@@ -136,6 +136,8 @@ class MCPToolManageService:
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
         headers: dict[str, str] | None = None,
+        forward_user_identity: bool = False,
+        identity_mode: Literal["off", "idp_token"] = "off",
     ) -> ToolProviderApiEntity:
         """Create a new MCP provider."""
         # Validate URL format
@@ -171,6 +173,8 @@ class MCPToolManageService:
             sse_read_timeout=configuration.sse_read_timeout,
             encrypted_headers=encrypted_headers,
             encrypted_credentials=encrypted_credentials,
+            forward_user_identity=forward_user_identity,
+            identity_mode=identity_mode,
         )
 
         self._session.add(mcp_tool)
@@ -194,6 +198,8 @@ class MCPToolManageService:
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
         validation_result: ServerUrlValidationResult | None = None,
+        forward_user_identity: bool | None = None,
+        identity_mode: Literal["off", "idp_token"] | None = None,
     ) -> None:
         """
         Update an MCP provider.
@@ -254,6 +260,14 @@ class MCPToolManageService:
             # Update credentials if provided
             if authentication and authentication.client_id:
                 mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
+
+            # Update user-identity forwarding settings if provided.
+            # None means "leave unchanged" so this stays backwards-compatible
+            # with existing callers that don't know about M2.
+            if forward_user_identity is not None:
+                mcp_provider.forward_user_identity = forward_user_identity
+            if identity_mode is not None:
+                mcp_provider.identity_mode = identity_mode
 
             # Flush changes to database
             self._session.flush()

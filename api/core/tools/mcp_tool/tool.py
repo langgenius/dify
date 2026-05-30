@@ -4,7 +4,7 @@ import base64
 import json
 import logging
 from collections.abc import Generator, Mapping
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
@@ -38,6 +38,8 @@ class MCPTool(Tool):
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        forward_user_identity: bool = False,
+        identity_mode: Literal["off", "idp_token"] = "off",
     ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
@@ -47,6 +49,8 @@ class MCPTool(Tool):
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
+        self.forward_user_identity = forward_user_identity
+        self.identity_mode: Literal["off", "idp_token"] = identity_mode
         self._latest_usage = LLMUsage.empty_usage()
 
     def tool_provider_type(self) -> ToolProviderType:
@@ -60,7 +64,7 @@ class MCPTool(Tool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        result = self.invoke_remote_mcp_tool(tool_parameters)
+        result = self.invoke_remote_mcp_tool(tool_parameters, user_id=user_id, app_id=app_id)
 
         # Extract usage metadata from MCP protocol's _meta field
         self._latest_usage = self._derive_usage_from_result(result)
@@ -234,6 +238,8 @@ class MCPTool(Tool):
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
+            forward_user_identity=self.forward_user_identity,
+            identity_mode=self.identity_mode,
         )
 
     def _handle_none_parameter(self, parameter: dict[str, Any]) -> dict[str, Any]:
@@ -246,7 +252,12 @@ class MCPTool(Tool):
             if value is not None and not (isinstance(value, str) and value.strip() == "")
         }
 
-    def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any]) -> CallToolResult:
+    def invoke_remote_mcp_tool(
+        self,
+        tool_parameters: dict[str, Any],
+        user_id: str | None = None,
+        app_id: str | None = None,
+    ) -> CallToolResult:
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
 
@@ -271,6 +282,14 @@ class MCPTool(Tool):
                 if tokens and tokens.access_token:
                     headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
 
+        # User-identity forwarding: if enabled on this provider, ask the
+        # enterprise side to mint a fresh SSO id_token (audience-scoped to
+        # the MCP server's URL per RFC 8707) and stamp it as Authorization.
+        # This OVERRIDES any Authorization already on the request — the
+        # forwarded identity is what the MCP server should trust.
+        if self.forward_user_identity and self.identity_mode == "idp_token" and user_id:
+            self._inject_forwarded_identity(headers, user_id=user_id, app_id=app_id, audience=server_url)
+
         # Step 2: Session is now closed, perform network operations without holding database connection
         # MCPClientWithAuthRetry will create a new session lazily only if auth retry is needed
         try:
@@ -286,3 +305,31 @@ class MCPTool(Tool):
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
             raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
+
+    def _inject_forwarded_identity(
+        self,
+        headers: dict[str, str],
+        *,
+        user_id: str,
+        app_id: str | None,
+        audience: str,
+    ) -> None:
+        """Call the enterprise IssueMCPToken endpoint and stamp Authorization.
+
+        Errors are surfaced as ToolInvokeError so the workflow halts with a
+        clear message instead of silently dropping identity and hitting the
+        MCP server unauthenticated.
+        """
+        from services.enterprise.base import MCPTokenError
+        from services.enterprise.enterprise_service import EnterpriseService
+
+        try:
+            token, _expires_at = EnterpriseService.issue_mcp_token(
+                user_id=user_id,
+                tenant_id=self.tenant_id,
+                app_id=app_id,
+                audience=audience,
+            )
+        except MCPTokenError as e:
+            raise ToolInvokeError(f"Failed to obtain forwarded identity token: {e}") from e
+        headers["Authorization"] = f"Bearer {token}"

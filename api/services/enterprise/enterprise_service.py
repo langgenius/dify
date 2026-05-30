@@ -11,7 +11,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
 from extensions.ext_redis import redis_client
-from services.enterprise.base import EnterpriseRequest
+from services.enterprise.base import (
+    EnterpriseRequest,
+    MCPIdentityRefreshError,
+    MCPNoRefreshTokenError,
+    MCPTokenError,
+)
+from services.errors.enterprise import (
+    EnterpriseAPIError,
+    EnterpriseAPIUnauthorizedError,
+)
 
 if TYPE_CHECKING:
     from services.feature_service import LicenseStatus
@@ -120,6 +129,62 @@ class EnterpriseService:
     @classmethod
     def get_workspace_info(cls, tenant_id: str):
         return EnterpriseRequest.send_request("GET", f"/workspace/{tenant_id}/info")
+
+    @classmethod
+    def issue_mcp_token(
+        cls,
+        user_id: str,
+        tenant_id: str,
+        app_id: str | None,
+        audience: str,
+    ) -> tuple[str, int]:
+        """Mint a short-lived SSO id_token (or OAuth2 access_token) representing
+        the calling Dify user, audience-scoped to the given MCP server identifier.
+
+        Used by MCPTool.invoke_remote_mcp_tool to stamp `Authorization: Bearer
+        <token>` on outbound MCP requests when the provider has
+        forward_user_identity=True and identity_mode="idp_token".
+
+        Returns:
+            (token, expires_at_unix_seconds)
+
+        Raises:
+            MCPNoRefreshTokenError: user has no stored SSO refresh_token on the
+                enterprise side; surface to the workflow as "please log in via SSO".
+            MCPIdentityRefreshError: enterprise tried to refresh against the IdP
+                and the IdP rejected (revoked/expired session).
+            MCPTokenError: any other failure of the enterprise endpoint.
+        """
+        try:
+            response = EnterpriseRequest.send_request(
+                "POST",
+                "/mcp/issue-token",
+                json={
+                    "user_id": user_id,
+                    "tenant_id": tenant_id,
+                    "app_id": app_id or "",
+                    "audience": audience,
+                },
+            )
+        except EnterpriseAPIUnauthorizedError as e:
+            # Enterprise side returns 401 when the IdP rejected the refresh.
+            raise MCPIdentityRefreshError(str(e) or "identity refresh failed; please re-authenticate") from e
+        except EnterpriseAPIError as e:
+            # Map the 428 PreconditionRequired we emit on no-stored-refresh-token.
+            if getattr(e, "status_code", None) == 428:
+                raise MCPNoRefreshTokenError(
+                    str(e) or "user has no stored SSO refresh token; please re-authenticate"
+                ) from e
+            raise MCPTokenError(f"issue_mcp_token failed: {e}") from e
+
+        if not isinstance(response, dict):
+            raise MCPTokenError("invalid response shape from enterprise /mcp/issue-token")
+
+        token = response.get("token")
+        expires_at = response.get("expires_at")
+        if not token or not isinstance(token, str) or not isinstance(expires_at, int):
+            raise MCPTokenError(f"missing token/expires_at in enterprise response: {response}")
+        return token, expires_at
 
     @classmethod
     def initiate_device_flow_sso(cls, signed_state: str) -> dict:
