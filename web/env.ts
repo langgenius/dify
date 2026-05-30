@@ -142,6 +142,7 @@ const clientSchema = {
 
 export const env = createEnv({
   server: {
+    CONSOLE_API_URL: z.string().optional(),
     /**
      * Maximum length of segmentation tokens for indexing
      */

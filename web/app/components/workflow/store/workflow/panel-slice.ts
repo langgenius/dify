@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import { getLocalStorageNumber } from '@/utils/local-storage'
 
 export type WorkflowContextMenuTarget
   = | { type: 'panel' }
@@ -33,7 +34,7 @@ export type PanelSliceShape = {
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
-  panelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+  panelWidth: getLocalStorageNumber('workflow-node-panel-width', 420),
   showFeaturesPanel: false,
   setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
   showWorkflowVersionHistoryPanel: false,
