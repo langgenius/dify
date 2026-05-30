@@ -15207,7 +15207,7 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| custom_config | object |  | No |
+| custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
 | name | string |  | No |
@@ -16324,6 +16324,13 @@ Workflow tool configuration
 | marked_name | string |  | No |
 
 #### WorkspaceCustomConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| remove_webapp_brand | boolean |  | No |
+| replace_webapp_logo | string |  | No |
+
+#### WorkspaceCustomConfigResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
