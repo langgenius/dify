@@ -53,13 +53,13 @@ function WorkspaceCardSkeleton({
       </div>
       {showCloudBilling && (
         <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
-          <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5 px-1">
             <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-3 shrink-0')} />
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-16')} />
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-8')} />
+            <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-16')} />
+            <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-8')} />
           </div>
           {showPlanAction && (
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-14 shrink-0')} />
+            <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-16 shrink-0')} />
           )}
         </div>
       )}
