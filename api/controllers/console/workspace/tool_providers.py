@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -799,7 +800,7 @@ class ToolPluginOAuthApi(Resource):
         context_id = OAuthProxyService.create_proxy_context(
             user_id=user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
         )
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
             user_id=user.id,
@@ -842,7 +843,7 @@ class ToolOAuthCallback(Resource):
         if oauth_client_params is None:
             raise Forbidden("no oauth available client config found for this tool provider")
 
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
             user_id=user_id,

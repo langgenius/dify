@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
@@ -40,4 +41,4 @@ class DatasourcePlugin(ABC):
         )
 
     def get_icon_url(self, tenant_id: str) -> str:
-        return f"{dify_config.CONSOLE_API_URL}/console/api/workspaces/current/plugin/icon?tenant_id={tenant_id}&filename={self.icon}"  # noqa: E501
+        return f"{get_console_api_url()}/console/api/workspaces/current/plugin/icon?tenant_id={tenant_id}&filename={self.icon}"  # noqa: E501

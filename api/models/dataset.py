@@ -18,6 +18,7 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.rag.entities import ParentMode, Rule
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -1028,7 +1029,7 @@ class DocumentSegment(TypeBase):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            reference_url = dify_config.FILES_URL or dify_config.CONSOLE_API_URL or ""
+            reference_url = dify_config.FILES_URL or get_console_api_url()
             base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
             attachment_list.append(

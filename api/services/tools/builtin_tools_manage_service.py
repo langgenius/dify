@@ -8,6 +8,7 @@ from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
@@ -79,7 +80,7 @@ class BuiltinToolManageService:
             "is_oauth_custom_client_enabled": is_oauth_custom_client_enabled,
             "is_system_oauth_params_exists": is_system_oauth_params_exists,
             "client_params": BuiltinToolManageService.get_custom_oauth_client_params(tenant_id, provider_name),
-            "redirect_uri": f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_name}/tool/callback",
+            "redirect_uri": f"{get_console_api_url()}/console/api/oauth/plugin/{provider_name}/tool/callback",
         }
         return result
 

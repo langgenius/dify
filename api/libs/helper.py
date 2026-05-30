@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload
 from uuid import UUID
 from zoneinfo import available_timezones
 
-from flask import Response, stream_with_context
+from flask import Response, has_request_context, request, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator
@@ -32,6 +32,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def get_console_api_url() -> str:
+    """
+    Get the CONSOLE_API_URL.
+    If it's empty, fallback to the current request host URL if in a request context.
+    """
+    if dify_config.CONSOLE_API_URL:
+        return dify_config.CONSOLE_API_URL
+    if has_request_context():
+        return request.host_url.rstrip("/")
+    return ""
 
 @with_config(ConfigDict(extra="allow"))
 class _TokenData(TypedDict, total=False):

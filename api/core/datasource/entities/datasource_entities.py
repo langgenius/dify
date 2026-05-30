@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
@@ -153,7 +154,7 @@ class DatasourceProviderIdentity(BaseModel):
         if self.icon in HARD_CODED_DATASOURCE_ICONS:
             return self.icon
         return str(
-            URL(dify_config.CONSOLE_API_URL or "/")
+            URL(get_console_api_url() or "/")
             / "console"
             / "api"
             / "workspaces"

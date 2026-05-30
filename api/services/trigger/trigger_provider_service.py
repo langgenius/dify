@@ -9,6 +9,7 @@ from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
@@ -467,7 +468,7 @@ class TriggerProviderService:
 
             # Get OAuth client configuration
             redirect_uri = (
-                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
+                f"{get_console_api_url()}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
             )
             system_credentials = cls.get_oauth_client(tenant_id, provider_id)
 

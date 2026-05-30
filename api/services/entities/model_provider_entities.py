@@ -4,6 +4,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.entities.model_entities import (
     ModelWithProviderEntity,
     ProviderModelWithStatusEntity,
@@ -86,7 +87,7 @@ class ProviderResponse(BaseModel):
     @model_validator(mode="after")
     def _(self):
         url_prefix = (
-            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+            get_console_api_url() + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
@@ -116,7 +117,7 @@ class ProviderWithModelsResponse(BaseModel):
     @model_validator(mode="after")
     def _(self):
         url_prefix = (
-            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+            get_console_api_url() + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
@@ -140,7 +141,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     @model_validator(mode="after")
     def _(self):
         url_prefix = (
-            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+            get_console_api_url() + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
         if self.icon_small is not None:
             self.icon_small = I18nObject(

@@ -16,6 +16,7 @@ from yarl import URL
 
 import contexts
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.entities import PluginCredentialType
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.impl.tool import PluginToolManager
@@ -293,7 +294,7 @@ class ToolManager:
 
                     tool_provider = ToolProviderID(provider_id)
                     provider_name = tool_provider.provider_name
-                    redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+                    redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider_id}/tool/callback"
                     system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
 
                     oauth_handler = OAuthHandler()
@@ -935,7 +936,7 @@ class ToolManager:
     @classmethod
     def generate_builtin_tool_icon_url(cls, provider_id: str) -> str:
         return str(
-            URL(dify_config.CONSOLE_API_URL or "/")
+            URL(get_console_api_url() or "/")
             / "console"
             / "api"
             / "workspaces"
@@ -949,7 +950,7 @@ class ToolManager:
     @classmethod
     def generate_plugin_tool_icon_url(cls, tenant_id: str, filename: str) -> str:
         return str(
-            URL(dify_config.CONSOLE_API_URL or "/")
+            URL(get_console_api_url() or "/")
             / "console"
             / "api"
             / "workspaces"

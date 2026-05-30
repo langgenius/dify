@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -506,7 +507,7 @@ class AppService:
             # get all tools
             tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        url_prefix = get_console_api_url() + "/console/api/workspaces/current/tool-provider/builtin/"
 
         for tool in tools:
             keys = list(tool.keys())

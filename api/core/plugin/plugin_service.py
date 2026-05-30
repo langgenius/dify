@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from yarl import URL
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
@@ -306,7 +307,7 @@ class PluginService:
     @classmethod
     def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
         url_prefix = (
-            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+            URL(get_console_api_url() or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
         )
         return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
 

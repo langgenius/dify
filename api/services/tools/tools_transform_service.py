@@ -6,6 +6,7 @@ from pydantic import TypeAdapter, ValidationError
 from yarl import URL
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
@@ -45,7 +46,7 @@ class ToolTransformService:
         get tool provider icon url
         """
         url_prefix = (
-            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
+            URL(get_console_api_url() or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
         )
 
         match provider_type:

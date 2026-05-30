@@ -28,6 +28,7 @@ from werkzeug.exceptions import (
 )
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from controllers.openapi import bp
 from controllers.openapi._models import ExtSubjectAssertionClaims
 from extensions.ext_database import db
@@ -76,7 +77,7 @@ _SSO_COMPLETE_PATH = "/openapi/v1/oauth/device/sso-complete"
 
 
 def _trusted_origin() -> str:
-    base = (dify_config.CONSOLE_API_URL or "").rstrip("/")
+    base = get_console_api_url().rstrip("/")
     if not base:
         raise BadGateway("console_api_url_unset")
     return base

@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -101,7 +102,7 @@ class MCPProviderEntity(BaseModel):
     @property
     def redirect_url(self) -> str:
         """OAuth redirect URL"""
-        return dify_config.CONSOLE_API_URL + "/console/api/mcp/oauth/callback"
+        return get_console_api_url() + "/console/api/mcp/oauth/callback"
 
     @property
     def client_metadata(self) -> OAuthClientMetadata:

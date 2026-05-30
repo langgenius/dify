@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from libs.helper import get_console_api_url
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -90,7 +91,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             credential_id=credential_id,
         )
         oauth_handler = OAuthHandler()
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
             user_id=current_user.id,
@@ -133,7 +134,7 @@ class DatasourceOAuthCallback(Resource):
         )
         if not oauth_client_params:
             raise NotFound()
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_handler = OAuthHandler()
         oauth_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
