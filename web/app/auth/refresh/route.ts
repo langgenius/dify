@@ -18,11 +18,10 @@ const resolveAbsoluteUrlPrefix = (value: string) => {
   }
 }
 
-const resolveServerConsoleApiUrl = (pathname: string, requestUrl: URL) => {
+const resolveServerConsoleApiUrl = (pathname: string) => {
   const requestPath = withoutLeadingSlash(pathname)
   const apiPrefix = SERVER_CONSOLE_API_PREFIX
     || resolveAbsoluteUrlPrefix(API_PREFIX)
-    || new URL(API_PREFIX, requestUrl.origin).toString()
 
   if (!apiPrefix)
     return null
@@ -65,10 +64,10 @@ const getSetCookieHeaders = (headers: Headers) => {
   return setCookie ? [setCookie] : []
 }
 
-const createRedirectResponse = (request: Request, pathname: string, setCookies: string[] = []) => {
+const createRedirectResponse = (pathname: string, setCookies: string[] = []) => {
   const headers = new Headers({
     'Cache-Control': 'no-store',
-    'Location': new URL(pathname, request.url).toString(),
+    'Location': pathname,
   })
 
   for (const cookie of setCookies)
@@ -80,17 +79,16 @@ const createRedirectResponse = (request: Request, pathname: string, setCookies: 
   })
 }
 
-const createSigninRedirectResponse = (request: Request, redirectPath: string) =>
-  createRedirectResponse(request, `${basePath}/signin?redirect_url=${encodeURIComponent(redirectPath)}`)
+const createSigninRedirectResponse = (redirectPath: string) =>
+  createRedirectResponse(`${basePath}/signin?redirect_url=${encodeURIComponent(redirectPath)}`)
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url)
   const redirectPath = resolveSafeRedirectPath(request)
-  const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH, requestUrl)
+  const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH)
   const cookie = request.headers.get('cookie')
 
   if (!refreshUrl || !cookie)
-    return createSigninRedirectResponse(request, redirectPath)
+    return createSigninRedirectResponse(redirectPath)
 
   try {
     const response = await fetch(refreshUrl, {
@@ -103,11 +101,11 @@ export async function GET(request: Request) {
     })
 
     if (!response.ok)
-      return createSigninRedirectResponse(request, redirectPath)
+      return createSigninRedirectResponse(redirectPath)
 
-    return createRedirectResponse(request, redirectPath, getSetCookieHeaders(response.headers))
+    return createRedirectResponse(redirectPath, getSetCookieHeaders(response.headers))
   }
   catch {
-    return createSigninRedirectResponse(request, redirectPath)
+    return createSigninRedirectResponse(redirectPath)
   }
 }
