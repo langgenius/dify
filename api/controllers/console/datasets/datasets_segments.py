@@ -730,6 +730,7 @@ class ChildChunkAddApi(Resource):
         "Child chunks updated successfully",
         console_ns.models[ChildChunkBatchUpdateResponse.__name__],
     )
+    @console_ns.expect(console_ns.models[ChildChunkBatchUpdatePayload.__name__])
     def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         current_user, current_tenant_id = current_account_with_tenant()
 

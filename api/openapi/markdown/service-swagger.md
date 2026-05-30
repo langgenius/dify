@@ -2999,13 +2999,13 @@ Metadata operation data
 | size | integer |  | Yes |
 | source_url | string |  | Yes |
 
-#### SegmentCreateArgs
+#### SegmentCreateItemPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | answer | string |  | No |
 | attachment_ids | [ string ] |  | No |
-| content | string |  | No |
+| content | string |  | Yes |
 | keywords | [ string ] |  | No |
 
 #### SegmentCreateListResponse
@@ -3019,7 +3019,7 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segments | [ [SegmentCreateArgs](#segmentcreateargs) ] |  | No |
+| segments | [ [SegmentCreateItemPayload](#segmentcreateitempayload) ] |  | Yes |
 
 #### SegmentDetailResponse
 

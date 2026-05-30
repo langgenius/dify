@@ -700,10 +700,10 @@ export type SegmentAttachmentResponse = {
   source_url: string
 }
 
-export type SegmentCreateArgs = {
+export type SegmentCreateItemPayload = {
   answer?: string | null
   attachment_ids?: Array<string> | null
-  content?: string | null
+  content: string
   keywords?: Array<string> | null
 }
 
@@ -713,7 +713,7 @@ export type SegmentCreateListResponse = {
 }
 
 export type SegmentCreatePayload = {
-  segments?: Array<SegmentCreateArgs> | null
+  segments: Array<SegmentCreateItemPayload>
 }
 
 export type SegmentDetailResponse = {

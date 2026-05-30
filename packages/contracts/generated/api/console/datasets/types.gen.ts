@@ -384,6 +384,10 @@ export type ChildChunkListResponse = {
   total_pages: number
 }
 
+export type ChildChunkBatchUpdatePayload = {
+  chunks: Array<ChildChunkUpdateArgs>
+}
+
 export type ChildChunkBatchUpdateResponse = {
   data: Array<ChildChunkResponse>
 }
@@ -719,6 +723,11 @@ export type ChildChunkResponse = {
   type: string
   updated_at: number
   word_count: number
+}
+
+export type ChildChunkUpdateArgs = {
+  content: string
+  id?: string | null
 }
 
 export type DocumentStatusResponse = {
@@ -2167,7 +2176,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
   = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
-  body?: never
+  body: ChildChunkBatchUpdatePayload
   path: {
     dataset_id: string
     document_id: string

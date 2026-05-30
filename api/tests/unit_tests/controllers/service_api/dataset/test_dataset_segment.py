@@ -29,6 +29,7 @@ from controllers.service_api.dataset.segment import (
     DatasetChildChunkApi,
     DatasetSegmentApi,
     SegmentApi,
+    SegmentCreateItemPayload,
     SegmentCreatePayload,
     SegmentListQuery,
 )
@@ -104,14 +105,29 @@ class TestSegmentCreatePayload:
         assert len(payload.segments) == 2
 
     def test_payload_with_none_segments(self):
-        """Test payload with None segments (should be valid)."""
-        payload = SegmentCreatePayload(segments=None)
-        assert payload.segments is None
+        """Test payload with None segments is rejected."""
+        with pytest.raises(ValueError):
+            SegmentCreatePayload.model_validate({"segments": None})
 
     def test_payload_with_empty_segments(self):
-        """Test payload with empty segments list."""
-        payload = SegmentCreatePayload(segments=[])
-        assert payload.segments == []
+        """Test payload with empty segments list is rejected."""
+        with pytest.raises(ValueError):
+            SegmentCreatePayload.model_validate({"segments": []})
+
+    def test_payload_requires_segments(self):
+        """Test payload requires a segments field."""
+        with pytest.raises(ValueError):
+            SegmentCreatePayload.model_validate({})
+
+    def test_payload_rejects_segment_without_content(self):
+        """Test each segment requires content."""
+        with pytest.raises(ValueError):
+            SegmentCreatePayload.model_validate({"segments": [{"answer": "Answer only"}]})
+
+    def test_payload_rejects_blank_content(self):
+        """Test content cannot be whitespace-only."""
+        with pytest.raises(ValueError):
+            SegmentCreateItemPayload.model_validate({"content": "   "})
 
     def test_payload_with_complex_segment_data(self):
         """Test payload with complex segment structure."""

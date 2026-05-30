@@ -537,6 +537,21 @@ export const zChildChunkDetailResponse = z.object({
 })
 
 /**
+ * ChildChunkUpdateArgs
+ */
+export const zChildChunkUpdateArgs = z.object({
+  content: z.string(),
+  id: z.string().nullish(),
+})
+
+/**
+ * ChildChunkBatchUpdatePayload
+ */
+export const zChildChunkBatchUpdatePayload = z.object({
+  chunks: z.array(zChildChunkUpdateArgs),
+})
+
+/**
  * DocumentStatusResponse
  */
 export const zDocumentStatusResponse = z.object({
@@ -1953,6 +1968,9 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = zChildChunkListResponse
+
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody
+  = zChildChunkBatchUpdatePayload
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
   = z.object({

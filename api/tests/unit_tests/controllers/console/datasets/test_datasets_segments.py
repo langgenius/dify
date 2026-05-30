@@ -9,6 +9,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_segments import (
     ChildChunkAddApi,
+    ChildChunkBatchUpdatePayload,
     ChildChunkUpdateApi,
     DatasetDocumentSegmentAddApi,
     DatasetDocumentSegmentApi,
@@ -837,6 +838,12 @@ class TestDatasetDocumentSegmentBatchImportApi:
 
 
 class TestChildChunkAddApi:
+    def test_patch_documents_batch_update_payload(self):
+        api_doc = unwrap(ChildChunkAddApi.patch).__apidoc__
+        expected_model = ChildChunkBatchUpdatePayload.__name__
+
+        assert [model.name for model in api_doc["expect"]] == [expected_model]
+
     def test_post_success(self, app: Flask):
         api = ChildChunkAddApi()
         method = unwrap(api.post)

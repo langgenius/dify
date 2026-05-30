@@ -844,12 +844,12 @@ export const zSegmentAttachmentResponse = z.object({
 })
 
 /**
- * SegmentCreateArgs
+ * SegmentCreateItemPayload
  */
-export const zSegmentCreateArgs = z.object({
+export const zSegmentCreateItemPayload = z.object({
   answer: z.string().nullish(),
   attachment_ids: z.array(z.string()).nullish(),
-  content: z.string().nullish(),
+  content: z.string().min(1),
   keywords: z.array(z.string()).nullish(),
 })
 
@@ -857,7 +857,7 @@ export const zSegmentCreateArgs = z.object({
  * SegmentCreatePayload
  */
 export const zSegmentCreatePayload = z.object({
-  segments: z.array(zSegmentCreateArgs).nullish(),
+  segments: z.array(zSegmentCreateItemPayload).min(1),
 })
 
 /**

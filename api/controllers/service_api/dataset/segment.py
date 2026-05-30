@@ -1,7 +1,7 @@
 from typing import cast
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -39,15 +39,29 @@ from libs.helper import dump_response
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs, SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from services.summary_index_service import SummaryIndexService
 
 
+class SegmentCreateItemPayload(BaseModel):
+    content: str = Field(min_length=1)
+    answer: str | None = None
+    keywords: list[str] | None = None
+    attachment_ids: list[str] | None = None
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Content is empty")
+        return value
+
+
 class SegmentCreatePayload(BaseModel):
-    segments: list[SegmentCreateArgs] | None = None
+    segments: list[SegmentCreateItemPayload] = Field(min_length=1)
 
 
 class SegmentListQuery(BaseModel):
@@ -91,7 +105,7 @@ class SegmentListResponse(ResponseModel):
 register_schema_models(
     service_api_ns,
     SegmentCreatePayload,
-    SegmentCreateArgs,
+    SegmentCreateItemPayload,
     SegmentListQuery,
     SegmentUpdateArgs,
     SegmentUpdatePayload,
@@ -170,32 +184,30 @@ class SegmentApi(DatasetApiResource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         # validate args
-        payload = SegmentCreatePayload.model_validate(service_api_ns.payload or {})
-        if payload.segments is not None:
-            segments_limit = dify_config.DATASET_MAX_SEGMENTS_PER_REQUEST
-            if segments_limit > 0 and len(payload.segments) > segments_limit:
-                raise ValueError(f"Exceeded maximum segments limit of {segments_limit}.")
-            segment_items = [segment.model_dump(exclude_none=True) for segment in payload.segments]
+        try:
+            payload = SegmentCreatePayload.model_validate(service_api_ns.payload or {})
+        except ValidationError as e:
+            return {"error": str(e)}, 400
+        segments_limit = dify_config.DATASET_MAX_SEGMENTS_PER_REQUEST
+        if segments_limit > 0 and len(payload.segments) > segments_limit:
+            raise ValueError(f"Exceeded maximum segments limit of {segments_limit}.")
+        segment_items = [segment.model_dump(exclude_none=True) for segment in payload.segments]
 
-            for args_item in segment_items:
-                SegmentService.segment_create_args_validate(args_item, document)
-            segments = cast(
-                list[DocumentSegment], SegmentService.multi_create_segment(segment_items, document, dataset)
+        for args_item in segment_items:
+            SegmentService.segment_create_args_validate(args_item, document)
+        segments = cast(list[DocumentSegment], SegmentService.multi_create_segment(segment_items, document, dataset))
+        segment_ids = [segment.id for segment in segments]
+        summaries: dict[str, str | None] = {}
+        if segment_ids:
+            summary_records = SummaryIndexService.get_segments_summaries(
+                segment_ids=segment_ids, dataset_id=dataset_id_str
             )
-            segment_ids = [segment.id for segment in segments]
-            summaries: dict[str, str | None] = {}
-            if segment_ids:
-                summary_records = SummaryIndexService.get_segments_summaries(
-                    segment_ids=segment_ids, dataset_id=dataset_id_str
-                )
-                summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
-            response = {
-                "data": segment_responses_with_summaries(segments, summaries),
-                "doc_form": document.doc_form,
-            }
-            return dump_response(SegmentCreateListResponse, response), 200
-        else:
-            return {"error": "Segments is required"}, 400
+            summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
+        response = {
+            "data": segment_responses_with_summaries(segments, summaries),
+            "doc_form": document.doc_form,
+        }
+        return dump_response(SegmentCreateListResponse, response), 200
 
     @service_api_ns.doc("list_segments")
     @service_api_ns.doc(description="List segments in a document")
