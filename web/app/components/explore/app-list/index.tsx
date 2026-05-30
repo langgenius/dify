@@ -18,17 +18,19 @@ import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { useAppContext } from '@/context/app-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
+import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import TryApp from '../try-app'
 import { ExploreAppListHeader } from './explore-app-list-header'
 import { ExploreRecommendations } from './explore-recommendations'
 import { ExploreAppListSkeleton, ExploreHeaderSkeleton } from './loading-skeletons'
 import s from './style.module.css'
+
+const TryApp = dynamic(() => import('../try-app'), { ssr: false })
 
 function useHomeContinueWorkApps() {
   return useQuery(consoleQuery.apps.list.queryOptions({
