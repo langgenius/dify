@@ -5,6 +5,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
@@ -39,6 +40,8 @@ type MCPModalConfirmPayload = {
     timeout: number
     sse_read_timeout: number
   }
+  forward_user_identity?: boolean
+  identity_mode?: 'off' | 'idp_token'
 }
 
 type DuplicateAppModalProps = {
@@ -110,6 +113,8 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         timeout: state.timeout || 30,
         sse_read_timeout: state.sseReadTimeout || 300,
       },
+      forward_user_identity: state.forwardUserIdentity,
+      identity_mode: state.forwardUserIdentity ? 'idp_token' : 'off',
     })
     if (isCreate)
       onHide()
@@ -205,6 +210,23 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
               <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverIdentifierWarning', { ns: 'tools' })}</span>
             </div>
           )}
+        </div>
+
+        {/* Forward user identity (M3 — enterprise SSO identity-forwarding) */}
+        <div>
+          <div className="mb-1 flex h-6 items-center">
+            <Switch
+              className="mr-2"
+              checked={state.forwardUserIdentity}
+              onCheckedChange={actions.setForwardUserIdentity}
+            />
+            <span className="system-sm-medium text-text-secondary">
+              {t('mcp.modal.forwardUserIdentity', { ns: 'tools' })}
+            </span>
+          </div>
+          <div className="body-xs-regular text-text-tertiary">
+            {t('mcp.modal.forwardUserIdentityTip', { ns: 'tools' })}
+          </div>
         </div>
 
         {/* Auth Method Tabs */}

@@ -54,6 +54,7 @@ type MCPModalFormState = {
   isDynamicRegistration: boolean
   clientID: string
   credentials: string
+  forwardUserIdentity: boolean
 }
 type MCPModalFormActions = {
   setUrl: (url: string) => void
@@ -68,6 +69,7 @@ type MCPModalFormActions = {
   setIsDynamicRegistration: (value: boolean) => void
   setClientID: (id: string) => void
   setCredentials: (credentials: string) => void
+  setForwardUserIdentity: (value: boolean) => void
   handleUrlBlur: (url: string) => Promise<void>
   resetIcon: () => void
 }
@@ -100,6 +102,11 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() => isCreate ? true : (data?.is_dynamic_registration ?? true))
   const [clientID, setClientID] = useState(() => data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(() => data?.authentication?.client_secret || '')
+  // M3 — user-identity forwarding. Identity mode is implied by the toggle:
+  // off → "off", on → "idp_token" (only mode currently supported).
+  const [forwardUserIdentity, setForwardUserIdentity] = useState(
+    () => Boolean(data?.forward_user_identity),
+  )
   const handleUrlBlur = useCallback(async (urlValue: string) => {
     if (data)
       return
@@ -163,6 +170,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       isDynamicRegistration,
       clientID,
       credentials,
+      forwardUserIdentity,
     } satisfies MCPModalFormState,
     // Actions
     actions: {
@@ -178,6 +186,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setIsDynamicRegistration,
       setClientID,
       setCredentials,
+      setForwardUserIdentity,
       handleUrlBlur,
       resetIcon,
     } satisfies MCPModalFormActions,

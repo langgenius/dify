@@ -106,6 +106,8 @@ export const useCreateMCP = () => {
       timeout?: number
       sse_read_timeout?: number
       headers?: Record<string, string>
+      forward_user_identity?: boolean
+      identity_mode?: 'off' | 'idp_token'
     }) => {
       return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
@@ -133,6 +135,8 @@ export const useUpdateMCP = ({
       timeout?: number
       sse_read_timeout?: number
       headers?: Record<string, string>
+      forward_user_identity?: boolean
+      identity_mode?: 'off' | 'idp_token'
     }) => {
       return put('workspaces/current/tool-provider/mcp', {
         body: {

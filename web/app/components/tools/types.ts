@@ -78,6 +78,9 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // M3 — user-identity forwarding (MCP)
+  forward_user_identity?: boolean
+  identity_mode?: 'off' | 'idp_token'
   // Workflow
   workflow_app_id?: string
 }

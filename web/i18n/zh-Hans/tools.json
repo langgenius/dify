@@ -145,6 +145,8 @@
   "mcp.modal.timeout": "超时时间",
   "mcp.modal.timeoutPlaceholder": "30",
   "mcp.modal.title": "添加 MCP 服务 (HTTP)",
+  "mcp.modal.forwardUserIdentity": "转发用户身份",
+  "mcp.modal.forwardUserIdentityTip": "将调用用户的已验证 SSO 身份作为 Authorization Bearer token 转发到该 MCP 服务器。需要 Dify Enterprise SSO。",
   "mcp.modal.useDynamicClientRegistration": "使用动态客户端注册",
   "mcp.noConfigured": "未配置",
   "mcp.noTools": "没有可用的工具",
