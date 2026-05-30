@@ -68,7 +68,7 @@ describe('auth refresh route', () => {
     const fetchHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Headers
     expect(fetchHeaders.get('cookie')).toBe('refresh_token=old-refresh')
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe('http://localhost:3000/apps?category=workflow')
+    expect(response.headers.get('location')).toBe('/apps?category=workflow')
     expect(getSetCookieHeaders(response.headers)).toEqual([
       'access_token=new-access; Path=/; HttpOnly',
       'refresh_token=new-refresh; Path=/; HttpOnly',
@@ -85,7 +85,7 @@ describe('auth refresh route', () => {
     ))
 
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe('http://localhost:3000/signin?redirect_url=%2Fapps')
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
   })
 
   it('should ignore cross-origin redirect targets', async () => {
@@ -99,6 +99,19 @@ describe('auth refresh route', () => {
     ))
 
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe('http://localhost:3000/signin?redirect_url=%2Fapps')
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
+  })
+
+  it('should not leak internal request origin when redirecting to signin', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
+    const { GET } = await import('../route')
+
+    const response = await GET(createRequest(
+      'http://internal-service:3000/auth/refresh?redirect_url=%2F',
+      'refresh_token=expired',
+    ))
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
   })
 })
