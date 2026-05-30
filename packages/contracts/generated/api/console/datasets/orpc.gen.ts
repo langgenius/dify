@@ -13,6 +13,7 @@ import {
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zDeleteDatasetsByDatasetIdDocumentsPath,
   zDeleteDatasetsByDatasetIdDocumentsResponse,
@@ -50,8 +51,10 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse,
@@ -103,8 +106,10 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
@@ -1039,23 +1044,20 @@ export const patch6 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+      query: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
 
 export const byAction3 = {
   patch: patch6,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegment',
@@ -1127,16 +1129,8 @@ export const delete3 = oc
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId:
@@ -1160,16 +1154,8 @@ export const byChildChunkId = {
   patch: patch7,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get21 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1179,20 +1165,14 @@ export const get21 = oc
   .input(
     z.object({
       params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+      query:
+        zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery.optional(),
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1201,21 +1181,14 @@ export const patch8 = oc
   })
   .input(
     z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
       params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1251,16 +1224,8 @@ export const delete4 = oc
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1290,26 +1255,28 @@ export const delete5 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get22 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const segments = {
