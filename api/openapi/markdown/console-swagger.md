@@ -5311,7 +5311,6 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChildChunkBatchUpdatePayload](#childchunkbatchupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
@@ -5330,6 +5329,7 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ChildChunkBatchUpdatePayload](#childchunkbatchupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
