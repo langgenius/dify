@@ -1,34 +1,32 @@
-import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { IWorkspace } from '@/models/common'
+import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { useCurrentWorkspace } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
 import { WorkspaceCard } from '../workspace-card'
 
-const { mockSwitchWorkspace } = vi.hoisted(() => ({
+const { mockSwitchWorkspace, mockIsCloudEdition } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
+  mockIsCloudEdition: { value: false },
 }))
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: false,
+    get IS_CLOUD_EDITION() {
+      return mockIsCloudEdition.value
+    },
   }
 })
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -41,6 +39,14 @@ vi.mock('@/context/modal-context', () => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
+
+vi.mock('@/service/use-common', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/use-common')>()
+  return {
+    ...actual,
+    useCurrentWorkspace: vi.fn(),
+  }
+})
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
@@ -76,56 +82,42 @@ vi.mock('@/service/client', async (importOriginal) => {
   }
 })
 
-const appContextValue: AppContextValue = {
-  userProfile: {
-    id: 'user-1',
-    name: 'Evan Z',
-    email: 'evan@example.com',
-    avatar: '',
-    avatar_url: '',
-    is_password_set: true,
-  },
-  mutateUserProfile: vi.fn(),
-  currentWorkspace: {
-    id: 'workspace-1',
-    name: 'Solar Studio',
-    plan: Plan.sandbox,
-    status: 'normal',
-    created_at: 0,
-    role: 'owner',
-    providers: [],
-    trial_credits: 10000,
-    trial_credits_used: 2500,
-    next_credit_reset_date: 0,
-  },
-  isCurrentWorkspaceManager: true,
-  isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
-  isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '1.0.0',
-    latest_version: '1.0.0',
-    release_date: '',
-    release_notes: '',
-    version: '1.0.0',
-    can_auto_update: false,
-  },
-  useSelector: vi.fn(),
-  isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
+const currentWorkspaceValue: ICurrentWorkspace = {
+  id: 'workspace-1',
+  name: 'Solar Studio',
+  plan: Plan.sandbox,
+  status: 'normal',
+  created_at: 0,
+  role: 'owner',
+  providers: [],
+  trial_credits: 10000,
+  trial_credits_used: 2500,
+  next_credit_reset_date: 0,
 }
 
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 let mockWorkspaces: IWorkspace[] = []
 
-const renderWorkspaceCard = (options?: Parameters<typeof renderWithSystemFeatures>[1]) => {
+const mockCurrentWorkspaceQuery = (data: ICurrentWorkspace | undefined = currentWorkspaceValue, isPending = false) => {
+  vi.mocked(useCurrentWorkspace).mockReturnValue({
+    data,
+    isPending,
+  } as ReturnType<typeof useCurrentWorkspace>)
+}
+
+type RenderWorkspaceCardOptions = Parameters<typeof renderWithSystemFeatures>[1] & {
+  seedWorkspaces?: boolean
+}
+
+const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
+  const { seedWorkspaces = true, ...renderOptions } = options ?? {}
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  if (seedWorkspaces)
+    queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+
   return renderWithSystemFeatures(<WorkspaceCard />, {
-    ...options,
+    ...renderOptions,
     queryClient,
   })
 }
@@ -133,12 +125,13 @@ const renderWorkspaceCard = (options?: Parameters<typeof renderWithSystemFeature
 describe('WorkspaceCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCloudEdition.value = false
     mockWorkspaces = [
       { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
       { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.team, status: 'normal', created_at: 0, current: false },
     ]
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
-    vi.mocked(useAppContext).mockReturnValue(appContextValue)
+    mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -169,20 +162,41 @@ describe('WorkspaceCard', () => {
   })
 
   it('renders a stable skeleton while the current workspace is loading', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      ...appContextValue,
-      currentWorkspace: {
-        ...appContextValue.currentWorkspace,
-        id: '',
-        name: '',
-      },
-      isLoadingCurrentWorkspace: true,
-    })
+    mockCurrentWorkspaceQuery(undefined, true)
 
     renderWorkspaceCard()
 
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByText('Evan Workspace')).not.toBeInTheDocument()
+  })
+
+  it('renders a skeleton while the workspaces query has no data', () => {
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Solar Studio')).not.toBeInTheDocument()
+  })
+
+  it('uses the workspaces query current item for billing plan UI', () => {
+    mockIsCloudEdition.value = true
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: Plan.team,
+    })
+    vi.mocked(useProviderContext).mockReturnValue({
+      enableBilling: true,
+      isEducationAccount: false,
+      isEducationWorkspace: false,
+      isFetchedPlan: true,
+      plan: { type: Plan.team },
+    } as ProviderContextState)
+
+    renderWorkspaceCard()
+
+    expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
+    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
+    expect(screen.queryByText(Plan.team)).not.toBeInTheDocument()
+    expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
   })
 
   it('shows the license status instead of a billing plan when billing is disabled', () => {
@@ -238,10 +252,9 @@ describe('WorkspaceCard', () => {
   })
 
   it('hides workspace management actions for dataset operators', async () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      ...appContextValue,
-      isCurrentWorkspaceDatasetOperator: true,
-      isCurrentWorkspaceManager: false,
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      role: 'dataset_operator',
     })
 
     renderWorkspaceCard()
