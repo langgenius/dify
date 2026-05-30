@@ -128,7 +128,7 @@ class TestMemberCancelInviteApiWithContainers:
             flask_app_with_containers.test_request_context("/"),
             patch.object(members_module.TenantService, "remove_member_from_tenant") as mock_remove_member,
         ):
-            result, status = method(api, current_user, member.id)
+            result, status = method(api, db_session_with_containers, current_user, member.id)
 
         assert status == 200
         assert result["result"] == "success"
@@ -137,6 +137,7 @@ class TestMemberCancelInviteApiWithContainers:
         assert called_tenant.id == tenant.id
         assert called_member.id == member.id
         assert called_current_user.id == current_user.id
+        assert mock_remove_member.call_args.kwargs["session"] is db_session_with_containers
 
     def test_cancel_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
@@ -146,7 +147,7 @@ class TestMemberCancelInviteApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/"):
             with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+                method(api, db_session_with_containers, current_user, str(uuid4()))
 
     def test_cancel_cannot_operate_self(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -165,7 +166,7 @@ class TestMemberCancelInviteApiWithContainers:
                 side_effect=services.errors.account.CannotOperateSelfError("x"),
             ),
         ):
-            result, status = method(api, current_user, member.id)
+            result, status = method(api, db_session_with_containers, current_user, member.id)
 
         assert status == 400
         assert result["code"] == "cannot-operate-self"
@@ -185,7 +186,7 @@ class TestMemberCancelInviteApiWithContainers:
                 side_effect=services.errors.account.NoPermissionError("x"),
             ),
         ):
-            result, status = method(api, current_user, member.id)
+            result, status = method(api, db_session_with_containers, current_user, member.id)
 
         assert status == 403
         assert result["code"] == "forbidden"
@@ -207,7 +208,7 @@ class TestMemberCancelInviteApiWithContainers:
                 side_effect=services.errors.account.MemberNotInTenantError(),
             ),
         ):
-            result, status = method(api, current_user, member.id)
+            result, status = method(api, db_session_with_containers, current_user, member.id)
 
         assert status == 404
         assert result["code"] == "member-not-found"
@@ -227,7 +228,9 @@ class TestMemberUpdateRoleApiWithContainers:
         )
 
         with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
-            result = method(api, current_user, member.id)
+            result = method(api, db_session_with_containers, current_user, member.id)
+
+        db_session_with_containers.commit()
 
         if isinstance(result, tuple):
             result = result[0]
@@ -247,7 +250,7 @@ class TestMemberUpdateRoleApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
             with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+                method(api, db_session_with_containers, current_user, str(uuid4()))
 
 
 class TestOwnerTransferApiWithContainers:
@@ -261,7 +264,7 @@ class TestOwnerTransferApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/", json={"token": token}):
             with pytest.raises(MemberNotInTenantError):
-                method(api, current_user, member.id)
+                method(api, db_session_with_containers, current_user, member.id)
 
     def test_member_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -272,7 +275,7 @@ class TestOwnerTransferApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/", json={"token": token}):
             with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+                method(api, db_session_with_containers, current_user, str(uuid4()))
 
     def test_transfer_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -292,7 +295,8 @@ class TestOwnerTransferApiWithContainers:
             patch.object(members_module.AccountService, "send_new_owner_transfer_notify_email") as mock_new_owner_email,
             patch.object(members_module.AccountService, "send_old_owner_transfer_notify_email") as mock_old_owner_email,
         ):
-            result = method(api, current_user, member.id)
+            result = method(api, db_session_with_containers, current_user, member.id)
+            db_session_with_containers.commit()
 
         assert result["result"] == "success"
         assert (
