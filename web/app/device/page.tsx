@@ -196,7 +196,7 @@ export default function DevicePage() {
           <h1 className="text-xl font-semibold text-text-primary">You&apos;re signed in</h1>
           <p className="text-sm text-text-secondary">Return to your terminal to continue.</p>
           <Divider className="my-3" />
-          <Button variant="ghost" className="w-full" onClick={() => router.push('/apps')}>
+          <Button variant="ghost" className="w-full" onClick={() => router.push('/')}>
             Go to Dify console →
           </Button>
         </div>
