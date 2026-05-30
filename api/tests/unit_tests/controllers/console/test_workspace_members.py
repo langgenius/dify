@@ -1,6 +1,6 @@
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask, g
@@ -46,13 +46,17 @@ class TestMemberInviteEmailApi:
         mock_invite_member.return_value = "token-abc"
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
+        mock_session = MagicMock()
+        mock_session_context = MagicMock()
+        mock_session_context.__enter__.return_value = mock_session
+        mock_session_context.__exit__.return_value = False
 
         with (
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.app.wraps.session_factory.create_session", return_value=mock_session_context),
         ):
             with app.test_request_context(
                 "/workspaces/current/members/invite-email",

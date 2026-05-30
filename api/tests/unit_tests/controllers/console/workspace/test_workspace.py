@@ -1,5 +1,5 @@
 from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -460,28 +460,31 @@ class TestSwitchWorkspaceApi:
 
         payload = {"tenant_id": "t2"}
         tenant = MagicMock(id="t2")
+        session = MagicMock()
+        session.get.return_value = tenant
 
         with (
             app.test_request_context("/workspaces/switch", json=payload),
             patch(
                 "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
             ),
-            patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
+            patch("controllers.console.workspace.workspace.TenantService.switch_tenant") as switch_tenant_mock,
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t2"}
             ),
         ):
-            get_mock.return_value = tenant
-            result = method(api)
+            result = method(api, session)
 
         assert result["result"] == "success"
+        switch_tenant_mock.assert_called_once_with(ANY, "t2", session=session)
+        session.get.assert_called_once_with(ANY, "t2")
 
     def test_switch_not_linked(self, app: Flask):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
 
         payload = {"tenant_id": "bad"}
+        session = MagicMock()
 
         with (
             app.test_request_context("/workspaces/switch", json=payload),
@@ -491,13 +494,15 @@ class TestSwitchWorkspaceApi:
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant", side_effect=Exception),
         ):
             with pytest.raises(AccountNotLinkTenantError):
-                method(api)
+                method(api, session)
 
     def test_switch_tenant_not_found(self, app: Flask):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
 
         payload = {"tenant_id": "missing"}
+        session = MagicMock()
+        session.get.return_value = None
 
         with (
             app.test_request_context("/workspaces/switch", json=payload),
@@ -506,12 +511,9 @@ class TestSwitchWorkspaceApi:
                 return_value=(MagicMock(), "t1"),
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
         ):
-            get_mock.return_value = None
-
             with pytest.raises(ValueError):
-                method(api)
+                method(api, session)
 
 
 class TestCustomConfigWorkspaceApi:
@@ -520,6 +522,8 @@ class TestCustomConfigWorkspaceApi:
         method = unwrap(api.post)
 
         tenant = MagicMock(custom_config_dict={})
+        session = MagicMock()
+        session.get.return_value = tenant
 
         payload = {"remove_webapp_brand": True}
 
@@ -528,21 +532,22 @@ class TestCustomConfigWorkspaceApi:
             patch(
                 "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
             ),
-            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
-            patch("controllers.console.workspace.workspace.db.session.commit"),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
             ),
         ):
-            result = method(api)
+            result = method(api, session)
 
         assert result["result"] == "success"
+        session.get.assert_called_once_with(ANY, "t1")
 
     def test_logo_fallback(self, app: Flask):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(custom_config_dict={"replace_webapp_logo": "old-logo"})
+        session = MagicMock()
+        session.get.return_value = tenant
 
         payload = {"remove_webapp_brand": False}
 
@@ -553,16 +558,11 @@ class TestCustomConfigWorkspaceApi:
                 return_value=(MagicMock(), "t1"),
             ),
             patch(
-                "controllers.console.workspace.workspace.db.get_or_404",
-                return_value=tenant,
-            ),
-            patch("controllers.console.workspace.workspace.db.session.commit"),
-            patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
                 return_value={"id": "t1"},
             ),
         ):
-            result = method(api)
+            result = method(api, session)
 
         assert tenant.custom_config_dict["replace_webapp_logo"] == "old-logo"
         assert result["result"] == "success"
@@ -737,6 +737,8 @@ class TestWorkspaceInfoApi:
         method = unwrap(api.post)
 
         tenant = MagicMock()
+        session = MagicMock()
+        session.get.return_value = tenant
 
         payload = {"name": "New Name"}
 
@@ -745,16 +747,15 @@ class TestWorkspaceInfoApi:
             patch(
                 "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
             ),
-            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
-            patch("controllers.console.workspace.workspace.db.session.commit"),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
                 return_value={"name": "New Name"},
             ),
         ):
-            result = method(api)
+            result = method(api, session)
 
         assert result["result"] == "success"
+        session.get.assert_called_once_with(ANY, "t1")
 
     def test_no_current_tenant(self, app: Flask):
         api = WorkspaceInfoApi()
@@ -770,7 +771,7 @@ class TestWorkspaceInfoApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, MagicMock())
 
 
 class TestWorkspacePermissionApi:

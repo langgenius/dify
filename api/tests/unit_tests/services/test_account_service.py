@@ -907,6 +907,44 @@ class TestTenantService:
             # Assert: only the join record should be deleted
             mock_db.session.delete.assert_called_once_with(mock_ta)
 
+    def test_remove_member_from_tenant_uses_injected_session(self):
+        """Test member removal can reuse an injected session without committing it."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123", role="owner")
+        mock_active_member = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="active-user-789", email="active@example.com", status=AccountStatus.ACTIVE
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="owner"
+        )
+        mock_ta = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="active-user-789", role="normal"
+        )
+        session = MagicMock()
+        session.scalar.side_effect = [mock_operator_join, mock_ta]
+
+        with (
+            patch("services.account_service.event.listen") as listen_mock,
+            patch(
+                "services.enterprise.account_deletion_sync.sync_workspace_member_removal", return_value=True
+            ) as sync_mock,
+        ):
+            TenantService.remove_member_from_tenant(mock_tenant, mock_active_member, mock_operator, session=session)
+
+            session.delete.assert_called_once_with(mock_ta)
+            session.commit.assert_not_called()
+            sync_mock.assert_not_called()
+            listen_mock.assert_called_once()
+
+            after_commit = listen_mock.call_args.args[2]
+            after_commit(session)
+            sync_mock.assert_called_once_with(
+                workspace_id="tenant-456",
+                member_id="active-user-789",
+                source="workspace_member_removed",
+            )
+
     # ==================== Tenant Switching Tests ====================
 
     def test_switch_tenant_success(self):
@@ -928,6 +966,22 @@ class TestTenantService:
             # Verify tenant was switched
             assert mock_tenant_join.current is True
             self._assert_database_operations_called(mock_db)
+
+    def test_switch_tenant_uses_injected_session(self):
+        """Test tenant switching can reuse an injected session without committing it."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        mock_tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="user-123", current=False
+        )
+        session = MagicMock()
+        session.scalar.return_value = mock_tenant_join
+
+        TenantService.switch_tenant(mock_account, "tenant-456", session=session)
+
+        assert mock_tenant_join.current is True
+        mock_account.set_tenant_id.assert_called_once_with("tenant-456")
+        session.execute.assert_called_once()
+        session.commit.assert_not_called()
 
     def test_switch_tenant_no_tenant_id(self):
         """Test tenant switching without providing tenant ID."""
@@ -964,6 +1018,26 @@ class TestTenantService:
             # Verify role was updated
             assert mock_target_join.role == "admin"
             self._assert_database_operations_called(mock_db)
+
+    def test_update_member_role_uses_injected_session(self):
+        """Test role updates can reuse an injected session without committing it."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_target_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="normal"
+        )
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="owner"
+        )
+        session = MagicMock()
+        session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
+
+        TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator, session=session)
+
+        assert mock_target_join.role == "admin"
+        session.commit.assert_not_called()
 
     def test_admin_can_update_admin_member_role(self):
         """Test admin can update another non-owner member, including an admin."""

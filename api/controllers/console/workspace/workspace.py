@@ -5,7 +5,8 @@ from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import Unauthorized
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound, Unauthorized
 
 import services
 from configs import dify_config
@@ -19,6 +20,7 @@ from controllers.common.errors import (
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
+from controllers.console.app.wraps import with_session
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -256,18 +258,19 @@ class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_session
+    def post(self, session: Session):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
         # check if tenant_id is valid, 403 if not
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id)
+            TenantService.switch_tenant(current_user, args.tenant_id, session=session)
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
-        new_tenant = db.session.get(Tenant, args.tenant_id)  # Get new tenant
+        new_tenant = session.get(Tenant, args.tenant_id)  # Get new tenant
         if new_tenant is None:
             raise ValueError("Tenant not found")
 
@@ -281,11 +284,14 @@ class CustomConfigWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
+    @with_session
+    def post(self, session: Session):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
-        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant = session.get(Tenant, current_tenant_id)
+        if tenant is None:
+            raise NotFound()
 
         custom_config_dict: TenantCustomConfigDict = {
             "remove_webapp_brand": args.remove_webapp_brand
@@ -297,7 +303,6 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
-        db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
@@ -349,16 +354,18 @@ class WorkspaceInfoApi(Resource):
     @login_required
     @account_initialization_required
     # Change workspace name
-    def post(self):
+    @with_session
+    def post(self, session: Session):
         _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)
 
         if not current_tenant_id:
             raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant = session.get(Tenant, current_tenant_id)
+        if tenant is None:
+            raise NotFound()
         tenant.name = args.name
-        db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
