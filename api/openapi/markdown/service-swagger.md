@@ -753,6 +753,8 @@ Create a new document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document creation settings. | No | string |
+| file | formData | Document file to upload. | Yes | file |
 | dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
@@ -796,6 +798,8 @@ Create a new document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document creation settings. | No | string |
+| file | formData | Document file to upload. | Yes | file |
 | dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
@@ -841,6 +845,10 @@ List all documents in a dataset
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
+| keyword | query | Search keyword | No | string |
+| limit | query | Number of items per page | No | integer |
+| page | query | Page number | No | integer |
+| status | query | Document status filter | No | string |
 
 ##### Responses
 
@@ -1019,6 +1027,8 @@ Update an existing document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document update settings. | No | string |
+| file | formData | Replacement document file. | No | file |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
@@ -1274,6 +1284,8 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document update settings. | No | string |
+| file | formData | Replacement document file. | No | file |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
@@ -1320,6 +1332,8 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document update settings. | No | string |
+| file | formData | Replacement document file. | No | file |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
@@ -2288,7 +2302,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
 
 #### ConversationListQuery
 
@@ -2686,7 +2700,7 @@ Request payload for bulk downloading documents as a zip archive.
 | id | string |  | Yes |
 | name | string |  | Yes |
 | type | string |  | Yes |
-| value | string |  | No |
+| value | string<br>integer<br>number<br>boolean |  | No |
 
 #### DocumentResponse
 
@@ -2974,7 +2988,7 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>integer<br>number |  | No |
 
 #### MetadataFilteringCondition
 
@@ -3325,7 +3339,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |
-| details |  |  | No |
+| details | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | id | string |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
 
@@ -3347,7 +3361,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| elapsed_time |  |  | No |
+| elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -3371,11 +3385,11 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| elapsed_time |  |  | No |
+| elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
 | id | string |  | Yes |
-| inputs |  |  | No |
+| inputs | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | outputs | object |  | No |
 | status | string |  | Yes |
 | total_steps | integer |  | No |

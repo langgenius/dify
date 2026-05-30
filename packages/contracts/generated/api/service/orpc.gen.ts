@@ -46,6 +46,7 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zGetDatasetsByDatasetIdDocumentsPath,
+  zGetDatasetsByDatasetIdDocumentsQuery,
   zGetDatasetsByDatasetIdDocumentsResponse,
   zGetDatasetsByDatasetIdMetadataBuiltInPath,
   zGetDatasetsByDatasetIdMetadataBuiltInResponse,
@@ -87,6 +88,7 @@ import {
   zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
   zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse,
   zPatchDatasetsByDatasetIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
@@ -119,8 +121,10 @@ import {
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameResponse,
   zPostDatasetsBody,
+  zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentCreateByFileBody,
   zPostDatasetsByDatasetIdDocumentCreateByFilePath,
   zPostDatasetsByDatasetIdDocumentCreateByFileResponse,
   zPostDatasetsByDatasetIdDocumentCreateByText2Body,
@@ -138,8 +142,10 @@ import {
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body,
@@ -863,7 +869,12 @@ export const post13 = oc
     path: '/datasets/{dataset_id}/document/create-by-file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFilePath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFileBody,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFilePath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
@@ -878,7 +889,12 @@ export const post14 = oc
     path: '/datasets/{dataset_id}/document/create_by_file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {
@@ -1304,7 +1320,12 @@ export const post22 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/update-by-file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
 
 /**
@@ -1323,7 +1344,12 @@ export const post23 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/update_by_file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
 
 export const updateByFile = {
@@ -1430,7 +1456,12 @@ export const patch4 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody.optional(),
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 export const byDocumentId = {
@@ -1455,7 +1486,12 @@ export const get14 = oc
     path: '/datasets/{dataset_id}/documents',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
 export const documents = {

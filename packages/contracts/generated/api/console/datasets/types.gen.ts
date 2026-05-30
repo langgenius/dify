@@ -734,7 +734,7 @@ export type DocumentMetadataResponse = {
   id: string
   name: string
   type: string
-  value?: string | null
+  value?: unknown
 }
 
 export type SegmentResponse = {

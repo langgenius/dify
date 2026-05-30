@@ -544,7 +544,7 @@ export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
   type: z.string(),
-  value: z.string().nullish(),
+  value: z.unknown().optional(),
 })
 
 /**
@@ -1657,6 +1657,11 @@ export const zPatchDatasetsByDatasetIdPath = z.object({
  */
 export const zPatchDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMembersResponse
 
+export const zPostDatasetsByDatasetIdDocumentCreateByFileBody = z.object({
+  data: z.string().optional(),
+  file: z.custom<Blob | File>(),
+})
+
 export const zPostDatasetsByDatasetIdDocumentCreateByFilePath = z.object({
   dataset_id: z.string(),
 })
@@ -1676,6 +1681,11 @@ export const zPostDatasetsByDatasetIdDocumentCreateByTextPath = z.object({
  * Document created successfully
  */
 export const zPostDatasetsByDatasetIdDocumentCreateByTextResponse = zDocumentAndBatchResponse
+
+export const zPostDatasetsByDatasetIdDocumentCreateByFile2Body = z.object({
+  data: z.string().optional(),
+  file: z.custom<Blob | File>(),
+})
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Path = z.object({
   dataset_id: z.string(),
@@ -1699,6 +1709,13 @@ export const zPostDatasetsByDatasetIdDocumentCreateByText2Response = zDocumentAn
 
 export const zGetDatasetsByDatasetIdDocumentsPath = z.object({
   dataset_id: z.string(),
+})
+
+export const zGetDatasetsByDatasetIdDocumentsQuery = z.object({
+  keyword: z.string().optional(),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  status: z.string().optional(),
 })
 
 /**
@@ -1777,6 +1794,11 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.record(
   z.string(),
   z.unknown(),
 )
+
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody = z.object({
+  data: z.string().optional(),
+  file: z.custom<Blob | File>().optional(),
+})
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
   dataset_id: z.string(),
@@ -1936,6 +1958,11 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
   = zChildChunkDetailResponse
 
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody = z.object({
+  data: z.string().optional(),
+  file: z.custom<Blob | File>().optional(),
+})
+
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.object({
   dataset_id: z.string(),
   document_id: z.string(),
@@ -1959,6 +1986,11 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath = z.o
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
   = zDocumentAndBatchResponse
+
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body = z.object({
+  data: z.string().optional(),
+  file: z.custom<Blob | File>().optional(),
+})
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path = z.object({
   dataset_id: z.string(),

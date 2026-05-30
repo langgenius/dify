@@ -26,7 +26,12 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.common.fields import UrlResponse
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -110,6 +115,39 @@ class DocumentListQuery(BaseModel):
     limit: int = Field(default=20, description="Number of items per page")
     keyword: str | None = Field(default=None, description="Search keyword")
     status: str | None = Field(default=None, description="Document status filter")
+
+
+DOCUMENT_CREATE_BY_FILE_PARAMS = {
+    "dataset_id": "Dataset ID",
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": True,
+        "description": "Document file to upload.",
+    },
+    "data": {
+        "in": "formData",
+        "type": "string",
+        "required": False,
+        "description": "Optional JSON string with document creation settings.",
+    },
+}
+DOCUMENT_UPDATE_BY_FILE_PARAMS = {
+    "dataset_id": "Dataset ID",
+    "document_id": "Document ID",
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": False,
+        "description": "Replacement document file.",
+    },
+    "data": {
+        "in": "formData",
+        "type": "string",
+        "required": False,
+        "description": "Optional JSON string with document update settings.",
+    },
+}
 
 
 class DocumentAndBatchResponse(ResponseModel):
@@ -390,7 +428,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 
     @service_api_ns.doc("create_document_by_file")
     @service_api_ns.doc(description="Create a new document by uploading a file")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=DOCUMENT_CREATE_BY_FILE_PARAMS)
     @service_api_ns.doc(
         responses={
             200: "Document created successfully",
@@ -586,7 +624,7 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
             "Use PATCH /datasets/{dataset_id}/documents/{document_id} instead."
         )
     )
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=DOCUMENT_UPDATE_BY_FILE_PARAMS)
     @service_api_ns.doc(
         responses={
             200: "Document updated successfully",
@@ -608,7 +646,7 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
 class DocumentListApi(DatasetApiResource):
     @service_api_ns.doc("list_documents")
     @service_api_ns.doc(description="List all documents in a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DocumentListQuery)})
     @service_api_ns.doc(
         responses={
             200: "Documents retrieved successfully",
@@ -928,7 +966,7 @@ class DocumentApi(DatasetApiResource):
 
     @service_api_ns.doc("update_document_by_file")
     @service_api_ns.doc(description="Update an existing document by uploading a file")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=DOCUMENT_UPDATE_BY_FILE_PARAMS)
     @service_api_ns.doc(
         responses={
             200: "Document updated successfully",

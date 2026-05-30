@@ -859,7 +859,11 @@ class TestDocumentListApi:
 
         mock_pagination = Mock()
         mock_pagination.items = [
-            make_serializable_document(id="doc-1", name="Document 1"),
+            make_serializable_document(
+                id="doc-1",
+                name="Document 1",
+                doc_metadata_details=[{"id": "meta-1", "name": "amount", "type": "number", "value": 42}],
+            ),
             make_serializable_document(id="doc-2", name="Document 2"),
         ]
         mock_pagination.total = 2
@@ -883,7 +887,7 @@ class TestDocumentListApi:
         assert response["total"] == 2
         assert response["data"][0]["id"] == "doc-1"
         assert response["data"][0]["data_source_info"] == {"upload_file_id": "file-1"}
-        assert response["data"][0]["doc_metadata"] == []
+        assert response["data"][0]["doc_metadata"][0]["value"] == 42
         assert "data_source_info_dict" not in response["data"][0]
         assert "doc_metadata_details" not in response["data"][0]
 

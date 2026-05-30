@@ -19,7 +19,7 @@ class DocumentMetadataResponse(ResponseModel):
     id: str
     name: str
     type: str
-    value: str | None = None
+    value: str | int | float | bool | None = None
 
 
 class DocumentResponse(ResponseModel):

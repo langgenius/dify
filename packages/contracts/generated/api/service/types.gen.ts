@@ -454,7 +454,7 @@ export type DocumentMetadataResponse = {
   id: string
   name: string
   type: string
-  value?: string | null
+  value?: unknown
 }
 
 export type DocumentResponse = {
@@ -1885,7 +1885,10 @@ export type PatchDatasetsByDatasetIdResponse
   = PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
-  body?: never
+  body: {
+    data?: string
+    file: Blob | File
+  }
   path: {
     dataset_id: string
   }
@@ -1941,7 +1944,10 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextResponse
   = PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
-  body?: never
+  body: {
+    data?: string
+    file: Blob | File
+  }
   path: {
     dataset_id: string
   }
@@ -2001,7 +2007,12 @@ export type GetDatasetsByDatasetIdDocumentsData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+    status?: string
+  }
   url: '/datasets/{dataset_id}/documents'
 }
 
@@ -2218,7 +2229,10 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
   = GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2571,7 +2585,10 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
   = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2629,7 +2646,10 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
   = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
