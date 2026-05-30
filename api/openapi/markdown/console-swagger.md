@@ -4792,9 +4792,9 @@ Get dataset auto disable logs
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing status retrieved successfully | [DocumentStatusListResponse](#documentstatuslistresponse) |
 
 ### /datasets/{dataset_id}/documents
 
@@ -4830,9 +4830,9 @@ Get documents in a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Documents retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents retrieved successfully | [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse) |
 
 #### POST
 ##### Parameters
@@ -5028,10 +5028,10 @@ Get document indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Indexing status retrieved successfully |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing status retrieved successfully | [DocumentStatusResponse](#documentstatusresponse) |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/metadata
 
@@ -11432,7 +11432,7 @@ Enum class for api provider schema type.
 | description | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| parameters |  |  | Yes |
+| parameters | object<br>[ object ]<br>string |  | Yes |
 | server_code | string |  | Yes |
 | status | [AppMCPServerStatus](#appmcpserverstatus) |  | Yes |
 | updated_at | integer |  | No |
@@ -11903,7 +11903,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
 
 #### ConsoleDatasetListQuery
 
@@ -12820,7 +12820,7 @@ Request payload for bulk downloading documents as a zip archive.
 | id | string |  | Yes |
 | name | string |  | Yes |
 | type | string |  | Yes |
-| value | string |  | No |
+| value | string<br>integer<br>number<br>boolean |  | No |
 
 #### DocumentMetadataUpdatePayload
 
@@ -12844,14 +12844,14 @@ Request payload for bulk downloading documents as a zip archive.
 | created_by | string |  | No |
 | created_from | string |  | No |
 | data_source_detail_dict |  |  | No |
-| data_source_info_dict |  |  | No |
+| data_source_info |  |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
 | disabled_by | string |  | No |
 | display_status | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata_details | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
 | enabled | boolean |  | No |
 | error | string |  | No |
 | hit_count | integer |  | No |
@@ -12893,6 +12893,16 @@ Request payload for bulk downloading documents as a zip archive.
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
 
+#### DocumentWithSegmentsListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentWithSegmentsResponse](#documentwithsegmentsresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### DocumentWithSegmentsResponse
 
 | Name | Type | Description | Required |
@@ -12903,14 +12913,14 @@ Request payload for bulk downloading documents as a zip archive.
 | created_by | string |  | No |
 | created_from | string |  | No |
 | data_source_detail_dict |  |  | No |
-| data_source_info_dict |  |  | No |
+| data_source_info |  |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
 | disabled_by | string |  | No |
 | display_status | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata_details | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
 | enabled | boolean |  | No |
 | error | string |  | No |
 | hit_count | integer |  | No |
@@ -14000,7 +14010,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>integer<br>number |  | No |
 
 #### MetadataFilteringCondition
 
@@ -14595,7 +14605,7 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
 | type | [Type](#type) |  | Yes |
-| value |  |  | Yes |
+| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
 
 #### PluginEndpointListResponse
 
@@ -15130,7 +15140,7 @@ Form input definition.
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type |  |  | No |
+| icon_type | string<br>[IconType](#icontype) |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |
 | show_workflow_steps | boolean |  | No |

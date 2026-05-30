@@ -46,6 +46,7 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zGetDatasetsByDatasetIdDocumentsPath,
+  zGetDatasetsByDatasetIdDocumentsQuery,
   zGetDatasetsByDatasetIdDocumentsResponse,
   zGetDatasetsByDatasetIdMetadataBuiltInPath,
   zGetDatasetsByDatasetIdMetadataBuiltInResponse,
@@ -87,6 +88,7 @@ import {
   zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
   zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse,
   zPatchDatasetsByDatasetIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
@@ -119,8 +121,10 @@ import {
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameResponse,
   zPostDatasetsBody,
+  zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentCreateByFileBody,
   zPostDatasetsByDatasetIdDocumentCreateByFilePath,
   zPostDatasetsByDatasetIdDocumentCreateByFileResponse,
   zPostDatasetsByDatasetIdDocumentCreateByText2Body,
@@ -138,8 +142,10 @@ import {
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body,
@@ -853,44 +859,42 @@ export const tags = {
 
 /**
  * Create a new document by uploading a file
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a new document by uploading a file\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a new document by uploading a file',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
     path: '/datasets/{dataset_id}/document/create-by-file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFilePath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFileBody,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFilePath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
  * Create a new document by uploading a file
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a new document by uploading a file\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a new document by uploading a file',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
     path: '/datasets/{dataset_id}/document/create_by_file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {
@@ -899,16 +903,10 @@ export const createByFile = {
 
 /**
  * Create a new document by providing text content
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a new document by providing text content\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a new document by providing text content',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
@@ -926,15 +924,13 @@ export const post15 = oc
 /**
  * Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.
  *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
  * @deprecated
  */
 export const post16 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
@@ -1062,16 +1058,10 @@ export const status2 = {
 
 /**
  * Get indexing status for documents in a batch
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get indexing status for documents in a batch\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get indexing status for documents in a batch',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByBatchIndexingStatus',
@@ -1317,28 +1307,29 @@ export const segments = {
 /**
  * Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.
  *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
  * @deprecated
  */
 export const post22 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
     path: '/datasets/{dataset_id}/documents/{document_id}/update-by-file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
 
 /**
  * Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
  *
  * @deprecated
  */
@@ -1346,14 +1337,19 @@ export const post23 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
     path: '/datasets/{dataset_id}/documents/{document_id}/update_by_file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
 
 export const updateByFile = {
@@ -1362,16 +1358,10 @@ export const updateByFile = {
 
 /**
  * Update an existing document by providing text content
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post24 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update an existing document by providing text content\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update an existing document by providing text content',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
@@ -1389,15 +1379,13 @@ export const post24 = oc
 /**
  * Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
  *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
  * @deprecated
  */
 export const post25 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
@@ -1458,23 +1446,22 @@ export const get13 = oc
 
 /**
  * Update an existing document by uploading a file
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update an existing document by uploading a file\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update an existing document by uploading a file',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentId',
     path: '/datasets/{dataset_id}/documents/{document_id}',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody.optional(),
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 export const byDocumentId = {
@@ -1489,23 +1476,22 @@ export const byDocumentId = {
 
 /**
  * List all documents in a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'List all documents in a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'List all documents in a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocuments',
     path: '/datasets/{dataset_id}/documents',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
 export const documents = {

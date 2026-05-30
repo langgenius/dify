@@ -2,7 +2,7 @@ import type { UserConfig } from '@hey-api/openapi-ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig } from '@hey-api/openapi-ts'
 
 type JsonObject = Record<string, unknown>
 
@@ -976,6 +976,12 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       'name': 'zod',
       '~resolvers': {
         enum: markNullableEnumSchema,
+        string: (ctx) => {
+          if (ctx.schema.format !== 'binary')
+            return undefined
+
+          return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+        },
       },
     },
     {
