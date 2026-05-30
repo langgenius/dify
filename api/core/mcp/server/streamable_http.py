@@ -71,21 +71,24 @@ def handle_mcp_request(
         )
 
     try:
-        # Dispatch request to appropriate handler based on instance type
-        if isinstance(request_root, mcp_types.InitializeRequest):
-            return create_success_response(handle_initialize(mcp_server.description))
-        elif isinstance(request_root, mcp_types.ListToolsRequest):
-            return create_success_response(
-                handle_list_tools(
-                    app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+        # Dispatch request to appropriate handler based on type
+        match request_root:
+            case mcp_types.InitializeRequest():
+                return create_success_response(handle_initialize(mcp_server.description))
+            case mcp_types.ListToolsRequest():
+                return create_success_response(
+                    handle_list_tools(
+                        app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+                    )
                 )
-            )
-        elif isinstance(request_root, mcp_types.CallToolRequest):
-            return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
-        elif isinstance(request_root, mcp_types.PingRequest):
-            return create_success_response(handle_ping())
-        else:
-            return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
+            case mcp_types.CallToolRequest():
+                return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
+            case mcp_types.PingRequest():
+                return create_success_response(handle_ping())
+            case _:
+                return create_error_response(
+                    mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}"
+                )
 
     except ValueError as e:
         logger.exception("Invalid params")

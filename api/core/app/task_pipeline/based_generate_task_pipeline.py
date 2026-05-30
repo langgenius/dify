@@ -46,13 +46,14 @@ class BasedGenerateTaskPipeline:
         e = event.error
         err: Exception
 
-        if isinstance(e, InvokeAuthorizationError):
-            err = InvokeAuthorizationError("Incorrect API key provided")
-        elif isinstance(e, InvokeError | ValueError):
-            err = e
-        else:
-            description = getattr(e, "description", None)
-            err = Exception(description if description is not None else str(e))
+        match e:
+            case InvokeAuthorizationError():
+                err = InvokeAuthorizationError("Incorrect API key provided")
+            case InvokeError() | ValueError():
+                err = e
+            case _:
+                description = getattr(e, "description", None)
+                err = Exception(description if description is not None else str(e))
 
         if not message_id or not session:
             return err

@@ -543,13 +543,16 @@ class Workflow(Base):  # bug
         def decrypt_func(
             var: VariableBase,
         ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
-            if isinstance(var, SecretVariable):
-                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
-                return var
-            else:
-                # Other variable types are not supported for environment variables
-                raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
+            match var:
+                case SecretVariable():
+                    return var.model_copy(
+                        update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
+                    )
+                case StringVariable() | IntegerVariable() | FloatVariable():
+                    return var
+                case _:
+                    # Other variable types are not supported for environment variables
+                    raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
         decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
             decrypt_func(var) for var in results
@@ -2099,17 +2102,18 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     @classmethod
     def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
-        if isinstance(pause_reason, HumanInputRequired):
-            return cls(
-                pause_id=pause_id,
-                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
-                form_id=pause_reason.form_id,
-                node_id=pause_reason.node_id,
-            )
-        elif isinstance(pause_reason, SchedulingPause):
-            return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
-        else:
-            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+        match pause_reason:
+            case HumanInputRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                    form_id=pause_reason.form_id,
+                    node_id=pause_reason.node_id,
+                )
+            case SchedulingPause():
+                return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
+            case _:
+                raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
     def to_entity(self) -> PauseReason:
         if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
