@@ -555,6 +555,8 @@ def with_current_user_id[T, **P, R](
         return view(self, str(current_user.id), *args, **kwargs)
 
     return decorated
+
+
 def model_validate[T, M: BaseModel, **P, R](
     model: type[M],
 ) -> Callable[
