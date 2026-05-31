@@ -50,7 +50,7 @@ const NormalForm = () => {
       if (isLoggedIn) {
         setIsRedirecting(true)
         const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || '/apps')
+        router.replace(redirectUrl || '/')
         return
       }
 
@@ -75,7 +75,7 @@ const NormalForm = () => {
       setAllMethodsAreDisabled(true)
     }
     finally { setInitCheckLoading(false) }
-  }, [isLoggedIn, message, router, invite_token, isInviteLink, systemFeatures])
+  }, [isLoggedIn, message, router, searchParams, invite_token, isInviteLink, systemFeatures])
   useEffect(() => {
     init()
   }, [init])

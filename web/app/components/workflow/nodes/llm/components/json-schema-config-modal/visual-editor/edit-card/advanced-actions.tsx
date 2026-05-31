@@ -1,9 +1,11 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
+
+const JSON_SCHEMA_CONFIRM_HOTKEY = 'Mod+Enter'
 
 type AdvancedActionsProps = {
   isConfirmDisabled: boolean
@@ -18,7 +20,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  useWorkflowShortcut('workflow.json-schema-confirm', () => {
+  useHotkey(JSON_SCHEMA_CONFIRM_HOTKEY, () => {
     onConfirm()
   }, {
     enabled: !isConfirmDisabled,
@@ -38,7 +40,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
         onClick={onConfirm}
       >
         <span>{t('operation.confirm', { ns: 'common' })}</span>
-        <ShortcutKbd shortcut="workflow.json-schema-confirm" bgColor="white" />
+        <ShortcutKbd hotkey={JSON_SCHEMA_CONFIRM_HOTKEY} bgColor="white" />
       </Button>
     </div>
   )
