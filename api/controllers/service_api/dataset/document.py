@@ -507,8 +507,7 @@ def _create_document_by_file(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     document = documents[0]
-    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
-    return documents_and_batch_fields, 200
+    return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-file")
