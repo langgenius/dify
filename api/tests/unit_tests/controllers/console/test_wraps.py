@@ -22,6 +22,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_tenant_id,
     with_current_user,
+    with_current_user_id,
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
@@ -124,6 +125,19 @@ class TestCurrentContextInjection:
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
             assert Handler().get() is current_user
 
+    def test_with_current_user_id_injects_user_id_string(self):
+        current_user = make_account("user-42")
+
+        class Handler:
+            @with_current_user_id
+            def get(self, current_user_id: str):
+                return current_user_id
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
+            result = Handler().get()
+            assert result == "user-42"
+            assert isinstance(result, str)
+
     def test_stacked_current_context_injectors_preserve_argument_order(self):
         current_user = make_account()
 
@@ -135,6 +149,18 @@ class TestCurrentContextInjection:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
             assert Handler().get() == ("tenant-123", current_user)
+
+    def test_stacked_user_id_and_tenant_id_injectors(self):
+        current_user = make_account("user-99")
+
+        class Handler:
+            @with_current_user_id
+            @with_current_tenant_id
+            def get(self, current_tenant_id: str, current_user_id: str):
+                return current_user_id, current_tenant_id
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-456")):
+            assert Handler().get() == ("user-99", "tenant-456")
 
 
 class TestModelValidationInjection:
