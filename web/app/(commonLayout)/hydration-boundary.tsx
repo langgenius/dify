@@ -4,7 +4,7 @@ import { getQueryClientServer } from '@/context/query-client-server'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
-import { resolveServerConsoleApiUrl } from '@/service/server'
+import { getServerConsoleClientContext, resolveServerConsoleApiUrl, serverConsoleQuery } from '@/service/server'
 import { serverSystemFeaturesQueryOptions } from '@/service/server-system-features'
 import { basePath } from '@/utils/var'
 
@@ -70,9 +70,15 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
   }
 
   try {
+    const context = await getServerConsoleClientContext()
+
     await Promise.all([
       queryClient.fetchQuery(serverUserProfileQueryOptions()),
       queryClient.prefetchQuery(serverSystemFeaturesQueryOptions()),
+      queryClient.prefetchQuery(serverConsoleQuery.workspaces.current.post.queryOptions({
+        context,
+        retry: false,
+      })),
     ])
   }
   catch (error) {

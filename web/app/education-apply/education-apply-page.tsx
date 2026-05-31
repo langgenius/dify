@@ -30,6 +30,7 @@ import {
   useEducationAdd,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
+import { removeLocalStorageItem } from '@/utils/local-storage'
 import DifyLogo from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -83,7 +84,7 @@ const EducationApplyAgeContent = () => {
       if (res.message === 'success') {
         onPlanInfoChanged()
         updateEducationStatus()
-        localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+        removeLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
         setHasSubmittedEducation(true)
       }
       else {
