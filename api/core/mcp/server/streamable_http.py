@@ -71,7 +71,7 @@ def handle_mcp_request(
         )
 
     try:
-        # Dispatch request to appropriate handler based on type
+        # Dispatch request to appropriate handler based on instance type
         match request_root:
             case mcp_types.InitializeRequest():
                 return create_success_response(handle_initialize(mcp_server.description))

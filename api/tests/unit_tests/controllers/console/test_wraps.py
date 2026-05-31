@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
+from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -14,6 +15,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     cloud_utm_record,
     enterprise_license_required,
+    model_validate,
     only_edition_cloud,
     only_edition_enterprise,
     only_edition_self_hosted,
@@ -133,6 +135,56 @@ class TestCurrentContextInjection:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
             assert Handler().get() == ("tenant-123", current_user)
+
+
+class TestModelValidationInjection:
+    """Test request model validation decorator."""
+
+    class Payload(BaseModel):
+        name: str
+        count: int
+
+    def test_should_inject_payload_from_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def post(self, payload: TestModelValidationInjection.Payload, item_id: str):
+                return payload, item_id
+
+        with app.test_request_context("/items/item-1", method="POST", json={"name": "alpha", "count": "2"}):
+            payload, item_id = Handler().post(item_id="item-1")
+
+        assert payload == self.Payload(name="alpha", count=2)
+        assert item_id == "item-1"
+
+    def test_should_inject_payload_from_query_params(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def get(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items?name=alpha&count=2", method="GET"):
+            payload = Handler().get()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_raise_unprocessable_entity_for_invalid_payload(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def post(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items", method="POST", json={"name": "alpha"}):
+            with pytest.raises(HTTPException) as exc_info:
+                Handler().post()
+
+        assert exc_info.value.code == 422
+        assert "count" in exc_info.value.description
 
 
 class TestEditionChecks:
