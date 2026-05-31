@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "मेटाडेटा फ़िल्टरिंग",
   "nodes.knowledgeRetrieval.outputVars.content": "विभाजित सामग्री",
   "nodes.knowledgeRetrieval.outputVars.files": "प्राप्त फ़ाइलें",
-  "nodes.knowledgeRetrieval.outputVars.icon": "विभाजित आइकन",
   "nodes.knowledgeRetrieval.outputVars.metadata": "अन्य मेटाडेटा",
   "nodes.knowledgeRetrieval.outputVars.output": "प्राप्त विभाजित डेटा",
   "nodes.knowledgeRetrieval.outputVars.title": "विभाजित शीर्षक",
-  "nodes.knowledgeRetrieval.outputVars.url": "विभाजित URL",
   "nodes.knowledgeRetrieval.queryAttachment": "क्वेरी इमेजेस",
   "nodes.knowledgeRetrieval.queryText": "प्रश्न पाठ",
   "nodes.knowledgeRetrieval.queryVariable": "प्रश्न वेरिएबल",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "इस संस्करण का नाम दें",
   "versionHistory.releaseNotesPlaceholder": "बताइए कि क्या बदला",
   "versionHistory.restorationTip": "संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।",
-  "versionHistory.title": "संस्करण"
+  "versionHistory.title": "संस्करण",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

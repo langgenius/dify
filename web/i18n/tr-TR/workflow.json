@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Meta Verileri Filtreleme",
   "nodes.knowledgeRetrieval.outputVars.content": "Parça içeriği",
   "nodes.knowledgeRetrieval.outputVars.files": "Alınan dosyalar",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Parça simgesi",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Diğer meta veriler",
   "nodes.knowledgeRetrieval.outputVars.output": "Geri alınmış parça verisi",
   "nodes.knowledgeRetrieval.outputVars.title": "Parça başlığı",
-  "nodes.knowledgeRetrieval.outputVars.url": "Parça URL'si",
   "nodes.knowledgeRetrieval.queryAttachment": "Sorgu Görüntüleri",
   "nodes.knowledgeRetrieval.queryText": "Sorgu Metni",
   "nodes.knowledgeRetrieval.queryVariable": "Sorgu Değişkeni",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Bu versiyona isim ver",
   "versionHistory.releaseNotesPlaceholder": "Değişen şeyleri tanımlayın",
   "versionHistory.restorationTip": "Sürüm geri yüklemeden sonra, mevcut taslak üzerine yazılacak.",
-  "versionHistory.title": "Sürümler"
+  "versionHistory.title": "Sürümler",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "فیلتر متادیتا",
   "nodes.knowledgeRetrieval.outputVars.content": "محتوای بخش‌بندی‌شده",
   "nodes.knowledgeRetrieval.outputVars.files": "فایل‌های بازیابی‌شده",
-  "nodes.knowledgeRetrieval.outputVars.icon": "آیکون بخش",
   "nodes.knowledgeRetrieval.outputVars.metadata": "سایر متادیتا",
   "nodes.knowledgeRetrieval.outputVars.output": "داده‌های بازیابی‌شده",
   "nodes.knowledgeRetrieval.outputVars.title": "عنوان بخش",
-  "nodes.knowledgeRetrieval.outputVars.url": "URL بخش",
   "nodes.knowledgeRetrieval.queryAttachment": "پیوست‌های پرس‌وجو",
   "nodes.knowledgeRetrieval.queryText": "متن پرس‌وجو",
   "nodes.knowledgeRetrieval.queryVariable": "متغیر پرس‌وجو",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "نام‌گذاری این نسخه",
   "versionHistory.releaseNotesPlaceholder": "شرح دهید چه چیزی تغییر کرده است",
   "versionHistory.restorationTip": "پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.",
-  "versionHistory.title": "تاریخچه نسخه‌ها"
+  "versionHistory.title": "تاریخچه نسخه‌ها",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

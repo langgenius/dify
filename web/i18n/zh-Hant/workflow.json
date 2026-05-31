@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "元資料過濾",
   "nodes.knowledgeRetrieval.outputVars.content": "分段內容",
   "nodes.knowledgeRetrieval.outputVars.files": "已檢索的檔案",
-  "nodes.knowledgeRetrieval.outputVars.icon": "分段圖標",
   "nodes.knowledgeRetrieval.outputVars.metadata": "其他元資料",
   "nodes.knowledgeRetrieval.outputVars.output": "檢索的分段",
   "nodes.knowledgeRetrieval.outputVars.title": "分段標題",
-  "nodes.knowledgeRetrieval.outputVars.url": "分段鏈接",
   "nodes.knowledgeRetrieval.queryAttachment": "查詢圖片",
   "nodes.knowledgeRetrieval.queryText": "查詢文字",
   "nodes.knowledgeRetrieval.queryVariable": "查詢變數",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "給這個版本命名",
   "versionHistory.releaseNotesPlaceholder": "描述發生了什麼變化",
   "versionHistory.restorationTip": "版本恢復後，當前草稿將被覆蓋。",
-  "versionHistory.title": "版本"
+  "versionHistory.title": "版本",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

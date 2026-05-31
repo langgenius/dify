@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "メタデータフィルタ",
   "nodes.knowledgeRetrieval.outputVars.content": "セグメント内容",
   "nodes.knowledgeRetrieval.outputVars.files": "取得したファイル",
-  "nodes.knowledgeRetrieval.outputVars.icon": "セグメントアイコン",
   "nodes.knowledgeRetrieval.outputVars.metadata": "メタデータ",
   "nodes.knowledgeRetrieval.outputVars.output": "検索結果セグメント",
   "nodes.knowledgeRetrieval.outputVars.title": "セグメントタイトル",
-  "nodes.knowledgeRetrieval.outputVars.url": "セグメント URL",
   "nodes.knowledgeRetrieval.queryAttachment": "画像を検索",
   "nodes.knowledgeRetrieval.queryText": "クエリテキスト",
   "nodes.knowledgeRetrieval.queryVariable": "検索変数",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "バージョン名を付ける",
   "versionHistory.releaseNotesPlaceholder": "変更内容を入力してください",
   "versionHistory.restorationTip": "バージョンを復元すると、現在の下書きが上書きされます",
-  "versionHistory.title": "バージョン"
+  "versionHistory.title": "バージョン",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

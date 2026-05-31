@@ -130,7 +130,7 @@
   "comments.filter.all": "Alles",
   "comments.filter.onlyYourThreads": "Alleen jouw threads",
   "comments.filter.showResolved": "Opgeloste tonen",
-  "comments.loading": "Laden\u2026",
+  "comments.loading": "Laden…",
   "comments.noComments": "Nog geen reacties",
   "comments.panelTitle": "Reactie",
   "comments.placeholder.add": "Voeg een reactie toe",
@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Metadata Filtering",
   "nodes.knowledgeRetrieval.outputVars.content": "Segmented content",
   "nodes.knowledgeRetrieval.outputVars.files": "Retrieved files",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Segmented icon",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Other metadata",
   "nodes.knowledgeRetrieval.outputVars.output": "Retrieval segmented data",
   "nodes.knowledgeRetrieval.outputVars.title": "Segmented title",
-  "nodes.knowledgeRetrieval.outputVars.url": "Segmented URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Query Images",
   "nodes.knowledgeRetrieval.queryText": "Query Text",
   "nodes.knowledgeRetrieval.queryVariable": "Query Variable",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Name this version",
   "versionHistory.releaseNotesPlaceholder": "Describe what changed",
   "versionHistory.restorationTip": "After version restoration, the current draft will be overwritten.",
-  "versionHistory.title": "Versions"
+  "versionHistory.title": "Versions",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

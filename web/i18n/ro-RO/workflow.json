@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Filtrarea metadatelor",
   "nodes.knowledgeRetrieval.outputVars.content": "Conținut segmentat",
   "nodes.knowledgeRetrieval.outputVars.files": "Fișiere recuperate",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Pictogramă segmentată",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Alte metadate",
   "nodes.knowledgeRetrieval.outputVars.output": "Date segmentate recuperate",
   "nodes.knowledgeRetrieval.outputVars.title": "Titlu segmentat",
-  "nodes.knowledgeRetrieval.outputVars.url": "URL segmentat",
   "nodes.knowledgeRetrieval.queryAttachment": "Imagini interogate",
   "nodes.knowledgeRetrieval.queryText": "Text interogare",
   "nodes.knowledgeRetrieval.queryVariable": "Variabilă de interogare",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Numește această versiune",
   "versionHistory.releaseNotesPlaceholder": "Descrie ce s-a schimbat",
   "versionHistory.restorationTip": "După restaurarea versiunii, proiectul actual va fi suprascris.",
-  "versionHistory.title": "Versiuni"
+  "versionHistory.title": "Versiuni",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

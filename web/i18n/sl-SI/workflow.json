@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Filtriranje metapodatkov",
   "nodes.knowledgeRetrieval.outputVars.content": "Segmentirana vsebina",
   "nodes.knowledgeRetrieval.outputVars.files": "Pridobljene datoteke",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Segmentirana ikona",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Drug metapodatki",
   "nodes.knowledgeRetrieval.outputVars.output": "Podatki o segmentaciji iskanja",
   "nodes.knowledgeRetrieval.outputVars.title": "Segmentirana naslov",
-  "nodes.knowledgeRetrieval.outputVars.url": "Segmentirana URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Poizvedbe slik",
   "nodes.knowledgeRetrieval.queryText": "Besedilo poizvedbe",
   "nodes.knowledgeRetrieval.queryVariable": "Vprašanje spremenljivka",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Poimenujte to različico",
   "versionHistory.releaseNotesPlaceholder": "Opisujte, kaj se je spremenilo",
   "versionHistory.restorationTip": "Po obnovitvi različice bo trenutni osnutek prepisan.",
-  "versionHistory.title": "Različice"
+  "versionHistory.title": "Različice",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

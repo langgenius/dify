@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Filtrowanie metadanych",
   "nodes.knowledgeRetrieval.outputVars.content": "Treść segmentowana",
   "nodes.knowledgeRetrieval.outputVars.files": "Pobrane pliki",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Ikona segmentowana",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Inne metadane",
   "nodes.knowledgeRetrieval.outputVars.output": "Odzyskane dane segmentowane",
   "nodes.knowledgeRetrieval.outputVars.title": "Tytuł segmentowany",
-  "nodes.knowledgeRetrieval.outputVars.url": "URL segmentowany",
   "nodes.knowledgeRetrieval.queryAttachment": "Wyszukaj obrazy",
   "nodes.knowledgeRetrieval.queryText": "Tekst zapytania",
   "nodes.knowledgeRetrieval.queryVariable": "Zmienna zapytania",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Nazwij tę wersję",
   "versionHistory.releaseNotesPlaceholder": "Opisz, co się zmieniło",
   "versionHistory.restorationTip": "Po przywróceniu wersji bieżący szkic zostanie nadpisany.",
-  "versionHistory.title": "Wersje"
+  "versionHistory.title": "Wersje",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

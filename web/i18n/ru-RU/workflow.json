@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Фильтрация метаданных",
   "nodes.knowledgeRetrieval.outputVars.content": "Сегментированный контент",
   "nodes.knowledgeRetrieval.outputVars.files": "Полученные файлы",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Сегментированный значок",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Другие метаданные",
   "nodes.knowledgeRetrieval.outputVars.output": "Извлеченные сегментированные данные",
   "nodes.knowledgeRetrieval.outputVars.title": "Сегментированный заголовок",
-  "nodes.knowledgeRetrieval.outputVars.url": "Сегментированный URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Запрос изображений",
   "nodes.knowledgeRetrieval.queryText": "Текст запроса",
   "nodes.knowledgeRetrieval.queryVariable": "Переменная запроса",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Назовите эту версию",
   "versionHistory.releaseNotesPlaceholder": "Опишите, что изменилось",
   "versionHistory.restorationTip": "После восстановления версии текущий черновик будет перезаписан.",
-  "versionHistory.title": "Версии"
+  "versionHistory.title": "Версии",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

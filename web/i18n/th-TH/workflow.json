@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "การกรองข้อมูลเมตา",
   "nodes.knowledgeRetrieval.outputVars.content": "เนื้อหาที่แบ่งกลุ่ม",
   "nodes.knowledgeRetrieval.outputVars.files": "ไฟล์ที่ดึงมา",
-  "nodes.knowledgeRetrieval.outputVars.icon": "ไอคอนแบ่งส่วน",
   "nodes.knowledgeRetrieval.outputVars.metadata": "ข้อมูลเมตาอื่นๆ",
   "nodes.knowledgeRetrieval.outputVars.output": "การดึงข้อมูลที่แบ่งส่วน",
   "nodes.knowledgeRetrieval.outputVars.title": "ชื่อแบ่งส่วน",
-  "nodes.knowledgeRetrieval.outputVars.url": "URL ที่แบ่งกลุ่ม",
   "nodes.knowledgeRetrieval.queryAttachment": "ค้นหารูปภาพ",
   "nodes.knowledgeRetrieval.queryText": "ข้อความค้นหา",
   "nodes.knowledgeRetrieval.queryVariable": "ตัวแปรแบบสอบถาม",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "ชื่อเวอร์ชันนี้",
   "versionHistory.releaseNotesPlaceholder": "อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร",
   "versionHistory.restorationTip": "หลังจากการกู้คืนเวอร์ชันแล้ว ร่างปัจจุบันจะถูกเขียนทับ.",
-  "versionHistory.title": "เวอร์ชัน"
+  "versionHistory.title": "เวอร์ชัน",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Pemfilteran Metadata",
   "nodes.knowledgeRetrieval.outputVars.content": "Konten tersegmentasi",
   "nodes.knowledgeRetrieval.outputVars.files": "File yang diambil",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Ikon tersegmentasi",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Metadata lainnya",
   "nodes.knowledgeRetrieval.outputVars.output": "Mengambil data tersegmentasi",
   "nodes.knowledgeRetrieval.outputVars.title": "Judul tersegmentasi",
-  "nodes.knowledgeRetrieval.outputVars.url": "URL tersegmentasi",
   "nodes.knowledgeRetrieval.queryAttachment": "Cari Gambar",
   "nodes.knowledgeRetrieval.queryText": "Teks Query",
   "nodes.knowledgeRetrieval.queryVariable": "Variabel Kueri",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Beri nama versi ini",
   "versionHistory.releaseNotesPlaceholder": "Menjelaskan apa yang berubah",
   "versionHistory.restorationTip": "Setelah pemulihan versi, draf saat ini akan ditimpa.",
-  "versionHistory.title": "Versi"
+  "versionHistory.title": "Versi",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }

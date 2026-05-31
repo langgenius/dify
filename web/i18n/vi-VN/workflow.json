@@ -757,11 +757,9 @@
   "nodes.knowledgeRetrieval.metadata.title": "Lọc siêu dữ liệu",
   "nodes.knowledgeRetrieval.outputVars.content": "Nội dung phân đoạn",
   "nodes.knowledgeRetrieval.outputVars.files": "Các tệp đã được truy xuất",
-  "nodes.knowledgeRetrieval.outputVars.icon": "Biểu tượng phân đoạn",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Siêu dữ liệu khác",
   "nodes.knowledgeRetrieval.outputVars.output": "Dữ liệu phân đoạn được truy xuất",
   "nodes.knowledgeRetrieval.outputVars.title": "Tiêu đề phân đoạn",
-  "nodes.knowledgeRetrieval.outputVars.url": "URL phân đoạn",
   "nodes.knowledgeRetrieval.queryAttachment": "Truy vấn hình ảnh",
   "nodes.knowledgeRetrieval.queryText": "Văn bản truy vấn",
   "nodes.knowledgeRetrieval.queryVariable": "Biến truy vấn",
@@ -1221,5 +1219,6 @@
   "versionHistory.nameThisVersion": "Đặt tên cho phiên bản này",
   "versionHistory.releaseNotesPlaceholder": "Mô tả những gì đã thay đổi",
   "versionHistory.restorationTip": "Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.",
-  "versionHistory.title": "Các phiên bản"
+  "versionHistory.title": "Các phiên bản",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Content summary"
 }
