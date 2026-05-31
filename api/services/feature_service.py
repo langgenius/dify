@@ -183,10 +183,6 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_explore_banner: bool = False
 
 
-class AppDslVersionModel(FeatureResponseModel):
-    app_dsl_version: str = ""
-
-
 class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
@@ -270,8 +266,8 @@ class FeatureService:
         return system_features
 
     @classmethod
-    def get_app_dsl_version(cls) -> AppDslVersionModel:
-        return AppDslVersionModel(app_dsl_version=CURRENT_APP_DSL_VERSION)
+    def get_app_dsl_version(cls) -> str:
+        return CURRENT_APP_DSL_VERSION
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):

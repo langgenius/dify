@@ -2,9 +2,10 @@ from flask_restx import Resource
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
+from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import current_user, login_required
 from services.feature_service import (
-    AppDslVersionModel,
     FeatureModel,
     FeatureService,
     LimitationModel,
@@ -14,7 +15,12 @@ from services.feature_service import (
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
 
-register_response_schema_models(console_ns, AppDslVersionModel, FeatureModel, LimitationModel, SystemFeatureModel)
+
+class AppDslVersionResponse(ResponseModel):
+    app_dsl_version: str
+
+
+register_response_schema_models(console_ns, AppDslVersionResponse, FeatureModel, LimitationModel, SystemFeatureModel)
 
 
 @console_ns.route("/features")
@@ -67,11 +73,14 @@ class AppDslVersionApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[AppDslVersionModel.__name__],
+        console_ns.models[AppDslVersionResponse.__name__],
     )
     def get(self):
         """Get current app DSL version for workflow clipboard compatibility."""
-        return FeatureService.get_app_dsl_version().model_dump()
+        return dump_response(
+            AppDslVersionResponse,
+            {"app_dsl_version": FeatureService.get_app_dsl_version()},
+        )
 
 
 @console_ns.route("/system-features")

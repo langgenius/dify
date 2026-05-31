@@ -3,13 +3,13 @@
 import * as z from 'zod'
 
 /**
- * AppDslVersionModel
+ * AppDslVersionResponse
  */
-export const zAppDslVersionModel = z.object({
-  app_dsl_version: z.string().default(''),
+export const zAppDslVersionResponse = z.object({
+  app_dsl_version: z.string(),
 })
 
 /**
  * Success
  */
-export const zGetAppDslVersionResponse = zAppDslVersionModel
+export const zGetAppDslVersionResponse = zAppDslVersionResponse

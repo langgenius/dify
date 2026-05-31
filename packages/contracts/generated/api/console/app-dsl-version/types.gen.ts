@@ -4,7 +4,7 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type AppDslVersionModel = {
+export type AppDslVersionResponse = {
   app_dsl_version: string
 }
 
@@ -16,7 +16,7 @@ export type GetAppDslVersionData = {
 }
 
 export type GetAppDslVersionResponses = {
-  200: AppDslVersionModel
+  200: AppDslVersionResponse
 }
 
 export type GetAppDslVersionResponse = GetAppDslVersionResponses[keyof GetAppDslVersionResponses]

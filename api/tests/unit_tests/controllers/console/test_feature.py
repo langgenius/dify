@@ -51,7 +51,7 @@ class TestAppDslVersionApi:
         from controllers.console.feature import AppDslVersionApi
 
         get_app_dsl_version = mocker.patch("controllers.console.feature.FeatureService.get_app_dsl_version")
-        get_app_dsl_version.return_value.model_dump.return_value = {"app_dsl_version": "0.6.0"}
+        get_app_dsl_version.return_value = "0.6.0"
 
         api = AppDslVersionApi()
 

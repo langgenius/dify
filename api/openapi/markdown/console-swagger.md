@@ -614,7 +614,7 @@ Get current app DSL version
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AppDslVersionModel](#appdslversionmodel) |
+| 200 | Success | [AppDslVersionResponse](#appdslversionresponse) |
 
 ### /app/prompt-templates
 
@@ -11396,7 +11396,7 @@ Enum class for api provider schema type.
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
-#### AppDslVersionModel
+#### AppDslVersionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

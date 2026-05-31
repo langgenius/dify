@@ -11,4 +11,4 @@ def test_get_system_features_excludes_app_dsl_version():
 def test_get_app_dsl_version_returns_current_version():
     result = FeatureService.get_app_dsl_version()
 
-    assert result.app_dsl_version == CURRENT_APP_DSL_VERSION
+    assert result == CURRENT_APP_DSL_VERSION

@@ -16,12 +16,16 @@ type QueryKeyProvider = {
   queryKey: () => readonly unknown[]
 }
 
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion'] as const
+type AppDslVersionQueryProvider = {
+  get?: QueryKeyProvider
+}
+
+const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
 
 const getAppDslVersionQueryKey = () => {
-  const appDslVersionQuery = (consoleQuery as { appDslVersion?: QueryKeyProvider }).appDslVersion
+  const appDslVersionQuery = (consoleQuery as { appDslVersion?: AppDslVersionQueryProvider }).appDslVersion
 
-  return appDslVersionQuery?.queryKey() ?? fallbackAppDslVersionQueryKey
+  return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
 }
 
 const buildSystemFeatures = (
