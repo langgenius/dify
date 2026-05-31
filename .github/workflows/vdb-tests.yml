@@ -45,14 +45,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Set up dotenvs
-        run: |
-          cp docker/.env.example docker/.env
-          cp docker/envs/middleware.env.example docker/middleware.env
-
-      - name: Expose Service Ports
-        run: sh .github/workflows/expose_service_ports.sh
-
 #      - name: Set up Vector Store (TiDB)
 #        uses: hoverkraft-tech/compose-action@v2.0.2
 #        with:
@@ -61,31 +53,14 @@ jobs:
 #            tidb
 #            tiflash
 
-      - name: Set up Vector Stores for Smoke Coverage
-        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
-        with:
-          compose-file: |
-            docker/docker-compose.yaml
-          services: |
-            db_postgres
-            redis
-            weaviate
-            qdrant
-            pgvector
-            chroma
-
-      - name: setup test config
-        run: |
-          echo $(pwd)
-          ls -lah .
-          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
-
 #      - name: Check VDB Ready (TiDB)
 #        run: uv run --project api python api/providers/vdb/tidb-vector/tests/integration_tests/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: |
-          uv run --project api pytest --timeout "${PYTEST_TIMEOUT:-180}" \
+          uv run --project api pytest \
+            --start-vdb \
+            --timeout "${PYTEST_TIMEOUT:-180}" \
             api/providers/vdb/vdb-chroma/tests/integration_tests \
             api/providers/vdb/vdb-pgvector/tests/integration_tests \
             api/providers/vdb/vdb-qdrant/tests/integration_tests \

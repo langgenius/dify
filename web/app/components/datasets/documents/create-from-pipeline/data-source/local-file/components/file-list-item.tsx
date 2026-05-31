@@ -58,7 +58,7 @@ const FileListItem = ({
         <div className="flex w-full">
           <div className="w-0 grow truncate text-xs text-text-secondary">{fileItem.file.name}</div>
         </div>
-        <div className="w-full truncate text-2xs leading-3 text-text-tertiary">
+        <div className="w-full truncate text-2xs/3 text-text-tertiary">
           <span className="uppercase">{getFileType(fileItem.file)}</span>
           <span className="px-1 text-text-quaternary">·</span>
           <span>{formatFileSize(fileItem.file.size)}</span>
@@ -72,7 +72,7 @@ const FileListItem = ({
           <RiErrorWarningFill className="size-4 text-text-destructive" />
         )}
         <span
-          className="flex h-6 w-6 cursor-pointer items-center justify-center"
+          className="flex size-6 cursor-pointer items-center justify-center"
           onClick={handleRemove}
         >
           <RiDeleteBinLine className="size-4 text-text-tertiary" />

@@ -138,10 +138,10 @@ const ModelProviderPage = ({ searchText }: Props) => {
           showWarning && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
         )}
         >
-          {showWarning && <div className="absolute top-0 right-0 bottom-0 left-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
+          {showWarning && <div className="absolute inset-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
           {showWarning && (
             <div className="flex items-center gap-1 system-xs-medium text-text-primary">
-              <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
+              <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
               <span className="max-w-[460px] truncate" title={t(warningTextKey, { ns: 'common' })}>{t(warningTextKey, { ns: 'common' })}</span>
             </div>
           )}
@@ -160,7 +160,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
-            <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
+            <span className="i-ri-brain-line size-5 text-text-primary" />
           </div>
           <div className="mt-2 system-sm-medium text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
           <div className="mt-1 system-xs-regular text-text-tertiary">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>

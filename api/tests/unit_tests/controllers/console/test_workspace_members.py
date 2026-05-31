@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -18,7 +19,7 @@ def app():
 
 def _build_feature_flags():
     placeholder_quota = SimpleNamespace(limit=0, size=0)
-    workspace_members = SimpleNamespace(is_available=lambda count: True)
+    workspace_members = SimpleNamespace(enabled=False, is_available=lambda count: True)
     return SimpleNamespace(
         billing=SimpleNamespace(enabled=False),
         workspace_members=workspace_members,
@@ -31,6 +32,11 @@ def _build_feature_flags():
 
 
 class TestMemberInviteEmailApi:
+    @pytest.fixture(autouse=True)
+    def _mock_member_invite_lock(self):
+        with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
+            yield
+
     @patch("controllers.console.workspace.members.FeatureService.get_features")
     @patch("controllers.console.workspace.members.RegisterService.invite_new_member")
     @patch("controllers.console.workspace.members.current_account_with_tenant")
@@ -52,7 +58,12 @@ class TestMemberInviteEmailApi:
         inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
         mock_current_account.return_value = (inviter, tenant.id)
 
-        with patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"):
+        with (
+            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+        ):
             with app.test_request_context(
                 "/workspaces/current/members/invite-email",
                 method="POST",
@@ -70,7 +81,7 @@ class TestMemberInviteEmailApi:
         assert mock_invite_member.call_count == 1
         call_args = mock_invite_member.call_args
         assert call_args.kwargs["tenant"] == tenant
-        assert call_args.kwargs["email"] == "User@Example.com"
+        assert call_args.kwargs["email"] == "user@example.com"
         assert call_args.kwargs["language"] == "en-US"
         assert call_args.kwargs["role"] == TenantAccountRole.EDITOR
         assert call_args.kwargs["inviter"] == inviter

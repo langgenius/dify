@@ -92,7 +92,7 @@ const AudioBtn = ({
               onClick={handleToggle}
               disabled={audioState === 'loading'}
             >
-              <RiVolumeUpLine className="h-4 w-4" aria-hidden="true" />
+              <RiVolumeUpLine className="size-4" aria-hidden="true" />
             </ActionButton>
           </span>
         )}

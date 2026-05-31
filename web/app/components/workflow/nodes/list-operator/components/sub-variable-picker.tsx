@@ -42,14 +42,14 @@ const SubVariablePicker: FC<Props> = ({
               ? (
                   <div className="flex cursor-pointer justify-start">
                     <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
-                      <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+                      <Variable02 className="size-3.5 shrink-0 text-text-accent" />
                       <div className="ml-0.5 truncate system-xs-medium">{selectedOption.name}</div>
                     </div>
                   </div>
                 )
               : (
                   <div className="flex pl-1 system-sm-regular text-components-input-text-placeholder group-hover/sub-variable-picker:text-text-tertiary">
-                    <Variable02 className="mr-1 h-4 w-4 shrink-0" />
+                    <Variable02 className="mr-1 size-4 shrink-0" />
                     <span>{t('placeholder.select', { ns: 'common' })}</span>
                   </div>
                 )}

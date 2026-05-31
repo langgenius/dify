@@ -37,6 +37,10 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyResolver,
 )
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
+from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -47,7 +51,7 @@ from graphon.graph.graph import NodeFactory
 from graphon.model_runtime.memory import PromptMessageMemory
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.base.node import Node
-from graphon.nodes.code.code_node import WorkflowCodeExecutor
+from graphon.nodes.code.code_node import CodeExecutorProtocol
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.nodes.document_extractor import UnstructuredApiConfig
@@ -289,7 +293,7 @@ class DifyNodeFactory(NodeFactory):
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
-        self._code_executor: WorkflowCodeExecutor = DefaultWorkflowCodeExecutor()
+        self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
@@ -397,6 +401,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "runtime": self._human_input_runtime,
+                "file_reference_factory": self._file_reference_factory,
                 "form_repository": self._human_input_runtime.build_form_repository(),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
@@ -434,15 +439,10 @@ class DifyNodeFactory(NodeFactory):
                 include_jinja2_template_renderer=False,
             ),
             BuiltinNodeTypes.TOOL: lambda: {
-                "tool_file_manager_factory": self._bound_tool_file_manager_factory(),
+                "tool_file_manager": self._bound_tool_file_manager_factory(),
                 "runtime": self._tool_runtime,
             },
-            BuiltinNodeTypes.AGENT: lambda: {
-                "strategy_resolver": self._agent_strategy_resolver,
-                "presentation_provider": self._agent_strategy_presentation_provider,
-                "runtime_support": self._agent_runtime_support,
-                "message_transformer": self._agent_message_transformer,
-            },
+            BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
@@ -467,6 +467,42 @@ class DifyNodeFactory(NodeFactory):
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
         return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+
+    def _build_agent_node_init_kwargs(self, *, node_class: type[Node]) -> dict[str, object]:
+        if issubclass(node_class, DifyAgentNode):
+            from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
+            from clients.agent_backend.factory import create_agent_backend_run_client
+            from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+            from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
+            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
+
+            return {
+                "binding_resolver": WorkflowAgentBindingResolver(),
+                "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
+                    credentials_provider=self._llm_credentials_provider,
+                    request_builder=AgentBackendRunRequestBuilder(),
+                ),
+                "agent_backend_client": create_agent_backend_run_client(
+                    base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                    use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+                    fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                ),
+                "event_adapter": AgentBackendRunEventAdapter(),
+                "output_adapter": WorkflowAgentOutputAdapter(),
+                # Stage 4 §5/§7: per-output validation + failure orchestration. The
+                # tenant validator queries upload_files so it stays cheap when
+                # outputs contain no file refs.
+                "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                "failure_orchestrator": OutputFailureOrchestrator(),
+                "session_store": WorkflowAgentRuntimeSessionStore(),
+            }
+        return {
+            "strategy_resolver": self._agent_strategy_resolver,
+            "presentation_provider": self._agent_strategy_presentation_provider,
+            "runtime_support": self._agent_runtime_support,
+            "message_transformer": self._agent_message_transformer,
+        }
 
     def _build_llm_compatible_node_init_kwargs(
         self,

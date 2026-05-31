@@ -134,7 +134,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({
   return (
     <div
       className={cn(
-        'absolute z-[60] w-96',
+        'absolute z-60 w-96',
         disabled && 'pointer-events-none opacity-80',
       )}
       style={{

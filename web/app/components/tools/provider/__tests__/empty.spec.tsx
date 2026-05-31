@@ -61,8 +61,8 @@ describe('Empty', () => {
     it('should render arrow icon for types with links', () => {
       render(<Empty type={ToolTypeEnum.Custom} />)
 
-      // Check for RiArrowRightUpLine icon (has class h-3 w-3)
-      const arrowIcon = document.querySelector('.h-3.w-3')
+      // Check for RiArrowRightUpLine icon (has class size-3)
+      const arrowIcon = document.querySelector('.size-3')
       expect(arrowIcon).toBeInTheDocument()
     })
 
@@ -95,7 +95,7 @@ describe('Empty', () => {
       render(<Empty type={ToolTypeEnum.Custom} isAgent />)
 
       // Arrow icon should not be present when isAgent is true
-      const arrowIcon = document.querySelector('.h-3.w-3')
+      const arrowIcon = document.querySelector('.size-3')
       expect(arrowIcon).not.toBeInTheDocument()
     })
   })

@@ -7,10 +7,16 @@ import { zPostTestRetrievalBody, zPostTestRetrievalResponse } from './zod.gen'
 
 /**
  * Bedrock retrieval test (internal use only)
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post = oc
   .route({
-    description: 'Bedrock retrieval test (internal use only)',
+    deprecated: true,
+    description:
+      'Bedrock retrieval test (internal use only)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTestRetrieval',

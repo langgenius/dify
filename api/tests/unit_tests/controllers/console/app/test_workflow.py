@@ -3,14 +3,18 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables import SecretVariable, StringVariable
+from graphon.variables.variables import RAGPipelineVariable
 
 
 def _unwrap(func):
@@ -19,11 +23,67 @@ def _unwrap(func):
     return func
 
 
+def _make_workflow(**overrides):
+    workflow = SimpleNamespace(
+        id="workflow-1",
+        graph_dict={"nodes": [], "edges": []},
+        features_dict={"file_upload": {"enabled": False}},
+        unique_hash="hash-1",
+        version="1",
+        marked_name="Release 1",
+        marked_comment="Initial release",
+        created_by_account=SimpleNamespace(id="user-1", name="Alice", email="alice@example.com"),
+        created_at=datetime(2024, 1, 1, 12, 0, 0),
+        updated_by_account=None,
+        updated_at=datetime(2024, 1, 1, 12, 1, 0),
+        tool_published=False,
+        environment_variables=[
+            {
+                "id": "env-1",
+                "name": "API_KEY",
+                "value": "[__HIDDEN__]",
+                "value_type": "secret",
+                "description": "API key",
+            }
+        ],
+        conversation_variables=[
+            {
+                "id": "conv-1",
+                "name": "topic",
+                "value": "hello",
+                "value_type": "string",
+                "description": "Topic",
+            }
+        ],
+        rag_pipeline_variables=[
+            {
+                "variable": "query",
+                "type": "text-input",
+                "label": "Query",
+                "belong_to_node_id": "shared",
+                "max_length": 0,
+                "required": False,
+                "unit": "",
+                "default_value": "",
+                "options": [],
+                "placeholder": "",
+                "tooltips": "",
+                "allowed_file_types": ["custom"],
+                "allowed_file_extensions": [".pdf"],
+                "allowed_file_upload_methods": ["local_file"],
+            }
+        ],
+    )
+    for key, value in overrides.items():
+        setattr(workflow, key, value)
+    return workflow
+
+
 def test_parse_file_no_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module.FileUploadConfigManager, "convert", lambda *_args, **_kwargs: None)
     workflow = SimpleNamespace(features_dict={}, tenant_id="t1")
 
-    assert workflow_module._parse_file(workflow, files=[{"id": "f"}]) == []
+    assert workflow_module._parse_file(cast(workflow_module.Workflow, workflow), files=[{"id": "f"}]) == []
 
 
 def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -41,7 +101,7 @@ def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module.file_factory, "build_from_mappings", build_mock)
 
     workflow = SimpleNamespace(features_dict={}, tenant_id="t1")
-    result = workflow_module._parse_file(workflow, files=[{"id": "f"}])
+    result = workflow_module._parse_file(cast(workflow_module.Workflow, workflow), files=[{"id": "f"}])
 
     assert result == file_list
     build_mock.assert_called_once()
@@ -259,7 +319,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     assert exc.value.description == "invalid workflow graph"
 
 
-def test_get_published_workflows_marshals_items_before_session_closes(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_published_workflows_serializes_items_before_session_closes(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = _unwrap(api.get)
 
@@ -278,7 +338,12 @@ def test_get_published_workflows_marshals_items_before_session_closes(app, monke
         def begin(self):
             return _SessionContext()
 
+    base_workflow = _make_workflow()
+
     class _Workflow:
+        def __getattr__(self, name):
+            return getattr(base_workflow, name)
+
         @property
         def id(self):
             assert session_state["open"] is True
@@ -295,12 +360,6 @@ def test_get_published_workflows_marshals_items_before_session_closes(app, monke
         ),
     )
 
-    def _fake_marshal(items, fields):
-        assert session_state["open"] is True
-        return [{"id": item.id} for item in items]
-
-    monkeypatch.setattr(workflow_module, "marshal", _fake_marshal)
-
     with app.test_request_context(
         "/apps/app/workflows",
         method="GET",
@@ -308,12 +367,153 @@ def test_get_published_workflows_marshals_items_before_session_closes(app, monke
     ):
         response = handler(api, app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
 
-    assert response == {
-        "items": [{"id": "w1"}],
-        "page": 1,
-        "limit": 10,
-        "has_more": False,
-    }
+    assert response["items"][0]["id"] == "w1"
+    assert response["page"] == 1
+    assert response["limit"] == 10
+    assert response["has_more"] is False
+
+
+def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow()
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = _unwrap(api.get)
+
+    response = handler(api, app_model=SimpleNamespace(id="app"))
+
+    assert response["id"] == "workflow-1"
+    assert response["graph"] == {"nodes": [], "edges": []}
+    assert response["features"] == {"file_upload": {"enabled": False}}
+    assert response["hash"] == "hash-1"
+    assert response["created_by"] == {"id": "user-1", "name": "Alice", "email": "alice@example.com"}
+    assert response["updated_by"] is None
+    assert response["created_at"] == int(datetime(2024, 1, 1, 12, 0, 0).timestamp())
+    assert response["updated_at"] == int(datetime(2024, 1, 1, 12, 1, 0).timestamp())
+    assert response["environment_variables"] == [
+        {
+            "id": "env-1",
+            "name": "API_KEY",
+            "value": "[__HIDDEN__]",
+            "value_type": "secret",
+            "description": "API key",
+        }
+    ]
+    assert response["conversation_variables"] == [
+        {
+            "id": "conv-1",
+            "name": "topic",
+            "value": "hello",
+            "value_type": "string",
+            "description": "Topic",
+        }
+    ]
+    assert response["rag_pipeline_variables"] == [
+        {
+            "label": "Query",
+            "variable": "query",
+            "type": "text-input",
+            "belong_to_node_id": "shared",
+            "max_length": 0,
+            "required": False,
+            "unit": "",
+            "default_value": "",
+            "options": [],
+            "placeholder": "",
+            "tooltips": "",
+            "allowed_file_types": ["custom"],
+            "allowed_file_extensions": [".pdf"],
+            "allowed_file_upload_methods": ["local_file"],
+        }
+    ]
+
+
+def test_pipeline_variable_response_accepts_legacy_file_field_names() -> None:
+    response = workflow_module.PipelineVariableResponse.model_validate(
+        {
+            "label": "Query",
+            "variable": "query",
+            "type": "single-file",
+            "belong_to_node_id": "shared",
+            "max_length": 0,
+            "required": False,
+            "unit": "",
+            "default_value": "",
+            "options": [],
+            "placeholder": "",
+            "tooltips": "",
+            "allowed_file_types": [],
+            "allow_file_extension": [".txt"],
+            "allow_file_upload_methods": ["remote_url"],
+        }
+    ).model_dump(mode="json")
+
+    assert response["allowed_file_extensions"] == [".txt"]
+    assert response["allowed_file_upload_methods"] == ["remote_url"]
+
+
+def test_pipeline_variable_response_accepts_explicit_null_optional_fields() -> None:
+    pipeline_variable = RAGPipelineVariable.model_validate(
+        {
+            "label": "Query",
+            "variable": "query",
+            "type": "text-input",
+            "belong_to_node_id": "shared",
+            "max_length": None,
+            "unit": None,
+            "default_value": None,
+            "options": None,
+            "placeholder": None,
+            "tooltips": None,
+            "allowed_file_types": None,
+            "allowed_file_extensions": None,
+            "allowed_file_upload_methods": None,
+        }
+    ).model_dump(mode="json")
+
+    response = workflow_module.PipelineVariableResponse.model_validate(pipeline_variable).model_dump(mode="json")
+
+    assert response["max_length"] is None
+    assert response["allowed_file_types"] is None
+    assert response["allowed_file_extensions"] is None
+    assert response["allowed_file_upload_methods"] is None
+
+
+def test_workflow_response_masks_secret_environment_variables() -> None:
+    workflow = _make_workflow(
+        environment_variables=[
+            SecretVariable(id="env-secret", name="API_KEY", value="plain-token", selector=["env", "API_KEY"]),
+            StringVariable(id="env-string", name="REGION", value="us-east-1", selector=["env", "REGION"]),
+        ]
+    )
+
+    response = workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+
+    assert response["environment_variables"] == [
+        {
+            "id": "env-secret",
+            "name": "API_KEY",
+            "value": workflow_module.encrypter.full_mask_token(),
+            "value_type": "secret",
+            "description": "",
+        },
+        {
+            "id": "env-string",
+            "name": "REGION",
+            "value": "us-east-1",
+            "value_type": "string",
+            "description": "",
+        },
+    ]
+
+
+def test_workflow_response_rejects_invalid_environment_variable_dict() -> None:
+    workflow = _make_workflow(environment_variables=[{"value_type": "not-a-segment-type"}])
+
+    with pytest.raises(ValidationError):
+        workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True)
 
 
 def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -373,10 +573,33 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
                     "avatar": "avatar-file-id",
                     "sid": "sid-1",
                 }
-            )
+            ),
+            b"sid-malformed": json.dumps({"avatar": "avatar-file-id", "sid": "sid-malformed"}),
+            b"sid-invalid-avatar": json.dumps(
+                {
+                    "user_id": "u-2",
+                    "username": "Bob",
+                    "avatar": {"file_id": "avatar-file-id"},
+                }
+            ),
+            b"sid-invalid-user-id": json.dumps(
+                {
+                    "user_id": 42,
+                    "username": "Carol",
+                    "avatar": "avatar-file-id",
+                }
+            ),
+            b"sid-invalid-username": json.dumps(
+                {
+                    "user_id": "u-4",
+                    "username": ["Dave"],
+                    "avatar": "avatar-file-id",
+                }
+            ),
         }
     ]
-    workflow_module.redis_client.pipeline.return_value = redis_pipeline
+    redis_pipeline_factory = Mock(return_value=redis_pipeline)
+    monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
     api = workflow_module.WorkflowOnlineUsersApi()
     handler = _unwrap(api.post)
@@ -397,13 +620,17 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
                         "user_id": "u-1",
                         "username": "Alice",
                         "avatar": signed_avatar_url,
-                        "sid": "sid-1",
-                    }
+                    },
+                    {
+                        "user_id": "u-2",
+                        "username": "Bob",
+                        "avatar": None,
+                    },
                 ],
             }
         ]
     }
-    workflow_module.redis_client.pipeline.assert_called_once_with(transaction=False)
+    redis_pipeline_factory.assert_called_once_with(transaction=False)
     redis_pipeline.hgetall.assert_called_once_with(f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}")
     redis_pipeline.execute.assert_called_once_with()
     sign_avatar.assert_called_once_with("avatar-file-id")
@@ -422,7 +649,8 @@ def test_workflow_online_users_batches_redis_reads(app, monkeypatch: pytest.Monk
     first_pipeline.execute.return_value = [{} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)]
     second_pipeline = Mock()
     second_pipeline.execute.return_value = [{}]
-    workflow_module.redis_client.pipeline.side_effect = [first_pipeline, second_pipeline]
+    redis_pipeline_factory = Mock(side_effect=[first_pipeline, second_pipeline])
+    monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
     api = workflow_module.WorkflowOnlineUsersApi()
     handler = _unwrap(api.post)
@@ -435,7 +663,7 @@ def test_workflow_online_users_batches_redis_reads(app, monkeypatch: pytest.Monk
         response = handler(api)
 
     assert len(response["data"]) == len(app_ids)
-    assert workflow_module.redis_client.pipeline.call_count == 2
+    assert redis_pipeline_factory.call_count == 2
     assert first_pipeline.hgetall.call_count == workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
     assert second_pipeline.hgetall.call_count == 1
 
@@ -463,5 +691,6 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app, monkeypatch: 
             handler(api)
 
     assert exc.value.code == 400
+    assert exc.value.description is not None
     assert "Maximum" in exc.value.description
     accessible_app_ids.assert_not_called()

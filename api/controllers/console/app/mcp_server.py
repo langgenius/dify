@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -10,13 +11,18 @@ from werkzeug.exceptions import NotFound
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models.enums import AppMCPServerStatus
-from models.model import AppMCPServer
+from models.model import App, AppMCPServer
 
 
 class MCPServerCreatePayload(BaseModel):
@@ -72,7 +78,7 @@ class AppMCPServerController(Resource):
     @account_initialization_required
     @setup_required
     @get_app_model
-    def get(self, app_model):
+    def get(self, app_model: App):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
         if server is None:
             return {}
@@ -91,8 +97,8 @@ class AppMCPServerController(Resource):
     @login_required
     @setup_required
     @edit_permission_required
-    def post(self, app_model):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, app_model: App):
         payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
 
         description = payload.description
@@ -126,7 +132,7 @@ class AppMCPServerController(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
-    def put(self, app_model):
+    def put(self, app_model: App):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
         server = db.session.get(AppMCPServer, payload.id)
         if not server:
@@ -162,8 +168,8 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, server_id):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, server_id: UUID):
         server = db.session.scalar(
             select(AppMCPServer)
             .where(AppMCPServer.id == server_id, AppMCPServer.tenant_id == current_tenant_id)

@@ -302,7 +302,7 @@ class TestPluginFetchPermissionApi:
 
 
 class TestPluginFetchDynamicSelectOptionsApi:
-    def test_fetch_dynamic_options(self, app, user):
+    def test_fetch_dynamic_options(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsApi()
         method = unwrap(api.get)
 

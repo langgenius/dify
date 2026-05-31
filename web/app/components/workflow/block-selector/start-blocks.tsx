@@ -165,7 +165,7 @@ function StartBlockPreviewCard({
           {t(`blocksAbout.${block.type}`, { ns: 'workflow' })}
         </div>
         {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
-          <div className="mt-1 mb-1 system-xs-regular text-text-tertiary">
+          <div className="my-1 system-xs-regular text-text-tertiary">
             {t('author', { ns: 'tools' })}
             {' '}
             {t('difyTeam', { ns: 'workflow' })}

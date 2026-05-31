@@ -2,7 +2,7 @@ import datetime
 from types import SimpleNamespace
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes
@@ -44,6 +44,7 @@ def _create_human_input_node(
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
         runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
@@ -81,7 +82,7 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
             "form_content": form_content,
             "inputs": [
                 {
-                    "type": "text_input",
+                    "type": "paragraph",
                     "output_variable_name": "name",
                     "default": {"type": "constant", "value": ""},
                 }
@@ -148,7 +149,7 @@ def _build_timeout_node() -> HumanInputNode:
             "form_content": "Please enter your name:\n\n{{#$output.name#}}",
             "inputs": [
                 {
-                    "type": "text_input",
+                    "type": "paragraph",
                     "output_variable_name": "name",
                     "default": {"type": "constant", "value": ""},
                 }

@@ -1,5 +1,6 @@
 import type { MetadataItemInBatchEdit, MetadataItemWithEdit } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType, UpdateType } from '../../types'
 import EditMetadataBatchModal from '../modal'
@@ -212,6 +213,7 @@ describe('EditMetadataBatchModal', () => {
     })
 
     it('should toggle apply to all checkbox', async () => {
+      const user = userEvent.setup()
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
@@ -219,7 +221,7 @@ describe('EditMetadataBatchModal', () => {
       })
 
       const checkbox = screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' })
-      fireEvent.click(checkbox)
+      await user.click(checkbox)
 
       await waitFor(() => {
         expect(checkbox).toHaveAttribute('aria-checked', 'true')
@@ -482,6 +484,7 @@ describe('EditMetadataBatchModal', () => {
     })
 
     it('should pass isApplyToAllSelectDocument as true when checked', async () => {
+      const user = userEvent.setup()
       const onSave = vi.fn()
       render(<EditMetadataBatchModal {...defaultProps} onSave={onSave} />)
 
@@ -489,7 +492,7 @@ describe('EditMetadataBatchModal', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' }))
+      await user.click(screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' }))
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 

@@ -49,8 +49,8 @@ describe('NodeStatus', () => {
     // The icon is the first child of the div
     const icon = container.querySelector('.custom-icon-class')
     expect(icon).toBeInTheDocument()
-    expect(icon).toHaveClass('h-3.5')
-    expect(icon).toHaveClass('w-3.5')
+    expect(icon).toHaveClass('size-3.5')
+    expect(icon).toHaveClass('size-3.5')
   })
 
   it('passes additional HTML attributes to the container', () => {

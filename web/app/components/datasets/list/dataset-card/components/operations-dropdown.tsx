@@ -42,11 +42,11 @@ const OperationsDropdown = ({
             'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg ring-2 shadow-shadow-shadow-5 ring-components-button-secondary-bg ring-inset',
             'transition-colors hover:border-components-actionbar-border hover:bg-state-base-hover',
             'focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
-            open && 'bg-state-base-hover',
+            'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
         >
-          <span className="i-ri-more-fill h-5 w-5 text-text-tertiary" />
+          <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"

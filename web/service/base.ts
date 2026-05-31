@@ -31,6 +31,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { asyncRunSafe } from '@/utils'
+import { isClient } from '@/utils/client'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
@@ -132,22 +133,22 @@ export type IOtherOptions = {
 }
 
 function jumpTo(url: string) {
-  if (!url)
+  if (!url || !isClient)
     return
-  const targetPath = new URL(url, globalThis.location.origin).pathname
-  if (targetPath === globalThis.location.pathname)
+  const targetPath = new URL(url, window.location.origin).pathname
+  if (targetPath === window.location.pathname)
     return
-  globalThis.location.href = url
+  window.location.href = url
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
 
 export const buildSigninUrlWithRedirect = (): string => {
-  const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+  const loginUrl = `${isClient ? window.location.origin : ''}${basePath}/signin`
 
   // Only preserve redirect URL for OAuth authorize pages
-  if (globalThis.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
-    const currentUrl = globalThis.location.href
+  if (isClient && window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+    const currentUrl = window.location.href
     return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
   }
 
@@ -165,17 +166,20 @@ function unicodeToChar(text: string) {
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
 function requiredWebSSOLogin(message?: string, code?: number) {
-  const params = new URLSearchParams()
-  // prevent redirect loop
-  if (globalThis.location.pathname === WBB_APP_LOGIN_PATH)
+  if (!isClient)
     return
 
-  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
+  const params = new URLSearchParams()
+  // prevent redirect loop
+  if (window.location.pathname === WBB_APP_LOGIN_PATH)
+    return
+
+  params.append('redirect_url', encodeURIComponent(`${window.location.pathname}${window.location.search}`))
   if (message)
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+  window.location.href = `${window.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
@@ -759,10 +763,13 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
+      if (!isClient)
+        return Promise.reject(err)
+
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+      const loginUrl = `${window.location.origin}${basePath}/signin`
       if (parseErr) {
-        globalThis.location.href = loginUrl
+        window.location.href = loginUrl
         return Promise.reject(err)
       }
       if (/\/login/.test(url))
@@ -780,7 +787,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       }
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
-        globalThis.location.reload()
+        window.location.reload()
         return Promise.reject(err)
       }
       const {
@@ -796,11 +803,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        jumpTo(`${globalThis.location.origin}${basePath}/init`)
+        jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        jumpTo(`${globalThis.location.origin}${basePath}/install`)
+        jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
 
@@ -808,7 +815,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      // /device is the device-flow chooser; logged-out is a valid state
+      // there. Redirecting to /signin loses the user_code context and
+      // the post-login flow lands on /apps instead of returning here.
+      if (window.location.pathname === `${basePath}/device`)
+        return Promise.reject(err)
+      if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
@@ -830,6 +842,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
 }
 
 // request methods
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
@@ -844,6 +862,12 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
   return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
 }
@@ -857,10 +881,22 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
@@ -869,6 +905,12 @@ export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
+/**
+ * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
+ * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
+ * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
+ * flows such as public APIs, marketplace APIs, streaming, upload, or download.
+ */
 export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }

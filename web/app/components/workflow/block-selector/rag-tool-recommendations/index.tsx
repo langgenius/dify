@@ -84,7 +84,7 @@ const RAGToolRecommendations = ({
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
-        <ArrowDownRoundFill className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <ArrowDownRoundFill className={`ml-1 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
       {!isCollapsed && (
         <>

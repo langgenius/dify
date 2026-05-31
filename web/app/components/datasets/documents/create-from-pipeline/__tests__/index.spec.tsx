@@ -42,6 +42,16 @@ vi.mock('@/context/provider-context', () => ({
     selector({ plan: mockPlan, enableBilling: true }),
 }))
 
+vi.mock('@/service/use-billing', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: {
+      size: mockPlan.usage.vectorSpace,
+      limit: mockPlan.total.vectorSpace,
+    },
+    isFetching: false,
+  }),
+}))
+
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string } }) => unknown) =>
     selector({ dataset: { pipeline_id: 'test-pipeline-id' } }),
@@ -1327,7 +1337,7 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(true)
     })
 
     // Verify the callback was executed (no error thrown)
@@ -1351,7 +1361,7 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(true)
     })
 
     expect(true).toBe(true)
@@ -1961,7 +1971,7 @@ describe('useDatasourceActions - Async Functions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
 
     // Should deselect all since documents.length >= allIds.length
@@ -2002,7 +2012,7 @@ describe('useDatasourceActions - Async Functions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
 
     // Should deselect all since selectedFileIds.length >= allKeys.length
@@ -2531,7 +2541,7 @@ describe('useDatasourceActions - Edge Case Branches', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
 
     act(() => {
-      result.current.handleSelectAll()
+      result.current.handleSelectAll(false)
     })
 
     // Should use empty array when currentWorkspacePages is undefined

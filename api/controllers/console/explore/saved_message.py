@@ -1,27 +1,35 @@
+from uuid import UUID
+
 from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.wraps import with_current_user
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
-from libs.login import current_account_with_tenant
+from models import Account
+from models.model import InstalledApp
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
 register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)
+register_response_schema_models(console_ns, ResultResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[SavedMessageListQuery.__name__])
-    def get(self, installed_app):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -42,9 +50,12 @@ class SavedMessageListApi(InstalledAppResource):
         ).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
-    def post(self, installed_app):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -62,15 +73,18 @@ class SavedMessageListApi(InstalledAppResource):
     "/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>", endpoint="installed_app_saved_message"
 )
 class SavedMessageApi(InstalledAppResource):
-    def delete(self, installed_app, message_id):
-        current_user, _ = current_account_with_tenant()
+    @console_ns.response(204, "Saved message deleted successfully")
+    @with_current_user
+    def delete(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, current_user, message_id)
+        SavedMessageService.delete(app_model, current_user, message_id_str)
 
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", 204

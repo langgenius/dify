@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -16,7 +16,7 @@ from models.provider import ProviderType
 
 
 @contextmanager
-def _patched_credit_pool_session_factory(engine: Engine) -> Iterator[None]:
+def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
         yield

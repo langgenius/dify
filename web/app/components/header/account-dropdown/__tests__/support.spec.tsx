@@ -42,8 +42,6 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 describe('Support', () => {
-  const mockCloseAccountDropdown = vi.fn()
-
   const baseAppContextValue: AppContextValue = {
     userProfile: {
       id: '1',
@@ -105,7 +103,7 @@ describe('Support', () => {
       <DropdownMenu open={true} onOpenChange={() => { }}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
-          <Support closeAccountDropdown={mockCloseAccountDropdown} />
+          <Support />
         </DropdownMenuContent>
       </DropdownMenu>,
     )
@@ -189,7 +187,7 @@ describe('Support', () => {
   })
 
   describe('Interactions and Links', () => {
-    it('should call toggleZendeskWindow and closeAccountDropdown when "Contact Us" is clicked', () => {
+    it('should call toggleZendeskWindow when "Contact Us" is clicked', () => {
       // Act
       renderSupport()
       fireEvent.click(screen.getByText('common.userProfile.support'))
@@ -197,7 +195,6 @@ describe('Support', () => {
 
       // Assert
       expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
-      expect(mockCloseAccountDropdown).toHaveBeenCalled()
     })
 
     it('should have correct forum and community links', () => {

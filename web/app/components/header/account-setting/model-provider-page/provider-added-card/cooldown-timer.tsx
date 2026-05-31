@@ -57,7 +57,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
         <Tooltip>
           <TooltipTrigger
             render={(
-              <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="h-3 w-3" />
+              <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="size-3" />
             )}
           />
           <TooltipContent>

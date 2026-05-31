@@ -1,5 +1,6 @@
 import type { FileEntity } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import {
   RiDeleteBinLine,
   RiDownloadLine,
@@ -9,11 +10,11 @@ import {
   memo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { PreviewMode } from '@/app/components/base/features/types'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
@@ -43,6 +44,7 @@ const FileInAttachmentItem = ({
   canPreview,
   previewMode = PreviewMode.CurrentPage,
 }: FileInAttachmentItemProps) => {
+  const { t } = useTranslation()
   const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
@@ -60,11 +62,11 @@ const FileInAttachmentItem = ({
             window.open(url || base64Url || '', '_blank')
         }}
       >
-        <div className="flex h-12 w-12 items-center justify-center">
+        <div className="flex size-12 items-center justify-center">
           {
             isImageFile && (
               <FileImageRender
-                className="h-8 w-8"
+                className="size-8"
                 imageUrl={base64Url || url || ''}
               />
             )
@@ -108,7 +110,8 @@ const FileInAttachmentItem = ({
             progress >= 0 && !fileIsUploaded(file) && (
               <ProgressCircle
                 className="mr-2.5"
-                percentage={progress}
+                value={progress}
+                aria-label={t('uploading', { ns: 'custom' })}
               />
             )
           }
@@ -118,21 +121,21 @@ const FileInAttachmentItem = ({
                 className="mr-1"
                 onClick={() => onReUpload?.(id)}
               >
-                <ReplayLine className="h-4 w-4 text-text-tertiary" />
+                <ReplayLine className="size-4 text-text-tertiary" />
               </ActionButton>
             )
           }
           {
             showDeleteAction && (
               <ActionButton onClick={() => onRemove?.(id)}>
-                <RiDeleteBinLine className="h-4 w-4" />
+                <RiDeleteBinLine className="size-4" />
               </ActionButton>
             )
           }
           {
             canPreview && isImageFile && (
               <ActionButton className="mr-1" onClick={() => setImagePreviewUrl(url || '')}>
-                <RiEyeLine className="h-4 w-4" />
+                <RiEyeLine className="size-4" />
               </ActionButton>
             )
           }
@@ -143,7 +146,7 @@ const FileInAttachmentItem = ({
                 downloadUrl({ url: url || base64Url || '', fileName: name, target: '_blank' })
               }}
               >
-                <RiDownloadLine className="h-4 w-4" />
+                <RiDownloadLine className="size-4" />
               </ActionButton>
             )
           }

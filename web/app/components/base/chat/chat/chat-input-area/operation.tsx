@@ -56,7 +56,7 @@ const Operation: FC<OperationProps> = ({
                 disabled={readonly}
                 onClick={onShowVoiceInput}
               >
-                <RiMicLine className="h-5 w-5" aria-hidden="true" />
+                <RiMicLine className="size-5" aria-hidden="true" />
               </ActionButton>
             )
           }
@@ -74,7 +74,7 @@ const Operation: FC<OperationProps> = ({
               : {}
           }
         >
-          <RiSendPlane2Fill className="h-4 w-4" aria-hidden="true" />
+          <RiSendPlane2Fill className="size-4" aria-hidden="true" />
         </Button>
       </div>
     </div>

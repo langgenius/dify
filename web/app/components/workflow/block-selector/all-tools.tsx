@@ -295,7 +295,7 @@ const AllTools = ({
 
           {shouldShowEmptyState && (
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
-              <SearchMenu className="h-8 w-8 text-text-quaternary" />
+              <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
                 {t('tabs.noPluginsFound', { ns: 'workflow' })}
               </div>
@@ -321,7 +321,7 @@ const AllTools = ({
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         )}
       </div>

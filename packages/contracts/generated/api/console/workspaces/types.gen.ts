@@ -6,9 +6,7 @@ export type ClientOptions = {
 
 export type TenantInfoResponse = {
   created_at?: number | null
-  custom_config?: {
-    [key: string]: unknown
-  } | null
+  custom_config?: WorkspaceCustomConfigResponse
   id: string
   in_trial?: boolean | null
   name?: string | null
@@ -27,6 +25,10 @@ export type AccountWithRoleList = {
 
 export type ParserPostDefault = {
   model_settings: Array<Inner>
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type EndpointCreatePayload = {
@@ -99,8 +101,19 @@ export type OwnerTransferCheckPayload = {
   token: string
 }
 
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
 export type OwnerTransferEmailPayload = {
   language?: string | null
+}
+
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
 }
 
 export type OwnerTransferPayload = {
@@ -201,7 +214,19 @@ export type LoadBalancingCredentialPayload = {
 }
 
 export type ParserPreferredProviderType = {
-  preferred_provider_type: 'system' | 'custom'
+  preferred_provider_type: 'custom' | 'system'
+}
+
+export type WorkspacePermissionResponse = {
+  allow_member_invite: boolean
+  allow_owner_transfer: boolean
+  workspace_id: string
+}
+
+export type PluginDebuggingKeyResponse = {
+  host: string
+  key: string
+  port: number
 }
 
 export type ParserGithubInstall = {
@@ -233,6 +258,10 @@ export type ParserDynamicOptionsWithCredentials = {
 export type ParserPermissionChange = {
   debug_permission: DebugPermission
   install_permission: InstallPermission
+}
+
+export type SuccessResponse = {
+  success: boolean
 }
 
 export type ParserExcludePlugin = {
@@ -469,6 +498,11 @@ export type SwitchWorkspacePayload = {
   tenant_id: string
 }
 
+export type WorkspaceCustomConfigResponse = {
+  remove_webapp_brand?: boolean | null
+  replace_webapp_logo?: string | null
+}
+
 export type AccountWithRole = {
   avatar?: string | null
   created_at?: number | null
@@ -487,9 +521,9 @@ export type Inner = {
   provider?: string | null
 }
 
-export type TenantAccountRole = 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
-export type ModelType = 'llm' | 'text-embedding' | 'rerank' | 'speech2text' | 'moderation' | 'tts'
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type LoadBalancingPayload = {
   configs?: Array<{
@@ -498,9 +532,9 @@ export type LoadBalancingPayload = {
   enabled?: boolean | null
 }
 
-export type DebugPermission = 'everyone' | 'admins' | 'noone'
+export type DebugPermission = 'admins' | 'everyone' | 'noone'
 
-export type InstallPermission = 'everyone' | 'admins' | 'noone'
+export type InstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
@@ -515,7 +549,7 @@ export type PluginPermissionSettingsPayload = {
   install_permission?: InstallPermission
 }
 
-export type ApiProviderSchemaType = 'openapi' | 'swagger' | 'openai_plugin' | 'openai_actions'
+export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
 
 export type CredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 
@@ -527,9 +561,9 @@ export type WorkflowToolParameterConfiguration = {
 
 export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
 
-export type UpgradeMode = 'all' | 'partial' | 'exclude'
+export type UpgradeMode = 'all' | 'exclude' | 'partial'
 
-export type ToolParameterForm = 'schema' | 'form' | 'llm'
+export type ToolParameterForm = 'form' | 'llm' | 'schema'
 
 export type GetWorkspacesData = {
   body?: never
@@ -634,9 +668,7 @@ export type PostWorkspacesCurrentDefaultModelData = {
 }
 
 export type PostWorkspacesCurrentDefaultModelResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentDefaultModelResponse
@@ -903,9 +935,7 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckData = {
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponse
@@ -919,9 +949,7 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse
@@ -1027,8 +1055,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1101,9 +1129,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchData =
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse
@@ -1137,8 +1163,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1191,8 +1217,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 
@@ -1268,9 +1294,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitch
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse
@@ -1304,9 +1328,7 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse
@@ -1322,9 +1344,7 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse
@@ -1354,8 +1374,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
   = {
     body: LoadBalancingCredentialPayload
     path: {
-      provider: string
       config_id: string
+      provider: string
     }
     query?: never
     url: '/workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate'
@@ -1401,9 +1421,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeDa
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse
@@ -1435,9 +1453,7 @@ export type GetWorkspacesCurrentPermissionData = {
 }
 
 export type GetWorkspacesCurrentPermissionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkspacePermissionResponse
 }
 
 export type GetWorkspacesCurrentPermissionResponse
@@ -1470,9 +1486,7 @@ export type GetWorkspacesCurrentPluginDebuggingKeyData = {
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDebuggingKeyResponse
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponse
@@ -1679,9 +1693,7 @@ export type PostWorkspacesCurrentPluginPermissionChangeData = {
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeResponse
@@ -1797,9 +1809,7 @@ export type PostWorkspacesCurrentPluginTasksDeleteAllData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponse
@@ -1833,9 +1843,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse
@@ -1844,17 +1852,15 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
   body?: never
   path: {
-    task_id: string
     identifier: string
+    task_id: string
   }
   query?: never
   url: '/workspaces/current/plugin/tasks/{task_id}/delete/{identifier}'
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse
@@ -1868,9 +1874,7 @@ export type PostWorkspacesCurrentPluginUninstallData = {
 }
 
 export type PostWorkspacesCurrentPluginUninstallResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentPluginUninstallResponse
@@ -2140,8 +2144,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByC
   = {
     body?: never
     path: {
-      provider: string
       credential_type: string
+      provider: string
     }
     query?: never
     url: '/workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}'
@@ -2363,9 +2367,7 @@ export type DeleteWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponse
@@ -2895,9 +2897,7 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse
@@ -3004,10 +3004,10 @@ export type PostWorkspacesSwitchResponse
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangData = {
   body?: never
   path: {
-    tenant_id: string
-    provider: string
     icon_type: string
     lang: string
+    provider: string
+    tenant_id: string
   }
   query?: never
   url: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}'

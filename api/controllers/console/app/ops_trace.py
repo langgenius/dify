@@ -128,6 +128,6 @@ class TraceAppConfigApi(Resource):
             result = OpsService.delete_tracing_app_config(app_id=app_model.id, tracing_provider=args.tracing_provider)
             if not result:
                 raise TracingConfigNotExist()
-            return {"result": "success"}, 204
+            return "", 204
         except Exception as e:
             raise BadRequest(str(e))

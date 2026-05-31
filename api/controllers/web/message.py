@@ -1,12 +1,13 @@
 import logging
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -26,7 +27,7 @@ from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfinite
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.enums import FeedbackRating
-from models.model import AppMode
+from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -47,6 +48,7 @@ class MessageMoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
+register_response_schema_models(web_ns, ResultResponse, SuggestedQuestionsResponse)
 
 
 @web_ns.route("/messages")
@@ -79,7 +81,7 @@ class MessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -130,15 +132,16 @@ class MessageFeedbackApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model, end_user, message_id):
-        message_id = str(message_id)
+    @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+        message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id,
+                message_id=message_id_str,
                 user=end_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
@@ -164,11 +167,11 @@ class MessageMoreLikeThisApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         raw_args = request.args.to_dict()
         query = MessageMoreLikeThisQuery.model_validate(raw_args)
@@ -179,7 +182,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=end_user,
-                message_id=message_id,
+                message_id=message_id_str,
                 invoke_from=InvokeFrom.WEB_APP,
                 streaming=streaming,
             )
@@ -206,6 +209,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
 @web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
+    @web_ns.response(200, "Success", web_ns.models[SuggestedQuestionsResponse.__name__])
     @web_ns.doc("Get Suggested Questions")
     @web_ns.doc(description="Get suggested follow-up questions after a message (chat apps only).")
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
@@ -219,16 +223,16 @@ class MessageSuggestedQuestionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.WEB_APP
+                app_model=app_model, user=end_user, message_id=message_id_str, invoke_from=InvokeFrom.WEB_APP
             )
             # questions is a list of strings, not a list of Message objects
         except MessageNotExistsError:

@@ -15,6 +15,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date
 from libs.login import current_account_with_tenant, login_required
 from models import AppMode
+from models.model import App
 
 
 class StatisticTimeRangeQuery(BaseModel):
@@ -47,7 +48,7 @@ class DailyMessageStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -61,8 +62,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -104,7 +109,7 @@ class DailyConversationStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -118,8 +123,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -160,7 +169,7 @@ class DailyTerminalsStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -174,8 +183,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -217,7 +230,7 @@ class DailyTokenCostStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -232,8 +245,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -277,7 +294,7 @@ class AverageSessionInteractionStatistic(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -299,8 +316,12 @@ FROM
         WHERE
             c.app_id = :app_id
             AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -353,7 +374,7 @@ class UserSatisfactionRateStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -371,8 +392,12 @@ LEFT JOIN
 WHERE
     m.app_id = :app_id
     AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -419,7 +444,7 @@ class AverageResponseTimeStatistic(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
 
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -433,8 +458,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
@@ -476,7 +505,7 @@ class TokensPerSecondStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         account, _ = current_account_with_tenant()
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -492,8 +521,12 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
+        arg_dict: dict[str, object] = {
+            "tz": account.timezone,
+            "app_id": app_model.id,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
 
         try:
             start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)

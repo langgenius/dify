@@ -1,10 +1,11 @@
 'use client'
 
 import type { FC, KeyboardEvent, RefObject } from 'react'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { RiSearchLine } from '@remixicon/react'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
 type SearchInputProps = {
   inputRef: RefObject<HTMLInputElement | null>
@@ -36,7 +37,7 @@ const SearchInput: FC<SearchInputProps> = ({
 
   return (
     <div className="flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3">
-      <RiSearchLine className="h-4 w-4 text-text-quaternary" />
+      <RiSearchLine className="size-4 text-text-quaternary" />
       <div className="flex flex-1 items-center gap-2">
         <Input
           ref={inputRef}
@@ -54,7 +55,11 @@ const SearchInput: FC<SearchInputProps> = ({
           </div>
         )}
       </div>
-      <ShortcutsName keys={['ctrl', 'K']} textColor="secondary" />
+      <KbdGroup>
+        {['Mod', 'K'].map(key => (
+          <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+        ))}
+      </KbdGroup>
     </div>
   )
 }

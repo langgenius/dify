@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Response
+from flask import Flask, Response
 
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
@@ -46,7 +46,7 @@ def restx_config(app):
 
 
 class TestRagPipelineVariableCollectionApi:
-    def test_get_variables_success(self, app, fake_db, editor_user, restx_config):
+    def test_get_variables_success(self, app: Flask, fake_db, editor_user, restx_config):
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -80,7 +80,7 @@ class TestRagPipelineVariableCollectionApi:
 
         assert result["items"] == []
 
-    def test_get_variables_workflow_not_exist(self, app, fake_db, editor_user):
+    def test_get_variables_workflow_not_exist(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -101,7 +101,7 @@ class TestRagPipelineVariableCollectionApi:
             with pytest.raises(DraftWorkflowNotExist):
                 method(api, pipeline)
 
-    def test_delete_variables_success(self, app, fake_db, editor_user):
+    def test_delete_variables_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.delete)
 
@@ -120,7 +120,7 @@ class TestRagPipelineVariableCollectionApi:
 
 
 class TestRagPipelineNodeVariableCollectionApi:
-    def test_get_node_variables_success(self, app, fake_db, editor_user, restx_config):
+    def test_get_node_variables_success(self, app: Flask, fake_db, editor_user, restx_config):
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -146,7 +146,7 @@ class TestRagPipelineNodeVariableCollectionApi:
 
         assert result["items"] == []
 
-    def test_get_node_variables_invalid_node(self, app, editor_user):
+    def test_get_node_variables_invalid_node(self, app: Flask, editor_user):
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -159,7 +159,7 @@ class TestRagPipelineNodeVariableCollectionApi:
 
 
 class TestRagPipelineVariableApi:
-    def test_get_variable_not_found(self, app, fake_db, editor_user):
+    def test_get_variable_not_found(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
         method = unwrap(api.get)
 
@@ -178,7 +178,7 @@ class TestRagPipelineVariableApi:
             with pytest.raises(NotFoundError):
                 method(api, MagicMock(), "v1")
 
-    def test_patch_variable_invalid_file_payload(self, app, fake_db, editor_user):
+    def test_patch_variable_invalid_file_payload(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
         method = unwrap(api.patch)
 
@@ -203,7 +203,7 @@ class TestRagPipelineVariableApi:
             with pytest.raises(InvalidArgumentError):
                 method(api, pipeline, "v1")
 
-    def test_delete_variable_success(self, app, fake_db, editor_user):
+    def test_delete_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
         method = unwrap(api.delete)
 
@@ -228,7 +228,7 @@ class TestRagPipelineVariableApi:
 
 
 class TestRagPipelineVariableResetApi:
-    def test_reset_variable_success(self, app, fake_db, editor_user):
+    def test_reset_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableResetApi()
         method = unwrap(api.put)
 
@@ -266,7 +266,7 @@ class TestRagPipelineVariableResetApi:
 
 
 class TestSystemAndEnvironmentVariablesApi:
-    def test_system_variables_success(self, app, fake_db, editor_user, restx_config):
+    def test_system_variables_success(self, app: Flask, fake_db, editor_user, restx_config):
         api = RagPipelineSystemVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -292,7 +292,7 @@ class TestSystemAndEnvironmentVariablesApi:
 
         assert result["items"] == []
 
-    def test_environment_variables_success(self, app, editor_user):
+    def test_environment_variables_success(self, app: Flask, editor_user):
         api = RagPipelineEnvironmentVariableCollectionApi()
         method = unwrap(api.get)
 

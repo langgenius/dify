@@ -2,12 +2,12 @@
 
 import type { FC } from 'react'
 import type { AppListQuery } from '@/contract/console/apps'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -15,6 +15,7 @@ import { useAppContext } from '@/context/app-context'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
@@ -44,15 +45,18 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const { replace } = useRouter()
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, tagIDs, keywords, isCreatedByMe },
+    query: { category, keywords, isCreatedByMe },
     setCategory,
     setKeywords,
-    setTagIDs,
     setIsCreatedByMe,
   } = useAppsQueryState()
+  const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -70,6 +74,16 @@ const List: FC<Props> = ({
     containerRef,
     enabled: isCurrentWorkspaceEditor,
   })
+
+  useEffect(() => {
+    if (!searchParams.has('tagIDs'))
+      return
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('tagIDs')
+    const query = params.toString()
+    replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, replace, searchParams])
 
   const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
@@ -158,9 +172,9 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const handleCreatedByMeChange = useCallback(() => {
-    setIsCreatedByMe(!isCreatedByMe)
-  }, [isCreatedByMe, setIsCreatedByMe])
+  const handleCreatedByMeChange = useCallback((checked: boolean) => {
+    setIsCreatedByMe(checked)
+  }, [setIsCreatedByMe])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -204,7 +218,7 @@ const List: FC<Props> = ({
           />
           <div className="flex items-center gap-2">
             <label className="mr-2 flex h-7 items-center space-x-2">
-              <Checkbox checked={isCreatedByMe} onCheck={handleCreatedByMeChange} />
+              <Checkbox checked={isCreatedByMe} onCheckedChange={handleCreatedByMeChange} />
               <div className="text-sm font-normal text-text-secondary">
                 {t('showMyCreatedAppsOnly', { ns: 'app' })}
               </div>
@@ -258,7 +272,7 @@ const List: FC<Props> = ({
             role="region"
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <span className="i-ri-drag-drop-line h-4 w-4" />
+            <span className="i-ri-drag-drop-line size-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}

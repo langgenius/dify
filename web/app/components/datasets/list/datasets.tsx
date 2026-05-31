@@ -6,6 +6,7 @@ import Loading from '@/app/components/base/loading'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
+import DatasetCardSkeleton from './dataset-card-skeleton'
 import NewDatasetCard from './new-dataset-card'
 
 type Props = {
@@ -29,6 +30,8 @@ const Datasets = ({
     hasNextPage,
     isFetching,
     isFetchingNextPage,
+    isLoading,
+    isPlaceholderData,
   } = useDatasetList({
     initialPage: 1,
     tag_ids: tags,
@@ -39,6 +42,9 @@ const Datasets = ({
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
+  const pages = datasetList?.pages ?? []
+  const datasets = pages.flatMap(({ data }) => data)
+  const showDatasetSkeleton = !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
 
   useEffect(() => {
     document.title = `${t('knowledge', { ns: 'dataset' })} - Dify`
@@ -47,7 +53,7 @@ const Datasets = ({
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && hasNextPage && !isFetching)
+        if (entries[0]!.isIntersecting && hasNextPage && !isFetching && !isPlaceholderData)
           fetchNextPage()
       }, {
         rootMargin: '100px',
@@ -55,15 +61,17 @@ const Datasets = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, hasNextPage, isFetching, fetchNextPage])
+  }, [anchorRef, hasNextPage, isFetching, isPlaceholderData, fetchNextPage])
 
   return (
     <>
       <nav className="grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {isCurrentWorkspaceEditor && <NewDatasetCard />}
-        {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
-          <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
-        ))}
+        {showDatasetSkeleton
+          ? <DatasetCardSkeleton label={t('loading', { ns: 'common' })} />
+          : datasets.map(dataset => (
+              <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
+            )}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
       </nav>

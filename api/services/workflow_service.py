@@ -29,7 +29,11 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    apply_dify_debug_email_recipient,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -136,14 +140,21 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(
+        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+    ) -> Workflow | None:
         """
         Get draft workflow
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
         if workflow_id:
-            return self.get_published_workflow_by_id(app_model, workflow_id)
+            return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
         # fetch draft workflow by app_model
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -308,6 +319,13 @@ class WorkflowService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+        )
+
         # commit db session changes
         db.session.commit()
 
@@ -453,6 +471,13 @@ class WorkflowService:
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=draft_workflow,
+        )
+
         # billing check
         if dify_config.BILLING_ENABLED:
             limit_info = BillingService.get_info(app_model.tenant_id)
@@ -486,6 +511,11 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+            session=session,
+            draft_workflow=draft_workflow,
+            published_workflow=workflow,
+        )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
@@ -1259,6 +1289,7 @@ class WorkflowService:
             data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
             runtime=DifyHumanInputNodeRuntime(run_context),
         )
         return node

@@ -3,16 +3,18 @@ import type { ModelSelectorPreviewPayload } from './popup-item'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ACCOUNT_SETTING_MODAL_ACTION, ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
@@ -46,6 +48,7 @@ function Popup({
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
@@ -60,8 +63,10 @@ function Popup({
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const trialModels = systemFeatures.trial_models
+  const { data: trialModels = [] } = useQuery(consoleQuery.trialModels.get.queryOptions({
+    enabled: IS_CLOUD_EDITION,
+    select: data => data.trial_models,
+  }))
   const installedProviderMap = useMemo(() => new Map(
     modelProviders.map(provider => [provider.provider, provider]),
   ), [modelProviders])
@@ -160,6 +165,8 @@ function Popup({
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
+  const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
+    && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
 
   return (
     <ModelSelectorPopupFrame>
@@ -194,7 +201,7 @@ function Popup({
             />
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
-            <div className="px-3 py-1.5 text-center text-xs leading-4.5 break-all text-text-tertiary">
+            <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
               {`No model found for \u201C${inputValue}\u201D`}
             </div>
           )}
@@ -221,7 +228,9 @@ function Popup({
           />
         )}
       </PreviewCard>
-      <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      {!isProviderSettingsCurrentPage && (
+        <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+      )}
     </ModelSelectorPopupFrame>
   )
 }
@@ -250,7 +259,7 @@ function ModelSelectorPreviewCard({
       <div className="flex flex-col gap-1">
         <div className="flex flex-col items-start gap-2">
           <ModelIcon
-            className="h-5 w-5 shrink-0"
+            className="size-5 shrink-0"
             provider={provider}
             modelName={modelItem.model}
           />

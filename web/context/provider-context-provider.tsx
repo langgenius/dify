@@ -28,6 +28,37 @@ type ProviderContextProviderProps = {
   children: ReactNode
 }
 
+type MemberInviteLimit = {
+  size: number
+  limit: number
+}
+
+const unlimitedMemberInviteLimit: MemberInviteLimit = {
+  size: 0,
+  limit: 0,
+}
+
+const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>): MemberInviteLimit => {
+  if (!data)
+    return unlimitedMemberInviteLimit
+
+  if (data.workspace_members?.enabled) {
+    return {
+      size: data.workspace_members.size,
+      limit: data.workspace_members.limit,
+    }
+  }
+
+  if (data.billing?.enabled && data.members?.limit > 0) {
+    return {
+      size: data.members.size,
+      limit: data.members.limit,
+    }
+  }
+
+  return unlimitedMemberInviteLimit
+}
+
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
@@ -87,8 +118,7 @@ export const ProviderContextProvider = ({
         setDatasetOperatorEnabled(true)
       if (data.webapp_copyright_enabled)
         setWebappCopyrightEnabled(true)
-      if (data.workspace_members)
-        setLicenseLimit({ workspace_members: data.workspace_members })
+      setLicenseLimit({ workspace_members: resolveMemberInviteLimit(data) })
       if (data.is_allow_transfer_workspace)
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
       if (data.knowledge_pipeline?.publish_enabled)

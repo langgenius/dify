@@ -28,7 +28,7 @@ export default function SpecificGroupsOrMembers() {
     return (
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
-          <RiLockLine className="h-4 w-4 text-text-primary" />
+          <RiLockLine className="size-4 text-text-primary" />
           <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
       </div>
@@ -39,7 +39,7 @@ export default function SpecificGroupsOrMembers() {
     <div>
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
-          <RiLockLine className="h-4 w-4 text-text-primary" />
+          <RiLockLine className="size-4 text-text-primary" />
           <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
         <div className="flex items-center gap-x-1">
@@ -124,15 +124,15 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
 
   return (
     <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
-      <div className="h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-        <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
+      <div className="size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+        <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
           {icon}
         </div>
       </div>
       {children}
       <button
         type="button"
-        className="flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         aria-label={t('operation.remove', { ns: 'common' })}
         onClick={onRemove}
       >

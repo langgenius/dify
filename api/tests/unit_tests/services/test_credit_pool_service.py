@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from unittest.mock import patch
 from uuid import uuid4
@@ -34,7 +34,7 @@ def _create_engine_with_pool(*, quota_limit: int, quota_used: int) -> tuple[Engi
 
 
 @contextmanager
-def _patched_session_factory(engine: Engine) -> Iterator[None]:
+def _patched_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
         yield

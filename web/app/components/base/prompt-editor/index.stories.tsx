@@ -13,7 +13,7 @@ const PromptEditorMock = ({ value, onChange, placeholder, editable, compact, cla
   return (
     <div className={wrapperClassName}>
       <textarea
-        className={`w-full resize-none outline-hidden ${compact ? 'text-[13px] leading-5' : 'text-sm leading-6'} ${className}`}
+        className={`w-full resize-none outline-hidden ${compact ? 'text-[13px] leading-5' : 'text-sm/6'} ${className}`}
         value={content}
         onChange={handleChange}
         placeholder={placeholder}

@@ -14,7 +14,7 @@ hydrated deterministically.
 """
 
 from collections import OrderedDict
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncGenerator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Generic, cast
@@ -178,7 +178,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         *,
         configs: Mapping[str, LayerConfigInput] | None = None,
         session_snapshot: CompositorSessionSnapshotValue | None = None,
-    ) -> AsyncIterator[CompositorRun[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]]:
+    ) -> AsyncGenerator[CompositorRun[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]]:
         """Create a fresh run, enter layers in graph order, and yield it.
 
         Configs are keyed by layer node name and validated before factories run.

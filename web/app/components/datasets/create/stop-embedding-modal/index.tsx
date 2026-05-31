@@ -39,7 +39,7 @@ const StopEmbeddingModal = ({
           onHide()
       }}
     >
-      <AlertDialogContent className={cn(s.modal, 'max-w-[480px]! overflow-hidden! border-none px-8 py-6 text-left align-middle shadow-xl')}>
+      <AlertDialogContent className="max-w-[480px]! overflow-hidden! border-none px-8 py-6 text-left align-middle shadow-xl">
         <div className={s.icon} />
         <button
           type="button"

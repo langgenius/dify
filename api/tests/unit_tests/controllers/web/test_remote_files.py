@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import urllib.parse
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -36,6 +37,39 @@ class TestRemoteFileInfoApi:
 
         assert result["file_type"] == "application/pdf"
         assert result["file_length"] == 1024
+        mock_proxy.head.assert_called_once_with("https://example.com/file.pdf")
+
+    @patch("controllers.web.remote_files.ssrf_proxy")
+    def test_preserves_unencoded_target_query(self, mock_proxy: MagicMock, app: Flask) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.headers = {"Content-Type": "text/plain", "Content-Length": "128"}
+        mock_proxy.head.return_value = mock_resp
+
+        target_url = "http://example.com/api/aiagent/httpview/txt"
+        query = "fileNameKey=cankao1_ce4305bc-be20-4c5d-8732-de1741d28e27"
+
+        with app.test_request_context(f"/remote-files/{target_url}?{query}"):
+            result = RemoteFileInfoApi().get(_app_model(), _end_user(), target_url)
+
+        assert result["file_type"] == "text/plain"
+        mock_proxy.head.assert_called_once_with(f"{target_url}?{query}")
+
+    @patch("controllers.web.remote_files.ssrf_proxy")
+    def test_preserves_encoded_target_query(self, mock_proxy: MagicMock, app: Flask) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.headers = {"Content-Type": "text/plain", "Content-Length": "128"}
+        mock_proxy.head.return_value = mock_resp
+
+        target_url = "http://example.com/api/aiagent/httpview/txt?fileNameKey=cankao1"
+        encoded_url = urllib.parse.quote(target_url, safe="")
+
+        with app.test_request_context(f"/remote-files/{encoded_url}"):
+            result = RemoteFileInfoApi().get(_app_model(), _end_user(), encoded_url)
+
+        assert result["file_type"] == "text/plain"
+        mock_proxy.head.assert_called_once_with(target_url)
 
     @patch("controllers.web.remote_files.ssrf_proxy")
     def test_fallback_to_get(self, mock_proxy: MagicMock, app: Flask) -> None:
