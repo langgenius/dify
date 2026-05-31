@@ -276,17 +276,18 @@ class WorkflowResponseConverter:
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
-        if isinstance(user, Account):
-            created_by = AccountCreatedByDict(
-                id=user.id,
-                name=user.name,
-                email=user.email,
-            )
-        elif isinstance(user, EndUser):
-            created_by = EndUserCreatedByDict(
-                id=user.id,
-                user=user.session_id,
-            )
+        match user:
+            case Account():
+                created_by = AccountCreatedByDict(
+                    id=user.id,
+                    name=user.name,
+                    email=user.email,
+                )
+            case EndUser():
+                created_by = EndUserCreatedByDict(
+                    id=user.id,
+                    user=user.session_id,
+                )
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -455,17 +456,18 @@ class WorkflowResponseConverter:
 
         created_by: Mapping[str, object]
         user = creator_user
-        if isinstance(user, Account):
-            created_by = {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-            }
-        else:
-            created_by = {
-                "id": user.id,
-                "user": user.session_id,
-            }
+        match user:
+            case Account():
+                created_by = {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                }
+            case _:
+                created_by = {
+                    "id": user.id,
+                    "user": user.session_id,
+                }
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
