@@ -149,12 +149,12 @@ class DatasetRetrieveConfigEntity(BaseModel):
 
     retrieve_strategy: RetrieveStrategy
     top_k: int | None = None
-    score_threshold: float | None = 0.0
-    rerank_mode: str | None = "reranking_model"
+    score_threshold: float = 0.0
+    rerank_mode: str = "reranking_model"
     reranking_model: RerankingModelDict | None = None
     weights: WeightsDict | None = None
-    reranking_enabled: bool | None = True
-    metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
+    reranking_enabled: bool = True
+    metadata_filtering_mode: Literal["disabled", "automatic", "manual"] = "disabled"
     metadata_model_config: ModelConfig | None = None
     metadata_filtering_conditions: MetadataFilteringCondition | None = None
 

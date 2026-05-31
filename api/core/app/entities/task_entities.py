@@ -241,8 +241,8 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         finished_at: int | None
-        exceptions_count: int | None = 0
-        files: Sequence[Mapping[str, Any]] | None = []
+        exceptions_count: int = 0
+        files: Sequence[Mapping[str, Any]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -439,7 +439,7 @@ class NodeFinishStreamResponse(StreamResponse):
         execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
         created_at: int
         finished_at: int
-        files: Sequence[Mapping[str, Any]] | None = []
+        files: Sequence[Mapping[str, Any]] = []
         iteration_id: str | None = None
         loop_id: str | None = None
 
@@ -503,7 +503,7 @@ class NodeRetryStreamResponse(StreamResponse):
         execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
         created_at: int
         finished_at: int
-        files: Sequence[Mapping[str, Any]] | None = []
+        files: Sequence[Mapping[str, Any]] = []
         iteration_id: str | None = None
         loop_id: str | None = None
         retry_index: int = 0
