@@ -30,6 +30,15 @@ def _unwrap(method):
     return method
 
 
+@pytest.fixture
+def roster_session() -> SimpleNamespace:
+    return SimpleNamespace()
+
+
+def _call_roster(method, api_instance, session, *args, **kwargs):
+    return _unwrap(method)(api_instance, session, *args, **kwargs)
+
+
 def _agent_response(agent_id: str = "agent-1") -> dict:
     return {
         "id": agent_id,
@@ -125,7 +134,7 @@ def patch_account_context(monkeypatch, account):
     monkeypatch.setattr(composer_controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
 
 
-def test_roster_list_get_parses_query_and_calls_service(app, monkeypatch):
+def test_roster_list_get_parses_query_and_calls_service(app, monkeypatch, roster_session):
     captured = {}
 
     def list_roster_agents(_self, **kwargs):
@@ -135,13 +144,13 @@ def test_roster_list_get_parses_query_and_calls_service(app, monkeypatch):
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_roster_agents", list_roster_agents)
 
     with app.test_request_context("/console/api/agents?page=2&limit=5&keyword=analyst"):
-        result = _unwrap(AgentRosterListApi.get)(AgentRosterListApi())
+        result = _call_roster(AgentRosterListApi.get, AgentRosterListApi(), roster_session)
 
     assert result["page"] == 2
     assert captured == {"tenant_id": "tenant-1", "page": 2, "limit": 5, "keyword": "analyst"}
 
 
-def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch):
+def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch, roster_session):
     created_agent = SimpleNamespace(id="agent-1")
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
@@ -155,14 +164,14 @@ def test_roster_list_post_creates_agent_and_returns_detail(app, monkeypatch):
     )
 
     with app.test_request_context(json={"name": "Analyst", "agent_soul": {"prompt": {"system_prompt": "x"}}}):
-        result, status = _unwrap(AgentRosterListApi.post)(AgentRosterListApi())
+        result, status = _call_roster(AgentRosterListApi.post, AgentRosterListApi(), roster_session)
 
     assert status == 201
     assert result["id"] == "agent-1"
     assert result["agent_kind"] == "dify_agent"
 
 
-def test_invite_options_get_parses_app_id(app, monkeypatch):
+def test_invite_options_get_parses_app_id(app, monkeypatch, roster_session):
     captured = {}
 
     def list_invite_options(_self, **kwargs):
@@ -172,13 +181,13 @@ def test_invite_options_get_parses_app_id(app, monkeypatch):
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
 
     with app.test_request_context("/console/api/agents/invite-options?page=1&limit=10&app_id=app-1"):
-        result = _unwrap(AgentInviteOptionsApi.get)(AgentInviteOptionsApi())
+        result = _call_roster(AgentInviteOptionsApi.get, AgentInviteOptionsApi(), roster_session)
 
     assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
     assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
 
 
-def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch):
+def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch, roster_session):
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
     archived = {}
@@ -225,13 +234,23 @@ def test_roster_detail_patch_delete_and_versions_call_services(app, monkeypatch)
         },
     )
 
-    assert _unwrap(AgentRosterDetailApi.get)(AgentRosterDetailApi(), agent_id)["id"] == agent_id
+    api = AgentRosterDetailApi()
+    assert _call_roster(AgentRosterDetailApi.get, api, roster_session, agent_id)["id"] == agent_id
     with app.test_request_context(json={"description": "updated"}):
-        assert _unwrap(AgentRosterDetailApi.patch)(AgentRosterDetailApi(), agent_id)["description"] == "updated"
-    assert _unwrap(AgentRosterDetailApi.delete)(AgentRosterDetailApi(), agent_id) == ("", 204)
+        assert _call_roster(AgentRosterDetailApi.patch, api, roster_session, agent_id)["description"] == "updated"
+    assert _call_roster(AgentRosterDetailApi.delete, api, roster_session, agent_id) == ("", 204)
     assert archived["account_id"] == "account-1"
-    assert _unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), agent_id)["data"][0]["id"] == "version-1"
-    version_detail = _unwrap(AgentRosterVersionDetailApi.get)(AgentRosterVersionDetailApi(), agent_id, version_id)
+    versions_api = AgentRosterVersionsApi()
+    assert (
+        _call_roster(AgentRosterVersionsApi.get, versions_api, roster_session, agent_id)["data"][0]["id"] == "version-1"
+    )
+    version_detail = _call_roster(
+        AgentRosterVersionDetailApi.get,
+        AgentRosterVersionDetailApi(),
+        roster_session,
+        agent_id,
+        version_id,
+    )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id
 
