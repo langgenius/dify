@@ -160,7 +160,6 @@ class PluginManagerModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
-    app_dsl_version: str = ""
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -182,6 +181,10 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+
+
+class AppDslVersionModel(FeatureResponseModel):
+    app_dsl_version: str = ""
 
 
 class FeatureService:
@@ -248,7 +251,6 @@ class FeatureService:
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
-        system_features.app_dsl_version = CURRENT_APP_DSL_VERSION
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -266,6 +268,10 @@ class FeatureService:
             system_features.enable_creators_platform = True
 
         return system_features
+
+    @classmethod
+    def get_app_dsl_version(cls) -> AppDslVersionModel:
+        return AppDslVersionModel(app_dsl_version=CURRENT_APP_DSL_VERSION)
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):

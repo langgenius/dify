@@ -70,6 +70,13 @@ export const seedSystemFeatures = (
   return data
 }
 
+export const seedAppDslVersion = (
+  queryClient: QueryClient,
+  appDslVersion = '0.6.0',
+) => {
+  queryClient.setQueryData(consoleQuery.appDslVersion.queryKey(), { app_dsl_version: appDslVersion })
+}
+
 type SystemFeaturesTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
@@ -78,6 +85,7 @@ type SystemFeaturesTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<SystemFeatures> | null
+  appDslVersion?: string | null
   queryClient?: QueryClient
 }
 
@@ -94,6 +102,8 @@ export const createSystemFeaturesWrapper = (
   const systemFeatures = options.systemFeatures === null
     ? null
     : seedSystemFeatures(queryClient, options.systemFeatures)
+  if (options.appDslVersion !== null)
+    seedAppDslVersion(queryClient, options.appDslVersion)
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -104,9 +114,10 @@ export const renderWithSystemFeatures = (
   ui: ReactElement,
   options: SystemFeaturesTestOptions & Omit<RenderOptions, 'wrapper'> = {},
 ): RenderResult & { queryClient: QueryClient, systemFeatures: SystemFeatures | null } => {
-  const { systemFeatures: sf, queryClient: qc, ...renderOptions } = options
+  const { systemFeatures: sf, appDslVersion, queryClient: qc, ...renderOptions } = options
   const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
     systemFeatures: sf,
+    appDslVersion,
     queryClient: qc,
   })
   const rendered = render(ui, { wrapper, ...renderOptions })
@@ -117,9 +128,10 @@ export const renderHookWithSystemFeatures = <Result, Props = void>(
   callback: (props: Props) => Result,
   options: SystemFeaturesTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
 ): RenderHookResult<Result, Props> & { queryClient: QueryClient, systemFeatures: SystemFeatures | null } => {
-  const { systemFeatures: sf, queryClient: qc, ...hookOptions } = options
+  const { systemFeatures: sf, appDslVersion, queryClient: qc, ...hookOptions } = options
   const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
     systemFeatures: sf,
+    appDslVersion,
     queryClient: qc,
   })
   const rendered = renderHook(callback, { wrapper, ...hookOptions })

@@ -3,12 +3,18 @@ from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
 from libs.login import current_user, login_required
-from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
+from services.feature_service import (
+    AppDslVersionModel,
+    FeatureModel,
+    FeatureService,
+    LimitationModel,
+    SystemFeatureModel,
+)
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
 
-register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel)
+register_response_schema_models(console_ns, AppDslVersionModel, FeatureModel, LimitationModel, SystemFeatureModel)
 
 
 @console_ns.route("/features")
@@ -52,6 +58,20 @@ class FeatureVectorSpaceApi(Resource):
     def get(self, current_tenant_id: str):
         """Get vector-space usage and limit for current tenant"""
         return FeatureService.get_vector_space(current_tenant_id).model_dump()
+
+
+@console_ns.route("/app-dsl-version")
+class AppDslVersionApi(Resource):
+    @console_ns.doc("get_app_dsl_version")
+    @console_ns.doc(description="Get current app DSL version")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[AppDslVersionModel.__name__],
+    )
+    def get(self):
+        """Get current app DSL version for workflow clipboard compatibility."""
+        return FeatureService.get_app_dsl_version().model_dump()
 
 
 @console_ns.route("/system-features")

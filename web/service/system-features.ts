@@ -3,6 +3,16 @@ import { queryOptions } from '@tanstack/react-query'
 import { defaultSystemFeatures } from '@/types/feature'
 import { consoleClient, consoleQuery } from './client'
 
+type AppDslVersionResponse = {
+  app_dsl_version: string
+}
+
+const defaultAppDslVersionResponse: AppDslVersionResponse = {
+  app_dsl_version: '',
+}
+
+const APP_DSL_VERSION_CACHE_TIME = 24 * 60 * 60 * 1000
+
 /**
  * Soft-fallback to defaults so the dashboard stays usable when /system-features fails.
  *
@@ -30,4 +40,21 @@ export const systemFeaturesQueryOptions = () =>
         return defaultSystemFeatures
       }
     },
+  })
+
+export const appDslVersionQueryOptions = () =>
+  queryOptions<AppDslVersionResponse, Error, string>({
+    queryKey: consoleQuery.appDslVersion.queryKey(),
+    queryFn: async () => {
+      try {
+        return await consoleClient.appDslVersion()
+      }
+      catch (err) {
+        console.error('[appDslVersion] fetch failed, using default', err)
+        return defaultAppDslVersionResponse
+      }
+    },
+    gcTime: APP_DSL_VERSION_CACHE_TIME,
+    staleTime: APP_DSL_VERSION_CACHE_TIME,
+    select: data => data.app_dsl_version,
   })

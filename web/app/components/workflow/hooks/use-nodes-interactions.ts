@@ -23,7 +23,7 @@ import {
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { appDslVersionQueryOptions } from '@/service/system-features'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -145,10 +145,7 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const { data: appDslVersion } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.app_dsl_version,
-  })
+  const { data: appDslVersion } = useSuspenseQuery(appDslVersionQueryOptions())
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
