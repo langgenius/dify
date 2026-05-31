@@ -14,6 +14,7 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
+import { getLocalStorageItem, setLocalStorageItem } from '@/utils/local-storage'
 import {
   EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
@@ -133,7 +134,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const educationVerifying = getLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -156,7 +157,7 @@ export const useEducationInit = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        setLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
     }
     if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()
