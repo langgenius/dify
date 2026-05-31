@@ -682,7 +682,7 @@ describe('AppList', () => {
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
       fireEvent.click(getLastByText('explore.appCard.try'))
-      expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-create'))
 
@@ -705,6 +705,7 @@ describe('AppList', () => {
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
       fireEvent.click(getLastByText('explore.appCard.try'))
+      await screen.findByTestId('try-app-panel')
       fireEvent.click(screen.getByTestId('try-app-create'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -717,7 +718,8 @@ describe('AppList', () => {
       })
     })
 
-    it('should close try app panel when close is clicked', () => {
+    it('should close try app panel when close is clicked', async () => {
+      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -726,7 +728,7 @@ describe('AppList', () => {
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
       fireEvent.click(getLastByText('explore.appCard.try'))
-      expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-close'))
       expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()

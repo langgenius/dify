@@ -59,7 +59,7 @@ describe('InstallForm', () => {
     expect(mockSetup).not.toHaveBeenCalled()
   })
 
-  it('should submit and redirect to apps on successful login', async () => {
+  it('should submit and redirect to the console root on successful login', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
     mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
 
@@ -96,7 +96,7 @@ describe('InstallForm', () => {
     })
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/')
     })
   })
 

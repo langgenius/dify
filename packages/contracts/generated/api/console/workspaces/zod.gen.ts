@@ -3,24 +3,6 @@
 import * as z from 'zod'
 
 /**
- * TenantInfoResponse
- */
-export const zTenantInfoResponse = z.object({
-  created_at: z.int().nullish(),
-  custom_config: z.record(z.string(), z.unknown()).nullish(),
-  id: z.string(),
-  in_trial: z.boolean().nullish(),
-  name: z.string().nullish(),
-  next_credit_reset_date: z.int().nullish(),
-  plan: z.string().nullish(),
-  role: z.string().nullish(),
-  status: z.string().nullish(),
-  trial_credits: z.int().nullish(),
-  trial_credits_used: z.int().nullish(),
-  trial_end_reason: z.string().nullish(),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -454,6 +436,32 @@ export const zWorkspaceInfoPayload = z.object({
  */
 export const zSwitchWorkspacePayload = z.object({
   tenant_id: z.string(),
+})
+
+/**
+ * WorkspaceCustomConfigResponse
+ */
+export const zWorkspaceCustomConfigResponse = z.object({
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
+})
+
+/**
+ * TenantInfoResponse
+ */
+export const zTenantInfoResponse = z.object({
+  created_at: z.int().nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.optional(),
+  id: z.string(),
+  in_trial: z.boolean().nullish(),
+  name: z.string().nullish(),
+  next_credit_reset_date: z.int().nullish(),
+  plan: z.string().nullish(),
+  role: z.string().nullish(),
+  status: z.string().nullish(),
+  trial_credits: z.int().nullish(),
+  trial_credits_used: z.int().nullish(),
+  trial_end_reason: z.string().nullish(),
 })
 
 /**

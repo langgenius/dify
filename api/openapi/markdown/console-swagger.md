@@ -599,6 +599,23 @@ Update API-based extension
 | ---- | ----------- |
 | 204 | Binding deleted successfully |
 
+### /app-dsl-version
+
+#### GET
+##### Summary
+
+Get current app DSL version for workflow clipboard compatibility
+
+##### Description
+
+Get current app DSL version
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [AppDslVersionResponse](#appdslversionresponse) |
+
 ### /app/prompt-templates
 
 #### GET
@@ -4792,9 +4809,9 @@ Get dataset auto disable logs
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing status retrieved successfully | [DocumentStatusListResponse](#documentstatuslistresponse) |
 
 ### /datasets/{dataset_id}/documents
 
@@ -4830,9 +4847,9 @@ Get documents in a dataset
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Documents retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents retrieved successfully | [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse) |
 
 #### POST
 ##### Parameters
@@ -5028,10 +5045,10 @@ Get document indexing status
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Indexing status retrieved successfully |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing status retrieved successfully | [DocumentStatusResponse](#documentstatusresponse) |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/metadata
 
@@ -5175,15 +5192,15 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
 | payload | body |  | Yes | [SegmentCreatePayload](#segmentcreatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segment created successfully | [SegmentDetailResponse](#segmentdetailresponse) |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segment/{action}
 
@@ -5192,9 +5209,10 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| action | path | Action | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | query | Segment IDs | No | [ string ] |
 
 ##### Responses
 
@@ -5209,8 +5227,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | query | Segment IDs | No | [ string ] |
 
 ##### Responses
 
@@ -5223,14 +5242,20 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| enabled | query |  | No | string |
+| hit_count_gte | query |  | No | integer |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| status | query |  | No | [ string ] |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segments retrieved successfully | [ConsoleSegmentListResponse](#consolesegmentlistresponse) |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
 
@@ -5270,9 +5295,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
@@ -5285,16 +5310,16 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
 | payload | body |  | Yes | [SegmentUpdatePayload](#segmentupdatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segment updated successfully | [SegmentDetailResponse](#segmentdetailresponse) |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 
@@ -5303,46 +5328,50 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Parent segment ID | Yes | string |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunks retrieved successfully | [ChildChunkListResponse](#childchunklistresponse) |
 
 #### PATCH
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
+| payload | body |  | Yes | [ChildChunkBatchUpdatePayload](#childchunkbatchupdatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Parent segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunks updated successfully | [ChildChunkBatchUpdateResponse](#childchunkbatchupdateresponse) |
 
 #### POST
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
 | payload | body |  | Yes | [ChildChunkCreatePayload](#childchunkcreatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Parent segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunk created successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 
@@ -5351,10 +5380,10 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Parent segment ID | Yes | string |
 
 ##### Responses
 
@@ -5367,17 +5396,17 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
 | payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
+| child_chunk_id | path | Child chunk ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Parent segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunk updated successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
 
 ### /datasets/{dataset_id}/documents/{document_id}/summary-status
 
@@ -6054,6 +6083,7 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
+| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 
 ##### Responses
 
@@ -8242,6 +8272,23 @@ Stop workflow task
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### /trial-models
+
+#### GET
+##### Summary
+
+Get hosted trial model provider configuration for model-provider pages
+
+##### Description
+
+Get hosted trial model provider configuration
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [TrialModelsResponse](#trialmodelsresponse) |
 
 ### /website/crawl
 
@@ -11387,6 +11434,12 @@ Enum class for api provider schema type.
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppDslVersionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_dsl_version | string |  | Yes |
+
 #### AppExportQuery
 
 | Name | Type | Description | Required |
@@ -11441,7 +11494,7 @@ Enum class for api provider schema type.
 | description | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| parameters |  |  | Yes |
+| parameters | object<br>[ object ]<br>string |  | Yes |
 | server_code | string |  | Yes |
 | status | [AppMCPServerStatus](#appmcpserverstatus) |  | Yes |
 | updated_at | integer |  | No |
@@ -11739,11 +11792,54 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | chunks | [ [ChildChunkUpdateArgs](#childchunkupdateargs) ] |  | Yes |
 
+#### ChildChunkBatchUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+
 #### ChildChunkCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string |  | Yes |
+
+#### ChildChunkDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ChildChunkResponse](#childchunkresponse) |  | Yes |
+
+#### ChildChunkListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+
+#### ChildChunkListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+| total_pages | integer |  | Yes |
+
+#### ChildChunkResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| segment_id | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### ChildChunkUpdateArgs
 
@@ -11869,7 +11965,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
 
 #### ConsoleDatasetListQuery
 
@@ -11881,6 +11977,16 @@ Condition detail
 | limit | integer | Number of items per page | No |
 | page | integer | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
+
+#### ConsoleSegmentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SegmentResponse](#segmentresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+| total_pages | integer |  | Yes |
 
 #### Conversation
 
@@ -12776,7 +12882,7 @@ Request payload for bulk downloading documents as a zip archive.
 | id | string |  | Yes |
 | name | string |  | Yes |
 | type | string |  | Yes |
-| value | string |  | No |
+| value | string<br>integer<br>number<br>boolean |  | No |
 
 #### DocumentMetadataUpdatePayload
 
@@ -12800,14 +12906,14 @@ Request payload for bulk downloading documents as a zip archive.
 | created_by | string |  | No |
 | created_from | string |  | No |
 | data_source_detail_dict |  |  | No |
-| data_source_info_dict |  |  | No |
+| data_source_info |  |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
 | disabled_by | string |  | No |
 | display_status | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata_details | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
 | enabled | boolean |  | No |
 | error | string |  | No |
 | hit_count | integer |  | No |
@@ -12849,6 +12955,16 @@ Request payload for bulk downloading documents as a zip archive.
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
 
+#### DocumentWithSegmentsListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentWithSegmentsResponse](#documentwithsegmentsresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### DocumentWithSegmentsResponse
 
 | Name | Type | Description | Required |
@@ -12859,14 +12975,14 @@ Request payload for bulk downloading documents as a zip archive.
 | created_by | string |  | No |
 | created_from | string |  | No |
 | data_source_detail_dict |  |  | No |
-| data_source_info_dict |  |  | No |
+| data_source_info |  |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
 | disabled_by | string |  | No |
 | display_status | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata_details | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
 | enabled | boolean |  | No |
 | error | string |  | No |
 | hit_count | integer |  | No |
@@ -13666,6 +13782,12 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | JSONValue |  |  |  |
 
+#### JsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JsonValue |  |  |  |
+
 #### KnowledgeConfig
 
 | Name | Type | Description | Required |
@@ -13962,7 +14084,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>integer<br>number |  | No |
 
 #### MetadataFilteringCondition
 
@@ -14570,7 +14692,7 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
 | type | [Type](#type) |  | Yes |
-| value |  |  | Yes |
+| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
 
 #### PluginEndpointListResponse
 
@@ -14905,6 +15027,17 @@ Form input definition.
 | last_id | string |  | No |
 | limit | integer |  | No |
 
+#### SegmentAttachmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
 #### SegmentBatchImportStatusResponse
 
 | Name | Type | Description | Required |
@@ -14921,6 +15054,19 @@ Form input definition.
 | content | string |  | Yes |
 | keywords | [ string ] |  | No |
 
+#### SegmentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [SegmentResponse](#segmentresponse) |  | Yes |
+| doc_form | string |  | Yes |
+
+#### SegmentIdListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| segment_id | [ string ] | Segment IDs | No |
+
 #### SegmentListQuery
 
 | Name | Type | Description | Required |
@@ -14931,6 +15077,38 @@ Form input definition.
 | limit | integer |  | No |
 | page | integer |  | No |
 | status | [ string ] |  | No |
+
+#### SegmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| attachments | [ [SegmentAttachmentResponse](#segmentattachmentresponse) ] |  | Yes |
+| child_chunks | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| summary | string |  | Yes |
+| tokens | integer |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| word_count | integer |  | Yes |
 
 #### SegmentUpdatePayload
 
@@ -15049,7 +15227,7 @@ Form input definition.
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type |  |  | No |
+| icon_type | string<br>[IconType](#icontype) |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |
 | show_workflow_steps | boolean |  | No |
@@ -15152,7 +15330,6 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | enable_change_email | boolean |  | Yes |
 | enable_collaboration_mode | boolean |  | Yes |
@@ -15172,7 +15349,6 @@ Default configuration for form inputs.
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
-| trial_models | [ string ] |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### Tag
@@ -15247,7 +15423,7 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| custom_config | object |  | No |
+| custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
 | name | string |  | No |
@@ -15398,6 +15574,12 @@ Tag type
 | provider_id | string |  | No |
 | tool_name | string |  | No |
 | type | string |  | No |
+
+#### TrialModelsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| trial_models | [ string ] |  | Yes |
 
 #### TrialPipelineVariable
 
@@ -16364,6 +16546,13 @@ Workflow tool configuration
 | marked_name | string |  | No |
 
 #### WorkspaceCustomConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| remove_webapp_brand | boolean |  | No |
+| replace_webapp_logo | string |  | No |
+
+#### WorkspaceCustomConfigResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

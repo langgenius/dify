@@ -50,11 +50,23 @@ vi.mock('@/next/navigation', async (importOriginal) => {
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
+  const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'post'] as const
   const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
       if (prop === 'workspaces') {
         return {
+          current: {
+            post: {
+              key: () => currentWorkspaceQueryKey,
+              queryKey: () => currentWorkspaceQueryKey,
+              queryOptions: (options?: object) => ({
+                queryKey: currentWorkspaceQueryKey,
+                queryFn: () => new Promise(() => {}),
+                ...options,
+              }),
+            },
+          },
           get: {
             queryKey: () => workspacesQueryKey,
             queryOptions: () => ({
@@ -209,6 +221,8 @@ const renderMainNav = (
   systemFeatures = { branding: { enabled: false } },
 ) => {
   const queryClient = createTestQueryClient()
+  const currentAppContext = (useAppContext as Mock)() as AppContextValue
+  queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   return renderWithSystemFeatures(<JotaiProvider><MainNav /></JotaiProvider>, { systemFeatures, queryClient })
 }

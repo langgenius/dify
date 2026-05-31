@@ -19,7 +19,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -31,6 +30,11 @@ import WorkspacePlanBadge from './workspace-plan-badge'
 
 const workspaceMenuTriggerHeight = 36
 const workspaceCardSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
+const workspacePlans = new Set<string>(Object.values(Plan))
+
+function isWorkspacePlan(plan: string): plan is Plan {
+  return workspacePlans.has(plan)
+}
 
 function WorkspaceCardSkeleton({
   showCloudBilling,
@@ -53,13 +57,11 @@ function WorkspaceCardSkeleton({
       </div>
       {showCloudBilling && (
         <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
-          <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-3 shrink-0')} />
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-16')} />
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-8')} />
+          <div className="flex min-w-0 flex-1 items-center px-1">
+            <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-24 max-w-full')} />
           </div>
           {showPlanAction && (
-            <div className={cn(workspaceCardSkeletonClassName, 'h-3 w-14 shrink-0')} />
+            <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-16 shrink-0')} />
           )}
         </div>
       )}
@@ -186,26 +188,52 @@ function WorkspaceMenuHeader({
   )
 }
 
+const selectCurrentWorkspaceCardData = (workspace: {
+  id: string
+  name?: string | null
+  role?: string | null
+  trial_credits?: number | null
+  trial_credits_used?: number | null
+}) => ({
+  id: workspace.id,
+  name: workspace.name,
+  role: workspace.role,
+  credits: getRemainingCredits(workspace.trial_credits ?? 0, workspace.trial_credits_used ?? 0),
+})
+
 export function WorkspaceCard() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { currentWorkspace, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceManager, isLoadingCurrentWorkspace } = useAppContext()
-  const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
+    select: selectCurrentWorkspaceCardData,
+  }))
+  const workspacesQuery = useQuery(consoleQuery.workspaces.get.queryOptions())
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
-  const workspaces = workspacesData?.workspaces ?? []
-  const { enableBilling, plan } = useProviderContext()
+  const currentWorkspace = currentWorkspaceQuery.data
+  const workspacesData = workspacesQuery.data
+  const workspaces = workspacesData?.workspaces
+  const currentWorkspaceInList = workspaces?.find(workspace => workspace.current)
+  const { enableBilling } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const credits = getRemainingCredits(currentWorkspace.trial_credits, currentWorkspace.trial_credits_used)
-  const formattedCredits = formatCredits(credits)
-  const workspacePlan = (workspaces.find(workspace => workspace.current)?.plan || currentWorkspace.plan || plan.type) as Plan
-  const isFreePlan = workspacePlan === Plan.sandbox
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
+  const [open, setOpen] = useState(false)
+
+  if (currentWorkspaceQuery.isPending || workspacesQuery.isPending || !currentWorkspace?.name || !currentWorkspace.role || !workspaces || !currentWorkspaceInList || !isWorkspacePlan(currentWorkspaceInList.plan)) {
+    return (
+      <WorkspaceCardSkeleton
+        showCloudBilling={showCloudBilling}
+        showPlanAction={showCloudBilling}
+      />
+    )
+  }
+
+  const formattedCredits = formatCredits(currentWorkspace.credits)
+  const workspacePlan = currentWorkspaceInList.plan
+  const isFreePlan = workspacePlan === Plan.sandbox
   const showPlanAction = showCloudBilling
   const planActionLabel = t(isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain', { ns: 'billing' })
-  const isWorkspaceLoading = isLoadingCurrentWorkspace || !currentWorkspace.id
-  const showWorkspaceSettings = !isCurrentWorkspaceDatasetOperator
-  const showInviteMembers = showWorkspaceSettings && isCurrentWorkspaceManager
-  const [open, setOpen] = useState(false)
+  const showWorkspaceSettings = currentWorkspace.role !== 'dataset_operator'
+  const showInviteMembers = showWorkspaceSettings && ['owner', 'admin'].includes(currentWorkspace.role)
   const renderWorkspaceStatus = () => enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
@@ -220,15 +248,6 @@ export function WorkspaceCard() {
     catch {
       toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
-  }
-
-  if (isWorkspaceLoading) {
-    return (
-      <WorkspaceCardSkeleton
-        showCloudBilling={showCloudBilling}
-        showPlanAction={showPlanAction}
-      />
-    )
   }
 
   return (

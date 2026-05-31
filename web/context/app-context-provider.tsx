@@ -1,8 +1,9 @@
 'use client'
 
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC, ReactNode } from 'react'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -17,9 +18,9 @@ import {
 } from '@/context/app-context'
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
-  useCurrentWorkspace,
   useLangGeniusVersion,
 } from '@/service/use-common'
 
@@ -27,18 +28,54 @@ type AppContextProviderProps = {
   children: ReactNode
 }
 
+const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
+
+const resolveWorkspaceRole = (role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] => {
+  if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
+    return role as ICurrentWorkspace['role']
+
+  return initialWorkspaceInfo.role
+}
+
+const normalizeCurrentWorkspace = (workspace?: PostWorkspacesCurrentResponse): ICurrentWorkspace => {
+  if (!workspace)
+    return initialWorkspaceInfo
+
+  return {
+    id: workspace.id,
+    name: workspace.name ?? initialWorkspaceInfo.name,
+    plan: workspace.plan ?? initialWorkspaceInfo.plan,
+    status: workspace.status ?? initialWorkspaceInfo.status,
+    created_at: workspace.created_at ?? initialWorkspaceInfo.created_at,
+    role: resolveWorkspaceRole(workspace.role),
+    providers: initialWorkspaceInfo.providers,
+    trial_credits: workspace.trial_credits ?? initialWorkspaceInfo.trial_credits,
+    trial_credits_used: workspace.trial_credits_used ?? initialWorkspaceInfo.trial_credits_used,
+    next_credit_reset_date: workspace.next_credit_reset_date ?? initialWorkspaceInfo.next_credit_reset_date,
+    trial_end_reason: workspace.trial_end_reason ?? undefined,
+    custom_config: workspace.custom_config
+      ? {
+          remove_webapp_brand: workspace.custom_config.remove_webapp_brand ?? undefined,
+          replace_webapp_logo: workspace.custom_config.replace_webapp_logo ?? undefined,
+        }
+      : undefined,
+  }
+}
+
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
-  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
+  const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
+    select: normalizeCurrentWorkspace,
+  }))
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
   )
 
   const userProfile = useMemo<UserProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
-  const currentWorkspace = useMemo<ICurrentWorkspace>(() => currentWorkspaceResp || initialWorkspaceInfo, [currentWorkspaceResp])
+  const currentWorkspace = currentWorkspaceQuery.data ?? initialWorkspaceInfo
   const langGeniusVersionInfo = useMemo<LangGeniusVersionResponse>(() => {
     if (!userProfileResp?.meta?.currentVersion || !langGeniusVersionQuery.data)
       return initialLangGeniusVersionInfo
@@ -64,7 +101,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   }, [queryClient])
 
   const mutateCurrentWorkspace = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['common', 'current-workspace'] })
+    queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() })
   }, [queryClient])
 
   // #region Zendesk conversation fields
@@ -139,8 +176,8 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
-      isLoadingCurrentWorkspace,
-      isValidatingCurrentWorkspace,
+      isLoadingCurrentWorkspace: currentWorkspaceQuery.isPending,
+      isValidatingCurrentWorkspace: currentWorkspaceQuery.isFetching,
     }}
     >
       <div className="flex h-full flex-col overflow-hidden">

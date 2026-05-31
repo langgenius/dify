@@ -9,10 +9,7 @@ type WorkspacePlanBadgeProps = {
 const WorkspacePlanBadge = ({
   plan,
 }: WorkspacePlanBadgeProps) => {
-  const { isEducationWorkspace, isFetchedPlan } = useProviderContext()
-
-  if (!isFetchedPlan)
-    return null
+  const { isEducationWorkspace } = useProviderContext()
 
   return (
     <Badge size="xs" variant="dimm" className="shrink-0">
