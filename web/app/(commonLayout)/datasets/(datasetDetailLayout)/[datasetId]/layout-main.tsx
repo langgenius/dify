@@ -25,6 +25,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { getLocalStorageItem, useLocalStorageBoolean } from '@/utils/local-storage'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -54,13 +55,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
-  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const storedHideHeader = useLocalStorageBoolean('workflow-canvas-maximize')
+  const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
+  const hideHeader = eventHideHeader ?? storedHideHeader
   const { eventEmitter } = useEventEmitterContextContext()
 
   eventEmitter?.useSubscription((v: any) => {
     if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload)
+      setEventHideHeader(v.payload)
   })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
@@ -125,7 +127,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
-    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+    const localeMode = getLocalStorageItem('app-detail-collapse-or-expand', 'expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])

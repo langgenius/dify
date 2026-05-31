@@ -6,6 +6,7 @@ import * as z from 'zod'
 import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
 } from './zod.gen'
@@ -63,7 +64,12 @@ export const post = oc
     summary: 'Submit human input form by form token',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostFormHumanInputByFormTokenPath }))
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
   .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {

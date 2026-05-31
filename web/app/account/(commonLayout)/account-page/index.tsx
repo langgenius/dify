@@ -16,10 +16,10 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
 import DeleteAccount from '../delete-account'
 
 import AvatarWithEdit from './AvatarWithEdit'
@@ -49,7 +49,7 @@ export default function AccountPage() {
   // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
-  const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: commonQueryKeys.userProfile })
+  const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
   const { isEducationAccount } = useProviderContext()
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')

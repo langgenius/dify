@@ -1,6 +1,6 @@
 import type { CodeResponse, PollSuccess } from '../../../api/oauth-device.js'
-import type { HostsBundle, StorageMode, Workspace } from '../../../auth/hosts.js'
-import type { TokenStore } from '../../../auth/store.js'
+import type { HostsBundle, Workspace } from '../../../auth/hosts.js'
+import type { StorageMode, Store } from '../../../store/store.js'
 import type { IOStreams } from '../../../sys/io/streams'
 import type { BrowserEnv, BrowserOpener } from '../../../util/browser.js'
 import type { Clock } from './device-flow.js'
@@ -8,21 +8,20 @@ import * as os from 'node:os'
 import * as readline from 'node:readline'
 import { DeviceFlowApi } from '../../../api/oauth-device.js'
 import { saveHosts } from '../../../auth/hosts.js'
-import { selectStore } from '../../../auth/store.js'
 import { createClient } from '../../../http/client.js'
+import { getTokenStore, tokenKey } from '../../../store/manager.js'
 import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '../../../util/browser.js'
 import { bareHost, DEFAULT_HOST, resolveHost, validateVerificationURI } from '../../../util/host.js'
 import { awaitAuthorization, realClock } from './device-flow.js'
 
 export type LoginOptions = {
-  readonly configDir: string
   readonly io: IOStreams
   readonly host?: string
   readonly noBrowser?: boolean
   readonly insecure?: boolean
   readonly deviceLabel?: string
-  readonly store?: { readonly store: TokenStore, readonly mode: StorageMode }
+  readonly store?: { readonly store: Store, readonly mode: StorageMode }
   readonly api?: DeviceFlowApi
   readonly browserEnv?: BrowserEnv
   readonly browserOpener?: BrowserOpener
@@ -59,11 +58,11 @@ export async function runLogin(opts: LoginOptions): Promise<HostsBundle> {
 
   const success = await awaitAuthorization(api, code, { clock: opts.clock ?? realClock() })
 
-  const storeBundle = opts.store ?? await selectStore({ configDir: opts.configDir })
+  const storeBundle = opts.store ?? getTokenStore()
   const bundle = bundleFromSuccess(host, success, storeBundle.mode)
 
-  await storeBundle.store.put(bundle.current_host, accountKey(bundle), success.token)
-  await saveHosts(opts.configDir, bundle)
+  storeBundle.store.set(tokenKey(bundle.current_host, accountKey(bundle)), success.token)
+  saveHosts(bundle)
 
   renderLoggedIn(opts.io.out, cs, host, success)
   return bundle
@@ -100,7 +99,7 @@ function renderCodePrompt(w: NodeJS.WritableStream, cs: ReturnType<typeof colorS
 
 function renderLoggedIn(w: NodeJS.WritableStream, cs: ReturnType<typeof colorScheme>, host: string, s: PollSuccess): void {
   const display = bareHost(host)
-  if (s.account !== undefined && s.account.email !== '') {
+  if (s.account && s.account.email !== '') {
     w.write(`${cs.successIcon()} Logged in to ${display} as ${cs.bold(s.account.email)} (${s.account.name})\n`)
     const ws = findDefaultWorkspace(s)
     if (ws !== undefined)
@@ -140,11 +139,11 @@ function bundleFromSuccess(host: string, s: PollSuccess, mode: StorageMode): Hos
     token_id: s.token_id,
     tokens: { bearer: s.token },
   }
-  if (s.account !== undefined) {
+  if (s.account) {
     bundle.account = { id: s.account.id, email: s.account.email, name: s.account.name }
   }
   if (s.subject_email !== undefined && s.subject_email !== ''
-    && (s.account === undefined || s.account.id === '')) {
+    && (!s.account || s.account.id === '')) {
     bundle.external_subject = {
       email: s.subject_email,
       issuer: s.subject_issuer ?? '',

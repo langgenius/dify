@@ -7,6 +7,7 @@ from importlib import util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from flask.views import MethodView
@@ -16,6 +17,15 @@ from werkzeug.datastructures import MultiDict
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
 
 
 @pytest.fixture(scope="module")
@@ -395,3 +405,46 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models):
     assert len(serialized["data"]) == 2
     assert serialized["data"][0]["icon_url"] == "signed:first-icon"
     assert serialized["data"][1]["icon_url"] is None
+
+
+def test_app_list_uses_injected_session_for_draft_workflows(app, app_module, monkeypatch):
+    api = app_module.AppListApi()
+    method = _unwrap(api.get)
+    current_user = SimpleNamespace(id="user-1")
+    app_item = SimpleNamespace(
+        id="app-1",
+        name="Workflow App",
+        desc_or_prompt="Summary",
+        mode="workflow",
+        mode_compatible_with_agent="workflow",
+    )
+    app_pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_item])
+    workflow = SimpleNamespace(
+        id="workflow-1",
+        app_id="app-1",
+        walk_nodes=lambda: iter([("trigger-1", {"type": "trigger-webhook"})]),
+    )
+    session = MagicMock()
+    session.execute.return_value.scalars.return_value.all.return_value = [workflow]
+    scoped_session = SimpleNamespace(execute=MagicMock(side_effect=AssertionError("db.session should not be used")))
+
+    monkeypatch.setattr(app_module, "current_account_with_tenant", lambda: (current_user, "tenant-1"))
+    monkeypatch.setattr(
+        app_module,
+        "AppService",
+        lambda: SimpleNamespace(get_paginate_apps=lambda *_args, **_kwargs: app_pagination),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "FeatureService",
+        SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
+    )
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
+
+    with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
+        response, status = method(session)
+
+    assert status == 200
+    assert response["data"][0]["has_draft_trigger"] is True
+    session.execute.assert_called_once()
+    scoped_session.execute.assert_not_called()

@@ -1,5 +1,6 @@
 import type { FormattedPrintable, NamePrintable, TablePrintable } from './output.js'
 import { describe, expect, it } from 'vitest'
+import { OutputFormatNotSupportedError } from './errors.js'
 import {
   formatted,
   raw,
@@ -99,13 +100,12 @@ describe('stringifyOutput — formatted', () => {
       json: () => ({}),
     }
     const out = formatted({ format: 'name', data: noName })
-    expect(() => stringifyOutput(out)).toThrow('name output requires data.name()')
+    expect(() => stringifyOutput(out)).toThrow(OutputFormatNotSupportedError)
   })
 
   it('unknown format: throws with allowed list', () => {
     const out = formatted({ format: 'csv', data: makeFormatted({}) })
-    expect(() => stringifyOutput(out)).toThrow(/not supported/)
-    expect(() => stringifyOutput(out)).toThrow(/json, name, text, yaml/)
+    expect(() => stringifyOutput(out)).toThrow(OutputFormatNotSupportedError)
   })
 })
 
@@ -175,13 +175,12 @@ describe('stringifyOutput — table', () => {
       json: () => [],
     }
     const out = table({ format: 'name', data: noName })
-    expect(() => stringifyOutput(out)).toThrow('name output requires data.name()')
+    expect(() => stringifyOutput(out)).toThrow(OutputFormatNotSupportedError)
   })
 
   it('unknown format: throws with allowed list', () => {
     const out = table({ format: 'csv', data: makeTable({}) })
-    expect(() => stringifyOutput(out)).toThrow(/not supported/)
-    expect(() => stringifyOutput(out)).toThrow(/json, name, wide, yaml/)
+    expect(() => stringifyOutput(out)).toThrow(OutputFormatNotSupportedError)
   })
 
   it('table renders column padding correctly', () => {

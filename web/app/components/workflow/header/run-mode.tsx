@@ -1,6 +1,8 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,17 +10,20 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
 import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
+import { TEST_RUN_MENU_HOTKEY } from './shortcuts'
 import TestRunMenu, { TriggerType } from './test-run-menu'
 
 type RunModeProps = {
   text?: string
 }
+
+const isWorkflowStopEvent = (value: EventEmitterValue) =>
+  typeof value !== 'string' && value.type === EVENT_WORKFLOW_STOP
 
 const RunMode = ({
   text,
@@ -46,7 +51,9 @@ const RunMode = ({
     testRunMenuRef.current?.toggle()
   }, [])
 
-  useWorkflowShortcut('workflow.open-test-run-menu', handleToggleTestRunMenu)
+  useHotkey(TEST_RUN_MENU_HOTKEY, handleToggleTestRunMenu, {
+    ignoreInputs: true,
+  })
 
   const handleStop = useCallback(() => {
     handleStopRun(workflowRunningData?.task_id || '')
@@ -88,15 +95,11 @@ const RunMode = ({
         handleWorkflowRunAllTriggersInWorkflow(targetNodeIds)
       trackEvent('app_start_action_time', { action_type: 'all' })
     }
-    else {
-      // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
-      console.log('TODO: Handle trigger execution for type:', option.type, 'nodeId:', option.nodeId)
-    }
   }, [warningNodes, t, handleWorkflowStartRunInWorkflow, handleWorkflowTriggerScheduleRunInWorkflow, handleWorkflowTriggerWebhookRunInWorkflow, handleWorkflowTriggerPluginRunInWorkflow, handleWorkflowRunAllTriggersInWorkflow])
 
   const { eventEmitter } = useEventEmitterContextContext()
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === EVENT_WORKFLOW_STOP)
+  eventEmitter?.useSubscription((v: EventEmitterValue) => {
+    if (isWorkflowStopEvent(v))
       handleStop()
   })
 
@@ -131,7 +134,7 @@ const RunMode = ({
                 >
                   <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
                   {text ?? t('common.run', { ns: 'workflow' })}
-                  <ShortcutKbd shortcut="workflow.open-test-run-menu" textColor="secondary" />
+                  <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
                 </button>
               </TestRunMenu>
             )
