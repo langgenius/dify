@@ -1,33 +1,9 @@
-import { API_PREFIX } from '@/config'
-import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
+import { resolveServerConsoleApiUrl } from '@/service/server'
 import { basePath } from '@/utils/var'
 
 const REFRESH_TOKEN_PATH = '/refresh-token'
 const AUTH_REFRESH_PATH = `${basePath}/auth/refresh`
 const DEFAULT_REDIRECT_PATH = `${basePath}/apps`
-
-const withTrailingSlash = (value: string) => value.endsWith('/') ? value : `${value}/`
-const withoutLeadingSlash = (value: string) => value.startsWith('/') ? value.slice(1) : value
-
-const resolveAbsoluteUrlPrefix = (value: string) => {
-  try {
-    return new URL(value).toString()
-  }
-  catch {
-    return null
-  }
-}
-
-const resolveServerConsoleApiUrl = (pathname: string) => {
-  const requestPath = withoutLeadingSlash(pathname)
-  const apiPrefix = SERVER_CONSOLE_API_PREFIX
-    || resolveAbsoluteUrlPrefix(API_PREFIX)
-
-  if (!apiPrefix)
-    return null
-
-  return new URL(requestPath, withTrailingSlash(apiPrefix)).toString()
-}
 
 const resolveSafeRedirectPath = (request: Request) => {
   const requestUrl = new URL(request.url)

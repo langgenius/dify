@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { getQueryClientServer } from '@/context/query-client-server'
-import { resolveServerConsoleApiUrl, serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { resolveServerConsoleApiUrl } from '@/service/server'
+import { serverSystemFeaturesQueryOptions } from '@/service/server-system-features'
 import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
@@ -71,7 +72,7 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
   try {
     await Promise.all([
       queryClient.fetchQuery(serverUserProfileQueryOptions()),
-      queryClient.prefetchQuery(systemFeaturesQueryOptions()),
+      queryClient.prefetchQuery(serverSystemFeaturesQueryOptions()),
     ])
   }
   catch (error) {
