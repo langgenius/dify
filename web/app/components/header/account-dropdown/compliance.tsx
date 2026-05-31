@@ -167,7 +167,7 @@ export default function Compliance() {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-verified-badge-line"
           label={t('userProfile.compliance', { ns: 'common' })}
