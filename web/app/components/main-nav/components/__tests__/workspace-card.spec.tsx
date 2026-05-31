@@ -9,13 +9,14 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { useCurrentWorkspace } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
 import { WorkspaceCard } from '../workspace-card'
 
-const { mockSwitchWorkspace, mockIsCloudEdition } = vi.hoisted(() => ({
+const { mockSwitchWorkspace, mockIsCloudEdition, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockIsCloudEdition: { value: false },
+  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
+  mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
 }))
 
 vi.mock('@/config', async (importOriginal) => {
@@ -40,25 +41,27 @@ vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-common')>()
-  return {
-    ...actual,
-    useCurrentWorkspace: vi.fn(),
-  }
-})
-
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
-  const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
       if (prop === 'workspaces') {
         return {
+          current: {
+            post: {
+              key: () => mockCurrentWorkspaceQueryKey,
+              queryKey: () => mockCurrentWorkspaceQueryKey,
+              queryOptions: (options?: object) => ({
+                queryKey: mockCurrentWorkspaceQueryKey,
+                queryFn: () => new Promise(() => {}),
+                ...options,
+              }),
+            },
+          },
           get: {
-            queryKey: () => workspacesQueryKey,
+            queryKey: () => mockWorkspacesQueryKey,
             queryOptions: () => ({
-              queryKey: workspacesQueryKey,
+              queryKey: mockWorkspacesQueryKey,
               queryFn: () => new Promise(() => {}),
             }),
           },
@@ -97,13 +100,11 @@ const currentWorkspaceValue: ICurrentWorkspace = {
 
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
+let mockCurrentWorkspace: ICurrentWorkspace | undefined = currentWorkspaceValue
 let mockWorkspaces: IWorkspace[] = []
 
 const mockCurrentWorkspaceQuery = (data: ICurrentWorkspace | undefined = currentWorkspaceValue, isPending = false) => {
-  vi.mocked(useCurrentWorkspace).mockReturnValue({
-    data,
-    isPending,
-  } as ReturnType<typeof useCurrentWorkspace>)
+  mockCurrentWorkspace = isPending ? undefined : data
 }
 
 type RenderWorkspaceCardOptions = Parameters<typeof renderWithSystemFeatures>[1] & {
@@ -113,6 +114,8 @@ type RenderWorkspaceCardOptions = Parameters<typeof renderWithSystemFeatures>[1]
 const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   const { seedWorkspaces = true, ...renderOptions } = options ?? {}
   const queryClient = createTestQueryClient()
+  if (mockCurrentWorkspace)
+    queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), mockCurrentWorkspace)
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
 

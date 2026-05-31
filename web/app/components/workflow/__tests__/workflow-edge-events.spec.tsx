@@ -340,7 +340,6 @@ vi.mock('../syncing-data-modal', () => ({
 
 vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
   useWorkflowHotkeys: workflowHookMocks.useShortcuts,
-  useWorkflowShortcut: vi.fn(),
 }))
 
 vi.mock('../hooks', () => ({

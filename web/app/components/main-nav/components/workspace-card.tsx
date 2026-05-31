@@ -23,7 +23,6 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { useCurrentWorkspace } from '@/service/use-common'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
@@ -189,12 +188,29 @@ function WorkspaceMenuHeader({
   )
 }
 
+const selectCurrentWorkspaceCardData = (workspace: {
+  id: string
+  name?: string | null
+  role?: string | null
+  trial_credits?: number | null
+  trial_credits_used?: number | null
+}) => ({
+  id: workspace.id,
+  name: workspace.name,
+  role: workspace.role,
+  credits: getRemainingCredits(workspace.trial_credits ?? 0, workspace.trial_credits_used ?? 0),
+})
+
 export function WorkspaceCard() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { data: currentWorkspace, isPending: isLoadingCurrentWorkspace } = useCurrentWorkspace()
-  const { data: workspacesData, isPending: isLoadingWorkspaces } = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
+    select: selectCurrentWorkspaceCardData,
+  }))
+  const workspacesQuery = useQuery(consoleQuery.workspaces.get.queryOptions())
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const currentWorkspace = currentWorkspaceQuery.data
+  const workspacesData = workspacesQuery.data
   const workspaces = workspacesData?.workspaces
   const currentWorkspaceInList = workspaces?.find(workspace => workspace.current)
   const { enableBilling } = useProviderContext()
@@ -202,7 +218,7 @@ export function WorkspaceCard() {
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
   const [open, setOpen] = useState(false)
 
-  if (isLoadingCurrentWorkspace || isLoadingWorkspaces || !currentWorkspace || !workspaces || !currentWorkspaceInList || !isWorkspacePlan(currentWorkspaceInList.plan)) {
+  if (currentWorkspaceQuery.isPending || workspacesQuery.isPending || !currentWorkspace?.name || !currentWorkspace.role || !workspaces || !currentWorkspaceInList || !isWorkspacePlan(currentWorkspaceInList.plan)) {
     return (
       <WorkspaceCardSkeleton
         showCloudBilling={showCloudBilling}
@@ -211,8 +227,7 @@ export function WorkspaceCard() {
     )
   }
 
-  const credits = getRemainingCredits(currentWorkspace.trial_credits, currentWorkspace.trial_credits_used)
-  const formattedCredits = formatCredits(credits)
+  const formattedCredits = formatCredits(currentWorkspace.credits)
   const workspacePlan = currentWorkspaceInList.plan
   const isFreePlan = workspacePlan === Plan.sandbox
   const showPlanAction = showCloudBilling

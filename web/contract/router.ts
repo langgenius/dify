@@ -158,6 +158,7 @@ export const consoleRouterContract = {
     oauthInitiate: triggerOAuthInitiateContract,
   },
   workspaces: {
+    ...communityContract.workspaces,
     get: workspacesGetContract,
     switch: {
       post: workspaceSwitchContract,

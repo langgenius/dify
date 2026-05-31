@@ -13,7 +13,7 @@ type Props = {
 export default function CommonLayoutError({ error, unstable_retry }: Props) {
   const { t } = useTranslation('common')
 
-  console.error('CommonLayoutError caught:', error)
+  console.error(error)
 
   // 401 already triggered jumpTo(/signin) inside service/base.ts. Render Loading
   // until the browser navigation completes, matching main's Splash behavior.

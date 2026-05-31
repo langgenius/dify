@@ -1,11 +1,13 @@
 import type { AccountProfileResponse } from '@/contract/console/account'
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { resolveServerConsoleApiUrl } from '@/service/server'
 import { userProfileQueryOptions } from '../client'
-import { resolveServerConsoleApiUrl } from '../server'
 
 const headersMock = vi.fn()
 const cookiesMock = vi.fn()
+
+vi.mock('server-only', () => ({}))
 
 vi.mock('@/config/server', () => ({
   SERVER_CONSOLE_API_PREFIX: undefined,
