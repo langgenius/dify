@@ -8225,7 +8225,7 @@ Get hosted trial model provider configuration
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TrialModelsModel](#trialmodelsmodel) |
+| 200 | Success | [TrialModelsResponse](#trialmodelsresponse) |
 
 ### /website/crawl
 
@@ -15054,7 +15054,7 @@ Tag type
 | tool_name | string |  | No |
 | type | string |  | No |
 
-#### TrialModelsModel
+#### TrialModelsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
