@@ -86,9 +86,7 @@ def handle_mcp_request(
             case mcp_types.PingRequest():
                 return create_success_response(handle_ping())
             case _:
-                return create_error_response(
-                    mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}"
-                )
+                return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
 
     except ValueError as e:
         logger.exception("Invalid params")
