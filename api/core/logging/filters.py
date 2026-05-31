@@ -83,15 +83,16 @@ class IdentityContextFilter(logging.Filter):
 
             identity: IdentityDict = {}
 
-            if isinstance(user, Account):
-                if user.current_tenant_id:
-                    identity["tenant_id"] = user.current_tenant_id
-                identity["user_id"] = user.id
-                identity["user_type"] = "account"
-            elif isinstance(user, EndUser):
-                identity["tenant_id"] = user.tenant_id
-                identity["user_id"] = user.id
-                identity["user_type"] = user.type or "end_user"
+            match user:
+                case Account():
+                    if user.current_tenant_id:
+                        identity["tenant_id"] = user.current_tenant_id
+                    identity["user_id"] = user.id
+                    identity["user_type"] = "account"
+                case EndUser():
+                    identity["tenant_id"] = user.tenant_id
+                    identity["user_id"] = user.id
+                    identity["user_type"] = user.type or "end_user"
 
             return identity
         except Exception:
