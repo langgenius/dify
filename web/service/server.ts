@@ -55,7 +55,7 @@ const getServerConsoleApiPrefix = () => {
   return apiPrefix
 }
 
-export const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext | undefined) => {
+const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext | undefined) => {
   const requestHeaders = new Headers({
     Accept: 'application/json',
   })
