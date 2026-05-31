@@ -1554,12 +1554,13 @@ class DatasetRetrieval:
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case "in" | "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
+                match value:
+                    case str():
+                        value_list = [v.strip() for v in value.split(",") if v.strip()]
+                    case list() | tuple():
+                        value_list = [str(v) for v in value if v is not None]
+                    case _:
+                        value_list = [str(value)] if value is not None else []
 
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
