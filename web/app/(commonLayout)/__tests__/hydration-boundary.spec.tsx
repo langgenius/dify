@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   queryClient: undefined as QueryClient | undefined,
   profileQueryFn: vi.fn(),
   systemFeaturesQueryFn: vi.fn(),
+  workspaceQueryFn: vi.fn(),
+  workspaceQueryOptions: vi.fn(),
+  getServerConsoleClientContext: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
@@ -35,7 +38,17 @@ vi.mock('@/features/account-profile/server', () => ({
 }))
 
 vi.mock('@/service/server', () => ({
+  getServerConsoleClientContext: () => mocks.getServerConsoleClientContext(),
   resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
+  serverConsoleQuery: {
+    workspaces: {
+      current: {
+        post: {
+          queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/service/server-system-features', () => ({
@@ -70,6 +83,16 @@ describe('CommonLayoutHydrationBoundary', () => {
       },
     })
     mocks.systemFeaturesQueryFn.mockResolvedValue({ branding: { enabled: false } })
+    mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
+    mocks.getServerConsoleClientContext.mockResolvedValue({
+      cookie: 'session=abc',
+      csrfToken: 'csrf-token',
+    })
+    mocks.workspaceQueryOptions.mockReturnValue({
+      queryKey: ['console', 'workspaces', 'current', 'post'],
+      queryFn: mocks.workspaceQueryFn,
+      retry: false,
+    })
   })
 
   it('should hydrate common layout queries and render children', async () => {
@@ -87,6 +110,15 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(screen.getByText('Common shell')).toBeInTheDocument()
     expect(mocks.profileQueryFn).toHaveBeenCalledTimes(1)
     expect(mocks.systemFeaturesQueryFn).toHaveBeenCalledTimes(1)
+    expect(mocks.getServerConsoleClientContext).toHaveBeenCalledTimes(1)
+    expect(mocks.workspaceQueryOptions).toHaveBeenCalledWith({
+      context: {
+        cookie: 'session=abc',
+        csrfToken: 'csrf-token',
+      },
+      retry: false,
+    })
+    expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
   })
 
   it('should redirect unauthorized users to the refresh route with the current path', async () => {
@@ -123,5 +155,6 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(screen.getByText('Common shell')).toBeInTheDocument()
     expect(mocks.profileQueryFn).not.toHaveBeenCalled()
     expect(mocks.systemFeaturesQueryFn).not.toHaveBeenCalled()
+    expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
   })
 })
