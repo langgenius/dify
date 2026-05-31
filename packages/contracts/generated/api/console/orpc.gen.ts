@@ -6,6 +6,7 @@ import { agents } from './agents/orpc.gen'
 import { allWorkspaces } from './all-workspaces/orpc.gen'
 import { apiBasedExtension } from './api-based-extension/orpc.gen'
 import { apiKeyAuth } from './api-key-auth/orpc.gen'
+import { appDslVersion } from './app-dsl-version/orpc.gen'
 import { app } from './app/orpc.gen'
 import { apps } from './apps/orpc.gen'
 import { auth } from './auth/orpc.gen'
@@ -56,6 +57,7 @@ export const contract = {
   apiBasedExtension,
   apiKeyAuth,
   app,
+  appDslVersion,
   apps,
   auth,
   billing,

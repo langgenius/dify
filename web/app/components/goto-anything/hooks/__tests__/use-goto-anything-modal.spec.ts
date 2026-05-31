@@ -6,27 +6,34 @@ type KeyPressEvent = {
   target?: EventTarget
 }
 
-const keyPressHandlers: Record<string, (event: KeyPressEvent) => void> = {}
-let mockIsEventTargetInputArea = false
+type HotkeyRegistration = {
+  handler: (event: KeyPressEvent) => void
+  options?: { enabled?: boolean, ignoreInputs?: boolean }
+}
 
-vi.mock('ahooks', () => ({
-  useKeyPress: (keys: string | string[], handler: (event: KeyPressEvent) => void) => {
-    const keyList = Array.isArray(keys) ? keys : [keys]
-    keyList.forEach((key) => {
-      keyPressHandlers[key] = handler
-    })
+const hotkeyHandlers: Record<string, HotkeyRegistration> = {}
+
+vi.mock('@tanstack/react-hotkeys', () => ({
+  useHotkey: (
+    hotkey: string,
+    handler: (event: KeyPressEvent) => void,
+    options?: HotkeyRegistration['options'],
+  ) => {
+    hotkeyHandlers[hotkey] = { handler, options }
   },
 }))
 
-vi.mock('@/app/components/workflow/utils/common', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-  isEventTargetInputArea: () => mockIsEventTargetInputArea,
-}))
+const triggerHotkey = (hotkey: string, event: KeyPressEvent) => {
+  const registration = hotkeyHandlers[hotkey]
+  if (registration?.options?.enabled === false)
+    return
+
+  registration?.handler(event)
+}
 
 describe('useGotoAnythingModal', () => {
   beforeEach(() => {
-    Object.keys(keyPressHandlers).forEach(key => delete keyPressHandlers[key])
-    mockIsEventTargetInputArea = false
+    Object.keys(hotkeyHandlers).forEach(key => delete hotkeyHandlers[key])
     vi.useFakeTimers()
   })
 
@@ -58,43 +65,36 @@ describe('useGotoAnythingModal', () => {
   })
 
   describe('keyboard shortcuts', () => {
-    it('should toggle show state when Ctrl+K is triggered', () => {
+    it('should toggle show state when Mod+K is triggered', () => {
       const { result } = renderHook(() => useGotoAnythingModal())
 
       expect(result.current.show).toBe(false)
 
       act(() => {
-        keyPressHandlers['ctrl.k']?.({ preventDefault: vi.fn(), target: document.body })
+        triggerHotkey('Mod+K', { preventDefault: vi.fn(), target: document.body })
       })
 
       expect(result.current.show).toBe(true)
     })
 
-    it('should toggle back to closed when Ctrl+K is triggered twice', () => {
+    it('should toggle back to closed when Mod+K is triggered twice', () => {
       const { result } = renderHook(() => useGotoAnythingModal())
 
       act(() => {
-        keyPressHandlers['ctrl.k']?.({ preventDefault: vi.fn(), target: document.body })
+        triggerHotkey('Mod+K', { preventDefault: vi.fn(), target: document.body })
       })
       expect(result.current.show).toBe(true)
 
       act(() => {
-        keyPressHandlers['ctrl.k']?.({ preventDefault: vi.fn(), target: document.body })
+        triggerHotkey('Mod+K', { preventDefault: vi.fn(), target: document.body })
       })
       expect(result.current.show).toBe(false)
     })
 
-    it('should NOT toggle when focus is in input area and modal is closed', () => {
-      mockIsEventTargetInputArea = true
-      const { result } = renderHook(() => useGotoAnythingModal())
+    it('should let the hotkey library ignore inputs when the modal is closed', () => {
+      renderHook(() => useGotoAnythingModal())
 
-      expect(result.current.show).toBe(false)
-
-      act(() => {
-        keyPressHandlers['ctrl.k']?.({ preventDefault: vi.fn(), target: document.body })
-      })
-
-      expect(result.current.show).toBe(false)
+      expect(hotkeyHandlers['Mod+K']?.options?.ignoreInputs).toBe(true)
     })
 
     it('should close modal when escape is pressed and modal is open', () => {
@@ -106,7 +106,7 @@ describe('useGotoAnythingModal', () => {
       expect(result.current.show).toBe(true)
 
       act(() => {
-        keyPressHandlers.esc?.({ preventDefault: vi.fn() })
+        triggerHotkey('Escape', { preventDefault: vi.fn() })
       })
 
       expect(result.current.show).toBe(false)
@@ -119,19 +119,19 @@ describe('useGotoAnythingModal', () => {
 
       const preventDefaultMock = vi.fn()
       act(() => {
-        keyPressHandlers.esc?.({ preventDefault: preventDefaultMock })
+        triggerHotkey('Escape', { preventDefault: preventDefaultMock })
       })
 
       expect(result.current.show).toBe(false)
       expect(preventDefaultMock).not.toHaveBeenCalled()
     })
 
-    it('should call preventDefault when Ctrl+K is triggered', () => {
+    it('should call preventDefault when Mod+K is triggered', () => {
       renderHook(() => useGotoAnythingModal())
 
       const preventDefaultMock = vi.fn()
       act(() => {
-        keyPressHandlers['ctrl.k']?.({ preventDefault: preventDefaultMock, target: document.body })
+        triggerHotkey('Mod+K', { preventDefault: preventDefaultMock, target: document.body })
       })
 
       expect(preventDefaultMock).toHaveBeenCalled()

@@ -69,6 +69,10 @@
       "types": "./src/input/index.tsx",
       "import": "./src/input/index.tsx"
     },
+    "./kbd": {
+      "types": "./src/kbd/index.tsx",
+      "import": "./src/kbd/index.tsx"
+    },
     "./meter": {
       "types": "./src/meter/index.tsx",
       "import": "./src/meter/index.tsx"
@@ -171,6 +175,7 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-hotkeys": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

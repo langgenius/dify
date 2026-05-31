@@ -23,6 +23,7 @@ import {
   useAutocompleteFilteredItems,
 } from '.'
 import { cn } from '../cn'
+import { Kbd } from '../kbd'
 
 type Suggestion = {
   value: string
@@ -309,9 +310,9 @@ const CommandPaletteList = () => {
                     <span className="block truncate system-xs-regular text-text-tertiary">{item.description}</span>
                   </span>
                 </span>
-                <kbd className="rounded-md border border-divider-subtle bg-components-badge-bg-dimm px-1.5 py-0.5 text-text-quaternary system-2xs-medium">
+                <Kbd className="text-text-quaternary">
                   Enter
-                </kbd>
+                </Kbd>
               </AutocompleteItem>
             )}
           </AutocompleteCollection>

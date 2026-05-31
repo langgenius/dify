@@ -1,6 +1,6 @@
-import { resolveConfigDir } from '../../../config/dir.js'
 import { Args } from '../../../framework/flags.js'
 import { raw } from '../../../framework/output.js'
+import { getConfigurationStore } from '../../../store/manager.js'
 import { DifyCommand } from '../../_shared/dify-command.js'
 import { runConfigUnset } from './run.js'
 
@@ -17,6 +17,6 @@ export default class ConfigUnset extends DifyCommand {
 
   async run(argv: string[]) {
     const { args } = this.parse(ConfigUnset, argv)
-    return raw(await runConfigUnset({ dir: resolveConfigDir(), key: args.key }))
+    return raw(runConfigUnset({ store: getConfigurationStore(), key: args.key }))
   }
 }

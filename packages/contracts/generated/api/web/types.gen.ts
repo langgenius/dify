@@ -218,7 +218,6 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type SystemFeatureModel = {
-  app_dsl_version: string
   branding: BrandingModel
   enable_change_email: boolean
   enable_collaboration_mode: boolean

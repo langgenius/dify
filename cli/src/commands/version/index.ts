@@ -1,7 +1,7 @@
 import { Flags } from '../../framework/flags.js'
-import { formatted, raw, stringifyOutput } from '../../framework/output.js'
-import { colorEnabled } from '../../io/color.js'
-import { realStreams } from '../../io/streams.js'
+import { formatted, OutputFormat, raw, stringifyOutput } from '../../framework/output.js'
+import { colorEnabled } from '../../sys/io/color.js'
+import { realStreams } from '../../sys/io/streams'
 import { versionInfo } from '../../version/info.js'
 import { runVersionProbe } from '../../version/probe.js'
 import { renderVersionText } from '../../version/render.js'
@@ -20,11 +20,7 @@ export default class Version extends DifyCommand {
   ]
 
   static override flags = {
-    'output': Flags.string({
-      char: 'o',
-      description: 'output format (text|json|yaml)',
-      default: '',
-    }),
+    'output': Flags.outputFormat({ options: [OutputFormat.TEXT, OutputFormat.JSON, OutputFormat.YAML], default: '' }),
     'client': Flags.boolean({ description: 'skip server probe' }),
     'short': Flags.boolean({ description: 'print only the client semver' }),
     'check-compat': Flags.boolean({
@@ -54,7 +50,7 @@ export default class Version extends DifyCommand {
       // Emit the full report first so `difyctl version -o json --check-compat | jq`
       // works exactly like the success path: stdout gets the canonical envelope,
       // stderr gets the one-line failure reason, exit code signals the verdict.
-      process.stdout.write(stringifyOutput(output))
+      io.out.write(stringifyOutput(output))
       this.error(report.compat.detail, { exit: COMPAT_FAIL_EXIT_CODE })
     }
 

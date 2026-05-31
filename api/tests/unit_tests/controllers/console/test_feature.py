@@ -62,6 +62,21 @@ class TestTrialModelsApi:
         get_trial_models.assert_called_once_with()
 
 
+class TestAppDslVersionApi:
+    def test_get_app_dsl_version_success(self, mocker: MockerFixture):
+        from controllers.console.feature import AppDslVersionApi
+
+        get_app_dsl_version = mocker.patch("controllers.console.feature.FeatureService.get_app_dsl_version")
+        get_app_dsl_version.return_value = "0.6.0"
+
+        api = AppDslVersionApi()
+
+        result = api.get()
+
+        assert result == {"app_dsl_version": "0.6.0"}
+        get_app_dsl_version.assert_called_once_with()
+
+
 class TestSystemFeatureApi:
     def test_get_system_features_authenticated(self, mocker: MockerFixture):
         """

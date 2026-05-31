@@ -103,7 +103,11 @@ def _replace_schema_table_type(markdown: str, definition_name: str, row_name: st
         lines[index] = "|".join(cells)
         break
 
-    return "\n".join(lines)
+    return "\n".join(lines) + ("\n" if markdown.endswith("\n") else "")
+
+
+def _has_union_schema(schema: object) -> bool:
+    return isinstance(schema, dict) and (isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list))
 
 
 def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
@@ -117,8 +121,20 @@ def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
     for definition_name, schema in definitions.items():
         if not isinstance(definition_name, str) or not isinstance(schema, dict):
             continue
-        one_of = schema.get("oneOf")
-        if not isinstance(one_of, list):
+
+        properties = schema.get("properties")
+        if isinstance(properties, dict):
+            for property_name, property_schema in properties.items():
+                if isinstance(property_name, str) and _has_union_schema(property_schema):
+                    markdown = _replace_schema_table_type(
+                        markdown,
+                        definition_name,
+                        property_name,
+                        _schema_markdown_type(property_schema),
+                    )
+
+        union_variants = schema.get("oneOf") or schema.get("anyOf")
+        if not isinstance(union_variants, list):
             continue
 
         markdown = _replace_schema_table_type(
@@ -128,7 +144,7 @@ def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
             _schema_markdown_type(schema),
         )
 
-        for variant in one_of:
+        for variant in union_variants:
             variant_name = _definition_ref_name(variant)
             variant_schema = definitions.get(variant_name) if variant_name is not None else None
             if not isinstance(variant_name, str) or not isinstance(variant_schema, dict):
@@ -150,7 +166,7 @@ def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
 
 def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-", dir=markdown_path.parent) as temp_dir:
+    with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-") as temp_dir:
         temp_markdown_path = Path(temp_dir) / markdown_path.name
         result = subprocess.run(
             [
@@ -158,12 +174,13 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
                 "--yes",
                 SWAGGER_MARKDOWN_PACKAGE,
                 "-i",
-                str(spec_path),
+                str(spec_path.resolve()),
                 "-o",
-                str(temp_markdown_path),
+                str(temp_markdown_path.resolve()),
             ],
             check=False,
             capture_output=True,
+            cwd=temp_dir,
             text=True,
         )
         if result.returncode != 0:

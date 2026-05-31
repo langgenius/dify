@@ -4,8 +4,10 @@ import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -25,7 +27,6 @@ import {
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -150,14 +151,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp(undefined)
-  })
-
-  useKeyPress('esc', () => {
-    if (show && !showErrorModal)
-      onClose()
+  useHotkey('Mod+Enter', () => {
+    handleCreateApp(undefined)
+  }, {
+    enabled: show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && !!currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && !!dslUrlValue)),
+    ignoreInputs: false,
   })
 
   const onDSLConfirm: MouseEventHandler = async () => {
@@ -215,7 +213,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   return (
     <>
-      <Dialog open={show}>
+      <Dialog open={show} onOpenChange={open => !open && !showErrorModal && onClose()}>
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
 
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
@@ -285,7 +283,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               className="gap-1"
             >
               <span>{t('newApp.Create', { ns: 'app' })}</span>
-              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+              <KbdGroup>
+                {['Mod', 'Enter'].map(key => (
+                  <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                ))}
+              </KbdGroup>
             </Button>
           </div>
         </DialogContent>

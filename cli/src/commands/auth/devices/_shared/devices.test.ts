@@ -1,33 +1,32 @@
+import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { DifyMock } from '../../../../../test/fixtures/dify-mock/server.js'
+import type { AccountSessionsClient } from '../../../../api/account-sessions.js'
 import type { HostsBundle } from '../../../../auth/hosts.js'
-import type { TokenStore } from '../../../../auth/store.js'
+import type { Key, Store } from '../../../../store/store.js'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { startMock } from '../../../../../test/fixtures/dify-mock/server.js'
 import { saveHosts } from '../../../../auth/hosts.js'
 import { createClient } from '../../../../http/client.js'
-import { bufferStreams } from '../../../../io/streams.js'
-import { runDevicesList, runDevicesRevoke } from './devices.js'
+import { ENV_CONFIG_DIR, resolveConfigDir } from '../../../../store/dir.js'
+import { tokenKey } from '../../../../store/manager.js'
+import { bufferStreams } from '../../../../sys/io/streams'
+import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
-class MemStore implements TokenStore {
-  readonly entries = new Map<string, string>()
-  async put(host: string, accountId: string, token: string): Promise<void> {
-    this.entries.set(`${host}::${accountId}`, token)
+class MemStore implements Store {
+  readonly entries = new Map<string, unknown>()
+  get<T>(key: Key<T>): T {
+    return (this.entries.get(key.key) as T | undefined) ?? key.default
   }
 
-  async get(host: string, accountId: string): Promise<string | undefined> {
-    return this.entries.get(`${host}::${accountId}`)
+  set<T>(key: Key<T>, value: T): void {
+    this.entries.set(key.key, value)
   }
 
-  async delete(host: string, accountId: string): Promise<void> {
-    this.entries.delete(`${host}::${accountId}`)
-  }
-
-  async list(host: string): Promise<readonly string[]> {
-    const prefix = `${host}::`
-    return Array.from(this.entries.keys()).filter(k => k.startsWith(prefix))
+  unset<T>(key: Key<T>): void {
+    this.entries.delete(key.key)
   }
 }
 
@@ -91,11 +90,18 @@ describe('runDevicesList', () => {
 describe('runDevicesRevoke', () => {
   let mock: DifyMock
   let configDir: string
+  let prevConfigDir: string | undefined
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
     configDir = await mkdtemp(join(tmpdir(), 'difyctl-devrevoke-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = configDir
   })
   afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await mock.stop()
     await rm(configDir, { recursive: true, force: true })
   })
@@ -104,11 +110,11 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    await store.put(b.current_host, 'acct-1', 'dfoa_test')
-    await saveHosts(configDir, b)
+    store.set(tokenKey(b.current_host, 'acct-1'), 'dfoa_test')
+    saveHosts(b)
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await runDevicesRevoke({ configDir, io, bundle: b, http, store, target: 'difyctl on desktop', all: false })
+    await runDevicesRevoke({ io, bundle: b, http, store, target: 'difyctl on desktop', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
     expect(store.entries.size).toBe(1)
   })
@@ -119,7 +125,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await runDevicesRevoke({ configDir, io, bundle: b, http, store, target: 'tok-2', all: false })
+    await runDevicesRevoke({ io, bundle: b, http, store, target: 'tok-2', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
   })
 
@@ -129,7 +135,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await runDevicesRevoke({ configDir, io, bundle: b, http, store, target: 'web', all: false })
+    await runDevicesRevoke({ io, bundle: b, http, store, target: 'web', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
   })
 
@@ -139,7 +145,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await expect(runDevicesRevoke({ configDir, io, bundle: b, http, store, target: 'difyctl', all: false }))
+    await expect(runDevicesRevoke({ io, bundle: b, http, store, target: 'difyctl', all: false }))
       .rejects
       .toThrow(/matches multiple/)
   })
@@ -150,7 +156,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await expect(runDevicesRevoke({ configDir, io, bundle: b, http, store, target: 'nonexistent', all: false }))
+    await expect(runDevicesRevoke({ io, bundle: b, http, store, target: 'nonexistent', all: false }))
       .rejects
       .toThrow(/no session matches/)
   })
@@ -161,7 +167,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await runDevicesRevoke({ configDir, io, bundle: b, http, store, all: true })
+    await runDevicesRevoke({ io, bundle: b, http, store, all: true })
     expect(io.outBuf()).toContain('Revoked 2 session(s)')
   })
 
@@ -169,21 +175,65 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    await store.put(b.current_host, 'acct-1', 'dfoa_test')
-    await saveHosts(configDir, b)
+    store.set(tokenKey(b.current_host, 'acct-1'), 'dfoa_test')
+    saveHosts(b)
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
 
-    await runDevicesRevoke({ configDir, io, bundle: b, http, store, target: 'tok-1', all: false })
+    await runDevicesRevoke({ io, bundle: b, http, store, target: 'tok-1', all: false })
     expect(store.entries.size).toBe(0)
-    await expect(readFile(join(configDir, 'hosts.yml'), 'utf8')).rejects.toThrow(/ENOENT/)
+    await expect(readFile(join(resolveConfigDir(), 'hosts.yml'), 'utf8')).rejects.toThrow(/ENOENT/)
   })
 
   it('no target + no --all: throws UsageMissingArg', async () => {
     const io = bufferStreams()
     const store = new MemStore()
     const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
-    await expect(runDevicesRevoke({ configDir, io, bundle: bundleFor(mock.url), http, store, all: false }))
+    await expect(runDevicesRevoke({ io, bundle: bundleFor(mock.url), http, store, all: false }))
       .rejects
       .toThrow(/specify a device label/)
+  })
+})
+
+describe('listAllSessions', () => {
+  const row = (id: string, label = `dev-${id}`): SessionRow => ({
+    id,
+    prefix: 'dfoa_xxx',
+    client_id: 'difyctl',
+    device_label: label,
+    created_at: null,
+    last_used_at: null,
+    expires_at: null,
+  })
+
+  function stubClient(pages: readonly SessionListResponse[]): { client: AccountSessionsClient, list: ReturnType<typeof vi.fn> } {
+    const list = vi.fn(async (q?: { page?: number, limit?: number }) => {
+      const page = q?.page ?? 1
+      const env = pages[page - 1]
+      if (env === undefined)
+        throw new Error(`stub: no page ${page}`)
+      return env
+    })
+    return { client: { list } as unknown as AccountSessionsClient, list }
+  }
+
+  it('exhausts pages until has_more=false', async () => {
+    const { client, list } = stubClient([
+      { page: 1, limit: 200, total: 250, has_more: true, data: Array.from({ length: 200 }, (_, i) => row(`s-${i}`)) },
+      { page: 2, limit: 200, total: 250, has_more: false, data: Array.from({ length: 50 }, (_, i) => row(`s-${200 + i}`)) },
+    ])
+    const all = await listAllSessions(client)
+    expect(all.length).toBe(250)
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(list).toHaveBeenNthCalledWith(1, { page: 1, limit: 200 })
+    expect(list).toHaveBeenNthCalledWith(2, { page: 2, limit: 200 })
+  })
+
+  it('single page (has_more=false): one call', async () => {
+    const { client, list } = stubClient([
+      { page: 1, limit: 200, total: 3, has_more: false, data: [row('a'), row('b'), row('c')] },
+    ])
+    const all = await listAllSessions(client)
+    expect(all.length).toBe(3)
+    expect(list).toHaveBeenCalledTimes(1)
   })
 })

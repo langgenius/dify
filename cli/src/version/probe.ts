@@ -4,8 +4,8 @@ import type { CompatVerdict } from './compat.js'
 import type { Channel } from './info.js'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '../api/meta.js'
 import { loadHosts } from '../auth/hosts.js'
-import { resolveConfigDir } from '../config/dir.js'
 import { createClient } from '../http/client.js'
+import { arch, platform } from '../sys/index.js'
 import { hostWithScheme } from '../util/host.js'
 import { difyCompat, evaluateCompat } from './compat.js'
 import { versionInfo } from './info.js'
@@ -47,7 +47,7 @@ export type RunVersionProbeOptions = {
   readonly probe?: MetaProbe
 }
 
-const defaultLoadBundle = async (): Promise<HostsBundle | undefined> => loadHosts(resolveConfigDir())
+const defaultLoadBundle = async (): Promise<HostsBundle | undefined> => loadHosts()
 
 const defaultProbe: MetaProbe = async (endpoint) => {
   const http = createClient({ host: endpoint, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
@@ -60,8 +60,8 @@ function buildClientBlock(): ClientBlock {
     commit: versionInfo.commit,
     buildDate: versionInfo.buildDate,
     channel: versionInfo.channel,
-    platform: process.platform,
-    arch: process.arch,
+    platform: platform(),
+    arch: arch(),
   }
 }
 

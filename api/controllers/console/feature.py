@@ -5,7 +5,12 @@ from controllers.common.schema import register_response_schema_models
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import current_user, login_required
-from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
+from services.feature_service import (
+    FeatureModel,
+    FeatureService,
+    LimitationModel,
+    SystemFeatureModel,
+)
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
@@ -15,7 +20,18 @@ class TrialModelsResponse(ResponseModel):
     trial_models: list[str]
 
 
-register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel, TrialModelsResponse)
+class AppDslVersionResponse(ResponseModel):
+    app_dsl_version: str
+
+
+register_response_schema_models(
+    console_ns,
+    AppDslVersionResponse,
+    FeatureModel,
+    LimitationModel,
+    SystemFeatureModel,
+    TrialModelsResponse,
+)
 
 
 @console_ns.route("/features")
@@ -78,6 +94,23 @@ class TrialModelsApi(Resource):
         return dump_response(
             TrialModelsResponse,
             {"trial_models": FeatureService.get_trial_models()},
+        )
+
+
+@console_ns.route("/app-dsl-version")
+class AppDslVersionApi(Resource):
+    @console_ns.doc("get_app_dsl_version")
+    @console_ns.doc(description="Get current app DSL version")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[AppDslVersionResponse.__name__],
+    )
+    def get(self):
+        """Get current app DSL version for workflow clipboard compatibility."""
+        return dump_response(
+            AppDslVersionResponse,
+            {"app_dsl_version": FeatureService.get_app_dsl_version()},
         )
 
 
