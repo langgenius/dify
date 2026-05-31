@@ -4904,11 +4904,6 @@
       "count": 1
     }
   },
-  "web/app/device/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/education-apply/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 5
