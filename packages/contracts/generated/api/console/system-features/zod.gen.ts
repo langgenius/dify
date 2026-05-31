@@ -87,7 +87,6 @@ export const zWebAppAuthModel = z.object({
  * SystemFeatureModel
  */
 export const zSystemFeatureModel = z.object({
-  app_dsl_version: z.string().default(''),
   branding: zBrandingModel,
   enable_change_email: z.boolean().default(true),
   enable_collaboration_mode: z.boolean().default(true),

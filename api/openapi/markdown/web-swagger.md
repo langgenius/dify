@@ -1323,7 +1323,6 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | enable_change_email | boolean |  | Yes |
 | enable_collaboration_mode | boolean |  | Yes |

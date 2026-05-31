@@ -599,6 +599,23 @@ Update API-based extension
 | ---- | ----------- |
 | 204 | Binding deleted successfully |
 
+### /app-dsl-version
+
+#### GET
+##### Summary
+
+Get current app DSL version for workflow clipboard compatibility
+
+##### Description
+
+Get current app DSL version
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [AppDslVersionResponse](#appdslversionresponse) |
+
 ### /app/prompt-templates
 
 #### GET
@@ -11379,6 +11396,12 @@ Enum class for api provider schema type.
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppDslVersionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_dsl_version | string |  | Yes |
+
 #### AppExportQuery
 
 | Name | Type | Description | Required |
@@ -15250,7 +15273,6 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | enable_change_email | boolean |  | Yes |
 | enable_collaboration_mode | boolean |  | Yes |

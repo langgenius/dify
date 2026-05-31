@@ -12,6 +12,22 @@ type DeepPartial<T> = T extends Array<infer U>
     ? { [K in keyof T]?: DeepPartial<T[K]> }
     : T
 
+type QueryKeyProvider = {
+  queryKey: () => readonly unknown[]
+}
+
+type AppDslVersionQueryProvider = {
+  get?: QueryKeyProvider
+}
+
+const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
+
+const getAppDslVersionQueryKey = () => {
+  const appDslVersionQuery = (consoleQuery as { appDslVersion?: AppDslVersionQueryProvider }).appDslVersion
+
+  return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
+}
+
 const buildSystemFeatures = (
   overrides: DeepPartial<SystemFeatures> = {},
 ): SystemFeatures => {
@@ -70,6 +86,13 @@ export const seedSystemFeatures = (
   return data
 }
 
+export const seedAppDslVersion = (
+  queryClient: QueryClient,
+  appDslVersion = '0.6.0',
+) => {
+  queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
+}
+
 type SystemFeaturesTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
@@ -78,6 +101,11 @@ type SystemFeaturesTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<SystemFeatures> | null
+  /**
+   * Seed the workflow clipboard DSL version query only for tests that need it.
+   * Omit or pass `null` to leave it unseeded.
+   */
+  appDslVersion?: string | null
   queryClient?: QueryClient
 }
 
@@ -94,6 +122,8 @@ export const createSystemFeaturesWrapper = (
   const systemFeatures = options.systemFeatures === null
     ? null
     : seedSystemFeatures(queryClient, options.systemFeatures)
+  if (options.appDslVersion !== undefined && options.appDslVersion !== null)
+    seedAppDslVersion(queryClient, options.appDslVersion)
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -104,9 +134,10 @@ export const renderWithSystemFeatures = (
   ui: ReactElement,
   options: SystemFeaturesTestOptions & Omit<RenderOptions, 'wrapper'> = {},
 ): RenderResult & { queryClient: QueryClient, systemFeatures: SystemFeatures | null } => {
-  const { systemFeatures: sf, queryClient: qc, ...renderOptions } = options
+  const { systemFeatures: sf, appDslVersion, queryClient: qc, ...renderOptions } = options
   const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
     systemFeatures: sf,
+    appDslVersion,
     queryClient: qc,
   })
   const rendered = render(ui, { wrapper, ...renderOptions })
@@ -117,9 +148,10 @@ export const renderHookWithSystemFeatures = <Result, Props = void>(
   callback: (props: Props) => Result,
   options: SystemFeaturesTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
 ): RenderHookResult<Result, Props> & { queryClient: QueryClient, systemFeatures: SystemFeatures | null } => {
-  const { systemFeatures: sf, queryClient: qc, ...hookOptions } = options
+  const { systemFeatures: sf, appDslVersion, queryClient: qc, ...hookOptions } = options
   const { wrapper, queryClient, systemFeatures } = createSystemFeaturesWrapper({
     systemFeatures: sf,
+    appDslVersion,
     queryClient: qc,
   })
   const rendered = renderHook(callback, { wrapper, ...hookOptions })
