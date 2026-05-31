@@ -97,7 +97,7 @@ export const seedSystemFeatures = (
   return data
 }
 
-export const seedTrialModels = (
+const seedTrialModels = (
   queryClient: QueryClient,
   trialModels: readonly string[] = [],
 ) => {
