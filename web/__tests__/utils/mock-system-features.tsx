@@ -6,6 +6,22 @@ import { render, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/client'
 import { defaultSystemFeatures } from '@/types/feature'
 
+type QueryKeyProvider = {
+  queryKey: () => readonly unknown[]
+}
+
+type TrialModelsQueryProvider = {
+  get?: QueryKeyProvider
+}
+
+const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
+
+const getTrialModelsQueryKey = () => {
+  const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels
+
+  return trialModelsQuery?.get?.queryKey() ?? fallbackTrialModelsQueryKey
+}
+
 type DeepPartial<T> = T extends Array<infer U>
   ? Array<U>
   : T extends object
@@ -74,7 +90,7 @@ export const seedTrialModels = (
   queryClient: QueryClient,
   trialModels: readonly string[] = [],
 ) => {
-  queryClient.setQueryData(consoleQuery.trialModels.queryKey(), { trial_models: [...trialModels] })
+  queryClient.setQueryData(getTrialModelsQueryKey(), { trial_models: [...trialModels] })
 }
 
 type SystemFeaturesTestOptions = {
@@ -102,7 +118,7 @@ export const createSystemFeaturesWrapper = (
   const systemFeatures = options.systemFeatures === null
     ? null
     : seedSystemFeatures(queryClient, options.systemFeatures)
-  if (options.trialModels !== null)
+  if (options.trialModels !== undefined && options.trialModels !== null)
     seedTrialModels(queryClient, options.trialModels)
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

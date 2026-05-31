@@ -8,12 +8,3 @@ export const systemFeaturesContract = base
     method: 'GET',
   })
   .output(type<SystemFeatures>())
-
-export const trialModelsContract = base
-  .route({
-    path: '/trial-models',
-    method: 'GET',
-  })
-  .output(type<{
-    trial_models: string[]
-  }>())

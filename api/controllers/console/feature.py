@@ -2,13 +2,20 @@ from flask_restx import Resource
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
+from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import current_user, login_required
-from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel, TrialModelsModel
+from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
 
-register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel, TrialModelsModel)
+
+class TrialModelsResponse(ResponseModel):
+    trial_models: list[str]
+
+
+register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel, TrialModelsResponse)
 
 
 @console_ns.route("/features")
@@ -61,14 +68,17 @@ class TrialModelsApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[TrialModelsModel.__name__],
+        console_ns.models[TrialModelsResponse.__name__],
     )
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         """Get hosted trial model provider configuration for model-provider pages."""
-        return FeatureService.get_trial_models().model_dump()
+        return dump_response(
+            TrialModelsResponse,
+            {"trial_models": FeatureService.get_trial_models()},
+        )
 
 
 @console_ns.route("/system-features")

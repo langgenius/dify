@@ -51,9 +51,7 @@ class TestTrialModelsApi:
         from controllers.console.feature import TrialModelsApi
 
         get_trial_models = mocker.patch("controllers.console.feature.FeatureService.get_trial_models")
-        get_trial_models.return_value.model_dump.return_value = {
-            "trial_models": ["langgenius/openai/openai"],
-        }
+        get_trial_models.return_value = ["langgenius/openai/openai"]
 
         api = TrialModelsApi()
 

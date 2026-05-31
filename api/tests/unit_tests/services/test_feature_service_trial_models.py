@@ -35,4 +35,4 @@ def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypat
 
     result = FeatureService.get_trial_models()
 
-    assert result.trial_models == [HostedTrialProvider.OPENAI.value]
+    assert result == [HostedTrialProvider.OPENAI.value]

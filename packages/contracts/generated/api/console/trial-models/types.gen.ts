@@ -4,7 +4,7 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type TrialModelsModel = {
+export type TrialModelsResponse = {
   trial_models: Array<string>
 }
 
@@ -16,7 +16,7 @@ export type GetTrialModelsData = {
 }
 
 export type GetTrialModelsResponses = {
-  200: TrialModelsModel
+  200: TrialModelsResponse
 }
 
 export type GetTrialModelsResponse = GetTrialModelsResponses[keyof GetTrialModelsResponses]

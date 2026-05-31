@@ -183,10 +183,6 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_explore_banner: bool = False
 
 
-class TrialModelsModel(FeatureResponseModel):
-    trial_models: list[str] = []
-
-
 class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
@@ -294,9 +290,9 @@ class FeatureService:
         ]
 
     @classmethod
-    def get_trial_models(cls) -> TrialModelsModel:
+    def get_trial_models(cls) -> list[str]:
         """Return hosted trial provider ids without requiring the full system-features payload."""
-        return TrialModelsModel(trial_models=cls._fulfill_trial_models_from_env())
+        return cls._fulfill_trial_models_from_env()
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):

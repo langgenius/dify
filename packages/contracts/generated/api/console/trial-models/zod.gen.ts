@@ -3,13 +3,13 @@
 import * as z from 'zod'
 
 /**
- * TrialModelsModel
+ * TrialModelsResponse
  */
-export const zTrialModelsModel = z.object({
-  trial_models: z.array(z.string()).default([]),
+export const zTrialModelsResponse = z.object({
+  trial_models: z.array(z.string()),
 })
 
 /**
  * Success
  */
-export const zGetTrialModelsResponse = zTrialModelsModel
+export const zGetTrialModelsResponse = zTrialModelsResponse
