@@ -177,7 +177,6 @@ class SystemFeatureModel(FeatureResponseModel):
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     plugin_manager: PluginManagerModel = PluginManagerModel()
-    trial_models: list[str] = []
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
@@ -278,7 +277,6 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
-        system_features.trial_models = cls._fulfill_trial_models_from_env()
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
 
@@ -292,6 +290,11 @@ class FeatureService:
                 and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
             )
         ]
+
+    @classmethod
+    def get_trial_models(cls) -> list[str]:
+        """Return hosted trial provider ids without requiring the full system-features payload."""
+        return cls._fulfill_trial_models_from_env()
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):

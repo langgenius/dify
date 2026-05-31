@@ -47,7 +47,7 @@ vi.mock('../use-trial-credits', () => ({
 }))
 
 const renderQuotaPanel = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: mockTrialModels === undefined ? null : { trial_models: mockTrialModels as never },
+  trialModels: mockTrialModels ?? [],
 })
 
 vi.mock('../../hooks', () => ({

@@ -46,6 +46,22 @@ class TestFeatureVectorSpaceApi:
         get_vector_space.assert_called_once_with("tenant_123")
 
 
+class TestTrialModelsApi:
+    def test_get_trial_models_success(self, mocker: MockerFixture):
+        from controllers.console.feature import TrialModelsApi
+
+        get_trial_models = mocker.patch("controllers.console.feature.FeatureService.get_trial_models")
+        get_trial_models.return_value = ["langgenius/openai/openai"]
+
+        api = TrialModelsApi()
+
+        raw_get = unwrap(TrialModelsApi.get)
+        result = raw_get(api)
+
+        assert result == {"trial_models": ["langgenius/openai/openai"]}
+        get_trial_models.assert_called_once_with()
+
+
 class TestAppDslVersionApi:
     def test_get_app_dsl_version_success(self, mocker: MockerFixture):
         from controllers.console.feature import AppDslVersionApi

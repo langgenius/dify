@@ -106,7 +106,6 @@ export const zSystemFeatureModel = z.object({
   plugin_manager: zPluginManagerModel,
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
-  trial_models: z.array(z.string()).default([]),
   webapp_auth: zWebAppAuthModel,
 })
 
