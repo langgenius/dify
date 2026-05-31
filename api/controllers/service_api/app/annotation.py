@@ -1,11 +1,12 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field, TypeAdapter
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
@@ -31,8 +32,19 @@ class AnnotationReplyActionPayload(BaseModel):
     embedding_model_name: str = Field(description="Embedding model name")
 
 
+class AnnotationListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Number of annotations per page")
+    keyword: str = Field(default="", description="Keyword to search annotations")
+
+
 register_schema_models(
-    service_api_ns, AnnotationCreatePayload, AnnotationReplyActionPayload, Annotation, AnnotationList
+    service_api_ns,
+    AnnotationCreatePayload,
+    AnnotationReplyActionPayload,
+    AnnotationListQuery,
+    Annotation,
+    AnnotationList,
 )
 
 
@@ -78,10 +90,10 @@ class AnnotationReplyActionStatusApi(Resource):
         }
     )
     @validate_app_token
-    def get(self, app_model: App, job_id, action):
+    def get(self, app_model: App, job_id: UUID, action: str):
         """Get the status of an annotation reply action job."""
-        job_id = str(job_id)
-        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
+        job_id_str = str(job_id)
+        app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -89,16 +101,17 @@ class AnnotationReplyActionStatusApi(Resource):
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
+            app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
             error_msg = redis_client.get(app_annotation_error_key).decode()
 
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
 
 
 @service_api_ns.route("/apps/annotations")
 class AnnotationListApi(Resource):
     @service_api_ns.doc("list_annotations")
     @service_api_ns.doc(description="List annotations for the application")
+    @service_api_ns.doc(params=query_params_from_model(AnnotationListQuery))
     @service_api_ns.doc(
         responses={
             200: "Annotations retrieved successfully",
@@ -113,18 +126,18 @@ class AnnotationListApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
         """List annotations for the application."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default="", type=str)
+        query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
 
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_model.id, page, limit, keyword)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app_model.id, query.page, query.limit, query.keyword
+        )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         response = AnnotationList(
             data=annotation_models,
-            has_more=len(annotation_list) == limit,
-            limit=limit,
+            has_more=len(annotation_list) == query.limit,
+            limit=query.limit,
             total=total,
-            page=page,
+            page=query.page,
         )
         return response.model_dump(mode="json")
 
@@ -173,11 +186,11 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @validate_app_token
     @edit_permission_required
-    def put(self, app_model: App, annotation_id: str):
+    def put(self, app_model: App, annotation_id: UUID):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, annotation_id)
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id))
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
@@ -194,7 +207,7 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @validate_app_token
     @edit_permission_required
-    def delete(self, app_model: App, annotation_id: str):
+    def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id))
         return "", 204

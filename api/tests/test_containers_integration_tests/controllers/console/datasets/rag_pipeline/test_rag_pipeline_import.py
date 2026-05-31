@@ -53,15 +53,11 @@ class TestRagPipelineImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, user)
 
         assert status == 200
         assert response == {"status": "success"}
@@ -83,15 +79,11 @@ class TestRagPipelineImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, user)
 
         assert status == 400
         assert response == {"status": "failed"}
@@ -113,15 +105,11 @@ class TestRagPipelineImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, user)
 
         assert status == 202
         assert response == {"status": "pending"}
@@ -147,15 +135,11 @@ class TestRagPipelineImportConfirmApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api, "import-1")
+            response, status = method(api, user, "import-1")
 
         assert status == 200
         assert response == {"ok": True}
@@ -175,15 +159,11 @@ class TestRagPipelineImportConfirmApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api, "import-1")
+            response, status = method(api, user, "import-1")
 
         assert status == 400
         assert response == {"ok": False}

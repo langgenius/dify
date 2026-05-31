@@ -1,11 +1,11 @@
 import type { FC } from 'react'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import Indicator from '@/app/components/header/indicator'
 
 type ModelBarProps = {
   provider: string
@@ -54,7 +54,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
                 readonly
                 deprecatedClassName="opacity-50"
               />
-              <Indicator color="red" className="absolute -top-0.5 -right-0.5" />
+              <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />
             </div>
           )}
         />
@@ -83,7 +83,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
         readonly
         deprecatedClassName="opacity-50"
       />
-      {showWarn && <Indicator color="red" className="absolute -top-0.5 -right-0.5" />}
+      {showWarn && <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />}
     </div>
   )
 

@@ -4,7 +4,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
-from dify_agent.protocol import CreateRunRequest, ExecutionContext
+from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol import CreateRunRequest
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -19,11 +21,18 @@ from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
+    DeclaredArrayItem,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.agent_config_entities import (
+    effective_declared_outputs as _effective_declared_outputs,
+)
+from models.provider_ids import ModelProviderID
 
+from .output_failure_orchestrator import retry_idempotency_key
+from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
@@ -56,6 +65,10 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
+    # idempotency key so the backend treats each retry as a fresh request.
+    attempt: int = 0
+    session_snapshot: CompositorSessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,9 +88,11 @@ class WorkflowAgentRuntimeRequestBuilder:
         *,
         credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
+        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
+        self._plugin_tools_builder = plugin_tools_builder or WorkflowAgentPluginToolsBuilder()
 
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
@@ -93,20 +108,47 @@ class WorkflowAgentRuntimeRequestBuilder:
         workflow_job_prompt = node_job.workflow_prompt.strip() or "Run this workflow Agent Node for the current run."
         user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
+        try:
+            tools_layer = self._plugin_tools_builder.build(
+                tenant_id=context.dify_context.tenant_id,
+                app_id=context.dify_context.app_id,
+                user_id=context.dify_context.user_id,
+                tools=agent_soul.tools,
+                # Thread the *real* runtime invocation source through to
+                # ToolManager so credential quotas, rate limits, and audit
+                # trails match the actual call site (DEBUGGER for draft test
+                # run, SERVICE_API / WEB_APP for published run).
+                invoke_from=context.dify_context.invoke_from,
+            )
+        except WorkflowAgentPluginToolsBuildError as error:
+            raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
+        if tools_layer is not None:
+            metadata["agent_tools"] = {
+                "dify_tool_count": len(tools_layer.tools),
+                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools],
+                "cli_tool_count": len(agent_soul.tools.cli_tools),
+            }
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    tenant_id=context.dify_context.tenant_id,
-                    plugin_id=agent_soul.model.plugin_id,
-                    model_provider=agent_soul.model.model_provider,
+                    plugin_id=self._plugin_daemon_plugin_id(
+                        plugin_id=agent_soul.model.plugin_id,
+                        model_provider=agent_soul.model.model_provider,
+                    ),
+                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
-                    user_id=context.dify_context.user_id,
                     credentials=self._normalize_credentials(credentials),
-                    model_settings=cast(dict[str, Any], agent_soul.model.model_settings),
+                    model_settings=agent_soul.model.model_settings,
                 ),
-                execution_context=ExecutionContext(
+                # The execution-context layer is now the only public protocol
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
+                # be forwarded here because downstream plugin-daemon provider and
+                # tool clients read it from this layer rather than from any
+                # parallel top-level request field.
+                execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
+                    user_id=context.dify_context.user_id,
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -121,6 +163,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
+                tools=tools_layer,
+                session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -141,10 +185,28 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "workflow_run"
 
     @staticmethod
+    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
+        """Return the transport plugin id expected by plugin-daemon headers."""
+        if plugin_id.count("/") == 1:
+            return plugin_id
+        if plugin_id:
+            return ModelProviderID(plugin_id).plugin_id
+        return ModelProviderID(model_provider).plugin_id
+
+    @staticmethod
+    def _plugin_daemon_provider_name(model_provider: str) -> str:
+        """Return the provider name expected by plugin-daemon dispatch payloads."""
+        return ModelProviderID(model_provider).provider_name
+
+    @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:
-        if context.workflow_run_id:
-            return f"{context.workflow_run_id}:{context.node_execution_id}"
-        return context.node_execution_id
+        # Stage 4 §7 / D-4: retries get distinct keys (``...:retry-{attempt}``) so
+        # the Agent backend's protocol-level dedup can't replay a previous run.
+        return retry_idempotency_key(
+            workflow_run_id=context.workflow_run_id,
+            node_execution_id=context.node_execution_id,
+            attempt=context.attempt,
+        )
 
     @staticmethod
     def _build_metadata(
@@ -237,11 +299,17 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
-        if not declared_outputs:
-            return None
+        """Build the structured-output layer config sent to Agent backend.
+
+        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
+        PRD-mandated defaults (text / files / json) at runtime so the backend
+        always receives a stable schema and the downstream Inspector + nodes
+        have consistent output names. The defaults are NOT persisted.
+        """
+        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
         properties: dict[str, Any] = {}
         required: list[str] = []
-        for output in declared_outputs:
+        for output in effective_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -251,20 +319,51 @@ class WorkflowAgentRuntimeRequestBuilder:
         return AgentBackendOutputConfig(json_schema=schema)
 
     @staticmethod
+    def effective_declared_outputs(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+    ) -> Sequence[DeclaredOutputConfig]:
+        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
+
+        Kept as a static method on the builder so existing call sites
+        (``agent_node._run``, tests) don't need to change their import.
+        """
+        return _effective_declared_outputs(list(declared_outputs))
+
+    @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        match output.type:
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
+        if output.description:
+            schema["description"] = output.description
+        return schema
+
+    @staticmethod
+    def _schema_for_type(
+        output_type: DeclaredOutputType,
+        *,
+        array_item: DeclaredArrayItem | None = None,
+    ) -> dict[str, Any]:
+        match output_type:
             case DeclaredOutputType.STRING:
-                schema: dict[str, Any] = {"type": "string"}
+                return {"type": "string"}
             case DeclaredOutputType.NUMBER:
-                schema = {"type": "number"}
+                return {"type": "number"}
             case DeclaredOutputType.BOOLEAN:
-                schema = {"type": "boolean"}
+                return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                schema = {"type": "object"}
+                return {"type": "object"}
             case DeclaredOutputType.ARRAY:
-                schema = {"type": "array"}
+                # Stage 4 §4.2: items shape mirrors the declared array_item.
+                # Validator guarantees array_item is set when type is array.
+                item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
+                schema: dict[str, Any] = {
+                    "type": "array",
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                }
+                if array_item is not None and array_item.description:
+                    schema["items"]["description"] = array_item.description
+                return schema
             case DeclaredOutputType.FILE:
-                schema = {
+                return {
                     "type": "object",
                     "properties": {
                         "file_id": {"type": "string"},
@@ -273,9 +372,6 @@ class WorkflowAgentRuntimeRequestBuilder:
                         "url": {"type": "string"},
                     },
                 }
-        if output.description:
-            schema["description"] = output.description
-        return schema
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:

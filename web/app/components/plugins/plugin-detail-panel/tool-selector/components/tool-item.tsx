@@ -2,6 +2,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
@@ -128,13 +128,13 @@ const ToolItem = ({
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
           {t('notAuthorized', { ns: 'tools' })}
-          <Indicator className="ml-2" color="orange" />
+          <StatusDot className="ml-2" status="warning" />
         </Button>
       )}
       {!isError && !uninstalled && !versionMismatch && authRemoved && (
         <Button variant="secondary" size="small">
           {t('auth.authRemoved', { ns: 'plugin' })}
-          <Indicator className="ml-2" color="red" />
+          <StatusDot className="ml-2" status="error" />
         </Button>
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (

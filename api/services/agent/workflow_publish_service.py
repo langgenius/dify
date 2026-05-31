@@ -39,6 +39,7 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                 WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == draft_workflow.version,
                 WorkflowAgentNodeBinding.node_id.in_(node_ids),
             )
         ).all()
@@ -48,6 +49,7 @@ class WorkflowAgentPublishService:
                 tenant_id=binding.tenant_id,
                 app_id=binding.app_id,
                 workflow_id=published_workflow.id,
+                workflow_version=published_workflow.version,
                 node_id=binding.node_id,
                 binding_type=binding.binding_type,
                 agent_id=binding.agent_id,

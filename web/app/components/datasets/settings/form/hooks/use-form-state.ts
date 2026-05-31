@@ -5,7 +5,7 @@ import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -39,7 +39,6 @@ export const useFormState = () => {
   // Icon state
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const previousAppIcon = useRef(DEFAULT_APP_ICON)
 
   // Permission state
   const [permission, setPermission] = useState(currentDataset?.permission)
@@ -83,8 +82,7 @@ export const useFormState = () => {
   // Icon handlers
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
-    previousAppIcon.current = iconInfo
-  }, [iconInfo])
+  }, [])
 
   const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
     const newIconInfo: IconInfo = {
@@ -94,12 +92,6 @@ export const useFormState = () => {
       icon_url: icon.type === 'emoji' ? undefined : icon.url,
     }
     setIconInfo(newIconInfo)
-    setShowAppIconPicker(false)
-  }, [])
-
-  const handleCloseAppIconPicker = useCallback(() => {
-    setIconInfo(previousAppIcon.current)
-    setShowAppIconPicker(false)
   }, [])
 
   // External retrieval settings handler
@@ -223,9 +215,9 @@ export const useFormState = () => {
     // Icon
     iconInfo,
     showAppIconPicker,
+    setShowAppIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,

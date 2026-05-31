@@ -78,6 +78,14 @@ export const zAdvancedChatWorkflowRunPayload = z.object({
 })
 
 /**
+ * AgentComposerValidateResponse
+ */
+export const zAgentComposerValidateResponse = z.object({
+  errors: z.array(z.string()).optional(),
+  result: z.string(),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -730,12 +738,16 @@ export const zSite = z.object({
 })
 
 /**
- * ComposerBindingPayload
+ * AgentConfigSnapshotSummaryResponse
  */
-export const zComposerBindingPayload = z.object({
+export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
-  binding_type: z.enum(['inline_agent', 'roster_agent']),
-  current_snapshot_id: z.string().nullish(),
+  created_at: z.string().nullish(),
+  created_by: z.string().nullish(),
+  id: z.string(),
+  summary: z.string().nullish(),
+  version: z.int(),
+  version_note: z.string().nullish(),
 })
 
 /**
@@ -750,6 +762,15 @@ export const zComposerSaveStrategy = z.enum([
 ])
 
 /**
+ * ComposerBindingPayload
+ */
+export const zComposerBindingPayload = z.object({
+  agent_id: z.string().nullish(),
+  binding_type: z.enum(['inline_agent', 'roster_agent']),
+  current_snapshot_id: z.string().nullish(),
+})
+
+/**
  * ComposerSoulLockPayload
  */
 export const zComposerSoulLockPayload = z.object({
@@ -761,6 +782,24 @@ export const zComposerSoulLockPayload = z.object({
  * ComposerVariant
  */
 export const zComposerVariant = z.enum(['agent_app', 'workflow'])
+
+/**
+ * AgentComposerSoulCandidatesResponse
+ */
+export const zAgentComposerSoulCandidatesResponse = z.object({
+  cli_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+  dify_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+  human_contacts: z.array(z.record(z.string(), z.unknown())).optional(),
+  knowledge_datasets: z.array(z.record(z.string(), z.unknown())).optional(),
+  skills_files: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * ComposerCandidateCapabilities
+ */
+export const zComposerCandidateCapabilities = z.object({
+  human_roster_available: z.boolean().optional().default(false),
+})
 
 /**
  * AnnotationHitHistory
@@ -1235,6 +1274,33 @@ export const zWorkflowPaginationResponse = z.object({
   page: z.int(),
 })
 
+/**
+ * AgentComposerSoulLockResponse
+ */
+export const zAgentComposerSoulLockResponse = z.object({
+  can_unlock: z.boolean().optional().default(false),
+  locked: z.boolean(),
+  reason: z.string().nullish(),
+})
+
+/**
+ * AgentComposerImpactBindingResponse
+ */
+export const zAgentComposerImpactBindingResponse = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+  workflow_id: z.string(),
+})
+
+/**
+ * AgentComposerImpactResponse
+ */
+export const zAgentComposerImpactResponse = z.object({
+  bindings: z.array(zAgentComposerImpactBindingResponse).optional(),
+  current_snapshot_id: z.string().nullish(),
+  workflow_node_count: z.int(),
+})
+
 export const zWorkflowDraftVariableWithoutValue = z.object({
   description: z.string().optional(),
   edited: z.boolean().optional(),
@@ -1476,6 +1542,32 @@ export const zWorkflowOnlineUsersResponse = z.object({
 })
 
 /**
+ * AgentScope
+ *
+ * Visibility and lifecycle scope of an Agent record.
+ */
+export const zAgentScope = z.enum(['roster', 'workflow_only'])
+
+/**
+ * AgentStatus
+ *
+ * Soft lifecycle state for Agent records.
+ */
+export const zAgentStatus = z.enum(['active', 'archived'])
+
+/**
+ * AgentComposerAgentResponse
+ */
+export const zAgentComposerAgentResponse = z.object({
+  active_config_snapshot_id: z.string().nullish(),
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  scope: zAgentScope,
+  status: zAgentStatus,
+})
+
+/**
  * AppVariableConfig
  */
 export const zAppVariableConfig = z.object({
@@ -1534,17 +1626,40 @@ export const zAgentSoulSkillsFilesConfig = z.object({
 })
 
 /**
- * AgentSoulToolsConfig
- */
-export const zAgentSoulToolsConfig = z.object({
-  cli_tools: z.array(z.record(z.string(), z.unknown())).optional(),
-  dify_tools: z.array(z.record(z.string(), z.unknown())).optional(),
-})
-
-/**
  * WorkflowNodeJobMode
  */
 export const zWorkflowNodeJobMode = z.enum(['let_agent_figure_it_out', 'tell_agent_what_to_do'])
+
+/**
+ * DeclaredOutputType
+ */
+export const zDeclaredOutputType = z.enum([
+  'array',
+  'boolean',
+  'file',
+  'number',
+  'object',
+  'string',
+])
+
+/**
+ * AgentComposerNodeJobCandidatesResponse
+ */
+export const zAgentComposerNodeJobCandidatesResponse = z.object({
+  declare_output_types: z.array(zDeclaredOutputType).optional(),
+  human_contacts: z.array(z.record(z.string(), z.unknown())).optional(),
+  previous_node_outputs: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * AgentComposerCandidatesResponse
+ */
+export const zAgentComposerCandidatesResponse = z.object({
+  allowed_node_job_candidates: zAgentComposerNodeJobCandidatesResponse.optional(),
+  allowed_soul_candidates: zAgentComposerSoulCandidatesResponse.optional(),
+  capabilities: zComposerCandidateCapabilities.optional(),
+  variant: zComposerVariant,
+})
 
 /**
  * SimpleModelConfig
@@ -1734,6 +1849,63 @@ export const zWorkflowArchivedLogPaginationResponse = z.object({
 })
 
 /**
+ * WorkflowAgentBindingType
+ *
+ * How a workflow node is bound to an Agent.
+ */
+export const zWorkflowAgentBindingType = z.enum(['inline_agent', 'roster_agent'])
+
+/**
+ * AgentComposerBindingResponse
+ */
+export const zAgentComposerBindingResponse = z.object({
+  agent_id: z.string().nullish(),
+  binding_type: zWorkflowAgentBindingType,
+  current_snapshot_id: z.string().nullish(),
+  id: z.string(),
+  node_id: z.string(),
+  workflow_id: z.string(),
+})
+
+/**
+ * DeclaredArrayItem
+ *
+ * Per-item shape for an ``array``-typed declared output.
+ *
+ * PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+ * are rejected so the runtime type checker and JSON Schema stay easy to reason
+ * about. Stage 4 §4.2.
+ */
+export const zDeclaredArrayItem = z.object({
+  description: z.string().nullish(),
+  type: zDeclaredOutputType,
+})
+
+/**
+ * DeclaredOutputCheckConfig
+ *
+ * File-output content check via a model-based comparison against a benchmark file.
+ *
+ * Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
+ */
+export const zDeclaredOutputCheckConfig = z.object({
+  benchmark_file_ref: z.record(z.string(), z.unknown()).nullish(),
+  enabled: z.boolean().optional().default(false),
+  model_ref: z.record(z.string(), z.unknown()).nullish(),
+  prompt: z.string().nullish(),
+})
+
+/**
+ * DeclaredOutputFileConfig
+ *
+ * File-type output metadata. Both lists empty means "any file accepted".
+ */
+export const zDeclaredOutputFileConfig = z.object({
+  extensions: z.array(z.string()).optional(),
+  mime_types: z.array(z.string()).optional(),
+})
+
+/**
  * AgentKnowledgeQueryMode
  */
 export const zAgentKnowledgeQueryMode = z.enum(['generated_query', 'user_query'])
@@ -1771,68 +1943,56 @@ export const zAgentSoulModelConfig = z.object({
   plugin_id: z.string().min(1).max(255),
 })
 
-/**
- * AgentSoulConfig
- */
-export const zAgentSoulConfig = z.object({
-  app_features: z.record(z.string(), z.unknown()).optional(),
-  app_variables: z.array(zAppVariableConfig).optional(),
-  env: zAgentSoulEnvConfig.optional(),
-  human: zAgentSoulHumanConfig.optional(),
-  knowledge: zAgentSoulKnowledgeConfig.optional(),
-  memory: zAgentSoulMemoryConfig.optional(),
-  misc_legacy: z.record(z.string(), z.unknown()).optional(),
-  model: zAgentSoulModelConfig.optional(),
-  prompt: zAgentSoulPromptConfig.optional(),
-  sandbox: zAgentSoulSandboxConfig.optional(),
-  schema_version: z.int().optional().default(1),
-  skills_files: zAgentSoulSkillsFilesConfig.optional(),
-  tools: zAgentSoulToolsConfig.optional(),
-})
+export const zFormInputConfig = z.unknown()
 
 /**
- * DeclaredOutputCheckConfig
+ * OutputErrorStrategy
+ *
+ * Per-output failure handling strategy.
+ *
+ * Mirrors ``graphon.ErrorStrategy`` but scoped to a single declared output of
+ * a Workflow Agent Node. The runtime applies the strategy after type check or
+ * output check fails and any configured retry attempts have been exhausted.
  */
-export const zDeclaredOutputCheckConfig = z.object({
-  benchmark_file_ref: z.record(z.string(), z.unknown()).nullish(),
-  prompt: z.string().nullish(),
-  type: z.string().min(1).max(64),
+export const zOutputErrorStrategy = z.enum(['default_value', 'fail_branch', 'stop'])
+
+/**
+ * DeclaredOutputRetryConfig
+ *
+ * Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
+ */
+export const zDeclaredOutputRetryConfig = z.object({
+  enabled: z.boolean().optional().default(false),
+  max_retries: z.int().gte(0).lte(10).optional().default(0),
+  retry_interval_ms: z.int().gte(0).lte(60000).optional().default(0),
 })
 
 /**
  * DeclaredOutputFailureStrategy
+ *
+ * Per-output failure handling.
+ *
+ * A single strategy applies to both ``type_check`` and ``output_check`` failures
+ * (PRD does not distinguish them at the UX level). Stage 4 §4.4.
  */
 export const zDeclaredOutputFailureStrategy = z.object({
-  max_retries: z.int().gte(0).lte(10).optional().default(0),
-  on_output_check_failed: z.string().nullish(),
-  on_type_check_failed: z.string().nullish(),
+  default_value: z.unknown().optional(),
+  on_failure: zOutputErrorStrategy.optional(),
+  retry: zDeclaredOutputRetryConfig.optional(),
 })
-
-/**
- * DeclaredOutputFileConfig
- */
-export const zDeclaredOutputFileConfig = z.object({
-  extensions: z.array(z.string()).optional(),
-  mime_types: z.array(z.string()).optional(),
-})
-
-/**
- * DeclaredOutputType
- */
-export const zDeclaredOutputType = z.enum([
-  'array',
-  'boolean',
-  'file',
-  'number',
-  'object',
-  'string',
-])
 
 /**
  * DeclaredOutputConfig
+ *
+ * One declared output of a Workflow Agent Node.
+ *
+ * Stage 4 normalizes the shape: ``check`` is singular (was ``checks: list`` in
+ * stage 3), and ``failure_strategy`` defaults to a populated value so runtime
+ * code can call ``output.failure_strategy.on_failure`` without None-guards.
  */
 export const zDeclaredOutputConfig = z.object({
-  checks: z.array(zDeclaredOutputCheckConfig).optional(),
+  array_item: zDeclaredArrayItem.optional(),
+  check: zDeclaredOutputCheckConfig.optional(),
   description: z.string().nullish(),
   failure_strategy: zDeclaredOutputFailureStrategy.optional(),
   file: zDeclaredOutputFileConfig.optional(),
@@ -1856,6 +2016,83 @@ export const zWorkflowNodeJobConfig = z.object({
 })
 
 /**
+ * AgentSoulDifyToolCredentialRef
+ *
+ * Reference to a stored Dify Plugin Tool credential.
+ *
+ * Secret values are resolved only at runtime. The legacy ``credential_id``
+ * field is accepted by :class:`AgentSoulDifyToolConfig` and normalized here so
+ * old Agent tool payloads can be read while new payloads stay explicit.
+ */
+export const zAgentSoulDifyToolCredentialRef = z.object({
+  id: z.string().max(255).nullish(),
+  provider: z.string().max(255).nullish(),
+  type: z.enum(['provider', 'tool']).optional().default('tool'),
+})
+
+/**
+ * AgentSoulDifyToolConfig
+ *
+ * One Dify Plugin Tool configured on Agent Soul.
+ *
+ * The API backend prepares this persisted product shape into
+ * ``DifyPluginToolConfig`` before sending a run request to Agent backend.
+ * ``provider_id`` keeps compatibility with existing Agent tool config payloads;
+ * new callers should send ``plugin_id`` + ``provider`` when available.
+ */
+export const zAgentSoulDifyToolConfig = z.object({
+  credential_ref: zAgentSoulDifyToolCredentialRef.optional(),
+  credential_type: z.enum(['api-key', 'oauth2', 'unauthorized']).optional().default('api-key'),
+  description: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  name: z.string().max(255).nullish(),
+  plugin_id: z.string().max(255).nullish(),
+  provider: z.string().max(255).nullish(),
+  provider_id: z.string().max(255).nullish(),
+  provider_type: z.string().optional().default('plugin'),
+  runtime_parameters: z.record(z.string(), z.unknown()).optional(),
+  tool_name: z.string().min(1).max(255),
+})
+
+/**
+ * AgentSoulToolsConfig
+ */
+export const zAgentSoulToolsConfig = z.object({
+  cli_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+  dify_tools: z.array(zAgentSoulDifyToolConfig).optional(),
+})
+
+/**
+ * AgentSoulConfig
+ */
+export const zAgentSoulConfig = z.object({
+  app_features: z.record(z.string(), z.unknown()).optional(),
+  app_variables: z.array(zAppVariableConfig).optional(),
+  env: zAgentSoulEnvConfig.optional(),
+  human: zAgentSoulHumanConfig.optional(),
+  knowledge: zAgentSoulKnowledgeConfig.optional(),
+  memory: zAgentSoulMemoryConfig.optional(),
+  misc_legacy: z.record(z.string(), z.unknown()).optional(),
+  model: zAgentSoulModelConfig.optional(),
+  prompt: zAgentSoulPromptConfig.optional(),
+  sandbox: zAgentSoulSandboxConfig.optional(),
+  schema_version: z.int().optional().default(1),
+  skills_files: zAgentSoulSkillsFilesConfig.optional(),
+  tools: zAgentSoulToolsConfig.optional(),
+})
+
+/**
+ * AgentAppComposerResponse
+ */
+export const zAgentAppComposerResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse,
+  agent: zAgentComposerAgentResponse,
+  agent_soul: zAgentSoulConfig,
+  save_options: z.array(zComposerSaveStrategy),
+  variant: z.string(),
+})
+
+/**
  * ComposerSavePayload
  */
 export const zComposerSavePayload = z.object({
@@ -1871,7 +2108,24 @@ export const zComposerSavePayload = z.object({
   version_note: z.string().nullish(),
 })
 
-export const zFormInputConfig = z.unknown()
+/**
+ * WorkflowAgentComposerResponse
+ */
+export const zWorkflowAgentComposerResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.optional(),
+  agent: zAgentComposerAgentResponse.optional(),
+  agent_soul: zAgentSoulConfig,
+  app_id: z.string().nullish(),
+  binding: zAgentComposerBindingResponse.optional(),
+  effective_declared_outputs: z.array(zDeclaredOutputConfig).optional(),
+  impact_summary: zAgentComposerImpactResponse.optional(),
+  node_id: z.string().nullish(),
+  node_job: zWorkflowNodeJobConfig,
+  save_options: z.array(zComposerSaveStrategy),
+  soul_lock: zAgentComposerSoulLockResponse,
+  variant: z.string(),
+  workflow_id: z.string().nullish(),
+})
 
 /**
  * ButtonStyle
@@ -2318,9 +2572,9 @@ export const zGetAppsByAppIdAgentComposerPath = z.object({
 })
 
 /**
- * Success
+ * Agent app composer state
  */
-export const zGetAppsByAppIdAgentComposerResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdAgentComposerResponse = zAgentAppComposerResponse
 
 export const zPutAppsByAppIdAgentComposerBody = zComposerSavePayload
 
@@ -2329,18 +2583,18 @@ export const zPutAppsByAppIdAgentComposerPath = z.object({
 })
 
 /**
- * Success
+ * Agent app composer saved
  */
-export const zPutAppsByAppIdAgentComposerResponse = z.record(z.string(), z.unknown())
+export const zPutAppsByAppIdAgentComposerResponse = zAgentAppComposerResponse
 
 export const zGetAppsByAppIdAgentComposerCandidatesPath = z.object({
   app_id: z.string(),
 })
 
 /**
- * Success
+ * Agent app composer candidates
  */
-export const zGetAppsByAppIdAgentComposerCandidatesResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdAgentComposerCandidatesResponse = zAgentComposerCandidatesResponse
 
 export const zPostAppsByAppIdAgentComposerValidateBody = zComposerSavePayload
 
@@ -2349,9 +2603,9 @@ export const zPostAppsByAppIdAgentComposerValidatePath = z.object({
 })
 
 /**
- * Success
+ * Agent app composer validation result
  */
-export const zPostAppsByAppIdAgentComposerValidateResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdAgentComposerValidateResponse = zAgentComposerValidateResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),
@@ -3629,12 +3883,10 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath = z.obj
 })
 
 /**
- * Success
+ * Workflow agent composer state
  */
-export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
+  = zWorkflowAgentComposerResponse
 
 export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerBody = zComposerSavePayload
 
@@ -3644,12 +3896,10 @@ export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath = z.obj
 })
 
 /**
- * Success
+ * Workflow agent composer saved
  */
-export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
+  = zWorkflowAgentComposerResponse
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath = z.object({
   app_id: z.string(),
@@ -3657,12 +3907,13 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPa
 })
 
 /**
- * Success
+ * Workflow agent composer candidates
  */
-export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
+  = zAgentComposerCandidatesResponse
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody
+  = zComposerSavePayload
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath = z.object({
   app_id: z.string(),
@@ -3670,12 +3921,10 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath 
 })
 
 /**
- * Success
+ * Workflow agent composer impact
  */
-export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse
+  = zAgentComposerImpactResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterBody
   = zComposerSavePayload
@@ -3686,10 +3935,10 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRoste
 })
 
 /**
- * Success
+ * Workflow agent composer saved to roster
  */
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse
-  = z.record(z.string(), z.unknown())
+  = zWorkflowAgentComposerResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateBody
   = zComposerSavePayload
@@ -3700,12 +3949,10 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidatePat
 })
 
 /**
- * Success
+ * Workflow agent composer validation result
  */
-export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse
+  = zAgentComposerValidateResponse
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
   app_id: z.string(),
@@ -3778,6 +4025,60 @@ export const zPostAppsByAppIdWorkflowsDraftRunPath = z.object({
  * Draft workflow run started successfully
  */
 export const zPostAppsByAppIdWorkflowsDraftRunResponse = z.record(z.string(), z.unknown())
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    output_name: z.string(),
+    run_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdWorkflowsDraftSystemVariablesPath = z.object({
   app_id: z.string(),
@@ -3898,6 +4199,60 @@ export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
  * Success
  */
 export const zPostAppsByAppIdWorkflowsPublishResponse = z.record(z.string(), z.unknown())
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    output_name: z.string(),
+    run_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse
+  = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdWorkflowsTriggersWebhookPath = z.object({
   app_id: z.string(),

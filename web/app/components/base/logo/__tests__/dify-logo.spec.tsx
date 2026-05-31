@@ -58,6 +58,12 @@ describe('DifyLogo', () => {
       const img = screen.getByRole('img', { name: /dify logo/i })
       expect(img).toHaveClass('custom-test-class')
     })
+
+    it('applies custom alt text', () => {
+      const { container } = render(<DifyLogo alt="" />)
+      const img = container.querySelector('img')
+      expect(img).toHaveAttribute('alt', '')
+    })
   })
 
   describe('Theme behavior', () => {

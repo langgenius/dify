@@ -173,7 +173,7 @@ describe('Select wrappers', () => {
       })
 
       await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-readonly')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-transparent')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-components-input-bg-normal')
     })
 
     it('should hide arrow icon via CSS when Root is readOnly', async () => {
@@ -206,6 +206,16 @@ describe('Select wrappers', () => {
       const screen = await renderOpenSelect()
 
       expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-popup-open:bg-state-base-hover-alt')
+    })
+
+    it('should include keyboard focus ring classes', async () => {
+      const screen = await renderOpenSelect()
+
+      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveClass(
+        'focus-visible:ring-1',
+        'focus-visible:ring-components-input-border-active',
+        'focus-visible:ring-inset',
+      )
     })
   })
 
@@ -307,6 +317,41 @@ describe('Select wrappers', () => {
 
       await expect.element(screen.getByRole('option', { name: 'Seattle' })).toBeInTheDocument()
       await expect.element(screen.getByRole('option', { name: 'New York' })).toBeInTheDocument()
+    })
+
+    it('should navigate items with arrow keys', async () => {
+      const screen = await render(
+        <Select defaultValue="seattle">
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="new-york">
+              <SelectItemText>New York</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="tokyo">
+              <SelectItemText>Tokyo</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      const trigger = asHTMLElement(screen.getByRole('combobox', { name: 'city select' }).element())
+
+      trigger.focus()
+      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await expect.element(screen.getByRole('option', { name: 'Seattle' })).toHaveAttribute('data-highlighted')
+
+      const highlightedItem = asHTMLElement(screen.getByRole('option', { name: 'Seattle' }).element())
+      highlightedItem.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+
+      await expect.element(screen.getByRole('option', { name: 'New York' })).toHaveAttribute('data-highlighted')
     })
 
     it('should not call onValueChange when disabled item is clicked', async () => {

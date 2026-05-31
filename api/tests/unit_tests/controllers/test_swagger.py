@@ -18,6 +18,19 @@ def _definition_refs(value: object) -> set[str]:
     return refs
 
 
+def _parameters_by_name(operation: dict[str, object]) -> dict[str, dict[str, object]]:
+    parameters = operation.get("parameters", [])
+    assert isinstance(parameters, list)
+    result: dict[str, dict[str, object]] = {}
+    for parameter in parameters:
+        if not isinstance(parameter, dict):
+            continue
+        name = parameter.get("name")
+        if isinstance(name, str):
+            result[name] = parameter
+    return result
+
+
 @pytest.mark.parametrize(
     ("first_kwargs", "second_kwargs"),
     [
@@ -70,3 +83,60 @@ def test_swagger_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
         assert not sorted(ref for ref in missing_refs if ref.startswith("_AnonymousInlineModel"))
 
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
+
+
+def test_service_document_file_routes_document_multipart_form_data(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.service_api import bp as service_api_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(service_api_bp)
+
+    payload = app.test_client().get("/v1/swagger.json").get_json()
+    paths = payload["paths"]
+
+    create_operation = paths["/datasets/{dataset_id}/document/create-by-file"]["post"]
+    create_params = _parameters_by_name(create_operation)
+    assert create_operation["consumes"] == ["multipart/form-data"]
+    assert create_params["file"]["in"] == "formData"
+    assert create_params["file"]["type"] == "file"
+    assert create_params["file"]["required"] is True
+    assert create_params["data"]["in"] == "formData"
+    assert create_params["data"]["type"] == "string"
+
+    for path in (
+        "/datasets/{dataset_id}/documents/{document_id}",
+        "/datasets/{dataset_id}/documents/{document_id}/update-by-file",
+        "/datasets/{dataset_id}/documents/{document_id}/update_by_file",
+    ):
+        update_operation = paths[path]["patch" if path.endswith("{document_id}") else "post"]
+        update_params = _parameters_by_name(update_operation)
+        assert update_operation["consumes"] == ["multipart/form-data"]
+        assert update_params["file"]["in"] == "formData"
+        assert update_params["file"]["type"] == "file"
+        assert update_params["file"]["required"] is False
+        assert update_params["data"]["in"] == "formData"
+        assert update_params["data"]["type"] == "string"
+
+
+def test_service_document_list_documents_query_params_render(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.service_api import bp as service_api_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(service_api_bp)
+
+    payload = app.test_client().get("/v1/swagger.json").get_json()
+    operation = payload["paths"]["/datasets/{dataset_id}/documents"]["get"]
+    params = _parameters_by_name(operation)
+
+    for name in ("page", "limit", "keyword", "status"):
+        assert params[name]["in"] == "query"

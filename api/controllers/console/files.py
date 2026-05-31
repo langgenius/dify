@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -21,10 +22,13 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from services.file_service import FileService
 
 from . import console_ns
@@ -61,8 +65,8 @@ class FileApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("documents")
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
@@ -106,10 +110,10 @@ class FilePreviewApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
-    def get(self, file_id):
-        file_id = str(file_id)
-        _, tenant_id = current_account_with_tenant()
-        text = FileService(db.engine).get_file_preview(file_id, tenant_id)
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, file_id: UUID):
+        file_id_str = str(file_id)
+        text = FileService(db.engine).get_file_preview(file_id_str, current_tenant_id)
         return {"content": text}
 
 
