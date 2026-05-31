@@ -1044,6 +1044,28 @@ Run draft workflow for advanced chat application
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | [AgentComposerValidateResponse](#agentcomposervalidateresponse) |
 
+### /apps/{app_id}/agent-features
+
+#### POST
+##### Description
+
+Update an Agent App's presentation features (opener, follow-up, citations, ...)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [AgentAppFeaturesRequest](#agentappfeaturesrequest) |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Features updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Invalid configuration |  |
+| 404 | App not found |  |
+
 ### /apps/{app_id}/agent/logs
 
 #### GET
@@ -10678,6 +10700,23 @@ Get banner list
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | variant | string |  | Yes |
+
+#### AgentAppFeaturesRequest
+
+Presentation features configurable on an Agent App.
+
+All fields are optional; an omitted field is reset to its disabled/empty
+default (the config form sends the full desired feature state on save).
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| opening_statement | string | Conversation opener shown before the first turn | No |
+| retriever_resource | object | Citations / attributions config, e.g. {'enabled': true} | No |
+| sensitive_word_avoidance | object | Content moderation config | No |
+| speech_to_text | object | Speech-to-text config | No |
+| suggested_questions | [ string ] | Preset questions shown alongside the opener | No |
+| suggested_questions_after_answer | object | Follow-up suggestions config, e.g. {'enabled': true} | No |
+| text_to_speech | object | Text-to-speech config | No |
 
 #### AgentComposerAgentResponse
 

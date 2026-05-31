@@ -201,6 +201,30 @@ export type AgentComposerValidateResponse = {
   result: string
 }
 
+export type AgentAppFeaturesRequest = {
+  opening_statement?: string | null
+  retriever_resource?: {
+    [key: string]: unknown
+  } | null
+  sensitive_word_avoidance?: {
+    [key: string]: unknown
+  } | null
+  speech_to_text?: {
+    [key: string]: unknown
+  } | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: {
+    [key: string]: unknown
+  } | null
+  text_to_speech?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -294,10 +318,6 @@ export type MessageInfiniteScrollPaginationResponse = {
 
 export type SuggestedQuestionsResponse = {
   data: Array<string>
-}
-
-export type SimpleResultResponse = {
-  result: string
 }
 
 export type ConversationPagination = {
@@ -2236,6 +2256,34 @@ export type PostAppsByAppIdAgentComposerValidateResponses = {
 
 export type PostAppsByAppIdAgentComposerValidateResponse
   = PostAppsByAppIdAgentComposerValidateResponses[keyof PostAppsByAppIdAgentComposerValidateResponses]
+
+export type PostAppsByAppIdAgentFeaturesData = {
+  body: AgentAppFeaturesRequest
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-features'
+}
+
+export type PostAppsByAppIdAgentFeaturesErrors = {
+  400: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentFeaturesError
+  = PostAppsByAppIdAgentFeaturesErrors[keyof PostAppsByAppIdAgentFeaturesErrors]
+
+export type PostAppsByAppIdAgentFeaturesResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAppsByAppIdAgentFeaturesResponse
+  = PostAppsByAppIdAgentFeaturesResponses[keyof PostAppsByAppIdAgentFeaturesResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never

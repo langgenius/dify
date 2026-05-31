@@ -86,6 +86,31 @@ export const zAgentComposerValidateResponse = z.object({
 })
 
 /**
+ * AgentAppFeaturesRequest
+ *
+ * Presentation features configurable on an Agent App.
+ *
+ * All fields are optional; an omitted field is reset to its disabled/empty
+ * default (the config form sends the full desired feature state on save).
+ */
+export const zAgentAppFeaturesRequest = z.object({
+  opening_statement: z.string().nullish(),
+  retriever_resource: z.record(z.string(), z.unknown()).nullish(),
+  sensitive_word_avoidance: z.record(z.string(), z.unknown()).nullish(),
+  speech_to_text: z.record(z.string(), z.unknown()).nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: z.record(z.string(), z.unknown()).nullish(),
+  text_to_speech: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -166,13 +191,6 @@ export const zAudioTranscriptResponse = z.object({
  */
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
-})
-
-/**
- * SimpleResultResponse
- */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
 })
 
 /**
@@ -2607,6 +2625,17 @@ export const zPostAppsByAppIdAgentComposerValidatePath = z.object({
  * Agent app composer validation result
  */
 export const zPostAppsByAppIdAgentComposerValidateResponse = zAgentComposerValidateResponse
+
+export const zPostAppsByAppIdAgentFeaturesBody = zAgentAppFeaturesRequest
+
+export const zPostAppsByAppIdAgentFeaturesPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Features updated successfully
+ */
+export const zPostAppsByAppIdAgentFeaturesResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),
