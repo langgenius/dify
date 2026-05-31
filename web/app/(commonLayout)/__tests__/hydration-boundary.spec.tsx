@@ -27,7 +27,6 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/features/account-profile/server', () => ({
-  resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
   serverUserProfileQueryOptions: () => ({
     queryKey: ['common', 'user-profile'],
     queryFn: mocks.profileQueryFn,
@@ -35,8 +34,12 @@ vi.mock('@/features/account-profile/server', () => ({
   }),
 }))
 
-vi.mock('@/service/system-features', () => ({
-  systemFeaturesQueryOptions: () => ({
+vi.mock('@/service/server', () => ({
+  resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
+}))
+
+vi.mock('@/service/server-system-features', () => ({
+  serverSystemFeaturesQueryOptions: () => ({
     queryKey: ['console', 'system-features'],
     queryFn: mocks.systemFeaturesQueryFn,
     retry: false,
