@@ -799,17 +799,15 @@ Deprecated legacy alias for creating a new document by uploading a file. Use /da
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| data | formData | Optional JSON string with document creation settings. | No | string |
-| file | formData | Document file to upload. | Yes | file |
 | dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
-| 400 | Bad request - invalid file or parameters |  |
-| 401 | Unauthorized - invalid API token |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Document created successfully |
+| 400 | Bad request - invalid file or parameters |
+| 401 | Unauthorized - invalid API token |
 
 ### /datasets/{dataset_id}/document/create_by_text
 

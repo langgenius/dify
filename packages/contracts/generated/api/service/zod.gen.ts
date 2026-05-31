@@ -1682,11 +1682,6 @@ export const zPostDatasetsByDatasetIdDocumentCreateByTextPath = z.object({
  */
 export const zPostDatasetsByDatasetIdDocumentCreateByTextResponse = zDocumentAndBatchResponse
 
-export const zPostDatasetsByDatasetIdDocumentCreateByFile2Body = z.object({
-  data: z.string().optional(),
-  file: z.custom<Blob | File>(),
-})
-
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Path = z.object({
   dataset_id: z.string(),
 })
@@ -1694,7 +1689,10 @@ export const zPostDatasetsByDatasetIdDocumentCreateByFile2Path = z.object({
 /**
  * Document created successfully
  */
-export const zPostDatasetsByDatasetIdDocumentCreateByFile2Response = zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentCreateByFile2Response = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostDatasetsByDatasetIdDocumentCreateByText2Body = zDocumentTextCreatePayload
 

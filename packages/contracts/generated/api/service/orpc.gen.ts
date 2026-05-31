@@ -121,7 +121,6 @@ import {
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameResponse,
   zPostDatasetsBody,
-  zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Response,
   zPostDatasetsByDatasetIdDocumentCreateByFileBody,
@@ -895,12 +894,7 @@ export const post14 = oc
     path: '/datasets/{dataset_id}/document/create_by_file',
     tags: ['service_api'],
   })
-  .input(
-    z.object({
-      body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
-      params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
-    }),
-  )
+  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path }))
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {
