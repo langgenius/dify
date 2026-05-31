@@ -4,6 +4,7 @@ from pytest_mock import MockerFixture
 from core.app.app_config.workflow_ui_based_app.variables.manager import (
     WorkflowVariablesConfigManager,
 )
+from graphon.variables.input_entities import VariableEntityType
 
 # =============================
 # Fixtures
@@ -69,6 +70,38 @@ class TestWorkflowVariablesConfigManagerConvert:
         # Arrange
         mock_workflow.user_input_form.return_value = [{"invalid": "data"}]
         mock_variable_entity.model_validate.side_effect = ValueError("validation error")
+
+        # Act & Assert
+        with pytest.raises(ValueError):
+            WorkflowVariablesConfigManager.convert(mock_workflow)
+
+    def test_convert_parses_json_schema_string(self, mock_workflow):
+        # Arrange
+        mock_workflow.user_input_form.return_value = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": VariableEntityType.JSON_OBJECT,
+                "json_schema": '{"type":"object","properties":{"age":{"type":"number"}}}',
+            }
+        ]
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert
+        assert result[0].json_schema == {"type": "object", "properties": {"age": {"type": "number"}}}
+
+    def test_convert_rejects_invalid_json_schema_string(self, mock_workflow):
+        # Arrange
+        mock_workflow.user_input_form.return_value = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": VariableEntityType.JSON_OBJECT,
+                "json_schema": "{invalid-json-schema",
+            }
+        ]
 
         # Act & Assert
         with pytest.raises(ValueError):

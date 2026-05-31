@@ -1,4 +1,6 @@
+import json
 import re
+from typing import Any
 
 from core.app.app_config.entities import RagPipelineVariableEntity
 from graphon.variables.input_entities import VariableEntity
@@ -6,6 +8,24 @@ from models.workflow import Workflow
 
 
 class WorkflowVariablesConfigManager:
+    @staticmethod
+    def _normalize_variable(variable: Any) -> Any:
+        if not isinstance(variable, dict):
+            return variable
+
+        json_schema = variable.get("json_schema")
+        if not isinstance(json_schema, str):
+            return variable
+
+        stripped = json_schema.strip()
+        normalized = dict(variable)
+        if not stripped:
+            normalized["json_schema"] = None
+            return normalized
+
+        normalized["json_schema"] = json.loads(stripped)
+        return normalized
+
     @classmethod
     def convert(cls, workflow: Workflow) -> list[VariableEntity]:
         """
@@ -20,7 +40,7 @@ class WorkflowVariablesConfigManager:
 
         # variables
         for variable in user_input_form:
-            variables.append(VariableEntity.model_validate(variable))
+            variables.append(VariableEntity.model_validate(cls._normalize_variable(variable)))
 
         return variables
 
