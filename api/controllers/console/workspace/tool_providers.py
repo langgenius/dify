@@ -69,6 +69,7 @@ class BuiltinToolAddPayload(BaseModel):
     credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
     type: CredentialType
+    visibility: str | None = None
 
 
 class BuiltinToolUpdatePayload(BaseModel):
@@ -338,6 +339,7 @@ class ToolBuiltinProviderAddApi(Resource):
             credentials=payload.credentials,
             name=payload.name,
             api_type=CredentialType.of(payload.type),
+            visibility=payload.visibility,
         )
 
 
@@ -371,12 +373,19 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
+        # Optional list of credential IDs to include even if visibility would hide them
+        # (used when a workflow/agent node still references another member's only_me credential).
+        include_credential_ids = request.args.getlist("include_credential_ids") or [
+            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
+        ]
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
+                user=user,
+                include_credential_ids=include_credential_ids or None,
             )
         )
 
@@ -859,7 +868,7 @@ class ToolOAuthCallback(Resource):
         if not credentials:
             raise Exception("the plugin credentials failed")
 
-        # add credentials to database
+        # add credentials to database — OAuth tokens default to only_me since they're personal
         BuiltinToolManageService.add_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -867,6 +876,7 @@ class ToolOAuthCallback(Resource):
             credentials=dict(credentials),
             expires_at=expires_at,
             api_type=CredentialType.OAUTH2,
+            visibility="only_me",
         )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
@@ -946,12 +956,17 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
+        user, tenant_id = current_account_with_tenant()
+        include_credential_ids = request.args.getlist("include_credential_ids") or [
+            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
+        ]
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
+                user=user,
+                include_credential_ids=include_credential_ids or None,
             )
         )
 

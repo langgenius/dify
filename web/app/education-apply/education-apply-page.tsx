@@ -17,6 +17,7 @@ import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useRouter,
   useSearchParams,
@@ -26,7 +27,6 @@ import {
   useEducationAdd,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
-import { removeLocalStorageItem } from '@/utils/local-storage'
 import DifyLogo from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -60,6 +60,7 @@ const EducationApplyAgeContent = () => {
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -81,7 +82,7 @@ const EducationApplyAgeContent = () => {
       if (res.message === 'success') {
         onPlanInfoChanged()
         updateEducationStatus()
-        removeLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+        setEducationVerifying(null)
         setHasSubmittedEducation(true)
       }
       else {
