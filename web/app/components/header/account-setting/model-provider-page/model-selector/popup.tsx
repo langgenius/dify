@@ -3,7 +3,7 @@ import type { ModelSelectorPreviewPayload } from './popup-item'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +15,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
@@ -55,10 +56,14 @@ function Popup({
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const { modelProviders } = useProviderContext()
+  const { data: enableMarketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: systemFeatures => systemFeatures.enable_marketplace,
+  })
   const {
     plugins: allPlugins,
     isLoading: isMarketplacePluginsLoading,
-  } = useMarketplaceAllPlugins(modelProviders, '')
+  } = useMarketplaceAllPlugins(modelProviders, '', enableMarketplace)
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
@@ -71,7 +76,7 @@ function Popup({
     modelProviders.map(provider => [provider.provider, provider]),
   ), [modelProviders])
   const aiCreditVisibleProviders = useMemo(() => {
-    if (isCreditsExhausted)
+    if (!enableMarketplace || isCreditsExhausted)
       return new Set<string>()
 
     return new Set(
@@ -79,8 +84,9 @@ function Popup({
         .filter(provider => providerSupportsCredits(provider, trialModels))
         .map(provider => provider.provider),
     )
-  }, [isCreditsExhausted, modelProviders, trialModels])
-  const showCreditsExhaustedAlert = isCreditsExhausted
+  }, [enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
+  const showCreditsExhaustedAlert = enableMarketplace
+    && isCreditsExhausted
     && modelProviders.some(provider => providerSupportsCredits(provider, trialModels))
   const hasApiKeyFallback = modelProviders.some((provider) => {
     const isApiKeyActive = provider.custom_configuration?.status === CustomConfigurationStatusEnum.active
@@ -88,7 +94,7 @@ function Popup({
   })
 
   const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
-    if (!allPlugins || isMarketplacePluginsLoading || installingProvider)
+    if (!enableMarketplace || !allPlugins || isMarketplacePluginsLoading || installingProvider)
       return
     const pluginId = providerKeyToPluginId[key]
     const plugin = allPlugins.find(p => p.plugin_id === pluginId)
@@ -109,7 +115,7 @@ function Popup({
     finally {
       setInstallingProvider(null)
     }
-  }, [allPlugins, installPackageFromMarketPlace, installingProvider, isMarketplacePluginsLoading, refreshPluginList])
+  }, [allPlugins, enableMarketplace, installPackageFromMarketPlace, installingProvider, isMarketplacePluginsLoading, refreshPluginList])
 
   const installedModelList = useMemo(() => {
     const modelMap = new Map(modelList.map(model => [model.provider, model]))
@@ -154,9 +160,12 @@ function Popup({
   }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
 
   const marketplaceProviders = useMemo(() => {
+    if (!enableMarketplace)
+      return []
+
     const installedProviders = new Set(modelProviders.map(provider => provider.provider))
     return MODEL_PROVIDER_QUOTA_GET_PAID.filter(key => !installedProviders.has(key))
-  }, [modelProviders])
+  }, [enableMarketplace, modelProviders])
 
   const handleOpenSettings = useCallback(() => {
     onHide()
@@ -208,15 +217,17 @@ function Popup({
           {scopeFeatures.length > 0 && (
             <CompatibleModelsNotice />
           )}
-          <MarketplaceSection
-            marketplaceProviders={marketplaceProviders}
-            marketplaceCollapsed={marketplaceCollapsed}
-            installingProvider={installingProvider}
-            isMarketplacePluginsLoading={isMarketplacePluginsLoading}
-            theme={theme}
-            onMarketplaceCollapsedChange={setMarketplaceCollapsed}
-            onInstallPlugin={handleInstallPlugin}
-          />
+          {enableMarketplace && (
+            <MarketplaceSection
+              marketplaceProviders={marketplaceProviders}
+              marketplaceCollapsed={marketplaceCollapsed}
+              installingProvider={installingProvider}
+              isMarketplacePluginsLoading={isMarketplacePluginsLoading}
+              theme={theme}
+              onMarketplaceCollapsedChange={setMarketplaceCollapsed}
+              onInstallPlugin={handleInstallPlugin}
+            />
+          )}
         </div>
       </ModelSelectorScrollBody>
       <PreviewCard handle={previewCardHandle}>
