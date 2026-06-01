@@ -1,8 +1,8 @@
 """Add human input upload token and file association tables
 
 Revision ID: 8d4c2a1b9f03
-Revises: f8b6b7e9c421
-Create Date: 2026-05-19 10:01:00.000000
+Revises: 7885bd53f9a9
+Create Date: 2026-06-01 13:49:00.000000
 
 """
 
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "8d4c2a1b9f03"
-down_revision = "f8b6b7e9c421"
+down_revision = "7885bd53f9a9"
 branch_labels = None
 depends_on = None
 
