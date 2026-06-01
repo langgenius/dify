@@ -675,11 +675,13 @@ class TestAdvancedChatGenerateTaskPipeline:
                 return fake_run
 
             def commit(self):
-                status_updates.append({
-                    "status": fake_run.status,
-                    "error": fake_run.error,
-                    "finished_at": fake_run.finished_at,
-                })
+                status_updates.append(
+                    {
+                        "status": fake_run.status,
+                        "error": fake_run.error,
+                        "finished_at": fake_run.finished_at,
+                    }
+                )
 
         @contextmanager
         def _fake_session():
@@ -687,9 +689,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
 
-        responses = list(
-            pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))
-        )
+        responses = list(pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)))
 
         assert responses == ["finish", "end"]
         assert saved == ["saved"]
