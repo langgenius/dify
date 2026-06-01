@@ -1,9 +1,9 @@
 import type { MemberListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runGetMember } from './run'
+import { runGetMember } from './run.js'
 
 function bundle(): HostsBundle {
   return {
@@ -38,7 +38,7 @@ describe('runGetMember', () => {
       {},
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -55,7 +55,7 @@ describe('runGetMember', () => {
       { workspace: 'ws-9' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -70,7 +70,7 @@ describe('runGetMember', () => {
       { page: 3, limitRaw: '50' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -86,7 +86,7 @@ describe('runGetMember', () => {
       {},
       {
         bundle: b,
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -106,7 +106,7 @@ describe('runGetMember', () => {
             tokens: { bearer: 'dfoa_test' },
             account: { id: 'acct-1', email: '', name: '' },
           },
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           envLookup: () => undefined,
           membersFactory: () => client as never,
@@ -133,7 +133,7 @@ describe('MemberListOutput shape', () => {
       {},
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },

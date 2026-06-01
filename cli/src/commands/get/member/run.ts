@@ -1,12 +1,12 @@
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { MembersClient } from '@/api/members'
 import { LIMIT_DEFAULT, parseLimit } from '@/limit/limit'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { nullStreams } from '@/sys/io/streams'
 import { resolveWorkspaceId } from '@/workspace/resolver'
-import { MemberListOutput, MemberRow } from './handlers'
+import { MemberListOutput, MemberRow } from './handlers.js'
 
 export type GetMemberOptions = {
   readonly workspace?: string
@@ -17,10 +17,10 @@ export type GetMemberOptions = {
 
 export type GetMemberDeps = {
   readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
-  readonly membersFactory?: (http: KyInstance) => MembersClient
+  readonly membersFactory?: (http: HttpClient) => MembersClient
 }
 
 export type GetMemberResult = {
@@ -33,7 +33,7 @@ export async function runGetMember(
   deps: GetMemberDeps,
 ): Promise<GetMemberResult> {
   const env = deps.envLookup ?? ((k: string) => process.env[k])
-  const factory = deps.membersFactory ?? ((h: KyInstance) => new MembersClient(h))
+  const factory = deps.membersFactory ?? ((h: HttpClient) => new MembersClient(h))
   const io = deps.io ?? nullStreams()
 
   const wsId = resolveWorkspaceId({

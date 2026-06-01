@@ -1,5 +1,5 @@
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import type { Store } from '@/store/store'
 import type { IOStreams } from '@/sys/io/streams'
 import { AccountSessionsClient } from '@/api/account-sessions'
@@ -12,7 +12,7 @@ import { colorEnabled, colorScheme } from '@/sys/io/color'
 export type LogoutOptions = {
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
-  readonly http?: KyInstance
+  readonly http?: HttpClient
   /** Optional override for tests; production code resolves via `getTokenStore`. */
   readonly store?: Store
 }

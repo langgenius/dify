@@ -546,6 +546,9 @@ catalogs:
     uglify-js:
       specifier: 3.19.3
       version: 3.19.3
+    undici:
+      specifier: 7.25.0
+      version: 7.25.0
     unist-util-visit:
       specifier: 5.1.0
       version: 5.1.0
@@ -647,9 +650,6 @@ importers:
       js-yaml:
         specifier: 'catalog:'
         version: 4.1.1
-      ky:
-        specifier: 'catalog:'
-        version: 2.0.2
       lockfile:
         specifier: 'catalog:'
         version: 1.0.4
@@ -665,6 +665,9 @@ importers:
       std-semver:
         specifier: 'catalog:'
         version: 1.0.8
+      undici:
+        specifier: 'catalog:'
+        version: 7.25.0
       zod:
         specifier: 'catalog:'
         version: 4.4.3
@@ -17698,6 +17701,7 @@ time:
   tsx@4.22.3: '2026-05-19T09:53:00.670Z'
   typescript@6.0.3: '2026-04-16T23:38:27.905Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
+  undici@7.25.0: '2026-04-13T13:27:40.320Z'
   unist-util-visit@5.1.0: '2026-01-22T19:02:58.977Z'
   use-context-selector@2.0.0: '2024-05-06T11:23:59.259Z'
   uuid@14.0.0: '2026-04-19T15:15:42.302Z'

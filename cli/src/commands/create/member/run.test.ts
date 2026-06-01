@@ -1,8 +1,8 @@
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runCreateMember } from './run'
+import { runCreateMember } from './run.js'
 
 function bundle(): HostsBundle {
   return {
@@ -36,7 +36,7 @@ describe('runCreateMember', () => {
       { email: 'new@example.com', role: 'normal' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -61,7 +61,7 @@ describe('runCreateMember', () => {
         { email: 'new@example.com', role: 'owner' },
         {
           bundle: bundle(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -77,7 +77,7 @@ describe('runCreateMember', () => {
         { email: '', role: 'normal' },
         {
           bundle: bundle(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -92,7 +92,7 @@ describe('runCreateMember', () => {
       { email: 'new@example.com', role: 'admin', workspace: 'ws-9' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
