@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Registry } from '../../../auth/hosts.js'
-import { bufferStreams } from '../../../sys/io/streams'
-import { runWhoami } from './whoami.js'
+import { Registry } from '@/auth/hosts'
+import { bufferStreams } from '@/sys/io/streams'
+import { runWhoami } from './whoami'
 
 function accountReg(): Registry {
   return Registry.from({

@@ -1,8 +1,8 @@
-import { Args, Flags } from '../../../framework/flags.js'
-import { OutputFormat } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { resumeApp } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { OutputFormat } from '@/framework/output'
+import { resumeApp } from './run'
 
 export default class ResumeApp extends DifyCommand {
   static override description = 'Resume a paused workflow app after submitting a human input form'

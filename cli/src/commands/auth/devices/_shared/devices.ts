@@ -1,14 +1,14 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { ActiveContext, Registry } from '../../../../auth/hosts.js'
-import type { Store } from '../../../../store/store.js'
-import type { IOStreams } from '../../../../sys/io/streams'
-import { AccountSessionsClient } from '../../../../api/account-sessions.js'
-import { BaseError } from '../../../../errors/base.js'
-import { ErrorCode } from '../../../../errors/codes.js'
-import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '../../../../limit/limit.js'
-import { colorEnabled, colorScheme } from '../../../../sys/io/color.js'
-import { runWithSpinner } from '../../../../sys/io/spinner.js'
+import type { ActiveContext, Registry } from '@/auth/hosts'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { AccountSessionsClient } from '@/api/account-sessions'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { runWithSpinner } from '@/sys/io/spinner'
 
 export type DevicesListOptions = {
   readonly io: IOStreams

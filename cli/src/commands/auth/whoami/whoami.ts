@@ -1,5 +1,5 @@
-import type { Registry } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
+import type { Registry } from '@/auth/hosts'
+import type { IOStreams } from '@/sys/io/streams'
 
 export type WhoamiOptions = {
   readonly io: IOStreams

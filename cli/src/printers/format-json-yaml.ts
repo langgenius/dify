@@ -1,6 +1,6 @@
-import type { Printer, PrintFlags } from './printer.js'
+import type { Printer, PrintFlags } from './printer'
 import yaml from 'js-yaml'
-import { NoCompatiblePrinterError, payload } from './printer.js'
+import { NoCompatiblePrinterError, payload } from './printer'
 
 const ALLOWED = ['json', 'yaml'] as const
 

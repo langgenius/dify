@@ -1,8 +1,8 @@
 import type { KyInstance } from 'ky'
-import type { ActiveContext } from '../../../auth/hosts.js'
+import type { ActiveContext } from '@/auth/hosts'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../sys/io/streams.js'
-import { runCreateMember } from './run.js'
+import { bufferStreams } from '@/sys/io/streams'
+import { runCreateMember } from './run'
 
 function active(): ActiveContext {
   return {

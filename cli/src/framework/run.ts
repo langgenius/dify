@@ -1,9 +1,9 @@
-import type { CommandTree } from './registry.js'
-import { BaseError } from '../errors/base.js'
-import { formatErrorForCli } from '../errors/format.js'
-import { formatHelp } from './help.js'
-import { stringifyOutput } from './output.js'
-import { findSuggestions, resolveCommand } from './registry.js'
+import type { CommandTree } from './registry'
+import { BaseError } from '@/errors/base'
+import { formatErrorForCli } from '@/errors/format'
+import { formatHelp } from './help'
+import { stringifyOutput } from './output'
+import { findSuggestions, resolveCommand } from './registry'
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help') || argv.includes('-h')) {

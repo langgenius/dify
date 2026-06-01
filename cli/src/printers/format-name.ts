@@ -1,5 +1,5 @@
-import type { Printer, PrintFlags } from './printer.js'
-import { isModer, NoCompatiblePrinterError, payload } from './printer.js'
+import type { Printer, PrintFlags } from './printer'
+import { isModer, NoCompatiblePrinterError, payload } from './printer'
 
 const ALLOWED = ['name'] as const
 

@@ -3,15 +3,15 @@ import type {
   WorkspaceListResponse,
 } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { ActiveContext } from '../../../auth/hosts.js'
+import type { ActiveContext } from '@/auth/hosts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Registry } from '../../../auth/hosts.js'
-import { ENV_CONFIG_DIR } from '../../../store/dir.js'
-import { bufferStreams } from '../../../sys/io/streams.js'
-import { runUseWorkspace } from './use.js'
+import { Registry } from '@/auth/hosts'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { bufferStreams } from '@/sys/io/streams'
+import { runUseWorkspace } from './use'
 
 function makeRegistry(): Registry {
   const reg = Registry.empty('file')

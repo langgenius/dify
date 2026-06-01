@@ -1,8 +1,8 @@
-import { Registry } from '../../../auth/hosts.js'
-import { Flags } from '../../../framework/flags.js'
-import { realStreams } from '../../../sys/io/streams'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runWhoami } from './whoami.js'
+import { Registry } from '@/auth/hosts'
+import { Flags } from '@/framework/flags'
+import { realStreams } from '@/sys/io/streams'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { runWhoami } from './whoami'
 
 export default class Whoami extends DifyCommand {
   static override description = 'Print the active subject\'s identity'

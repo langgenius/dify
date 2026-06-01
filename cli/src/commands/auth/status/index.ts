@@ -1,8 +1,8 @@
-import { Registry } from '../../../auth/hosts.js'
-import { Flags } from '../../../framework/flags.js'
-import { realStreams } from '../../../sys/io/streams'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runStatus } from './status.js'
+import { Registry } from '@/auth/hosts'
+import { Flags } from '@/framework/flags'
+import { realStreams } from '@/sys/io/streams'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { runStatus } from './status'
 
 export default class Status extends DifyCommand {
   static override description = 'Show authentication status for the active host'

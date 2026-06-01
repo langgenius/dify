@@ -1,12 +1,12 @@
-import type { Key, Store } from '../../../store/store.js'
+import type { Key, Store } from '@/store/store'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { Registry } from '../../../auth/hosts.js'
-import { ENV_CONFIG_DIR } from '../../../store/dir.js'
-import { bufferStreams } from '../../../sys/io/streams'
-import { runLogout } from './logout.js'
+import { Registry } from '@/auth/hosts'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { bufferStreams } from '@/sys/io/streams'
+import { runLogout } from './logout'
 
 class MemStore implements Store {
   readonly entries = new Map<string, unknown>()

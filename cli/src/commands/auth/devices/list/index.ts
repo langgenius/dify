@@ -1,7 +1,7 @@
-import { Flags } from '../../../../framework/flags.js'
-import { DifyCommand } from '../../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../../_shared/global-flags.js'
-import { runDevicesList } from '../_shared/devices.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { runDevicesList } from '@/commands/auth/devices/_shared/devices'
+import { Flags } from '@/framework/flags'
 
 export default class DevicesList extends DifyCommand {
   static override description = 'List active sessions for the current bearer'

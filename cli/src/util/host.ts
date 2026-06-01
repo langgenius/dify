@@ -1,5 +1,5 @@
-import { BaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_HOST = 'https://cloud.dify.ai'
 

@@ -1,10 +1,10 @@
 import type { KyInstance } from 'ky'
-import type { Registry } from '../../../auth/hosts.js'
-import type { Store } from '../../../store/store.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { AccountSessionsClient } from '../../../api/account-sessions.js'
-import { getTokenStore, tokenKey } from '../../../store/manager.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import type { Registry } from '@/auth/hosts'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { AccountSessionsClient } from '@/api/account-sessions'
+import { getTokenStore, tokenKey } from '@/store/manager'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
 
 export type LogoutOptions = {
   readonly io: IOStreams

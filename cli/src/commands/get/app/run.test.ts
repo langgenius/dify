@@ -1,11 +1,11 @@
-import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { ActiveContext } from '../../../auth/hosts.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { ActiveContext } from '@/auth/hosts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
-import { stringifyOutput, table } from '../../../framework/output.js'
-import { createClient } from '../../../http/client.js'
-import { AppListOutput } from './handlers.js'
-import { runGetApp } from './run.js'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { stringifyOutput, table } from '@/framework/output'
+import { createClient } from '@/http/client'
+import { AppListOutput } from './handlers'
+import { runGetApp } from './run'
 
 const baseActive: ActiveContext = {
   host: '127.0.0.1',

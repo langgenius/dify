@@ -1,8 +1,8 @@
-import { Flags } from '../../../framework/flags.js'
-import { formatted, OutputFormat } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runCreateMember } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Flags } from '@/framework/flags'
+import { formatted, OutputFormat } from '@/framework/output'
+import { runCreateMember } from './run'
 
 export default class CreateMember extends DifyCommand {
   static override description = 'Invite a member to the active (or specified) workspace by email'

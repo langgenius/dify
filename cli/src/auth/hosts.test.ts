@@ -1,11 +1,11 @@
-import type { Key, Store } from '../store/store.js'
-import type { AccountContext } from './hosts.js'
+import type { Key, Store } from '@/store/store'
+import type { AccountContext } from './hosts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '../store/dir.js'
-import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts.js'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {
   it('parses an empty registry with defaults', () => {
