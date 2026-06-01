@@ -16,7 +16,6 @@ from yarl import URL
 
 import contexts
 from configs import dify_config
-from libs.helper import get_console_api_url
 from core.entities import PluginCredentialType
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.impl.tool import PluginToolManager
@@ -30,6 +29,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
 from graphon.runtime import VariablePool
+from libs.helper import get_console_api_url
 from models.provider_ids import ToolProviderID
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 

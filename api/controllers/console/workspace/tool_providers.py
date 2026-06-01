@@ -10,7 +10,6 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -30,7 +29,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.helper import alphanumeric, uuid_value
+from libs.helper import alphanumeric, get_console_api_url, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
 

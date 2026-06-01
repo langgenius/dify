@@ -18,7 +18,6 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from core.rag.entities import ParentMode, Rule
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -26,6 +25,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_storage import storage
+from libs.helper import get_console_api_url
 from libs.uuid_utils import uuidv7
 
 from .account import Account

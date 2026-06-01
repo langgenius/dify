@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web.error import NotFoundError
@@ -18,6 +17,7 @@ from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import get_console_api_url
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID

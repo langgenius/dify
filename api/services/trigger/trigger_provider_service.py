@@ -8,8 +8,6 @@ from typing import Any, TypedDict
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
@@ -32,6 +30,7 @@ from core.trigger.utils.encryption import (
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import get_console_api_url
 from models.provider_ids import TriggerProviderID
 from models.trigger import (
     TriggerOAuthSystemClient,

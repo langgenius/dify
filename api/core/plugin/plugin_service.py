@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 from yarl import URL
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
@@ -44,6 +43,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from libs.helper import get_console_api_url
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID, ModelProviderID
 from services.enterprise.plugin_manager_service import (

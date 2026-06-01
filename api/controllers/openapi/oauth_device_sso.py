@@ -27,8 +27,6 @@ from werkzeug.exceptions import (
     Unauthorized,
 )
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from controllers.openapi import bp
 from controllers.openapi._models import ExtSubjectAssertionClaims
 from extensions.ext_database import db
@@ -45,6 +43,7 @@ from libs.device_flow_security import (
     mint_approval_grant,
     verify_approval_grant,
 )
+from libs.helper import get_console_api_url
 from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType
 from libs.rate_limit import (
     LIMIT_APPROVE_EXT_PER_EMAIL,

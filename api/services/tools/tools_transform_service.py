@@ -5,8 +5,6 @@ from typing import Any
 from pydantic import TypeAdapter, ValidationError
 from yarl import URL
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
@@ -28,6 +26,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from libs.helper import get_console_api_url
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
@@ -45,9 +44,7 @@ class ToolTransformService:
         """
         get tool provider icon url
         """
-        url_prefix = (
-            URL(get_console_api_url() or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
-        )
+        url_prefix = URL(get_console_api_url() or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
 
         match provider_type:
             case ToolProviderType.BUILT_IN:

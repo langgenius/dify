@@ -7,12 +7,11 @@ from flask_restx import Resource
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_remote_ip
+from libs.helper import extract_remote_ip, get_console_api_url
 from libs.helper import timezone as validate_timezone_string
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
 from libs.token import (

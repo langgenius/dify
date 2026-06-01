@@ -8,11 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import get_console_api_url
 from libs.login import current_user, login_required
 from models.enums import AppTriggerStatus
 from models.model import Account, App, AppMode

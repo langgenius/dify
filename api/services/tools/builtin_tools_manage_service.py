@@ -8,7 +8,6 @@ from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
@@ -31,6 +30,7 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import get_console_api_url
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.tools.tools_transform_service import ToolTransformService

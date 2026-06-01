@@ -7,8 +7,8 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from controllers.common.schema import register_schema_models
+from libs.helper import get_console_api_url
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 

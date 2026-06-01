@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
-from libs.helper import get_console_api_url
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -22,6 +21,7 @@ from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
+from libs.helper import get_console_api_url
 from libs.login import current_user
 from models import Account
 from models.model import App, AppMode, AppModelConfig, IconType, Site

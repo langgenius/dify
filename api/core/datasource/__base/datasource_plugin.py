@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceProviderType,
 )
+from libs.helper import get_console_api_url
 
 
 class DatasourcePlugin(ABC):

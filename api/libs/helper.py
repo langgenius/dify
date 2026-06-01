@@ -44,6 +44,7 @@ def get_console_api_url() -> str:
         return request.host_url.rstrip("/")
     return ""
 
+
 @with_config(ConfigDict(extra="allow"))
 class _TokenData(TypedDict, total=False):
     """Shared baseline token payload.

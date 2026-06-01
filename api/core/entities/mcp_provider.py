@@ -8,8 +8,6 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -17,6 +15,7 @@ from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTok
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from graphon.file import helpers as file_helpers
+from libs.helper import get_console_api_url
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider

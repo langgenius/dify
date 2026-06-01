@@ -7,8 +7,6 @@ from typing import Any, TypedDict
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
 
-from configs import dify_config
-from libs.helper import get_console_api_url
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
@@ -21,6 +19,7 @@ from core.plugin.entities.parameters import (
 )
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolLabelEnum
+from libs.helper import get_console_api_url
 
 
 class DatasourceProviderType(enum.StrEnum):
