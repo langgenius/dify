@@ -1,6 +1,6 @@
-import type { HostsBundle } from '../auth/hosts.js'
-import { BaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import type { HostsBundle } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export type WorkspaceResolveInputs = {
   readonly flag?: string
@@ -25,7 +25,7 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
   throw new BaseError({
     code: ErrorCode.UsageMissingArg,
     message: 'no workspace selected',
-    hint: 'pass --workspace, set DIFY_WORKSPACE_ID, or run \'difyctl auth use\'',
+    hint: 'pass --workspace, set DIFY_WORKSPACE_ID, or run \'difyctl use workspace <id>\'',
   })
 }
 

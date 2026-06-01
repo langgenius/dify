@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -566,6 +566,52 @@ class TestTenantService:
         """Helper method to verify that specific exception is raised."""
         with pytest.raises(exception_type):
             callable_func(*args, **kwargs)
+
+    # ==================== get_account_role_in_tenant Tests ====================
+    # Backs `require_workspace_role`: None => non-member (gate maps to 404),
+    # otherwise the caller's role (gate maps an out-of-set role to 403).
+
+    def test_get_account_role_in_tenant_returns_role_for_member(self):
+        """A row in TenantAccountJoin yields the caller's role."""
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.ADMIN
+
+        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+
+        assert role == TenantAccountRole.ADMIN
+
+    def test_get_account_role_in_tenant_returns_none_for_non_member(self):
+        """No join row => None, so the gate cannot leak the workspace's existence."""
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+
+        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+
+        assert role is None
+
+    def test_get_account_role_in_tenant_short_circuits_empty_account_id(self):
+        """None/empty account_id (SSO bearer, missing identity) returns None
+        without ever touching the session."""
+        mock_session = MagicMock()
+
+        assert TenantService.get_account_role_in_tenant(mock_session, None, "tenant-1") is None
+        mock_session.execute.assert_not_called()
+
+    def test_get_account_role_in_tenant_query_is_scoped(self):
+        """The lookup must filter on BOTH tenant_id and account_id — otherwise
+        a member of workspace A could read their role for workspace B. Compile
+        the statement and assert both identifiers appear in the WHERE clause."""
+        account_id = "11111111-1111-1111-1111-111111111111"
+        tenant_id = "22222222-2222-2222-2222-222222222222"
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.NORMAL
+
+        TenantService.get_account_role_in_tenant(mock_session, account_id, tenant_id)
+
+        stmt = mock_session.execute.call_args.args[0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert account_id in compiled
+        assert tenant_id in compiled
 
     # ==================== Tenant Creation Tests ====================
 

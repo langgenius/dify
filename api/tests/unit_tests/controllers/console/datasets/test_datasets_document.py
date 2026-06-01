@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +8,7 @@ import services
 from controllers.console import console_ns
 from controllers.console.datasets.datasets_document import (
     DatasetDocumentListApi,
+    DatasetInitApi,
     DocumentApi,
     DocumentBatchDownloadZipApi,
     DocumentBatchIndexingEstimateApi,
@@ -20,6 +20,7 @@ from controllers.console.datasets.datasets_document import (
     DocumentMetadataApi,
     DocumentPipelineExecutionLogApi,
     DocumentProcessingApi,
+    DocumentRenameApi,
     DocumentRetryApi,
     DocumentStatusApi,
     DocumentSummaryStatusApi,
@@ -33,13 +34,88 @@ from controllers.console.datasets.error import (
     InvalidMetadataError,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.enums import DataSourceType, IndexingStatus
+from models.dataset import Dataset
+from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 
 
 def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def make_serializable_document(**overrides):
+    attrs = {
+        "id": "doc-1",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info_dict": {"upload_file_id": "file-1"},
+        "data_source_detail_dict": {},
+        "dataset_process_rule_id": None,
+        "name": "Document",
+        "created_from": "web",
+        "created_by": "u1",
+        "created_at": None,
+        "tokens": None,
+        "indexing_status": "completed",
+        "error": None,
+        "enabled": True,
+        "disabled_at": None,
+        "disabled_by": None,
+        "archived": False,
+        "display_status": "available",
+        "word_count": None,
+        "hit_count": 0,
+        "doc_form": "text_model",
+        "doc_metadata_details": None,
+        "summary_index_status": None,
+        "need_summary": False,
+        "process_rule_dict": None,
+        "completed_segments": None,
+        "total_segments": None,
+    }
+    attrs.update(overrides)
+    document = MagicMock(spec_set=list(attrs))
+    for name, value in attrs.items():
+        setattr(document, name, value)
+    return document
+
+
+def make_dataset(**overrides):
+    attrs = {
+        "id": "ds-1",
+        "tenant_id": "tenant-1",
+        "name": "Dataset",
+        "indexing_technique": "economy",
+        "created_by": "u1",
+        "summary_index_setting": {"enable": True},
+    }
+    attrs.update(overrides)
+    return Dataset(**attrs)
+
+
+def make_document(**overrides):
+    attrs = {
+        "id": "doc-1",
+        "tenant_id": "tenant-1",
+        "dataset_id": "ds-1",
+        "position": 1,
+        "data_source_type": DataSourceType.UPLOAD_FILE,
+        "data_source_info": None,
+        "batch": "batch-1",
+        "name": "Document",
+        "created_from": DocumentCreatedFrom.WEB,
+        "created_by": "u1",
+        "indexing_status": IndexingStatus.COMPLETED,
+        "enabled": True,
+        "archived": False,
+        "doc_metadata": None,
+        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+        "need_summary": False,
+    }
+    attrs.update(overrides)
+    return DatasetDocument(**attrs)
 
 
 @pytest.fixture
@@ -58,7 +134,7 @@ def patch_tenant(tenant_ctx):
 
 @pytest.fixture
 def dataset():
-    return MagicMock(id="ds-1", indexing_technique="economy", summary_index_setting={"enable": True})
+    return make_dataset()
 
 
 @pytest.fixture
@@ -130,10 +206,8 @@ class TestDatasetDocumentListApi:
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
-        doc = MagicMock(id="doc-1")
+        doc = make_serializable_document()
         pagination = MagicMock(items=[doc], total=1)
-
-        count_mock = MagicMock(return_value=2)
 
         with (
             app.test_request_context("/?fetch=true"),
@@ -149,14 +223,12 @@ class TestDatasetDocumentListApi:
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
                 return_value=None,
             ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
         ):
             resp = method(api, "ds-1")
 
-        assert resp["data"]
+        assert resp["data"][0]["id"] == "doc-1"
+        assert resp["data"][0]["completed_segments"] == 2
+        assert resp["data"][0]["total_segments"] == 2
 
     def test_get_with_search_status_and_created_at_sort(
         self, app: Flask, patch_tenant, patch_dataset, patch_permission
@@ -164,7 +236,7 @@ class TestDatasetDocumentListApi:
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
-        pagination = MagicMock(items=[MagicMock()], total=1)
+        pagination = MagicMock(items=[make_serializable_document()], total=1)
 
         with (
             app.test_request_context("/?keyword=test&status=enabled&sort=created_at"),
@@ -180,10 +252,6 @@ class TestDatasetDocumentListApi:
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
                 return_value=None,
             ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
         ):
             resp = method(api, "ds-1")
 
@@ -193,7 +261,7 @@ class TestDatasetDocumentListApi:
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
-        pagination = MagicMock(items=[MagicMock()], total=1)
+        pagination = MagicMock(items=[make_serializable_document()], total=1)
 
         with (
             app.test_request_context("/"),
@@ -205,22 +273,21 @@ class TestDatasetDocumentListApi:
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
                 return_value=None,
             ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
         ):
             response = method(api, "ds-1")
 
         assert response["total"] == 1
+        assert response["data"][0]["id"] == "doc-1"
+        assert "completed_segments" not in response["data"][0]
+        assert "total_segments" not in response["data"][0]
 
     def test_post_success(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
         method = unwrap(api.post)
 
         payload = {"indexing_technique": "economy"}
-        created_dataset = SimpleNamespace(id="ds-1", name="Dataset", indexing_technique="economy")
-        created_document = SimpleNamespace(id="doc-1", name="Document", doc_metadata_details=None)
+        created_dataset = make_dataset()
+        created_document = make_document()
 
         with (
             app.test_request_context("/", json=payload),
@@ -237,10 +304,17 @@ class TestDatasetDocumentListApi:
                 "controllers.console.datasets.datasets_document.DocumentService.save_document_with_dataset_id",
                 return_value=([created_document], "batch-1"),
             ),
+            patch("models.dataset.db.session.scalar", return_value=0),
         ):
             response = method(api, "ds-1")
 
         assert "documents" in response
+        assert response["dataset"]["id"] == "ds-1"
+        assert response["documents"][0]["id"] == "doc-1"
+        assert response["documents"][0]["data_source_info"] == {}
+        assert response["documents"][0]["doc_metadata"] == []
+        assert "data_source_info_dict" not in response["documents"][0]
+        assert "doc_metadata_details" not in response["documents"][0]
 
     def test_post_forbidden(self, app: Flask):
         api = DatasetDocumentListApi()
@@ -267,7 +341,7 @@ class TestDatasetDocumentListApi:
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
-        pagination = MagicMock(items=[MagicMock()], total=1)
+        pagination = MagicMock(items=[make_serializable_document()], total=1)
 
         with (
             app.test_request_context("/?fetch=maybe"),
@@ -278,10 +352,6 @@ class TestDatasetDocumentListApi:
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
                 return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
             ),
         ):
             response = method(api, "ds-1")
@@ -308,6 +378,37 @@ class TestDatasetDocumentListApi:
             response = method(api, "ds-1")
 
         assert response["total"] == 0
+
+
+class TestDatasetInitApi:
+    def test_post_success_serializes_created_dataset_and_documents(self, app: Flask, patch_tenant):
+        api = DatasetInitApi()
+        method = unwrap(api.post)
+
+        payload = {"indexing_technique": "economy"}
+        created_dataset = make_dataset()
+        created_document = make_document(id="doc-init")
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.save_document_without_dataset_id",
+                return_value=(created_dataset, [created_document], "batch-init"),
+            ),
+            patch("models.dataset.db.session.scalar", return_value=0),
+        ):
+            response = method(api)
+
+        assert response["dataset"]["id"] == "ds-1"
+        assert response["documents"][0]["id"] == "doc-init"
+        assert response["documents"][0]["data_source_info"] == {}
+        assert response["documents"][0]["doc_metadata"] == []
+        assert response["batch"] == "batch-init"
 
 
 class TestDocumentApi:
@@ -899,7 +1000,7 @@ class TestDocumentBatchDownloadZipApi:
         api = DocumentBatchDownloadZipApi()
         method = unwrap(api.post)
 
-        payload = {"document_ids": []}
+        payload: dict[str, list[str]] = {"document_ids": []}
 
         with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError):
@@ -1046,6 +1147,53 @@ class TestDocumentBatchIndexingEstimateApi:
 
 
 class TestDocumentBatchIndexingStatusApi:
+    def test_get_batch_status_success_serializes_status_shape(self, app: Flask, patch_tenant):
+        api = DocumentBatchIndexingStatusApi()
+        method = unwrap(api.get)
+
+        document = MagicMock(
+            id="doc-1",
+            indexing_status=IndexingStatus.COMPLETED,
+            is_paused=False,
+            processing_started_at=None,
+            parsing_completed_at=None,
+            cleaning_completed_at=None,
+            splitting_completed_at=None,
+            completed_at=None,
+            paused_at=None,
+            error=None,
+            stopped_at=None,
+        )
+
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_batch_documents", return_value=[document]),
+            patch(
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                side_effect=[2, 3],
+            ),
+        ):
+            response = method(api, "ds-1", "batch-1")
+
+        assert response == {
+            "data": [
+                {
+                    "id": "doc-1",
+                    "indexing_status": "completed",
+                    "processing_started_at": None,
+                    "parsing_completed_at": None,
+                    "cleaning_completed_at": None,
+                    "splitting_completed_at": None,
+                    "completed_at": None,
+                    "paused_at": None,
+                    "error": None,
+                    "stopped_at": None,
+                    "completed_segments": 2,
+                    "total_segments": 3,
+                }
+            ]
+        }
+
     def test_get_batch_status_invalid_batch(self, app: Flask, patch_tenant):
         """Test batch status with invalid batch"""
         api = DocumentBatchIndexingStatusApi()
@@ -1057,6 +1205,39 @@ class TestDocumentBatchIndexingStatusApi:
 
 
 class TestDocumentIndexingStatusApi:
+    def test_get_status_success_serializes_status_shape(self, app: Flask, patch_tenant):
+        api = DocumentIndexingStatusApi()
+        method = unwrap(api.get)
+
+        document = MagicMock(
+            id="doc-1",
+            indexing_status=IndexingStatus.INDEXING,
+            is_paused=False,
+            processing_started_at=None,
+            parsing_completed_at=None,
+            cleaning_completed_at=None,
+            splitting_completed_at=None,
+            completed_at=None,
+            paused_at=None,
+            error=None,
+            stopped_at=None,
+        )
+
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document),
+            patch(
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                side_effect=[1, 4],
+            ),
+        ):
+            response = method(api, "ds-1", "doc-1")
+
+        assert response["id"] == "doc-1"
+        assert response["indexing_status"] == "indexing"
+        assert response["completed_segments"] == 1
+        assert response["total_segments"] == 4
+
     def test_get_status_document_not_found(self, app: Flask, patch_tenant):
         """Test getting status for non-existent document"""
         api = DocumentIndexingStatusApi()
@@ -1065,6 +1246,40 @@ class TestDocumentIndexingStatusApi:
         with app.test_request_context("/"), patch.object(api, "get_document", side_effect=NotFound()):
             with pytest.raises(NotFound):
                 method(api, "ds-1", "invalid-doc")
+
+
+class TestDocumentRenameApi:
+    def test_post_success_serializes_document_shape(self, app: Flask, patch_tenant):
+        api = DocumentRenameApi()
+        method = unwrap(api.post)
+
+        payload = {"name": "Renamed Document"}
+        renamed_document = make_document(id="doc-renamed", name="Renamed Document")
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=make_dataset(),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_operator_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.rename_document",
+                return_value=renamed_document,
+            ),
+            patch("models.dataset.db.session.scalar", return_value=0),
+        ):
+            response = method(api, "ds-1", "doc-1")
+
+        assert response["id"] == "doc-renamed"
+        assert response["name"] == "Renamed Document"
+        assert response["data_source_info"] == {}
+        assert response["doc_metadata"] == []
+        assert "data_source_info_dict" not in response
 
 
 class TestDocumentApiMetadata:
@@ -1291,7 +1506,7 @@ class TestDocumentListAdvancedCases:
         api = DatasetDocumentListApi()
         method = unwrap(api.get)
 
-        pagination = MagicMock(items=[MagicMock()], total=1)
+        pagination = MagicMock(items=[make_serializable_document()], total=1)
 
         with (
             app.test_request_context("/?sort=updated_at"),
@@ -1302,10 +1517,6 @@ class TestDocumentListAdvancedCases:
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
                 return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
             ),
         ):
             response = method(api, "ds-1")

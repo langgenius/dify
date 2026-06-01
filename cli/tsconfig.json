@@ -1,7 +1,15 @@
 {
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@test/*": [
+        "./test/*"
+      ]
+    },
     "types": ["node"],
     "declaration": true,
     "declarationMap": true,
@@ -9,6 +17,5 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "test", "node_modules", "**/*.test.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

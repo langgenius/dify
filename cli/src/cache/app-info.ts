@@ -1,15 +1,14 @@
-import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '../types/app-meta.js'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { DIR_PERM, FILE_PERM } from '../config/dir.js'
-import { FieldInfo, FieldInputSchema, FieldParameters } from '../types/app-meta.js'
+import type { Store } from '@/store/store'
+import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '@/types/app-meta'
+import { CACHE_APP_INFO, getCache } from '@/store/manager'
+import { FieldInfo, FieldInputSchema, FieldParameters } from '@/types/app-meta'
 
-const CACHE_FILE = 'app-info.json'
 export const APP_INFO_TTL_MS = 60 * 60 * 1000
 
-type DiskShape = {
-  entries: Record<string, DiskEntry>
-}
+// All entries live under one top-level key; the inner record uses
+// `host::appId` composites that contain `::` (never `.`), so they're
+// safe as map keys without colliding with Store's dot-path semantics.
+const ENTRIES_KEY = { key: 'entries', default: {} as Record<string, DiskEntry> } as const
 
 type DiskEntry = {
   meta: SerializedMeta
@@ -35,26 +34,25 @@ type State = {
 }
 
 export type AppInfoCacheOptions = {
-  readonly configDir: string
+  readonly store?: Store
   readonly ttlMs?: number
   readonly now?: () => Date
 }
 
-export async function loadAppInfoCache(opts: AppInfoCacheOptions): Promise<AppInfoCache> {
-  const path = cachePath(opts.configDir)
+export async function loadAppInfoCache(opts: AppInfoCacheOptions = {}): Promise<AppInfoCache> {
+  const store = opts.store ?? getCache(CACHE_APP_INFO)
   const ttlMs = opts.ttlMs ?? APP_INFO_TTL_MS
-  const state: State = { entries: new Map() }
-  await readDisk(path, state)
+  const state: State = { entries: readEntries(store) }
   return {
     get: (host, appId) => state.entries.get(key(host, appId)),
     set: async (host, appId, meta) => {
       const record: AppMetaCacheRecord = { meta, fetchedAt: (opts.now ?? (() => new Date()))().toISOString() }
       state.entries.set(key(host, appId), record)
-      await persist(path, state)
+      writeEntries(store, state.entries)
     },
     delete: async (host, appId) => {
       state.entries.delete(key(host, appId))
-      await persist(path, state)
+      writeEntries(store, state.entries)
     },
     isFresh: (record, now) => {
       const t = (now ?? new Date()).getTime() - new Date(record.fetchedAt).getTime()
@@ -63,36 +61,22 @@ export async function loadAppInfoCache(opts: AppInfoCacheOptions): Promise<AppIn
   }
 }
 
-export function cachePath(configDir: string): string {
-  return join(configDir, 'cache', CACHE_FILE)
-}
-
 function key(host: string, appId: string): string {
   return `${host}::${appId}`
 }
 
-async function readDisk(path: string, state: State): Promise<void> {
-  let raw: string
+function readEntries(store: Store): Map<string, AppMetaCacheRecord> {
+  const out = new Map<string, AppMetaCacheRecord>()
+  let raw: Record<string, DiskEntry>
   try {
-    raw = await readFile(path, 'utf8')
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT')
-      return
-    throw err
-  }
-  let parsed: DiskShape
-  try {
-    parsed = JSON.parse(raw) as DiskShape
+    raw = store.get(ENTRIES_KEY)
   }
   catch {
-    return
+    return out
   }
-  if (parsed.entries === undefined)
-    return
-  for (const [k, e] of Object.entries(parsed.entries)) {
-    state.entries.set(k, deserialize(e))
-  }
+  for (const [k, e] of Object.entries(raw))
+    out.set(k, deserialize(e))
+  return out
 }
 
 function deserialize(e: DiskEntry): AppMetaCacheRecord {
@@ -127,12 +111,8 @@ function serialize(record: AppMetaCacheRecord): DiskEntry {
   }
 }
 
-async function persist(path: string, state: State): Promise<void> {
-  const dir = dirname(path)
-  await mkdir(dir, { recursive: true, mode: DIR_PERM })
-  const disk: DiskShape = { entries: {} }
-  for (const [k, v] of state.entries) disk.entries[k] = serialize(v)
-  const tmp = `${path}.${process.pid}.${Date.now()}.tmp`
-  await writeFile(tmp, JSON.stringify(disk), { mode: FILE_PERM })
-  await rename(tmp, path)
+function writeEntries(store: Store, entries: Map<string, AppMetaCacheRecord>): void {
+  const out: Record<string, DiskEntry> = {}
+  for (const [k, v] of entries) out[k] = serialize(v)
+  store.set(ENTRIES_KEY, out)
 }

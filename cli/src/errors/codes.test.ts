@@ -5,11 +5,11 @@ import {
   ErrorCode,
   ExitCode,
   exitFor,
-} from './codes.js'
+} from './codes'
 
 describe('error codes', () => {
-  it('has 17 codes (parity with internal/api/errors)', () => {
-    expect(ALL_ERROR_CODES).toHaveLength(17)
+  it('has correct number codes (parity with internal/api/errors)', () => {
+    expect(ALL_ERROR_CODES).toHaveLength(Object.keys(CODE_TO_EXIT_MAP).length)
   })
 
   it('has the expected ExitCode buckets', () => {
@@ -46,6 +46,7 @@ describe('error codes', () => {
     [ErrorCode.NetworkDns, ExitCode.Generic],
     [ErrorCode.Server5xx, ExitCode.Generic],
     [ErrorCode.Server4xxOther, ExitCode.Generic],
+    [ErrorCode.ClientError, ExitCode.Generic],
     [ErrorCode.Unknown, ExitCode.Generic],
   ])('exitFor(%s) -> %d', (code, want) => {
     expect(exitFor(code)).toBe(want)

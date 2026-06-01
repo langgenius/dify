@@ -1,6 +1,6 @@
 import type { KyInstance } from 'ky'
-import { BaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_CLIENT_ID = 'difyctl'
 
@@ -40,7 +40,7 @@ export type PollSuccess = {
   subject_type?: string
   subject_email?: string
   subject_issuer?: string
-  account?: PollAccount
+  account?: PollAccount | null
   workspaces?: readonly PollWorkspace[]
   default_workspace_id?: string
   token_id?: string

@@ -17,7 +17,8 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.openapi import openapi_ns
-from controllers.openapi.auth.composition import OAUTH_BEARER_PIPELINE
+from controllers.openapi.auth.composition import auth_router
+from controllers.openapi.auth.data import AuthData
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -28,7 +29,7 @@ from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope
 from models.enums import CreatorUserRole
-from models.model import App, AppMode
+from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
@@ -36,8 +37,9 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.response(200, "SSE event stream")
-    @OAUTH_BEARER_PIPELINE.guard(scope=Scope.APPS_RUN)
-    def get(self, app_id: str, task_id: str, app_model: App, caller, caller_kind: str):
+    @auth_router.guard(scope=Scope.APPS_RUN)
+    def get(self, app_id: str, task_id: str, *, auth_data: AuthData):
+        app_model, caller, caller_kind = auth_data.require_app_context()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise UnprocessableEntity("mode_not_supported_for_event_reconnect")

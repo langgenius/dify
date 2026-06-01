@@ -1,46 +1,81 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../../auth/hosts.js'
-import type { TokenStore } from '../../../../auth/store.js'
-import type { IOStreams } from '../../../../io/streams.js'
-import { unlink } from 'node:fs/promises'
-import { join } from 'node:path'
-import { AccountSessionsClient } from '../../../../api/account-sessions.js'
-import { HOSTS_FILE_NAME } from '../../../../auth/hosts.js'
-import { BaseError } from '../../../../errors/base.js'
-import { ErrorCode } from '../../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../../io/color.js'
-import { runWithSpinner } from '../../../../io/spinner.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { AccountSessionsClient } from '@/api/account-sessions'
+import { clearLocal } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
+import { getTokenStore } from '@/store/manager'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { runWithSpinner } from '@/sys/io/spinner'
 
 export type DevicesListOptions = {
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
   readonly http: KyInstance
   readonly json?: boolean
+  readonly page?: number
+  readonly limitRaw?: string
+  readonly envLookup?: (k: string) => string | undefined
 }
 
 export async function runDevicesList(opts: DevicesListOptions): Promise<void> {
   const b = requireLogin(opts.bundle)
   const sessions = new AccountSessionsClient(opts.http)
-  const env = await runWithSpinner(
+  const env = opts.envLookup ?? ((k: string) => process.env[k])
+  const limit = resolveLimit(opts.limitRaw, env)
+  const page = opts.page === undefined || opts.page <= 0 ? 1 : opts.page
+  const envelope = await runWithSpinner(
     { io: opts.io, label: 'Fetching devices' },
-    () => sessions.list(),
+    () => sessions.list({ page, limit }),
   )
 
   if (opts.json === true) {
-    opts.io.out.write(`${JSON.stringify(env)}\n`)
+    opts.io.out.write(`${JSON.stringify(envelope)}\n`)
     return
   }
 
-  opts.io.out.write(renderTable(env.data, b.token_id ?? ''))
+  opts.io.out.write(renderTable(envelope.data, b.token_id ?? ''))
+}
+
+function resolveLimit(raw: string | undefined, env: (k: string) => string | undefined): number {
+  if (raw !== undefined && raw !== '')
+    return parseLimit(raw, '--limit')
+  const envValue = env('DIFY_LIMIT')
+  if (envValue !== undefined && envValue !== '')
+    return parseLimit(envValue, 'DIFY_LIMIT')
+  return LIMIT_DEFAULT
+}
+
+/**
+ * Fetches every session across all pages. Used by revoke paths so that a
+ * session sitting on page 2+ is still findable / revocable. Uses the max
+ * page size (LIMIT_MAX) to minimize round-trips.
+ */
+export async function listAllSessions(client: AccountSessionsClient): Promise<readonly SessionRow[]> {
+  const out: SessionRow[] = []
+  let page = 1
+  // Hard guard against a misbehaving server that lies about has_more.
+  const MAX_PAGES = 100
+  while (page <= MAX_PAGES) {
+    const env = await client.list({ page, limit: LIMIT_MAX })
+    out.push(...env.data)
+    if (!env.has_more)
+      return out
+    page++
+  }
+  return out
 }
 
 export type DevicesRevokeOptions = {
-  readonly configDir: string
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
   readonly http: KyInstance
-  readonly store: TokenStore
+  /** Optional override for tests; production code resolves via `getTokenStore`. */
+  readonly store?: Store
   readonly target?: string
   readonly all: boolean
   readonly yes?: boolean
@@ -58,8 +93,8 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
   }
 
   const sessions = new AccountSessionsClient(opts.http)
-  const env = await sessions.list()
-  const { ids, selfHit } = pickTargets(env.data, opts, b.token_id ?? '')
+  const rows = await listAllSessions(sessions)
+  const { ids, selfHit } = pickTargets(rows, opts, b.token_id ?? '')
   if (ids.length === 0) {
     opts.io.out.write('no sessions to revoke\n')
     return
@@ -68,8 +103,10 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
   for (const id of ids)
     await sessions.revoke(id)
 
-  if (selfHit)
-    await clearLocal(opts.configDir, b, opts.store)
+  if (selfHit) {
+    const tokens = opts.store ?? getTokenStore().store
+    clearLocal(b, tokens)
+  }
 
   opts.io.out.write(`${cs.successIcon()} Revoked ${ids.length} session(s)\n`)
 }
@@ -141,19 +178,4 @@ function renderTable(rows: readonly SessionRow[], currentId: string): string {
   const fmt = (cells: readonly string[]): string =>
     cells.map((c, i) => c.padEnd(widths[i] ?? 0)).join('  ').trimEnd()
   return body.length === 0 ? `${fmt(header)}\n` : `${[fmt(header), ...body.map(fmt)].join('\n')}\n`
-}
-
-async function clearLocal(configDir: string, bundle: HostsBundle, store: TokenStore): Promise<void> {
-  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
-  try {
-    await store.delete(bundle.current_host, accountId)
-  }
-  catch { /* best-effort */ }
-  try {
-    await unlink(join(configDir, HOSTS_FILE_NAME))
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
-      throw err
-  }
 }

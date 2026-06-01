@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
 import type { RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import {
   Combobox,
   ComboboxChip,
@@ -26,6 +26,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
+  useComboboxFilter,
   useComboboxFilteredItems,
 } from '.'
 import { cn } from '../cn'
@@ -178,7 +179,33 @@ const defaultPopupDataSource = dataSourceOptions[1]!
 const readOnlyDataSource = dataSourceOptions[2]!
 const defaultTool = toolGroups[0]!.items[0]!
 const defaultReviewers = [reviewerOptions[0]!, reviewerOptions[1]!]
+const defaultAsyncReviewers = [reviewerOptions[1]!]
 const defaultTag = tagOptions[2]!
+
+const getOptionLabel = (option: Option) => option.label
+
+async function searchOptions(
+  options: Option[],
+  query: string,
+  filter: (item: string, query: string) => boolean,
+): Promise<{ items: Option[], error: string | null }> {
+  await new Promise(resolve => window.setTimeout(resolve, 450))
+
+  if (query === 'will_error') {
+    return {
+      items: [],
+      error: 'Failed to fetch matches. Please try again.',
+    }
+  }
+
+  return {
+    items: options.filter(option => (
+      filter(option.label, query)
+      || (option.meta ? filter(option.meta, query) : false)
+    )),
+    error: null,
+  }
+}
 
 const renderOptionItem = (option: Option) => (
   <ComboboxItem key={option.value} value={option} disabled={option.disabled} className="h-auto min-h-8 py-1.5">
@@ -348,35 +375,88 @@ const VirtualizedLongListDemo = () => {
 }
 
 const AsyncDirectoryDemo = () => {
-  const [inputValue, setInputValue] = useState('ma')
-  const [value, setValue] = useState<Option | null>(null)
-  const [items, setItems] = useState(directoryOptions.slice(0, 3))
-  const [loading, setLoading] = useState(false)
+  const [searchResults, setSearchResults] = useState<Option[]>([])
+  const [selectedValue, setSelectedValue] = useState<Option | null>(null)
+  const [searchValue, setSearchValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const { contains } = useComboboxFilter()
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const trimmedSearchValue = searchValue.trim()
+  const items = useMemo(() => {
+    if (!selectedValue || searchResults.some(option => option.value === selectedValue.value))
+      return searchResults
 
-  useEffect(() => {
-    setLoading(true)
-    const timeout = window.setTimeout(() => {
-      const query = inputValue.trim().toLowerCase()
-      setItems(
-        query
-          ? directoryOptions.filter(option => `${option.label} ${option.meta}`.toLowerCase().includes(query))
-          : directoryOptions.slice(0, 5),
-      )
-      setLoading(false)
-    }, 450)
+    return [...searchResults, selectedValue]
+  }, [searchResults, selectedValue])
 
-    return () => window.clearTimeout(timeout)
-  }, [inputValue])
+  const status = (() => {
+    if (isPending)
+      return 'Searching directory matches…'
+
+    if (error)
+      return error
+
+    if (trimmedSearchValue === '')
+      return selectedValue ? null : 'Start typing to search owners…'
+
+    if (searchResults.length === 0)
+      return `No matches for "${trimmedSearchValue}".`
+
+    return `${searchResults.length} owner${searchResults.length === 1 ? '' : 's'} found`
+  })()
+
+  const emptyMessage = trimmedSearchValue === '' || isPending || searchResults.length > 0 || error
+    ? null
+    : 'Try a different owner search.'
 
   return (
     <FieldRoot name="owner" className={fieldWidth}>
       <FieldLabel>Owner</FieldLabel>
       <Combobox
-        items={value && !items.some(item => item.value === value.value) ? [value, ...items] : items}
-        value={value}
-        onValueChange={setValue}
-        inputValue={inputValue}
-        onInputValueChange={setInputValue}
+        items={items}
+        itemToStringLabel={getOptionLabel}
+        filter={null}
+        value={selectedValue}
+        onOpenChangeComplete={(open) => {
+          if (!open && selectedValue)
+            setSearchResults([selectedValue])
+        }}
+        onValueChange={(nextSelectedValue) => {
+          setSelectedValue(nextSelectedValue)
+          setSearchValue('')
+          setError(null)
+        }}
+        onInputValueChange={(nextSearchValue, { reason }) => {
+          setSearchValue(nextSearchValue)
+
+          if (nextSearchValue === '') {
+            setSearchResults([])
+            setError(null)
+            return
+          }
+
+          if (reason === 'item-press')
+            return
+
+          const controller = new AbortController()
+          abortControllerRef.current?.abort()
+          abortControllerRef.current = controller
+
+          startTransition(async () => {
+            setError(null)
+
+            const result = await searchOptions(directoryOptions, nextSearchValue, contains)
+
+            if (controller.signal.aborted)
+              return
+
+            startTransition(() => {
+              setSearchResults(result.items)
+              setError(result.error)
+            })
+          })
+        }}
       >
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
           <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
@@ -384,12 +464,12 @@ const AsyncDirectoryDemo = () => {
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
-        <ComboboxContent popupClassName="w-[420px]">
+        <ComboboxContent popupClassName="w-[420px]" popupProps={{ 'aria-busy': isPending || undefined }}>
           <ComboboxStatus className="border-b border-divider-subtle">
-            {loading ? 'Loading directory matches…' : `${items.length} selectable owners`}
+            {status}
           </ComboboxStatus>
           <ComboboxList>{renderOptionItem}</ComboboxList>
-          <ComboboxEmpty>No owner matches this query</ComboboxEmpty>
+          <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
     </FieldRoot>
@@ -397,38 +477,111 @@ const AsyncDirectoryDemo = () => {
 }
 
 const AsyncReviewerDemo = () => {
-  const [inputValue, setInputValue] = useState('ma')
-  const [value, setValue] = useState<Option[]>([reviewerOptions[1]!])
-  const [items, setItems] = useState(reviewerOptions.slice(0, 3))
-  const [loading, setLoading] = useState(false)
+  const [searchResults, setSearchResults] = useState<Option[]>([])
+  const [selectedValues, setSelectedValues] = useState<Option[]>(defaultAsyncReviewers)
+  const [searchValue, setSearchValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [blockStartStatus, setBlockStartStatus] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const { contains } = useComboboxFilter()
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const selectedValuesRef = useRef<Option[]>(defaultAsyncReviewers)
+  const trimmedSearchValue = searchValue.trim()
 
-  useEffect(() => {
-    setLoading(true)
-    const timeout = window.setTimeout(() => {
-      const query = inputValue.trim().toLowerCase()
-      const matches = query
-        ? reviewerOptions.filter(option => `${option.label} ${option.meta}`.toLowerCase().includes(query))
-        : reviewerOptions
+  const items = useMemo(() => {
+    if (selectedValues.length === 0)
+      return searchResults
 
-      setItems(matches)
-      setLoading(false)
-    }, 450)
+    const merged = [...searchResults]
 
-    return () => window.clearTimeout(timeout)
-  }, [inputValue])
+    selectedValues.forEach((selected) => {
+      if (!searchResults.some(result => result.value === selected.value))
+        merged.push(selected)
+    })
 
-  const selectedItems = value.filter(selected => !items.some(item => item.value === selected.value))
+    return merged
+  }, [searchResults, selectedValues])
+
+  const status = (() => {
+    if (isPending)
+      return 'Searching reviewer matches…'
+
+    if (error)
+      return error
+
+    if (trimmedSearchValue === '' && !blockStartStatus)
+      return selectedValues.length > 0 ? null : 'Start typing to search reviewers…'
+
+    if (searchResults.length === 0 && !blockStartStatus)
+      return `No matches for "${trimmedSearchValue}".`
+
+    return `${searchResults.length} reviewer${searchResults.length === 1 ? '' : 's'} found`
+  })()
+
+  const emptyMessage = trimmedSearchValue === '' || isPending || searchResults.length > 0 || error
+    ? null
+    : 'Try a different reviewer search.'
 
   return (
     <FieldRoot name="asyncReviewers" className={fieldWidth}>
       <FieldLabel>Async reviewers</FieldLabel>
       <Combobox
-        items={[...selectedItems, ...items]}
+        items={items}
+        itemToStringLabel={getOptionLabel}
         multiple
-        value={value}
-        onValueChange={setValue}
-        inputValue={inputValue}
-        onInputValueChange={setInputValue}
+        filter={null}
+        value={selectedValues}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            setSearchResults(selectedValuesRef.current)
+            setBlockStartStatus(false)
+          }
+        }}
+        onValueChange={(nextSelectedValues) => {
+          selectedValuesRef.current = nextSelectedValues
+          setSelectedValues(nextSelectedValues)
+          setSearchValue('')
+          setError(null)
+
+          if (nextSelectedValues.length === 0) {
+            setSearchResults([])
+            setBlockStartStatus(false)
+          }
+          else {
+            setBlockStartStatus(true)
+          }
+        }}
+        onInputValueChange={(nextSearchValue, { reason }) => {
+          setSearchValue(nextSearchValue)
+
+          const controller = new AbortController()
+          abortControllerRef.current?.abort()
+          abortControllerRef.current = controller
+
+          if (nextSearchValue === '') {
+            setSearchResults(selectedValuesRef.current)
+            setError(null)
+            setBlockStartStatus(false)
+            return
+          }
+
+          if (reason === 'item-press')
+            return
+
+          startTransition(async () => {
+            setError(null)
+
+            const result = await searchOptions(reviewerOptions, nextSearchValue, contains)
+
+            if (controller.signal.aborted)
+              return
+
+            startTransition(() => {
+              setSearchResults(result.items)
+              setError(result.error)
+            })
+          })
+        }}
       >
         <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
           <ComboboxChips>
@@ -447,12 +600,12 @@ const AsyncReviewerDemo = () => {
             </ComboboxValue>
           </ComboboxChips>
         </ComboboxInputGroup>
-        <ComboboxContent popupClassName="w-[420px]">
+        <ComboboxContent popupClassName="w-[420px]" popupProps={{ 'aria-busy': isPending || undefined }}>
           <ComboboxStatus className="border-b border-divider-subtle">
-            {loading ? 'Loading reviewer matches…' : `${items.length} selectable reviewers`}
+            {status}
           </ComboboxStatus>
           <ComboboxList>{renderOptionItem}</ComboboxList>
-          <ComboboxEmpty>No reviewer matches this query</ComboboxEmpty>
+          <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
       <FieldDescription>Selected reviewers stay available while async matches change.</FieldDescription>

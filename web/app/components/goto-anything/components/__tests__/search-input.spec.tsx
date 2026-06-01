@@ -8,14 +8,6 @@ vi.mock('@remixicon/react', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: ({ keys, textColor }: { keys: string[], textColor: string }) => (
-    <div data-testid="shortcuts-name" data-keys={keys.join(',')} data-color={textColor}>
-      {keys.join('+')}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/base/input', async () => {
   const { forwardRef } = await import('react')
 
@@ -74,13 +66,12 @@ describe('SearchInput', () => {
       expect(screen.getByTestId('search-input')).toBeInTheDocument()
     })
 
-    it('should render shortcuts name', () => {
-      render(<SearchInput {...defaultProps} />)
+    it('should render shortcut keycaps', () => {
+      const { container } = render(<SearchInput {...defaultProps} />)
 
-      const shortcuts = screen.getByTestId('shortcuts-name')
-      expect(shortcuts).toBeInTheDocument()
-      expect(shortcuts).toHaveAttribute('data-keys', 'ctrl,K')
-      expect(shortcuts).toHaveAttribute('data-color', 'secondary')
+      const keycaps = container.querySelectorAll('kbd')
+      expect(keycaps).toHaveLength(2)
+      expect(keycaps[1]).toHaveTextContent('K')
     })
 
     it('should use provided placeholder', () => {

@@ -10,6 +10,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -166,6 +167,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
