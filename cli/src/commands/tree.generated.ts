@@ -4,9 +4,9 @@
 import type { CommandTree } from '@/framework/registry'
 import AuthDevicesList from '@/commands/auth/devices/list/index'
 import AuthDevicesRevoke from '@/commands/auth/devices/revoke/index'
+import AuthList from '@/commands/auth/list/index'
 import AuthLogin from '@/commands/auth/login/index'
 import AuthLogout from '@/commands/auth/logout/index'
-import AuthStatus from '@/commands/auth/status/index'
 import AuthWhoami from '@/commands/auth/whoami/index'
 import ConfigGet from '@/commands/config/get/index'
 import ConfigPath from '@/commands/config/path/index'
@@ -40,9 +40,9 @@ export const commandTree: CommandTree = {
           revoke: { command: AuthDevicesRevoke, subcommands: {} },
         },
       },
+      list: { command: AuthList, subcommands: {} },
       login: { command: AuthLogin, subcommands: {} },
       logout: { command: AuthLogout, subcommands: {} },
-      status: { command: AuthStatus, subcommands: {} },
       whoami: { command: AuthWhoami, subcommands: {} },
     },
   },
