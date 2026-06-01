@@ -1,17 +1,17 @@
-import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { Key, Store } from '../../../store/store.js'
-import type { Clock } from './device-flow.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { Clock } from './device-flow'
+import type { Key, Store } from '@/store/store'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
-import { DeviceFlowApi } from '../../../api/oauth-device.js'
-import { createClient } from '../../../http/client.js'
-import { ENV_CONFIG_DIR } from '../../../store/dir.js'
-import { tokenKey } from '../../../store/manager.js'
-import { bufferStreams } from '../../../sys/io/streams'
-import { runLogin } from './login.js'
+import { DeviceFlowApi } from '@/api/oauth-device'
+import { createClient } from '@/http/client'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { tokenKey } from '@/store/manager'
+import { bufferStreams } from '@/sys/io/streams'
+import { runLogin } from './login'
 
 const noopClock: Clock = {
   sleepMs: async () => { /* immediate */ },
@@ -106,7 +106,7 @@ describe('runLogin', () => {
     expect(bundle.account).toBeUndefined()
     expect(bundle.external_subject?.email).toBe('sso@dify.ai')
     expect(bundle.external_subject?.issuer).toBe('https://issuer.example')
-    const stored = await store.get(bundle.current_host, 'sso@dify.ai')
+    const stored = await store.get(tokenKey(bundle.current_host, 'sso@dify.ai'))
     expect(stored).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')

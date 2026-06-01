@@ -1,7 +1,7 @@
-import type { CommandTree } from './registry.js'
+import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vitest'
-import { Command } from './command.js'
-import { findSuggestions, resolveCommand } from './registry.js'
+import { Command } from './command'
+import { findSuggestions, resolveCommand } from './registry'
 
 class FooCmd extends Command {
   async run(_argv: string[]) {}

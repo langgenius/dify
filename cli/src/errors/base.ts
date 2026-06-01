@@ -1,5 +1,5 @@
-import type { ErrorCodeValue, ExitCodeValue } from './codes.js'
-import { ErrorCode, exitFor } from './codes.js'
+import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import { ErrorCode, exitFor } from './codes'
 
 export type BaseErrorOptions = {
   readonly code: ErrorCodeValue

@@ -1,4 +1,4 @@
-import type { CommandConstructor } from './command.js'
+import type { CommandConstructor } from './command'
 
 export type CommandNode = {
   readonly command?: CommandConstructor

@@ -7,14 +7,20 @@ from werkzeug.exceptions import NotFound
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enterprise_license_required,
+    setup_required,
+    with_current_user,
+)
 from fields.dataset_fields import (
     DatasetMetadataBuiltInFieldsResponse,
     DatasetMetadataListResponse,
     DatasetMetadataResponse,
 )
 from libs.helper import dump_response
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -43,8 +49,8 @@ class DatasetMetadataCreateApi(Resource):
     @enterprise_license_required
     @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
-    def post(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
@@ -80,8 +86,8 @@ class DatasetMetadataApi(Resource):
     @enterprise_license_required
     @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
-    def patch(self, dataset_id: UUID, metadata_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def patch(self, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
 
@@ -100,8 +106,8 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.response(204, "Metadata deleted successfully")
-    def delete(self, dataset_id: UUID, metadata_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def delete(self, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -137,8 +143,8 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @console_ns.response(204, "Action completed successfully")
-    def post(self, dataset_id: UUID, action: Literal["enable", "disable"]):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID, action: Literal["enable", "disable"]):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -165,8 +171,8 @@ class DocumentMetadataEditApi(Resource):
         204,
         "Documents metadata updated successfully",
     )
-    def post(self, dataset_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:

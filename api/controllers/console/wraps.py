@@ -514,10 +514,45 @@ def with_current_tenant_id[T, **P, R](
 def with_current_user[T, **P, R](
     view: Callable[Concatenate[T, Account, P], R],
 ) -> Callable[Concatenate[T, P], R]:
+    """Inject the current authenticated Account into the handler as the first argument after self.
+
+    Usage::
+
+        class MyResource(Resource):
+            @login_required
+            @with_current_user
+            def get(self, current_user: Account):
+                ...
+    """
+
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         current_user, _ = current_account_with_tenant()
         return view(self, current_user, *args, **kwargs)
+
+    return decorated
+
+
+def with_current_user_id[T, **P, R](
+    view: Callable[Concatenate[T, str, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Inject the current authenticated user's ID (as a string) into the handler.
+
+    Use this when the handler only needs the user ID and not the full Account object.
+
+    Usage::
+
+        class MyResource(Resource):
+            @login_required
+            @with_current_user_id
+            def get(self, current_user_id: str):
+                ...
+    """
+
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        current_user, _ = current_account_with_tenant()
+        return view(self, str(current_user.id), *args, **kwargs)
 
     return decorated
 
