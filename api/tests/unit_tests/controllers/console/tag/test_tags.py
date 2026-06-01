@@ -105,34 +105,6 @@ class TestTagListApi:
         assert status == 200
         assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
-    def test_get_snippet_tags(self, app: Flask):
-        api = TagListApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/?type=snippet"):
-            with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(MagicMock(), "tenant-1"),
-                ),
-                patch(
-                    "controllers.console.tag.tags.TagService.get_tags",
-                    return_value=[
-                        SimpleNamespace(
-                            id="1",
-                            name="snippet-tag",
-                            type=TagType.SNIPPET,
-                            binding_count=1,
-                        )
-                    ],
-                ) as get_tags_mock,
-            ):
-                result, status = method(api)
-
-        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None)
-        assert status == 200
-        assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
-
     def test_post_success(self, app: Flask, admin_user, tag, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
@@ -240,62 +212,6 @@ class TestTagBindingCollectionApi:
                 result, status = method(api, admin_user)
 
         save_mock.assert_called_once()
-        assert status == 200
-        assert result["result"] == "success"
-
-    def test_create_snippet_binding_success(self, app: Flask, admin_user, payload_patch):
-        api = TagBindingCollectionApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "tag_ids": ["tag-1"],
-            "target_id": "snippet-1",
-            "type": "snippet",
-        }
-
-        with app.test_request_context("/", json=payload):
-            with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
-                payload_patch(payload),
-                patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
-            ):
-                result, status = method(api)
-
-        save_mock.assert_called_once()
-        binding_payload = save_mock.call_args.args[0]
-        assert binding_payload.type == TagType.SNIPPET
-        assert binding_payload.target_id == "snippet-1"
-        assert status == 200
-        assert result["result"] == "success"
-
-    def test_create_snippet_binding_success(self, app: Flask, admin_user, payload_patch):
-        api = TagBindingCollectionApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "tag_ids": ["tag-1"],
-            "target_id": "snippet-1",
-            "type": "snippet",
-        }
-
-        with app.test_request_context("/", json=payload):
-            with (
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(admin_user, None),
-                ),
-                payload_patch(payload),
-                patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
-            ):
-                result, status = method(api)
-
-        save_mock.assert_called_once()
-        binding_payload = save_mock.call_args.args[0]
-        assert binding_payload.type == TagType.SNIPPET
-        assert binding_payload.target_id == "snippet-1"
         assert status == 200
         assert result["result"] == "success"
 

@@ -1,6 +1,6 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { SnippetInputField } from '@/models/snippet'
-import type { SnippetDraftSyncPayload, SnippetWorkflow } from '@/types/snippet'
+import type { SnippetDraftSyncPayload, SnippetDraftSyncResponse, SnippetWorkflow } from '@/types/snippet'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -98,7 +98,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
     onRefresh?: (draftWorkflow: SnippetWorkflow) => void,
-  ) => {
+  ): Promise<SnippetDraftSyncResponse | undefined> => {
     if (getNodesReadOnly())
       return
 
@@ -123,6 +123,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
       setSyncWorkflowDraftHash(response.hash)
       setDraftUpdatedAt(response.updated_at)
       callback?.onSuccess?.()
+      return response
     }
     catch (error: unknown) {
       if (isSyncConflictError(error) && !error.bodyUsed) {
@@ -132,6 +133,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
         })
       }
       callback?.onError?.()
+      return undefined
     }
     finally {
       callback?.onSettled?.()
@@ -161,7 +163,8 @@ export const useNodesSyncDraft = (snippetId: string) => {
     if (!draftPayload)
       return
 
-    await enqueueSnippetDraftSync(snippetId, () => syncDraft(draftPayload, notRefreshWhenSyncError, callback))
+    const response = await enqueueSnippetDraftSync(snippetId, () => syncDraft(draftPayload, notRefreshWhenSyncError, callback))
+    return response ? draftPayload : undefined
   }, [snippetId, syncDraft])
 
   const syncInputFieldsDraftWithPayload = useCallback(async (
@@ -171,7 +174,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
     if (!draftPayload)
       return
 
-    await enqueueSnippetDraftSync(snippetId, () => syncDraft(
+    const response = await enqueueSnippetDraftSync(snippetId, () => syncDraft(
       draftPayload,
       false,
       callback,
@@ -182,6 +185,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
         callback?.onRefresh?.(refreshedInputFields)
       },
     ))
+    return response ? draftPayload : undefined
   }, [snippetId, syncDraft])
 
   const doSyncWorkflowDraft = useCallback((

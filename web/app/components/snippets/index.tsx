@@ -71,6 +71,7 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
           payload={data.published}
           draftPayload={data.draft}
           hasInitialDraftChanges={data.hasDraftChanges}
+          hasPublishedWorkflow={!!data.publishedWorkflow}
           publishedWorkflowHash={data.publishedWorkflow?.hash}
           draftWorkflowHash={data.draftWorkflow?.hash}
           nodes={publishedNodesData}

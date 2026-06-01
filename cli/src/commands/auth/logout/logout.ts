@@ -1,21 +1,20 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { TokenStore } from '../../../auth/store.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { unlink } from 'node:fs/promises'
-import { join } from 'node:path'
-import { AccountSessionsClient } from '../../../api/account-sessions.js'
-import { HOSTS_FILE_NAME } from '../../../auth/hosts.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { AccountSessionsClient } from '@/api/account-sessions'
+import { clearLocal } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { getTokenStore } from '@/store/manager'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
 
 export type LogoutOptions = {
-  readonly configDir: string
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
   readonly http?: KyInstance
-  readonly store: TokenStore
+  /** Optional override for tests; production code resolves via `getTokenStore`. */
+  readonly store?: Store
 }
 
 export async function runLogout(opts: LogoutOptions): Promise<void> {
@@ -40,7 +39,8 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
     }
   }
 
-  await clearLocal(opts.configDir, bundle, opts.store)
+  const tokens = opts.store ?? getTokenStore().store
+  clearLocal(bundle, tokens)
 
   if (revokeWarning !== '')
     opts.io.err.write(revokeWarning)
@@ -51,20 +51,4 @@ const REVOCABLE_PREFIXES = ['dfoa_', 'dfoe_'] as const
 
 function revokeAllowed(bearer: string): boolean {
   return REVOCABLE_PREFIXES.some(p => bearer.startsWith(p))
-}
-
-async function clearLocal(configDir: string, bundle: HostsBundle, store: TokenStore): Promise<void> {
-  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
-  try {
-    await store.delete(bundle.current_host, accountId)
-  }
-  catch { /* best-effort */ }
-  const hostsPath = join(configDir, HOSTS_FILE_NAME)
-  try {
-    await unlink(hostsPath)
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
-      throw err
-  }
 }

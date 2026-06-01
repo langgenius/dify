@@ -1,6 +1,12 @@
-import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types.js'
+import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types'
+import { UnsupportedArgValueError } from './errors'
 
-function stringFlag<const Opts extends { description: string, char?: string, default?: string, multiple?: boolean, helpGroup?: string, options?: readonly string[] }>(
+function stringFlag<const Opts extends {
+  description: string
+  char?: string
+  default?: string
+  options?: readonly string[]
+}>(
   opts: Opts,
 ): FlagDefinition<string> {
   return {
@@ -10,7 +16,19 @@ function stringFlag<const Opts extends { description: string, char?: string, def
   }
 }
 
-function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean, helpGroup?: string }>(
+function outputFormatFlag<const Opts extends { options: readonly string[], default?: string }>(
+  opts: Opts,
+): FlagDefinition<string> {
+  return {
+    type: 'string',
+    description: `output format (${opts.options.join('|')})`,
+    char: 'o',
+    multiple: false,
+    ...opts,
+  }
+}
+
+function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean }>(
   opts: Opts,
 ): FlagDefinition<string[]> {
   return {
@@ -20,11 +38,11 @@ function stringRepeatedFlag<const Opts extends { description: string, char?: str
   }
 }
 
-function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: string }): FlagDefinition<boolean> {
+function booleanFlag(opts: { description: string, char?: string, default?: boolean }): FlagDefinition<boolean> {
   return { type: 'boolean', ...opts }
 }
 
-function integerFlag<const Opts extends { description: string, char?: string, default?: number, helpGroup?: string }>(
+function integerFlag<const Opts extends { description: string, char?: string, default?: number }>(
   opts: Opts,
 ): FlagDefinition<Opts extends { default: number } ? number : number | undefined> {
   return { type: 'integer', ...opts } as FlagDefinition<Opts extends { default: number } ? number : number | undefined>
@@ -35,6 +53,7 @@ export const Flags = {
   stringArray: stringRepeatedFlag,
   boolean: booleanFlag,
   integer: integerFlag,
+  outputFormat: outputFormatFlag,
 }
 
 function stringArg<const Opts extends { description: string, required?: boolean }>(
@@ -91,7 +110,32 @@ function resolveByChar(char: string, meta: CommandMeta): [name: string, def: Fla
 
 function validateFlagOptions(name: string, raw: string, def: FlagDefinition): void {
   if (def.options !== undefined && !def.options.includes(raw))
-    throw new Error(`--${name} must be one of: ${def.options.join(', ')}`)
+    throw new UnsupportedArgValueError(name, def, raw)
+}
+
+type ResolvedFlag = { name: string, def: FlagDefinition, label: string, inlineRaw: string | undefined }
+
+function resolveToken(token: string, meta: CommandMeta): ResolvedFlag | null {
+  if (token.startsWith('--')) {
+    const eqIdx = token.indexOf('=')
+    const name = eqIdx !== -1 ? token.slice(2, eqIdx) : token.slice(2)
+    const inlineRaw = eqIdx !== -1 ? token.slice(eqIdx + 1) : undefined
+    const def = meta.flags[name]
+    if (!def)
+      throw new Error(`unknown flag: --${name}`)
+    return { name, def, label: `--${name}`, inlineRaw }
+  }
+
+  if (token.length === 2 && token[1] !== undefined) {
+    const char = token[1]
+    const resolved = resolveByChar(char, meta)
+    if (!resolved)
+      throw new Error(`unknown flag: -${char}`)
+    const [name, def] = resolved
+    return { name, def, label: `-${char}`, inlineRaw: undefined }
+  }
+
+  return null
 }
 
 export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: ParsedArgs, flags: ParsedFlags } {
@@ -110,63 +154,38 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
       continue
     }
 
-    if (!pastDoubleDash && token.startsWith('--')) {
-      const eqIdx = token.indexOf('=')
-      let name: string
-      let rawValue: string | undefined
-
-      if (eqIdx !== -1) {
-        name = token.slice(2, eqIdx)
-        rawValue = token.slice(eqIdx + 1)
-      }
-      else {
-        name = token.slice(2)
-        rawValue = undefined
-      }
-
-      const def = meta.flags[name]
-      if (!def)
-        throw new Error(`unknown flag: --${name}`)
-
-      if (def.type === 'boolean') {
-        flags[name] = rawValue === undefined ? true : coerceFlagValue(rawValue, def)
-      }
-      else if (rawValue !== undefined) {
-        validateFlagOptions(name, rawValue, def)
-        accumulateFlagValue(flags, name, coerceFlagValue(rawValue, def), def)
-      }
-      else {
-        i++
-        const next = i < argv.length ? argv[i] : undefined
-        if (next === undefined || next.startsWith('-'))
-          throw new Error(`flag --${name} expects a value`)
-
-        validateFlagOptions(name, next, def)
-        accumulateFlagValue(flags, name, coerceFlagValue(next, def), def)
-      }
+    if (pastDoubleDash || !token.startsWith('-')) {
+      positional.push(token)
+      continue
     }
-    else if (!pastDoubleDash && token.startsWith('-') && token.length === 2 && token[1] !== undefined) {
-      const char = token[1]
-      const resolved = resolveByChar(char, meta)
-      if (!resolved)
-        throw new Error(`unknown flag: -${char}`)
 
-      const [flagName, def] = resolved
-      if (def.type === 'boolean') {
-        flags[flagName] = true
-      }
-      else {
-        i++
-        const next = i < argv.length ? argv[i] : undefined
-        if (next === undefined || next.startsWith('-'))
-          throw new Error(`flag -${char} expects a value`)
+    const resolved = resolveToken(token, meta)
+    if (!resolved) {
+      positional.push(token)
+      continue
+    }
 
-        accumulateFlagValue(flags, flagName, coerceFlagValue(next, def), def)
-      }
+    const { name, def, label, inlineRaw } = resolved
+
+    if (def.type === 'boolean') {
+      flags[name] = inlineRaw === undefined ? true : coerceFlagValue(inlineRaw, def)
+      continue
+    }
+
+    let raw: string
+    if (inlineRaw !== undefined) {
+      raw = inlineRaw
     }
     else {
-      positional.push(token)
+      i++
+      const next = i < argv.length ? argv[i] : undefined
+      if (next === undefined || next.startsWith('-'))
+        throw new Error(`flag ${label} expects a value`)
+      raw = next
     }
+
+    validateFlagOptions(name, raw, def)
+    accumulateFlagValue(flags, name, coerceFlagValue(raw, def), def)
   }
 
   const args: ParsedArgs = {}

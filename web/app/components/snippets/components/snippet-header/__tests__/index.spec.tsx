@@ -36,9 +36,9 @@ vi.mock('@/app/components/workflow/header', () => ({
 
 describe('SnippetHeader', () => {
   const mockCancel = vi.fn()
-  const mockDiscardAndExit = vi.fn()
   const mockEdit = vi.fn()
   const mockExitEditing = vi.fn()
+  const mockExitEditingWithoutSave = vi.fn()
   const mockPublish = vi.fn()
   const mockSaveAndExit = vi.fn()
 
@@ -52,13 +52,14 @@ describe('SnippetHeader', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
+          canDiscardChanges
           hasDraftChanges={false}
           isEditing={false}
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
           onEdit={mockEdit}
           onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
           onPublish={mockPublish}
           onSaveAndExitEditing={mockSaveAndExit}
         />,
@@ -80,13 +81,14 @@ describe('SnippetHeader', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
+          canDiscardChanges
           hasDraftChanges
           isEditing
           isPublishing={false}
           onCancel={mockCancel}
-          onDiscardAndExitEditing={mockDiscardAndExit}
           onEdit={mockEdit}
           onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
           onPublish={mockPublish}
           onSaveAndExitEditing={mockSaveAndExit}
         />,
@@ -97,6 +99,27 @@ describe('SnippetHeader', () => {
 
       expect(mockPublish).toHaveBeenCalledTimes(1)
       expect(mockCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should hide the discard draft action when there is no published workflow', () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges={false}
+          hasDraftChanges
+          isEditing
+          isPublishing={false}
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      expect(screen.queryByText('snippet.discardDraft')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.editingDraft')).toBeInTheDocument()
     })
   })
 })

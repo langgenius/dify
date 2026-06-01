@@ -1,14 +1,11 @@
 import type { AppListCategory } from '../app-type-filter-shared'
-import { debounce, parseAsArrayOf, parseAsString, useQueryStates } from 'nuqs'
+import { debounce, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { parseAsAppListCategory } from '../app-type-filter-shared'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
 const appListQueryParsers = {
   category: parseAsAppListCategory,
-  tagIDs: parseAsArrayOf(parseAsString, ';')
-    .withDefault([])
-    .withOptions({ history: 'push' }),
   keywords: parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
   }),
@@ -28,10 +25,6 @@ export function useAppsQueryState() {
     setQuery({ keywords })
   }, [setQuery])
 
-  const setTagIDs = useCallback((tagIDs: string[]) => {
-    setQuery({ tagIDs })
-  }, [setQuery])
-
   const setCreatorID = useCallback((creatorID: string) => {
     setQuery({ creatorID })
   }, [setQuery])
@@ -40,7 +33,6 @@ export function useAppsQueryState() {
     query,
     setCategory,
     setKeywords,
-    setTagIDs,
     setCreatorID,
-  }), [query, setCategory, setKeywords, setTagIDs, setCreatorID])
+  }), [query, setCategory, setKeywords, setCreatorID])
 }

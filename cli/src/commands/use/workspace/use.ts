@@ -1,19 +1,18 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle, Workspace } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams.js'
-import { WorkspacesClient } from '../../../api/workspaces.js'
-import { saveHosts } from '../../../auth/hosts.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
+import type { HostsBundle, Workspace } from '@/auth/hosts'
+import type { IOStreams } from '@/sys/io/streams'
+import { WorkspacesClient } from '@/api/workspaces'
+import { saveHosts } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { runWithSpinner } from '@/sys/io/spinner'
 
 export type UseWorkspaceOptions = {
   readonly workspaceId: string
 }
 
 export type UseWorkspaceDeps = {
-  readonly configDir: string
   readonly bundle: HostsBundle
   readonly http: KyInstance
   readonly io: IOStreams
@@ -70,7 +69,7 @@ export async function runUseWorkspace(
       role: w.role,
     })),
   }
-  await saveHosts(deps.configDir, next)
+  saveHosts(next)
   deps.io.out.write(`${cs.successIcon()} Switched to ${matched.name} (${matched.id})\n`)
   return next
 }

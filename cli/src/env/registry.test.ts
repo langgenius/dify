@@ -4,7 +4,7 @@ import {
   getEnv,
   lookupEnv,
   resolveEnv,
-} from './registry.js'
+} from './registry'
 
 describe('env registry', () => {
   it('contains every DIFY_* var from the v1.0 spec', () => {

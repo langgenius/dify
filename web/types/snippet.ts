@@ -34,6 +34,7 @@ export type CreateSnippetPayload = {
   name: string
   description?: string
   type?: SnippetType
+  graph?: Record<string, unknown>
   input_fields?: SnippetInputField[]
 }
 

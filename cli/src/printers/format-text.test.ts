@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TextPrintFlags } from './format-text.js'
+import { TextPrintFlags } from './format-text'
 
 describe('TextPrintFlags', () => {
   it('routes to handler by mode', () => {

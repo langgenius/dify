@@ -12,7 +12,7 @@ const SNIPPET_VIEWPORT_WIDTH = 1200
 const SNIPPET_VIEWPORT_HEIGHT = 800
 const SNIPPET_VIEWPORT_PADDING = 160
 const VARIABLE_REFERENCE_REGEX = /\{\{#([^#{}]+)#\}\}/g
-const GLOBAL_VARIABLE_PREFIXES = new Set(['conversation', 'env', 'rag'])
+const RESERVED_VARIABLE_PREFIXES = new Set(['rag'])
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -103,7 +103,7 @@ const isExternalVariableSelector = (
   if (selectedNodeIds.has(nodeId))
     return false
 
-  return !GLOBAL_VARIABLE_PREFIXES.has(nodeId)
+  return !RESERVED_VARIABLE_PREFIXES.has(nodeId)
 }
 
 const sanitizeInputFieldVariable = (variable: string) => {

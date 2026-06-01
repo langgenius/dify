@@ -1,15 +1,14 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HostsBundle } from '../auth/hosts.js'
-import type { CompatVerdict } from './compat.js'
-import type { Channel } from './info.js'
-import { META_PROBE_TIMEOUT_MS, MetaClient } from '../api/meta.js'
-import { loadHosts } from '../auth/hosts.js'
-import { createClient } from '../http/client.js'
-import { resolveConfigDir } from '../store/dir.js'
-import { arch, platform } from '../sys/index.js'
-import { hostWithScheme } from '../util/host.js'
-import { difyCompat, evaluateCompat } from './compat.js'
-import { versionInfo } from './info.js'
+import type { CompatVerdict } from './compat'
+import type { Channel } from './info'
+import type { HostsBundle } from '@/auth/hosts'
+import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
+import { loadHosts } from '@/auth/hosts'
+import { createClient } from '@/http/client'
+import { arch, platform } from '@/sys/index'
+import { hostWithScheme } from '@/util/host'
+import { difyCompat, evaluateCompat } from './compat'
+import { versionInfo } from './info'
 
 export type ClientBlock = {
   readonly version: string
@@ -48,7 +47,7 @@ export type RunVersionProbeOptions = {
   readonly probe?: MetaProbe
 }
 
-const defaultLoadBundle = async (): Promise<HostsBundle | undefined> => loadHosts(resolveConfigDir())
+const defaultLoadBundle = async (): Promise<HostsBundle | undefined> => loadHosts()
 
 const defaultProbe: MetaProbe = async (endpoint) => {
   const http = createClient({ host: endpoint, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })

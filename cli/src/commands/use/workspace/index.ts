@@ -1,7 +1,7 @@
-import { Args } from '../../../framework/flags.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runUseWorkspace } from './use.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args } from '@/framework/flags'
+import { runUseWorkspace } from './use'
 
 export default class UseWorkspace extends DifyCommand {
   static override description = 'Switch the active workspace on the server and refresh hosts.yml'
@@ -22,7 +22,6 @@ export default class UseWorkspace extends DifyCommand {
     const { args, flags } = this.parse(UseWorkspace, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     await runUseWorkspace({ workspaceId: args.workspaceId }, {
-      configDir: ctx.configDir,
       bundle: ctx.bundle,
       http: ctx.http,
       io: ctx.io,

@@ -1,13 +1,11 @@
 import type { KyInstance } from 'ky'
-import { loadHosts } from '../../../auth/hosts.js'
-import { selectStore } from '../../../auth/store.js'
-import { createClient } from '../../../http/client.js'
-import { resolveConfigDir } from '../../../store/dir.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { realStreams } from '../../../sys/io/streams'
-import { hostWithScheme } from '../../../util/host.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runLogout } from './logout.js'
+import { loadHosts } from '@/auth/hosts'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { createClient } from '@/http/client'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { realStreams } from '@/sys/io/streams'
+import { hostWithScheme } from '@/util/host'
+import { runLogout } from './logout'
 
 export default class Logout extends DifyCommand {
   static override description = 'Log out of the active Dify host'
@@ -18,9 +16,7 @@ export default class Logout extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     this.parse(Logout, argv)
-    const configDir = resolveConfigDir()
-    const bundle = await loadHosts(configDir)
-    const { store } = await selectStore({ configDir })
+    const bundle = loadHosts()
 
     let http: KyInstance | undefined
     if (bundle !== undefined && bundle.current_host !== '' && bundle.tokens?.bearer !== undefined && bundle.tokens.bearer !== '') {
@@ -34,7 +30,7 @@ export default class Logout extends DifyCommand {
     const io = realStreams()
     await runWithSpinner(
       { io, label: 'Signing out', enabled: true, style: 'dify-dim' },
-      () => runLogout({ configDir, io, bundle, http, store }),
+      () => runLogout({ io, bundle, http }),
     )
   }
 }

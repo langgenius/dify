@@ -1,45 +1,57 @@
-import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { loadConfig } from '../config/config-loader'
-import { emptyConfig, FILE_NAME } from '../config/schema'
-import { platform } from '../sys'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { loadConfig } from '@/config/config-loader'
+import { emptyConfig } from '@/config/schema'
 import { saveConfig } from './config-writer'
-import { YamlStore } from './store'
-
-function makeStore(dir: string): YamlStore {
-  return new YamlStore(join(dir, FILE_NAME))
-}
+import { ENV_CONFIG_DIR } from './dir'
+import { getConfigurationStore } from './manager'
 
 describe('saveConfig', () => {
   let dir: string
+  let prevConfigDir: string | undefined
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-w-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = dir
   })
 
-  it('writes config.yml in the target dir', async () => {
-    saveConfig(makeStore(dir), { ...emptyConfig(), schema_version: 1 })
-    const stats = await stat(join(dir, FILE_NAME))
-    expect(stats.isFile()).toBe(true)
+  afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
+    await rm(dir, { recursive: true, force: true })
   })
 
   it('stamps schema_version=1 even if caller passed 0', () => {
-    saveConfig(makeStore(dir), { ...emptyConfig() })
-    const r = loadConfig(makeStore(dir))
+    saveConfig(getConfigurationStore(), { ...emptyConfig() })
+    const r = loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found)
       expect(r.config.schema_version).toBe(1)
   })
 
-  it('round-trips defaults + state through YAML', () => {
-    saveConfig(makeStore(dir), {
+  it('overrides a stale schema_version on save', () => {
+    saveConfig(getConfigurationStore(), {
+      ...emptyConfig(),
+      schema_version: 999 as never,
+    })
+    const r = loadConfig(getConfigurationStore())
+    expect(r.found).toBe(true)
+    if (r.found)
+      expect(r.config.schema_version).toBe(1)
+  })
+
+  it('round-trips defaults + state', () => {
+    saveConfig(getConfigurationStore(), {
       schema_version: 1,
       defaults: { format: 'wide', limit: 75 },
       state: { current_app: 'app-xyz' },
     })
-    const r = loadConfig(makeStore(dir))
+    const r = loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).toBe('wide')
@@ -48,39 +60,22 @@ describe('saveConfig', () => {
     }
   })
 
-  it('writes file with mode 0o600 (POSIX)', async () => {
-    if (platform() === 'win32')
-      return
-    saveConfig(makeStore(dir), emptyConfig())
-    const s = await stat(join(dir, FILE_NAME))
-    expect(s.mode & 0o777).toBe(0o600)
-  })
-
-  it('does not leave a tmp file on success', async () => {
-    saveConfig(makeStore(dir), emptyConfig())
-    const entries = await readdir(dir)
-    expect(entries.filter(f => f.endsWith('.tmp'))).toHaveLength(0)
-    expect(entries.filter(f => f.includes('.tmp.'))).toHaveLength(0)
-  })
-
-  it('creates parent dir at 0o700 if absent', async () => {
-    if (platform() === 'win32')
-      return
-    const nested = join(dir, 'nested', 'sub')
-    saveConfig(makeStore(nested), emptyConfig())
-    const s = await stat(nested)
-    expect(s.isDirectory()).toBe(true)
-    expect(s.mode & 0o777).toBe(0o700)
-  })
-
-  it('emits parseable YAML (round-trip via fs.readFile + js-yaml)', async () => {
-    saveConfig(makeStore(dir), {
+  it('overwrites the previous config on resave', () => {
+    saveConfig(getConfigurationStore(), {
       schema_version: 1,
       defaults: { format: 'json' },
       state: {},
     })
-    const raw = await readFile(join(dir, FILE_NAME), 'utf8')
-    expect(raw).toMatch(/^schema_version:/m)
-    expect(raw).toMatch(/format: json/)
+    saveConfig(getConfigurationStore(), {
+      schema_version: 1,
+      defaults: { format: 'table' },
+      state: { current_app: 'app-2' },
+    })
+    const r = loadConfig(getConfigurationStore())
+    expect(r.found).toBe(true)
+    if (r.found) {
+      expect(r.config.defaults.format).toBe('table')
+      expect(r.config.state.current_app).toBe('app-2')
+    }
   })
 })

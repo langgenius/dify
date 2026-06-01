@@ -1,7 +1,8 @@
-import { Args, Flags } from '../../../framework/flags.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { resumeApp } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { OutputFormat } from '@/framework/output'
+import { resumeApp } from './run'
 
 export default class ResumeApp extends DifyCommand {
   static override description = 'Resume a paused workflow app after submitting a human input form'
@@ -25,7 +26,7 @@ export default class ResumeApp extends DifyCommand {
     'with-history': Flags.boolean({ description: 'Replay executed-node history before attaching to live stream.', default: false }),
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive. Default: collect and print at end.', default: false }),
     'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
-    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|text)', default: '' }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
     'http-retry': httpRetryFlag,
   }
 

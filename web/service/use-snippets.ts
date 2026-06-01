@@ -77,7 +77,7 @@ const toSnippetDetail = (snippet: SnippetContract): SnippetDetailUIModel => {
   }
 }
 
-const toSnippetCanvasData = (workflow?: SnippetWorkflow): SnippetCanvasData => {
+const toSnippetCanvasData = (workflow?: SnippetWorkflow | null): SnippetCanvasData => {
   const graph = workflow?.graph
 
   if (!graph || typeof graph !== 'object')
@@ -94,7 +94,7 @@ const toSnippetCanvasData = (workflow?: SnippetWorkflow): SnippetCanvasData => {
   }
 }
 
-export const buildSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow): SnippetDetailPayload => {
+export const buildSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow | null): SnippetDetailPayload => {
   const inputFields = Array.isArray(workflow?.input_fields)
     ? workflow.input_fields as SnippetInputFieldUIModel[]
     : []

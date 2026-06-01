@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -13,9 +13,11 @@ const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) =>
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
+let mockSearchParams = new URLSearchParams('')
 vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
-  useSearchParams: () => new URLSearchParams(''),
+  usePathname: () => '/apps',
+  useSearchParams: () => mockSearchParams,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -50,12 +52,10 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 const mockSetKeywords = vi.fn()
-const mockSetTagIDs = vi.fn()
 const mockSetCreatorID = vi.fn()
 const mockSetCategory = vi.fn()
 const mockQueryState = {
   category: 'all',
-  tagIDs: [] as string[],
   keywords: '',
   creatorID: '',
 }
@@ -65,7 +65,6 @@ vi.mock('../hooks/use-apps-query-state', () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
-    setTagIDs: mockSetTagIDs,
     setCreatorID: mockSetCreatorID,
   }),
 }))
@@ -78,7 +77,18 @@ vi.mock('@/service/use-common', () => ({
         { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
       ],
     },
+    setCreatorID: mockSetCreatorID,
   }),
+}))
+
+vi.mock('@/features/tag-management/components/tag-filter', () => ({
+  TagFilter: ({ value, onChange, onOpenTagManagement }: { value: string[], onChange: (value: string[]) => void, onOpenTagManagement: () => void }) => (
+    <div>
+      <button type="button" onClick={() => onChange(['tag-1'])}>common.tag.placeholder</button>
+      <span data-testid="tag-filter-value">{value.join(',')}</span>
+      <button type="button" onClick={onOpenTagManagement}>Manage tags</button>
+    </div>
+  ),
 }))
 
 let mockOnDSLFileDropped: ((file: File) => void) | null = null
@@ -242,6 +252,7 @@ beforeAll(() => {
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
 const renderList = (searchParams = '', pageType: 'apps' | 'snippets' = 'apps') => {
+  mockSearchParams = new URLSearchParams(searchParams)
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { branding: { enabled: false } },
   })
@@ -269,7 +280,6 @@ describe('List', () => {
     mockServiceState.isLoading = false
     mockServiceState.isFetchingNextPage = false
     mockQueryState.category = 'all'
-    mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.creatorID = ''
     mockUseWorkflowOnlineUsers.mockClear()
@@ -403,12 +413,12 @@ describe('List', () => {
 
   describe('App List Query', () => {
     it('should build paged query input from active filters', () => {
-      mockQueryState.tagIDs = ['tag-1']
       mockQueryState.keywords = 'sales'
       mockQueryState.creatorID = 'creator-1'
       mockQueryState.category = AppModeEnum.WORKFLOW
 
       renderList()
+      fireEvent.click(screen.getByText('common.tag.placeholder'))
 
       const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
 
@@ -424,6 +434,17 @@ describe('List', () => {
       })
       expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
       expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
+    })
+
+    it('should remove legacy tagIDs from URL while preserving other filters', async () => {
+      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales&isCreatedByMe=true')
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith(
+          '/apps?category=workflow&keywords=sales&isCreatedByMe=true',
+          { scroll: false },
+        )
+      })
     })
   })
 

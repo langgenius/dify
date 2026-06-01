@@ -1,8 +1,8 @@
-import { Args, Flags } from '../../../framework/flags.js'
-import { formatted } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runDescribeApp } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { formatted, OutputFormat } from '@/framework/output'
+import { runDescribeApp } from './run'
 
 export default class DescribeApp extends DifyCommand {
   static override description = 'Describe a single app (kubectl-describe-style)'
@@ -20,7 +20,7 @@ export default class DescribeApp extends DifyCommand {
   static override flags = {
     'workspace': Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
     'http-retry': httpRetryFlag,
-    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|text)', default: '' }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
     'refresh': Flags.boolean({ description: 'bypass app-info cache and fetch fresh', default: false }),
   }
 

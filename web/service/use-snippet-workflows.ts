@@ -85,7 +85,8 @@ export const useSnippetPublishedWorkflow = (
     queryFn: async (context) => {
       try {
         const publishedWorkflow = await queryOptions.queryFn(context)
-        onSuccess?.(publishedWorkflow)
+        if (publishedWorkflow)
+          onSuccess?.(publishedWorkflow)
         return publishedWorkflow
       }
       catch (error) {

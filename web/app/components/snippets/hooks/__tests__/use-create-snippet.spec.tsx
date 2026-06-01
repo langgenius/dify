@@ -6,7 +6,6 @@ const mockPush = vi.fn()
 const mockMutateAsync = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
-const mockSyncDraftWorkflow = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -17,14 +16,6 @@ vi.mock('@/service/use-snippets', () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
   }),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    snippets: {
-      syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
-    },
-  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -56,9 +47,13 @@ describe('useCreateSnippet', () => {
   })
 
   describe('Create Flow', () => {
-    it('should create snippet, sync draft workflow, and navigate on success', async () => {
+    it('should create snippet with graph and navigate on success', async () => {
       mockMutateAsync.mockResolvedValue({ id: 'snippet-123' })
-      mockSyncDraftWorkflow.mockResolvedValue(undefined)
+      const graph = {
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      }
 
       const { result } = renderHook(() => useCreateSnippet())
 
@@ -78,11 +73,7 @@ describe('useCreateSnippet', () => {
               required: true,
             },
           ],
-          graph: {
-            nodes: [],
-            edges: [],
-            viewport: { x: 0, y: 0, zoom: 1 },
-          },
+          graph,
         })
       })
 
@@ -90,6 +81,7 @@ describe('useCreateSnippet', () => {
         body: {
           name: 'My snippet',
           description: 'desc',
+          graph,
           input_fields: [
             {
               label: 'topic',
@@ -98,24 +90,6 @@ describe('useCreateSnippet', () => {
               required: true,
             },
           ],
-        },
-      })
-      expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-123' },
-        body: {
-          input_fields: [
-            {
-              label: 'topic',
-              variable: 'topic',
-              type: PipelineInputVarType.textInput,
-              required: true,
-            },
-          ],
-          graph: {
-            nodes: [],
-            edges: [],
-            viewport: { x: 0, y: 0, zoom: 1 },
-          },
         },
       })
       expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')

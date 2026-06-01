@@ -42,7 +42,7 @@ const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
 }
 
-const getComparableWorkflowData = (workflow?: SnippetWorkflow) => {
+const getComparableWorkflowData = (workflow?: SnippetWorkflow | null) => {
   return {
     graph: workflow?.graph ?? {},
     inputFields: Array.isArray(workflow?.input_fields) ? workflow.input_fields : [],

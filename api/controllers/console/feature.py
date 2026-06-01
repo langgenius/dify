@@ -2,13 +2,36 @@ from flask_restx import Resource
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.schema import register_response_schema_models
+from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import current_user, login_required
-from services.feature_service import FeatureModel, FeatureService, LimitationModel, SystemFeatureModel
+from services.feature_service import (
+    FeatureModel,
+    FeatureService,
+    LimitationModel,
+    SystemFeatureModel,
+)
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required, with_current_tenant_id
 
-register_response_schema_models(console_ns, FeatureModel, LimitationModel, SystemFeatureModel)
+
+class TrialModelsResponse(ResponseModel):
+    trial_models: list[str]
+
+
+class AppDslVersionResponse(ResponseModel):
+    app_dsl_version: str
+
+
+register_response_schema_models(
+    console_ns,
+    AppDslVersionResponse,
+    FeatureModel,
+    LimitationModel,
+    SystemFeatureModel,
+    TrialModelsResponse,
+)
 
 
 @console_ns.route("/features")
@@ -52,6 +75,43 @@ class FeatureVectorSpaceApi(Resource):
     def get(self, current_tenant_id: str):
         """Get vector-space usage and limit for current tenant"""
         return FeatureService.get_vector_space(current_tenant_id).model_dump()
+
+
+@console_ns.route("/trial-models")
+class TrialModelsApi(Resource):
+    @console_ns.doc("get_trial_models")
+    @console_ns.doc(description="Get hosted trial model provider configuration")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[TrialModelsResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        """Get hosted trial model provider configuration for model-provider pages."""
+        return dump_response(
+            TrialModelsResponse,
+            {"trial_models": FeatureService.get_trial_models()},
+        )
+
+
+@console_ns.route("/app-dsl-version")
+class AppDslVersionApi(Resource):
+    @console_ns.doc("get_app_dsl_version")
+    @console_ns.doc(description="Get current app DSL version")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[AppDslVersionResponse.__name__],
+    )
+    def get(self):
+        """Get current app DSL version for workflow clipboard compatibility."""
+        return dump_response(
+            AppDslVersionResponse,
+            {"app_dsl_version": FeatureService.get_app_dsl_version()},
+        )
 
 
 @console_ns.route("/system-features")

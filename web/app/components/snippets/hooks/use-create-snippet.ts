@@ -3,7 +3,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
 
 export const useCreateSnippet = () => {
@@ -34,13 +33,9 @@ export const useCreateSnippet = () => {
         body: {
           name,
           description: description || undefined,
+          graph,
           input_fields,
         },
-      })
-
-      await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId: snippet.id },
-        body: { graph, input_fields },
       })
 
       toast.success(t('snippet.createSuccess', { ns: 'workflow' }))

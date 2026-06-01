@@ -2,11 +2,13 @@
 
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
-import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { SnippetDraftSyncPayload } from '@/types/snippet'
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -15,6 +17,11 @@ import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  initialEdges,
+  initialNodes,
+} from '@/app/components/workflow/utils'
+import { useRouter } from '@/next/navigation'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
@@ -26,6 +33,7 @@ import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
+import SaveBeforeLeavingDialog from './save-before-leaving-dialog'
 import SnippetChildren from './snippet-children'
 import SnippetSidebar from './snippet-sidebar'
 
@@ -33,6 +41,7 @@ type SnippetMainProps = {
   payload: SnippetDetailPayload
   draftPayload: SnippetDetailPayload
   hasInitialDraftChanges: boolean
+  hasPublishedWorkflow: boolean
   publishedWorkflowHash?: string
   draftWorkflowHash?: string
   snippetId: string
@@ -44,12 +53,14 @@ type SnippetMainProps = {
 type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
+  canDiscardChanges: boolean
   hasDraftChanges: boolean
   isEditing: boolean
   onCancel: () => void | Promise<void>
-  onDiscardAndExitEditing: () => void | Promise<void>
+  onDiscardRoute: () => void | Promise<void>
   onEdit: () => void
   onExitEditing: () => void | Promise<void>
+  onExitEditingWithoutSave: () => void | Promise<void>
   onSaved: () => void
   onSavedAndExitEditing: () => void
 }
@@ -60,18 +71,29 @@ const unsupportedSnippetBlockTypes = new Set([
   BlockEnum.KnowledgeRetrieval,
 ])
 
+type LocalDraftState = {
+  payload: SnippetDetailPayload
+  nodes: WorkflowProps['nodes']
+  edges: WorkflowProps['edges']
+  viewport?: WorkflowProps['viewport']
+}
+
 const SnippetMainContent = ({
   snippetId,
   fields,
+  canDiscardChanges,
   hasDraftChanges,
   isEditing,
   onCancel,
-  onDiscardAndExitEditing,
+  onDiscardRoute,
   onEdit,
   onExitEditing,
+  onExitEditingWithoutSave,
   onSaved,
   onSavedAndExitEditing,
 }: SnippetMainContentProps) => {
+  const { push } = useRouter()
+  const [pendingHref, setPendingHref] = useState<string>()
   const {
     handlePublish,
     isPublishing,
@@ -93,20 +115,112 @@ const SnippetMainContent = ({
       onSavedAndExitEditing()
   }, [handlePublishSnippet, onSavedAndExitEditing])
 
+  const navigateToPendingHref = useCallback((href: string) => {
+    const url = new URL(href, window.location.href)
+    if (url.origin === window.location.origin)
+      push(`${url.pathname}${url.search}${url.hash}`)
+    else
+      window.location.assign(url.href)
+  }, [push])
+
+  const handleDiscardAndRoute = useCallback(async () => {
+    if (!pendingHref)
+      return
+
+    await onDiscardRoute()
+    navigateToPendingHref(pendingHref)
+    setPendingHref(undefined)
+  }, [navigateToPendingHref, onDiscardRoute, pendingHref])
+
+  const handleSaveAndRoute = useCallback(async () => {
+    if (!pendingHref)
+      return
+
+    const didSave = await handlePublishSnippet()
+    if (!didSave)
+      return
+
+    navigateToPendingHref(pendingHref)
+    setPendingHref(undefined)
+  }, [handlePublishSnippet, navigateToPendingHref, pendingHref])
+
+  useEffect(() => {
+    if (!isEditing || !hasDraftChanges)
+      return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasDraftChanges, isEditing])
+
+  useEffect(() => {
+    if (!isEditing || !hasDraftChanges)
+      return
+
+    const handleClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented
+        || event.button !== 0
+        || event.metaKey
+        || event.ctrlKey
+        || event.shiftKey
+        || event.altKey
+      ) {
+        return
+      }
+
+      const anchor = (event.target as Element | null)?.closest?.('a[href]')
+      if (!(anchor instanceof HTMLAnchorElement))
+        return
+
+      if (anchor.target && anchor.target !== '_self')
+        return
+      if (anchor.hasAttribute('download'))
+        return
+
+      const nextUrl = new URL(anchor.href, window.location.href)
+      const currentUrl = new URL(window.location.href)
+      if (nextUrl.href === currentUrl.href)
+        return
+
+      event.preventDefault()
+      event.stopPropagation()
+      setPendingHref(nextUrl.href)
+    }
+
+    document.addEventListener('click', handleClick, true)
+    return () => document.removeEventListener('click', handleClick, true)
+  }, [hasDraftChanges, isEditing])
+
   return (
-    <SnippetChildren
-      snippetId={snippetId}
-      fields={fields}
-      hasDraftChanges={hasDraftChanges}
-      isEditing={isEditing}
-      isPublishing={isPublishing}
-      onCancel={onCancel}
-      onDiscardAndExitEditing={onDiscardAndExitEditing}
-      onEdit={onEdit}
-      onExitEditing={onExitEditing}
-      onPublish={handlePublishSnippet}
-      onSaveAndExitEditing={handleSaveAndExitEditing}
-    />
+    <>
+      <SnippetChildren
+        snippetId={snippetId}
+        fields={fields}
+        canDiscardChanges={canDiscardChanges}
+        hasDraftChanges={hasDraftChanges}
+        isEditing={isEditing}
+        isPublishing={isPublishing}
+        onCancel={onCancel}
+        onEdit={onEdit}
+        onExitEditing={onExitEditing}
+        onExitEditingWithoutSave={onExitEditingWithoutSave}
+        onPublish={handlePublishSnippet}
+        onSaveAndExitEditing={handleSaveAndExitEditing}
+      />
+      <SaveBeforeLeavingDialog
+        open={!!pendingHref}
+        onOpenChange={open => !open && setPendingHref(undefined)}
+        disabled={isPublishing}
+        loading={isPublishing}
+        onDiscard={handleDiscardAndRoute}
+        onSave={handleSaveAndRoute}
+      />
+    </>
   )
 }
 
@@ -114,6 +228,7 @@ const SnippetMain = ({
   payload,
   draftPayload,
   hasInitialDraftChanges,
+  hasPublishedWorkflow,
   publishedWorkflowHash,
   draftWorkflowHash,
   snippetId,
@@ -124,13 +239,15 @@ const SnippetMain = ({
   draftEdges,
   draftViewport,
 }: SnippetMainProps) => {
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(true)
+  const [localDraftState, setLocalDraftState] = useState<LocalDraftState>()
   const [draftChangeState, setDraftChangeState] = useState({
     initial: hasInitialDraftChanges,
     snippetId,
     value: hasInitialDraftChanges,
   })
   if (draftChangeState.snippetId !== snippetId || draftChangeState.initial !== hasInitialDraftChanges) {
+    setLocalDraftState(undefined)
     setDraftChangeState({
       initial: hasInitialDraftChanges,
       snippetId,
@@ -138,16 +255,21 @@ const SnippetMain = ({
     })
   }
   const hasDraftChanges = draftChangeState.value
+  const skipNextForcedDraftSyncRef = useRef(false)
   const setHasDraftChanges = useCallback((value: boolean) => {
     setDraftChangeState(prev => ({
       ...prev,
       value,
     }))
   }, [])
-  const displayPayload = isEditing ? draftPayload : payload
-  const displayNodes = isEditing ? draftNodes : nodes
-  const displayEdges = isEditing ? draftEdges : edges
-  const displayViewport = isEditing ? draftViewport : viewport
+  const effectiveDraftPayload = localDraftState?.payload ?? draftPayload
+  const effectiveDraftNodes = localDraftState?.nodes ?? draftNodes
+  const effectiveDraftEdges = localDraftState?.edges ?? draftEdges
+  const effectiveDraftViewport = localDraftState?.viewport ?? draftViewport
+  const displayPayload = isEditing ? effectiveDraftPayload : payload
+  const displayNodes = isEditing ? effectiveDraftNodes : nodes
+  const displayEdges = isEditing ? effectiveDraftEdges : edges
+  const displayViewport = isEditing ? effectiveDraftViewport : viewport
   const displayWorkflowHash = isEditing ? draftWorkflowHash : publishedWorkflowHash
   const { graph, snippet } = displayPayload
   const {
@@ -261,6 +383,15 @@ const SnippetMain = ({
   const doSyncWorkflowDraft = useCallback((
     ...args: Parameters<typeof syncWorkflowDraft>
   ) => {
+    const [
+      notRefreshWhenSyncError,
+      callback,
+    ] = args
+    if (skipNextForcedDraftSyncRef.current && notRefreshWhenSyncError === true && !callback) {
+      skipNextForcedDraftSyncRef.current = false
+      return Promise.resolve()
+    }
+
     if (isEditing)
       setHasDraftChanges(true)
 
@@ -289,6 +420,38 @@ const SnippetMain = ({
     setHasDraftChanges(true)
   }, [handleFieldsChange, setHasDraftChanges])
 
+  const updateLocalDraftFromSyncPayload = useCallback((
+    syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void,
+  ) => {
+    const graph = syncedDraftPayload?.graph
+    if (!graph || typeof graph !== 'object')
+      return
+
+    const graphRecord = graph as Record<string, unknown>
+    const draftGraph: SnippetCanvasData = {
+      nodes: Array.isArray(graphRecord.nodes) ? graphRecord.nodes as SnippetCanvasData['nodes'] : [],
+      edges: Array.isArray(graphRecord.edges) ? graphRecord.edges as SnippetCanvasData['edges'] : [],
+      viewport: graphRecord.viewport && typeof graphRecord.viewport === 'object'
+        ? graphRecord.viewport as SnippetCanvasData['viewport']
+        : { x: 0, y: 0, zoom: 1 },
+    }
+    const inputFields = Array.isArray(syncedDraftPayload.input_fields)
+      ? syncedDraftPayload.input_fields as SnippetInputField[]
+      : fields
+
+    setLocalDraftState({
+      payload: {
+        ...draftPayload,
+        graph: draftGraph,
+        inputFields,
+      },
+      nodes: initialNodes(draftGraph.nodes, draftGraph.edges),
+      edges: initialEdges(draftGraph.edges, draftGraph.nodes),
+      viewport: draftGraph.viewport,
+    })
+    setFields(inputFields)
+  }, [draftPayload, fields, setFields])
+
   const handleExitEditing = useCallback(async () => {
     if (hasDraftChanges)
       return
@@ -296,10 +459,23 @@ const SnippetMain = ({
     setIsEditing(false)
   }, [hasDraftChanges])
 
-  const handleDiscardAndExitEditing = useCallback(async () => {
-    await handleCancelChanges()
+  const handleExitEditingWithoutSave = useCallback(async () => {
+    const syncedDraftPayload = await syncWorkflowDraft(true)
+    updateLocalDraftFromSyncPayload(syncedDraftPayload)
+    skipNextForcedDraftSyncRef.current = true
     setIsEditing(false)
-  }, [handleCancelChanges])
+  }, [syncWorkflowDraft, updateLocalDraftFromSyncPayload])
+
+  const handleDiscardAndRoute = useCallback(async () => {
+    const syncedDraftPayload = await syncWorkflowDraft(true)
+    updateLocalDraftFromSyncPayload(syncedDraftPayload)
+    skipNextForcedDraftSyncRef.current = true
+  }, [syncWorkflowDraft, updateLocalDraftFromSyncPayload])
+
+  const handleEdit = useCallback(() => {
+    skipNextForcedDraftSyncRef.current = true
+    setIsEditing(true)
+  }, [])
 
   const hooksStore = useMemo(() => {
     return {
@@ -382,12 +558,14 @@ const SnippetMain = ({
           <SnippetMainContent
             snippetId={snippetId}
             fields={fields}
+            canDiscardChanges={hasPublishedWorkflow}
             hasDraftChanges={hasDraftChanges}
             isEditing={isEditing}
             onCancel={handleCancelChanges}
-            onDiscardAndExitEditing={handleDiscardAndExitEditing}
-            onEdit={() => setIsEditing(true)}
+            onDiscardRoute={handleDiscardAndRoute}
+            onEdit={handleEdit}
             onExitEditing={handleExitEditing}
+            onExitEditingWithoutSave={handleExitEditingWithoutSave}
             onSaved={() => setHasDraftChanges(false)}
             onSavedAndExitEditing={() => {
               setHasDraftChanges(false)

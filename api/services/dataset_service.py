@@ -148,6 +148,11 @@ class _EstimateRules(BaseModel):
         return list(seen.values())
 
 
+class _EstimateHierarchicalRules(_EstimateRules):
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: _EstimateSegmentation | None = None
+
+
 class _SummaryIndexSettingDisabled(BaseModel):
     enable: Literal[False] = False
 
@@ -203,7 +208,7 @@ class _HierarchicalProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     mode: Literal[ProcessRuleMode.HIERARCHICAL]
-    rules: _EstimateRules
+    rules: _EstimateHierarchicalRules
     summary_index_setting: _SummaryIndexSetting | None = None
 
     @field_validator("summary_index_setting", mode="before")
@@ -2329,15 +2334,15 @@ class DocumentService:
     #             if knowledge_config.data_source:
     #                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
     #                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-    # # type: ignore
+    #
     #                     count = len(upload_file_list)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
     #                     notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-    #                     for notion_info in notion_info_list:  # type: ignore
+    #                     for notion_info in notion_info_list:
     #                         count = count + len(notion_info.pages)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
     #                     website_info = knowledge_config.data_source.info_list.website_info_list
-    #                     count = len(website_info.urls)  # type: ignore
+    #                     count = len(website_info.urls)
     #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
     #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
@@ -2349,7 +2354,7 @@ class DocumentService:
 
     #     # if dataset is empty, update dataset data_source_type
     #     if not dataset.data_source_type:
-    #         dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type  # type: ignore
+    #         dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
     #     if not dataset.indexing_technique:
     #         if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
@@ -2386,7 +2391,7 @@ class DocumentService:
     #                     knowledge_config.retrieval_model.model_dump()
     #                     if knowledge_config.retrieval_model
     #                     else default_retrieval_model
-    #                 )  # type: ignore
+    #                 )
 
     #     documents = []
     #     if knowledge_config.original_document_id:
@@ -2425,8 +2430,8 @@ class DocumentService:
     #             position = DocumentService.get_documents_position(dataset.id)
     #             document_ids = []
     #             duplicate_document_ids = []
-    #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
-    #                 upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+    #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+    #                 upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
     #                 for file_id in upload_file_list:
     #                     file = (
     #                         db.session.query(UploadFile)
@@ -2452,7 +2457,7 @@ class DocumentService:
     #                             name=file_name,
     #                         ).first()
     #                         if document:
-    #                             document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
+    #                             document.dataset_process_rule_id = dataset_process_rule.id
     #                             document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     #                             document.created_from = created_from
     #                             document.doc_form = knowledge_config.doc_form
@@ -2466,8 +2471,8 @@ class DocumentService:
     #                             continue
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,
+    #                         knowledge_config.data_source.info_list.data_source_type,
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2482,8 +2487,8 @@ class DocumentService:
     #                     document_ids.append(document.id)
     #                     documents.append(document)
     #                     position += 1
-    #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
-    #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
+    #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+    #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list
     #                 if not notion_info_list:
     #                     raise ValueError("No notion info list found.")
     #                 exist_page_ids = []
@@ -2523,8 +2528,8 @@ class DocumentService:
     #                             truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
     #                             document = DocumentService.build_document(
     #                                 dataset,
-    #                                 dataset_process_rule.id,  # type: ignore
-    #                                 knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                                 dataset_process_rule.id,
+    #                                 knowledge_config.data_source.info_list.data_source_type,
     #                                 knowledge_config.doc_form,
     #                                 knowledge_config.doc_language,
     #                                 data_source_info,
@@ -2544,8 +2549,8 @@ class DocumentService:
     #                 # delete not selected documents
     #                 if len(exist_document) > 0:
     #                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-    #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
-    #                 website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
+    #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+    #                 website_info = knowledge_config.data_source.info_list.website_info_list
     #                 if not website_info:
     #                     raise ValueError("No website info list found.")
     #                 urls = website_info.urls
@@ -2563,8 +2568,8 @@ class DocumentService:
     #                         document_name = url
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,
+    #                         knowledge_config.data_source.info_list.data_source_type,
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2971,6 +2976,10 @@ class DocumentService:
         process_rule_dict = validated.process_rule.model_dump(exclude_none=True)
         if validated.process_rule.mode == ProcessRuleMode.AUTOMATIC:
             process_rule_dict["rules"] = {}
+        elif validated.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+            rules = process_rule_dict.get("rules")
+            if isinstance(rules, dict) and not rules.get("parent_mode"):
+                rules["parent_mode"] = "paragraph"
         args["process_rule"] = process_rule_dict
 
     @staticmethod
