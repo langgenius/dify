@@ -11,7 +11,6 @@ export default antfu(
       'docs/**',
       'dist/**',
       'coverage/**',
-      'oclif.manifest.json',
       ...original,
     ],
     typescript: {
