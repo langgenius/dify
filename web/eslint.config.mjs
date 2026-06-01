@@ -179,4 +179,43 @@ export default antfu(
       }],
     },
   },
+  {
+    name: 'dify/restricted-local-storage-access',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      ...GLOB_TESTS,
+      'vitest.setup.ts',
+      'instrumentation-client.ts',
+      'hooks/use-local-storage/index.ts',
+    ],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'localStorage',
+          message: 'Do not use localStorage directly. Use @/hooks/use-local-storage instead.',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'window',
+          property: 'localStorage',
+          message: 'Do not use window.localStorage directly. Use @/hooks/use-local-storage instead.',
+        },
+        {
+          object: 'globalThis',
+          property: 'localStorage',
+          message: 'Do not use globalThis.localStorage directly. Use @/hooks/use-local-storage instead.',
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
+          message: 'Do not use ahooks useLocalStorageState. Use @/hooks/use-local-storage instead.',
+        },
+      ],
+    },
+  },
 )
