@@ -6,9 +6,10 @@ import DevicePage from '../page'
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 const mockDeviceLookup = vi.fn()
+let mockSearchParams: Record<string, string | null> = {}
 
 vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({ get: (key: string) => mockSearchParams[key] ?? null }),
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => '/device',
 }))
@@ -38,8 +39,11 @@ vi.mock('@/service/system-features', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['sys'], queryFn: async () => ({}) }),
 }))
 
-vi.mock('@/service/use-common', () => ({
+vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
+}))
+
+vi.mock('@/service/use-common', () => ({
   commonQueryKeys: { currentWorkspace: ['currentWorkspace'] },
 }))
 
@@ -53,6 +57,12 @@ let MockDeviceFlowError: MockDeviceFlowErrorCtor
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  mockSearchParams = {}
+  // router.replace(pathname) in the real app drops the query string; mirror
+  // that so useSearchParams reflects the cleared URL on the next render.
+  mockReplace.mockImplementation(() => {
+    mockSearchParams = {}
+  })
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
   const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
   MockDeviceFlowError = mod.DeviceFlowError
@@ -108,5 +118,43 @@ describe('error_lookup_failed terminal state', () => {
     fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText('Could not verify the code')).not.toBeInTheDocument()
+  })
+})
+
+describe('sso_error inline banner on the code-entry page', () => {
+  const SSO_BANNER_COPY = /identity is linked to a Dify account/i
+
+  it('shows the error banner with friendly copy when sso_error is present', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    expect(await screen.findByText(SSO_BANNER_COPY)).toBeInTheDocument()
+  })
+
+  it('keeps the code-entry screen visible (error on main page, not a separate view)', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText(SSO_BANNER_COPY)
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Continue/i })).toBeInTheDocument()
+  })
+
+  it('does not surface the raw backend error code', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText(SSO_BANNER_COPY)
+    expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
+  })
+
+  it('does not scrub the param on mount (regression: error was wiped by router.replace)', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+    render(<DevicePage />)
+    await screen.findByText(SSO_BANNER_COPY)
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('shows no banner when sso_error is absent', () => {
+    render(<DevicePage />)
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    expect(screen.queryByText(SSO_BANNER_COPY)).not.toBeInTheDocument()
   })
 })

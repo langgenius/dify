@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Args, Flags, parseArgv } from './flags.js'
+import { UnsupportedArgValueError } from './errors'
+import { Args, Flags, parseArgv } from './flags'
 
 const meta = {
   flags: {
@@ -190,13 +191,13 @@ describe('parseArgv', () => {
 
     it('rejects an invalid option value (space form)', () => {
       expect(() => parseArgv(['--mode', 'chatbot'], metaWithOptions)).toThrow(
-        '--mode must be one of: chat, workflow, completion',
+        UnsupportedArgValueError,
       )
     })
 
     it('rejects an invalid option value (= form)', () => {
       expect(() => parseArgv(['--mode=chatbot'], metaWithOptions)).toThrow(
-        '--mode must be one of: chat, workflow, completion',
+        UnsupportedArgValueError,
       )
     })
   })

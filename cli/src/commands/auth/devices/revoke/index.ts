@@ -1,7 +1,7 @@
-import { Args, Flags } from '../../../../framework/flags.js'
-import { DifyCommand } from '../../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../../_shared/global-flags.js'
-import { runDevicesRevoke } from '../_shared/devices.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { runDevicesRevoke } from '@/commands/auth/devices/_shared/devices'
+import { Args, Flags } from '@/framework/flags'
 
 export default class DevicesRevoke extends DifyCommand {
   static override description = 'Revoke one or all session devices'

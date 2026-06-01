@@ -1,13 +1,13 @@
 import type { AfterResponseHook, BeforeErrorHook, KyInstance } from 'ky'
-import type { HttpFactoryOptions, HttpLogger } from './types.js'
+import type { HttpFactoryOptions, HttpLogger } from './types'
 import ky from 'ky'
-import { BaseError } from '../errors/base.js'
-import { userAgent as defaultUserAgent } from '../version/info.js'
-import { classifyResponse, classifyTransportError } from './error-mapper.js'
-import { applyBearer } from './middleware/auth.js'
-import { logBeforeRequest, logBeforeRetry } from './middleware/request-logger.js'
-import { applyUserAgent } from './middleware/user-agent.js'
-import { redactBearer } from './sanitize.js'
+import { BaseError } from '@/errors/base'
+import { applyBearer } from '@/http/middleware/auth'
+import { logBeforeRequest, logBeforeRetry } from '@/http/middleware/request-logger'
+import { applyUserAgent } from '@/http/middleware/user-agent'
+import { userAgent as defaultUserAgent } from '@/version/info'
+import { classifyResponse, classifyTransportError } from './error-mapper'
+import { redactBearer } from './sanitize'
 
 export const DEFAULT_TIMEOUT_MS = 30_000
 export const DEFAULT_RETRY_ATTEMPTS = 3

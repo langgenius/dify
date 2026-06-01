@@ -1,5 +1,5 @@
-import type { CommandConstructor } from './command.js'
-import type { FlagDefinition } from './types.js'
+import type { CommandConstructor } from './command'
+import type { FlagDefinition } from './types'
 
 function flagLabel(name: string, def: FlagDefinition): string {
   const parts: string[] = []

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { NamePrintFlags } from './format-name.js'
-import { isNoCompatiblePrinter } from './printer.js'
+import { NamePrintFlags } from './format-name'
+import { isNoCompatiblePrinter } from './printer'
 
 const fakeMode = (m: string) => ({ mode: () => m })
 
