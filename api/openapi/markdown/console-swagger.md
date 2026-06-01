@@ -1083,6 +1083,26 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 | 400 | Invalid configuration |  |
 | 404 | App not found |  |
 
+### /apps/{app_id}/agent-referencing-workflows
+
+#### GET
+##### Description
+
+List workflow apps that reference this Agent App's bound Agent (read-only)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Referencing workflows listed successfully |
+| 404 | App not found |
+
 ### /apps/{app_id}/agent/logs
 
 #### GET
@@ -11500,7 +11520,7 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer | Page size (1-100) | No |
-| mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
 | page | integer | Page number (1-99999) | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -12195,7 +12215,7 @@ Condition detail
 | icon | string | Icon | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
-| mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
 #### CredentialType

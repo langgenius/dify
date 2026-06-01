@@ -288,9 +288,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
                     PublishFrom.APPLICATION_MANAGER,
                 )
-                publish_text_answer(
-                    queue_manager=queue_manager, model_name=model_name, answer=annotation_reply.content
-                )
+                publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=annotation_reply.content)
                 return True, query
 
         return False, query

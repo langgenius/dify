@@ -17,7 +17,7 @@ export type CreateAppPayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: IconType
-  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  mode: 'advanced-chat' | 'agent' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
   name: string
 }
 
@@ -1845,7 +1845,15 @@ export type GetAppsData = {
   query?: {
     is_created_by_me?: boolean | null
     limit?: number
-    mode?: 'advanced-chat' | 'agent-chat' | 'all' | 'channel' | 'chat' | 'completion' | 'workflow'
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'all'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'workflow'
     name?: string | null
     page?: number
     tag_ids?: Array<string> | null
@@ -2284,6 +2292,33 @@ export type PostAppsByAppIdAgentFeaturesResponses = {
 
 export type PostAppsByAppIdAgentFeaturesResponse
   = PostAppsByAppIdAgentFeaturesResponses[keyof PostAppsByAppIdAgentFeaturesResponses]
+
+export type GetAppsByAppIdAgentReferencingWorkflowsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-referencing-workflows'
+}
+
+export type GetAppsByAppIdAgentReferencingWorkflowsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentReferencingWorkflowsError
+  = GetAppsByAppIdAgentReferencingWorkflowsErrors[keyof GetAppsByAppIdAgentReferencingWorkflowsErrors]
+
+export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentReferencingWorkflowsResponse
+  = GetAppsByAppIdAgentReferencingWorkflowsResponses[keyof GetAppsByAppIdAgentReferencingWorkflowsResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never

@@ -641,7 +641,7 @@ export const zCreateAppPayload = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: zIconType.optional(),
-  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  mode: z.enum(['advanced-chat', 'agent', 'agent-chat', 'chat', 'completion', 'workflow']),
   name: z.string().min(1),
 })
 
@@ -2397,7 +2397,16 @@ export const zGetAppsQuery = z.object({
   is_created_by_me: z.boolean().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z
-    .enum(['advanced-chat', 'agent-chat', 'all', 'channel', 'chat', 'completion', 'workflow'])
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'all',
+      'channel',
+      'chat',
+      'completion',
+      'workflow',
+    ])
     .optional()
     .default('all'),
   name: z.string().nullish(),
@@ -2636,6 +2645,15 @@ export const zPostAppsByAppIdAgentFeaturesPath = z.object({
  * Features updated successfully
  */
 export const zPostAppsByAppIdAgentFeaturesResponse = zSimpleResultResponse
+
+export const zGetAppsByAppIdAgentReferencingWorkflowsPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Referencing workflows listed successfully
+ */
+export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = z.record(z.string(), z.unknown())
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),

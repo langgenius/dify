@@ -293,9 +293,7 @@ class AgentRosterService:
             )
         )
 
-    def list_workflows_referencing_app_agent(
-        self, *, tenant_id: str, app_id: str
-    ) -> list[AgentReferencingWorkflow]:
+    def list_workflows_referencing_app_agent(self, *, tenant_id: str, app_id: str) -> list[AgentReferencingWorkflow]:
         """List the workflow apps that reference this Agent App's bound Agent.
 
         Read-only "Workflow access" surface: an Agent App is backed by a roster
@@ -323,10 +321,7 @@ class AgentRosterService:
             node_ids_by_workflow.setdefault((binding.app_id, binding.workflow_id), set()).add(binding.node_id)
 
         referenced_app_ids = {workflow_app_id for workflow_app_id, _ in node_ids_by_workflow}
-        apps = {
-            app.id: app
-            for app in self._session.scalars(select(App).where(App.id.in_(referenced_app_ids))).all()
-        }
+        apps = {app.id: app for app in self._session.scalars(select(App).where(App.id.in_(referenced_app_ids))).all()}
 
         result: list[AgentReferencingWorkflow] = []
         for (workflow_app_id, workflow_id), node_ids in node_ids_by_workflow.items():
