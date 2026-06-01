@@ -18,7 +18,11 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "121e7346074d"
-down_revision = "7885bd53f9a9"
+# Rebased onto main's head after merge: credential-visibility (a1b2c3d4e5f6)
+# landed on top of the lifecycle migration (7885bd53f9a9) this one also branched
+# from, which created two alembic heads. The two migrations are unrelated, so
+# chain this one after the credential migration to restore a single linear head.
+down_revision = "a1b2c3d4e5f6"
 branch_labels = None
 depends_on = None
 
