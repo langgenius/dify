@@ -4,6 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TEST_RUN_MENU_HOTKEY } from '@/app/components/workflow/header/shortcuts.ts'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store'
@@ -57,7 +58,7 @@ const RunMode = ({
               <>
                 <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
                 {text ?? t('common.run', { ns: 'workflow' })}
-                <ShortcutKbd shortcut="workflow.open-test-run-menu" textColor="secondary" />
+                <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
               </>
             )}
       </button>

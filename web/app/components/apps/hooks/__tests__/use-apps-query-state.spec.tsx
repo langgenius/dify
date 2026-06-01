@@ -35,7 +35,7 @@ describe('useAppsQueryState', () => {
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
       keywords: 'search term',
-      creatorID: 'creator-1',
+      creatorID: '',
     })
   })
 
@@ -115,30 +115,29 @@ describe('useAppsQueryState', () => {
     }
   })
 
-  it('should update creator ID URL state', async () => {
+  it('should update creator ID in local state without writing to the URL', () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
       result.current.setCreatorID('creator-1')
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(result.current.query.creatorID).toBe('creator-1')
-    expect(update.searchParams.get('creatorID')).toBe('creator-1')
-    expect(update.options.history).toBe('push')
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
-  it('should remove creatorID from URL when cleared', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter('?creatorID=creator-1')
+  it('should clear creator ID from local state without writing to the URL', () => {
+    const { result, onUrlUpdate } = renderWithAdapter()
+
+    act(() => {
+      result.current.setCreatorID('creator-1')
+    })
 
     act(() => {
       result.current.setCreatorID('')
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
     expect(result.current.query.creatorID).toBe('')
-    expect(update.searchParams.has('creatorID')).toBe(false)
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 })

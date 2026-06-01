@@ -1,5 +1,5 @@
 import { debounce, parseAsArrayOf, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
 const snippetListQueryParsers = {
@@ -9,30 +9,33 @@ const snippetListQueryParsers = {
   keywords: parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(SNIPPET_LIST_SEARCH_DEBOUNCE_MS),
   }),
-  creatorID: parseAsString
-    .withDefault('')
-    .withOptions({ history: 'push' }),
 }
 
 export function useSnippetsQueryState() {
-  const [query, setQuery] = useQueryStates(snippetListQueryParsers)
+  const [urlQuery, setUrlQuery] = useQueryStates(snippetListQueryParsers)
+  const [creatorID, setCreatorID] = useState('')
 
   const setKeywords = useCallback((keywords: string) => {
-    setQuery({ keywords })
-  }, [setQuery])
+    setUrlQuery({ keywords })
+  }, [setUrlQuery])
 
   const setTagIDs = useCallback((tagIDs: string[]) => {
-    setQuery({ tagIDs })
-  }, [setQuery])
+    setUrlQuery({ tagIDs })
+  }, [setUrlQuery])
 
-  const setCreatorID = useCallback((creatorID: string) => {
-    setQuery({ creatorID })
-  }, [setQuery])
+  const handleSetCreatorID = useCallback((creatorID: string) => {
+    setCreatorID(creatorID)
+  }, [])
+
+  const query = useMemo(() => ({
+    ...urlQuery,
+    creatorID,
+  }), [creatorID, urlQuery])
 
   return useMemo(() => ({
     query,
     setKeywords,
     setTagIDs,
-    setCreatorID,
-  }), [query, setCreatorID, setKeywords, setTagIDs])
+    setCreatorID: handleSetCreatorID,
+  }), [handleSetCreatorID, query, setKeywords, setTagIDs])
 }
