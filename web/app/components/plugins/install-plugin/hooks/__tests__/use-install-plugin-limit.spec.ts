@@ -1,6 +1,7 @@
+import type { PluginInstallationScope } from '@dify/contracts/api/console/system-features/types.gen'
 import { describe, expect, it } from 'vitest'
 import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
-import { InstallationScope } from '@/types/feature'
+import { InstallationScope } from '@/features/system-features/constants'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
 
 const basePlugin = {
@@ -117,7 +118,7 @@ describe('pluginInstallLimit', () => {
     const features = {
       plugin_installation_permission: {
         restrict_to_marketplace_only: false,
-        plugin_installation_scope: 'unknown-scope' as InstallationScope,
+        plugin_installation_scope: 'unknown-scope' as unknown as PluginInstallationScope,
       },
     }
 

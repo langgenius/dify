@@ -11662,6 +11662,7 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | credentials | object |  | Yes |
 | name | string |  | No |
 | type | [CredentialType](#credentialtype) |  | Yes |
+| visibility | string |  | No |
 
 #### BuiltinToolCredentialDeletePayload
 
@@ -12233,7 +12234,7 @@ Condition detail
 | external_knowledge_id | string |  | No |
 | indexing_technique | string |  | No |
 | name | string |  | Yes |
-| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
+| permission | [PermissionEnum](#permissionenum) |  | No |
 | provider | string |  | No |
 
 #### DatasetDetail
@@ -12508,12 +12509,6 @@ Condition detail
 | name | string |  | Yes |
 | type | string |  | Yes |
 
-#### DatasetPermissionEnum
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasetPermissionEnum | string |  |  |
-
 #### DatasetQueryContentResponse
 
 | Name | Type | Description | Required |
@@ -12640,7 +12635,7 @@ Condition detail
 | is_multimodal | boolean |  | No |
 | name | string |  | No |
 | partial_member_list | [ object ] |  | No |
-| permission | [DatasetPermissionEnum](#datasetpermissionenum) |  | No |
+| permission | [PermissionEnum](#permissionenum) |  | No |
 | retrieval_model | object |  | No |
 | summary_index_setting | object |  | No |
 
@@ -14608,6 +14603,14 @@ Form input definition.
 | description | string |  | No |
 | icon_info | object |  | No |
 | name | string |  | Yes |
+
+#### PermissionEnum
+
+Shared permission levels for resources (datasets, credentials, etc.)
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
 #### PipelineVariableResponse
 

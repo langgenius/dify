@@ -1,4 +1,4 @@
-import type { Clock } from './device-flow'
+import type { Clock } from './device-flow.js'
 import type { CodeResponse, PollSuccess } from '@/api/oauth-device'
 import type { HostsBundle, Workspace } from '@/auth/hosts'
 import type { StorageMode, Store } from '@/store/store'
@@ -8,12 +8,12 @@ import * as os from 'node:os'
 import * as readline from 'node:readline'
 import { DeviceFlowApi } from '@/api/oauth-device'
 import { saveHosts } from '@/auth/hosts'
-import { createClient } from '@/http/client'
+import { createHttpClient } from '@/http/client'
 import { getTokenStore, tokenKey } from '@/store/manager'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '@/util/browser'
-import { bareHost, DEFAULT_HOST, resolveHost, validateVerificationURI } from '@/util/host'
-import { awaitAuthorization, realClock } from './device-flow'
+import { bareHost, DEFAULT_HOST, openAPIBase, resolveHost, validateVerificationURI } from '@/util/host'
+import { awaitAuthorization, realClock } from './device-flow.js'
 
 export type LoginOptions = {
   readonly io: IOStreams
@@ -35,7 +35,7 @@ export async function runLogin(opts: LoginOptions): Promise<HostsBundle> {
   const host = await resolveLoginHost(opts, insecure)
   const label = opts.deviceLabel ?? defaultDeviceLabel()
 
-  const api = opts.api ?? new DeviceFlowApi(createClient({ host }))
+  const api = opts.api ?? new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(host) }))
   const code = await api.requestCode({ device_label: label })
 
   renderCodePrompt(opts.io.err, cs, code)
