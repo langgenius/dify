@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import override
 from uuid import uuid4
 
@@ -33,6 +32,7 @@ from models.human_input import (
 from models.model import App, AppMode, CustomizeTokenStrategy, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.feature_service import FeatureModel
 
 
 class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
@@ -221,9 +221,13 @@ def test_get_human_input_form_resolves_runtime_select_options(
         pause_reasons=[reason],
     )
 
+    def mock_get_features(tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
+        features = FeatureModel(can_replace_logo=True)
+        return features
+
     monkeypatch.setattr(
         "controllers.web.site.FeatureService.get_features",
-        lambda tenant_id: SimpleNamespace(can_replace_logo=False),
+        mock_get_features,
     )
 
     response = test_client_with_containers.get(f"/api/form/human_input/{access_token}")
