@@ -23,6 +23,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -60,6 +61,8 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+
   const goStart = async () => {
     try {
       const { new_app_id: newAppID } = await switchApp({
@@ -78,7 +81,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
       getRedirection(
         isCurrentWorkspaceEditor,
         {
