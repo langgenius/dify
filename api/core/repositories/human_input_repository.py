@@ -2,7 +2,7 @@ import dataclasses
 import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -113,10 +113,12 @@ class _HumanInputFormRecipientEntityImpl(HumanInputFormRecipientEntity):
         self._recipient_model = recipient_model
 
     @property
+    @override
     def id(self) -> str:
         return self._recipient_model.id
 
     @property
+    @override
     def token(self) -> str:
         if self._recipient_model.access_token is None:
             raise AssertionError(f"access_token should not be None for recipient {self._recipient_model.id}")
@@ -144,10 +146,12 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
         )
 
     @property
+    @override
     def id(self) -> str:
         return self._form_model.id
 
     @property
+    @override
     def submission_token(self) -> str | None:
         if self._console_recipient is not None:
             return self._console_recipient.access_token
@@ -156,30 +160,37 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
         return self._interactive_surface_recipient.access_token
 
     @property
+    @override
     def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return list(self._recipients)
 
     @property
+    @override
     def rendered_content(self) -> str:
         return self._form_model.rendered_content
 
     @property
+    @override
     def selected_action_id(self) -> str | None:
         return self._form_model.selected_action_id
 
     @property
+    @override
     def submitted_data(self) -> Mapping[str, Any] | None:
         return self._submitted_data
 
     @property
+    @override
     def submitted(self) -> bool:
         return self._form_model.submitted_at is not None
 
     @property
+    @override
     def status(self) -> HumanInputFormStatus:
         return self._form_model.status
 
     @property
+    @override
     def expiration_time(self) -> datetime:
         return self._form_model.expiration_time
 
