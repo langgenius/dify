@@ -14,7 +14,6 @@ import { FieldInfo } from '@/types/app-meta'
 import { resolveWorkspaceId } from '@/workspace/resolver'
 import { resolveFileInputs } from './file-flags'
 import { RUN_MODES } from './handlers'
-import { AppRunPrintFlags } from './print-flags'
 
 export type RunAppOptions = {
   readonly appId: string
@@ -110,9 +109,8 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   const isText = TEXT_FORMATS.has(format)
   const livePrint = opts.stream === true
   const runClient = new AppRunClient(deps.http)
-  const printFlags = new AppRunPrintFlags()
 
   const exit = deps.exit ?? processExit
-  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit, think: opts.think ?? false }
+  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, exit, think: opts.think ?? false }
   await pickStrategy(isText, livePrint).execute(ctx)
 }

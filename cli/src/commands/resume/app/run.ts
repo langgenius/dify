@@ -8,7 +8,6 @@ import { AppRunClient } from '@/api/app-run'
 import { AppsClient } from '@/api/apps'
 import { pickStrategy } from '@/commands/run/app/_strategies/index'
 import { RUN_MODES } from '@/commands/run/app/handlers'
-import { AppRunPrintFlags } from '@/commands/run/app/print-flags'
 import { getEnv, processExit } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { FieldInfo } from '@/types/app-meta'
@@ -116,7 +115,6 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
     deps.io.err.write(`  ${cs.dim('workflow execution resumed')}\n`)
   }
   const livePrint = opts.stream === true
-  const printFlags = new AppRunPrintFlags()
 
   const adaptedRunClient = {
     runStream: (_appId: string, _body: unknown, streamOpts?: { signal?: AbortSignal }) =>
@@ -146,7 +144,6 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
     isText,
     livePrint,
     runClient: adaptedRunClient as unknown as AppRunClient,
-    printFlags,
     exit,
     think: opts.think ?? false,
   }
