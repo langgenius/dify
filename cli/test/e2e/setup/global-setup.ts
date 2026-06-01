@@ -95,7 +95,10 @@ export async function setup(project: TestProject): Promise<void> {
     devicesToken,
   }
 
-  project.provide('e2eCapabilities', capabilities)
+  // ts-ignore: ProvidedContext augmentation is not available in newer vite-plus-test;
+  // cast the key to satisfy the type checker without module augmentation.
+  // eslint-disable-next-line ts/no-explicit-any
+  project.provide('e2eCapabilities' as any, capabilities)
 }
 
 export { teardown } from './global-teardown.js'
