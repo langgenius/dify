@@ -12,9 +12,9 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
-import { getLocalStorageItem, setLocalStorageItem } from '@/utils/local-storage'
 import {
   EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
@@ -95,6 +95,7 @@ const useEducationReverifyNotice = ({
     defaultValue: false,
   })
 
+  /* eslint-disable react/set-state-in-effect -- this persists education notice acknowledgement after provider metadata changes. */
   useEffect(() => {
     if (isLoading || !timezone)
       return
@@ -123,6 +124,7 @@ const useEducationReverifyNotice = ({
       }
     }
   }, [allowRefreshEducationVerify, timezone])
+  /* eslint-enable react/set-state-in-effect */
 
   return {
     isLoading,
@@ -134,7 +136,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = getLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const [educationVerifying, setEducationVerifying] = useLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'no', { raw: true })
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -157,9 +159,9 @@ export const useEducationInit = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        setLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        setEducationVerifying('yes')
     }
     if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()
-  }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
+  }, [setShowAccountSettingModal, setEducationVerifying, educationVerifying, educationVerifyAction])
 }
