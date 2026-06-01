@@ -351,11 +351,6 @@ export const zDatasetMetadataResponse = z.object({
 })
 
 /**
- * DatasetPermissionEnum
- */
-export const zDatasetPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
-
-/**
  * DatasetRerankingModelResponse
  */
 export const zDatasetRerankingModelResponse = z.object({
@@ -871,6 +866,13 @@ export const zMetadataUpdatePayload = z.object({
 })
 
 /**
+ * PermissionEnum
+ *
+ * Shared permission levels for resources (datasets, credentials, etc.)
+ */
+export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
+
+/**
  * PipelineRunApiEntity
  */
 export const zPipelineRunApiEntity = z.object({
@@ -1225,7 +1227,7 @@ export const zDatasetCreatePayload = z.object({
   external_knowledge_id: z.string().nullish(),
   indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
   name: z.string().min(1).max(40),
-  permission: zDatasetPermissionEnum.optional(),
+  permission: zPermissionEnum.optional(),
   provider: z.string().optional().default('vendor'),
   retrieval_model: zRetrievalModel.optional(),
   summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
@@ -1244,7 +1246,7 @@ export const zDatasetUpdatePayload = z.object({
   indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
-  permission: zDatasetPermissionEnum.optional(),
+  permission: zPermissionEnum.optional(),
   retrieval_model: zRetrievalModel.optional(),
 })
 

@@ -32,6 +32,8 @@ from .comment import (
     WorkflowCommentMention,
     WorkflowCommentReply,
 )
+from .credential_permission import CredentialPermission
+from .credential_permission import CredentialType as CredentialPermissionType
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -53,6 +55,7 @@ from .enums import (
     AppTriggerStatus,
     AppTriggerType,
     CreatorUserRole,
+    PermissionEnum,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
@@ -174,6 +177,8 @@ __all__ = [
     "Conversation",
     "ConversationVariable",
     "CreatorUserRole",
+    "CredentialPermission",
+    "CredentialPermissionType",
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
@@ -209,6 +214,7 @@ __all__ = [
     "MessageFile",
     "OAuthAccessToken",
     "OperationLog",
+    "PermissionEnum",
     "PinnedConversation",
     "Provider",
     "ProviderModel",
