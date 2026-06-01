@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect as useLayoutEffectFromReact } from 'react'
 import { useLocalStorage, useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useStore, useWorkflowStore } from '../store'
 import {
@@ -11,6 +11,10 @@ import {
   WORKFLOW_PREVIEW_PANEL_WIDTH_KEY,
   WORKFLOW_VARIABLE_INSPECT_PANEL_HEIGHT_KEY,
 } from './local-storage-options'
+
+const useIsomorphicLayoutEffect = typeof window === 'undefined'
+  ? useEffect
+  : useLayoutEffectFromReact
 
 export const WorkflowLocalStorageBridge = () => {
   const [storedNodePanelWidth] = useLocalStorage<number>(WORKFLOW_NODE_PANEL_WIDTH_KEY, undefined, numberStorageOptions)
@@ -27,7 +31,7 @@ export const WorkflowLocalStorageBridge = () => {
 
   const setControlModeStorage = useSetLocalStorage<string>(WORKFLOW_OPERATION_MODE_KEY, rawStorageOptions)
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!isFiniteNumber(storedNodePanelWidth))
       return
 
@@ -35,17 +39,17 @@ export const WorkflowLocalStorageBridge = () => {
     setPanelWidth(storedNodePanelWidth)
   }, [setNodePanelWidth, setPanelWidth, storedNodePanelWidth])
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (isFiniteNumber(storedPreviewPanelWidth))
       setPreviewPanelWidth(storedPreviewPanelWidth)
   }, [setPreviewPanelWidth, storedPreviewPanelWidth])
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (isFiniteNumber(storedVariableInspectPanelHeight))
       setVariableInspectPanelHeight(storedVariableInspectPanelHeight)
   }, [setVariableInspectPanelHeight, storedVariableInspectPanelHeight])
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (isControlMode(storedControlMode))
       setControlMode(storedControlMode)
   }, [setControlMode, storedControlMode])
