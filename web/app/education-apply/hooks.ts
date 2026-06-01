@@ -1,5 +1,5 @@
 import type { SearchParams } from './types'
-import { useDebounceFn, useLocalStorageState } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -85,17 +85,10 @@ const useEducationReverifyNotice = ({
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
   const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
-  const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
-    defaultValue: 0,
-  })
-  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
-    defaultValue: false,
-  })
-  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
-    defaultValue: false,
-  })
+  const [prevExpireAt, setPrevExpireAt] = useLocalStorage<number>('education-reverify-prev-expire-at', 0)
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorage<boolean>('education-reverify-has-noticed', false)
+  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorage<boolean>('education-expired-has-noticed', false)
 
-  /* eslint-disable react/set-state-in-effect -- this persists education notice acknowledgement after provider metadata changes. */
   useEffect(() => {
     if (isLoading || !timezone)
       return
@@ -124,7 +117,6 @@ const useEducationReverifyNotice = ({
       }
     }
   }, [allowRefreshEducationVerify, timezone])
-  /* eslint-enable react/set-state-in-effect */
 
   return {
     isLoading,
