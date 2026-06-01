@@ -66,6 +66,15 @@ jobs:
             --cov-append \
             api/tests/unit_tests/controllers
 
+      - name: Run FastAPI Unit Tests
+        run: |
+          uv run --project api pytest \
+            -p no:benchmark \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            -n auto \
+            --cov-append \
+            api/tests_fastapi/unit_tests
+
       - name: Upload unit coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -119,6 +128,15 @@ jobs:
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
             api/tests/test_containers_integration_tests
+
+      - name: Run FastAPI Integration Tests
+        run: |
+          uv run --project api pytest \
+            -p no:benchmark \
+            -n auto \
+            --timeout "${PYTEST_TIMEOUT:-180}" \
+            --cov-append \
+            api/tests_fastapi/integration_tests
 
       - name: Upload integration coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
