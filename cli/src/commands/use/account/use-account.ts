@@ -1,12 +1,12 @@
-import type { HostEntry } from '../../../auth/hosts.js'
-import type { Store } from '../../../store/store.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { notLoggedInError, Registry } from '../../../auth/hosts.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { getTokenStore, tokenKey } from '../../../store/manager.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
-import { selectFromList } from '../../../sys/io/select.js'
+import type { HostEntry } from '@/auth/hosts'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { notLoggedInError, Registry } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { getTokenStore, tokenKey } from '@/store/manager'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { selectFromList } from '@/sys/io/select'
 
 export type UseAccountOptions = {
   readonly io: IOStreams

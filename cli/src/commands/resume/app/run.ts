@@ -1,18 +1,18 @@
 import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
 import type { AppInfoCache } from '@/cache/app-info'
-import type { IOStreams } from '@/sys/io/streams'
 import type { RunContext } from '@/commands/run/app/_strategies/index'
+import type { IOStreams } from '@/sys/io/streams'
 import { AppMetaClient } from '@/api/app-meta'
 import { AppRunClient } from '@/api/app-run'
 import { AppsClient } from '@/api/apps'
+import { pickStrategy } from '@/commands/run/app/_strategies/index'
+import { RUN_MODES } from '@/commands/run/app/handlers'
+import { AppRunPrintFlags } from '@/commands/run/app/print-flags'
 import { getEnv, processExit } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { FieldInfo } from '@/types/app-meta'
 import { resolveWorkspaceId } from '@/workspace/resolver'
-import { pickStrategy } from '@/commands/run/app/_strategies/index'
-import { RUN_MODES } from '@/commands/run/app/handlers'
-import { AppRunPrintFlags } from '@/commands/run/app/print-flags'
 
 export type ResumeAppOptions = {
   readonly appId: string

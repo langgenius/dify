@@ -1,9 +1,9 @@
-import type { IOStreams } from '../../../sys/io/streams'
-import { notLoggedInError, Registry } from '../../../auth/hosts.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
-import { selectFromList } from '../../../sys/io/select.js'
+import type { IOStreams } from '@/sys/io/streams'
+import { notLoggedInError, Registry } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { selectFromList } from '@/sys/io/select'
 
 export type UseHostOptions = {
   readonly io: IOStreams

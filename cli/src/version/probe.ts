@@ -1,7 +1,7 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { ActiveContext } from '@/auth/hosts'
 import type { CompatVerdict } from './compat'
 import type { Channel } from './info'
+import type { ActiveContext } from '@/auth/hosts'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
 import { Registry } from '@/auth/hosts'
 import { createClient } from '@/http/client'

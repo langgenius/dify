@@ -1,7 +1,7 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { startMock } from '@test/fixtures/dify-mock/server'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { stringifyOutput, table } from '@/framework/output'
 import { createClient } from '@/http/client'
 import { AppListOutput } from './handlers'

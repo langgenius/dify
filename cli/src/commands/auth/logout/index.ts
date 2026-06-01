@@ -1,11 +1,11 @@
 import type { KyInstance } from 'ky'
 import { Registry } from '@/auth/hosts'
+import { DifyCommand } from '@/commands/_shared/dify-command'
 import { createClient } from '@/http/client'
 import { getTokenStore, tokenKey } from '@/store/manager'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { realStreams } from '@/sys/io/streams'
 import { hostWithScheme } from '@/util/host'
-import { DifyCommand } from '@/commands/_shared/dify-command'
 import { runLogout } from './logout'
 
 export default class Logout extends DifyCommand {

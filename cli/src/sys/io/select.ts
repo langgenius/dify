@@ -1,9 +1,9 @@
 import type { Key } from 'node:readline'
 import type { IOStreams } from './streams'
 import * as readline from 'node:readline'
-import { BaseError } from '../../errors/base.js'
-import { ErrorCode } from '../../errors/codes.js'
-import { colorEnabled, colorScheme } from './color.js'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { colorEnabled, colorScheme } from './color'
 
 export type SelectOptions<T> = {
   readonly io: IOStreams

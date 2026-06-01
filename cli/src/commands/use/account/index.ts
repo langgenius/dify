@@ -1,7 +1,7 @@
-import { Flags } from '../../../framework/flags.js'
-import { realStreams } from '../../../sys/io/streams'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runUseAccount } from './use-account.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { realStreams } from '@/sys/io/streams'
+import { runUseAccount } from './use-account'
 
 export default class UseAccount extends DifyCommand {
   static override description = 'Switch the active account on the current host'

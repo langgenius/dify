@@ -1,7 +1,7 @@
 import { Registry } from '@/auth/hosts'
+import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Flags } from '@/framework/flags'
 import { realStreams } from '@/sys/io/streams'
-import { DifyCommand } from '@/commands/_shared/dify-command'
 import { runWhoami } from './whoami'
 
 export default class Whoami extends DifyCommand {
