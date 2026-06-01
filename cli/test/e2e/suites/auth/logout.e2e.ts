@@ -12,8 +12,7 @@ import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
-// eslint-disable-next-line ts/no-explicit-any
-const caps = inject('e2eCapabilities' as any) as import('../../setup/env.js').E2ECapabilities
+const caps = inject('e2eCapabilities')
 
 describe('E2E / difyctl auth logout', () => {
   let configDir: string
