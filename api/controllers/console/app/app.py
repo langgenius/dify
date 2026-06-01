@@ -115,7 +115,9 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
+    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"] = Field(
+        ..., description="App mode"
+    )
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
