@@ -7,6 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
+from typing import override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -105,6 +106,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._triggered_from,
         )
 
+    @override
     def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
@@ -147,6 +149,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             # For now, we'll re-raise the exception
             raise
 
+    @override
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
