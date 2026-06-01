@@ -170,6 +170,9 @@ async function dispatch(state: ClientState, path: string, opts: RequestOptions, 
   if (!res.ok) {
     if (attempt < effectiveRetryAttempts && shouldRetry(res, ctx)) {
       state.logger?.({ phase: 'retry', method, url: redactBearer(request.url), attempt: attempt + 1 })
+      // Drain the discarded error body so undici can release the socket back to its
+      // pool instead of holding the connection open until keep-alive timeout / GC.
+      await res.body?.cancel().catch(() => {})
       const delay = backoffDelay(attempt + 1)
       if (delay > 0)
         await new Promise(resolve => setTimeout(resolve, delay))

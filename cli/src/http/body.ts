@@ -51,6 +51,11 @@ export function buildBody(input: BuildBodyInput): BuildBodyResult {
     return { body: json as BodyInit, contentType: undefined }
   }
 
+  // A raw `body` is passed through untouched. This is replay-safe only for buffered
+  // payloads (string, Blob, FormData, typed arrays) — a single-shot ReadableStream
+  // would be consumed on the first attempt and replay empty on retry. Safe today
+  // because the only stream/multipart caller (file-upload) uses POST, which is not
+  // in RETRY_METHODS; revisit if a ReadableStream body is ever sent over GET/PUT/DELETE.
   if (body !== undefined && isPayloadMethod)
     return { body, contentType: undefined }
 
