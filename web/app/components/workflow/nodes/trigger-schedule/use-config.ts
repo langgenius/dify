@@ -5,6 +5,34 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { useAppContext } from '@/context/app-context'
 import { getDefaultVisualConfig } from './constants'
 
+const getVisualConfigForFrequency = (
+  frequency: ScheduleFrequency,
+  visualConfig: ScheduleTriggerNodeType['visual_config'],
+): ScheduleTriggerNodeType['visual_config'] => {
+  const defaultVisualConfig = getDefaultVisualConfig()
+
+  switch (frequency) {
+    case 'hourly':
+      return {
+        on_minute: visualConfig?.on_minute ?? defaultVisualConfig.on_minute,
+      }
+    case 'daily':
+      return {
+        time: visualConfig?.time ?? defaultVisualConfig.time,
+      }
+    case 'weekly':
+      return {
+        time: visualConfig?.time ?? defaultVisualConfig.time,
+        weekdays: visualConfig?.weekdays ?? defaultVisualConfig.weekdays,
+      }
+    case 'monthly':
+      return {
+        time: visualConfig?.time ?? defaultVisualConfig.time,
+        monthly_days: visualConfig?.monthly_days ?? defaultVisualConfig.monthly_days,
+      }
+  }
+}
+
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
@@ -37,12 +65,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
     const newInputs = {
       ...inputs,
       frequency,
-      visual_config: {
-        ...inputs.visual_config,
-        ...(frequency === 'hourly') && {
-          on_minute: inputs.visual_config?.on_minute ?? 0,
-        },
-      },
+      visual_config: getVisualConfigForFrequency(frequency, inputs.visual_config),
       cron_expression: undefined,
     }
     setInputs(newInputs)
