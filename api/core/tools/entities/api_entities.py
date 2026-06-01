@@ -129,6 +129,24 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
     credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
+    visibility: str = Field(
+        default="all_team_members",
+        description="Credential visibility: only_me, all_team_members, or partial_members",
+    )
+    created_by: str = Field(default="", description="User ID of the credential creator")
+    partial_member_list: list[str] = Field(
+        default_factory=list,
+        description="List of user IDs allowed when visibility is partial_members",
+    )
+    from_other_member: bool = Field(
+        default=False,
+        description=(
+            "True when this credential is being returned only because a workflow/agent node still "
+            "references it but it would normally be hidden from this user by the visibility filter "
+            "(another member's only_me credential). The frontend renders it as 'borrowed' — "
+            "selectable until the node switches away, but not editable/deletable."
+        ),
+    )
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):
