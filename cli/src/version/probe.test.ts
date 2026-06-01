@@ -1,14 +1,14 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HostsBundle } from '../auth/hosts.js'
+import type { HostsBundle } from '@/auth/hosts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { platform, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { saveHosts } from '../auth/hosts.js'
-import { ENV_CONFIG_DIR } from '../store/dir.js'
-import { arch } from '../sys/index.js'
-import { runVersionProbe } from './probe.js'
+import { saveHosts } from '@/auth/hosts'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { arch } from '@/sys/index'
+import { runVersionProbe } from './probe'
 
 function bundle(overrides: Partial<HostsBundle> = {}): HostsBundle {
   return {
@@ -160,7 +160,8 @@ describe('runVersionProbe', () => {
     const url = new URL(mock.url)
     const prevConfig = process.env[ENV_CONFIG_DIR]
     try {
-      await saveHosts(configDir, {
+      process.env[ENV_CONFIG_DIR] = configDir
+      saveHosts({
         current_host: url.host,
         scheme: url.protocol.replace(':', ''),
         token_storage: 'file',

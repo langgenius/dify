@@ -2,14 +2,15 @@ import type {
   WorkspaceDetailResponse,
   WorkspaceListResponse,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { loadHosts, saveHosts } from '../../../auth/hosts.js'
-import { bufferStreams } from '../../../sys/io/streams.js'
+import { loadHosts, saveHosts } from '@/auth/hosts'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { bufferStreams } from '@/sys/io/streams'
 import { runUseWorkspace } from './use.js'
 
 function bundle(): HostsBundle {
@@ -51,25 +52,31 @@ function fakeClient(opts: {
 describe('runUseWorkspace', () => {
   let configDir: string
 
+  let prevConfigDir: string | undefined
   beforeEach(async () => {
     configDir = await mkdtemp(join(tmpdir(), 'difyctl-use-workspace-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = configDir
   })
   afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await rm(configDir, { recursive: true, force: true })
   })
 
   it('happy path: POST /switch → GET /workspaces → write hosts.yml', async () => {
     const io = bufferStreams()
     const b = bundle()
-    await saveHosts(configDir, b)
+    saveHosts(b)
     const client = fakeClient({})
 
     const next = await runUseWorkspace(
       { workspaceId: 'ws-2' },
       {
-        configDir,
         bundle: b,
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io,
         workspacesFactory: () => client as never,
       },
@@ -82,7 +89,7 @@ describe('runUseWorkspace', () => {
       { id: 'ws-1', name: 'Default', role: 'owner' },
       { id: 'ws-2', name: 'Switched', role: 'normal' },
     ])
-    const reloaded = await loadHosts(configDir)
+    const reloaded = loadHosts()
     expect(reloaded?.workspace?.id).toBe('ws-2')
     expect(reloaded?.workspace?.name).toBe('Switched')
     expect(io.outBuf()).toMatch(/Switched to Switched \(ws-2\)/)
@@ -93,15 +100,15 @@ describe('runUseWorkspace', () => {
     // We expect saveHosts to record the fresh name from the server.
     const io = bufferStreams()
     const b = bundle()
-    await saveHosts(configDir, b)
+    saveHosts(b)
     const client = fakeClient({})
 
     await runUseWorkspace(
       { workspaceId: 'ws-2' },
-      { configDir, bundle: b, http: {} as KyInstance, io, workspacesFactory: () => client as never },
+      { bundle: b, http: {} as HttpClient, io, workspacesFactory: () => client as never },
     )
 
-    const reloaded = await loadHosts(configDir)
+    const reloaded = loadHosts()
     expect(reloaded?.workspace?.name).toBe('Switched')
     expect(reloaded?.available_workspaces?.find(w => w.id === 'ws-2')?.name).toBe('Switched')
   })
@@ -109,8 +116,8 @@ describe('runUseWorkspace', () => {
   it('does NOT mutate hosts.yml when POST /switch fails', async () => {
     const io = bufferStreams()
     const b = bundle()
-    await saveHosts(configDir, b)
-    const before = await loadHosts(configDir)
+    saveHosts(b)
+    const before = loadHosts()
 
     const client = fakeClient({
       switch: () => Promise.reject(new Error('forbidden')),
@@ -120,9 +127,8 @@ describe('runUseWorkspace', () => {
       runUseWorkspace(
         { workspaceId: 'ws-2' },
         {
-          configDir,
           bundle: b,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },
@@ -130,7 +136,7 @@ describe('runUseWorkspace', () => {
     ).rejects.toThrow(/forbidden/)
 
     expect(client.list).not.toHaveBeenCalled()
-    const after = await loadHosts(configDir)
+    const after = loadHosts()
     expect(after).toEqual(before)
     expect(after?.workspace?.id).toBe('ws-1')
   })
@@ -138,8 +144,8 @@ describe('runUseWorkspace', () => {
   it('does NOT mutate hosts.yml when GET /workspaces fails after switch', async () => {
     const io = bufferStreams()
     const b = bundle()
-    await saveHosts(configDir, b)
-    const before = await loadHosts(configDir)
+    saveHosts(b)
+    const before = loadHosts()
 
     const client = fakeClient({
       list: () => Promise.reject(new Error('transient list failure')),
@@ -149,23 +155,22 @@ describe('runUseWorkspace', () => {
       runUseWorkspace(
         { workspaceId: 'ws-2' },
         {
-          configDir,
           bundle: b,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },
       ),
     ).rejects.toThrow(/transient list failure/)
 
-    const after = await loadHosts(configDir)
+    const after = loadHosts()
     expect(after).toEqual(before)
   })
 
   it('throws when server returns switch=<id> but id is missing from /workspaces list', async () => {
     const io = bufferStreams()
     const b = bundle()
-    await saveHosts(configDir, b)
+    saveHosts(b)
 
     const client = fakeClient({
       switch: () => Promise.resolve({
@@ -187,9 +192,8 @@ describe('runUseWorkspace', () => {
       runUseWorkspace(
         { workspaceId: 'ws-7' },
         {
-          configDir,
           bundle: b,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },

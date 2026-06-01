@@ -161,16 +161,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             stream=stream,
         )
 
-        if isinstance(user, EndUser):
-            self._user_id = user.id
-            user_session_id = user.session_id
-            self._created_by_role = CreatorUserRole.END_USER
-        elif isinstance(user, Account):
-            self._user_id = user.id
-            user_session_id = user.id
-            self._created_by_role = CreatorUserRole.ACCOUNT
-        else:
-            raise NotImplementedError(f"User type not supported: {type(user)}")
+        match user:
+            case EndUser():
+                self._user_id = user.id
+                user_session_id = user.session_id
+                self._created_by_role = CreatorUserRole.END_USER
+            case Account():
+                self._user_id = user.id
+                user_session_id = user.id
+                self._created_by_role = CreatorUserRole.ACCOUNT
+            case _:
+                raise NotImplementedError(f"User type not supported: {type(user)}")
 
         self._workflow_system_variables = build_system_variables(
             query=message.query,

@@ -1,9 +1,9 @@
-import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { HostsBundle } from '@/auth/hosts'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
-import { stringifyOutput, table } from '../../../framework/output.js'
-import { createClient } from '../../../http/client.js'
+import { stringifyOutput, table } from '@/framework/output'
 import { WorkspaceListOutput } from './handlers.js'
 import { EMPTY_WORKSPACES_MESSAGE, runGetWorkspace } from './run.js'
 
@@ -32,7 +32,7 @@ describe('runGetWorkspace', () => {
   })
 
   function http() {
-    return createClient({ host: mock.url, bearer: 'dfoa_test' })
+    return testHttpClient(mock.url, 'dfoa_test')
   }
 
   async function render(format = '', bundle = baseBundle): Promise<string> {

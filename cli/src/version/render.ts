@@ -1,5 +1,5 @@
-import type { VersionReport } from './probe.js'
-import { colorScheme } from '../sys/io/color.js'
+import type { VersionReport } from './probe'
+import { colorScheme } from '@/sys/io/color'
 
 const RC_WARNING_LINES = [
   'WARNING: This build is a release candidate. It is in beta test, not stable,',

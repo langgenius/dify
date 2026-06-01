@@ -1,5 +1,5 @@
-import { arch, platform } from '../sys/index.js'
-import { compatString } from './compat.js'
+import { arch, platform } from '@/sys/index'
+import { compatString } from './compat'
 
 export type Channel = 'dev' | 'rc' | 'stable'
 

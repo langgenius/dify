@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { resolvePlatform, SUBDIR } from './index.js'
+import { resolvePlatform, SUBDIR } from './index'
 
 describe('resolvePlatform', () => {
   it('id matches process.platform', () => {

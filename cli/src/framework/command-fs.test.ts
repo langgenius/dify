@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isCommandIndexPath, isExcludedCommandPath } from './command-fs.js'
+import { isCommandIndexPath, isExcludedCommandPath } from './command-fs'
 
 describe('isExcludedCommandPath', () => {
   it('excludes any path with an underscore-prefixed segment', () => {

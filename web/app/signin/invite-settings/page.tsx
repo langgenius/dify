@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,12 +12,13 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { activateMember } from '@/service/common'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvitationCheck } from '@/service/use-common'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
@@ -55,6 +56,7 @@ export default function InviteSettingsPage() {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
   const locale = useLocale()
@@ -102,14 +104,15 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         await setLocaleOnClient(language!, false)
+        await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || '/apps')
+        router.replace(redirectUrl || '/')
       }
     }
     catch {
       recheck()
     }
-  }, [language, name, recheck, timezone, token, router, t])
+  }, [language, name, queryClient, recheck, searchParams, timezone, token, router, t])
 
   if (!checkRes)
     return <Loading />

@@ -1,9 +1,9 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { FILE_PERM } from '../store/dir.js'
-import { HOSTS_FILE_NAME, HostsBundleSchema, loadHosts, saveHosts } from './hosts.js'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { HostsBundleSchema, loadHosts, saveHosts } from './hosts'
 
 describe('HostsBundleSchema', () => {
   it('parses a minimal logged-out bundle', () => {
@@ -46,86 +46,86 @@ describe('HostsBundleSchema', () => {
     })
     expect(parsed.available_workspaces).toHaveLength(2)
   })
+
+  it('drops unknown top-level fields on parse', () => {
+    const parsed = HostsBundleSchema.parse({
+      current_host: 'cloud.dify.ai',
+      future_field: 42,
+      token_storage: 'file',
+    })
+    expect(parsed.current_host).toBe('cloud.dify.ai')
+    expect((parsed as Record<string, unknown>).future_field).toBeUndefined()
+  })
 })
 
 describe('loadHosts/saveHosts', () => {
   let dir: string
+  let prevConfigDir: string | undefined
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'difyctl-hosts-'))
+    prevConfigDir = process.env[ENV_CONFIG_DIR]
+    process.env[ENV_CONFIG_DIR] = dir
   })
 
   afterEach(async () => {
+    if (prevConfigDir === undefined)
+      delete process.env[ENV_CONFIG_DIR]
+    else
+      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('returns undefined when file is missing', async () => {
-    expect(await loadHosts(dir)).toBeUndefined()
+  it('returns undefined when nothing was saved', () => {
+    expect(loadHosts()).toBeUndefined()
   })
 
-  it('round-trips bundle through YAML', async () => {
-    await saveHosts(dir, {
+  it('round-trips a fully-populated bundle', () => {
+    saveHosts({
       current_host: 'cloud.dify.ai',
+      scheme: 'https',
       account: { id: 'acct-1', email: 'a@b.c', name: 'A' },
       workspace: { id: 'ws-1', name: 'My Space', role: 'owner' },
+      available_workspaces: [
+        { id: 'ws-1', name: 'My Space', role: 'owner' },
+        { id: 'ws-2', name: 'Other', role: 'normal' },
+      ],
       token_storage: 'keychain',
       token_id: 'tok_xyz',
     })
-    const loaded = await loadHosts(dir)
+    const loaded = loadHosts()
     expect(loaded?.current_host).toBe('cloud.dify.ai')
+    expect(loaded?.scheme).toBe('https')
     expect(loaded?.account?.email).toBe('a@b.c')
+    expect(loaded?.workspace?.id).toBe('ws-1')
+    expect(loaded?.available_workspaces).toHaveLength(2)
+    expect(loaded?.token_storage).toBe('keychain')
+    expect(loaded?.token_id).toBe('tok_xyz')
+  })
+
+  it('round-trips a file-mode bundle with bearer token', () => {
+    saveHosts({
+      current_host: 'self.example.com',
+      token_storage: 'file',
+      tokens: { bearer: 'dfoa_test' },
+    })
+    const loaded = loadHosts()
+    expect(loaded?.tokens?.bearer).toBe('dfoa_test')
+    expect(loaded?.token_storage).toBe('file')
+  })
+
+  it('overwrites previous bundle on save', () => {
+    saveHosts({ current_host: 'old.example.com', token_storage: 'file' })
+    saveHosts({ current_host: 'new.example.com', token_storage: 'keychain' })
+    const loaded = loadHosts()
+    expect(loaded?.current_host).toBe('new.example.com')
     expect(loaded?.token_storage).toBe('keychain')
   })
 
-  it('writes file with mode 0600', async () => {
-    await saveHosts(dir, { current_host: 'cloud.dify.ai', token_storage: 'file' })
-    const info = await stat(join(dir, HOSTS_FILE_NAME))
-    expect(info.mode & 0o777).toBe(FILE_PERM)
-  })
-
-  it('rewrites permissive existing file with mode 0600', async () => {
-    const path = join(dir, HOSTS_FILE_NAME)
-    await writeFile(path, 'current_host: ""\ntoken_storage: file\n', { mode: 0o644 })
-    await saveHosts(dir, { current_host: 'cloud.dify.ai', token_storage: 'file' })
-    const info = await stat(path)
-    expect(info.mode & 0o777).toBe(FILE_PERM)
-  })
-
-  it('atomic write: temp file does not survive on success', async () => {
-    await saveHosts(dir, { current_host: 'cloud.dify.ai', token_storage: 'file' })
-    const { readdir } = await import('node:fs/promises')
-    const entries = await readdir(dir)
-    expect(entries.filter(n => n.includes('.tmp.'))).toHaveLength(0)
-  })
-
-  it('drops unknown top-level fields', async () => {
-    const path = join(dir, HOSTS_FILE_NAME)
-    await writeFile(path, 'current_host: cloud.dify.ai\nfuture_field: 42\ntoken_storage: file\n', { mode: FILE_PERM })
-    const loaded = await loadHosts(dir)
-    expect(loaded?.current_host).toBe('cloud.dify.ai')
-    expect((loaded as Record<string, unknown> | undefined)?.future_field).toBeUndefined()
-  })
-
-  it('throws on malformed YAML', async () => {
-    const path = join(dir, HOSTS_FILE_NAME)
-    await writeFile(path, ': : :\n', { mode: FILE_PERM })
-    await expect(loadHosts(dir)).rejects.toThrow()
-  })
-
-  it('throws when YAML contradicts schema', async () => {
-    const path = join(dir, HOSTS_FILE_NAME)
-    await writeFile(path, 'token_storage: cloud\n', { mode: FILE_PERM })
-    await expect(loadHosts(dir)).rejects.toThrow()
-  })
-
-  it('produces YAML with stable keys', async () => {
-    await saveHosts(dir, {
+  it('rejects invalid input at save time', () => {
+    expect(() => saveHosts({
       current_host: 'cloud.dify.ai',
-      token_storage: 'file',
-      tokens: { bearer: 'dfoa_x' },
-    })
-    const raw = await readFile(join(dir, HOSTS_FILE_NAME), 'utf8')
-    expect(raw).toContain('current_host: cloud.dify.ai')
-    expect(raw).toContain('bearer: dfoa_x')
+      token_storage: 'cloud',
+    } as never)).toThrow()
   })
 })

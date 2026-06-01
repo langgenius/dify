@@ -17,9 +17,9 @@ import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { env } from '@/env'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
@@ -121,7 +121,6 @@ export default function AppSelector() {
   const handleLogout = async () => {
     await logout()
     resetUser()
-    localStorage.removeItem('setup_status')
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info

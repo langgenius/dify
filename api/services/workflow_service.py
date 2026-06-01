@@ -140,14 +140,21 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(
+        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+    ) -> Workflow | None:
         """
         Get draft workflow
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
         if workflow_id:
-            return self.get_published_workflow_by_id(app_model, workflow_id)
+            return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
         # fetch draft workflow by app_model
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,

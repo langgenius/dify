@@ -1,15 +1,15 @@
-import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { HostsBundle } from '@/auth/hosts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
-import { loadAppInfoCache } from '../../../cache/app-info.js'
-import { formatted, stringifyOutput } from '../../../framework/output.js'
-import { createClient } from '../../../http/client.js'
-import { CACHE_APP_INFO, cachePath } from '../../../store/manager.js'
-import { YamlStore } from '../../../store/store.js'
+import { loadAppInfoCache } from '@/cache/app-info'
+import { formatted, stringifyOutput } from '@/framework/output'
+import { ENV_CACHE_DIR } from '@/store/dir'
+import { CACHE_APP_INFO, getCache } from '@/store/manager'
 import { runDescribeApp } from './run.js'
 
 function bundle(): HostsBundle {
@@ -29,20 +29,27 @@ function bundle(): HostsBundle {
 describe('runDescribeApp', () => {
   let mock: DifyMock
   let dir: string
+  let prevCacheDir: string | undefined
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
     dir = await mkdtemp(join(tmpdir(), 'difyctl-desc-'))
+    prevCacheDir = process.env[ENV_CACHE_DIR]
+    process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
+    if (prevCacheDir === undefined)
+      delete process.env[ENV_CACHE_DIR]
+    else
+      process.env[ENV_CACHE_DIR] = prevCacheDir
     await mock.stop()
     await rm(dir, { recursive: true, force: true })
   })
 
   async function render(opts: Parameters<typeof runDescribeApp>[0]): Promise<string> {
-    const cache = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     const data = await runDescribeApp(
       opts,
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     return stringifyOutput(formatted({ format: opts.format ?? '', data }))
   }
@@ -82,16 +89,16 @@ describe('runDescribeApp', () => {
   })
 
   it('refresh: bypasses cache', async () => {
-    const cache = await loadAppInfoCache({ store: new YamlStore(cachePath(dir, CACHE_APP_INFO)) })
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runDescribeApp(
       { appId: 'app-1' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     const before = cache.get(mock.url, 'app-1')
     expect(before).toBeDefined()
     await runDescribeApp(
       { appId: 'app-1', refresh: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     const after = cache.get(mock.url, 'app-1')
     expect(after?.fetchedAt).not.toBe(before?.fetchedAt ?? '')
@@ -106,7 +113,7 @@ describe('runDescribeApp', () => {
       { appId: 'nope' },
       {
         bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }),
+        http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
         host: mock.url,
       },
     )).rejects.toThrow()

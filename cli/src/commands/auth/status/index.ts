@@ -1,9 +1,8 @@
-import { loadHosts } from '../../../auth/hosts.js'
-import { Flags } from '../../../framework/flags.js'
-import { resolveConfigDir } from '../../../store/dir.js'
-import { realStreams } from '../../../sys/io/streams'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runStatus } from './status.js'
+import { loadHosts } from '@/auth/hosts'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { realStreams } from '@/sys/io/streams'
+import { runStatus } from './status'
 
 export default class Status extends DifyCommand {
   static override description = 'Show authentication status for the active host'
@@ -21,8 +20,7 @@ export default class Status extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     const { flags } = this.parse(Status, argv)
-    const configDir = resolveConfigDir()
-    const bundle = await loadHosts(configDir)
+    const bundle = loadHosts()
     await runStatus({ io: realStreams(), bundle, verbose: flags.verbose, json: flags.json })
   }
 }

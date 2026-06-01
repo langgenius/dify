@@ -1,7 +1,7 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { accountAvatarContract } from './console/account'
+import { accountAvatarContract, accountProfileContract } from './console/account'
 import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
@@ -18,7 +18,6 @@ import {
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
-import { systemFeaturesContract } from './console/system'
 import {
   tagBindingCreateContract,
   tagBindingRemoveContract,
@@ -75,8 +74,11 @@ export const consoleRouterContract = {
   account: {
     ...communityContract.account,
     avatar: accountAvatarContract,
+    profile: {
+      ...communityContract.account.profile,
+      get: accountProfileContract,
+    },
   },
-  systemFeatures: systemFeaturesContract,
   apps: {
     ...communityContract.apps,
     list: appListContract,

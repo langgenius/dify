@@ -209,14 +209,16 @@ class AppQueueManager(ABC):
 
     def _check_for_sqlalchemy_models(self, data: Any):
         # from entity to dict or list
-        if isinstance(data, dict):
-            for value in data.values():
-                self._check_for_sqlalchemy_models(value)
-        elif isinstance(data, list):
-            for item in data:
-                self._check_for_sqlalchemy_models(item)
-        else:
-            if isinstance(data, DeclarativeMeta) or hasattr(data, "_sa_instance_state"):
-                raise TypeError(
-                    "Critical Error: Passing SQLAlchemy Model instances that cause thread safety issues is not allowed."
-                )
+        match data:
+            case dict():
+                for value in data.values():
+                    self._check_for_sqlalchemy_models(value)
+            case list():
+                for item in data:
+                    self._check_for_sqlalchemy_models(item)
+            case _:
+                if isinstance(data, DeclarativeMeta) or hasattr(data, "_sa_instance_state"):
+                    raise TypeError(
+                        "Critical Error: Passing SQLAlchemy Model instances that"
+                        " cause thread safety issues is not allowed."
+                    )

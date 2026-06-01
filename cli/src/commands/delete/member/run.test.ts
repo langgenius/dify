@@ -1,7 +1,7 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../sys/io/streams.js'
+import { bufferStreams } from '@/sys/io/streams'
 import { runDeleteMember } from './run.js'
 
 function bundle(): HostsBundle {
@@ -28,7 +28,7 @@ describe('runDeleteMember', () => {
       { memberId: 'acct-2' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -46,7 +46,7 @@ describe('runDeleteMember', () => {
       { memberId: 'acct-2', workspace: 'ws-9' },
       {
         bundle: bundle(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -61,7 +61,7 @@ describe('runDeleteMember', () => {
         { memberId: '' },
         {
           bundle: bundle(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
