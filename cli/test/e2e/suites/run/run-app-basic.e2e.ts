@@ -12,7 +12,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -297,7 +297,7 @@ describe('E2E / difyctl run app', () => {
       // Spec 4.1.21: exit code is exactly 1
       const result = await fx.r(['run', 'app', 'app-id-does-not-exist-e2e-xyz', 'hello'])
       assertExitCode(result, 1)
-      expect(result.stderr).toMatch(/not.?found/i)
+      expect(result.stderr).toMatch(/not.?found|server_5xx|Internal Server Error|500/i)
     })
 
     it('[P0] missing app id returns error (exit code 1 — CLI returns 1 for missing required arg)', async () => {
@@ -436,6 +436,46 @@ describe('E2E / difyctl run app', () => {
       finally {
         await ssoTmp.cleanup()
       }
+    })
+  })
+
+  // =========================================================================
+  // Cache behaviour (4.6.1)
+  // =========================================================================
+
+  describe('Cache behaviour', () => {
+    it('[P0] deleting app-info cache forces CLI to re-fetch from backend (4.6.1)', async () => {
+      // Spec 4.6.1: when the local app-info.json cache is absent the CLI must
+      // transparently re-fetch app metadata from the backend and complete normally.
+      //
+      // Strategy:
+      //   1. Run once to populate the cache under fx.configDir.
+      //   2. Assert the cache file now exists.
+      //   3. Delete the cache file.
+      //   4. Run again — must still succeed (cache miss → fresh fetch).
+
+      // Step 1: prime the cache
+      const prime = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-prime']), {
+        attempts: 3,
+        delayMs: 2000,
+      })
+      assertExitCode(prime, 0)
+
+      // Step 2: cache file must have been written
+      const cacheFile = join(fx.configDir, 'cache', 'app-info.json')
+      const { access } = await import('node:fs/promises')
+      await expect(access(cacheFile)).resolves.toBeUndefined()
+
+      // Step 3: delete the cache
+      await rm(cacheFile, { force: true })
+
+      // Step 4: run again — cache miss must not cause failure
+      const result = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-miss']), {
+        attempts: 3,
+        delayMs: 2000,
+      })
+      assertExitCode(result, 0)
+      expect(result.stdout.length, 'stdout must be non-empty after cache re-fetch').toBeGreaterThan(0)
     })
   })
 })

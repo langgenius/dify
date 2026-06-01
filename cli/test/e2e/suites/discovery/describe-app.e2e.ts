@@ -12,6 +12,7 @@ import {
   assertNoAnsi,
 } from '../../helpers/assert.js'
 import { withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { withRetry } from '../../helpers/retry.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
@@ -188,7 +189,11 @@ describe('E2E / difyctl describe app', () => {
   // ── Output quality ────────────────────────────────────────────────────────
 
   it('[P0] describe output has no ANSI colour codes (non-TTY)', async () => {
-    const result = await fx.r(['describe', 'app', E.chatAppId])
+    // withRetry: staging may return transient 500 on cold start
+    const result = await withRetry(
+      () => fx.r(['describe', 'app', E.chatAppId]),
+      { attempts: 3, delayMs: 2000 },
+    )
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
   })

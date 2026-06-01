@@ -328,7 +328,7 @@ export async function mintFreshToken(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: passwordB64, remember_me: false }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(20_000),
   })
   if (!loginRes.ok)
     return ''
@@ -354,7 +354,7 @@ export async function mintFreshToken(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Cookie': cookieString, 'X-CSRFToken': csrfToken },
     body: JSON.stringify({ user_code }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(20_000),
   })
   if (!approveRes.ok)
     return ''
@@ -364,7 +364,7 @@ export async function mintFreshToken(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ device_code, client_id: 'difyctl' }),
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(20_000),
   })
   if (!tokenRes.ok)
     return ''

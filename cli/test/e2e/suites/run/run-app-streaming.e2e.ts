@@ -109,7 +109,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
       'app',
       E.workflowAppId,
       '--inputs',
-      JSON.stringify({ x: 'wf-stream-val' }),
+      JSON.stringify({ x: 'wf-stream-val', num: 42, enum_var: 'A', paragraph: 'short text' }),
       '--stream',
       '-o',
       'json',
