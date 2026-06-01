@@ -5,8 +5,8 @@ import 'client-only'
 type NotUndefined<T> = T extends undefined ? never : T
 type StateHookTuple<T> = readonly [T, React.Dispatch<React.SetStateAction<T | null>>]
 
-export type Serializer<T> = (value: T) => string
-export type Deserializer<T> = (value: string) => T
+type Serializer<T> = (value: T) => string
+type Deserializer<T> = (value: string) => T
 
 export type UseLocalStorageRawOption = {
   raw: true
