@@ -150,16 +150,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/(humanInputLayout)/form/[token]/form.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/components/splash.tsx": {
     "react/set-state-in-effect": {
       "count": 1
