@@ -1,5 +1,5 @@
-import type { Store } from '../store/store.js'
-import { CACHE_NUDGE, getCache } from '../store/manager.js'
+import type { Store } from '@/store/store'
+import { CACHE_NUDGE, getCache } from '@/store/manager'
 
 export const WARN_INTERVAL_MS = 24 * 60 * 60 * 1000
 

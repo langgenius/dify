@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ENV_REGISTRY } from '../../../env/registry.js'
-import { runHelpEnvironment } from './environment.js'
+import { ENV_REGISTRY } from '@/env/registry'
+import { runHelpEnvironment } from './environment'
 
 describe('runHelpEnvironment', () => {
   it('starts with the ENVIRONMENT VARIABLES header', () => {

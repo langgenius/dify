@@ -57,7 +57,15 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 
 vi.mock('@/app/components/plugins/plugin-page/debug-info', () => ({
   __esModule: true,
-  default: () => <button type="button" aria-label="plugin debug">debug</button>,
+  default: ({
+    triggerClassName,
+    triggerContent,
+  }: {
+    triggerClassName?: string
+    triggerContent?: React.ReactNode
+  }) => (
+    <button type="button" aria-label="plugin debug" className={triggerClassName}>{triggerContent ?? 'debug'}</button>
+  ),
 }))
 
 vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
@@ -84,11 +92,33 @@ vi.mock('@/app/components/header/account-setting/update-setting-popover', () => 
 
 vi.mock('@/app/components/plugins/plugin-page/install-plugin-dropdown', () => ({
   __esModule: true,
-  default: ({ disabled, onSwitchToMarketplaceTab }: { disabled?: boolean, onSwitchToMarketplaceTab: () => void }) => (
-    <button type="button" aria-label="plugin install" disabled={disabled} onClick={onSwitchToMarketplaceTab}>
+  default: ({
+    disabled,
+    onSwitchToMarketplaceTab,
+    showTriggerArrow,
+    triggerClassName,
+  }: {
+    disabled?: boolean
+    onSwitchToMarketplaceTab: () => void
+    showTriggerArrow?: boolean
+    triggerClassName?: string
+  }) => (
+    <button
+      type="button"
+      aria-label="plugin install"
+      className={triggerClassName}
+      data-show-trigger-arrow={String(showTriggerArrow)}
+      disabled={disabled}
+      onClick={onSwitchToMarketplaceTab}
+    >
       install dropdown
     </button>
   ),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/plugin-tasks', () => ({
+  __esModule: true,
+  default: () => <button type="button" aria-label="plugin tasks">tasks</button>,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
@@ -215,23 +245,28 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('textbox', { name: 'search' })).toBeInTheDocument()
   })
 
-  it('places data source directly under model provider in the sidebar', () => {
+  it('orders sidebar items to match the integrations setting menu', () => {
     renderIntegrationsPage({ section: 'provider' })
 
     const navText = screen.getByRole('navigation').textContent ?? ''
 
-    expect(navText.indexOf('common.settings.provider')).toBeLessThan(navText.indexOf('common.settings.dataSource'))
-    expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(navText.indexOf('common.menus.tools'))
+    expect(navText.indexOf('common.settings.provider')).toBeLessThan(navText.indexOf('common.menus.tools'))
+    expect(navText.indexOf('common.menus.tools')).toBeLessThan(navText.indexOf('common.settings.dataSource'))
+    expect(navText.indexOf('common.settings.dataSource')).toBeLessThan(navText.indexOf('plugin.categorySingle.trigger'))
+    expect(navText.indexOf('plugin.categorySingle.trigger')).toBeLessThan(navText.indexOf('plugin.categorySingle.agent'))
+    expect(navText.indexOf('plugin.categorySingle.agent')).toBeLessThan(navText.indexOf('plugin.categorySingle.extension'))
+    expect(navText.indexOf('plugin.categorySingle.extension')).toBeLessThan(navText.indexOf('common.settings.customEndpoint'))
   })
 
-  it('renders the Figma-matched database icon for the data source sidebar item', () => {
+  it('keeps sidebar item icons outlined when the item is active', () => {
     const providerView = renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-line')).toBeInTheDocument()
 
     providerView.rerender(<IntegrationsPage section="data-source" />)
 
-    expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-fill')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-line')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.settings.dataSource' }).querySelector('.i-ri-database-2-fill')).not.toBeInTheDocument()
   })
 
   it('renders plugin category sections from the section query', () => {
@@ -266,10 +301,10 @@ describe('IntegrationsPage', () => {
     const { unmount } = renderIntegrationsPage({ section: 'data-source' })
 
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement).toHaveClass('size-8', 'shrink-0')
+    expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveTextContent('plugin.debugInfo.title')
 
     unmount()
-    renderIntegrationsPage({ section: 'api-based-extension' })
+    renderIntegrationsPage({ section: 'custom-endpoint' })
 
     expect(screen.getByTestId('api-extension-page')).toBeInTheDocument()
     expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
@@ -315,8 +350,108 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ category: 'mcp' })
 
     expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
+    expect(screen.getByRole('button', { name: 'common.menus.tools' })).not.toHaveClass('bg-state-base-active')
+    expect(screen.getByRole('button', { name: 'common.menus.tools' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveAttribute('href', '/integrations/tools/built-in')
+    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveClass('pl-8')
+    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' }).querySelector('.i-custom-vender-integrations-tools')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('href', '/integrations/tools/mcp')
+    expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
+    expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'common.settings.customTool' })).toHaveAttribute('href', '/integrations/tool/api')
+    expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' })).toHaveAttribute('href', '/integrations/tools/workflow')
+  })
+
+  it('uses hover-only arrows for the tools parent icon', () => {
+    const view = renderIntegrationsPage({ section: 'provider' })
+
+    const collapsedToolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
+    const collapsedDisclosureIcon = collapsedToolsButton.querySelector('svg[viewBox="0 0 12 14.0003"]')
+
+    expect(collapsedToolsButton).toHaveAttribute('aria-expanded', 'false')
+    expect(collapsedDisclosureIcon).toBeInTheDocument()
+    expect(collapsedDisclosureIcon).toHaveClass('h-3.5', 'w-3', 'group-hover:hidden')
+    expect(collapsedToolsButton.querySelector('[data-icon="MagicBox"]')).not.toBeInTheDocument()
+    expect(collapsedToolsButton.querySelector('.i-custom-vender-solid-mediaAndDevices-magic-box')).not.toBeInTheDocument()
+    expect(collapsedToolsButton.querySelector('.i-custom-vender-plugin-box-sparkle-fill')).not.toBeInTheDocument()
+    expect(collapsedToolsButton.querySelector('.i-ri-arrow-down-s-line')).toHaveClass('hidden', 'group-hover:inline-block')
+    expect(collapsedToolsButton.querySelector('.i-ri-arrow-up-s-line')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' })).not.toBeInTheDocument()
+
+    view.unmount()
+    renderIntegrationsPage({ section: 'mcp' })
+
+    const expandedToolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
+    const expandedDisclosureIcon = expandedToolsButton.querySelector('svg[viewBox="0 0 12 14.0003"]')
+
+    expect(expandedToolsButton).toHaveAttribute('aria-expanded', 'true')
+    expect(expandedToolsButton).not.toHaveClass('bg-state-base-active')
+    expect(expandedToolsButton).not.toHaveAttribute('aria-current')
+    expect(expandedDisclosureIcon).toBeInTheDocument()
+    expect(expandedToolsButton.querySelector('.i-ri-arrow-up-s-line')).toHaveClass('hidden', 'group-hover:inline-block')
+    expect(expandedToolsButton.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
+    expect(expandedToolsButton.querySelector('.i-custom-vender-integrations-tools-active')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toHaveAttribute('href', '/integrations/tools/built-in')
+  })
+
+  it('toggles the tools submenu without other nav items closing it', () => {
+    const onSectionChange = vi.fn()
+    renderWithNuqs(<IntegrationsPage section="provider" onSectionChange={onSectionChange} />)
+
+    const toolsButton = screen.getByRole('button', { name: 'common.menus.tools' })
+
+    expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'MCP' })).not.toBeInTheDocument()
+
+    fireEvent.click(toolsButton)
+
+    expect(onSectionChange).toHaveBeenCalledWith('builtin')
+    expect(toolsButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.settings.provider' }))
+
+    expect(onSectionChange).toHaveBeenCalledWith('provider')
+    expect(toolsButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
+
+    fireEvent.click(toolsButton)
+
+    expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: 'MCP' })).not.toBeInTheDocument()
+    expect(onSectionChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('opens tools to the tools plugin page when the parent tools nav is clicked', () => {
+    renderIntegrationsPage(undefined, 'provider')
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/integrations/tools/built-in')
+  })
+
+  it('keeps the tools disclosure independent from route section changes', () => {
+    const view = renderIntegrationsPage(undefined, 'mcp')
+
+    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
+    expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('link', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+
+    expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
+    expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
+
+    view.rerender(<IntegrationsPage section="provider" />)
+
+    expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
   })
 
   it('renders the tools header for tool sections', () => {
@@ -357,7 +492,7 @@ describe('IntegrationsPage', () => {
 
   it.each([
     ['workflow-tool', 'workflow.common.workflowAsTool', 'common.workflowAsToolPage.description'],
-    ['api-based-extension', 'common.settings.apiBasedExtension', 'common.apiBasedExtensionPage.description'],
+    ['custom-endpoint', 'common.settings.customEndpoint', 'common.apiBasedExtensionPage.description'],
     ['data-source', 'common.settings.dataSource', 'common.dataSourcePage.description'],
     ['trigger', 'plugin.categorySingle.trigger', 'common.triggerPage.description'],
     ['extension', 'plugin.categorySingle.extension', 'common.extensionPage.description'],
@@ -375,7 +510,7 @@ describe('IntegrationsPage', () => {
     ['mcp', 'common.mcpPage.description'],
     ['custom-tool', 'common.swaggerAPIAsToolPage.description'],
     ['workflow-tool', 'common.workflowAsToolPage.description'],
-    ['api-based-extension', 'common.apiBasedExtensionPage.description'],
+    ['custom-endpoint', 'common.apiBasedExtensionPage.description'],
     ['data-source', 'common.dataSourcePage.description'],
     ['trigger', 'common.triggerPage.description'],
     ['extension', 'common.extensionPage.description'],
@@ -433,7 +568,7 @@ describe('IntegrationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin.privilege.permissions' }))
 
-    expect(screen.getByText('plugin.privilege.permissions')).toBeInTheDocument()
+    expect(screen.getAllByText('plugin.privilege.permissions').length).toBeGreaterThan(0)
     expect(screen.getByText('plugin.privilege.quickWhoCanInstall')).toBeInTheDocument()
     expect(screen.getByText('plugin.privilege.quickWhoCanDebug')).toBeInTheDocument()
 
@@ -467,8 +602,19 @@ describe('IntegrationsPage', () => {
     })
 
     expect(screen.getByText('common.settings.integrations')).toBeInTheDocument()
-    expect(screen.getByText('common.settings.customTool')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'MCP' })).toBeInTheDocument()
+    expect(screen.getByText('common.settings.integrations')).toHaveClass('title-2xl-semi-bold', 'text-text-primary')
+    expect(screen.getByText('common.settings.integrations').parentElement).toHaveClass('h-6', 'items-center')
+    expect(screen.getByRole('button', { name: 'plugin install' })).toHaveAttribute('data-show-trigger-arrow', 'false')
+    expect(screen.getByRole('button', { name: 'plugin install' })).toHaveClass('justify-start')
+    expect(screen.getByRole('button', { name: 'plugin tasks' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveTextContent('plugin.debugInfo.title')
+    expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveClass('h-8', 'w-full', 'gap-2', 'rounded-lg', 'py-1', 'pr-1', 'pl-2', 'system-sm-medium')
+    expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement?.parentElement).toHaveClass('w-46')
+    expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveTextContent('plugin.privilege.permissions')
+    expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveClass('h-8', 'w-full', 'gap-2', 'rounded-lg', 'py-1', 'pr-1', 'pl-2', 'system-sm-medium')
+    expect(screen.queryByText('common.settings.customTool')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.settings.customEndpoint' })).toHaveAttribute('href', '/integrations/custom-endpoint')
     expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute('href', '/integrations/trigger')
     expect(screen.queryByRole('button', { name: 'common.settings.collapse' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.settings.expand' })).not.toBeInTheDocument()

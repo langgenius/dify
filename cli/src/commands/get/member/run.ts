@@ -1,12 +1,12 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams.js'
-import { MembersClient } from '../../../api/members.js'
-import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams.js'
-import { resolveWorkspaceId } from '../../../workspace/resolver.js'
-import { MemberListOutput, MemberRow } from './handlers.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { IOStreams } from '@/sys/io/streams'
+import { MembersClient } from '@/api/members'
+import { LIMIT_DEFAULT, parseLimit } from '@/limit/limit'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { nullStreams } from '@/sys/io/streams'
+import { resolveWorkspaceId } from '@/workspace/resolver'
+import { MemberListOutput, MemberRow } from './handlers'
 
 export type GetMemberOptions = {
   readonly workspace?: string

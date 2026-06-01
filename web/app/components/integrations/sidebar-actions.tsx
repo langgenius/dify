@@ -7,10 +7,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import DebugInfo from '@/app/components/plugins/plugin-page/debug-info'
 import InstallPluginDropdown from '@/app/components/plugins/plugin-page/install-plugin-dropdown'
+import PluginTasks from '@/app/components/plugins/plugin-page/plugin-tasks'
 import { PermissionQuickPanel } from './permission-quick-panel'
+import {
+  integrationSidebarInactiveNavItemClassName,
+  integrationSidebarNavItemClassName,
+} from './sidebar-nav-item-styles'
 
 type PermissionTooltipWrapperProps = {
   children: ReactNode
@@ -50,29 +56,47 @@ function PermissionTooltipWrapper({
 }
 
 export function IntegrationSidebarActions({
-  canDebugger,
   canManagement,
   installContextCategory,
-  permission,
-  showPermissionQuickPanel,
-  onPermissionChange,
   onSwitchToMarketplace,
 }: {
-  canDebugger: boolean
   canManagement: boolean
   installContextCategory?: PluginCategoryEnum
-  permission?: Permissions
-  showPermissionQuickPanel: boolean
-  onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
   onSwitchToMarketplace: () => void
 }) {
   const { t } = useTranslation()
 
   return (
-    <div className="mt-6 flex shrink-0 items-center gap-1">
+    <IntegrationSidebarInstallActions
+      canManagement={canManagement}
+      installContextCategory={installContextCategory}
+      installLabel={t('installAction', { ns: 'plugin' })}
+      permissionTooltip={t('privilege.noInstallPermissionTooltip', { ns: 'plugin' })}
+      onSwitchToMarketplace={onSwitchToMarketplace}
+    />
+  )
+}
+
+function IntegrationSidebarInstallActions({
+  canManagement,
+  installContextCategory,
+  installLabel,
+  permissionTooltip,
+  onSwitchToMarketplace,
+}: {
+  canManagement: boolean
+  installContextCategory?: PluginCategoryEnum
+  installLabel: string
+  permissionTooltip: string
+  onSwitchToMarketplace: () => void
+}) {
+  const actionRowRef = useRef<HTMLDivElement>(null)
+
+  return (
+    <div ref={actionRowRef} className="flex w-full shrink-0 items-center">
       <PermissionTooltipWrapper
         show={!canManagement}
-        content={t('privilege.noInstallPermissionTooltip', { ns: 'plugin' })}
+        content={permissionTooltip}
         placement="bottom"
         className="min-w-0 flex-1"
       >
@@ -80,33 +104,81 @@ export function IntegrationSidebarActions({
           disabled={!canManagement}
           rootClassName="w-full"
           triggerVariant="primary"
-          triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
-          triggerLabel={t('installAction', { ns: 'plugin' })}
+          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width]"
+          triggerLabel={installLabel}
           triggerOpenClassName="bg-components-button-primary-bg-hover"
           popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
           installContextCategory={installContextCategory}
+          showTriggerArrow={false}
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
         />
       </PermissionTooltipWrapper>
+      <PluginTasks
+        animatedSlot
+        dropdownAnchor={() => actionRowRef.current}
+        dropdownPlacement="bottom-start"
+      />
+    </div>
+  )
+}
+
+const sidebarUtilityActionClassName = cn(
+  integrationSidebarNavItemClassName,
+  integrationSidebarInactiveNavItemClassName,
+  'justify-start border-none bg-transparent shadow-none',
+)
+
+export function IntegrationSidebarUtilityActions({
+  canDebugger,
+  permission,
+  showPermissionQuickPanel,
+  onPermissionChange,
+}: {
+  canDebugger: boolean
+  permission?: Permissions
+  showPermissionQuickPanel: boolean
+  onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
+}) {
+  const { t } = useTranslation()
+  const debugLabel = t('debugInfo.title', { ns: 'plugin' })
+  const permissionsLabel = t('privilege.permissions', { ns: 'plugin' })
+
+  return (
+    <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">
       <PermissionTooltipWrapper
         show={!canDebugger}
         content={t('privilege.noDebugPermissionTooltip', { ns: 'plugin' })}
         placement="top"
-        className="size-8 shrink-0"
+        className="w-full"
       >
         {canDebugger
           ? (
-              <DebugInfo />
+              <DebugInfo
+                popupPlacement="top-start"
+                triggerVariant="ghost"
+                triggerClassName={sidebarUtilityActionClassName}
+                triggerContent={(
+                  <>
+                    <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+                      <span className="i-ri-bug-line size-4" />
+                    </span>
+                    <span className="min-w-0 truncate">{debugLabel}</span>
+                  </>
+                )}
+              />
             )
           : (
               <Button
-                variant="secondary"
+                variant="ghost"
                 disabled
-                className="h-full w-full p-0"
-                aria-label={t('debugInfo.title', { ns: 'plugin' })}
-                title={t('debugInfo.title', { ns: 'plugin' })}
+                className={sidebarUtilityActionClassName}
+                aria-label={debugLabel}
+                title={debugLabel}
               >
-                <span aria-hidden className="i-ri-bug-line size-4" />
+                <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+                  <span className="i-ri-bug-line size-4" />
+                </span>
+                <span className="min-w-0 truncate">{debugLabel}</span>
               </Button>
             )}
       </PermissionTooltipWrapper>
@@ -114,19 +186,22 @@ export function IntegrationSidebarActions({
         <PopoverTrigger
           render={(
             <Button
-              variant="secondary"
+              variant="ghost"
               disabled={!showPermissionQuickPanel}
-              className="size-8 shrink-0 p-0"
-              aria-label={t('privilege.permissions', { ns: 'plugin' })}
-              title={t('privilege.permissions', { ns: 'plugin' })}
+              className={sidebarUtilityActionClassName}
+              aria-label={permissionsLabel}
+              title={permissionsLabel}
             >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+              <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+                <span className="i-ri-equalizer-2-line size-4" />
+              </span>
+              <span className="min-w-0 truncate">{permissionsLabel}</span>
             </Button>
           )}
         />
         {showPermissionQuickPanel && permission && (
           <PopoverContent
-            placement="bottom-start"
+            placement="top-start"
             sideOffset={4}
             popupClassName="border-0 bg-transparent p-0 shadow-none"
           >

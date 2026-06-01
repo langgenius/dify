@@ -8,7 +8,7 @@ export const ACCOUNT_SETTING_TAB = {
   MEMBERS: 'members',
   BILLING: 'billing',
   DATA_SOURCE: 'data-source',
-  API_BASED_EXTENSION: 'api-based-extension',
+  API_BASED_EXTENSION: 'custom-endpoint',
   CUSTOM: 'custom',
   LANGUAGE: 'language',
 } as const

@@ -1,11 +1,11 @@
-import { Flags } from '../../framework/flags.js'
-import { formatted, OutputFormat, raw, stringifyOutput } from '../../framework/output.js'
-import { colorEnabled } from '../../sys/io/color.js'
-import { realStreams } from '../../sys/io/streams'
-import { versionInfo } from '../../version/info.js'
-import { runVersionProbe } from '../../version/probe.js'
-import { renderVersionText } from '../../version/render.js'
-import { DifyCommand } from '../_shared/dify-command.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { formatted, OutputFormat, raw, stringifyOutput } from '@/framework/output'
+import { colorEnabled } from '@/sys/io/color'
+import { realStreams } from '@/sys/io/streams'
+import { versionInfo } from '@/version/info'
+import { runVersionProbe } from '@/version/probe'
+import { renderVersionText } from '@/version/render'
 
 export const COMPAT_FAIL_EXIT_CODE = 64
 

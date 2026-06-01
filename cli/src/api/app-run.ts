@@ -1,7 +1,7 @@
 import type { KyInstance } from 'ky'
-import type { SseEvent } from '../http/sse.js'
-import { normalizeDifyStream } from '../http/sse-dify.js'
-import { parseSSE } from '../http/sse.js'
+import type { SseEvent } from '@/http/sse'
+import { parseSSE } from '@/http/sse'
+import { normalizeDifyStream } from '@/http/sse-dify'
 
 export type RunBodyArgs = {
   readonly message?: string

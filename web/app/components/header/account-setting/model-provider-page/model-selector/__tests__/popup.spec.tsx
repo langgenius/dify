@@ -103,8 +103,18 @@ function PopupHarness(props: PopupTestProps) {
   )
 }
 
-const renderPopup = (ui: ReactElement<PopupTestProps>) => renderWithSystemFeatures(ui, {
-  trialModels: mockTrialModels.current,
+const renderPopup = (
+  ui: ReactElement<PopupTestProps>,
+  options: Parameters<typeof renderWithSystemFeatures>[1] = {},
+) => renderWithSystemFeatures(ui, {
+  ...options,
+  systemFeatures: options.systemFeatures === null
+    ? null
+    : {
+        enable_marketplace: true,
+        ...(options.systemFeatures ?? {}),
+      },
+  trialModels: options.trialModels ?? mockTrialModels.current,
 })
 
 const mockTrialCredits = vi.hoisted(() => ({
@@ -840,6 +850,26 @@ describe('Popup', () => {
     expect(screen.getByText('TestAnthropic'))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/))!.toBeInTheDocument()
+  })
+
+  it('should hide marketplace providers when marketplace is disabled', () => {
+    mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
+
+    renderPopup(
+      <PopupHarness
+        modelList={[makeModel({ provider: 'test-openai' })]}
+        onHide={vi.fn()}
+      />,
+      {
+        systemFeatures: { enable_marketplace: false },
+      },
+    )
+
+    expect(screen.getByText('test-openai'))!.toBeInTheDocument()
+    expect(screen.queryByText('TestAnthropic')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.selector\.fromMarketplace/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.selector\.discoverMoreInMarketplace/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.selector\.install/)).not.toBeInTheDocument()
   })
 
   it('should show installed marketplace providers without models when AI credits are available', () => {

@@ -38,6 +38,11 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
   MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
 }))
 
+vi.mock('@remixicon/react', () => ({
+  RiAddCircleFill: ({ className }: { className?: string }) => <span data-testid="add-circle-fill-icon" className={className} />,
+  RiArrowDownSLine: ({ className }: { className?: string }) => <span data-testid="arrow-down-icon" className={className} />,
+}))
+
 type MockButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: string
 }
@@ -201,6 +206,8 @@ describe('InstallPluginDropdown', () => {
 
     expect(container.querySelector('.custom-root')).toBeInTheDocument()
     expect(trigger).toHaveTextContent('Install')
+    expect(screen.getByTestId('add-circle-fill-icon')).toHaveClass('size-4', 'shrink-0')
+    expect(screen.getByTestId('arrow-down-icon')).toHaveClass('ml-1', 'size-4')
     expect(trigger).toHaveClass('custom-trigger')
     expect(trigger).toHaveAttribute('data-variant', 'primary')
 
@@ -208,6 +215,23 @@ describe('InstallPluginDropdown', () => {
 
     expect(trigger).toHaveClass('custom-open')
     expect(screen.getByTestId('dropdown-content')).toHaveClass('custom-popup')
+  })
+
+  it('can hide the trigger arrow for compact integrations placement', () => {
+    const { container } = render(
+      <InstallPluginDropdown
+        onSwitchToMarketplaceTab={vi.fn()}
+        triggerLabel="Install"
+        showTriggerArrow={false}
+      />,
+    )
+
+    const trigger = screen.getByTestId('dropdown-trigger')
+
+    expect(trigger).toHaveTextContent('Install')
+    expect(screen.getByTestId('add-circle-fill-icon')).toHaveClass('size-4', 'shrink-0')
+    expect(screen.queryByTestId('arrow-down-icon')).not.toBeInTheDocument()
+    expect(container.querySelector('.px-0\\.5')).toHaveClass('min-w-0', 'flex-1', 'text-left')
   })
 
   it('keeps the trigger visible but disabled when install is unavailable', () => {

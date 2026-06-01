@@ -4,29 +4,13 @@ import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 
-const GENERATED_IGNORES = [
-  '**/storybook-static/',
-  '**/.next/',
-  'web/next/',
-  'web/next-env.d.ts',
-  '**/dist/',
-  '**/coverage/',
-  'e2e/.auth/',
-  'e2e/cucumber-report/',
-]
-
 export default antfu(
   {
     ignores: original => [
-      '**',
-      '!packages/**',
-      '!web/**',
-      '!e2e/**',
-      '!eslint.config.mjs',
-      '!package.json',
-      '!pnpm-workspace.yaml',
-      '!vite.config.ts',
-      ...GENERATED_IGNORES,
+      'context/**',
+      'docs/**',
+      'dist/**',
+      'coverage/**',
       ...original,
     ],
     typescript: {
@@ -72,6 +56,19 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+    },
+  },
+  {
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['../**', './*/**', '..'],
+            message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
+          },
+        ],
+      }],
     },
   },
 )

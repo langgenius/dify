@@ -24,42 +24,47 @@ export function useIntegrationNav(section: IntegrationSection) {
     section: 'provider',
     label: t('settings.provider', { ns: 'common' }),
     icon: 'i-ri-brain-2-line',
-    activeIcon: 'i-ri-brain-2-fill',
   }), [t])
   const dataSourceItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'data-source',
     label: t('settings.dataSource', { ns: 'common' }),
     icon: 'i-ri-database-2-line',
-    activeIcon: 'i-ri-database-2-fill',
     iconClassName: 'size-4',
   }), [t])
+  const customEndpointItem = useMemo<IntegrationSidebarNavItemData>(() => ({
+    section: 'custom-endpoint',
+    label: t('settings.customEndpoint', { ns: 'common' }),
+    icon: 'i-custom-vender-integrations-api-extension',
+    iconClassName: 'h-[13px] w-3.5',
+  }), [t])
   const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
+    {
+      section: 'builtin',
+      label: t('toolsPage.toolPlugin', { ns: 'common' }),
+      icon: 'i-custom-vender-integrations-tools',
+      iconClassName: 'h-[14px] w-[12.5px]',
+      className: 'pl-8',
+    },
     {
       section: 'mcp',
       label: 'MCP',
       icon: 'i-custom-vender-integrations-mcp',
       iconClassName: 'h-[14.5px] w-[13.5px]',
+      className: 'pl-8',
     },
     {
       section: 'custom-tool',
       label: t('settings.customTool', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-custom-tool',
-      activeIcon: 'i-custom-vender-integrations-custom-tool-active',
       iconClassName: 'h-[14.5px] w-[12.5px]',
+      className: 'pl-8',
     },
     {
       section: 'workflow-tool',
       label: t('common.workflowAsTool', { ns: 'workflow' }),
       icon: 'i-custom-vender-integrations-workflow-as-tool',
-      activeIcon: 'i-custom-vender-integrations-workflow-as-tool-active',
       iconClassName: 'h-3 w-[12.5px]',
-    },
-    {
-      section: 'api-based-extension',
-      label: t('settings.apiBasedExtension', { ns: 'common' }),
-      icon: 'i-custom-vender-integrations-api-extension',
-      activeIcon: 'i-custom-vender-integrations-api-extension-active',
-      iconClassName: 'h-[13px] w-3.5',
+      className: 'pl-8',
     },
   ], [t])
   const secondaryItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
@@ -67,25 +72,22 @@ export function useIntegrationNav(section: IntegrationSection) {
       section: 'trigger',
       label: t('categorySingle.trigger', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-trigger',
-      activeIcon: 'i-custom-vender-integrations-trigger-active',
       iconClassName: 'h-[13.5px] w-[13.5px]',
     },
     {
       section: 'agent-strategy',
       label: t('categorySingle.agent', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-agent-strategy',
-      activeIcon: 'i-custom-vender-integrations-agent-strategy-active',
       iconClassName: 'h-[14.5px] w-[15.5px]',
     },
     {
       section: 'extension',
       label: t('categorySingle.extension', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-extension',
-      activeIcon: 'i-custom-vender-integrations-extension-active',
       iconClassName: 'h-[13.5px] w-3',
     },
   ], [t])
-  const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
+  const activeItem = [providerItem, dataSourceItem, ...toolItems, ...secondaryItems, customEndpointItem].find(item => item.section === section)
   const integrationHeader = useMemo<IntegrationHeader | null>(() => {
     switch (section) {
       case 'builtin':
@@ -108,9 +110,9 @@ export function useIntegrationNav(section: IntegrationSection) {
           title: t('common.workflowAsTool', { ns: 'workflow' }),
           description: t('workflowAsToolPage.description', { ns: 'common' }),
         }
-      case 'api-based-extension':
+      case 'custom-endpoint':
         return {
-          title: t('settings.apiBasedExtension', { ns: 'common' }),
+          title: t('settings.customEndpoint', { ns: 'common' }),
           description: t('apiBasedExtensionPage.description', { ns: 'common' }),
         }
       case 'data-source':
@@ -140,6 +142,7 @@ export function useIntegrationNav(section: IntegrationSection) {
 
   return {
     activeItem,
+    customEndpointItem,
     dataSourceItem,
     integrationHeader,
     providerItem,

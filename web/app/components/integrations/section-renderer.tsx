@@ -66,7 +66,7 @@ const IntegrationSectionRenderer = ({
       return (
         <DataSourcePage stickyToolbar layout={renderCompactLayout} />
       )
-    case 'api-based-extension':
+    case 'custom-endpoint':
       return (
         <div className={`${toolsContentFrameClassNames.compact} ${toolsContentInsetClassNames.compact} pt-6`}>
           <ApiBasedExtensionPage />

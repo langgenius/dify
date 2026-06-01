@@ -79,7 +79,7 @@ export default function AccountSetting({
     },
     {
       key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-      name: t('settings.apiBasedExtension', { ns: 'common' }),
+      name: t('settings.customEndpoint', { ns: 'common' }),
       icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
     },

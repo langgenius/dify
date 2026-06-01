@@ -1,7 +1,7 @@
-import type { Store } from '../store/store.js'
-import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '../types/app-meta.js'
-import { CACHE_APP_INFO, getCache } from '../store/manager.js'
-import { FieldInfo, FieldInputSchema, FieldParameters } from '../types/app-meta.js'
+import type { Store } from '@/store/store'
+import type { AppMeta, AppMetaCacheRecord, AppMetaFieldKey } from '@/types/app-meta'
+import { CACHE_APP_INFO, getCache } from '@/store/manager'
+import { FieldInfo, FieldInputSchema, FieldParameters } from '@/types/app-meta'
 
 export const APP_INFO_TTL_MS = 60 * 60 * 1000
 

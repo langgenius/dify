@@ -13,32 +13,42 @@ import {
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
-import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
 import { useIntegrationSection } from './hooks/use-integration-section'
 import { IntegrationPageHeader } from './page-header'
 import IntegrationSectionRenderer from './section-renderer'
-import { IntegrationSidebarActions } from './sidebar-actions'
-import { IntegrationSidebarMarketplaceCard } from './sidebar-marketplace-card'
+import { IntegrationSidebarActions, IntegrationSidebarUtilityActions } from './sidebar-actions'
 import {
   IntegrationSidebarNavItem,
 } from './sidebar-nav-item'
 import {
-  integrationSidebarActiveNavItemClassName,
   integrationSidebarInactiveNavItemClassName,
   integrationSidebarNavItemClassName,
 } from './sidebar-nav-item-styles'
-
-const buildSectionHref = (section: IntegrationSection) => {
-  return buildIntegrationPath(section)
-}
 
 type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
   onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
+}
+
+function ToolsDisclosureIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 12 14.0003"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M8 10.0003H4V8.66693H8V10.0003Z" fill="currentColor" />
+      <path fillRule="evenodd" clipRule="evenodd" d="M11.5814 2.43842L9.84375 5.3336H11.3333C11.7015 5.3336 12 5.63208 12 6.00027V13.3336C11.9998 13.7016 11.7014 14.0003 11.3333 14.0003H0.666667C0.298582 14.0003 0.000170884 13.7016 0 13.3336V6.00027C0 5.63208 0.298477 5.3336 0.666667 5.3336H8.28906L10.4382 1.75222L11.5814 2.43842ZM1.33333 12.6669H10.6667V6.66693H1.33333V12.6669Z" fill="currentColor" />
+      <path d="M2.79297 1.4612C2.87822 1.2907 3.12178 1.2907 3.20703 1.4612L3.50521 2.05821C3.52758 2.10284 3.56408 2.13873 3.60872 2.16107L4.20573 2.4599C4.37584 2.54523 4.37584 2.78798 4.20573 2.87331L3.60872 3.17214C3.564 3.19452 3.52757 3.23092 3.50521 3.27566L3.20703 3.87201C3.12178 4.04251 2.87822 4.04251 2.79297 3.87201L2.49479 3.27566C2.47243 3.23092 2.436 3.19452 2.39128 3.17214L1.79427 2.87331C1.62416 2.78798 1.62416 2.54523 1.79427 2.4599L2.39128 2.16107C2.43592 2.13873 2.47242 2.10284 2.49479 2.05821L2.79297 1.4612Z" fill="currentColor" />
+      <path d="M6.4082 0.159771C6.51476 -0.0532568 6.81858 -0.0532568 6.92513 0.159771L7.29818 0.905864C7.32618 0.96178 7.37176 1.0068 7.42773 1.03477L8.17318 1.40782C8.38631 1.51438 8.38631 1.81884 8.17318 1.9254L7.42773 2.29844C7.37177 2.32641 7.32618 2.37144 7.29818 2.42735L6.92513 3.17344C6.81858 3.38649 6.51475 3.38649 6.4082 3.17344L6.03516 2.42735C6.00715 2.37144 5.96157 2.32641 5.9056 2.29844L5.16016 1.9254C4.94702 1.81884 4.94702 1.51438 5.16016 1.40782L5.9056 1.03477C5.96157 1.0068 6.00715 0.96178 6.03516 0.905864L6.4082 0.159771Z" fill="currentColor" />
+    </svg>
+  )
 }
 
 export default function IntegrationsPage({
@@ -61,6 +71,7 @@ export default function IntegrationsPage({
   const [providerSearchText, setProviderSearchText] = useState('')
   const {
     activeItem,
+    customEndpointItem,
     dataSourceItem,
     integrationHeader,
     providerItem,
@@ -68,6 +79,7 @@ export default function IntegrationsPage({
     toolItems,
   } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
+  const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
   const useFillLayout = section === 'provider' || section === 'data-source' || isToolSection || isPluginCategory
   const headerFrameClassName = cn(
     toolsContentInsetClassNames.compact,
@@ -95,18 +107,32 @@ export default function IntegrationsPage({
 
     router.push(marketplacePath)
   }
+  const handleSelectSection = (nextSection: IntegrationSection) => {
+    if (onSectionChange) {
+      onSectionChange(nextSection)
+      return
+    }
+
+    router.push(buildIntegrationPath(nextSection))
+  }
+  const handleToggleTools = () => {
+    const willExpand = !isToolsExpanded
+    setIsToolsExpanded(willExpand)
+    if (willExpand && section !== 'builtin')
+      handleSelectSection('builtin')
+  }
   const toolsNavItemClassName = cn(
     integrationSidebarNavItemClassName,
-    section === 'builtin' ? integrationSidebarActiveNavItemClassName : integrationSidebarInactiveNavItemClassName,
+    integrationSidebarInactiveNavItemClassName,
+    'group',
   )
   const toolsNavItemContent = (
     <>
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-        <span className={cn(
-          'h-3.5 w-[12.5px]',
-          section === 'builtin' ? 'i-custom-vender-integrations-tools-active' : 'i-custom-vender-integrations-tools',
-        )}
-        />
+        <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden" />
+        {isToolsExpanded
+          ? <span className="i-ri-arrow-up-s-line hidden size-4 group-hover:inline-block" />
+          : <span className="i-ri-arrow-down-s-line hidden size-4 group-hover:inline-block" />}
       </span>
       <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
     </>
@@ -120,61 +146,49 @@ export default function IntegrationsPage({
       )}
       >
         <div
-          className="flex min-h-0 w-46 flex-1 flex-col pb-4"
+          className="flex min-h-0 w-46 flex-1 flex-col gap-0.5 pb-4"
         >
           <div
-            className="flex h-8 shrink-0 items-center py-1"
+            className="flex h-14 shrink-0 items-start pt-1 pr-0 pb-7 pl-2.5"
           >
-            <div className="title-3xl-semi-bold whitespace-nowrap text-text-primary">
-              {t('settings.integrations', { ns: 'common' })}
+            <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
+              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                {t('settings.integrations', { ns: 'common' })}
+              </div>
             </div>
           </div>
           <IntegrationSidebarActions
-            canDebugger={canDebugger}
             canManagement={canManagement}
             installContextCategory={getPluginCategoryBySection(section)}
-            permission={permission}
-            showPermissionQuickPanel={showPermissionQuickPanel}
-            onPermissionChange={handlePermissionChange}
             onSwitchToMarketplace={handleSwitchToMarketplace}
           />
-          <nav className="mt-6 shrink-0 space-y-0.5">
+          <nav className="mt-6 shrink-0 space-y-px">
             <IntegrationSidebarNavItem item={providerItem} onSelect={onSectionChange} section={section} />
-            <IntegrationSidebarNavItem item={dataSourceItem} onSelect={onSectionChange} section={section} />
             <div>
-              {onSectionChange
-                ? (
-                    <button
-                      type="button"
-                      title={t('menus.tools', { ns: 'common' })}
-                      aria-label={t('menus.tools', { ns: 'common' })}
-                      className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
-                      onClick={() => onSectionChange('builtin')}
-                    >
-                      {toolsNavItemContent}
-                    </button>
-                  )
-                : (
-                    <Link
-                      href={buildSectionHref('builtin')}
-                      title={t('menus.tools', { ns: 'common' })}
-                      aria-label={t('menus.tools', { ns: 'common' })}
-                      className={toolsNavItemClassName}
-                    >
-                      {toolsNavItemContent}
-                    </Link>
-                  )}
-              <div className="space-y-0.5 pl-6">
-                {toolItems.map(item => (
-                  <IntegrationSidebarNavItem
-                    key={item.label}
-                    item={item}
-                    onSelect={onSectionChange}
-                    section={section}
-                  />
-                ))}
-              </div>
+              <button
+                type="button"
+                title={t('menus.tools', { ns: 'common' })}
+                aria-label={t('menus.tools', { ns: 'common' })}
+                aria-expanded={isToolsExpanded}
+                className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
+                onClick={handleToggleTools}
+              >
+                {toolsNavItemContent}
+              </button>
+              {isToolsExpanded && (
+                <div className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+                  {toolItems.map(item => (
+                    <IntegrationSidebarNavItem
+                      key={item.label}
+                      item={item}
+                      onSelect={onSectionChange}
+                      section={section}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
+            <IntegrationSidebarNavItem item={dataSourceItem} onSelect={onSectionChange} section={section} />
             {secondaryItems.map(item => (
               <IntegrationSidebarNavItem
                 key={item.label}
@@ -183,9 +197,15 @@ export default function IntegrationsPage({
                 section={section}
               />
             ))}
+            <IntegrationSidebarNavItem item={customEndpointItem} onSelect={onSectionChange} section={section} />
           </nav>
         </div>
-        <IntegrationSidebarMarketplaceCard />
+        <IntegrationSidebarUtilityActions
+          canDebugger={canDebugger}
+          permission={permission}
+          showPermissionQuickPanel={showPermissionQuickPanel}
+          onPermissionChange={handlePermissionChange}
+        />
       </aside>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {integrationHeader && (

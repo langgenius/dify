@@ -40,10 +40,6 @@ const runningPlugins = [
   createPlugin('r2', 'Anthropic', { status: TaskStatus.running }),
 ]
 
-const successPlugins = [
-  createPlugin('s1', 'Google', { status: TaskStatus.success }),
-]
-
 const errorPlugins = [
   createPlugin('e1', 'DALLE', { status: TaskStatus.failed, plugin_id: 'org/dalle' }),
 ]
@@ -51,10 +47,8 @@ const errorPlugins = [
 describe('PluginTaskList', () => {
   const defaultProps = {
     runningPlugins: [] as PluginStatus[],
-    successPlugins: [] as PluginStatus[],
     errorPlugins: [] as PluginStatus[],
     getIconUrl: mockGetIconUrl,
-    onClearAll: vi.fn(),
     onClearErrors: vi.fn(),
     onClearSingle: vi.fn(),
   }
@@ -82,13 +76,12 @@ describe('PluginTaskList', () => {
       expect(screen.getByText('Anthropic'))!.toBeInTheDocument()
     })
 
-    it('should render success section when success plugins exist', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
+    it('should not render success plugins in the dropdown', () => {
+      const { container } = render(<PluginTaskList {...defaultProps} />)
 
       const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
-      expect(headers).toHaveLength(1)
-      expect(headers[0]!.textContent).toContain('plugin.task.installed')
-      expect(screen.getByText('Google'))!.toBeInTheDocument()
+      expect(headers).toHaveLength(0)
+      expect(screen.queryByText('Google'))!.not.toBeInTheDocument()
     })
 
     it('should render error section when error plugins exist', () => {
@@ -100,44 +93,23 @@ describe('PluginTaskList', () => {
       expect(screen.getByText('DALLE'))!.toBeInTheDocument()
     })
 
-    it('should render all three sections simultaneously', () => {
+    it('should render failed plugins as the primary section and running plugins without a second header', () => {
       render(
         <PluginTaskList
           {...defaultProps}
           runningPlugins={runningPlugins}
-          successPlugins={successPlugins}
           errorPlugins={errorPlugins}
         />,
       )
 
       expect(screen.getByText('OpenAI'))!.toBeInTheDocument()
-      expect(screen.getByText('Google'))!.toBeInTheDocument()
+      expect(screen.queryByText('Google'))!.not.toBeInTheDocument()
       expect(screen.getByText('DALLE'))!.toBeInTheDocument()
+      expect(document.querySelectorAll('.system-sm-semibold-uppercase')).toHaveLength(1)
     })
   })
 
   describe('Clear actions', () => {
-    it('should show Clear all button in success section', () => {
-      render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
-
-      const clearButtons = screen.getAllByText(/plugin\.task\.clearAll/)
-      expect(clearButtons).toHaveLength(1)
-    })
-
-    it('should call onClearAll when success section Clear all is clicked', () => {
-      const onClearAll = vi.fn()
-      render(
-        <PluginTaskList
-          {...defaultProps}
-          successPlugins={successPlugins}
-          onClearAll={onClearAll}
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/plugin\.task\.clearAll/))
-      expect(onClearAll).toHaveBeenCalledTimes(1)
-    })
-
     it('should show Clear all button in error section', () => {
       render(<PluginTaskList {...defaultProps} errorPlugins={errorPlugins} />)
 
@@ -157,25 +129,6 @@ describe('PluginTaskList', () => {
 
       fireEvent.click(screen.getByText(/plugin\.task\.clearAll/))
       expect(onClearErrors).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onClearSingle from success section clear button', () => {
-      const onClearSingle = vi.fn()
-      render(
-        <PluginTaskList
-          {...defaultProps}
-          successPlugins={successPlugins}
-          onClearSingle={onClearSingle}
-        />,
-      )
-
-      // The × close button from PluginItem (rendered inside PluginSection)
-      const closeButtons = screen.getAllByRole('button')
-      const clearItemBtn = closeButtons.find(btn => !btn.textContent?.includes('plugin.task'))
-      if (clearItemBtn)
-        fireEvent.click(clearItemBtn)
-
-      expect(onClearSingle).toHaveBeenCalledWith('task-1', 's1')
     })
   })
 
@@ -257,7 +210,6 @@ describe('PluginTaskList', () => {
         <PluginTaskList
           {...defaultProps}
           runningPlugins={[]}
-          successPlugins={[]}
           errorPlugins={[]}
         />,
       )

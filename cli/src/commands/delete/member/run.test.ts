@@ -1,8 +1,8 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HostsBundle } from '@/auth/hosts'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../sys/io/streams.js'
-import { runDeleteMember } from './run.js'
+import { bufferStreams } from '@/sys/io/streams'
+import { runDeleteMember } from './run'
 
 function bundle(): HostsBundle {
   return {

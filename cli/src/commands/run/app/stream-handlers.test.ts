@@ -1,9 +1,9 @@
-import type { SseEvent } from '../../../http/sse.js'
+import type { SseEvent } from '@/http/sse'
 import { Buffer } from 'node:buffer'
 import { PassThrough, Writable } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { HitlPauseError } from './sse-collector.js'
-import { streamPrinterFor } from './stream-handlers.js'
+import { HitlPauseError } from './sse-collector'
+import { streamPrinterFor } from './stream-handlers'
 
 const enc = new TextEncoder()
 function ev(name: string, data: object): SseEvent {

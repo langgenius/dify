@@ -1,6 +1,6 @@
 import { basename } from 'node:path'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export type ParsedFileFlag
   = | { varname: string, kind: 'local', path: string }

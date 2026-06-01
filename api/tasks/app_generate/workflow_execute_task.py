@@ -52,20 +52,21 @@ class _EndUser(BaseModel):
 
 
 def _get_user_type_descriminator(value: Any):
-    if isinstance(value, (_Account, _EndUser)):
-        return value.TYPE
-    elif isinstance(value, dict):
-        user_type_str = value.get("TYPE")
-        if user_type_str is None:
+    match value:
+        case _Account() | _EndUser():
+            return value.TYPE
+        case dict():
+            user_type_str = value.get("TYPE")
+            if user_type_str is None:
+                return None
+            try:
+                user_type = _UserType(user_type_str)
+            except ValueError:
+                return None
+            return user_type
+        case _:
+            # return None if the discriminator value isn't found
             return None
-        try:
-            user_type = _UserType(user_type_str)
-        except ValueError:
-            return None
-        return user_type
-    else:
-        # return None if the discriminator value isn't found
-        return None
 
 
 type User = Annotated[
@@ -221,17 +222,17 @@ class _AppRunner:
     def _resolve_user(self) -> Account | EndUser:
         user_params = self._exec_params.user
 
-        if isinstance(user_params, _EndUser):
-            with self._session() as session:
-                return session.get(EndUser, user_params.end_user_id)
-        elif not isinstance(user_params, _Account):
-            raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
-
-        with self._session() as session:
-            user: Account = session.get(Account, user_params.user_id)
-            user.set_tenant_id(self._exec_params.tenant_id)
-
-        return user
+        match user_params:
+            case _EndUser():
+                with self._session() as session:
+                    return session.get(EndUser, user_params.end_user_id)
+            case _Account():
+                with self._session() as session:
+                    user: Account = session.get(Account, user_params.user_id)
+                    user.set_tenant_id(self._exec_params.tenant_id)
+                return user
+            case _:
+                raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
 
 
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:

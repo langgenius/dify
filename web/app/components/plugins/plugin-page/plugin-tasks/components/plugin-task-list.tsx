@@ -1,38 +1,34 @@
-import type { FC } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import ErrorPluginItem from './error-plugin-item'
+import PluginItem from './plugin-item'
 import PluginSection from './plugin-section'
 
 type PluginTaskListProps = {
   runningPlugins: PluginStatus[]
-  successPlugins: PluginStatus[]
   errorPlugins: PluginStatus[]
   getIconUrl: (icon: string) => string
-  onClearAll: () => void
   onClearErrors: () => void
   onClearSingle: (taskId: string, pluginId: string) => void
 }
 
-const PluginTaskList: FC<PluginTaskListProps> = ({
+function PluginTaskList({
   runningPlugins,
-  successPlugins,
   errorPlugins,
   getIconUrl,
-  onClearAll,
   onClearErrors,
   onClearSingle,
-}) => {
+}: PluginTaskListProps) {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const hasFailedPlugins = errorPlugins.length > 0
 
   return (
-    <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-      {/* Running Plugins Section */}
-      {runningPlugins.length > 0 && (
+    <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 pt-1 pb-2 shadow-lg">
+      {!hasFailedPlugins && runningPlugins.length > 0 && (
         <PluginSection
           title={t('task.installing', { ns: 'plugin' })}
           count={runningPlugins.length}
@@ -46,37 +42,9 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
         />
       )}
 
-      {/* Success Plugins Section */}
-      {successPlugins.length > 0 && (
-        <PluginSection
-          title={t('task.installed', { ns: 'plugin' })}
-          count={successPlugins.length}
-          plugins={successPlugins}
-          getIconUrl={getIconUrl}
-          language={language}
-          statusIcon={
-            <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
-          }
-          defaultStatusText={t('task.installed', { ns: 'plugin' })}
-          statusClassName="text-text-success"
-          headerAction={(
-            <Button
-              className="shrink-0"
-              size="small"
-              variant="ghost"
-              onClick={onClearAll}
-            >
-              {t('task.clearAll', { ns: 'plugin' })}
-            </Button>
-          )}
-          onClearSingle={onClearSingle}
-        />
-      )}
-
-      {/* Error Plugins Section */}
-      {errorPlugins.length > 0 && (
+      {hasFailedPlugins && (
         <>
-          <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
+          <div className="sticky top-0 flex items-start justify-between pt-1 pr-1 pl-2 system-sm-semibold-uppercase text-text-secondary">
             {t('task.installedError', { ns: 'plugin', errorLength: errorPlugins.length })}
             <Button
               className="shrink-0"
@@ -105,6 +73,18 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
               />
             ))}
           </ScrollArea>
+          {runningPlugins.map(plugin => (
+            <PluginItem
+              key={plugin.plugin_unique_identifier}
+              plugin={plugin}
+              getIconUrl={getIconUrl}
+              language={language}
+              statusIcon={
+                <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />
+              }
+              statusText={plugin.message || t('task.installingHint', { ns: 'plugin' })}
+            />
+          ))}
         </>
       )}
     </div>
