@@ -1,3 +1,4 @@
+import json
 import re
 
 from core.app.app_config.entities import RagPipelineVariableEntity
@@ -22,8 +23,6 @@ class WorkflowVariablesConfigManager:
         for variable in user_input_form:
             # Parse json_schema from string to dict if needed
             if variable.get("type") == "json_object" and isinstance(variable.get("json_schema"), str):
-                import json
-
                 try:
                     variable["json_schema"] = json.loads(variable["json_schema"])
                 except (json.JSONDecodeError, TypeError):
