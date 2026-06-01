@@ -1,4 +1,4 @@
-import type { CommandConstructor } from './command'
+import type { CommandConstructor, CommandEffect } from './command'
 import type { CommandTree } from './registry'
 import type { ArgValueType, FlagDefinition } from './types'
 import type { HelpTopic } from '@/help/topics'
@@ -27,6 +27,7 @@ export type ArgDescriptor = {
 export type CommandDescriptor = {
   command: string
   description: string | null
+  effect: CommandEffect
   args: ArgDescriptor[]
   flags: FlagDescriptor[]
   examples: string[]
@@ -78,6 +79,7 @@ export function describeCommand(ctor: CommandConstructor, path: string): Command
   return {
     command: path,
     description: ctor.description ?? null,
+    effect: ctor.effect ?? 'read',
     args: Object.entries(ctor.args ?? {}).map(([name, def]) => ({
       name,
       required: def.required ?? false,

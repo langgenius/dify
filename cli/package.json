@@ -35,10 +35,12 @@
     "type-check": "tsgo",
     "tree:gen": "bun scripts/generate-command-tree.ts",
     "tree:check": "bun scripts/generate-command-tree.ts --check",
+    "skill:gen": "bun scripts/generate-skill.ts",
+    "skill:check": "bun scripts/generate-skill.ts --check",
     "prebuild": "pnpm tree:gen",
     "predev": "pnpm tree:gen",
     "pretest": "pnpm tree:gen",
-    "ci": "pnpm tree:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
+    "ci": "pnpm tree:check && pnpm skill:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist node_modules/.cache",
     "version:info": "bun scripts/print-buildinfo.ts",
     "build:bin": "scripts/release-build.sh"

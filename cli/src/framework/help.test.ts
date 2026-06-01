@@ -10,12 +10,14 @@ function makeCmd(opts: {
   args?: CommandConstructor['args']
   examples?: string[]
   agentGuide?: string
+  effect?: CommandConstructor['effect']
 }): CommandConstructor {
   class Cmd {
     static description = opts.description
     static flags = opts.flags ?? {}
     static args = opts.args ?? {}
     static examples = opts.examples ?? []
+    static effect = opts.effect
     static agentGuide = opts.agentGuide
 
     async run(_argv: string[]) {}
@@ -167,6 +169,16 @@ describe('formatHelp structured output', () => {
     const obj = JSON.parse(formatHelp(makeCmd({}), 'get app', 'json'))
     expect(obj.agentGuide).toBeNull()
   })
+
+  it('defaults effect to read when unset', () => {
+    const obj = JSON.parse(formatHelp(makeCmd({}), 'get app', 'json'))
+    expect(obj.effect).toBe('read')
+  })
+
+  it('carries an explicit effect through to the descriptor', () => {
+    const obj = JSON.parse(formatHelp(makeCmd({ effect: 'destructive' }), 'delete member', 'json'))
+    expect(obj.effect).toBe('destructive')
+  })
 })
 
 describe('formatTopLevelHelp', () => {
@@ -179,6 +191,7 @@ describe('formatTopLevelHelp', () => {
     expect(obj.contract.exitCodes['0']).toBeDefined()
     expect(obj.contract.outputFormats).toContain('json')
     expect(obj.commands.some((c: { command: string }) => c.command === 'get app')).toBe(true)
+    expect(obj.commands.every((c: { effect?: string }) => typeof c.effect === 'string')).toBe(true)
     expect(obj.topics.map((t: { name: string }) => t.name)).toContain('account')
   })
 })

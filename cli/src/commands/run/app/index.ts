@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
@@ -7,6 +8,8 @@ import { runApp } from './run'
 
 export default class RunApp extends DifyCommand {
   static override description = 'Run an app and print the response'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> run app app-1 "hello"',
