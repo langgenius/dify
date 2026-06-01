@@ -810,7 +810,10 @@ def test_generate_tool_icon_urls_for_workflow_and_api():
             mock_session.scalar.side_effect = [workflow_provider, api_provider]
             mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
             mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
-            assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {"background": "#222", "content": "W"}
+            assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {
+                "background": "#222",
+                "content": "W",
+            }
             assert ToolManager.generate_api_tool_icon_url("tenant-1", "api-1") == {"background": "#333", "content": "A"}
             # Verify sessions are created with the engine
             assert mock_session_cls.call_count == 2
