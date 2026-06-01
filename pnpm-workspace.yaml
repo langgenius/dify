@@ -97,12 +97,9 @@ catalog:
   '@tailwindcss/typography': 0.5.19
   '@tailwindcss/vite': 4.3.0
   '@tanstack/eslint-plugin-query': 5.100.14
-  '@tanstack/react-devtools': 0.10.5
   '@tanstack/react-form': 1.32.0
-  '@tanstack/react-form-devtools': 0.2.27
   '@tanstack/react-hotkeys': 0.10.0
   '@tanstack/react-query': 5.100.14
-  '@tanstack/react-query-devtools': 5.100.14
   '@tanstack/react-virtual': 3.13.25
   '@testing-library/dom': 10.4.1
   '@testing-library/jest-dom': 6.9.1
