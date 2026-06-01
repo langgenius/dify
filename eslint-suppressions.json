@@ -142,11 +142,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/(humanInputLayout)/form/[token]/form.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -2651,11 +2646,6 @@
       "count": 4
     }
   },
-  "web/app/components/header/header-wrapper.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/card/index.tsx": {
     "ts/no-non-null-asserted-optional-chain": {
       "count": 1
@@ -3499,11 +3489,6 @@
     }
   },
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4770,11 +4755,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/store/workflow/workflow-slice.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 16
@@ -4893,11 +4873,6 @@
   "web/app/components/workflow/workflow-preview/components/nodes/constants.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/education-apply/hooks.ts": {
-    "react/set-state-in-effect": {
-      "count": 5
     }
   },
   "web/app/education-apply/search-input.tsx": {
