@@ -595,16 +595,16 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.14"
+version = "1.43.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/4b/616367e871ce3f1cb3e8545a97736b6331b9fb081497f2d44c5b2aa6959d/boto3-1.43.14.tar.gz", hash = "sha256:5c0a994b3182061ee101812e721100717a4d664f9f4ceaf4a86b6d032ce9fc2d", size = 113142, upload-time = "2026-05-22T19:28:47.861Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/22/37/2ae45d06423182b4561c03bc33494fafa21a0d1e847f0554f590e3cbbc62/boto3-1.43.18.tar.gz", hash = "sha256:33138883e984eb1937d1553da699182c8ad2099138091e885b65c9accbccea16", size = 113154, upload-time = "2026-05-29T19:33:30.046Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/00/59cb9329c18e2d3aa23062ceaa87d065f2e81e7d2931df24d64e9a7815aa/boto3-1.43.14-py3-none-any.whl", hash = "sha256:574335744656cfed0b362a0a0467aaf2eb2bf15526edcd02d31d3c661f4b09e4", size = 140536, upload-time = "2026-05-22T19:28:46.49Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/75/fcb2c10d516496536c50e397248de42a673d8ea8137caf5b578a72b11293/boto3-1.43.18-py3-none-any.whl", hash = "sha256:7b62ce5c0a51428d692aa4f2adc9dc2a4a4c2989bf65a0a12834eeffa99b0b84", size = 140538, upload-time = "2026-05-29T19:33:27.131Z" },
 ]
 
 [[package]]
@@ -627,16 +627,16 @@ bedrock-runtime = [
 
 [[package]]
 name = "botocore"
-version = "1.43.14"
+version = "1.43.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/78/3c/798d2f7deb118241930c7c6bcfb0b970d3f0245bf580700663199aeed2c3/botocore-1.43.14.tar.gz", hash = "sha256:b9e500737e43d2f147c9d4e23b54360335e77d4c0ba90a318f51b65e06cb8516", size = 15382604, upload-time = "2026-05-22T19:28:36.363Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/6d/436d69ec484ffc43635b38d7fb7d717d38824671f10e12e77924019ca929/botocore-1.43.18.tar.gz", hash = "sha256:dc8c105351b49688c667065cd5a45fc5b9db982657cefc9e3fbfb9417a55c7df", size = 15424886, upload-time = "2026-05-29T19:33:16.251Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/7e/6e64821077cd2efc4aa51b7d638fb6d48e1c7c450201c529fbaf1de8bfd3/botocore-1.43.14-py3-none-any.whl", hash = "sha256:1f4a2a95ea78c10398e78431e98c1fe47adb54a7b10a32975144c1f541186658", size = 15061424, upload-time = "2026-05-22T19:28:32.682Z" },
+    { url = "https://files.pythonhosted.org/packages/21/5a/35c92c0af1514581031fe66c398b622176b3c928a6d5cf8133c7207e3bd7/botocore-1.43.18-py3-none-any.whl", hash = "sha256:e2610fce16df9f89deab5f3c163430a814e6804034eb95bef8957c8db60b7dbc", size = 15106258, upload-time = "2026-05-29T19:33:11.18Z" },
 ]
 
 [[package]]
@@ -1049,7 +1049,7 @@ wheels = [
 
 [[package]]
 name = "cos-python-sdk-v5"
-version = "1.9.43"
+version = "1.9.44"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "crcmod" },
@@ -1058,9 +1058,9 @@ dependencies = [
     { name = "six" },
     { name = "xmltodict" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/73/3d5321fa6c0fe14ababd5e4a8d02941785b54a9b1ba4e99336b227cba223/cos_python_sdk_v5-1.9.43.tar.gz", hash = "sha256:ff661561686356f4cff02af03a63eca27607edef2edd233f9cdcd1ca2125357b", size = 103216, upload-time = "2026-05-13T12:01:53.765Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/c8/5cc0d0bd4b4bd9006976408bf390927fe51138658235c512a76799932de0/cos_python_sdk_v5-1.9.44.tar.gz", hash = "sha256:2ab403f3b64efdbb9a1984ad3e4381bd7f0755d1064148aeb25269bd757b49ab", size = 103461, upload-time = "2026-05-29T03:50:19.02Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/dd/b6cbe0ddd04c0543195e089bd962f5e890218e621dfb652781997860eda5/cos_python_sdk_v5-1.9.43-py3-none-any.whl", hash = "sha256:2623db720d9d1aac01faf5ad5a422008a4a0475a852c8413a56b0a8415f647aa", size = 98826, upload-time = "2026-05-13T12:01:51.383Z" },
+    { url = "https://files.pythonhosted.org/packages/65/ed/4eabca16f3f9049ac0ee5bd17ef42709a6ede659e81e97f74e77a1aae30b/cos_python_sdk_v5-1.9.44-py3-none-any.whl", hash = "sha256:584a97ecd5e9b15b04a1e511e6dd0ea4eca00ee87fe50aa9a3c91ce716149bcb", size = 99127, upload-time = "2026-05-29T03:50:17.35Z" },
 ]
 
 [[package]]
@@ -1612,7 +1612,7 @@ requires-dist = [
     { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.3.0,<7.0.0" },
-    { name = "boto3", specifier = ">=1.43.14,<2.0.0" },
+    { name = "boto3", specifier = ">=1.43.18,<2.0.0" },
     { name = "celery", specifier = ">=5.6.3,<6.0.0" },
     { name = "croniter", specifier = ">=6.2.2,<7.0.0" },
     { name = "dify-agent", editable = "../dify-agent" },
@@ -1718,13 +1718,13 @@ dev = [
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.29.0,<13.0.0" },
     { name = "bce-python-sdk", specifier = "==0.9.71" },
-    { name = "cos-python-sdk-v5", specifier = ">=1.9.43,<2.0.0" },
+    { name = "cos-python-sdk-v5", specifier = ">=1.9.44,<2.0.0" },
     { name = "esdk-obs-python", specifier = ">=3.22.2,<4.0.0" },
     { name = "google-cloud-storage", specifier = ">=3.10.1,<4.0.0" },
     { name = "opendal", specifier = "==0.46.0" },
     { name = "oss2", specifier = ">=2.19.1,<3.0.0" },
-    { name = "supabase", specifier = ">=2.30.0,<3.0.0" },
-    { name = "tos", specifier = ">=2.9.0,<3.0.0" },
+    { name = "supabase", specifier = ">=2.30.1,<3.0.0" },
+    { name = "tos", specifier = ">=2.9.1,<3.0.0" },
 ]
 tools = [
     { name = "cloudscraper", specifier = ">=1.2.71,<2.0.0" },
@@ -4859,7 +4859,7 @@ wheels = [
 
 [[package]]
 name = "postgrest"
-version = "2.30.0"
+version = "2.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deprecation" },
@@ -4867,9 +4867,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/7c/54e7be05adc9fd6fd98dc572ddfc8982d45bec314a55711e37277d440698/postgrest-2.30.0.tar.gz", hash = "sha256:4f89eec56ce605ab6fbddd9b96d526a9bb44962796d44a5d85cb77640eb766c3", size = 14430, upload-time = "2026-05-06T17:35:21.559Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/9b/7d23f94d021c8adb8e8726b6da7af87265e92af0a982319af8931906a000/postgrest-2.30.1.tar.gz", hash = "sha256:e013e6fa450ca5305a46d4fd949c3982b6e1f7f94ab916c9c6625faf18724055", size = 14428, upload-time = "2026-05-29T14:24:57.356Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/aa/ff2e09f99f95ea96fddeb373646bf907dd89a24fc00b5d38e5674ca7c9ca/postgrest-2.30.0-py3-none-any.whl", hash = "sha256:30631e7993da542419f4217cf3b60aa641084731ea15e66a18526a3a52e40a7d", size = 23108, upload-time = "2026-05-06T17:35:20.531Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/94/0cd4e9950359a1727cd1d24c90b1f37a1b4c14df89bd7ddc75c2aa06501f/postgrest-2.30.1-py3-none-any.whl", hash = "sha256:4580124fd0ede43e19a859791418e437257938dc2f23aab9a3e68638da5f4a05", size = 23106, upload-time = "2026-05-29T14:24:56.321Z" },
 ]
 
 [[package]]
@@ -5805,16 +5805,16 @@ wheels = [
 
 [[package]]
 name = "realtime"
-version = "2.30.0"
+version = "2.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/a2/0328d49d3b5fb427068e9200e7de5b0d708d021a1ad98d004bc685d2529e/realtime-2.30.0.tar.gz", hash = "sha256:7aa593da52ed5f92c34ec4e50e32043afa62f219c94f717ad64a66ab0ef9f1ba", size = 18718, upload-time = "2026-05-06T17:35:23.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/87/5371d6908e491b093ca35770fe105ba28f83da6fef1f9d819e133313464b/realtime-2.30.1.tar.gz", hash = "sha256:c7edd03b34fdc5a57ef5035460000c405d37498aaa687685b998ba55d13f8a9f", size = 18716, upload-time = "2026-05-29T14:24:59.092Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/75/1b2cfc949595e22d8c05a2aa2cfc222921f7f94177d7e8a90542f3f73b33/realtime-2.30.0-py3-none-any.whl", hash = "sha256:7c93b63d2cf99aa1da4fa8826b03b00cd32f7b38abb27ff47b19eb5dcb5707c6", size = 22376, upload-time = "2026-05-06T17:35:22.568Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/9e/2a745026e552ef05c5b16ae6e1ad4dc44c9f017bcd021cd54786a8ce2226/realtime-2.30.1-py3-none-any.whl", hash = "sha256:c9f1d4657b8cf2fa7259963021c1e87a929290cd239ca34eb22977c27b705802", size = 22374, upload-time = "2026-05-29T14:24:58.055Z" },
 ]
 
 [[package]]
@@ -5996,14 +5996,14 @@ wheels = [
 
 [[package]]
 name = "s3transfer"
-version = "0.17.0"
+version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/ec/7c692cde9125b77e84b307354d4fb705f98b8ccad59a036d5957ca75bfc3/s3transfer-0.17.0.tar.gz", hash = "sha256:9edeb6d1c3c2f89d6050348548834ad8289610d886e5bf7b7207728bd43ce33a", size = 155337, upload-time = "2026-04-29T22:07:36.33Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/1f/12417f7f493fc45e1f9fd5d4a9b6c125cf8d2cf3f8ddbdfab3e76406e9d6/s3transfer-0.18.0.tar.gz", hash = "sha256:3760b8b7ec1315da54048b2d626276732bee4300d054d492d4e1d43e20d4ecbd", size = 160560, upload-time = "2026-05-28T19:39:09.124Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/72/c6c32d2b657fa3dad1de340254e14390b1e334ce38268b7ad51abda3c8c2/s3transfer-0.17.0-py3-none-any.whl", hash = "sha256:ce3801712acf4ad3e89fb9990df97b4972e93f4b3b0004d214be5bce12814c20", size = 86811, upload-time = "2026-04-29T22:07:34.966Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/58/a58fc997655386daa2e25784e30c288aa3e3819e401f77029ee4899fb55a/s3transfer-0.18.0-py3-none-any.whl", hash = "sha256:239c13b09e65ad0346e1be7348b8a202dcad44ac7ea7c6eb858fc881dce739b6", size = 88572, upload-time = "2026-05-28T19:39:07.999Z" },
 ]
 
 [[package]]
@@ -6296,7 +6296,7 @@ wheels = [
 
 [[package]]
 name = "storage3"
-version = "2.30.0"
+version = "2.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deprecation" },
@@ -6305,9 +6305,9 @@ dependencies = [
     { name = "pyiceberg" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/b2/6df208d64630744704d00f2c07197170390d6b4d0098617740f6a7a4fa98/storage3-2.30.0.tar.gz", hash = "sha256:b74e3cac149f2c0553dcb5f4d55d8c35d420d88183a1a2df77727d482665972b", size = 20162, upload-time = "2026-05-06T17:35:25.71Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/92/b2f45e8d521c802713d6baf898383bd45d053dbf35e7796e44937a284948/storage3-2.30.1.tar.gz", hash = "sha256:5a52784948dbe5ff8d84da5c220ed55a9a9d45bbbaa07b62bdf7dc933c9910e0", size = 20163, upload-time = "2026-05-29T14:25:00.877Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/5c/bb8c8cc448cfae671c4ffee67f3651892ea59b341f27bed54666190eb8ef/storage3-2.30.0-py3-none-any.whl", hash = "sha256:2bd23a34011c018bd9c130d8a70a09ebd060ae80d946c6204a6fc08161ad728d", size = 28284, upload-time = "2026-05-06T17:35:24.659Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/77/fb49f035001e15b5e556977eb32dec84ec88f8a61e2590b5d19ff4cdbef6/storage3-2.30.1-py3-none-any.whl", hash = "sha256:177aef2005650a9a4a1077d0c2207c36c9d06dcce773b732ec3ad3f07e27b273", size = 28284, upload-time = "2026-05-29T14:24:59.848Z" },
 ]
 
 [[package]]
@@ -6333,7 +6333,7 @@ wheels = [
 
 [[package]]
 name = "supabase"
-version = "2.30.0"
+version = "2.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -6344,37 +6344,37 @@ dependencies = [
     { name = "supabase-functions" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/a6/d2b17021c2db1a9d219c383e0762ac03a62b25468e61ab126b6b561c2f21/supabase-2.30.0.tar.gz", hash = "sha256:efdba41d474038ed220736ba4e64946df56043057ad785c4c3499d27e459975c", size = 9689, upload-time = "2026-05-06T17:35:27.781Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/ea/8c9f9964612c2a811ad50f46c2da38834152846d0467ad38cda56bfdd9a8/supabase-2.30.1.tar.gz", hash = "sha256:a812c9316e103bec83f2883aa5c046f26fba3e808cce3129f405c7837bf9541f", size = 9691, upload-time = "2026-05-29T14:25:02.568Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/82/d213be7d0ce0bb18018744c0ee38ba0d6648d41dbc46ac8558cffe80541f/supabase-2.30.0-py3-none-any.whl", hash = "sha256:f9b259194554f7bfd2dca6c23261f2df588016ca18b18e774f4d85bc941edb03", size = 16634, upload-time = "2026-05-06T17:35:26.696Z" },
+    { url = "https://files.pythonhosted.org/packages/09/c4/e3ddf6762a2033c0a902306d8f47dca04599037705ef0c09be8683006f74/supabase-2.30.1-py3-none-any.whl", hash = "sha256:71027dff498f8f9a2602a34ce7cb633d3429d2e3d5a3c261790c72a49c69b669", size = 16634, upload-time = "2026-05-29T14:25:01.543Z" },
 ]
 
 [[package]]
 name = "supabase-auth"
-version = "2.30.0"
+version = "2.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx", extra = ["http2"] },
     { name = "pydantic" },
     { name = "pyjwt", extra = ["crypto"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/8a/48bbbe0b6703d0670b67e45b90d6a791fd01aace67443d286f760bf48895/supabase_auth-2.30.0.tar.gz", hash = "sha256:6138a53a306a95ed59c03d4e4975469dfc3343a0ade33cc4b37e4ef967ad83f8", size = 39135, upload-time = "2026-05-06T17:35:30.371Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/9a/08f49a89176ca7fd288b6293c043345ae45d9ed601f5c78bc1bfcee1e4ed/supabase_auth-2.30.1.tar.gz", hash = "sha256:13f094121d858e9344dd6a05dd584778f62f416b7f09fda5b4b1471e4451b596", size = 39152, upload-time = "2026-05-29T14:25:04.507Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/db/40/a99cb4373353bcbf302d962e51da9eac78b3b0f257eb0362c0852b1667f4/supabase_auth-2.30.0-py3-none-any.whl", hash = "sha256:e85e1f51ec0de2172c3a2a8514205f71731a9914f9a770ed199ac0cf054bc82c", size = 48352, upload-time = "2026-05-06T17:35:28.936Z" },
+    { url = "https://files.pythonhosted.org/packages/13/3c/f261dcfcdee60b224cea8e2ebe6e410048f3043c5f877cef17738c6a5fac/supabase_auth-2.30.1-py3-none-any.whl", hash = "sha256:bd6bdb3cd6ecaa72acf92f3211619015e02425b9323b3bc4568af598f8f556ec", size = 48370, upload-time = "2026-05-29T14:25:03.314Z" },
 ]
 
 [[package]]
 name = "supabase-functions"
-version = "2.30.0"
+version = "2.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx", extra = ["http2"] },
     { name = "strenum" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/e6/5cd8559ec2bb332e6027840c1be292f9989c2fc7b47bf40800aec5586791/supabase_functions-2.30.0.tar.gz", hash = "sha256:025acfd25f1c000ba43d0f7b8e366b0d2e9dfc784b842528e21973eb33006113", size = 4683, upload-time = "2026-05-06T17:35:32.246Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/08/6d00627295f196c5f4c6a70945a3e7339712321511d1377d6262db4dff89/supabase_functions-2.30.1.tar.gz", hash = "sha256:c09f8b46d3cf85713e2d8bf879dd77905ceb1d73508dbc404cc35cb36e75fb42", size = 4686, upload-time = "2026-05-29T14:25:06.081Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/da/9dedab32775df04cc22ca72f194b78e895d940f195bed3e02882a65daa9b/supabase_functions-2.30.0-py3-none-any.whl", hash = "sha256:92419459f102767b954cd034856e4ded8e34c78660b32442d66c8b2899c68011", size = 8803, upload-time = "2026-05-06T17:35:31.342Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/9f/4058525e93e6fdcd5c7f216acefe956a3a16001c3c2a1d01b205c7b11eb6/supabase_functions-2.30.1-py3-none-any.whl", hash = "sha256:8d756b5bb5444c1edd43f2f44bb7698ddb242a8bc9f9eb2f8fa04ba55799e0ba", size = 8804, upload-time = "2026-05-29T14:25:05.197Z" },
 ]
 
 [[package]]
@@ -6564,7 +6564,7 @@ wheels = [
 
 [[package]]
 name = "tos"
-version = "2.9.0"
+version = "2.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "crcmod" },
@@ -6574,7 +6574,7 @@ dependencies = [
     { name = "six" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9a/b3/13451226f564f88d9db2323e9b7eabcced792a0ad5ee1e333751a7634257/tos-2.9.0.tar.gz", hash = "sha256:861cfc348e770f099f911cb96b2c41774ada6c9c51b7a89d97e0c426074dd99e", size = 157071, upload-time = "2026-01-06T04:13:08.921Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/42/079680659e1f6c20f7b837e6b13f16d4c1c389889071f49c18baea9ac2ac/tos-2.9.1.tar.gz", hash = "sha256:06a5cc095d5b3f0e52b04aee8f7e60f8ddcf0c94c4408213e3485e40070d54ef", size = 163709, upload-time = "2026-05-26T03:29:27.747Z" }
 
 [[package]]
 name = "tqdm"
