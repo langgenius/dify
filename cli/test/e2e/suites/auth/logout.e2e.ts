@@ -12,7 +12,8 @@ import { injectAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
-const caps = inject('e2eCapabilities')
+// @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
+const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
 
 describe('E2E / difyctl auth logout', () => {
   let configDir: string
