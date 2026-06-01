@@ -71,6 +71,49 @@ const loadSystemFeaturesModule = async ({
   }
 }
 
+const loadServerSystemFeaturesModule = async ({
+  cloudEnv,
+  isCloudEdition,
+  systemFeaturesResult = defaultSystemFeatures,
+  systemFeaturesError,
+}: LoadOptions) => {
+  vi.resetModules()
+
+  const getServerConsoleClientContext = vi.fn().mockResolvedValue({ cookie: 'session=1' })
+  const systemFeatures = systemFeaturesError
+    ? vi.fn().mockRejectedValue(systemFeaturesError)
+    : vi.fn().mockResolvedValue(systemFeaturesResult)
+
+  vi.doMock('@/config', () => ({
+    IS_CLOUD_EDITION: isCloudEdition,
+  }))
+  vi.doMock('@/env', () => ({
+    env: {
+      ...defaultCloudEnv,
+      ...cloudEnv,
+    },
+  }))
+  vi.doMock('../server', () => ({
+    getServerConsoleClientContext,
+    serverConsoleClient: {
+      systemFeatures,
+    },
+    serverConsoleQuery: {
+      systemFeatures: {
+        queryKey: () => queryKey,
+      },
+    },
+  }))
+
+  const module = await import('../server-system-features')
+
+  return {
+    getServerConsoleClientContext,
+    module,
+    systemFeatures,
+  }
+}
+
 describe('systemFeaturesQueryOptions', () => {
   it('should return Cloud defaults without calling system-features when Cloud edition is enabled', async () => {
     const { module, systemFeatures } = await loadSystemFeaturesModule({
@@ -148,6 +191,66 @@ describe('systemFeaturesQueryOptions', () => {
     })
 
     const options = module.systemFeaturesQueryOptions()
+    const data = await options.queryFn?.(queryContext)
+
+    expect(systemFeatures).toHaveBeenCalledTimes(1)
+    expect(data).toEqual(defaultSystemFeatures)
+
+    errorSpy.mockRestore()
+  })
+})
+
+describe('serverSystemFeaturesQueryOptions', () => {
+  it('should prefetch Cloud defaults without calling server system-features when Cloud edition is enabled', async () => {
+    const { getServerConsoleClientContext, module, systemFeatures } = await loadServerSystemFeaturesModule({
+      isCloudEdition: true,
+      cloudEnv: {
+        NEXT_PUBLIC_ENABLE_MARKETPLACE: false,
+        NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: true,
+      },
+    })
+
+    const options = module.serverSystemFeaturesQueryOptions()
+    const data = await options.queryFn?.(queryContext)
+
+    expect(getServerConsoleClientContext).not.toHaveBeenCalled()
+    expect(systemFeatures).not.toHaveBeenCalled()
+    expect(options.staleTime).toBe(Infinity)
+    expect(data).toMatchObject({
+      enable_marketplace: false,
+      enable_email_password_login: true,
+    })
+  })
+
+  it('should fetch server system-features when Cloud edition is disabled', async () => {
+    const systemFeaturesResult = {
+      ...defaultSystemFeatures,
+      enable_marketplace: true,
+    }
+    const { getServerConsoleClientContext, module, systemFeatures } = await loadServerSystemFeaturesModule({
+      isCloudEdition: false,
+      systemFeaturesResult,
+    })
+
+    const options = module.serverSystemFeaturesQueryOptions()
+    const data = await options.queryFn?.(queryContext)
+
+    expect(getServerConsoleClientContext).toHaveBeenCalledTimes(1)
+    expect(systemFeatures).toHaveBeenCalledTimes(1)
+    expect(systemFeatures).toHaveBeenCalledWith(undefined, {
+      context: { cookie: 'session=1' },
+    })
+    expect(data).toBe(systemFeaturesResult)
+  })
+
+  it('should fall back to defaults when the non-Cloud server request fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { module, systemFeatures } = await loadServerSystemFeaturesModule({
+      isCloudEdition: false,
+      systemFeaturesError: new Error('server failed'),
+    })
+
+    const options = module.serverSystemFeaturesQueryOptions()
     const data = await options.queryFn?.(queryContext)
 
     expect(systemFeatures).toHaveBeenCalledTimes(1)
