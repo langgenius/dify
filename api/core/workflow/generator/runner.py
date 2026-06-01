@@ -1016,7 +1016,7 @@ class WorkflowGenerator:
         for n in nodes:
             seen: set[str] = set()
             cur_id = n.get("id", "")
-            cur = n
+            cur: dict[str, Any] | None = n
             depth = 0
             while cur is not None and depth < 64:  # generous safety cap
                 parent = (cur.get("data") or {}).get("parentId") or cur.get("parentId")

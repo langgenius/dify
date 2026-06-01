@@ -81,7 +81,11 @@ export const generateRule = (body: Record<string, any>) => {
  * back to ``detail`` and that's fine, but every value listed here MUST
  * exist in both en-US and zh-Hans.
  */
-export type GenerateWorkflowErrorCode
+// Not exported: knip flags unused exports and the modal looks codes up by
+// string interpolation (``workflowGenerator.errors.${code}``) rather than
+// importing the union. Kept here so the ``GenerateWorkflowResponse``
+// definition below documents the contract in one place.
+type GenerateWorkflowErrorCode
   = | 'INVALID_JSON'
     | 'INVALID_SCHEMA'
     | 'EMPTY_INSTRUCTION'
@@ -95,7 +99,7 @@ export type GenerateWorkflowErrorCode
     | 'DANGLING_EDGE'
     | 'MODEL_ERROR'
 
-export type GenerateWorkflowError = {
+type GenerateWorkflowError = {
   code: GenerateWorkflowErrorCode | string
   detail: string
   node_id?: string
