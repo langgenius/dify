@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/config', () => ({
   API_PREFIX: 'http://localhost:5001/console/api',
+  CSRF_COOKIE_NAME: () => 'csrf_token',
+  CSRF_HEADER_NAME: 'X-CSRF-Token',
 }))
+
+vi.mock('server-only', () => ({}))
 
 vi.mock('@/config/server', () => ({
   SERVER_CONSOLE_API_PREFIX: undefined,

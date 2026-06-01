@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { PassThrough, Readable, Writable } from 'node:stream'
-import { io } from '..'
+import { io } from '@/sys'
 
 export type IOStreams = {
   out: NodeJS.WritableStream

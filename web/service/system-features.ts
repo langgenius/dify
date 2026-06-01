@@ -1,5 +1,7 @@
 import type { SystemFeatures } from '@/types/feature'
 import { queryOptions } from '@tanstack/react-query'
+import { IS_CLOUD_EDITION } from '@/config'
+import { cloudSystemFeatures } from '@/config/cloud-system-features'
 import { defaultSystemFeatures } from '@/types/feature'
 import { consoleClient, consoleQuery } from './client'
 
@@ -12,15 +14,24 @@ import { consoleClient, consoleQuery } from './client'
  * availability via defaults; the trade-off is acceptable because /system-features
  * is a small, dependency-free endpoint in the community edition.
  *
- * No `staleTime` override either: inherit the 5-minute default from
- * query-client-server.ts. Combined with `refetchOnWindowFocus`, this lets us
- * recover from a transient startup failure (which got cached as "successful
- * defaults") within ~5 minutes or on tab focus. `staleTime: Infinity` would
- * pin the whole tab to defaults until reload — strictly worse than main.
+ * For Cloud, this query is intentionally local-only and uses `staleTime:
+ * Infinity`: the payload comes from frontend config/defaults, so refetching
+ * would only re-run the same local merge. For non-Cloud, do not override
+ * `staleTime`: inherit the 5-minute default from query-client-server.ts.
  */
-export const systemFeaturesQueryOptions = () =>
-  queryOptions<SystemFeatures>({
-    queryKey: consoleQuery.systemFeatures.queryKey(),
+export const systemFeaturesQueryOptions = () => {
+  const queryKey = consoleQuery.systemFeatures.queryKey()
+
+  if (IS_CLOUD_EDITION) {
+    return queryOptions<SystemFeatures>({
+      queryKey,
+      queryFn: async () => cloudSystemFeatures,
+      staleTime: Infinity,
+    })
+  }
+
+  return queryOptions<SystemFeatures>({
+    queryKey,
     queryFn: async () => {
       try {
         return await consoleClient.systemFeatures()
@@ -31,3 +42,4 @@ export const systemFeaturesQueryOptions = () =>
       }
     },
   })
+}

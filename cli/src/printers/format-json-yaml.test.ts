@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { JsonYamlPrintFlags } from './format-json-yaml.js'
-import { isNoCompatiblePrinter } from './printer.js'
+import { JsonYamlPrintFlags } from './format-json-yaml'
+import { isNoCompatiblePrinter } from './printer'
 
 describe('JsonYamlPrintFlags.allowedFormats', () => {
   it('returns json + yaml', () => {

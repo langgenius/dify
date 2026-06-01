@@ -1,7 +1,7 @@
-import type { AppInfoCache } from '../cache/app-info.js'
-import type { AppMeta, AppMetaFieldKey } from '../types/app-meta.js'
-import type { AppsClient } from './apps.js'
-import { covers, fromDescribe, mergeMeta } from '../types/app-meta.js'
+import type { AppsClient } from './apps'
+import type { AppInfoCache } from '@/cache/app-info'
+import type { AppMeta, AppMetaFieldKey } from '@/types/app-meta'
+import { covers, fromDescribe, mergeMeta } from '@/types/app-meta'
 
 export type AppMetaClientOptions = {
   readonly apps: AppsClient

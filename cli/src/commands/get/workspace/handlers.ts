@@ -1,7 +1,7 @@
 import type { WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { TableCell } from '../../../framework/output.js'
-import type { TableColumn, TableHandler, TableRow } from '../../../printers/format-table.js'
-import { isPayloadShape } from '../app/payload-shape.js'
+import type { TableCell } from '@/framework/output'
+import type { TableColumn, TableHandler, TableRow } from '@/printers/format-table'
+import { isPayloadShape } from '@/commands/get/app/payload-shape'
 
 export const WORKSPACE_MODE_KEY = 'workspace'
 const CURRENT_MARKER = '*'

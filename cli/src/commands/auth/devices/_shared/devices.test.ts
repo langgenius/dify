@@ -1,18 +1,18 @@
 import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openapi/types.gen'
-import type { DifyMock } from '../../../../../test/fixtures/dify-mock/server.js'
-import type { AccountSessionsClient } from '../../../../api/account-sessions.js'
-import type { HostsBundle } from '../../../../auth/hosts.js'
-import type { Key, Store } from '../../../../store/store.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { AccountSessionsClient } from '@/api/account-sessions'
+import type { HostsBundle } from '@/auth/hosts'
+import type { Key, Store } from '@/store/store'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startMock } from '../../../../../test/fixtures/dify-mock/server.js'
-import { saveHosts } from '../../../../auth/hosts.js'
-import { createClient } from '../../../../http/client.js'
-import { ENV_CONFIG_DIR, resolveConfigDir } from '../../../../store/dir.js'
-import { tokenKey } from '../../../../store/manager.js'
-import { bufferStreams } from '../../../../sys/io/streams'
+import { saveHosts } from '@/auth/hosts'
+import { ENV_CONFIG_DIR, resolveConfigDir } from '@/store/dir'
+import { tokenKey } from '@/store/manager'
+import { bufferStreams } from '@/sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
 class MemStore implements Store {
@@ -57,7 +57,7 @@ describe('runDevicesList', () => {
 
   it('table: marks current with *', async () => {
     const io = bufferStreams()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
     await runDevicesList({ io, bundle: bundleFor(mock.url, 'tok-1'), http })
     const out = io.outBuf()
     expect(out).toContain('DEVICE')
@@ -70,7 +70,7 @@ describe('runDevicesList', () => {
 
   it('json: emits PaginationEnvelope unchanged', async () => {
     const io = bufferStreams()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
     await runDevicesList({ io, bundle: bundleFor(mock.url), http, json: true })
     const parsed = JSON.parse(io.outBuf()) as Record<string, unknown>
     expect(parsed.page).toBe(1)
@@ -80,7 +80,7 @@ describe('runDevicesList', () => {
 
   it('not-logged-in: throws NotLoggedIn', async () => {
     const io = bufferStreams()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
     await expect(runDevicesList({ io, bundle: undefined, http }))
       .rejects
       .toThrow(/not logged in/)
@@ -112,7 +112,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     store.set(tokenKey(b.current_host, 'acct-1'), 'dfoa_test')
     saveHosts(b)
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, bundle: b, http, store, target: 'difyctl on desktop', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
@@ -123,7 +123,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, bundle: b, http, store, target: 'tok-2', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
@@ -133,7 +133,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, bundle: b, http, store, target: 'web', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
@@ -143,7 +143,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await expect(runDevicesRevoke({ io, bundle: b, http, store, target: 'difyctl', all: false }))
       .rejects
@@ -154,7 +154,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await expect(runDevicesRevoke({ io, bundle: b, http, store, target: 'nonexistent', all: false }))
       .rejects
@@ -165,7 +165,7 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, bundle: b, http, store, all: true })
     expect(io.outBuf()).toContain('Revoked 2 session(s)')
@@ -177,7 +177,7 @@ describe('runDevicesRevoke', () => {
     const b = bundleFor(mock.url, 'tok-1')
     store.set(tokenKey(b.current_host, 'acct-1'), 'dfoa_test')
     saveHosts(b)
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, bundle: b, http, store, target: 'tok-1', all: false })
     expect(store.entries.size).toBe(0)
@@ -187,7 +187,7 @@ describe('runDevicesRevoke', () => {
   it('no target + no --all: throws UsageMissingArg', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const http = testHttpClient(mock.url, 'dfoa_test')
     await expect(runDevicesRevoke({ io, bundle: bundleFor(mock.url), http, store, all: false }))
       .rejects
       .toThrow(/specify a device label/)

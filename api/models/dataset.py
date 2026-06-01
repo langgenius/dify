@@ -1,5 +1,4 @@
 import base64
-import enum
 import hashlib
 import hmac
 import json
@@ -158,10 +157,10 @@ class DocumentDict(TypedDict):
     hit_count: int | None
 
 
-class DatasetPermissionEnum(enum.StrEnum):
-    ONLY_ME = "only_me"
-    ALL_TEAM = "all_team_members"
-    PARTIAL_TEAM = "partial_members"
+from models.enums import PermissionEnum
+
+# Backward-compatible alias — new code should import PermissionEnum from models.enums
+DatasetPermissionEnum = PermissionEnum
 
 
 class Dataset(Base):

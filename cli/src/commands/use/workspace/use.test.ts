@@ -2,15 +2,15 @@ import type {
   WorkspaceDetailResponse,
   WorkspaceListResponse,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { loadHosts, saveHosts } from '../../../auth/hosts.js'
-import { ENV_CONFIG_DIR } from '../../../store/dir.js'
-import { bufferStreams } from '../../../sys/io/streams.js'
+import { loadHosts, saveHosts } from '@/auth/hosts'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { bufferStreams } from '@/sys/io/streams'
 import { runUseWorkspace } from './use.js'
 
 function bundle(): HostsBundle {
@@ -76,7 +76,7 @@ describe('runUseWorkspace', () => {
       { workspaceId: 'ws-2' },
       {
         bundle: b,
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io,
         workspacesFactory: () => client as never,
       },
@@ -105,7 +105,7 @@ describe('runUseWorkspace', () => {
 
     await runUseWorkspace(
       { workspaceId: 'ws-2' },
-      { bundle: b, http: {} as KyInstance, io, workspacesFactory: () => client as never },
+      { bundle: b, http: {} as HttpClient, io, workspacesFactory: () => client as never },
     )
 
     const reloaded = loadHosts()
@@ -128,7 +128,7 @@ describe('runUseWorkspace', () => {
         { workspaceId: 'ws-2' },
         {
           bundle: b,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },
@@ -156,7 +156,7 @@ describe('runUseWorkspace', () => {
         { workspaceId: 'ws-2' },
         {
           bundle: b,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },
@@ -193,7 +193,7 @@ describe('runUseWorkspace', () => {
         { workspaceId: 'ws-7' },
         {
           bundle: b,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },

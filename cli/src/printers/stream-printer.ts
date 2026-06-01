@@ -1,4 +1,4 @@
-import type { SseEvent } from '../http/sse.js'
+import type { SseEvent } from '@/http/sse'
 
 export type StreamPrinter = {
   onEvent: (out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent) => void
