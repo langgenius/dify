@@ -37,6 +37,7 @@ import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
 const STORAGE_MODEL_KEY = 'workflow-gen-model'
+const FE_TIMEOUT_MS = 60_000
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -45,6 +46,59 @@ const renderPlaceholder = (label: string) => (
       {label}
     </div>
   </div>
+)
+
+// SSR-safe one-shot read of the persisted model selection. Returns null on
+// the server, on first-time use, or when the stored payload is corrupt.
+const readStoredModel = (): Model | null => {
+  if (typeof window === 'undefined')
+    return null
+  try {
+    const raw = localStorage.getItem(STORAGE_MODEL_KEY)
+    return raw ? JSON.parse(raw) as Model : null
+  }
+  catch {
+    return null
+  }
+}
+
+// AbortController throws a DOMException in modern browsers and a plain
+// Error in older / non-DOM environments — accept both so we don't toast
+// for an abort the user intentionally triggered.
+const isAbortError = (e: unknown): boolean =>
+  (e instanceof DOMException || e instanceof Error) && e.name === 'AbortError'
+
+type RecoveryDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  cancelLabel: string
+  confirmLabel: string
+  onConfirm: () => void
+}
+
+// Shared shell for "we hit a snag — here's a Reload / Confirm button"
+// dialogs. The overwrite-confirm and hash-collision dialogs differ only in
+// copy and confirm handler; this collapses 30 lines of duplicate JSX to
+// one props bag and keeps the visual styling in lockstep across both.
+const RecoveryDialog = ({ open, onOpenChange, title, description, cancelLabel, confirmLabel, onConfirm }: RecoveryDialogProps) => (
+  <AlertDialog open={open} onOpenChange={o => !o && onOpenChange(false)}>
+    <AlertDialogContent>
+      <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+        <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          {title}
+        </AlertDialogTitle>
+        <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          {description}
+        </AlertDialogDescription>
+      </div>
+      <AlertDialogActions>
+        <AlertDialogCancelButton>{cancelLabel}</AlertDialogCancelButton>
+        <AlertDialogConfirmButton onClick={onConfirm}>{confirmLabel}</AlertDialogConfirmButton>
+      </AlertDialogActions>
+    </AlertDialogContent>
+  </AlertDialog>
 )
 
 const WorkflowGeneratorModal: React.FC = () => {
@@ -58,19 +112,9 @@ const WorkflowGeneratorModal: React.FC = () => {
   const currentAppMode = useWorkflowGeneratorStore(s => s.currentAppMode)
   const closeGenerator = useWorkflowGeneratorStore(s => s.closeGenerator)
 
-  const storedModel = (() => {
-    if (typeof window === 'undefined')
-      return null
-    try {
-      const raw = localStorage.getItem(STORAGE_MODEL_KEY)
-      return raw ? JSON.parse(raw) as Model : null
-    }
-    catch {
-      return null
-    }
-  })()
-
-  const [model, setModel] = useState<Model>(storedModel || {
+  // Lazy initial — readStoredModel() touches localStorage and JSON.parse,
+  // both fine once but wasteful if we read them on every render.
+  const [model, setModel] = useState<Model>(() => readStoredModel() || {
     name: '',
     provider: '',
     mode: 'chat' as unknown as ModelModeType.chat,
@@ -152,8 +196,6 @@ const WorkflowGeneratorModal: React.FC = () => {
   // hide the "Apply to current" button so the wrong-mode graph never lands
   // in the wrong Studio. Captured at Generate time, not Apply time.
   const generatedModeRef = useRef<typeof mode | null>(null)
-
-  const FE_TIMEOUT_MS = 60_000
 
   const clearTimers = useCallback(() => {
     if (timeoutRef.current) {
@@ -250,13 +292,9 @@ const WorkflowGeneratorModal: React.FC = () => {
       addVersion(res)
     }
     catch (e: unknown) {
-      // Aborts are intentional (modal close, second click, timeout) —
-      // never toast for them. ``DOMException`` is the typed shape but some
-      // environments surface a plain ``Error`` with ``name === 'AbortError'``,
-      // so check both.
-      if (e instanceof DOMException && e.name === 'AbortError')
-        return
-      if (e instanceof Error && e.name === 'AbortError')
+      // Aborts are intentional (modal close, second click, timeout) — never
+      // toast for them. The timeout path already showed its own toast.
+      if (isAbortError(e))
         return
       const message = e instanceof Error ? e.message : ''
       toast.error(message || t('workflowGenerator.generateFailed'))
@@ -273,15 +311,15 @@ const WorkflowGeneratorModal: React.FC = () => {
     setLoadingFalse()
   }, [abortInFlight, setLoadingFalse])
 
-  // "Apply to current" only stays valid if BOTH (a) the current app is in
-  // the same mode the modal is generating for AND (b) the user hasn't
-  // switched modes since the generation that produced ``current``. If the
-  // mode changed mid-flight we fall back to "Create new app" only.
+  // "Apply to current" is valid only when the visible graph was generated
+  // for the app we'd be writing to. We require: a current app exists, its
+  // mode matches the current modal mode, AND the last Generate (if any)
+  // ran in this same mode — otherwise the user switched tabs mid-flight
+  // and we'd be writing a workflow graph into a chatflow draft (or vice
+  // versa). Falls back to "Create new app" only.
   const generatedMode = generatedModeRef.current
-  const canApplyToCurrent
-    = !!currentAppId
-      && currentAppMode === mode
-      && (generatedMode === null || generatedMode === mode)
+  const generatedModeMatches = generatedMode === null || generatedMode === mode
+  const canApplyToCurrent = !!currentAppId && currentAppMode === mode && generatedModeMatches
 
   const handleApplyToNew = useCallback(async () => {
     if (!current?.graph || isApplying)
@@ -502,52 +540,33 @@ const WorkflowGeneratorModal: React.FC = () => {
           {!isLoading && !current?.graph?.nodes?.length && renderPlaceholder(t('workflowGenerator.placeholder'))}
         </div>
 
-        <AlertDialog open={isShowConfirmOverwrite} onOpenChange={open => !open && hideConfirmOverwrite()}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('workflowGenerator.overwriteTitle')}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('workflowGenerator.overwriteMessage')}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={handleApplyToCurrentConfirmed}>
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
+        <RecoveryDialog
+          open={isShowConfirmOverwrite}
+          onOpenChange={() => hideConfirmOverwrite()}
+          title={t('workflowGenerator.overwriteTitle')}
+          description={t('workflowGenerator.overwriteMessage')}
+          cancelLabel={t('operation.cancel', { ns: 'common' })}
+          confirmLabel={t('operation.confirm', { ns: 'common' })}
+          onConfirm={handleApplyToCurrentConfirmed}
+        />
 
-        {/* Hash-collision recovery — surfaces only when another tab edited
-            the draft between our fetch and sync. The Reload action picks up
-            the other tab's edits; Dismiss returns to the modal where the
-            user can copy the generated graph manually before re-fetching. */}
-        <AlertDialog open={isShowHashCollision} onOpenChange={open => !open && hideHashCollision()}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('workflowGenerator.errors.hash_collision_title')}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('workflowGenerator.errors.hash_collision')}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={() => {
-                hideHashCollision()
-                if (typeof window !== 'undefined')
-                  window.location.reload()
-              }}
-              >
-                {t('workflowGenerator.reload')}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Hash-collision recovery — surfaces when another tab edited the
+            draft between our fetch and sync. Reload picks up those edits;
+            Dismiss returns to the modal so the user can copy the generated
+            graph manually before re-fetching. */}
+        <RecoveryDialog
+          open={isShowHashCollision}
+          onOpenChange={() => hideHashCollision()}
+          title={t('workflowGenerator.errors.hash_collision_title')}
+          description={t('workflowGenerator.errors.hash_collision')}
+          cancelLabel={t('operation.cancel', { ns: 'common' })}
+          confirmLabel={t('workflowGenerator.reload')}
+          onConfirm={() => {
+            hideHashCollision()
+            if (typeof window !== 'undefined')
+              window.location.reload()
+          }}
+        />
       </DialogContent>
     </Dialog>
   )

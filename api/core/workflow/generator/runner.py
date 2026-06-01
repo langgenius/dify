@@ -77,20 +77,24 @@ _JSON_RETRY_HINT = (
 )
 
 
-class _PlannerJSONError(ValueError):
-    """Raised when ``json_repair`` cannot parse the planner's response."""
+class _StageJSONError(ValueError):
+    """Raised when ``json_repair`` cannot parse a stage's response.
+
+    ``stage`` is the human-readable stage name ("Planner" / "Builder") so
+    the outer error envelope's ``detail`` can name which step blew up.
+    """
+
+    def __init__(self, stage: str, detail: str) -> None:
+        super().__init__(f"{stage} JSON invalid: {detail}")
+        self.stage = stage
 
 
-class _PlannerSchemaError(ValueError):
-    """Raised when the planner's parsed JSON violates the expected schema."""
+class _StageSchemaError(ValueError):
+    """Raised when a stage's parsed JSON violates the expected schema."""
 
-
-class _BuilderJSONError(ValueError):
-    """Raised when ``json_repair`` cannot parse the builder's response."""
-
-
-class _BuilderSchemaError(ValueError):
-    """Raised when the builder's parsed JSON violates the expected schema."""
+    def __init__(self, stage: str, detail: str) -> None:
+        super().__init__(f"{stage} schema invalid: {detail}")
+        self.stage = stage
 
 
 def _err(code: str, detail: str, node_id: str = "") -> WorkflowGenerateErrorDict:
@@ -106,11 +110,35 @@ def _errors_to_str(errors: list[WorkflowGenerateErrorDict]) -> str:
     return "; ".join(e["detail"] for e in errors)
 
 
-def _fail(empty: WorkflowGenerateResultDict, error: WorkflowGenerateErrorDict) -> WorkflowGenerateResultDict:
-    """Populate the envelope skeleton with a single structured error."""
-    empty["error"] = error["detail"]
-    empty["errors"] = [error]
-    return empty
+def _empty_result() -> WorkflowGenerateResultDict:
+    """Fresh skeleton with no graph and no metadata — used for early returns."""
+    return {
+        "graph": {"nodes": [], "edges": [], "viewport": _DEFAULT_VIEWPORT},
+        "message": "",
+        "app_name": "",
+        "icon": "",
+        "error": "",
+        "errors": [],
+    }
+
+
+def _result_with_errors(
+    base: WorkflowGenerateResultDict,
+    errors: list[WorkflowGenerateErrorDict],
+) -> WorkflowGenerateResultDict:
+    """Attach a structured error list to ``base``, populating the legacy ``error`` string too."""
+    base["errors"] = errors
+    base["error"] = _errors_to_str(errors)
+    return base
+
+
+def _stage_error_to_envelope_code(exc: Exception) -> str:
+    """Map a stage-typed exception to the result envelope's error code."""
+    if isinstance(exc, _StageJSONError):
+        return WorkflowGenerateErrorCode.INVALID_JSON
+    if isinstance(exc, _StageSchemaError):
+        return WorkflowGenerateErrorCode.INVALID_SCHEMA
+    return WorkflowGenerateErrorCode.MODEL_ERROR
 
 
 class WorkflowGenerator:
@@ -162,53 +190,46 @@ class WorkflowGenerator:
         ``errors`` and keep the previous version visible.
         """
 
-        empty_result: WorkflowGenerateResultDict = {
-            "graph": {"nodes": [], "edges": [], "viewport": _DEFAULT_VIEWPORT},
-            "message": "",
-            "app_name": "",
-            "icon": "",
-            "error": "",
-            "errors": [],
-        }
-
         # ── 1. PLANNER ────────────────────────────────────────────────────
-        try:
-            plan = cls._run_planner(
+        plan, plan_err = cls._run_stage(
+            stage="Planner",
+            failure_fallback_message="Failed to plan workflow",
+            run=lambda: cls._run_planner(
                 model_instance=model_instance,
                 model_parameters=model_parameters,
                 mode=mode,
                 instruction=instruction,
                 ideal_output=ideal_output,
                 tool_catalogue_text=tool_catalogue_text,
-            )
-        except _PlannerJSONError as e:
-            logger.warning("Workflow generator: planner JSON unparseable: %s", e)
-            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_JSON, f"Planner JSON invalid: {e}"))
-        except _PlannerSchemaError as e:
-            logger.warning("Workflow generator: planner schema invalid: %s", e)
-            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_SCHEMA, f"Planner schema invalid: {e}"))
-        except Exception as e:
-            logger.exception("Workflow generator: planner step failed")
-            return _fail(empty_result, _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"Failed to plan workflow: {e}"))
+            ),
+        )
+        if plan_err is not None:
+            return _result_with_errors(_empty_result(), [plan_err])
 
+        # The lambda return is non-None when no error fired — narrow it for type-checkers.
+        plan = cast(PlannerResultDict, plan)
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
-            return _fail(empty_result, _err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes"))
+            return _result_with_errors(
+                _empty_result(),
+                [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+            )
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
         # references resolve at run time. Optional field — older prompts may
         # omit it, in which case the postprocess walker auto-fixes references.
-        start_inputs_raw = plan.get("start_inputs") or []
         start_inputs: list[dict[str, Any]] = [
             cast(dict[str, Any], item)
-            for item in start_inputs_raw
+            for item in (plan.get("start_inputs") or [])
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
-        try:
-            graph = cls._run_builder(
+        graph, build_err = cls._run_stage(
+            stage="Builder",
+            failure_fallback_message="Failed to build workflow graph",
+            run=lambda: cls._run_builder(
                 model_instance=model_instance,
                 model_parameters=model_parameters,
                 provider=provider,
@@ -220,53 +241,61 @@ class WorkflowGenerator:
                 plan_nodes=plan_nodes,
                 tool_catalogue_text=tool_catalogue_text,
                 start_inputs=start_inputs,
-            )
-        except _BuilderJSONError as e:
-            logger.warning("Workflow generator: builder JSON unparseable: %s", e)
-            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_JSON, f"Builder JSON invalid: {e}"))
-        except _BuilderSchemaError as e:
-            logger.warning("Workflow generator: builder schema invalid: %s", e)
-            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_SCHEMA, f"Builder schema invalid: {e}"))
-        except Exception as e:
-            logger.exception("Workflow generator: builder step failed")
-            return _fail(
-                empty_result,
-                _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"Failed to build workflow graph: {e}"),
-            )
+            ),
+        )
+        if build_err is not None:
+            return _result_with_errors(_empty_result(), [build_err])
+        graph = cast(GraphDict, graph)
 
-        # ── 3. POSTPROC ───────────────────────────────────────────────────
+        # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
         graph = cls._postprocess_graph(graph=graph, mode=mode)
 
-        # Surface the planner-supplied display metadata to the frontend so
-        # ``applyToNewApp`` can name the new app and pick a meaningful icon
-        # instead of the canned ``deriveAppName`` + 🤖 fallback. Both fields
-        # default to "" when the LLM omits them — the FE owns the fallback.
-        app_name = str(plan.get("app_name") or "").strip()
-        icon = str(plan.get("icon") or "").strip()
-
-        # Final structural sanity check — fail closed if start/end shape is
-        # wrong, container topology is broken, a tool was hallucinated, or a
-        # variable reference points at a node that won't expose it.
-        structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
-        if structural_errors:
-            logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
-            return {
-                "graph": graph,  # still return the partial graph so caller can debug
-                "message": plan.get("description", ""),
-                "app_name": app_name,
-                "icon": icon,
-                "error": _errors_to_str(structural_errors),
-                "errors": structural_errors,
-            }
-
-        return {
+        # ``app_name`` / ``icon`` are planner display metadata; both default
+        # to "" when the LLM omits them — the FE owns the fallback.
+        result: WorkflowGenerateResultDict = {
             "graph": graph,
             "message": plan.get("description", ""),
-            "app_name": app_name,
-            "icon": icon,
+            "app_name": str(plan.get("app_name") or "").strip(),
+            "icon": str(plan.get("icon") or "").strip(),
             "error": "",
             "errors": [],
         }
+
+        # Final structural sanity check — fail closed if start/end shape is
+        # wrong, container topology is broken, a tool was hallucinated, or a
+        # variable reference points at a node that won't expose it. We still
+        # return the partial graph so the caller can debug or salvage it.
+        structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
+        if structural_errors:
+            logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
+            return _result_with_errors(result, structural_errors)
+        return result
+
+    @classmethod
+    def _run_stage(
+        cls,
+        *,
+        stage: str,
+        failure_fallback_message: str,
+        run,
+    ) -> tuple[Any, WorkflowGenerateErrorDict | None]:
+        """
+        Execute one pipeline stage and translate exceptions into a typed envelope entry.
+
+        Returns ``(result, None)`` on success and ``(None, error)`` on failure.
+        Stage-specific JSON / schema errors map to their dedicated codes; any
+        other exception is logged with the stack trace and mapped to
+        ``MODEL_ERROR`` (the LLM call itself blew up — provider auth, quota,
+        network — caller usually wants this as a retry hint).
+        """
+        try:
+            return run(), None
+        except (_StageJSONError, _StageSchemaError) as e:
+            logger.warning("Workflow generator: %s", e)
+            return None, _err(_stage_error_to_envelope_code(e), str(e))
+        except Exception as e:
+            logger.exception("Workflow generator: %s step failed", stage.lower())
+            return None, _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"{failure_fallback_message}: {e}")
 
     # ------------------------------------------------------------------
     # Shared LLM call + JSON parse with one-shot retry
@@ -278,25 +307,25 @@ class WorkflowGenerator:
         model_instance,
         messages,
         model_parameters: dict[str, Any],
-        exc_class: type[ValueError],
+        stage: str,
     ) -> dict[str, Any]:
         """
         Call the LLM and parse the response as JSON, retrying ONCE on parse failure.
 
-        Why one retry only: the planner and builder are both expensive (each
-        consumes its full system+user prompt), so a retry loop would burn
-        quota for a model that's fundamentally returning prose instead of
-        JSON. One retry with a corrective hint catches the dominant failure
-        mode — a stray markdown code fence or trailing prose — without
-        masking a model that simply can't follow the spec.
+        Why one retry only: each LLM call is expensive (full system+user
+        prompt), so an open retry loop would burn quota for a model that's
+        fundamentally returning prose instead of JSON. One retry with a
+        corrective hint catches the dominant failure mode — a stray
+        markdown fence or trailing prose — without masking a model that
+        simply can't follow the spec.
 
-        On the second failure the typed ``exc_class`` bubbles up so the outer
-        runner maps it to ``INVALID_JSON`` in the result envelope.
+        On the second failure ``_StageJSONError`` bubbles up so the outer
+        runner can tag it ``INVALID_JSON`` in the result envelope.
         """
-        last_error: Exception | None = None
+        last_detail = ""
         for attempt in range(2):
             attempt_messages = (
-                list(messages) if attempt == 0 else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
+                messages if attempt == 0 else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
             )
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=attempt_messages,
@@ -307,18 +336,16 @@ class WorkflowGenerator:
             try:
                 parsed = json_repair.loads(text)
             except Exception as e:
-                last_error = e
-                logger.info("Workflow generator: JSON parse failed on attempt %s: %s", attempt + 1, e)
+                last_detail = str(e)
+                logger.info("Workflow generator: %s JSON parse failed on attempt %s: %s", stage, attempt + 1, e)
                 continue
             if isinstance(parsed, dict):
                 if attempt > 0:
-                    logger.info("Workflow generator: JSON parse recovered on retry")
+                    logger.info("Workflow generator: %s JSON parse recovered on retry", stage)
                 return cast(dict[str, Any], parsed)
-            last_error = exc_class(f"Non-object JSON: {type(parsed).__name__}")
-            logger.info("Workflow generator: non-object JSON on attempt %s", attempt + 1)
-        # Both attempts failed — raise the typed exception so the outer
-        # runner can tag it as INVALID_JSON.
-        raise exc_class(str(last_error) if last_error else "JSON parse failed")
+            last_detail = f"Non-object JSON: {type(parsed).__name__}"
+            logger.info("Workflow generator: %s non-object JSON on attempt %s", stage, attempt + 1)
+        raise _StageJSONError(stage, last_detail or "JSON parse failed")
 
     # ------------------------------------------------------------------
     # Planner
@@ -348,15 +375,15 @@ class WorkflowGenerator:
             model_instance=model_instance,
             messages=messages,
             model_parameters=_clamp_for_planner(model_parameters),
-            exc_class=_PlannerJSONError,
+            stage="Planner",
         )
 
         nodes = parsed.get("nodes")
         if not isinstance(nodes, list):
-            raise _PlannerSchemaError("Planner returned no 'nodes' array")
+            raise _StageSchemaError("Planner", "missing 'nodes' array")
         for node in nodes:
             if not isinstance(node, dict) or "node_type" not in node:
-                raise _PlannerSchemaError(f"Planner node entry malformed: {node!r}")
+                raise _StageSchemaError("Planner", f"malformed node entry: {node!r}")
 
         return cast(PlannerResultDict, parsed)
 
@@ -397,13 +424,13 @@ class WorkflowGenerator:
             model_instance=model_instance,
             messages=messages,
             model_parameters=model_parameters,
-            exc_class=_BuilderJSONError,
+            stage="Builder",
         )
 
         nodes = parsed.get("nodes")
         edges = parsed.get("edges")
         if not isinstance(nodes, list) or not isinstance(edges, list):
-            raise _BuilderSchemaError("Builder graph missing 'nodes' or 'edges' arrays")
+            raise _StageSchemaError("Builder", "graph missing 'nodes' or 'edges' arrays")
 
         viewport = parsed.get("viewport") or _DEFAULT_VIEWPORT
         return cast(
@@ -729,8 +756,14 @@ class WorkflowGenerator:
                     eid = eid.replace(old, new)
                 edge["id"] = eid
 
-        # Rewrite every reference inside any node's data (recursively).
+        # Rewrite every reference inside any node's data (recursively) plus
+        # the wrapper-level ``parentId`` — ReactFlow stores parentId on the
+        # node wrapper, but the LLM occasionally emits it inside ``data``
+        # too. We cover both spots so the strip is symmetric.
         for node in nodes:
+            wrapper_parent = node.get("parentId")
+            if isinstance(wrapper_parent, str) and wrapper_parent in id_map:
+                node["parentId"] = id_map[wrapper_parent]
             data = node.get("data")
             if isinstance(data, dict):
                 cls._rewrite_refs_in_data(data, id_map)
@@ -902,9 +935,16 @@ class WorkflowGenerator:
     def _collect_dangling_id_refs(
         cls, *, nodes: list[dict[str, Any]], known_ids: set[str]
     ) -> list[WorkflowGenerateErrorDict]:
-        """Flag ``parentId`` / ``start_node_id`` / ``iteration_id`` / ``loop_id`` pointing nowhere."""
+        """Flag ``parentId`` / ``start_node_id`` / ``iteration_id`` / ``loop_id`` pointing nowhere.
+
+        ``parentId`` is checked at BOTH the node wrapper and inside ``data``
+        because Dify's schema puts it on the wrapper (ReactFlow convention)
+        but the LLM occasionally drops it into ``data`` too. Either spot is
+        a real signal that we should validate.
+        """
         out: list[WorkflowGenerateErrorDict] = []
         for node in nodes:
+            node_id = node.get("id", "")
             data = node.get("data") or {}
             for field in cls._ID_FIELDS:
                 ref = data.get(field)
@@ -912,10 +952,20 @@ class WorkflowGenerator:
                     out.append(
                         _err(
                             WorkflowGenerateErrorCode.UNKNOWN_NODE_REFERENCE,
-                            f"Node {node.get('id')!r} field {field!r} references unknown node: {ref!r}",
-                            node_id=node.get("id", ""),
+                            f"Node {node_id!r} field {field!r} references unknown node: {ref!r}",
+                            node_id=node_id,
                         )
                     )
+            # Wrapper-level parentId (the ReactFlow canonical location).
+            wrapper_parent = node.get("parentId")
+            if isinstance(wrapper_parent, str) and wrapper_parent and wrapper_parent not in known_ids:
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.UNKNOWN_NODE_REFERENCE,
+                        f"Node {node_id!r} parentId references unknown node: {wrapper_parent!r}",
+                        node_id=node_id,
+                    )
+                )
         return out
 
     @classmethod

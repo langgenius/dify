@@ -37,11 +37,11 @@ export class WorkflowApplyOrphanError extends Error {
   readonly orphanAppId: string
 
   constructor(orphanAppId: string, cause?: unknown) {
-    super(`Failed to apply graph; new app ${orphanAppId} may be orphaned.`)
+    // ES2022 Error supports ``cause`` natively via the options bag — far
+    // cleaner than reassigning a typed-cast property after construction.
+    super(`Failed to apply graph; new app ${orphanAppId} may be orphaned.`, { cause })
     this.name = 'WorkflowApplyOrphanError'
     this.orphanAppId = orphanAppId
-    if (cause)
-      (this as { cause?: unknown }).cause = cause
   }
 }
 
