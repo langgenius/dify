@@ -1,8 +1,8 @@
-import type { AppRunClient } from '../../../../api/app-run.js'
-import type { AppRunPrintFlags } from '../print-flags.js'
-import type { RunAppDeps, RunAppOptions } from '../run.js'
-import { StreamingStructuredStrategy } from './streaming-structured.js'
-import { StreamingTextStrategy } from './streaming-text.js'
+import type { AppRunClient } from '@/api/app-run'
+import type { AppRunPrintFlags } from '@/commands/run/app/print-flags'
+import type { RunAppDeps, RunAppOptions } from '@/commands/run/app/run'
+import { StreamingStructuredStrategy } from './streaming-structured'
+import { StreamingTextStrategy } from './streaming-text'
 
 export type RunContext = {
   readonly opts: RunAppOptions & { inputs: Record<string, unknown> }

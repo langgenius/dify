@@ -1,7 +1,7 @@
-import type { CommandConstructor } from './command.js'
+import type { CommandConstructor } from './command'
 import { describe, expect, it } from 'vitest'
-import { Args, Flags } from './flags.js'
-import { formatHelp } from './help.js'
+import { Args, Flags } from './flags'
+import { formatHelp } from './help'
 
 function makeCmd(opts: {
   description?: string

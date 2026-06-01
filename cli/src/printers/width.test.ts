@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { TERMINAL_WIDTH_FALLBACK, terminalWidth, truncate } from './width.js'
+import { TERMINAL_WIDTH_FALLBACK, terminalWidth, truncate } from './width'
 
 describe('truncate', () => {
   it('returns the input unchanged when shorter than max', () => {

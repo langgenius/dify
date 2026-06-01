@@ -78,4 +78,17 @@ export default antfu(
       'node/prefer-global/process': 'off',
     },
   },
+  {
+    files: ['cli/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['../**', './*/**', '..'],
+            message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
+          },
+        ],
+      }],
+    },
+  },
 )

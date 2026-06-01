@@ -23,7 +23,7 @@ const MCPList = ({
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
       if (searchText)
-        return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
+        return collection.type === 'mcp' && Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
       return collection.type === 'mcp'
     }) as ToolWithProvider[]
   }, [list, searchText])

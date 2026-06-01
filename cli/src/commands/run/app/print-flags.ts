@@ -1,10 +1,10 @@
-import type { PrintFlags } from '../../../printers/printer.js'
-import type { StreamPrinter } from '../../../printers/stream-printer.js'
-import { JsonYamlPrintFlags } from '../../../printers/format-json-yaml.js'
-import { TextPrintFlags } from '../../../printers/format-text.js'
-import { CompositePrintFlags } from '../../../printers/printer.js'
-import { chatTextHandler, completionTextHandler, RUN_MODES, workflowTextHandler } from './handlers.js'
-import { streamPrinterFor } from './stream-handlers.js'
+import type { PrintFlags } from '@/printers/printer'
+import type { StreamPrinter } from '@/printers/stream-printer'
+import { JsonYamlPrintFlags } from '@/printers/format-json-yaml'
+import { TextPrintFlags } from '@/printers/format-text'
+import { CompositePrintFlags } from '@/printers/printer'
+import { chatTextHandler, completionTextHandler, RUN_MODES, workflowTextHandler } from './handlers'
+import { streamPrinterFor } from './stream-handlers'
 
 export class AppRunPrintFlags extends CompositePrintFlags {
   private readonly jsonYaml = new JsonYamlPrintFlags()

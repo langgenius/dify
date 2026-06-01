@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { newError } from './base.js'
-import { ErrorCode } from './codes.js'
-import { renderEnvelope, toEnvelope } from './envelope.js'
+import { newError } from './base'
+import { ErrorCode } from './codes'
+import { renderEnvelope, toEnvelope } from './envelope'
 
 describe('error envelope', () => {
   it('emits required fields only when minimal', () => {

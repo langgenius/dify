@@ -1385,7 +1385,6 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_dsl_version | string |  | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | enable_change_email | boolean |  | Yes |
 | enable_collaboration_mode | boolean |  | Yes |
@@ -1405,7 +1404,6 @@ Returns Server-Sent Events stream.
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
-| trial_models | [ string ] |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### TextToAudioPayload

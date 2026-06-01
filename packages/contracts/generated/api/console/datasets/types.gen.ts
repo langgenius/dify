@@ -290,6 +290,18 @@ export type AutoDisableLogsResponse = {
   document_ids: Array<string>
 }
 
+export type DocumentStatusListResponse = {
+  data: Array<DocumentStatusResponse>
+}
+
+export type DocumentWithSegmentsListResponse = {
+  data: Array<DocumentWithSegmentsResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
@@ -304,6 +316,21 @@ export type MetadataOperationData = {
 
 export type UrlResponse = {
   url: string
+}
+
+export type DocumentStatusResponse = {
+  cleaning_completed_at: number | null
+  completed_at: number | null
+  completed_segments?: number | null
+  error: string | null
+  id: string
+  indexing_status: string
+  parsing_completed_at: number | null
+  paused_at: number | null
+  processing_started_at: number | null
+  splitting_completed_at: number | null
+  stopped_at: number | null
+  total_segments?: number | null
 }
 
 export type DocumentMetadataUpdatePayload = {
@@ -326,14 +353,14 @@ export type DocumentResponse = {
   created_by?: string | null
   created_from?: string | null
   data_source_detail_dict?: unknown
-  data_source_info_dict?: unknown
+  data_source_info?: unknown
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
   display_status?: string | null
   doc_form?: string | null
-  doc_metadata_details?: Array<DocumentMetadataResponse>
+  doc_metadata?: Array<DocumentMetadataResponse>
   enabled?: boolean | null
   error?: string | null
   hit_count?: number | null
@@ -354,6 +381,19 @@ export type SegmentCreatePayload = {
   keywords?: Array<string> | null
 }
 
+export type SegmentDetailResponse = {
+  data: SegmentResponse
+  doc_form: string
+}
+
+export type ConsoleSegmentListResponse = {
+  data: Array<SegmentResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
 export type SegmentUpdatePayload = {
   answer?: string | null
   attachment_ids?: Array<string> | null
@@ -363,8 +403,28 @@ export type SegmentUpdatePayload = {
   summary?: string | null
 }
 
+export type ChildChunkListResponse = {
+  data: Array<ChildChunkResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
+export type ChildChunkBatchUpdatePayload = {
+  chunks: Array<ChildChunkUpdateArgs>
+}
+
+export type ChildChunkBatchUpdateResponse = {
+  data: Array<ChildChunkResponse>
+}
+
 export type ChildChunkCreatePayload = {
   content: string
+}
+
+export type ChildChunkDetailResponse = {
+  data: ChildChunkResponse
 }
 
 export type ChildChunkUpdatePayload = {
@@ -398,10 +458,6 @@ export type HitTestingPayload = {
 export type HitTestingResponse = {
   query: HitTestingQuery
   records: Array<HitTestingRecord>
-}
-
-export type DocumentStatusListResponse = {
-  data: Array<DocumentStatusResponse>
 }
 
 export type DatasetMetadataListResponse = {
@@ -638,6 +694,36 @@ export type DatasetMetadataBuiltInFieldResponse = {
   type: string
 }
 
+export type DocumentWithSegmentsResponse = {
+  archived?: boolean | null
+  completed_segments?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse>
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_status?: string | null
+  name: string
+  need_summary?: boolean | null
+  position?: number | null
+  process_rule_dict?: unknown
+  summary_index_status?: string | null
+  tokens?: number | null
+  total_segments?: number | null
+  word_count?: number | null
+}
+
 export type DocumentMetadataOperation = {
   document_id: string
   metadata_list: Array<MetadataDetail>
@@ -648,22 +734,53 @@ export type DocumentMetadataResponse = {
   id: string
   name: string
   type: string
-  value?: string | null
+  value?: unknown
 }
 
-export type DocumentStatusResponse = {
-  cleaning_completed_at: number | null
+export type SegmentResponse = {
+  answer: string | null
+  attachments: Array<SegmentAttachmentResponse>
+  child_chunks: Array<ChildChunkResponse>
   completed_at: number | null
-  completed_segments?: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document_id: string
+  enabled: boolean
   error: string | null
+  hit_count: number
   id: string
-  indexing_status: string
-  parsing_completed_at: number | null
-  paused_at: number | null
-  processing_started_at: number | null
-  splitting_completed_at: number | null
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string> | null
+  position: number
+  sign_content: string
+  status: string
   stopped_at: number | null
-  total_segments?: number | null
+  summary: string | null
+  tokens: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type ChildChunkResponse = {
+  content: string
+  created_at: number
+  id: string
+  position: number
+  segment_id: string
+  type: string
+  updated_at: number
+  word_count: number
+}
+
+export type ChildChunkUpdateArgs = {
+  content: string
+  id?: string | null
 }
 
 export type HitTestingQuery = {
@@ -769,6 +886,15 @@ export type MetadataDetail = {
   id: string
   name: string
   value?: unknown
+}
+
+export type SegmentAttachmentResponse = {
+  extension: string
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  source_url: string
 }
 
 export type HitTestingChildChunk = {
@@ -1485,9 +1611,7 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse
@@ -1528,9 +1652,7 @@ export type GetDatasetsByDatasetIdDocumentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentWithSegmentsListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponse
@@ -1753,9 +1875,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusError
   = GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse
@@ -1922,9 +2042,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse
@@ -1937,7 +2055,9 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    segment_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}'
 }
 
@@ -1954,7 +2074,9 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    segment_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
@@ -1973,14 +2095,19 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    enabled?: string
+    hit_count_gte?: number
+    keyword?: string
+    limit?: number
+    page?: number
+    status?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ConsoleSegmentListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
@@ -2052,9 +2179,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2067,21 +2192,23 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
     document_id: string
     segment_id: string
   }
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
-  body?: never
+  body: ChildChunkBatchUpdatePayload
   path: {
     dataset_id: string
     document_id: string
@@ -2092,9 +2219,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkBatchUpdateResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
@@ -2112,9 +2237,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkDetailResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
@@ -2158,9 +2281,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: ChildChunkDetailResponse
   }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse

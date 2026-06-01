@@ -1,8 +1,8 @@
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { createClient } from '../http/client.js'
-import { AppRunClient, buildRunBody } from './app-run.js'
+import { createClient } from '@/http/client'
+import { AppRunClient, buildRunBody } from './app-run'
 
 describe('buildRunBody', () => {
   it('does not include response_mode', () => {

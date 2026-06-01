@@ -112,6 +112,14 @@ List annotations for the application
 
 List annotations for the application
 
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Keyword to search annotations | No | string |
+| limit | query | Number of annotations per page | No | integer |
+| page | query | Page number | No | integer |
+
 ##### Responses
 
 | Code | Description | Schema |
@@ -745,15 +753,17 @@ Create a new document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document creation settings. | No | string |
+| file | formData | Document file to upload. | Yes | file |
 | dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid file or parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid file or parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/document/create-by-text
 
@@ -771,11 +781,11 @@ Create a new document by providing text content
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/document/create_by_file
 
@@ -788,15 +798,17 @@ Create a new document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document creation settings. | No | string |
+| file | formData | Document file to upload. | Yes | file |
 | dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid file or parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid file or parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/document/create_by_text
 
@@ -815,11 +827,11 @@ Deprecated legacy alias for creating a new document by providing text content. U
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document created successfully |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
 
 ### /datasets/{dataset_id}/documents
 
@@ -833,14 +845,18 @@ List all documents in a dataset
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
+| keyword | query | Search keyword | No | string |
+| limit | query | Number of items per page | No | integer |
+| page | query | Page number | No | integer |
+| status | query | Document status filter | No | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Documents retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents retrieved successfully | [DocumentListResponse](#documentlistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset not found |  |
 
 ### /datasets/{dataset_id}/documents/download-zip
 
@@ -948,11 +964,11 @@ Get indexing status for documents in a batch
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Indexing status retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or documents not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing status retrieved successfully | [DocumentStatusListResponse](#documentstatuslistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or documents not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}
 
@@ -1011,16 +1027,18 @@ Update an existing document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document update settings. | No | string |
+| file | formData | Replacement document file. | No | file |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/download
 
@@ -1056,17 +1074,20 @@ List segments in a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SegmentListQuery](#segmentlistquery) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| status | query |  | No | [ string ] |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segments retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segments retrieved successfully | [SegmentListResponse](#segmentlistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or document not found |  |
 
 #### POST
 ##### Description
@@ -1083,12 +1104,12 @@ Create segments in a document
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segments created successfully |
-| 400 | Bad request - segments data is missing |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset or document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segments created successfully | [SegmentCreateListResponse](#segmentcreatelistresponse) |
+| 400 | Bad request - segments data is missing |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset or document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 
@@ -1103,7 +1124,7 @@ Delete a specific segment
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID to delete | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
@@ -1122,17 +1143,17 @@ Get a specific segment by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
-| segment_id | path |  | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
+| document_id | path | Document ID | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segment retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segment retrieved successfully | [SegmentDetailResponse](#segmentdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 #### POST
 ##### Description
@@ -1146,15 +1167,15 @@ Update a specific segment
 | payload | body |  | Yes | [SegmentUpdatePayload](#segmentupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID to update | Yes | string |
+| segment_id | path | Segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Segment updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Segment updated successfully | [SegmentDetailResponse](#segmentdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 
@@ -1167,18 +1188,20 @@ List child chunks for a segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChildChunkListQuery](#childchunklistquery) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Child chunks retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunks retrieved successfully | [ChildChunkListResponse](#childchunklistresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 #### POST
 ##### Description
@@ -1196,11 +1219,11 @@ Create a new child chunk for a segment
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Child chunk created successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunk created successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, or segment not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 
@@ -1213,7 +1236,7 @@ Delete a specific child chunk
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID to delete | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
@@ -1236,18 +1259,18 @@ Update a specific child chunk
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
-| child_chunk_id | path | Child chunk ID to update | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Child chunk updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Dataset, document, segment, or child chunk not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Child chunk updated successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Dataset, document, segment, or child chunk not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update-by-file
 
@@ -1261,16 +1284,18 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document update settings. | No | string |
+| file | formData | Replacement document file. | No | file |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update-by-text
 
@@ -1289,11 +1314,11 @@ Update an existing document by providing text content
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update_by_file
 
@@ -1307,16 +1332,18 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| data | formData | Optional JSON string with document update settings. | No | string |
+| file | formData | Replacement document file. | No | file |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/documents/{document_id}/update_by_text
 
@@ -1336,11 +1363,11 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document updated successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated successfully | [DocumentAndBatchResponse](#documentandbatchresponse) |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Document not found |  |
 
 ### /datasets/{dataset_id}/hit-testing
 
@@ -2169,6 +2196,14 @@ Returns a list of available models for the specified model type.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### AnnotationListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Keyword to search annotations | No |
+| limit | integer | Number of annotations per page | No |
+| page | integer | Page number | No |
+
 #### AnnotationReplyActionPayload
 
 | Name | Type | Description | Required |
@@ -2206,6 +2241,12 @@ Returns a list of available models for the specified model type.
 | ---- | ---- | ----------- | -------- |
 | content | string |  | Yes |
 
+#### ChildChunkDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ChildChunkResponse](#childchunkresponse) |  | Yes |
+
 #### ChildChunkListQuery
 
 | Name | Type | Description | Required |
@@ -2213,6 +2254,29 @@ Returns a list of available models for the specified model type.
 | keyword | string |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
+
+#### ChildChunkListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+| total_pages | integer |  | Yes |
+
+#### ChildChunkResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| id | string |  | Yes |
+| position | integer |  | Yes |
+| segment_id | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| word_count | integer |  | Yes |
 
 #### ChildChunkUpdatePayload
 
@@ -2238,7 +2302,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>[ string ]<br>integer<br>number |  | No |
 
 #### ConversationListQuery
 
@@ -2587,6 +2651,13 @@ Condition detail
 | inputs | object |  | Yes |
 | is_published | boolean |  | Yes |
 
+#### DocumentAndBatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| document | [DocumentResponse](#documentresponse) |  | Yes |
+
 #### DocumentBatchDownloadZipPayload
 
 Request payload for bulk downloading documents as a zip archive.
@@ -2604,6 +2675,16 @@ Request payload for bulk downloading documents as a zip archive.
 | page | integer | Page number | No |
 | status | string | Document status filter | No |
 
+#### DocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
@@ -2611,6 +2692,67 @@ Request payload for bulk downloading documents as a zip archive.
 | document_id | string |  | Yes |
 | metadata_list | [ [MetadataDetail](#metadatadetail) ] |  | Yes |
 | partial_update | boolean |  | No |
+
+#### DocumentMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+| value | string<br>integer<br>number<br>boolean |  | No |
+
+#### DocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| created_from | string |  | No |
+| data_source_detail_dict |  |  | No |
+| data_source_info |  |  | No |
+| data_source_type | string |  | No |
+| dataset_process_rule_id | string |  | No |
+| disabled_at | integer |  | No |
+| disabled_by | string |  | No |
+| display_status | string |  | No |
+| doc_form | string |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| enabled | boolean |  | No |
+| error | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | Yes |
+| indexing_status | string |  | No |
+| name | string |  | Yes |
+| need_summary | boolean |  | No |
+| position | integer |  | No |
+| summary_index_status | string |  | No |
+| tokens | integer |  | No |
+| word_count | integer |  | No |
+
+#### DocumentStatusListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
+
+#### DocumentStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cleaning_completed_at | integer |  | Yes |
+| completed_at | integer |  | Yes |
+| completed_segments | integer |  | No |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| indexing_status | string |  | Yes |
+| parsing_completed_at | integer |  | Yes |
+| paused_at | integer |  | Yes |
+| processing_started_at | integer |  | Yes |
+| splitting_completed_at | integer |  | Yes |
+| stopped_at | integer |  | Yes |
+| total_segments | integer |  | No |
 
 #### DocumentTextCreatePayload
 
@@ -2846,7 +2988,7 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| value |  |  | No |
+| value | string<br>integer<br>number |  | No |
 
 #### MetadataFilteringCondition
 
@@ -2938,18 +3080,97 @@ Metadata operation data
 | segmentation | [Segmentation](#segmentation) |  | No |
 | subchunk_segmentation | [Segmentation](#segmentation) |  | No |
 
+#### SegmentAttachmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
+#### SegmentCreateItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| attachment_ids | [ string ] |  | No |
+| content | string |  | Yes |
+| keywords | [ string ] |  | No |
+
+#### SegmentCreateListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SegmentResponse](#segmentresponse) ] |  | Yes |
+| doc_form | string |  | Yes |
+
 #### SegmentCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segments | [ object ] |  | No |
+| segments | [ [SegmentCreateItemPayload](#segmentcreateitempayload) ] |  | Yes |
+
+#### SegmentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [SegmentResponse](#segmentresponse) |  | Yes |
+| doc_form | string |  | Yes |
 
 #### SegmentListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
 | status | [ string ] |  | No |
+
+#### SegmentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SegmentResponse](#segmentresponse) ] |  | Yes |
+| doc_form | string |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SegmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| attachments | [ [SegmentAttachmentResponse](#segmentattachmentresponse) ] |  | Yes |
+| child_chunks | [ [ChildChunkResponse](#childchunkresponse) ] |  | Yes |
+| completed_at | integer |  | Yes |
+| content | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| disabled_at | integer |  | Yes |
+| disabled_by | string |  | Yes |
+| document_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| hit_count | integer |  | Yes |
+| id | string |  | Yes |
+| index_node_hash | string |  | Yes |
+| index_node_id | string |  | Yes |
+| indexing_at | integer |  | Yes |
+| keywords | [ string ] |  | Yes |
+| position | integer |  | Yes |
+| sign_content | string |  | Yes |
+| status | string |  | Yes |
+| stopped_at | integer |  | Yes |
+| summary | string |  | Yes |
+| tokens | integer |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| word_count | integer |  | Yes |
 
 #### SegmentUpdateArgs
 
@@ -3118,7 +3339,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |
-| details |  |  | No |
+| details | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | id | string |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
 
@@ -3140,7 +3361,7 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| elapsed_time |  |  | No |
+| elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -3164,11 +3385,11 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| elapsed_time |  |  | No |
+| elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
 | id | string |  | Yes |
-| inputs |  |  | No |
+| inputs | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | outputs | object |  | No |
 | status | string |  | Yes |
 | total_steps | integer |  | No |

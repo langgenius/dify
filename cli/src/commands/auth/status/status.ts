@@ -1,7 +1,7 @@
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { IOStreams } from '@/sys/io/streams'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export type StatusOptions = {
   readonly io: IOStreams

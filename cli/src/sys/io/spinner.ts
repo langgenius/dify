@@ -1,4 +1,4 @@
-import type { IOStreams } from './streams.js'
+import type { IOStreams } from './streams'
 import oraImport from 'ora'
 
 const DIFY_FRAMES = ['Dify', 'dIfy', 'diFy', 'difY', 'diFy', 'dIfy']
