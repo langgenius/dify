@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -13,9 +13,11 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
+    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
+from models.model import App
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -25,6 +27,16 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
 )
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
+
+
+class AgentReferencingWorkflow(TypedDict):
+    """A workflow app that references a roster Agent via an Agent node."""
+
+    app_id: str
+    app_name: str
+    app_mode: str
+    workflow_id: str
+    node_ids: list[str]
 
 
 class AgentRosterService:
@@ -280,6 +292,59 @@ class AgentRosterService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         )
+
+    def list_workflows_referencing_app_agent(
+        self, *, tenant_id: str, app_id: str
+    ) -> list[AgentReferencingWorkflow]:
+        """List the workflow apps that reference this Agent App's bound Agent.
+
+        Read-only "Workflow access" surface: an Agent App is backed by a roster
+        Agent, and workflow Agent nodes may bind that same roster Agent. This
+        returns the distinct workflow apps (with the referencing node ids) so the
+        console can show "used by" without exposing the workflow internals.
+        """
+        agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=app_id)
+        if agent is None:
+            return []
+
+        bindings = self._session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                WorkflowAgentNodeBinding.agent_id == agent.id,
+                WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
+            )
+        ).all()
+        if not bindings:
+            return []
+
+        # Collapse the per-version / per-node rows into one entry per workflow app.
+        node_ids_by_workflow: dict[tuple[str, str], set[str]] = {}
+        for binding in bindings:
+            node_ids_by_workflow.setdefault((binding.app_id, binding.workflow_id), set()).add(binding.node_id)
+
+        referenced_app_ids = {workflow_app_id for workflow_app_id, _ in node_ids_by_workflow}
+        apps = {
+            app.id: app
+            for app in self._session.scalars(select(App).where(App.id.in_(referenced_app_ids))).all()
+        }
+
+        result: list[AgentReferencingWorkflow] = []
+        for (workflow_app_id, workflow_id), node_ids in node_ids_by_workflow.items():
+            app = apps.get(workflow_app_id)
+            if app is None:
+                # Orphaned binding (workflow app deleted): skip rather than 500.
+                continue
+            result.append(
+                AgentReferencingWorkflow(
+                    app_id=workflow_app_id,
+                    app_name=app.name,
+                    app_mode=str(app.mode),
+                    workflow_id=workflow_id,
+                    node_ids=sorted(node_ids),
+                )
+            )
+        result.sort(key=lambda item: item["app_name"].lower())
+        return result
 
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)

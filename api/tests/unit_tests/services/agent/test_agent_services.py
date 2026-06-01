@@ -714,3 +714,48 @@ class TestAgentAppBackingAgent:
         service = AgentRosterService(session)
 
         assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None
+
+
+class TestListWorkflowsReferencingAppAgent:
+    def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [
+            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-b"),
+            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-a"),
+            SimpleNamespace(app_id="wf-app-2", workflow_id="wf-2", node_id="node-a"),
+        ]
+        apps = [
+            SimpleNamespace(id="wf-app-1", name="Beta Flow", mode="workflow"),
+            SimpleNamespace(id="wf-app-2", name="Alpha Flow", mode="advanced-chat"),
+        ]
+        # scalar -> backing agent; scalars -> bindings, then resolved apps.
+        session = FakeSession(scalar=[agent], scalars=[bindings, apps])
+        service = AgentRosterService(session)
+
+        result = service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert [r["app_name"] for r in result] == ["Alpha Flow", "Beta Flow"]
+        beta = next(r for r in result if r["app_id"] == "wf-app-1")
+        assert beta["node_ids"] == ["node-a", "node-b"]  # deduped + sorted
+        assert beta["workflow_id"] == "wf-1"
+
+    def test_returns_empty_when_no_backing_agent(self):
+        session = FakeSession()  # scalar() -> None
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-x") == []
+
+    def test_returns_empty_when_no_bindings(self):
+        agent = SimpleNamespace(id="agent-1")
+        session = FakeSession(scalar=[agent], scalars=[[]])
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
+
+    def test_skips_orphaned_binding_whose_app_is_gone(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [SimpleNamespace(app_id="wf-app-gone", workflow_id="wf-9", node_id="node-a")]
+        session = FakeSession(scalar=[agent], scalars=[bindings, []])  # no apps resolved
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
