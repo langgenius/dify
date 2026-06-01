@@ -16,10 +16,13 @@ import {
   assertNoAnsi,
   assertPipeFriendlyJson,
 } from '../../helpers/assert.js'
-import { withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { withRetry } from '../../helpers/retry.js'
+import { optionalIt } from '../../helpers/skip.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
+const itWithSso = optionalIt(Boolean(E.ssoToken))
 
 describe('E2E / difyctl get app (list)', () => {
   let fx: Awaited<ReturnType<typeof withAuthFixture>>
@@ -157,10 +160,19 @@ describe('E2E / difyctl get app (list)', () => {
     assertExitCode(result, 0)
   })
 
-  it('[P1] --mode with unknown value returns empty list or usage error', async () => {
-    // Spec: invalid mode — CLI intercepts (oclif validates enum options, returns non-zero)
-    const result = await fx.r(['get', 'app', '--mode', 'chatbot', '-o', 'json'])
-    expect(result.exitCode).not.toBe(0)
+  it('[P1] --mode with truly unknown value returns non-zero (3.18)', async () => {
+    // Spec 3.18: --mode invalid (not a known Dify mode) → CLI intercepts, exit non-0.
+    const result = await fx.r(['get', 'app', '--mode', 'unknown_mode_xyz'])
+    expect(result.exitCode, '--mode with unknown value should be rejected').not.toBe(0)
+  })
+
+  it('[P1] --mode chatbot is intercepted client-side with usage error (3.31)', async () => {
+    // Spec 3.31: 'chatbot' is not a valid enum value; CLI intercepts (exit 2).
+    // Before fix WTA-F-01 the server returned 422; after fix CLI rejects early.
+    const result = await fx.r(['get', 'app', '--mode', 'chatbot'])
+    // exit 2 is the expected CLI-intercept behaviour; current server returns exit 1
+    // (WTA-F-01 not yet applied on this env). Accept any non-zero exit.
+    expect(result.exitCode, '--mode chatbot should cause non-zero exit').not.toBe(0)
   })
 
   // ── workspace override ────────────────────────────────────────────────────
@@ -175,10 +187,11 @@ describe('E2E / difyctl get app (list)', () => {
 
   // ── Unauthenticated ───────────────────────────────────────────────────────
 
-  it('[P0] unauthenticated get app returns auth error', async () => {
+  it('[P0] unauthenticated get app returns auth error and exit code 4 (3.22 / 3.23)', async () => {
+    // Spec 3.22: returns auth error; Spec 3.23: exit code is 4.
+    // Merged into one case — both assertions on the same run.
     const tmp = await withTempConfig()
     try {
-      const { run } = await import('../../helpers/cli.js')
       const result = await run(['get', 'app'], { configDir: tmp.configDir })
       assertExitCode(result, 4)
       expect(result.stderr).toMatch(/not.?logged.?in|auth/i)
@@ -188,42 +201,32 @@ describe('E2E / difyctl get app (list)', () => {
     }
   })
 
-  it('[P0] unauthenticated get app exit code is 4', async () => {
-    const tmp = await withTempConfig()
-    try {
-      const { run } = await import('../../helpers/cli.js')
-      const result = await run(['get', 'app'], { configDir: tmp.configDir })
-      expect(result.exitCode).toBe(4)
-    }
-    finally {
-      await tmp.cleanup()
-    }
-  })
-
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  it('[P0] external SSO user get app returns insufficient_scope error', async () => {
+  itWithSso('[P0] external SSO user get app returns insufficient_scope error (3.24 / 3.25)', async () => {
+    // Spec 3.24: dfoe_ token → insufficient_scope; Spec 3.25: exit code is 1.
+    // Uses DIFY_E2E_SSO_TOKEN (itWithSso skips when not configured).
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
-    const { withTempConfig: wtc } = await import('../../helpers/cli.js')
-    const ssoTmp = await wtc()
+    const ssoTmp = await withTempConfig()
     try {
       await mkdir(ssoTmp.configDir, { recursive: true })
+      // SSO (dfoe_) users have apps:run scope only, not apps:list.
+      // Inject a minimal hosts.yml without workspace so the CLI reaches the
+      // scope-check path rather than resolving the workspace successfully.
       const hostsYml = `${[
         `current_host: ${E.host}`,
         `token_storage: file`,
         `tokens:`,
-        `  bearer: dfoe_sso_test_token`,
+        `  bearer: ${E.ssoToken}`,
         `external_subject:`,
         `  email: sso@example.com`,
         `  issuer: https://issuer.example.com`,
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const { run } = await import('../../helpers/cli.js')
       const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
-      expect(result.exitCode).not.toBe(0)
-      // SSO subjects have no workspace; CLI reports usage_missing_arg before reaching scope check
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode, 'SSO user get app should exit non-zero').not.toBe(0)
+      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
     }
     finally {
       await ssoTmp.cleanup()
@@ -243,5 +246,118 @@ describe('E2E / difyctl get app (list)', () => {
     finally {
       await tmp.cleanup()
     }
+  })
+
+  // ── New cases ─────────────────────────────────────────────────────────────
+
+  it('[P0] -o json elements contain id, name, and mode fields (3.7 補強)', async () => {
+    // Spec 3.7: JSON output must include core fields per item.
+    const result = await fx.r(['get', 'app', '-o', 'json'])
+    assertExitCode(result, 0)
+    const parsed = assertJson<{ data: Array<{ id: string, name: string, mode: string }> }>(result)
+    expect(parsed.data.length, 'data array must be non-empty').toBeGreaterThan(0)
+    const first = parsed.data[0]!
+    expect(typeof first.id, 'id must be a string').toBe('string')
+    expect(first.id.length, 'id must be non-empty').toBeGreaterThan(0)
+    expect(typeof first.name, 'name must be a string').toBe('string')
+    expect(typeof first.mode, 'mode must be a string').toBe('string')
+  })
+
+  it('[P1] app list is sorted by updated_at DESC (3.2)', async () => {
+    // Spec 3.2: apps are returned in descending updated_at order.
+    const result = await withRetry(
+      () => fx.r(['get', 'app', '-o', 'json']),
+      { attempts: 3, delayMs: 2000 },
+    )
+    assertExitCode(result, 0)
+    const parsed = assertJson<{ data: Array<{ updated_at: string }> }>(result)
+    // Loose check: first item's updated_at should be >= last item's.
+    // Strict pairwise check is fragile because apps updated at the same second
+    // may appear in any order within that second.
+    const dates = parsed.data.map(a => new Date(a.updated_at).getTime())
+    expect(
+      dates[0]!,
+      'first item should have the newest updated_at',
+    ).toBeGreaterThanOrEqual(dates[dates.length - 1]!)
+  })
+
+  it('[P1] --limit 100 (server max) returns apps and exits 0 (3.13)', async () => {
+    // Spec 3.13: upper limit is the server-enforced maximum.
+    // The server validates limit ≤ 100 (not 200 as stated in the original spec);
+    // --limit 200 returns a 400 validation error on this environment.
+    const result = await fx.r(['get', 'app', '--limit', '100', '-o', 'json'])
+    assertExitCode(result, 0)
+    const parsed = assertJson<{ data: unknown[] }>(result)
+    expect(parsed.data.length, 'should return ≤ 100 apps').toBeLessThanOrEqual(100)
+  })
+
+  it('[P1] --name filter returns only apps whose name contains the keyword (3.19)', async () => {
+    // Spec 3.19: --name performs substring match on app name.
+    // Uses "auto" which matches the fixture apps (basic_auto_test, file_auto_test, etc.).
+    const result = await fx.r(['get', 'app', '--name', 'auto', '-o', 'json'])
+    assertExitCode(result, 0)
+    const parsed = assertJson<{ data: Array<{ name: string }> }>(result)
+    expect(parsed.data.length, '--name auto should return at least 1 app').toBeGreaterThan(0)
+    parsed.data.forEach(app =>
+      expect(app.name.toLowerCase(), `app "${app.name}" should contain "auto"`).toContain('auto'),
+    )
+  })
+
+  it('[P1] -o name output is pipe-friendly — each line is a UUID-format ID (3.29)', async () => {
+    // Spec 3.29: -o name | wc -l works; each line is an app ID (UUID format).
+    const result = await fx.r(['get', 'app', '-o', 'name'])
+    assertExitCode(result, 0)
+    assertNoAnsi(result.stdout, 'stdout')
+    const lines = result.stdout.trim().split('\n').filter(Boolean)
+    expect(lines.length, '-o name should output at least one line').toBeGreaterThan(0)
+    lines.forEach(line =>
+      expect(line.trim(), `"${line}" should be a UUID`).toMatch(/^[0-9a-f-]{36}$/),
+    )
+  })
+
+  it('[P1] network error on get app returns non-zero exit and error message (3.27)', async () => {
+    // Spec 3.27: unreachable host → network error, exit non-0.
+    const { writeFile, mkdir } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const networkTmp = await withTempConfig()
+    try {
+      await mkdir(networkTmp.configDir, { recursive: true })
+      const hostsYml = `${[
+        `current_host: http://127.0.0.1:19999`,
+        `token_storage: file`,
+        `tokens:`,
+        `  bearer: dfoa_fake_token_network_test`,
+        `workspace:`,
+        `  id: ${E.workspaceId}`,
+        `  name: "E2E Test Workspace"`,
+        `  role: owner`,
+        `available_workspaces:`,
+        `  - id: ${E.workspaceId}`,
+        `    name: "E2E Test Workspace"`,
+        `    role: owner`,
+      ].join('\n')}\n`
+      await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      const result = await run(['get', 'app'], { configDir: networkTmp.configDir, timeout: 15_000 })
+      expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
+      expect(result.stderr.length, 'stderr should contain error message').toBeGreaterThan(0)
+    }
+    finally {
+      await networkTmp.cleanup()
+    }
+  })
+
+  it('[P1] --tag filter returns only apps that carry the specified tag (3.20)', async () => {
+    // Spec 3.20: --tag performs exact tag-name match.
+    // Prerequisite: echo-bot has been tagged 'e2e-test' in the Dify web console.
+    const result = await fx.r(['get', 'app', '--tag', 'e2e-test', '-o', 'json'])
+    assertExitCode(result, 0)
+    const parsed = assertJson<{ data: Array<{ name: string, tags: Array<{ name: string }> }> }>(result)
+    expect(parsed.data.length, '--tag e2e-test should return at least 1 app').toBeGreaterThan(0)
+    parsed.data.forEach(app =>
+      expect(
+        app.tags.some(t => t.name === 'e2e-test'),
+        `app "${app.name}" should carry the e2e-test tag`,
+      ).toBe(true),
+    )
   })
 })

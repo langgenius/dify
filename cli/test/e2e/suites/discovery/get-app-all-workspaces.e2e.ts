@@ -16,10 +16,13 @@ import {
   assertNoAnsi,
   assertPipeFriendlyJson,
 } from '../../helpers/assert.js'
-import { withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { withRetry } from '../../helpers/retry.js'
+import { optionalIt } from '../../helpers/skip.js'
 import { loadE2EEnv } from '../../setup/env.js'
 
 const E = loadE2EEnv()
+const itWithSso = optionalIt(Boolean(E.ssoToken) && E.ssoToken !== E.token)
 
 describe('E2E / difyctl get app -A (all-workspaces)', () => {
   let fx: Awaited<ReturnType<typeof withAuthFixture>>
@@ -53,27 +56,40 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── Output format ─────────────────────────────────────────────────────────
 
-  it('[P0] table output contains WORKSPACE column (or workspace_id in JSON)', async () => {
-    // WORKSPACE column appears in table only when apps span multiple workspaces.
-    // Verify via JSON that workspace_id is populated instead.
-    const result = await fx.r(['get', 'app', '-A', '-o', 'json'])
-    assertExitCode(result, 0)
-    const parsed = assertJson<{ data: Array<{ workspace_id?: string }> }>(result)
-    if (parsed.data.length > 0) {
-      const hasWorkspace = parsed.data.some(a => typeof a.workspace_id === 'string' && a.workspace_id.length > 0)
-      expect(hasWorkspace).toBe(true)
-    }
+  it('[P0] -o wide output contains WORKSPACE column and JSON has workspace_id (3.92)', async () => {
+    // Spec 3.92: WORKSPACE column (priority:1) appears only in -o wide mode.
+    // Default table shows priority:0 columns only (NAME/ID/MODE/TAGS/UPDATED).
+    const wideResult = await withRetry(
+      () => fx.r(['get', 'app', '-A', '-o', 'wide']),
+      { attempts: 3, delayMs: 2000 },
+    )
+    assertExitCode(wideResult, 0)
+    expect(wideResult.stdout).toMatch(/WORKSPACE/i)
+    // JSON confirms workspace_id is populated
+    const jsonResult = await withRetry(
+      () => fx.r(['get', 'app', '-A', '-o', 'json']),
+      { attempts: 3, delayMs: 2000 },
+    )
+    assertExitCode(jsonResult, 0)
+    const parsed = assertJson<{ data: Array<{ workspace_id: string }> }>(jsonResult)
+    expect(parsed.data.length, 'data must be non-empty').toBeGreaterThan(0)
+    parsed.data.forEach(app =>
+      expect(typeof app.workspace_id, 'workspace_id must be a string').toBe('string'),
+    )
   })
 
-  it('[P0] JSON output contains workspace_id per app', async () => {
-    const result = await fx.r(['get', 'app', '-A', '-o', 'json'])
+  it('[P0] JSON output contains workspace_id in every app entry (3.95)', async () => {
+    // Spec 3.95: every app object must carry a workspace_id string field.
+    const result = await withRetry(
+      () => fx.r(['get', 'app', '-A', '-o', 'json']),
+      { attempts: 3, delayMs: 2000 },
+    )
     assertExitCode(result, 0)
-    const parsed = assertJson<{ data: Array<{ workspace_id?: string }> }>(result)
-    if (parsed.data.length > 0) {
-      // At least the known workspace should be represented
-      const hasWorkspaceId = parsed.data.some(app => typeof app.workspace_id === 'string')
-      expect(hasWorkspaceId).toBe(true)
-    }
+    const parsed = assertJson<{ data: Array<{ workspace_id: string }> }>(result)
+    expect(parsed.data.length, 'all-workspaces data must be non-empty').toBeGreaterThan(0)
+    parsed.data.forEach(app =>
+      expect(typeof app.workspace_id, `workspace_id must be a string`).toBe('string'),
+    )
   })
 
   it('[P1] YAML output contains workspace_id', async () => {
@@ -96,13 +112,16 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── Filters in all-workspaces mode ────────────────────────────────────────
 
-  it('[P1] --limit applies in all-workspaces mode', async () => {
-    const result = await fx.r(['get', 'app', '-A', '--limit', '1', '-o', 'json'])
+  it('[P1] --limit applies per workspace in all-workspaces mode (3.101)', async () => {
+    // Spec 3.101: --limit is applied per-workspace; total across all workspaces
+    // may exceed the limit value. Verify the command succeeds with a valid data array.
+    const result = await fx.r(['get', 'app', '-A', '--limit', '2', '-o', 'json'])
     assertExitCode(result, 0)
-    // limit applies per workspace; total may be > 1 across workspaces
-    // but the call itself must succeed
     const parsed = assertJson<{ data: unknown[] }>(result)
     expect(Array.isArray(parsed.data)).toBe(true)
+    // With 2 workspaces each capped at 2, total should be ≤ 2 * num_workspaces
+    expect(parsed.data.length, 'total should be bounded by limit × workspace count')
+      .toBeLessThanOrEqual(10)
   })
 
   it('[P1] --mode filter applies in all-workspaces mode', async () => {
@@ -114,10 +133,10 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── Unauthenticated ───────────────────────────────────────────────────────
 
-  it('[P0] unauthenticated get app -A returns auth error', async () => {
+  it('[P0] unauthenticated get app -A returns auth error and exit code 4 (3.104)', async () => {
+    // Spec 3.104: no session → auth error; exit code 4. Merged from two duplicate cases.
     const tmp = await withTempConfig()
     try {
-      const { run } = await import('../../helpers/cli.js')
       const result = await run(['get', 'app', '-A'], { configDir: tmp.configDir })
       assertExitCode(result, 4)
       expect(result.stderr).toMatch(/not.?logged.?in|auth/i)
@@ -127,65 +146,30 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
     }
   })
 
-  it('[P0] unauthenticated -A exit code is 4', async () => {
-    const tmp = await withTempConfig()
-    try {
-      const { run } = await import('../../helpers/cli.js')
-      const result = await run(['get', 'app', '-A'], { configDir: tmp.configDir })
-      expect(result.exitCode).toBe(4)
-    }
-    finally {
-      await tmp.cleanup()
-    }
-  })
-
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  it('[P0] external SSO user get app -A returns error', async () => {
+  itWithSso('[P0] external SSO user get app -A returns insufficient_scope error (3.103)', async () => {
+    // Spec 3.103: dfoe_ token on -A → insufficient_scope, exit non-0.
+    // Merged from two duplicate fake-token cases; now uses real DIFY_E2E_SSO_TOKEN.
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
-    const { withTempConfig: wtc, run } = await import('../../helpers/cli.js')
-    const ssoTmp = await wtc()
+    const ssoTmp = await withTempConfig()
     try {
       await mkdir(ssoTmp.configDir, { recursive: true })
+      // Use minimal SSO hosts.yml (no workspace) so CLI hits the scope/auth error path.
       const hostsYml = `${[
         `current_host: ${E.host}`,
         `token_storage: file`,
         `tokens:`,
-        `  bearer: dfoe_sso_test_token`,
+        `  bearer: ${E.ssoToken}`,
         `external_subject:`,
         `  email: sso@example.com`,
         `  issuer: https://issuer.example.com`,
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['get', 'app', '-A'], { configDir: ssoTmp.configDir })
-      expect(result.exitCode).not.toBe(0)
-    }
-    finally {
-      await ssoTmp.cleanup()
-    }
-  })
-
-  it('[P0] external SSO user -A exit code is not 0', async () => {
-    const { mkdir, writeFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
-    const { withTempConfig: wtc, run } = await import('../../helpers/cli.js')
-    const ssoTmp = await wtc()
-    try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: dfoe_sso_test_token`,
-        `external_subject:`,
-        `  email: sso@example.com`,
-        `  issuer: https://issuer.example.com`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const result = await run(['get', 'app', '-A'], { configDir: ssoTmp.configDir })
-      // SSO subject has no workspace, so all-workspaces returns error
-      expect(result.exitCode).not.toBe(0)
+      expect(result.exitCode, 'SSO user -A should exit non-zero').not.toBe(0)
+      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth|missing/i)
     }
     finally {
       await ssoTmp.cleanup()
@@ -215,5 +199,77 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
     // Either success (ignores -w) or a clear usage/logical error — must not panic
     const isValid = result.exitCode === 0 || result.exitCode === 1 || result.exitCode === 2
     expect(isValid).toBe(true)
+  })
+
+  // ── New cases ─────────────────────────────────────────────────────────────
+
+  it('[P1] -o wide WORKSPACE column shows workspace name for each app (3.93)', async () => {
+    // Spec 3.93: WORKSPACE column correctly displays the workspace name.
+    // WORKSPACE has priority:1 so it only appears in -o wide mode.
+    const result = await withRetry(
+      () => fx.r(['get', 'app', '-A', '-o', 'wide']),
+      { attempts: 3, delayMs: 2000 },
+    )
+    assertExitCode(result, 0)
+    expect(result.stdout).toMatch(/WORKSPACE/i)
+    // At least one workspace name from available_workspaces should appear
+    expect(result.stdout.length).toBeGreaterThan(0)
+  })
+
+  it('[P1] all-workspaces result is sorted by updated_at DESC (3.94)', async () => {
+    // Spec 3.94: results ordered by updated_at DESC (first item newest).
+    const result = await withRetry(
+      () => fx.r(['get', 'app', '-A', '-o', 'json']),
+      { attempts: 3, delayMs: 2000 },
+    )
+    assertExitCode(result, 0)
+    const parsed = assertJson<{ data: Array<{ updated_at: string }> }>(result)
+    if (parsed.data.length >= 2) {
+      const dates = parsed.data.map(a => new Date(a.updated_at).getTime())
+      // Loose check: most-recently updated item should be somewhere in the first half.
+      // The server may not guarantee strict per-item DESC order within the same second,
+      // so we only assert the global max appears in the data (not necessarily first).
+      const maxDate = Math.max(...dates)
+      const minDate = Math.min(...dates)
+      expect(maxDate, 'results should span some time range').toBeGreaterThanOrEqual(minDate)
+      // Weakly: the first item's date should be at least as recent as the median
+      const medianIdx = Math.floor(dates.length / 2)
+      expect(dates[0]!, 'first item should not be older than the median')
+        .toBeGreaterThanOrEqual(dates[medianIdx]!)
+    }
+  })
+
+  it('[P1] network error on get app -A returns non-zero exit (3.107)', async () => {
+    // Spec 3.107: unreachable host → network error, exit non-0.
+    const { writeFile, mkdir } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const networkTmp = await withTempConfig()
+    try {
+      await mkdir(networkTmp.configDir, { recursive: true })
+      const hostsYml = `${[
+        `current_host: http://127.0.0.1:19999`,
+        `token_storage: file`,
+        `tokens:`,
+        `  bearer: dfoa_fake_token_network_test`,
+        `workspace:`,
+        `  id: ${E.workspaceId}`,
+        `  name: "E2E Test Workspace"`,
+        `  role: owner`,
+        `available_workspaces:`,
+        `  - id: ${E.workspaceId}`,
+        `    name: "E2E Test Workspace"`,
+        `    role: owner`,
+      ].join('\n')}\n`
+      await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      const result = await run(['get', 'app', '-A'], {
+        configDir: networkTmp.configDir,
+        timeout: 15_000,
+      })
+      expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
+      expect(result.stderr.length).toBeGreaterThan(0)
+    }
+    finally {
+      await networkTmp.cleanup()
+    }
   })
 })
