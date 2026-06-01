@@ -69,6 +69,8 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
+  const showInstallAction = canManagement
+  const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
     customEndpointItem,
@@ -149,7 +151,10 @@ export default function IntegrationsPage({
           className="flex min-h-0 w-46 flex-1 flex-col gap-0.5 pb-4"
         >
           <div
-            className="flex h-14 shrink-0 items-start pt-1 pr-0 pb-7 pl-2.5"
+            className={cn(
+              'flex shrink-0 items-start pr-0 pl-2.5',
+              showInstallAction ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+            )}
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
               <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
@@ -157,12 +162,14 @@ export default function IntegrationsPage({
               </div>
             </div>
           </div>
-          <IntegrationSidebarActions
-            canManagement={canManagement}
-            installContextCategory={getPluginCategoryBySection(section)}
-            onSwitchToMarketplace={handleSwitchToMarketplace}
-          />
-          <nav className="mt-6 shrink-0 space-y-px">
+          {showInstallAction && (
+            <IntegrationSidebarActions
+              canManagement={canManagement}
+              installContextCategory={getPluginCategoryBySection(section)}
+              onSwitchToMarketplace={handleSwitchToMarketplace}
+            />
+          )}
+          <nav className={cn('shrink-0 space-y-px', showInstallAction ? 'mt-6' : 'py-4')}>
             <IntegrationSidebarNavItem item={providerItem} onSelect={onSectionChange} section={section} />
             <div>
               <button
@@ -200,12 +207,14 @@ export default function IntegrationsPage({
             <IntegrationSidebarNavItem item={customEndpointItem} onSelect={onSectionChange} section={section} />
           </nav>
         </div>
-        <IntegrationSidebarUtilityActions
-          canDebugger={canDebugger}
-          permission={permission}
-          showPermissionQuickPanel={showPermissionQuickPanel}
-          onPermissionChange={handlePermissionChange}
-        />
+        {showUtilityActions && (
+          <IntegrationSidebarUtilityActions
+            canDebugger={canDebugger}
+            permission={permission}
+            showPermissionQuickPanel={showPermissionQuickPanel}
+            onPermissionChange={handlePermissionChange}
+          />
+        )}
       </aside>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {integrationHeader && (
