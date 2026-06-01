@@ -61,7 +61,8 @@ describe('server console oRPC client', () => {
   })
 
   it('should call contracts with forwarded cookies, csrf header, and no-store cache', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ feature: { billing: false } }), {
+    const { defaultSystemFeatures } = await import('@/features/system-features/config')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(defaultSystemFeatures), {
       status: 200,
       headers: {
         'content-type': 'application/json',
@@ -70,7 +71,7 @@ describe('server console oRPC client', () => {
     vi.stubGlobal('fetch', fetchMock)
     const { getServerConsoleClientContext, serverConsoleClient } = await import('../server')
 
-    await serverConsoleClient.systemFeatures(undefined, {
+    await serverConsoleClient.systemFeatures.get(undefined, {
       context: await getServerConsoleClientContext(),
     })
 

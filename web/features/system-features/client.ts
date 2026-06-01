@@ -1,9 +1,8 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_CLOUD_EDITION } from '@/config'
-import { cloudSystemFeatures } from '@/config/cloud-system-features'
-import { defaultSystemFeatures } from '@/types/feature'
-import { consoleClient, consoleQuery } from './client'
+import { consoleClient, consoleQuery } from '@/service/client'
+import { cloudSystemFeatures, defaultSystemFeatures } from './config'
 
 /**
  * Soft-fallback to defaults so the dashboard stays usable when /system-features fails.
@@ -15,26 +14,26 @@ import { consoleClient, consoleQuery } from './client'
  * is a small, dependency-free endpoint in the community edition.
  *
  * For Cloud, this query is intentionally local-only and uses `staleTime:
- * Infinity`: the payload comes from frontend config/defaults, so refetching
- * would only re-run the same local merge. For non-Cloud, do not override
+ * 'static'`: the payload comes from frontend config/defaults, so invalidation
+ * should not re-run the same local merge. For non-Cloud, do not override
  * `staleTime`: inherit the 5-minute default from query-client-server.ts.
  */
 export const systemFeaturesQueryOptions = () => {
-  const queryKey = consoleQuery.systemFeatures.queryKey()
+  const queryKey = consoleQuery.systemFeatures.get.queryKey()
 
   if (IS_CLOUD_EDITION) {
-    return queryOptions<SystemFeatures>({
+    return queryOptions<GetSystemFeaturesResponse>({
       queryKey,
       queryFn: async () => cloudSystemFeatures,
-      staleTime: Infinity,
+      staleTime: 'static',
     })
   }
 
-  return queryOptions<SystemFeatures>({
+  return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
     queryFn: async () => {
       try {
-        return await consoleClient.systemFeatures()
+        return await consoleClient.systemFeatures.get()
       }
       catch (err) {
         console.error('[systemFeatures] fetch failed, using defaults', err)

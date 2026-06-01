@@ -1,30 +1,29 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_CLOUD_EDITION } from '@/config'
-import { cloudSystemFeatures } from '@/config/cloud-system-features'
-import { defaultSystemFeatures } from '@/types/feature'
 import {
   getServerConsoleClientContext,
   serverConsoleClient,
   serverConsoleQuery,
-} from './server'
+} from '@/service/server'
+import { cloudSystemFeatures, defaultSystemFeatures } from './config'
 
 export const serverSystemFeaturesQueryOptions = () => {
-  const queryKey = serverConsoleQuery.systemFeatures.queryKey()
+  const queryKey = serverConsoleQuery.systemFeatures.get.queryKey()
 
   if (IS_CLOUD_EDITION) {
-    return queryOptions<SystemFeatures>({
+    return queryOptions<GetSystemFeaturesResponse>({
       queryKey,
       queryFn: async () => cloudSystemFeatures,
-      staleTime: Infinity,
+      staleTime: 'static',
     })
   }
 
-  return queryOptions<SystemFeatures>({
+  return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
     queryFn: async () => {
       try {
-        return await serverConsoleClient.systemFeatures(undefined, {
+        return await serverConsoleClient.systemFeatures.get(undefined, {
           context: await getServerConsoleClientContext(),
         })
       }

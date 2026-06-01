@@ -1,11 +1,11 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures } from '@/types/feature'
+import { defaultSystemFeatures } from '../config'
 
 type LoadOptions = {
   cloudEnv?: Partial<typeof defaultCloudEnv>
   isCloudEdition: boolean
-  systemFeaturesResult?: SystemFeatures
+  systemFeaturesResult?: GetSystemFeaturesResponse
   systemFeaturesError?: Error
 }
 
@@ -52,18 +52,22 @@ const loadSystemFeaturesModule = async ({
       ...cloudEnv,
     },
   }))
-  vi.doMock('../client', () => ({
+  vi.doMock('@/service/client', () => ({
     consoleClient: {
-      systemFeatures,
+      systemFeatures: {
+        get: systemFeatures,
+      },
     },
     consoleQuery: {
       systemFeatures: {
-        queryKey: () => queryKey,
+        get: {
+          queryKey: () => queryKey,
+        },
       },
     },
   }))
 
-  const module = await import('../system-features')
+  const module = await import('../client')
 
   return {
     module,
@@ -93,19 +97,23 @@ const loadServerSystemFeaturesModule = async ({
       ...cloudEnv,
     },
   }))
-  vi.doMock('../server', () => ({
+  vi.doMock('@/service/server', () => ({
     getServerConsoleClientContext,
     serverConsoleClient: {
-      systemFeatures,
+      systemFeatures: {
+        get: systemFeatures,
+      },
     },
     serverConsoleQuery: {
       systemFeatures: {
-        queryKey: () => queryKey,
+        get: {
+          queryKey: () => queryKey,
+        },
       },
     },
   }))
 
-  const module = await import('../server-system-features')
+  const module = await import('../server')
 
   return {
     getServerConsoleClientContext,
@@ -124,7 +132,7 @@ describe('systemFeaturesQueryOptions', () => {
     const data = await options.queryFn?.(queryContext)
 
     expect(systemFeatures).not.toHaveBeenCalled()
-    expect(options.staleTime).toBe(Infinity)
+    expect(options.staleTime).toBe('static')
     expect(data).toMatchObject({
       enable_marketplace: true,
       enable_email_code_login: true,
@@ -215,7 +223,7 @@ describe('serverSystemFeaturesQueryOptions', () => {
 
     expect(getServerConsoleClientContext).not.toHaveBeenCalled()
     expect(systemFeatures).not.toHaveBeenCalled()
-    expect(options.staleTime).toBe(Infinity)
+    expect(options.staleTime).toBe('static')
     expect(data).toMatchObject({
       enable_marketplace: false,
       enable_email_password_login: true,
