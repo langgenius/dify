@@ -1,5 +1,5 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HttpClient } from '../http/types.js'
+import type { HttpClient } from '@/http/types'
 
 // Used by every /_version probe call site (the version command and the
 // per-command auto-nudge). Both must construct their HTTP client with this

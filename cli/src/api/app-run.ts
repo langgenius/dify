@@ -1,7 +1,7 @@
-import type { SseEvent } from '../http/sse.js'
-import type { HttpClient } from '../http/types.js'
-import { normalizeDifyStream } from '../http/sse-dify.js'
-import { parseSSE } from '../http/sse.js'
+import type { SseEvent } from '@/http/sse'
+import type { HttpClient } from '@/http/types'
+import { parseSSE } from '@/http/sse'
+import { normalizeDifyStream } from '@/http/sse-dify'
 
 export type RunBodyArgs = {
   readonly message?: string

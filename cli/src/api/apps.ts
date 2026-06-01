@@ -1,5 +1,5 @@
 import type { AppDescribeResponse, AppListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HttpClient } from '../http/types.js'
+import type { HttpClient } from '@/http/types'
 
 export type ListQuery = {
   readonly workspaceId: string

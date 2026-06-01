@@ -9,7 +9,7 @@ import type {
   RequestOptions,
   ResolvedOptions,
 } from './types.js'
-import { userAgent as defaultUserAgent } from '../version/info.js'
+import { userAgent as defaultUserAgent } from '@/version/info'
 import { buildBody } from './body.js'
 import { classifyResponse } from './error-mapper.js'
 import { classifyTransport, logRequest, logResponse, setBearer, setUserAgent } from './hooks.js'

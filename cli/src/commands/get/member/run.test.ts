@@ -1,8 +1,8 @@
 import type { MemberListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { HttpClient } from '../../../http/types.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
-import { bufferStreams } from '../../../sys/io/streams.js'
+import { bufferStreams } from '@/sys/io/streams'
 import { runGetMember } from './run.js'
 
 function bundle(): HostsBundle {

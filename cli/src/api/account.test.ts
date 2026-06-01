@@ -1,8 +1,8 @@
-import type { StubServer } from '../../test/fixtures/stub-server.js'
+import type { StubServer } from '@test/fixtures/stub-server'
+import { testHttpClient } from '@test/fixtures/http-client'
+import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { testHttpClient } from '../../test/fixtures/http-client.js'
-import { jsonResponder, startStubServer } from '../../test/fixtures/stub-server.js'
-import { isBaseError } from '../errors/base.js'
+import { isBaseError } from '@/errors/base'
 import { AccountClient } from './account.js'
 
 function makeClient(host: string): AccountClient {

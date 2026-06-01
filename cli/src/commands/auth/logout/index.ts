@@ -1,10 +1,10 @@
-import type { HttpClient } from '../../../http/types.js'
-import { loadHosts } from '../../../auth/hosts.js'
-import { createHttpClient } from '../../../http/client.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { realStreams } from '../../../sys/io/streams'
-import { hostWithScheme, openAPIBase } from '../../../util/host.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
+import type { HttpClient } from '@/http/types'
+import { loadHosts } from '@/auth/hosts'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { createHttpClient } from '@/http/client'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { realStreams } from '@/sys/io/streams'
+import { hostWithScheme, openAPIBase } from '@/util/host'
 import { runLogout } from './logout.js'
 
 export default class Logout extends DifyCommand {

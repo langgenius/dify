@@ -1,8 +1,8 @@
-import type { StubServer } from '../../test/fixtures/stub-server.js'
+import type { StubServer } from '@test/fixtures/stub-server'
+import { testHttpClient } from '@test/fixtures/http-client'
+import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { testHttpClient } from '../../test/fixtures/http-client.js'
-import { jsonResponder, startStubServer } from '../../test/fixtures/stub-server.js'
-import { isBaseError } from '../errors/base.js'
+import { isBaseError } from '@/errors/base'
 import { WorkspacesClient } from './workspaces.js'
 
 // WorkspacesClient.switch is covered in members.test.ts; this file covers list().

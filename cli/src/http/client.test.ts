@@ -1,11 +1,11 @@
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { AddressInfo } from 'node:net'
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
 import * as http from 'node:http'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { isBaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { openAPIBase } from '../util/host.js'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { openAPIBase } from '@/util/host'
 import { createHttpClient } from './client.js'
 
 function base(mockUrl: string): string {

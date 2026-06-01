@@ -5,7 +5,7 @@ import type {
   MemberListResponse,
   MemberRoleUpdatePayload,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { HttpClient } from '../http/types.js'
+import type { HttpClient } from '@/http/types'
 
 /**
  * Thin client for /openapi/v1/workspaces/<id>/members.

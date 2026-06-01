@@ -1,9 +1,9 @@
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { HttpClient } from '../../../http/types.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { WorkspacesClient } from '../../../api/workspaces.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams'
+import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
+import type { IOStreams } from '@/sys/io/streams'
+import { WorkspacesClient } from '@/api/workspaces'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { nullStreams } from '@/sys/io/streams'
 import { WorkspaceListOutput, WorkspaceRow } from './handlers.js'
 
 export const EMPTY_WORKSPACES_MESSAGE

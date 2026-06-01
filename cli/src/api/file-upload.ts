@@ -1,4 +1,4 @@
-import type { HttpClient } from '../http/types.js'
+import type { HttpClient } from '@/http/types'
 import { readFile } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 

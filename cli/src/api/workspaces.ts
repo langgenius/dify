@@ -1,5 +1,5 @@
 import type { WorkspaceDetailResponse, WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HttpClient } from '../http/types.js'
+import type { HttpClient } from '@/http/types'
 
 export class WorkspacesClient {
   private readonly http: HttpClient

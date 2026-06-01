@@ -1,11 +1,11 @@
-import type { StubServer } from '../../test/fixtures/stub-server.js'
+import type { StubServer } from '@test/fixtures/stub-server'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { testHttpClient } from '@test/fixtures/http-client'
+import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { testHttpClient } from '../../test/fixtures/http-client.js'
-import { jsonResponder, startStubServer } from '../../test/fixtures/stub-server.js'
-import { isBaseError } from '../errors/base.js'
+import { isBaseError } from '@/errors/base'
 import { FileUploadClient } from './file-upload.js'
 
 const UPLOADED = {

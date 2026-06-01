@@ -1,7 +1,7 @@
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { testHttpClient } from '../../test/fixtures/http-client.js'
 import { MetaClient } from './meta.js'
 
 describe('MetaClient', () => {

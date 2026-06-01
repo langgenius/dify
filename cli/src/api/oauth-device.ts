@@ -1,6 +1,6 @@
-import type { HttpClient } from '../http/types.js'
-import { BaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import type { HttpClient } from '@/http/types'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_CLIENT_ID = 'difyctl'
 

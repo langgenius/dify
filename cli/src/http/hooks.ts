@@ -1,5 +1,5 @@
 import type { Hook, HttpLogger } from './types.js'
-import { BaseError } from '../errors/base.js'
+import { BaseError } from '@/errors/base'
 import { classifyTransportError } from './error-mapper.js'
 import { redactBearer } from './sanitize.js'
 
