@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import { FlowType } from '@/types/common'
 
 type Props = {
   readOnly: boolean
@@ -20,6 +21,7 @@ type Props = {
   }
   availableVars: NodeOutPutVar[]
   availableNodesWithParent: Node[]
+  flowType?: FlowType
   handleSyeQueryChange: (query: string) => void
   handleMemoryChange: (memory?: Memory) => void
 }
@@ -35,10 +37,12 @@ const PanelMemorySection: FC<Props> = ({
   hasSetBlockStatus,
   availableVars,
   availableNodesWithParent,
+  flowType,
   handleSyeQueryChange,
   handleMemoryChange,
 }) => {
   const { t } = useTranslation()
+  const shouldCheckSysQuery = flowType !== FlowType.snippet
 
   if (!isChatMode)
     return null
@@ -83,7 +87,7 @@ const PanelMemorySection: FC<Props> = ({
               isSupportFileVar
             />
 
-            {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
+            {shouldCheckSysQuery && inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
               <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
                 {t(`${i18nPrefix}.sysQueryInUser`, { ns: 'workflow' })}
               </div>

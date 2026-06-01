@@ -52,12 +52,7 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 const mockSetKeywords = vi.fn()
-<<<<<<< HEAD
-const mockSetTagIDs = vi.fn()
 const mockSetCreatorID = vi.fn()
-=======
-const mockSetIsCreatedByMe = vi.fn()
->>>>>>> main
 const mockSetCategory = vi.fn()
 const mockQueryState = {
   category: 'all',
@@ -70,8 +65,6 @@ vi.mock('../hooks/use-apps-query-state', () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
-<<<<<<< HEAD
-    setTagIDs: mockSetTagIDs,
     setCreatorID: mockSetCreatorID,
   }),
 }))
@@ -84,9 +77,7 @@ vi.mock('@/service/use-common', () => ({
         { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
       ],
     },
-=======
-    setIsCreatedByMe: mockSetIsCreatedByMe,
->>>>>>> main
+    setCreatorID: mockSetCreatorID,
   }),
 }))
 
@@ -260,12 +251,8 @@ beforeAll(() => {
 
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
-<<<<<<< HEAD
 const renderList = (searchParams = '', pageType: 'apps' | 'snippets' = 'apps') => {
-=======
-const renderList = (searchParams = '') => {
   mockSearchParams = new URLSearchParams(searchParams)
->>>>>>> main
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { branding: { enabled: false } },
   })

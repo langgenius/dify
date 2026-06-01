@@ -2,6 +2,7 @@ import type { LLMNodeType } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import PanelMemorySection from '../panel-memory-section'
 
 const mockEditor = vi.hoisted(() => vi.fn())
@@ -110,6 +111,27 @@ describe('llm/panel-memory-section', () => {
     )
 
     expect(screen.getByText('workflow.nodes.llm.sysQueryInUser')).toBeInTheDocument()
+    expect(screen.getByTestId('editor')).toHaveTextContent('custom prompt')
+  })
+
+  it('does not show the sys query warning in snippet flows', () => {
+    render(
+      <PanelMemorySection
+        {...baseProps}
+        flowType={FlowType.snippet}
+        inputs={createInputs({
+          memory: {
+            window: {
+              enabled: false,
+              size: 10,
+            },
+            query_prompt_template: 'custom prompt',
+          },
+        })}
+      />,
+    )
+
+    expect(screen.queryByText('workflow.nodes.llm.sysQueryInUser')).not.toBeInTheDocument()
     expect(screen.getByTestId('editor')).toHaveTextContent('custom prompt')
   })
 
