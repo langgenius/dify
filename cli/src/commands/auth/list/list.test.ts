@@ -79,6 +79,29 @@ describe('runAuthList', () => {
     expect(lines).toContain('bob@corp.com')
   })
 
+  it('table: shows email (Name) when display name present', () => {
+    const out = stringifyOutput(table({ format: '', data: runAuthList(twoHostReg()) }))
+    expect(out).toContain('alice@corp.com (Alice)')
+  })
+
+  it('table: shows email only when display name absent', () => {
+    const reg = Registry.from({
+      token_storage: 'file',
+      current_host: 'cloud.dify.ai',
+      hosts: {
+        'cloud.dify.ai': {
+          current_account: 'anon@corp.com',
+          accounts: {
+            'anon@corp.com': { account: { id: 'x', email: 'anon@corp.com', name: '' } },
+          },
+        },
+      },
+    })
+    const out = stringifyOutput(table({ format: '', data: runAuthList(reg) }))
+    expect(out).toContain('anon@corp.com')
+    expect(out).not.toContain('anon@corp.com (')
+  })
+
   it('empty registry: returns zero rows', () => {
     const result = runAuthList(Registry.empty())
     expect(result.rows).toHaveLength(0)

@@ -22,7 +22,8 @@ export class ContextRow {
   }
 
   tableRow(): readonly TableCell[] {
-    return [this.host, this.account, this.active ? ACTIVE_MARKER : '']
+    const accountCell = this.displayName ? `${this.account} (${this.displayName})` : this.account
+    return [this.host, accountCell, this.active ? ACTIVE_MARKER : '']
   }
 
   name(): string {
@@ -44,10 +45,6 @@ export class ContextListOutput {
 
   constructor(rows: readonly ContextRow[]) {
     this.rows = rows
-  }
-
-  static tableColumns(): readonly TableColumn[] {
-    return LIST_COLUMNS
   }
 
   tableColumns(): readonly TableColumn[] {

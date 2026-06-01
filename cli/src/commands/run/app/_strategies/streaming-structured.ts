@@ -5,6 +5,7 @@ import { chatConversationHint, newAppRunObject, RUN_MODES } from '@/commands/run
 import { renderHitlHint, renderHitlOutput } from '@/commands/run/app/hitl-render'
 import { collect, HitlPauseError } from '@/commands/run/app/sse-collector'
 import { formatted, stringifyOutput } from '@/framework/output'
+import { handle, unhandle } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { startSpinner } from '@/sys/io/spinner'
 import { extractThinkBlocks, stripThinkBlocks } from '@/sys/io/think-filter'
@@ -51,7 +52,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
       ctrl.abort()
       exit(1)
     }
-    process.once('SIGINT', cleanup)
+    handle('SIGINT', cleanup)
 
     let resp: Record<string, unknown>
     try {
@@ -73,7 +74,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
     }
     finally {
       spinner.stop()
-      process.off('SIGINT', cleanup)
+      unhandle('SIGINT', cleanup)
     }
     let processedResp = resp
     if (typeof processedResp.answer === 'string') {
