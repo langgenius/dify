@@ -1,6 +1,6 @@
-import type { VersionReport } from './probe.js'
+import type { VersionReport } from './probe'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderVersionText } from './render.js'
+import { renderVersionText } from './render'
 
 function baseClient(overrides: Partial<VersionReport['client']> = {}): VersionReport['client'] {
   return {
@@ -133,7 +133,7 @@ describe('renderVersionText', () => {
     })
 
     it('color=true emits ANSI sequences for verdict and RC warning lines', async () => {
-      const { renderVersionText: render } = await import('./render.js')
+      const { renderVersionText: render } = await import('./render')
       const report: VersionReport = {
         client: baseClient({ channel: 'rc' }),
         server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '99.0.0', edition: 'SELF_HOSTED' },

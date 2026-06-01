@@ -34,7 +34,7 @@ vi.mock('@napi-rs/keyring', () => ({
   Entry: FakeEntry,
 }))
 
-const { KeyringBasedStore } = await import('./store.js')
+const { KeyringBasedStore } = await import('./store')
 
 const SERVICE = 'difyctl-test'
 

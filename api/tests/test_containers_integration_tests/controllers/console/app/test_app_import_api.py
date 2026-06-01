@@ -50,10 +50,9 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
@@ -68,10 +67,9 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.PENDING),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
@@ -88,10 +86,9 @@ class TestAppImportApi:
         )
         update_access = MagicMock()
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         update_access.assert_called_once_with("app-123", "private")
         assert status == 200
@@ -107,7 +104,6 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         fake_session = MagicMock()
         fake_session.__enter__.return_value = fake_session
@@ -115,7 +111,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         fake_session.commit.assert_called_once_with()
         fake_session.rollback.assert_not_called()
@@ -132,7 +128,6 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         fake_session = MagicMock()
         fake_session.__enter__.return_value = fake_session
@@ -140,7 +135,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module, "Session", lambda *_args, **_kwargs: fake_session)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(SimpleNamespace(id="u1"))
 
         fake_session.rollback.assert_called_once_with()
         fake_session.commit.assert_not_called()
@@ -162,10 +157,9 @@ class TestAppImportConfirmApi:
             "confirm_import",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED),
         )
-        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(import_id="import-1")
+            response, status = method(SimpleNamespace(id="u1"), import_id="import-1")
 
         assert status == 400
         assert response["status"] == ImportStatus.FAILED

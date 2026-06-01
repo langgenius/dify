@@ -25,6 +25,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
@@ -43,7 +44,8 @@ from fields.conversation_fields import (
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import to_timestamp, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
@@ -257,9 +259,8 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_model: App):
-        current_user, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         args = MessageFeedbackPayload.model_validate(console_ns.payload)
 
         message_id = str(args.message_id)
@@ -337,8 +338,8 @@ class MessageSuggestedQuestionApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, message_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account, app_model: App, message_id: UUID):
         message_id_str = str(message_id)
 
         try:

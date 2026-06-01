@@ -1,10 +1,10 @@
-import type { CommandConstructor } from './command.js'
-import type { CommandTree } from './registry.js'
+import type { CommandConstructor } from './command'
+import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vitest'
-import { BaseError, newError } from '../errors/base.js'
-import { ErrorCode, ExitCode } from '../errors/codes.js'
-import { Command } from './command.js'
-import { run, sniffOutputFormat } from './run.js'
+import { BaseError, newError } from '@/errors/base'
+import { ErrorCode, ExitCode } from '@/errors/codes'
+import { Command } from './command'
+import { run, sniffOutputFormat } from './run'
 
 describe('sniffOutputFormat', () => {
   it('returns empty for empty argv', () => {

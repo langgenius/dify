@@ -1,6 +1,6 @@
 import type { BeforeRequestHook, BeforeRetryHook } from 'ky'
-import type { HttpLogger } from '../types.js'
-import { redactBearer } from '../sanitize.js'
+import type { HttpLogger } from '@/http/types'
+import { redactBearer } from '@/http/sanitize'
 
 const START_TIME = Symbol('difyctl-http-start')
 

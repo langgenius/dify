@@ -19,10 +19,12 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from flask_restx.api import HTTPStatus
+from pydantic import ValidationError
 
 from controllers.service_api.app.annotation import (
     AnnotationCreatePayload,
     AnnotationListApi,
+    AnnotationListQuery,
     AnnotationReplyActionApi,
     AnnotationReplyActionPayload,
     AnnotationReplyActionStatusApi,
@@ -104,6 +106,28 @@ class TestAnnotationReplyActionPayload:
             embedding_model_name="default",
         )
         assert payload.score_threshold == 0.0
+
+
+class TestAnnotationListQuery:
+    def test_defaults(self) -> None:
+        query = AnnotationListQuery.model_validate({})
+
+        assert query.page == 1
+        assert query.limit == 20
+        assert query.keyword == ""
+
+    def test_valid_numeric_strings(self) -> None:
+        query = AnnotationListQuery.model_validate({"page": "2", "limit": "5", "keyword": "refund"})
+
+        assert query.page == 2
+        assert query.limit == 5
+        assert query.keyword == "refund"
+
+    @pytest.mark.parametrize("field", ["page", "limit"])
+    @pytest.mark.parametrize("value", ["abc", "1.5", "1e2", "", "0", "-1"])
+    def test_invalid_explicit_pagination_value(self, field: str, value: str) -> None:
+        with pytest.raises(ValidationError):
+            AnnotationListQuery.model_validate({field: value})
 
 
 # ---------------------------------------------------------------------------
@@ -232,22 +256,55 @@ class TestAnnotationReplyActionStatusApi:
 
 
 class TestAnnotationListApi:
-    def test_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_uses_defaults(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
-        monkeypatch.setattr(
-            AppAnnotationService,
-            "get_annotation_list_by_app_id",
-            lambda *_args, **_kwargs: ([annotation], 1),
-        )
+        get_mock = Mock(return_value=([annotation], 1))
+        monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
 
         api = AnnotationListApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(id="app")
 
-        with app.test_request_context("/apps/annotations?page=1&limit=1", method="GET"):
+        with app.test_request_context("/apps/annotations", method="GET"):
+            response = handler(api, app_model=app_model)
+
+        assert response["page"] == 1
+        assert response["limit"] == 20
+        get_mock.assert_called_once_with("app", 1, 20, "")
+
+    def test_get_accepts_valid_numeric_strings(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        get_mock = Mock(return_value=([annotation], 1))
+        monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
+
+        api = AnnotationListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context("/apps/annotations?page=2&limit=5&keyword=refund", method="GET"):
             response = handler(api, app_model=app_model)
 
         assert response["total"] == 1
+        assert response["page"] == 2
+        assert response["limit"] == 5
+        get_mock.assert_called_once_with("app", 2, 5, "refund")
+
+    @pytest.mark.parametrize("query_string", ["page=abc&limit=5", "page=1&limit=abc", "page=&limit=5", "limit=0"])
+    def test_get_rejects_invalid_explicit_pagination_value(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, query_string: str
+    ) -> None:
+        get_mock = Mock(return_value=([], 0))
+        monkeypatch.setattr(AppAnnotationService, "get_annotation_list_by_app_id", get_mock)
+
+        api = AnnotationListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context(f"/apps/annotations?{query_string}", method="GET"):
+            with pytest.raises(ValidationError):
+                handler(api, app_model=app_model)
+
+        get_mock.assert_not_called()
 
     def test_create(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)

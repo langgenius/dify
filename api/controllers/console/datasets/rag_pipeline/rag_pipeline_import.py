@@ -10,6 +10,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from extensions.ext_database import db
 from fields.rag_pipeline_fields import (
@@ -17,7 +18,8 @@ from fields.rag_pipeline_fields import (
     pipeline_import_check_dependencies_fields,
     pipeline_import_fields,
 )
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from models.dataset import Pipeline
 from services.entities.dsl_entities import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
@@ -62,9 +64,9 @@ class RagPipelineImportApi(Resource):
     @edit_permission_required
     @marshal_with(pipeline_import_model)
     @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         # Check user role first
-        current_user, _ = current_account_with_tenant()
         payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
 
         # Use a plain Session so that caught exceptions inside the service
@@ -105,9 +107,8 @@ class RagPipelineImportConfirmApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @marshal_with(pipeline_import_model)
-    def post(self, import_id: str):
-        current_user, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, current_user: Account, import_id: str):
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
             account = current_user
