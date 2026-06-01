@@ -50,8 +50,8 @@ from core.app.entities.task_entities import (
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
 from graphon.entities.pause_reason import PauseReasonType
-from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import UserActionConfig
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import UserAction
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
@@ -637,6 +637,66 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert responses == ["end"]
         assert saved == ["saved"]
+
+    def test_handle_stop_event_updates_workflow_run_status_for_user_manual_stop(self, monkeypatch: pytest.MonkeyPatch):
+        pipeline = _make_pipeline()
+        pipeline._message_end_to_stream_response = lambda: "end"
+        pipeline._workflow_response_converter = SimpleNamespace(
+            workflow_finish_to_stream_response=lambda **kwargs: "finish"
+        )
+        pipeline._workflow_run_id = "run-id"
+        pipeline._workflow_id = "workflow-id"
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
+            start_at=0.0,
+        )
+        saved: list[str] = []
+
+        def _save_message(**kwargs):
+            saved.append("saved")
+
+        pipeline._save_message = _save_message
+
+        # Track whether workflow_run status was updated
+        status_updates: list[dict] = []
+
+        class FakeWorkflowRun:
+            def __init__(self):
+                self.status = None
+                self.error = None
+                self.finished_at = None
+
+        fake_run = FakeWorkflowRun()
+
+        class FakeSession:
+            def scalar(self, stmt):
+                return fake_run
+
+            def commit(self):
+                status_updates.append({
+                    "status": fake_run.status,
+                    "error": fake_run.error,
+                    "finished_at": fake_run.finished_at,
+                })
+
+        @contextmanager
+        def _fake_session():
+            yield FakeSession()
+
+        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+
+        responses = list(
+            pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))
+        )
+
+        assert responses == ["finish", "end"]
+        assert saved == ["saved"]
+        assert len(status_updates) == 1
+        assert status_updates[0]["status"] == WorkflowExecutionStatus.STOPPED
+        assert status_updates[0]["error"] == "Stopped by user."
+        assert status_updates[0]["finished_at"] is not None
 
     def test_handle_message_end_event_applies_output_moderation(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
