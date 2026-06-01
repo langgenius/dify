@@ -467,7 +467,8 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self):
+    @with_session(write=False)
+    def get(self, session: Session):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -504,7 +505,7 @@ class AppListApi(Resource):
         draft_trigger_app_ids: set[str] = set()
         if workflow_capable_app_ids:
             draft_workflows = (
-                db.session.execute(
+                session.execute(
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),

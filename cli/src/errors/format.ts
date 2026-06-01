@@ -1,6 +1,6 @@
-import type { BaseError } from './base.js'
-import { colorEnabled, colorScheme } from '../sys/io/color.js'
-import { renderEnvelope } from './envelope.js'
+import type { BaseError } from './base'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { renderEnvelope } from './envelope'
 
 export type FormatErrorOptions = {
   readonly format?: string

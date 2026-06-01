@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { UnsupportedArgValueError } from './errors.js'
-import { Args, Flags, parseArgv } from './flags.js'
+import { UnsupportedArgValueError } from './errors'
+import { Args, Flags, parseArgv } from './flags'
 
 const meta = {
   flags: {

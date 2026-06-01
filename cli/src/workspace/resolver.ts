@@ -1,6 +1,6 @@
-import type { HostsBundle } from '../auth/hosts.js'
-import { BaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import type { HostsBundle } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export type WorkspaceResolveInputs = {
   readonly flag?: string

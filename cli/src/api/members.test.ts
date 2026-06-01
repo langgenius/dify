@@ -2,9 +2,9 @@ import type { AddressInfo } from 'node:net'
 import { Buffer } from 'node:buffer'
 import * as http from 'node:http'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '../errors/base.js'
-import { createClient } from '../http/client.js'
-import { MembersClient } from './members.js'
+import { isBaseError } from '@/errors/base'
+import { createClient } from '@/http/client'
+import { MembersClient } from './members'
 
 type StubServer = {
   url: string
@@ -84,7 +84,7 @@ describe('MembersClient.list', () => {
     const result = await makeClient(stub.url).list('ws-1')
     expect(captured.method).toBe('GET')
     expect(captured.url).toBe('/openapi/v1/workspaces/ws-1/members')
-    expect(result.data[0].email).toBe('mia@e.com')
+    expect(result.data[0]?.email).toBe('mia@e.com')
   })
 
   it('URL-encodes workspace id', async () => {
@@ -259,7 +259,7 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     )
     stub.lastRequest = captured
 
-    const { WorkspacesClient } = await import('./workspaces.js')
+    const { WorkspacesClient } = await import('./workspaces')
     const client = new WorkspacesClient(createClient({ host: stub.url, bearer: 'dfoa_test' }))
     const result = await client.switch('ws-1')
     expect(captured.method).toBe('POST')
@@ -271,7 +271,7 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     const captured: StubServer['lastRequest'] = {}
     stub = await startServer(jsonResponder(404, { error: 'not found' }, captured))
 
-    const { WorkspacesClient } = await import('./workspaces.js')
+    const { WorkspacesClient } = await import('./workspaces')
     const client = new WorkspacesClient(createClient({ host: stub.url, bearer: 'dfoa_test' }))
     await expect(client.switch('ws-x')).rejects.toSatisfy(
       err => isBaseError(err) && err.httpStatus === 404,

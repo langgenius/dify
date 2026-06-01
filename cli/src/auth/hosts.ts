@@ -1,6 +1,6 @@
-import type { Store } from '../store/store.js'
+import type { Store } from '@/store/store'
 import { z } from 'zod'
-import { getHostStore, tokenKey } from '../store/manager.js'
+import { getHostStore, tokenKey } from '@/store/manager'
 
 const StorageModeSchema = z.enum(['keychain', 'file'])
 export type StorageMode = z.infer<typeof StorageModeSchema>

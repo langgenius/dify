@@ -5,7 +5,7 @@ import {
   ErrorCode,
   ExitCode,
   exitFor,
-} from './codes.js'
+} from './codes'
 
 describe('error codes', () => {
   it('has correct number codes (parity with internal/api/errors)', () => {
