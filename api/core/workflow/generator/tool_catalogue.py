@@ -99,6 +99,21 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
     return entries[:_MAX_TOOLS]
 
 
+def installed_tool_keys(entries: list[ToolCatalogueEntry]) -> set[tuple[str, str]]:
+    """
+    Return the set of ``(provider_name, tool_name)`` pairs available for the
+    tenant. The validator in ``runner.py`` consults this set so a planner /
+    builder that hallucinates a tool name fails loudly at generation time
+    instead of producing a runtime-broken graph.
+
+    The set is keyed on ``provider_name`` (not ``provider_id``) because the
+    builder prompt is instructed to put the provider's catalogue name into
+    BOTH ``data.provider_id`` and ``data.provider_name`` on tool nodes —
+    they are the same value for both built-in and plugin providers.
+    """
+    return {(e["provider_name"], e["tool_name"]) for e in entries}
+
+
 def format_tool_catalogue(entries: list[ToolCatalogueEntry]) -> str:
     """
     Render the catalogue as a compact multi-line block for prompt injection.

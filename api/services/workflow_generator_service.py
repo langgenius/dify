@@ -17,7 +17,7 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.model_manager import ModelManager
 from core.workflow.generator import WorkflowGenerator
-from core.workflow.generator.tool_catalogue import build_tool_catalogue, format_tool_catalogue
+from core.workflow.generator.tool_catalogue import build_tool_catalogue, format_tool_catalogue, installed_tool_keys
 from core.workflow.generator.types import WorkflowGenerateResultDict, WorkflowGenerationMode
 from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -60,14 +60,21 @@ class WorkflowGeneratorService:
         model_parameters: dict[str, Any] = dict(model_config.completion_params or {})
 
         # Build the installed-tool catalogue for this tenant so the planner/
-        # builder can pick concrete tools instead of inventing names. A failure
-        # here (plugin daemon unreachable, etc.) must not block generation —
-        # log and fall back to the no-tool catalogue path.
+        # builder can pick concrete tools instead of inventing names, AND so
+        # the runner's validator can reject hallucinated tool names BEFORE
+        # the user clicks Apply. A failure here (plugin daemon unreachable,
+        # etc.) must not block generation — log and fall back to the no-tool
+        # path, which also disables tool validation in the runner (None
+        # sentinel rather than empty set, so we don't reject every tool
+        # node just because we couldn't enumerate the catalogue).
+        tool_catalogue_text = ""
+        installed_tools: set[tuple[str, str]] | None = None
         try:
-            tool_catalogue_text = format_tool_catalogue(build_tool_catalogue(tenant_id))
+            entries = build_tool_catalogue(tenant_id)
+            tool_catalogue_text = format_tool_catalogue(entries)
+            installed_tools = installed_tool_keys(entries)
         except Exception:
             logger.exception("Workflow generator: failed to build tool catalogue for tenant %s", tenant_id)
-            tool_catalogue_text = ""
 
         return WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -79,4 +86,5 @@ class WorkflowGeneratorService:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
         )

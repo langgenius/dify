@@ -46,4 +46,38 @@ describe('debug service — generateWorkflow', () => {
 
     expect(post).toHaveBeenCalledWith('/workflow-generate', { body })
   })
+
+  // When the caller threads a ``getAbortController`` callback (the modal's
+  // pattern for cancelling the in-flight request on close / double-click /
+  // 60 s timeout), it must reach ``post()`` as the third argument so the
+  // shared fetch wrapper wires it into the AbortController plumbing.
+  // Without this the modal cannot abort the request and a close-while-
+  // loading leaks the request beyond its UI surface.
+  it('should forward getAbortController to post when provided', () => {
+    const body = {
+      mode: 'workflow' as const,
+      instruction: 'Long-running generation',
+      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+    }
+    const getAbortController = vi.fn()
+
+    generateWorkflow(body, { getAbortController })
+
+    expect(post).toHaveBeenCalledWith('/workflow-generate', { body }, { getAbortController })
+  })
+
+  // No options → no third argument. Keeps the call site clean and lets the
+  // shared wrapper apply its own defaults without a phantom empty object.
+  it('should NOT pass a third argument when no options are provided', () => {
+    const body = {
+      mode: 'workflow' as const,
+      instruction: 'Plain call',
+      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+    }
+
+    generateWorkflow(body)
+
+    expect(post).toHaveBeenCalledWith('/workflow-generate', { body })
+    expect(vi.mocked(post).mock.calls[0]).toHaveLength(2)
+  })
 })

@@ -1,15 +1,17 @@
 import type { GeneratedGraph } from '../types'
 import { AppModeEnum } from '@/types/app'
-import { applyToCurrentApp, applyToNewApp } from '../apply'
+import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from '../apply'
 
 // Stub the service calls so each test can assert what was POSTed without
 // touching real fetch / next router state.
 const mockCreateApp = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
+const mockDeleteApp = vi.fn()
 
 vi.mock('@/service/apps', () => ({
   createApp: (params: unknown) => mockCreateApp(params),
+  deleteApp: (appId: string) => mockDeleteApp(appId),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -120,6 +122,44 @@ describe('applyToNewApp', () => {
       icon: '🤖',
     }))
   })
+
+  // Sync failure must roll back the createApp so the user isn't left with an
+  // empty app in their /apps list. deleteApp is called with the new app id,
+  // and the original sync error is re-thrown so the caller can toast it.
+  it('should delete the new app when syncWorkflowDraft fails', async () => {
+    mockCreateApp.mockResolvedValueOnce({ id: 'doomed', mode: AppModeEnum.WORKFLOW })
+    const syncErr = new Error('sync exploded')
+    mockSyncWorkflowDraft.mockRejectedValueOnce(syncErr)
+    mockDeleteApp.mockResolvedValueOnce(undefined)
+
+    await expect(applyToNewApp({
+      mode: 'workflow',
+      graph: makeGraph(),
+      instruction: 'x',
+    })).rejects.toBe(syncErr)
+
+    expect(mockDeleteApp).toHaveBeenCalledWith('doomed')
+  })
+
+  // The truly stuck path: sync fails AND the rollback delete also fails. We
+  // throw WorkflowApplyOrphanError so the caller can route to /apps where
+  // the orphan is at least discoverable for manual cleanup. The error
+  // carries the orphan app id so the toast can name it.
+  it('should throw WorkflowApplyOrphanError when both sync and rollback fail', async () => {
+    mockCreateApp.mockResolvedValueOnce({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW })
+    mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('sync exploded'))
+    mockDeleteApp.mockRejectedValueOnce(new Error('delete also exploded'))
+
+    let caught: unknown
+    try {
+      await applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: 'x' })
+    }
+    catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(WorkflowApplyOrphanError)
+    expect((caught as WorkflowApplyOrphanError).orphanAppId).toBe('orphan-7')
+  })
 })
 
 describe('applyToCurrentApp', () => {
@@ -183,5 +223,43 @@ describe('applyToCurrentApp', () => {
     expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
     const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
     expect(params).not.toHaveProperty('hash')
+  })
+
+  // A 409 from syncWorkflowDraft is the backend's signal that another tab
+  // edited the draft between our fetch and sync. The apply layer translates
+  // that Response into a typed error so the caller can show a Reload
+  // affordance instead of a generic "apply failed" toast.
+  it('should translate a 409 sync rejection into WorkflowApplyHashCollisionError', async () => {
+    mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'h1',
+      features: {},
+      environment_variables: [],
+      conversation_variables: [],
+    })
+    // ``base.ts`` rejects with the raw Response on non-401 — fake just the
+    // ``status`` field, which is what ``isHashCollisionResponse`` consults.
+    mockSyncWorkflowDraft.mockRejectedValueOnce({ status: 409, code: 'draft_workflow_not_sync' })
+
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() }))
+      .rejects
+      .toBeInstanceOf(WorkflowApplyHashCollisionError)
+  })
+
+  // Non-409 errors (5xx, network) MUST NOT be misclassified as hash
+  // collisions — those still surface as the original rejection so the
+  // generic "apply failed" toast fires.
+  it('should NOT translate non-409 sync rejections', async () => {
+    mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'h1',
+      features: {},
+      environment_variables: [],
+      conversation_variables: [],
+    })
+    const original = { status: 500, code: 'internal_server_error' }
+    mockSyncWorkflowDraft.mockRejectedValueOnce(original)
+
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() }))
+      .rejects
+      .toBe(original)
   })
 })

@@ -47,6 +47,8 @@ from core.workflow.generator.types import (
     GraphDict,
     GraphViewportDict,
     PlannerResultDict,
+    WorkflowGenerateErrorCode,
+    WorkflowGenerateErrorDict,
     WorkflowGenerateResultDict,
     WorkflowGenerationMode,
 )
@@ -63,6 +65,52 @@ _NODE_Y = 280
 _DEFAULT_VIEWPORT: GraphViewportDict = {"x": 0.0, "y": 0.0, "zoom": 0.7}
 _DEFAULT_NODE_WIDTH = 244
 _DEFAULT_NODE_HEIGHT = 100
+
+
+# Appended to the system prompt on the SECOND (and only) attempt when the
+# first response wasn't parseable as JSON. Keep this terse — the model
+# already has its full instructions in the original system message; this is
+# a corrective nudge, not a re-statement of the spec.
+_JSON_RETRY_HINT = (
+    "Your previous response was not valid JSON. Return ONLY a single JSON object. "
+    "Do not include any prose, markdown code fences, comments, or trailing commas."
+)
+
+
+class _PlannerJSONError(ValueError):
+    """Raised when ``json_repair`` cannot parse the planner's response."""
+
+
+class _PlannerSchemaError(ValueError):
+    """Raised when the planner's parsed JSON violates the expected schema."""
+
+
+class _BuilderJSONError(ValueError):
+    """Raised when ``json_repair`` cannot parse the builder's response."""
+
+
+class _BuilderSchemaError(ValueError):
+    """Raised when the builder's parsed JSON violates the expected schema."""
+
+
+def _err(code: str, detail: str, node_id: str = "") -> WorkflowGenerateErrorDict:
+    """Build a structured error dict; ``node_id`` is included only when set."""
+    out: WorkflowGenerateErrorDict = {"code": code, "detail": detail}
+    if node_id:
+        out["node_id"] = node_id
+    return out
+
+
+def _errors_to_str(errors: list[WorkflowGenerateErrorDict]) -> str:
+    """Concatenate structured errors into the legacy single-string envelope."""
+    return "; ".join(e["detail"] for e in errors)
+
+
+def _fail(empty: WorkflowGenerateResultDict, error: WorkflowGenerateErrorDict) -> WorkflowGenerateResultDict:
+    """Populate the envelope skeleton with a single structured error."""
+    empty["error"] = error["detail"]
+    empty["errors"] = [error]
+    return empty
 
 
 class WorkflowGenerator:
@@ -87,6 +135,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Run planner → builder → postprocess and return a graph payload.
@@ -98,10 +147,19 @@ class WorkflowGenerator:
         identifiers instead of inventing names; an empty string skips the
         section entirely (useful for unit tests).
 
-        Returns a dict with ``graph``, ``message`` and ``error``. On any
-        failure ``graph`` is an empty skeleton (single start node) and
-        ``error`` carries a human-readable message; callers should toast
-        ``error`` and keep the previous version visible.
+        ``installed_tools`` is the structural sibling — a set of
+        ``(provider_name, tool_name)`` pairs the validator consults to reject
+        tool nodes the planner / builder may have hallucinated. ``None``
+        disables tool validation (used by unit tests and when the catalogue
+        build itself failed; the service-layer fallback is already empty
+        prompt text in that case).
+
+        Returns a dict with ``graph``, ``message``, ``error`` and ``errors``.
+        On any failure ``graph`` is an empty skeleton (single start node),
+        ``error`` is the concatenated human-readable diagnostic, and
+        ``errors`` carries machine-readable codes the frontend maps to
+        localised copy. Callers should toast the first localised entry from
+        ``errors`` and keep the previous version visible.
         """
 
         empty_result: WorkflowGenerateResultDict = {
@@ -110,6 +168,7 @@ class WorkflowGenerator:
             "app_name": "",
             "icon": "",
             "error": "",
+            "errors": [],
         }
 
         # ── 1. PLANNER ────────────────────────────────────────────────────
@@ -122,15 +181,19 @@ class WorkflowGenerator:
                 ideal_output=ideal_output,
                 tool_catalogue_text=tool_catalogue_text,
             )
+        except _PlannerJSONError as e:
+            logger.warning("Workflow generator: planner JSON unparseable: %s", e)
+            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_JSON, f"Planner JSON invalid: {e}"))
+        except _PlannerSchemaError as e:
+            logger.warning("Workflow generator: planner schema invalid: %s", e)
+            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_SCHEMA, f"Planner schema invalid: {e}"))
         except Exception as e:
             logger.exception("Workflow generator: planner step failed")
-            empty_result["error"] = f"Failed to plan workflow: {e}"
-            return empty_result
+            return _fail(empty_result, _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"Failed to plan workflow: {e}"))
 
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
-            empty_result["error"] = "Planner returned no nodes"
-            return empty_result
+            return _fail(empty_result, _err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes"))
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -158,10 +221,18 @@ class WorkflowGenerator:
                 tool_catalogue_text=tool_catalogue_text,
                 start_inputs=start_inputs,
             )
+        except _BuilderJSONError as e:
+            logger.warning("Workflow generator: builder JSON unparseable: %s", e)
+            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_JSON, f"Builder JSON invalid: {e}"))
+        except _BuilderSchemaError as e:
+            logger.warning("Workflow generator: builder schema invalid: %s", e)
+            return _fail(empty_result, _err(WorkflowGenerateErrorCode.INVALID_SCHEMA, f"Builder schema invalid: {e}"))
         except Exception as e:
             logger.exception("Workflow generator: builder step failed")
-            empty_result["error"] = f"Failed to build workflow graph: {e}"
-            return empty_result
+            return _fail(
+                empty_result,
+                _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"Failed to build workflow graph: {e}"),
+            )
 
         # ── 3. POSTPROC ───────────────────────────────────────────────────
         graph = cls._postprocess_graph(graph=graph, mode=mode)
@@ -173,16 +244,19 @@ class WorkflowGenerator:
         app_name = str(plan.get("app_name") or "").strip()
         icon = str(plan.get("icon") or "").strip()
 
-        # Final structural sanity check — fail closed if start/end shape is wrong.
-        structural_error = cls._validate_structure(graph=graph, mode=mode)
-        if structural_error:
-            logger.warning("Workflow generator: structural validation failed: %s", structural_error)
+        # Final structural sanity check — fail closed if start/end shape is
+        # wrong, container topology is broken, a tool was hallucinated, or a
+        # variable reference points at a node that won't expose it.
+        structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
+        if structural_errors:
+            logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
             return {
                 "graph": graph,  # still return the partial graph so caller can debug
                 "message": plan.get("description", ""),
                 "app_name": app_name,
                 "icon": icon,
-                "error": structural_error,
+                "error": _errors_to_str(structural_errors),
+                "errors": structural_errors,
             }
 
         return {
@@ -191,7 +265,62 @@ class WorkflowGenerator:
             "app_name": app_name,
             "icon": icon,
             "error": "",
+            "errors": [],
         }
+
+    # ------------------------------------------------------------------
+    # Shared LLM call + JSON parse with one-shot retry
+    # ------------------------------------------------------------------
+    @classmethod
+    def _invoke_and_parse_json(
+        cls,
+        *,
+        model_instance,
+        messages,
+        model_parameters: dict[str, Any],
+        exc_class: type[ValueError],
+    ) -> dict[str, Any]:
+        """
+        Call the LLM and parse the response as JSON, retrying ONCE on parse failure.
+
+        Why one retry only: the planner and builder are both expensive (each
+        consumes its full system+user prompt), so a retry loop would burn
+        quota for a model that's fundamentally returning prose instead of
+        JSON. One retry with a corrective hint catches the dominant failure
+        mode — a stray markdown code fence or trailing prose — without
+        masking a model that simply can't follow the spec.
+
+        On the second failure the typed ``exc_class`` bubbles up so the outer
+        runner maps it to ``INVALID_JSON`` in the result envelope.
+        """
+        last_error: Exception | None = None
+        for attempt in range(2):
+            attempt_messages = (
+                list(messages)
+                if attempt == 0
+                else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
+            )
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=attempt_messages,
+                model_parameters=model_parameters,
+                stream=False,
+            )
+            text = response.message.get_text_content() or ""
+            try:
+                parsed = json_repair.loads(text)
+            except Exception as e:
+                last_error = e
+                logger.info("Workflow generator: JSON parse failed on attempt %s: %s", attempt + 1, e)
+                continue
+            if isinstance(parsed, dict):
+                if attempt > 0:
+                    logger.info("Workflow generator: JSON parse recovered on retry")
+                return cast(dict[str, Any], parsed)
+            last_error = exc_class(f"Non-object JSON: {type(parsed).__name__}")
+            logger.info("Workflow generator: non-object JSON on attempt %s", attempt + 1)
+        # Both attempts failed — raise the typed exception so the outer
+        # runner can tag it as INVALID_JSON.
+        raise exc_class(str(last_error) if last_error else "JSON parse failed")
 
     # ------------------------------------------------------------------
     # Planner
@@ -217,22 +346,19 @@ class WorkflowGenerator:
             SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT),
             UserPromptMessage(content=user_prompt),
         ]
-        response: LLMResult = model_instance.invoke_llm(
-            prompt_messages=messages,
+        parsed = cls._invoke_and_parse_json(
+            model_instance=model_instance,
+            messages=messages,
             model_parameters=_clamp_for_planner(model_parameters),
-            stream=False,
+            exc_class=_PlannerJSONError,
         )
-        text = response.message.get_text_content() or ""
-        parsed = json_repair.loads(text)
-        if not isinstance(parsed, dict):
-            raise ValueError(f"Planner returned non-object JSON: {type(parsed).__name__}")
 
         nodes = parsed.get("nodes")
         if not isinstance(nodes, list):
-            raise ValueError("Planner returned no 'nodes' array")
+            raise _PlannerSchemaError("Planner returned no 'nodes' array")
         for node in nodes:
             if not isinstance(node, dict) or "node_type" not in node:
-                raise ValueError(f"Planner node entry malformed: {node!r}")
+                raise _PlannerSchemaError(f"Planner node entry malformed: {node!r}")
 
         return cast(PlannerResultDict, parsed)
 
@@ -269,20 +395,17 @@ class WorkflowGenerator:
             SystemPromptMessage(content=get_builder_system_prompt(mode)),
             UserPromptMessage(content=user_prompt),
         ]
-        response: LLMResult = model_instance.invoke_llm(
-            prompt_messages=messages,
+        parsed = cls._invoke_and_parse_json(
+            model_instance=model_instance,
+            messages=messages,
             model_parameters=model_parameters,
-            stream=False,
+            exc_class=_BuilderJSONError,
         )
-        text = response.message.get_text_content() or ""
-        parsed = json_repair.loads(text)
-        if not isinstance(parsed, dict):
-            raise ValueError(f"Builder returned non-object JSON: {type(parsed).__name__}")
 
         nodes = parsed.get("nodes")
         edges = parsed.get("edges")
         if not isinstance(nodes, list) or not isinstance(edges, list):
-            raise ValueError("Builder graph missing 'nodes' or 'edges' arrays")
+            raise _BuilderSchemaError("Builder graph missing 'nodes' or 'edges' arrays")
 
         viewport = parsed.get("viewport") or _DEFAULT_VIEWPORT
         return cast(
@@ -684,42 +807,267 @@ class WorkflowGenerator:
     # ------------------------------------------------------------------
     # Validation
     # ------------------------------------------------------------------
-    @classmethod
-    def _validate_structure(cls, *, graph: GraphDict, mode: WorkflowGenerationMode) -> str:
-        """
-        Return an error string if the graph violates the start/end-shape contract.
+    _CONTAINER_TYPES: ClassVar = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 
-        Only catches structural violations the user must know about. Per-node
-        config validation is deferred to ``WorkflowService.sync_draft_workflow``.
+    @classmethod
+    def _validate_structure(
+        cls,
+        *,
+        graph: GraphDict,
+        mode: WorkflowGenerationMode,
+        installed_tools: set[tuple[str, str]] | None = None,
+    ) -> list[WorkflowGenerateErrorDict]:
         """
-        nodes = graph.get("nodes", [])
+        Return a list of structured errors for every violation found.
+
+        Catches:
+          * exactly-one ``start`` node + mode-aware terminal (``end`` for
+            workflow, ``answer`` for advanced-chat);
+          * edges whose endpoints don't exist;
+          * dangling ``parentId`` / ``start_node_id`` / ``iteration_id`` /
+            ``loop_id`` references inside node ``data``;
+          * container nodes (iteration / loop) without children, children
+            whose ``parentId`` points at a non-container, and cycles in the
+            parent chain;
+          * variable references (``{{#node.var#}}`` / value selectors) that
+            point at a node which does NOT declare the variable;
+          * tool nodes naming a ``(provider, tool)`` pair the tenant hasn't
+            installed.
+
+        Per-node config validation (model spec, prompt template shape, etc.)
+        is deferred to ``WorkflowService.sync_draft_workflow``; we only fail
+        on structural issues the user must know about so they don't get a
+        broken-at-runtime draft.
+        """
+        errors: list[WorkflowGenerateErrorDict] = []
+
+        nodes_raw = graph.get("nodes", [])
+        nodes: list[dict[str, Any]] = list(cast(list[dict[str, Any]], nodes_raw))
         if not nodes:
-            return "Generated graph has no nodes"
+            errors.append(_err(WorkflowGenerateErrorCode.INVALID_SCHEMA, "Generated graph has no nodes"))
+            return errors
 
         types = [node.get("data", {}).get("type", "") for node in nodes]
         starts = [t for t in types if t == BuiltinNodeTypes.START]
         if len(starts) != 1:
-            return f"Workflow must have exactly one 'start' node (found {len(starts)})"
+            errors.append(
+                _err(
+                    WorkflowGenerateErrorCode.MISSING_START,
+                    f"Workflow must have exactly one 'start' node (found {len(starts)})",
+                )
+            )
 
         if mode == "advanced-chat":
-            terminals = [t for t in types if t == BuiltinNodeTypes.ANSWER]
+            terminal_count = sum(1 for t in types if t == BuiltinNodeTypes.ANSWER)
             terminal_name = "answer"
         else:
-            terminals = [t for t in types if t == BuiltinNodeTypes.END]
+            terminal_count = sum(1 for t in types if t == BuiltinNodeTypes.END)
             terminal_name = "end"
-
-        if len(terminals) < 1:
-            return f"Workflow must end with at least one '{terminal_name}' node"
+        if terminal_count < 1:
+            errors.append(
+                _err(
+                    WorkflowGenerateErrorCode.MISSING_TERMINAL,
+                    f"Workflow must end with at least one '{terminal_name}' node",
+                )
+            )
 
         # Edges must reference real node ids.
-        known_ids = {node.get("id", "") for node in nodes}
+        known_ids: set[str] = {node.get("id", "") for node in nodes if node.get("id")}
         for edge in graph.get("edges", []):
-            if edge.get("source") not in known_ids:
-                return f"Edge references unknown source node: {edge.get('source')!r}"
-            if edge.get("target") not in known_ids:
-                return f"Edge references unknown target node: {edge.get('target')!r}"
+            src = edge.get("source")
+            tgt = edge.get("target")
+            if src not in known_ids:
+                errors.append(_err(WorkflowGenerateErrorCode.DANGLING_EDGE, f"Edge source node not found: {src!r}"))
+            if tgt not in known_ids:
+                errors.append(_err(WorkflowGenerateErrorCode.DANGLING_EDGE, f"Edge target node not found: {tgt!r}"))
 
-        return ""
+        # Dangling node-id references in node ``data`` (parentId, start_node_id, iteration_id, loop_id).
+        errors.extend(cls._collect_dangling_id_refs(nodes=nodes, known_ids=known_ids))
+
+        # Container topology.
+        errors.extend(cls._collect_container_errors(nodes=nodes))
+
+        # Tool catalogue check — only run if the caller wired in a catalogue.
+        if installed_tools is not None:
+            errors.extend(cls._collect_unknown_tools(nodes=nodes, installed_tools=installed_tools))
+
+        # Variable-reference resolution — walks ``{{#node.var#}}`` placeholders
+        # and value selectors and flags anything pointing at a node that
+        # doesn't declare the variable. Start-node refs are auto-fixed
+        # earlier in postprocess, so anything that survives to here is
+        # genuinely unresolvable.
+        errors.extend(cls._collect_unresolved_refs(nodes=nodes, mode=mode))
+
+        return errors
+
+    @classmethod
+    def _collect_dangling_id_refs(
+        cls, *, nodes: list[dict[str, Any]], known_ids: set[str]
+    ) -> list[WorkflowGenerateErrorDict]:
+        """Flag ``parentId`` / ``start_node_id`` / ``iteration_id`` / ``loop_id`` pointing nowhere."""
+        out: list[WorkflowGenerateErrorDict] = []
+        for node in nodes:
+            data = node.get("data") or {}
+            for field in cls._ID_FIELDS:
+                ref = data.get(field)
+                if isinstance(ref, str) and ref and ref not in known_ids:
+                    out.append(
+                        _err(
+                            WorkflowGenerateErrorCode.UNKNOWN_NODE_REFERENCE,
+                            f"Node {node.get('id')!r} field {field!r} references unknown node: {ref!r}",
+                            node_id=node.get("id", ""),
+                        )
+                    )
+        return out
+
+    @classmethod
+    def _collect_container_errors(cls, *, nodes: list[dict[str, Any]]) -> list[WorkflowGenerateErrorDict]:
+        """
+        Validate iteration / loop topology:
+
+          * every container has at least one child whose ``parentId``
+            points at it;
+          * every non-container node with a ``parentId`` points at a real
+            container, not at a non-container node;
+          * no cycles in the parent chain (a node cannot be its own
+            ancestor).
+        """
+        out: list[WorkflowGenerateErrorDict] = []
+        by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
+
+        # Containers and the set of node-ids that have a parentId pointing at them.
+        container_ids = {n.get("id", "") for n in nodes if n.get("data", {}).get("type") in cls._CONTAINER_TYPES}
+        children_by_parent: dict[str, list[str]] = {cid: [] for cid in container_ids}
+        for n in nodes:
+            parent = (n.get("data") or {}).get("parentId") or n.get("parentId")
+            if not isinstance(parent, str) or not parent:
+                continue
+            if parent in container_ids:
+                children_by_parent.setdefault(parent, []).append(n.get("id", ""))
+            elif parent in by_id:
+                # Parent exists but isn't a container — that's a topology bug.
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.INVALID_CONTAINER,
+                        f"Node {n.get('id')!r} parentId {parent!r} is not an iteration or loop node",
+                        node_id=n.get("id", ""),
+                    )
+                )
+            # parent missing from by_id is already flagged by _collect_dangling_id_refs.
+
+        for cid in container_ids:
+            if not children_by_parent.get(cid):
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.INVALID_CONTAINER,
+                        f"Container node {cid!r} has no child nodes",
+                        node_id=cid,
+                    )
+                )
+
+        # Cycle detection — for each node, walk up parentId chain and
+        # bail if we ever revisit a node we've already seen on the chain.
+        for n in nodes:
+            seen: set[str] = set()
+            cur_id = n.get("id", "")
+            cur = n
+            depth = 0
+            while cur is not None and depth < 64:  # generous safety cap
+                parent = (cur.get("data") or {}).get("parentId") or cur.get("parentId")
+                if not isinstance(parent, str) or not parent:
+                    break
+                if parent == cur_id or parent in seen:
+                    out.append(
+                        _err(
+                            WorkflowGenerateErrorCode.INVALID_CONTAINER,
+                            f"Cycle detected in parentId chain at node {cur_id!r}",
+                            node_id=cur_id,
+                        )
+                    )
+                    break
+                seen.add(parent)
+                cur = by_id.get(parent)
+                depth += 1
+        return out
+
+    @classmethod
+    def _collect_unknown_tools(
+        cls,
+        *,
+        nodes: list[dict[str, Any]],
+        installed_tools: set[tuple[str, str]],
+    ) -> list[WorkflowGenerateErrorDict]:
+        """Flag tool nodes naming a provider / tool pair not in the catalogue."""
+        out: list[WorkflowGenerateErrorDict] = []
+        for n in nodes:
+            data = n.get("data") or {}
+            if data.get("type") != BuiltinNodeTypes.TOOL:
+                continue
+            # The builder is told to put the catalogue's ``provider_name``
+            # into BOTH ``provider_id`` and ``provider_name``. Accept either
+            # for the lookup so we don't false-fail on the rare case where
+            # the LLM only populated one of the two fields.
+            provider = str(data.get("provider_id") or data.get("provider_name") or "").strip()
+            tool = str(data.get("tool_name") or "").strip()
+            if not provider or not tool:
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.UNKNOWN_TOOL,
+                        f"Tool node {n.get('id')!r} missing provider / tool name",
+                        node_id=n.get("id", ""),
+                    )
+                )
+                continue
+            if (provider, tool) not in installed_tools:
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.UNKNOWN_TOOL,
+                        f"Tool {provider}/{tool} is not installed for this tenant",
+                        node_id=n.get("id", ""),
+                    )
+                )
+        return out
+
+    @classmethod
+    def _collect_unresolved_refs(
+        cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode
+    ) -> list[WorkflowGenerateErrorDict]:
+        """
+        Walk every variable reference and flag anything pointing at a node
+        that doesn't declare it. The postprocess step has already
+        auto-injected missing start-node variables, so by the time this
+        runs only NON-start references should ever fail.
+        """
+        out: list[WorkflowGenerateErrorDict] = []
+        by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
+
+        refs: set[tuple[str, str]] = set()
+        for node in nodes:
+            cls._collect_refs_in_data(node.get("data") or {}, refs)
+
+        for node_id, var in refs:
+            if mode == "advanced-chat" and node_id == "sys":
+                continue
+            target = by_id.get(node_id)
+            if target is None:
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.UNKNOWN_NODE_REFERENCE,
+                        f"Reference {{#{node_id}.{var}#}} points at unknown node {node_id!r}",
+                        node_id=node_id,
+                    )
+                )
+                continue
+            if cls._declares_variable(target, var):
+                continue
+            out.append(
+                _err(
+                    WorkflowGenerateErrorCode.UNRESOLVED_REFERENCE,
+                    f"Reference {{#{node_id}.{var}#}} not declared on node {node_id!r}",
+                    node_id=node_id,
+                )
+            )
+        return out
 
 
 def _clamp_for_planner(params: dict[str, Any]) -> dict[str, Any]:

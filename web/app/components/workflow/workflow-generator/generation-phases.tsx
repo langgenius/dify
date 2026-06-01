@@ -17,9 +17,29 @@ import Loading from '@/app/components/base/loading'
 const PLANNING_MS = 3500
 const BUILDING_MS = 12000
 
-const GenerationPhases = () => {
+type Props = {
+  /**
+   * Per-attempt nonce — typically ``Date.now()`` of when Generate was
+   * clicked. The component resets ``phaseIndex`` whenever this changes so a
+   * second Generate click starts the indicator from "Planning…" instead of
+   * resuming wherever the previous attempt left off.
+   */
+  startedAt: number
+}
+
+const GenerationPhases = ({ startedAt }: Props) => {
   const { t } = useTranslation('workflow')
   const [phaseIndex, setPhaseIndex] = useState(0)
+
+  // Reset the indicator whenever a new attempt starts. Without this, a
+  // failed first attempt followed by a quick retry would resume mid-phase
+  // (or stuck on "Validating…") which looks like the system is wedged.
+  // ``set-state-in-effect`` flags this pattern, but the reset is the
+  // intent — driven by an external prop change, not by render-time state.
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect
+    setPhaseIndex(0)
+  }, [startedAt])
 
   useEffect(() => {
     if (phaseIndex === 0) {

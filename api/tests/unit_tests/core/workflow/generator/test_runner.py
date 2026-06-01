@@ -1474,3 +1474,491 @@ class TestWorkflowGeneratorNodeIdHyphens:
         refs: set[tuple[str, str]] = set()
         WorkflowGenerator._collect_refs_in_data({"text": "Hyphenated: {{#node-1.url#}}. Clean: {{#node1.url#}}."}, refs)
         assert refs == {("node1", "url")}
+
+
+class TestWorkflowGeneratorStructuredErrors:
+    """
+    The runner emits a ``errors: list[WorkflowGenerateErrorDict]`` sibling of
+    ``error: str`` so the frontend can map machine-readable codes to localised
+    copy and tie failures to specific nodes. These tests pin the codes the
+    validator emits for each unhappy path; the FE i18n map (and any consumer
+    decoding the envelope) relies on them being stable.
+    """
+
+    @staticmethod
+    def _planner(nodes_spec):
+        return json.dumps({"title": "x", "description": "x", "nodes": nodes_spec})
+
+    @staticmethod
+    def _builder(nodes, edges):
+        return json.dumps({"nodes": nodes, "edges": edges, "viewport": {"x": 0, "y": 0, "zoom": 0.7}})
+
+    def test_happy_path_returns_empty_errors_list(self):
+        # Even though older callers only read ``error``, the new ``errors``
+        # field must be an empty list on success — never missing — so the
+        # frontend's ``res.errors?.[0]?.code`` lookup is type-safe.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            edges=[{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        assert result["error"] == ""
+        assert result["errors"] == []
+
+    def test_validator_rejects_dangling_parent_id(self):
+        # The builder emitted an llm node whose ``parentId`` points at a node
+        # that doesn't exist. That would silently render a free-floating node
+        # in the canvas at run time; we fail at generation time instead.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "LLM", "node_type": "llm", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "llm", "title": "LLM", "parentId": "ghostcontainer"},
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "UNKNOWN_NODE_REFERENCE" in codes
+
+    def test_validator_rejects_container_without_children(self):
+        # An iteration node with no inner children would deadlock at run time
+        # (nothing to iterate over the array against). We surface
+        # INVALID_CONTAINER so the user retries instead of hitting a runtime
+        # error after Apply.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Loop", "node_type": "iteration", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "iteration", "title": "Loop"},
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "INVALID_CONTAINER" in codes
+
+    def test_validator_rejects_unknown_tool(self):
+        # The builder emitted a tool node naming a provider / tool the tenant
+        # doesn't have installed. The validator consults the
+        # ``installed_tools`` set the service-layer passes in; a hallucinated
+        # name fails with UNKNOWN_TOOL.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Search", "node_type": "tool", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "tool",
+                        "title": "Search",
+                        "provider_id": "google",
+                        "provider_type": "builtin",
+                        "provider_name": "google",
+                        "tool_name": "fake_search",
+                        "tool_label": "Fake",
+                        "tool_node_version": "2",
+                    },
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+            # Only "real_search" is installed; "fake_search" is the hallucination.
+            installed_tools={("google", "real_search")},
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "UNKNOWN_TOOL" in codes
+
+    def test_validator_skips_tool_check_when_catalogue_is_none(self):
+        # ``installed_tools=None`` is the sentinel the service uses when the
+        # catalogue build itself failed (e.g. plugin daemon down). We must
+        # NOT reject every tool node in that case — the user shouldn't be
+        # blocked from generating just because the catalogue endpoint had
+        # a hiccup.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Search", "node_type": "tool", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "tool",
+                        "title": "Search",
+                        "provider_id": "google",
+                        "provider_name": "google",
+                        "tool_name": "any_tool",
+                    },
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+            installed_tools=None,
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "UNKNOWN_TOOL" not in codes
+
+    def test_validator_emits_missing_terminal_code(self):
+        # The historical assertion was substring-based — pin the structured
+        # code too so the frontend i18n map has a stable key.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+            ],
+            edges=[],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "MISSING_TERMINAL" in codes
+
+    def test_validator_emits_unresolved_reference_for_non_start_node(self):
+        # The LLM node tries to reference a key the CODE node never declares
+        # (its ``outputs`` dict only has ``summary``, not ``mystery``). The
+        # postprocess only auto-injects MISSING ``start`` vars, so the
+        # validator must surface non-start unresolved refs.
+        planner = self._planner(
+            [
+                {"label": "Start", "node_type": "start", "purpose": "x"},
+                {"label": "Code", "node_type": "code", "purpose": "x"},
+                {"label": "LLM", "node_type": "llm", "purpose": "x"},
+                {"label": "End", "node_type": "end", "purpose": "x"},
+            ]
+        )
+        builder = self._builder(
+            nodes=[
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "code", "title": "Code", "outputs": {"summary": {"type": "string"}}},
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "prompt_template": [
+                            {"role": "user", "text": "Look at {{#node2.mystery#}}."},
+                        ],
+                    },
+                },
+                {
+                    "id": "node4",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            edges=[
+                {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+                {"id": "c", "source": "node3", "target": "node4", "type": "custom"},
+            ],
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "UNRESOLVED_REFERENCE" in codes
+        # Detail should mention the offending key so the user can find it.
+        unresolved = next(e for e in result["errors"] if e["code"] == "UNRESOLVED_REFERENCE")
+        assert "mystery" in unresolved["detail"]
+
+    def test_planner_json_failure_retries_once_then_recovers(self):
+        # First planner response is non-JSON (the LLM wrapped the response in
+        # prose) — we retry exactly once with a corrective system message,
+        # the model returns valid JSON, and the rest of the pipeline runs as
+        # if nothing went wrong. The builder must NOT be called more than
+        # once (its parse still succeeded on first try).
+        planner_valid = json.dumps(
+            {
+                "title": "x",
+                "description": "x",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        builder = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start"},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End"},
+                    },
+                ],
+                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model_instance = MagicMock()
+        # planner attempt 1 → non-dict garbage; attempt 2 → valid; then builder.
+        model_instance.invoke_llm.side_effect = [
+            _llm_result("[]"),  # json_repair parses to a list — non-dict, retry fires
+            _llm_result(planner_valid),
+            _llm_result(builder),
+        ]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        assert result["error"] == ""
+        assert result["errors"] == []
+        # Two planner attempts + one builder attempt = three invoke_llm calls.
+        assert model_instance.invoke_llm.call_count == 3
+
+    def test_planner_json_failure_retries_only_once_then_gives_up(self):
+        # Both planner attempts return junk. After the retry exhausts we
+        # surface INVALID_JSON in the envelope and do NOT call the builder.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result("[]"),  # non-dict on first try
+            _llm_result("[]"),  # non-dict on retry — give up
+        ]
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        codes = [e["code"] for e in result["errors"]]
+        assert "INVALID_JSON" in codes
+        # Exactly TWO calls — no third retry, no builder call.
+        assert model_instance.invoke_llm.call_count == 2
+
+    def test_planner_invalid_json_emits_invalid_json_code(self):
+        # Stable code on the JSON-parse failure path so the FE can localise.
+        model_instance = MagicMock()
+        model_instance.invoke_llm.return_value = _llm_result("definitely not json")
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+        # ``json_repair`` is generous about repairing strings, so we can't
+        # guarantee it always raises — but if it succeeds we still expect a
+        # downstream schema failure. Either INVALID_JSON or INVALID_SCHEMA is
+        # acceptable; both are FE-mapped to "couldn't understand the model
+        # response" copy.
+        codes = [e["code"] for e in result["errors"]]
+        assert any(c in {"INVALID_JSON", "INVALID_SCHEMA", "MODEL_ERROR"} for c in codes)

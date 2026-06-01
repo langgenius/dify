@@ -1,11 +1,59 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
-import { createApp } from '@/service/apps'
+import { createApp, deleteApp } from '@/service/apps'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 
 const MODE_TO_APP_MODE: Record<WorkflowGeneratorMode, AppModeEnum> = {
   'workflow': AppModeEnum.WORKFLOW,
   'advanced-chat': AppModeEnum.ADVANCED_CHAT,
+}
+
+/**
+ * Thrown by ``applyToCurrentApp`` when the backend rejects the sync because
+ * the draft's ``unique_hash`` doesn't match — typically another tab edited
+ * the draft after we fetched it. The caller maps this to a dedicated
+ * "Workspace was edited elsewhere" toast with a Reload affordance instead
+ * of a generic "Apply failed".
+ *
+ * Backend surfaces this as HTTP 409 with ``error_code:
+ * "draft_workflow_not_sync"`` (see
+ * ``api/controllers/console/app/error.py::DraftWorkflowNotSync``).
+ */
+export class WorkflowApplyHashCollisionError extends Error {
+  constructor() {
+    super('Workflow draft was modified in another tab; reload required.')
+    this.name = 'WorkflowApplyHashCollisionError'
+  }
+}
+
+/**
+ * Thrown by ``applyToNewApp`` when the freshly-created app's draft sync
+ * failed AND we couldn't roll back by deleting the new app. The caller
+ * routes the user to ``/apps`` so the orphan is at least discoverable and
+ * surfaces a localised toast — without this an unrecoverable orphan would
+ * silently sit in the app list with no graph.
+ */
+export class WorkflowApplyOrphanError extends Error {
+  readonly orphanAppId: string
+
+  constructor(orphanAppId: string, cause?: unknown) {
+    super(`Failed to apply graph; new app ${orphanAppId} may be orphaned.`)
+    this.name = 'WorkflowApplyOrphanError'
+    this.orphanAppId = orphanAppId
+    if (cause)
+      (this as { cause?: unknown }).cause = cause
+  }
+}
+
+const isHashCollisionResponse = (e: unknown): boolean => {
+  // The shared ``post()`` wrapper rejects with the raw ``Response`` for non-401
+  // failures (see ``service/base.ts::request`` catch branch). We sniff 409 +
+  // the backend's error_code so transient 4xx errors don't all collapse into
+  // "hash collision".
+  if (!e || typeof e !== 'object')
+    return false
+  const candidate = e as { status?: number, code?: string }
+  return candidate.status === 409 || candidate.code === 'draft_workflow_not_sync'
 }
 
 // Derive a sane App name from the user's instruction: trim, cap at 40 chars,
@@ -56,15 +104,34 @@ export const applyToNewApp = async ({
     description: instruction.trim().slice(0, 200),
   })
 
-  await syncWorkflowDraft({
-    url: `apps/${app.id}/workflows/draft`,
-    params: {
-      graph,
-      features: {},
-      environment_variables: [],
-      conversation_variables: [],
-    },
-  })
+  // Sync the generated graph into the brand-new app's draft. ``createApp``
+  // already succeeded so the app exists; if the sync fails (network blip,
+  // backend rejection of the graph) we MUST roll the createApp back so the
+  // user isn't left with a discoverable-but-empty app sitting at the top
+  // of their /apps list. ``deleteApp`` is best-effort — if that also fails
+  // (it usually won't, it's a simple DELETE) we surface ``WorkflowApplyOrphanError``
+  // so the caller can route to /apps where the orphan is still recoverable
+  // by hand.
+  try {
+    await syncWorkflowDraft({
+      url: `apps/${app.id}/workflows/draft`,
+      params: {
+        graph,
+        features: {},
+        environment_variables: [],
+        conversation_variables: [],
+      },
+    })
+  }
+  catch (syncErr) {
+    try {
+      await deleteApp(app.id)
+    }
+    catch (deleteErr) {
+      throw new WorkflowApplyOrphanError(app.id, deleteErr)
+    }
+    throw syncErr
+  }
 
   return { appId: app.id, appMode }
 }
@@ -105,16 +172,26 @@ export const applyToCurrentApp = async ({
     existing = null
   }
 
-  await syncWorkflowDraft({
-    url,
-    params: {
-      graph,
-      features: existing?.features ?? {},
-      environment_variables: existing?.environment_variables ?? [],
-      conversation_variables: existing?.conversation_variables ?? [],
-      // Field is accepted by the backend but not typed in the Pick<> shape of
-      // ``syncWorkflowDraft``'s params — spread it in so it reaches the wire.
-      ...(existing?.hash ? { hash: existing.hash } : {}),
-    } as Parameters<typeof syncWorkflowDraft>[0]['params'],
-  })
+  try {
+    await syncWorkflowDraft({
+      url,
+      params: {
+        graph,
+        features: existing?.features ?? {},
+        environment_variables: existing?.environment_variables ?? [],
+        conversation_variables: existing?.conversation_variables ?? [],
+        // Field is accepted by the backend but not typed in the Pick<> shape of
+        // ``syncWorkflowDraft``'s params — spread it in so it reaches the wire.
+        ...(existing?.hash ? { hash: existing.hash } : {}),
+      } as Parameters<typeof syncWorkflowDraft>[0]['params'],
+    })
+  }
+  catch (e) {
+    // 409 → draft was edited in another tab between our fetch and sync.
+    // Translate the raw Response rejection into a typed error so the caller
+    // can show a Reload affordance instead of a generic "apply failed" toast.
+    if (isHashCollisionResponse(e))
+      throw new WorkflowApplyHashCollisionError()
+    throw e
+  }
 }

@@ -17,7 +17,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import IdeaOutput from '@/app/components/app/configuration/config/automatic/idea-output'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
@@ -30,7 +30,7 @@ import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { getRedirectionPath } from '@/utils/app-redirection'
-import { applyToCurrentApp, applyToNewApp } from './apply'
+import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
 import GenerationPhases from './generation-phases'
 import { useWorkflowGeneratorStore } from './store'
@@ -124,8 +124,64 @@ const WorkflowGeneratorModal: React.FC = () => {
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
   const [isApplying, { setTrue: setApplyingTrue, setFalse: setApplyingFalse }] = useBoolean(false)
 
+  // Per-attempt nonce — bumped on each Generate click so ``GenerationPhases``
+  // can reset its internal phase timer instead of resuming wherever the
+  // previous attempt left off (which makes the UI look wedged).
+  const [startedAt, setStartedAt] = useState(0)
+
   // Confirmation dialog for "Apply to current draft"
   const [isShowConfirmOverwrite, { setTrue: showConfirmOverwrite, setFalse: hideConfirmOverwrite }] = useBoolean(false)
+
+  // Surfaced when the backend rejects the draft sync because another tab
+  // edited the workspace after we fetched it. Dedicated dialog instead of a
+  // toast because the user needs an explicit Reload action — without that,
+  // a generic "apply failed" toast leaves them stuck and confused.
+  const [isShowHashCollision, { setTrue: showHashCollision, setFalse: hideHashCollision }] = useBoolean(false)
+
+  // Holds the AbortController of the in-flight ``/workflow-generate`` request
+  // so we can cancel it on (a) modal close, (b) a second Generate click
+  // while loading, (c) the hard 60 s frontend timeout, or (d) the user
+  // pressing Cancel. Without this an in-flight request outlives the modal
+  // and can race a future Generate call.
+  const abortRef = useRef<AbortController | null>(null)
+  // Companion timer so the timeout doesn't keep running after the response
+  // lands. Cleared inside the same ``finally`` block that flips loading off.
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Mode the user generated against. If they switch app context mid-flight
+  // (e.g. open the same modal from a different Studio in another tab) we
+  // hide the "Apply to current" button so the wrong-mode graph never lands
+  // in the wrong Studio. Captured at Generate time, not Apply time.
+  const generatedModeRef = useRef<typeof mode | null>(null)
+
+  const FE_TIMEOUT_MS = 60_000
+
+  const clearTimers = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+  }, [])
+
+  const abortInFlight = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+    clearTimers()
+  }, [clearTimers])
+
+  // Cleanup on unmount — a modal unmount mid-generation must NOT leave the
+  // request running in the background (it would still resolve, mutate the
+  // store, and toast "applied" against a stale modal).
+  useEffect(() => {
+    return () => {
+      abortInFlight()
+    }
+    // The cleanup function reads refs only, so it's stable; we intentionally
+    // exclude ``abortInFlight`` from deps to avoid re-running this effect on
+    // every render.
+    // eslint-disable-next-line react/exhaustive-deps
+  }, [])
 
   // Note: the modal is mounted lazily by ``mount.tsx`` which unmounts it when
   // ``isOpen`` flips to false, so transient state (instruction / ideaOutput)
@@ -137,20 +193,56 @@ const WorkflowGeneratorModal: React.FC = () => {
       toast.error(t('workflowGenerator.instructionRequired'))
       return false
     }
+    if (!model.name) {
+      // No usable model resolved (provider catalogue empty or still
+      // loading). Without this guard the request would fly with an empty
+      // ``model_config.name`` and surface as a backend 400 — not actionable
+      // for the user. Tell them to pick a model.
+      toast.error(t('workflowGenerator.modelRequired'))
+      return false
+    }
     return true
   }
 
   const onGenerate = async () => {
-    if (!isValid() || isLoading)
+    if (!isValid())
       return
+    // Cancel any previous in-flight request (double-click guard). The
+    // previous promise will reject with AbortError which our catch swallows.
+    abortInFlight()
+
+    setStartedAt(Date.now())
+    generatedModeRef.current = mode
     setLoadingTrue()
+
+    // Hard frontend timeout — aborts the request and surfaces a localised
+    // toast so the user sees something actionable instead of a perpetual
+    // spinner if the backend hangs.
+    timeoutRef.current = setTimeout(() => {
+      abortRef.current?.abort()
+      abortRef.current = null
+      toast.error(t('workflowGenerator.errors.timeout'))
+    }, FE_TIMEOUT_MS)
+
     try {
       const res = await generateWorkflow({
         mode,
         instruction,
         ideal_output: ideaOutput,
         model_config: model,
+      }, {
+        getAbortController: (c) => { abortRef.current = c },
       })
+      const first = res.errors?.[0]
+      if (first) {
+        // Prefer the localised copy for the structured code; fall back to
+        // the backend's human-readable ``detail`` for codes we don't have
+        // a translation for yet.
+        const i18nKey = `workflowGenerator.errors.${first.code}`
+        const localised = t(i18nKey, { defaultValue: '' })
+        toast.error(localised || first.detail || res.error || t('workflowGenerator.generateFailed'))
+        return
+      }
       if (res.error) {
         toast.error(res.error)
         return
@@ -158,15 +250,38 @@ const WorkflowGeneratorModal: React.FC = () => {
       addVersion(res)
     }
     catch (e: unknown) {
+      // Aborts are intentional (modal close, second click, timeout) —
+      // never toast for them. ``DOMException`` is the typed shape but some
+      // environments surface a plain ``Error`` with ``name === 'AbortError'``,
+      // so check both.
+      if (e instanceof DOMException && e.name === 'AbortError')
+        return
+      if (e instanceof Error && e.name === 'AbortError')
+        return
       const message = e instanceof Error ? e.message : ''
       toast.error(message || t('workflowGenerator.generateFailed'))
     }
     finally {
       setLoadingFalse()
+      clearTimers()
+      abortRef.current = null
     }
   }
 
-  const canApplyToCurrent = !!currentAppId && currentAppMode === mode
+  const onCancelGeneration = useCallback(() => {
+    abortInFlight()
+    setLoadingFalse()
+  }, [abortInFlight, setLoadingFalse])
+
+  // "Apply to current" only stays valid if BOTH (a) the current app is in
+  // the same mode the modal is generating for AND (b) the user hasn't
+  // switched modes since the generation that produced ``current``. If the
+  // mode changed mid-flight we fall back to "Create new app" only.
+  const generatedMode = generatedModeRef.current
+  const canApplyToCurrent
+    = !!currentAppId
+      && currentAppMode === mode
+      && (generatedMode === null || generatedMode === mode)
 
   const handleApplyToNew = useCallback(async () => {
     if (!current?.graph || isApplying)
@@ -185,6 +300,14 @@ const WorkflowGeneratorModal: React.FC = () => {
       router.push(getRedirectionPath(isCurrentWorkspaceEditor, { id: appId, mode: appMode }))
     }
     catch (e: unknown) {
+      if (e instanceof WorkflowApplyOrphanError) {
+        // Sync failed AND we couldn't roll back. Route the user to /apps so
+        // the orphan is still discoverable — they can delete it by hand.
+        toast.error(t('workflowGenerator.errors.apply_failed_orphan'))
+        closeGenerator()
+        router.push('/apps')
+        return
+      }
       const message = e instanceof Error ? e.message : ''
       toast.error(message || t('workflowGenerator.applyFailed'))
     }
@@ -209,13 +332,22 @@ const WorkflowGeneratorModal: React.FC = () => {
         window.location.reload()
     }
     catch (e: unknown) {
+      if (e instanceof WorkflowApplyHashCollisionError) {
+        // Another tab edited the draft after we fetched it. Show a
+        // dedicated dialog with a Reload affordance instead of a generic
+        // "apply failed" toast — the user needs to know what actually
+        // happened so they can pick up the other tab's edits before
+        // retrying.
+        showHashCollision()
+        return
+      }
       const message = e instanceof Error ? e.message : ''
       toast.error(message || t('workflowGenerator.applyFailed'))
     }
     finally {
       setApplyingFalse()
     }
-  }, [current, currentAppId, hideConfirmOverwrite, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
+  }, [current, currentAppId, hideConfirmOverwrite, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse, showHashCollision])
 
   const modeLabel = mode === 'workflow' ? t('workflowGenerator.modes.workflow') : t('workflowGenerator.modes.chatflow')
 
@@ -223,8 +355,13 @@ const WorkflowGeneratorModal: React.FC = () => {
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open)
+        if (!open) {
+          // Cancel any in-flight request BEFORE closing the store — a
+          // request that resolves after the modal closes would still toast
+          // against the now-unmounted modal and pollute version history.
+          abortInFlight()
           closeGenerator()
+        }
       }}
     >
       <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
@@ -275,15 +412,31 @@ const WorkflowGeneratorModal: React.FC = () => {
                 <Button onClick={closeGenerator}>
                   {t('workflowGenerator.dismiss')}
                 </Button>
-                <Button
-                  className="flex space-x-1"
-                  variant="primary"
-                  onClick={onGenerate}
-                  disabled={isLoading}
-                >
-                  <Generator className="size-4" />
-                  <span className="text-xs font-semibold">{t('workflowGenerator.generate')}</span>
-                </Button>
+                {isLoading
+                  ? (
+                      // Cancel surfaces the abort affordance during the 60 s
+                      // window where the user might want to bail (slow
+                      // model, wrong instruction, etc.). Hidden when idle so
+                      // the row stays focused on the primary action.
+                      <Button
+                        className="flex space-x-1"
+                        variant="secondary"
+                        onClick={onCancelGeneration}
+                      >
+                        <span className="text-xs font-semibold">{t('workflowGenerator.cancel')}</span>
+                      </Button>
+                    )
+                  : (
+                      <Button
+                        className="flex space-x-1"
+                        variant="primary"
+                        onClick={onGenerate}
+                        disabled={!model.name}
+                      >
+                        <Generator className="size-4" />
+                        <span className="text-xs font-semibold">{t('workflowGenerator.generate')}</span>
+                      </Button>
+                    )}
               </div>
             </div>
           </div>
@@ -344,7 +497,7 @@ const WorkflowGeneratorModal: React.FC = () => {
               )
             : null}
 
-          {isLoading && <GenerationPhases />}
+          {isLoading && <GenerationPhases startedAt={startedAt} />}
 
           {!isLoading && !current?.graph?.nodes?.length && renderPlaceholder(t('workflowGenerator.placeholder'))}
         </div>
@@ -363,6 +516,34 @@ const WorkflowGeneratorModal: React.FC = () => {
               <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleApplyToCurrentConfirmed}>
                 {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Hash-collision recovery — surfaces only when another tab edited
+            the draft between our fetch and sync. The Reload action picks up
+            the other tab's edits; Dismiss returns to the modal where the
+            user can copy the generated graph manually before re-fetching. */}
+        <AlertDialog open={isShowHashCollision} onOpenChange={open => !open && hideHashCollision()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('workflowGenerator.errors.hash_collision_title')}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('workflowGenerator.errors.hash_collision')}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={() => {
+                hideHashCollision()
+                if (typeof window !== 'undefined')
+                  window.location.reload()
+              }}
+              >
+                {t('workflowGenerator.reload')}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
           </AlertDialogContent>

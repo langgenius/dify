@@ -7,9 +7,41 @@ required to return after ``json_repair`` parsing. They mirror the runtime
 can be written straight into a draft workflow without further translation.
 """
 
-from typing import Literal, NotRequired, TypedDict
+from typing import Final, Literal, NotRequired, TypedDict
 
 WorkflowGenerationMode = Literal["workflow", "advanced-chat"]
+
+
+# Machine-readable error codes returned in ``WorkflowGenerateResultDict.errors``.
+# Frontend maps these to localised copy via ``workflow.generator.errors.<code>``
+# i18n keys, so any change here MUST be mirrored in the FE i18n map.
+class WorkflowGenerateErrorCode:
+    INVALID_JSON: Final = "INVALID_JSON"
+    INVALID_SCHEMA: Final = "INVALID_SCHEMA"
+    EMPTY_INSTRUCTION: Final = "EMPTY_INSTRUCTION"
+    EMPTY_PLAN: Final = "EMPTY_PLAN"
+    UNKNOWN_NODE_REFERENCE: Final = "UNKNOWN_NODE_REFERENCE"
+    INVALID_CONTAINER: Final = "INVALID_CONTAINER"
+    UNRESOLVED_REFERENCE: Final = "UNRESOLVED_REFERENCE"
+    UNKNOWN_TOOL: Final = "UNKNOWN_TOOL"
+    MISSING_TERMINAL: Final = "MISSING_TERMINAL"
+    MISSING_START: Final = "MISSING_START"
+    DANGLING_EDGE: Final = "DANGLING_EDGE"
+    MODEL_ERROR: Final = "MODEL_ERROR"
+
+
+class WorkflowGenerateErrorDict(TypedDict):
+    """One structured error from the workflow generator.
+
+    ``code`` is the stable machine-readable identifier listed in
+    ``WorkflowGenerateErrorCode``. ``detail`` is the raw human-readable
+    diagnostic (English). ``node_id`` is set when the error is tied to a
+    specific node so the frontend can highlight it on the preview canvas.
+    """
+
+    code: str
+    detail: str
+    node_id: NotRequired[str]
 
 
 class PlannerNodeDict(TypedDict):
@@ -99,6 +131,12 @@ class WorkflowGenerateResultDict(TypedDict):
     LLM emits them (newer prompts) and default to empty strings when it
     doesn't. The frontend's ``applyToNewApp`` consumes them with its own
     fallback so old prompts and missing fields stay safe.
+
+    ``errors`` is the structured-error sibling of ``error``. ``error`` is a
+    human-readable concatenation kept for backwards compat with the original
+    envelope; ``errors`` carries the machine-readable codes so the frontend
+    can localise the message and tie failures to specific nodes. On success
+    both ``error == ""`` and ``errors == []``.
     """
 
     graph: GraphDict
@@ -106,3 +144,4 @@ class WorkflowGenerateResultDict(TypedDict):
     app_name: str
     icon: str
     error: str
+    errors: list[WorkflowGenerateErrorDict]

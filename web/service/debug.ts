@@ -70,6 +70,37 @@ export const generateRule = (body: Record<string, any>) => {
   })
 }
 
+/**
+ * One structured error from the workflow generator backend. ``code`` is a
+ * stable machine-readable identifier the frontend maps to localised copy
+ * via the ``workflow.generator.errors.<code>`` i18n keys; ``detail`` is the
+ * raw English diagnostic; ``node_id`` is set when the error is tied to a
+ * specific node (the preview canvas can highlight it).
+ *
+ * Stable codes — adding a new one without updating the i18n map will fall
+ * back to ``detail`` and that's fine, but every value listed here MUST
+ * exist in both en-US and zh-Hans.
+ */
+export type GenerateWorkflowErrorCode
+  = | 'INVALID_JSON'
+    | 'INVALID_SCHEMA'
+    | 'EMPTY_INSTRUCTION'
+    | 'EMPTY_PLAN'
+    | 'UNKNOWN_NODE_REFERENCE'
+    | 'INVALID_CONTAINER'
+    | 'UNRESOLVED_REFERENCE'
+    | 'UNKNOWN_TOOL'
+    | 'MISSING_TERMINAL'
+    | 'MISSING_START'
+    | 'DANGLING_EDGE'
+    | 'MODEL_ERROR'
+
+export type GenerateWorkflowError = {
+  code: GenerateWorkflowErrorCode | string
+  detail: string
+  node_id?: string
+}
+
 export type GenerateWorkflowResponse = {
   graph: {
     nodes: Node[]
@@ -87,7 +118,10 @@ export type GenerateWorkflowResponse = {
    * the planner omits it; the caller supplies a 🤖 fallback.
    */
   icon?: string
+  /** Human-readable concatenation of ``errors[].detail``. "" on success. */
   error?: string
+  /** Structured errors with stable codes for FE-localised mapping. [] on success. */
+  errors?: GenerateWorkflowError[]
 }
 
 export type GenerateWorkflowBody = {
@@ -97,10 +131,26 @@ export type GenerateWorkflowBody = {
   model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
 }
 
-export const generateWorkflow = (body: GenerateWorkflowBody) => {
-  return post<GenerateWorkflowResponse>('/workflow-generate', {
-    body,
-  })
+export type GenerateWorkflowOptions = {
+  /**
+   * Callback receiving the ``AbortController`` for the in-flight request.
+   * The caller stores it and aborts on modal close / second submit / hard
+   * timeout. Pattern mirrors ``fetchSuggestedQuestions`` / ``fetchConversationMessages``
+   * which already thread this through ``base.ts``.
+   */
+  getAbortController?: (controller: AbortController) => void
+}
+
+export const generateWorkflow = (body: GenerateWorkflowBody, options?: GenerateWorkflowOptions) => {
+  // Only pass the third argument when the caller actually supplied one —
+  // otherwise the shared ``post()`` wrapper sees ``undefined`` and that
+  // breaks tests asserting the 2-arg call shape, with no behaviour upside.
+  if (options?.getAbortController) {
+    return post<GenerateWorkflowResponse>('/workflow-generate', { body }, {
+      getAbortController: options.getAbortController,
+    })
+  }
+  return post<GenerateWorkflowResponse>('/workflow-generate', { body })
 }
 
 export const fetchPromptTemplate = ({

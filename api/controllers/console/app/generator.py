@@ -306,6 +306,16 @@ class WorkflowGenerateApi(Resource):
     def post(self, current_tenant_id: str):
         args = WorkflowGeneratePayload.model_validate(console_ns.payload)
 
+        # Reject obviously-empty instructions at the boundary — Pydantic only
+        # validates ``instruction`` is a str, but a whitespace-only string
+        # would still hit the LLM and waste a planner+builder roundtrip on a
+        # response that the postprocess validator would reject anyway.
+        if not args.instruction.strip():
+            return {
+                "error": "Instruction is required",
+                "errors": [{"code": "EMPTY_INSTRUCTION", "detail": "Instruction is required"}],
+            }, 400
+
         try:
             result = WorkflowGeneratorService.generate_workflow_graph(
                 tenant_id=current_tenant_id,

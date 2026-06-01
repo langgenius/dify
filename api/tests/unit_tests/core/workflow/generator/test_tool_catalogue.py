@@ -9,6 +9,7 @@ from core.workflow.generator.tool_catalogue import (
     _tool_description,
     build_tool_catalogue,
     format_tool_catalogue,
+    installed_tool_keys,
 )
 
 
@@ -21,6 +22,36 @@ def _entry(provider: str, tool: str, *, label: str = "", description: str = "") 
         tool_label=label,
         description=description,
     )
+
+
+class TestInstalledToolKeys:
+    """The validator in ``runner.py`` looks up tool nodes against this set.
+
+    Keys MUST be ``(provider_name, tool_name)`` tuples — the builder prompt
+    is instructed to put ``provider_name`` into both ``data.provider_id``
+    and ``data.provider_name`` on tool nodes, so the runner's check accepts
+    either field. The set therefore keys on ``provider_name``, not
+    ``plugin_id`` or any other identifier.
+    """
+
+    def test_empty_input_returns_empty_set(self):
+        assert installed_tool_keys([]) == set()
+
+    def test_returns_provider_tool_tuples(self):
+        keys = installed_tool_keys(
+            [
+                _entry("google", "search"),
+                _entry("github", "list_issues"),
+            ]
+        )
+        assert keys == {("google", "search"), ("github", "list_issues")}
+
+    def test_dedupes_duplicate_entries(self):
+        # Defensive — the catalogue builder dedupes on read, but a duplicate
+        # entry slipping through should collapse rather than break the set
+        # type contract.
+        keys = installed_tool_keys([_entry("x", "y"), _entry("x", "y")])
+        assert keys == {("x", "y")}
 
 
 class TestFormatToolCatalogue:
