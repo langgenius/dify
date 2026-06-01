@@ -328,7 +328,7 @@ describe('TaskStatusIndicator Component', () => {
   })
 
   describe('Status badge', () => {
-    it('should show progress circle when installing', () => {
+    it('should not show a badge when installing has no success or error yet', () => {
       render(
         <TaskStatusIndicator
           {...defaultProps}
@@ -340,7 +340,7 @@ describe('TaskStatusIndicator Component', () => {
       expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
     })
 
-    it('should show progress circle when installing with success', () => {
+    it('should show success badge when installing with success', () => {
       render(
         <TaskStatusIndicator
           {...defaultProps}
@@ -349,10 +349,11 @@ describe('TaskStatusIndicator Component', () => {
           totalPluginsLength={3}
         />,
       )
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      const trigger = document.getElementById('plugin-task-trigger')!
+      expect(trigger.querySelector('[data-status-badge="success"]')).toBeInTheDocument()
     })
 
-    it('should show error progress circle when installing with error', () => {
+    it('should show error badge when installing with error', () => {
       render(
         <TaskStatusIndicator
           {...defaultProps}
@@ -361,7 +362,8 @@ describe('TaskStatusIndicator Component', () => {
           totalPluginsLength={3}
         />,
       )
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      const trigger = document.getElementById('plugin-task-trigger')!
+      expect(trigger.querySelector('[data-status-badge="error"]')).toBeInTheDocument()
     })
 
     it('should show success icon when all completed successfully', () => {
@@ -374,12 +376,16 @@ describe('TaskStatusIndicator Component', () => {
           totalPluginsLength={3}
         />,
       )
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      const trigger = document.getElementById('plugin-task-trigger')
+      expect(trigger)!.toHaveClass('border-components-panel-border-subtle', 'bg-components-panel-bg')
+      expect(trigger!.querySelector('[data-status-badge="success"]'))!.toHaveClass('text-text-success')
     })
 
     it('should show error icon when failed', () => {
       render(<TaskStatusIndicator {...defaultProps} isFailed />)
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      const trigger = document.getElementById('plugin-task-trigger')
+      expect(trigger)!.toHaveClass('border-components-button-destructive-secondary-border-hover', 'bg-state-destructive-hover')
+      expect(trigger!.querySelector('[data-status-badge="error"]'))!.toHaveClass('text-text-destructive')
     })
   })
 
@@ -396,10 +402,10 @@ describe('TaskStatusIndicator Component', () => {
       expect(trigger)!.toHaveClass('bg-state-destructive-hover')
     })
 
-    it('should apply cursor-pointer when clickable', () => {
+    it('should apply cursor-pointer only for error states', () => {
       render(<TaskStatusIndicator {...defaultProps} isInstalling />)
       const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('cursor-pointer')
+      expect(trigger)!.toHaveClass('cursor-default')
     })
   })
 
@@ -418,10 +424,8 @@ describe('TaskStatusIndicator Component', () => {
 describe('PluginTaskList Component', () => {
   const defaultProps = {
     runningPlugins: [] as PluginStatus[],
-    successPlugins: [] as PluginStatus[],
     errorPlugins: [] as PluginStatus[],
     getIconUrl: (icon: string) => `https://example.com/${icon}`,
-    onClearAll: vi.fn(),
     onClearErrors: vi.fn(),
     onClearSingle: vi.fn(),
   }
@@ -447,12 +451,10 @@ describe('PluginTaskList Component', () => {
       expect(document.querySelector('.max-h-\\[300px\\]'))!.toBeInTheDocument()
     })
 
-    it('should render success plugins section when plugins exist', () => {
-      const successPlugins = [createMockPlugin({ status: TaskStatus.success })]
-      render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
+    it('should not render success plugins in the dropdown', () => {
+      render(<PluginTaskList {...defaultProps} />)
 
-      // Translation key is returned as text in tests, multiple matches expected
-      expect(screen.getAllByText(/task\.installed/i).length).toBeGreaterThan(0)
+      expect(screen.queryByText(/task\.installed/i)).not.toBeInTheDocument()
     })
 
     it('should render error plugins section when plugins exist', () => {
@@ -462,39 +464,21 @@ describe('PluginTaskList Component', () => {
       expect(screen.getByText('Error occurred'))!.toBeInTheDocument()
     })
 
-    it('should render all sections when all types exist', () => {
+    it('should render failed plugins as the primary section when all types exist', () => {
       render(
         <PluginTaskList
           {...defaultProps}
           runningPlugins={[createMockPlugin({ status: TaskStatus.running })]}
-          successPlugins={[createMockPlugin({ status: TaskStatus.success })]}
           errorPlugins={[createMockPlugin({ status: TaskStatus.failed })]}
         />,
       )
 
-      // All sections should be present
-      expect(document.querySelectorAll('.max-h-\\[300px\\]').length).toBe(3)
+      expect(document.querySelectorAll('.max-h-\\[300px\\]').length).toBe(1)
+      expect(screen.getByText(/task\.installingHint/i)).toBeInTheDocument()
     })
   })
 
   describe('User interactions', () => {
-    it('should call onClearAll when clear all button is clicked in success section', () => {
-      const handleClearAll = vi.fn()
-      const successPlugins = [createMockPlugin({ status: TaskStatus.success })]
-
-      render(
-        <PluginTaskList
-          {...defaultProps}
-          successPlugins={successPlugins}
-          onClearAll={handleClearAll}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: /task\.clearAll/i }))
-
-      expect(handleClearAll).toHaveBeenCalledTimes(1)
-    })
-
     it('should call onClearErrors when clear all button is clicked in error section', () => {
       const handleClearErrors = vi.fn()
       const errorPlugins = [createMockPlugin({ status: TaskStatus.failed })]
@@ -549,15 +533,15 @@ describe('PluginTaskList Component', () => {
       expect(screen.getByText('My Test Plugin'))!.toBeInTheDocument()
     })
 
-    it('should display plugin message when available', () => {
+    it('should display running plugin message when available', () => {
       const plugin = createMockPlugin({
-        status: TaskStatus.success,
-        message: 'Successfully installed!',
+        status: TaskStatus.running,
+        message: 'Installing now',
       })
 
-      render(<PluginTaskList {...defaultProps} successPlugins={[plugin]} />)
+      render(<PluginTaskList {...defaultProps} runningPlugins={[plugin]} />)
 
-      expect(screen.getByText('Successfully installed!'))!.toBeInTheDocument()
+      expect(screen.getByText('Installing now'))!.toBeInTheDocument()
     })
 
     it('should display multiple plugins in each section', () => {
@@ -585,12 +569,12 @@ describe('PluginTasks Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should return null when no plugins exist', () => {
+    it('should hide the trigger icon when no plugins exist', () => {
       setupMocks([])
 
-      const { container } = render(<PluginTasks />)
+      render(<PluginTasks />)
 
-      expect(container.firstChild).toBeNull()
+      expect(document.getElementById('plugin-task-trigger')).not.toBeInTheDocument()
     })
 
     it('should render when plugins exist', () => {
@@ -634,8 +618,8 @@ describe('PluginTasks Component', () => {
   })
 
   describe('Popover interaction', () => {
-    it('should toggle popover when trigger is clicked and status allows', () => {
-      setupMocks([createMockPlugin({ status: TaskStatus.running })])
+    it('should toggle popover when an error status allows', () => {
+      setupMocks([createMockPlugin({ status: TaskStatus.failed })])
 
       render(<PluginTasks />)
 
@@ -647,20 +631,47 @@ describe('PluginTasks Component', () => {
       expect(document.querySelector('.w-\\[360px\\]'))!.toBeInTheDocument()
     })
 
+    it('should apply open styling to the trigger while the task menu is expanded', () => {
+      setupMocks([createMockPlugin({ status: TaskStatus.failed })])
+
+      render(<PluginTasks />)
+
+      fireEvent.click(getTaskMenuTrigger())
+
+      expect(document.getElementById('plugin-task-trigger'))!.toHaveClass('bg-state-destructive-hover-alt')
+    })
+
+    it('should apply pointer cursor to the task menu trigger when it can open', () => {
+      setupMocks([createMockPlugin({ status: TaskStatus.failed })])
+
+      render(<PluginTasks />)
+
+      expect(getTaskMenuTrigger()).toHaveClass('cursor-pointer')
+    })
+
+    it('should apply custom dropdown positioning props', () => {
+      setupMocks([createMockPlugin({ status: TaskStatus.failed })])
+
+      render(<PluginTasks dropdownPlacement="bottom-start" dropdownAnchor={() => document.body} />)
+
+      fireEvent.click(getTaskMenuTrigger())
+
+      expect(document.querySelector('[data-side="bottom"][data-align="start"]')).toBeInTheDocument()
+    })
+
     it('should not toggle when status does not allow', () => {
-      // Setup with no actionable status (edge case - should not happen in practice)
       setupMocks([createMockPlugin({ status: TaskStatus.running })])
 
       render(<PluginTasks />)
 
-      // Component should still render
-      // Component should still render
       expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      fireEvent.click(getTaskMenuTrigger())
+      expect(document.querySelector('.w-\\[360px\\]')).not.toBeInTheDocument()
     })
   })
 
   describe('Clear handlers', () => {
-    it('should clear all completed plugins when onClearAll is called', async () => {
+    it('should clear only failed plugins when Clear all is clicked', async () => {
       const { mockMutateAsync } = setupMocks([
         createMockPlugin({ status: TaskStatus.success, plugin_unique_identifier: 'success-1' }),
         createMockPlugin({ status: TaskStatus.failed, plugin_unique_identifier: 'error-1' }),
@@ -682,15 +693,18 @@ describe('PluginTasks Component', () => {
       if (clearAllButton)
         fireEvent.click(clearAllButton)
 
-      // Verify mutateAsync was called for each completed plugin
       await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalled()
+        expect(mockMutateAsync).toHaveBeenCalledTimes(1)
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          taskId: 'task-1',
+          pluginId: 'error-1',
+        })
       })
     })
 
-    it('should close the menu after clearing the last non-running plugins', async () => {
+    it('should close the menu after clearing the last failed plugin', async () => {
       setupMocks([
-        createMockPlugin({ status: TaskStatus.success, plugin_unique_identifier: 'success-1' }),
+        createMockPlugin({ status: TaskStatus.failed, plugin_unique_identifier: 'error-1' }),
       ])
 
       render(<PluginTasks />)
@@ -766,9 +780,9 @@ describe('PluginTasks Component', () => {
     it('should handle empty plugin tasks array', () => {
       setupMocks([])
 
-      const { container } = render(<PluginTasks />)
+      render(<PluginTasks />)
 
-      expect(container.firstChild).toBeNull()
+      expect(document.getElementById('plugin-task-trigger')).not.toBeInTheDocument()
     })
 
     it('should handle single running plugin', () => {
@@ -819,7 +833,7 @@ describe('PluginTasks Component', () => {
       expect(document.querySelector('.w-\\[360px\\]'))!.toBeInTheDocument()
     })
 
-    it('should open for installing-with-success state', () => {
+    it('should not open for installing-with-success state', () => {
       setupMocks([
         createMockPlugin({ status: TaskStatus.running, plugin_unique_identifier: 'running-1' }),
         createMockPlugin({ status: TaskStatus.success, plugin_unique_identifier: 'success-1' }),
@@ -828,7 +842,7 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
       fireEvent.click(getTaskMenuTrigger())
 
-      expect(document.querySelector('.w-\\[360px\\]')).toBeInTheDocument()
+      expect(document.querySelector('.w-\\[360px\\]')).not.toBeInTheDocument()
     })
 
     it('should open for installing-with-error state', () => {
@@ -895,8 +909,8 @@ describe('PluginTasks Integration', () => {
     // Open popover
     fireEvent.click(getTaskMenuTrigger())
 
-    // All sections should be visible
+    // Failed state is the primary section; running items are folded into the same panel.
     const sections = document.querySelectorAll('.max-h-\\[300px\\]')
-    expect(sections.length).toBe(3)
+    expect(sections.length).toBe(1)
   })
 })

@@ -1,12 +1,13 @@
 'use client'
-import type { FC } from 'react'
+import type { Placement } from '@langgenius/dify-ui/popover'
+import type { ComponentProps, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   RiArrowRightUpLine,
   RiBugLine,
 } from '@remixicon/react'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
@@ -14,10 +15,27 @@ import KeyValueItem from '../base/key-value-item'
 
 const i18nPrefix = 'debugInfo'
 
-const DebugInfo: FC = () => {
+type DebugInfoProps = {
+  popupPlacement?: Placement
+  triggerClassName?: string
+  triggerContent?: ReactNode
+  triggerVariant?: ComponentProps<typeof Button>['variant']
+}
+
+function DebugInfo({
+  popupPlacement = 'bottom',
+  triggerClassName,
+  triggerContent,
+  triggerVariant = 'secondary',
+}: DebugInfoProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: info, isLoading } = useDebugKey()
+  const trigger = triggerContent ?? <RiBugLine className="size-4" />
+  const triggerClassNames = cn(
+    !triggerClassName && 'size-full p-2 text-components-button-secondary-text',
+    triggerClassName,
+  )
 
   // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.
   const maskedKey = info?.key?.replace(/(.{8})(.*)(.{8})/, '$1********$3')
@@ -27,8 +45,8 @@ const DebugInfo: FC = () => {
 
   if (!info) {
     return (
-      <Button className="size-full p-2 text-components-button-secondary-text" disabled>
-        <RiBugLine className="size-4" />
+      <Button variant={triggerVariant} className={triggerClassNames} disabled>
+        {trigger}
       </Button>
     )
   }
@@ -37,13 +55,13 @@ const DebugInfo: FC = () => {
     <Popover>
       <PopoverTrigger
         render={(
-          <Button className="size-full p-2 text-components-button-secondary-text">
-            <RiBugLine className="size-4" />
+          <Button variant={triggerVariant} className={triggerClassNames}>
+            {trigger}
           </Button>
         )}
       />
       <PopoverContent
-        placement="bottom"
+        placement={popupPlacement}
         popupClassName="flex w-[256px] flex-col items-start gap-1 rounded-xl border border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg"
       >
         <div className="flex items-center gap-1 self-stretch">
@@ -76,4 +94,4 @@ const DebugInfo: FC = () => {
   )
 }
 
-export default React.memo(DebugInfo)
+export default DebugInfo

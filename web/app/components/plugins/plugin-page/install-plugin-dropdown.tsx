@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
+import { RiAddCircleFill, RiArrowDownSLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useRef, useState } from 'react'
@@ -35,6 +35,7 @@ type Props = {
   triggerOpenClassName?: string
   triggerVariant?: ButtonProps['variant']
   installContextCategory?: PluginCategoryEnum
+  showTriggerArrow?: boolean
 }
 
 type InstallMethod = {
@@ -53,6 +54,7 @@ const InstallPluginDropdown = ({
   triggerOpenClassName = 'bg-state-base-hover',
   triggerVariant,
   installContextCategory,
+  showTriggerArrow = true,
 }: Props) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -158,9 +160,11 @@ const InstallPluginDropdown = ({
           )}
         >
           <>
-            <RiAddLine className="size-4" />
-            <span className="pl-1">{triggerLabel ?? t('installPlugin', { ns: 'plugin' })}</span>
-            <RiArrowDownSLine className="ml-1 size-4" />
+            <RiAddCircleFill className="size-4 shrink-0" />
+            <span className={cn(showTriggerArrow ? 'pl-1' : 'min-w-0 flex-1 px-0.5 text-left')}>
+              {triggerLabel ?? t('installPlugin', { ns: 'plugin' })}
+            </span>
+            {showTriggerArrow && <RiArrowDownSLine className="ml-1 size-4" />}
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent
