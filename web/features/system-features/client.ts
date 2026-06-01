@@ -1,9 +1,9 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from './types'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_CLOUD_EDITION } from '@/config'
-import { cloudSystemFeatures } from '@/config/cloud-system-features'
-import { defaultSystemFeatures } from '@/types/feature'
-import { consoleClient, consoleQuery } from './client'
+import { consoleClient, consoleQuery } from '@/service/client'
+import { cloudSystemFeatures } from './config'
+import { defaultSystemFeatures } from './types'
 
 /**
  * Soft-fallback to defaults so the dashboard stays usable when /system-features fails.

@@ -1,8 +1,8 @@
 import type { Plugin, PluginManifestInMarket } from '../../types'
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from '@/features/system-features/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { InstallationScope } from '@/types/feature'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { InstallationScope } from '@/features/system-features/types'
 
 type PluginProps = (Plugin | PluginManifestInMarket) & { from: 'github' | 'marketplace' | 'package' }
 

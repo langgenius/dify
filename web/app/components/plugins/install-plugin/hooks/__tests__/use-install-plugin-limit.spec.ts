@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
-import { InstallationScope } from '@/types/feature'
+import { InstallationScope } from '@/features/system-features/types'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
 
 const basePlugin = {

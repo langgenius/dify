@@ -1,6 +1,6 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from './types'
 import { env } from '@/env'
-import { defaultSystemFeatures, InstallationScope, LicenseStatus } from '@/types/feature'
+import { defaultSystemFeatures, InstallationScope, LicenseStatus } from './types'
 
 export const cloudSystemFeatures: SystemFeatures = {
   ...defaultSystemFeatures,

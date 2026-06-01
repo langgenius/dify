@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { LicenseStatus } from '@/types/feature'
+import { LicenseStatus } from '@/features/system-features/types'
 import LicenseNav from '../index'
 
 describe('LicenseNav', () => {

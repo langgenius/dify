@@ -19,7 +19,7 @@ vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
-vi.mock('@/service/system-features', () => ({
+vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({}),
 }))
 

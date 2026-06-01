@@ -1,4 +1,4 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from '@/features/system-features/types'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 

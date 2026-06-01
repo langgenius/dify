@@ -18,8 +18,8 @@ import {
 } from '@/context/app-context'
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   useLangGeniusVersion,
 } from '@/service/use-common'

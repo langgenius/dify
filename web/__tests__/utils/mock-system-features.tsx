@@ -1,10 +1,10 @@
 import type { RenderHookOptions, RenderHookResult, RenderOptions, RenderResult } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from '@/features/system-features/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
+import { defaultSystemFeatures } from '@/features/system-features/types'
 import { consoleQuery } from '@/service/client'
-import { defaultSystemFeatures } from '@/types/feature'
 
 type QueryKeyProvider = {
   queryKey: () => readonly unknown[]

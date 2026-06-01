@@ -1,13 +1,13 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from './types'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_CLOUD_EDITION } from '@/config'
-import { cloudSystemFeatures } from '@/config/cloud-system-features'
-import { defaultSystemFeatures } from '@/types/feature'
 import {
   getServerConsoleClientContext,
   serverConsoleClient,
   serverConsoleQuery,
-} from './server'
+} from '@/service/server'
+import { cloudSystemFeatures } from './config'
+import { defaultSystemFeatures } from './types'
 
 export const serverSystemFeaturesQueryOptions = () => {
   const queryKey = serverConsoleQuery.systemFeatures.queryKey()

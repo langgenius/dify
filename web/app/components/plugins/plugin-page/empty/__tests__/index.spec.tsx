@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from '@/features/system-features/types'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { InstallationScope } from '@/types/feature'
+import { InstallationScope } from '@/features/system-features/types'
 
 // ==================== Imports (after mocks) ====================
 

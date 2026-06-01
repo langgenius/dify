@@ -1,6 +1,6 @@
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from '../types'
 import { describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures } from '@/types/feature'
+import { defaultSystemFeatures } from '../types'
 
 type LoadOptions = {
   cloudEnv?: Partial<typeof defaultCloudEnv>
@@ -52,7 +52,7 @@ const loadSystemFeaturesModule = async ({
       ...cloudEnv,
     },
   }))
-  vi.doMock('../client', () => ({
+  vi.doMock('@/service/client', () => ({
     consoleClient: {
       systemFeatures,
     },
@@ -63,7 +63,7 @@ const loadSystemFeaturesModule = async ({
     },
   }))
 
-  const module = await import('../system-features')
+  const module = await import('../client')
 
   return {
     module,
@@ -93,7 +93,7 @@ const loadServerSystemFeaturesModule = async ({
       ...cloudEnv,
     },
   }))
-  vi.doMock('../server', () => ({
+  vi.doMock('@/service/server', () => ({
     getServerConsoleClientContext,
     serverConsoleClient: {
       systemFeatures,
@@ -105,7 +105,7 @@ const loadServerSystemFeaturesModule = async ({
     },
   }))
 
-  const module = await import('../server-system-features')
+  const module = await import('../server')
 
   return {
     getServerConsoleClientContext,

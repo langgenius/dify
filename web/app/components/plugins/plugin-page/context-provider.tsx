@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import {

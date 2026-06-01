@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react'
 import type { AppContextValue } from '@/context/app-context'
-import type { SystemFeatures } from '@/types/feature'
+import type { SystemFeatures } from '@/features/system-features/types'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
