@@ -1,6 +1,6 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import type { Store } from '@/store/store'
 import type { IOStreams } from '@/sys/io/streams'
 import { AccountSessionsClient } from '@/api/account-sessions'
@@ -15,7 +15,7 @@ import { runWithSpinner } from '@/sys/io/spinner'
 export type DevicesListOptions = {
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly json?: boolean
   readonly page?: number
   readonly limitRaw?: string
@@ -73,7 +73,7 @@ export async function listAllSessions(client: AccountSessionsClient): Promise<re
 export type DevicesRevokeOptions = {
   readonly io: IOStreams
   readonly bundle: HostsBundle | undefined
-  readonly http: KyInstance
+  readonly http: HttpClient
   /** Optional override for tests; production code resolves via `getTokenStore`. */
   readonly store?: Store
   readonly target?: string
