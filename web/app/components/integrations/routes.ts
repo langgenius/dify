@@ -5,7 +5,7 @@ export const INTEGRATION_SECTION_VALUES = [
   'custom-tool',
   'workflow-tool',
   'data-source',
-  'api-based-extension',
+  'custom-endpoint',
   'trigger',
   'agent-strategy',
   'extension',
@@ -57,7 +57,7 @@ export const marketplaceCategoryByIntegrationSection: Partial<Record<Integration
   'custom-tool': 'tool',
   'workflow-tool': 'tool',
   'data-source': 'datasource',
-  'api-based-extension': 'extension',
+  'custom-endpoint': 'extension',
   'trigger': 'trigger',
   'agent-strategy': 'agent-strategy',
   'extension': 'extension',
@@ -70,7 +70,7 @@ export const integrationPathBySection: Record<IntegrationSection, string> = {
   'workflow-tool': '/integrations/tools/workflow',
   'mcp': '/integrations/tools/mcp',
   'data-source': '/integrations/data-source',
-  'api-based-extension': '/integrations/tools/api-extension',
+  'custom-endpoint': '/integrations/custom-endpoint',
   'trigger': '/integrations/trigger',
   'agent-strategy': '/integrations/agent-strategy',
   'extension': '/integrations/extension',
@@ -143,8 +143,8 @@ export const getIntegrationRouteTargetBySlug = (slug?: string[]): IntegrationRou
       return { type: 'section', section: 'mcp' }
     case 'data-source':
       return { type: 'section', section: 'data-source' }
-    case 'tools/api-extension':
-      return { type: 'section', section: 'api-based-extension' }
+    case 'custom-endpoint':
+      return { type: 'section', section: 'custom-endpoint' }
     case 'trigger':
       return { type: 'section', section: 'trigger' }
     case 'agent-strategy':

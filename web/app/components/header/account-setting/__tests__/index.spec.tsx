@@ -49,6 +49,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: vi.fn(() => ({ data: null, isLoading: false })),
+  useLanguage: vi.fn(() => 'en-US'),
   useUpdateDefaultModel: vi.fn(() => ({ trigger: vi.fn() })),
   useUpdateModelList: vi.fn(() => vi.fn()),
   useInvalidateDefaultModel: vi.fn(() => vi.fn()),
@@ -96,6 +97,11 @@ vi.mock('@/service/client', async (importOriginal) => {
 vi.mock('@/app/components/billing/billing-page', () => ({
   __esModule: true,
   default: () => <div data-testid="billing-page" />,
+}))
+
+vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
+  __esModule: true,
+  default: () => <div data-testid="data-source-page" />,
 }))
 
 const baseAppContextValue: AppContextValue = {
@@ -202,7 +208,7 @@ describe('AccountSetting', () => {
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.apiBasedExtension'))!.not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
       expect(screen.queryByText('common.settings.language'))!.not.toBeInTheDocument()
     })
@@ -451,7 +457,7 @@ describe('AccountSetting', () => {
       // Assert
       // Assert
       expect(input)!.toHaveValue('test-search')
-      expect(screen.getByText('common.modelProvider.models'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.modelProvider.searchModels'))!.toBeInTheDocument()
     })
 
     it('should handle scroll event in panel', () => {

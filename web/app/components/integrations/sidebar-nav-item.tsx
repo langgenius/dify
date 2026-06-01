@@ -16,6 +16,7 @@ type IconComponent = ComponentType<{ className?: string }>
 
 export type IntegrationSidebarNavItemData = {
   activeIcon?: IconComponent | string
+  className?: string
   disabled?: boolean
   icon: IconComponent | string
   iconClassName?: string
@@ -48,6 +49,7 @@ export function IntegrationSidebarNavItem({
   const className = cn(
     integrationSidebarNavItemClassName,
     isActive ? integrationSidebarActiveNavItemClassName : integrationSidebarInactiveNavItemClassName,
+    item.className,
   )
 
   if (!item.section) {
@@ -58,6 +60,7 @@ export function IntegrationSidebarNavItem({
         className={cn(
           integrationSidebarNavItemClassName,
           integrationSidebarDisabledNavItemClassName,
+          item.className,
         )}
         aria-disabled="true"
       >

@@ -20,7 +20,7 @@ describe('useIntegrationsSetting', () => {
   it.each([
     [ACCOUNT_SETTING_TAB.PROVIDER, 'provider'],
     [ACCOUNT_SETTING_TAB.DATA_SOURCE, 'data-source'],
-    [ACCOUNT_SETTING_TAB.API_BASED_EXTENSION, 'api-based-extension'],
+    [ACCOUNT_SETTING_TAB.API_BASED_EXTENSION, 'custom-endpoint'],
   ])('should open integrations settings for migrated tab %s', (tab, section) => {
     const { result } = renderHook(() => useIntegrationsSetting())
 
