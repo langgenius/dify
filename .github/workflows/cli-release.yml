@@ -33,7 +33,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.0.2
         with:
           bun-version: latest
 
@@ -77,7 +77,7 @@ jobs:
         run: scripts/release-write-checksums.sh
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: difyctl-v${{ steps.manifest.outputs.version }}
           name: difyctl ${{ steps.manifest.outputs.version }}
