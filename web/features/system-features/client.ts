@@ -14,8 +14,8 @@ import { cloudSystemFeatures, defaultSystemFeatures } from './config'
  * is a small, dependency-free endpoint in the community edition.
  *
  * For Cloud, this query is intentionally local-only and uses `staleTime:
- * Infinity`: the payload comes from frontend config/defaults, so refetching
- * would only re-run the same local merge. For non-Cloud, do not override
+ * 'static'`: the payload comes from frontend config/defaults, so invalidation
+ * should not re-run the same local merge. For non-Cloud, do not override
  * `staleTime`: inherit the 5-minute default from query-client-server.ts.
  */
 export const systemFeaturesQueryOptions = () => {
@@ -25,7 +25,7 @@ export const systemFeaturesQueryOptions = () => {
     return queryOptions<GetSystemFeaturesResponse>({
       queryKey,
       queryFn: async () => cloudSystemFeatures,
-      staleTime: Infinity,
+      staleTime: 'static',
     })
   }
 

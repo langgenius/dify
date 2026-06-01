@@ -132,7 +132,7 @@ describe('systemFeaturesQueryOptions', () => {
     const data = await options.queryFn?.(queryContext)
 
     expect(systemFeatures).not.toHaveBeenCalled()
-    expect(options.staleTime).toBe(Infinity)
+    expect(options.staleTime).toBe('static')
     expect(data).toMatchObject({
       enable_marketplace: true,
       enable_email_code_login: true,
@@ -223,7 +223,7 @@ describe('serverSystemFeaturesQueryOptions', () => {
 
     expect(getServerConsoleClientContext).not.toHaveBeenCalled()
     expect(systemFeatures).not.toHaveBeenCalled()
-    expect(options.staleTime).toBe(Infinity)
+    expect(options.staleTime).toBe('static')
     expect(data).toMatchObject({
       enable_marketplace: false,
       enable_email_password_login: true,

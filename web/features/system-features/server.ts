@@ -15,7 +15,7 @@ export const serverSystemFeaturesQueryOptions = () => {
     return queryOptions<GetSystemFeaturesResponse>({
       queryKey,
       queryFn: async () => cloudSystemFeatures,
-      staleTime: Infinity,
+      staleTime: 'static',
     })
   }
 
