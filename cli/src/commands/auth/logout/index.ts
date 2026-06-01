@@ -1,11 +1,11 @@
 import type { KyInstance } from 'ky'
-import { loadHosts } from '../../../auth/hosts.js'
-import { createClient } from '../../../http/client.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { realStreams } from '../../../sys/io/streams'
-import { hostWithScheme } from '../../../util/host.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runLogout } from './logout.js'
+import { loadHosts } from '@/auth/hosts'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { createClient } from '@/http/client'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { realStreams } from '@/sys/io/streams'
+import { hostWithScheme } from '@/util/host'
+import { runLogout } from './logout'
 
 export default class Logout extends DifyCommand {
   static override description = 'Log out of the active Dify host'

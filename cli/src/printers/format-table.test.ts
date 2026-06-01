@@ -1,7 +1,7 @@
-import type { TableColumn, TableHandler } from './format-table.js'
+import type { TableColumn, TableHandler } from './format-table'
 import { describe, expect, it } from 'vitest'
-import { TablePrintFlags } from './format-table.js'
-import { isNoCompatiblePrinter } from './printer.js'
+import { TablePrintFlags } from './format-table'
+import { isNoCompatiblePrinter } from './printer'
 
 const fakeMode = (m: string) => ({ mode: () => m })
 

@@ -1,4 +1,4 @@
-import type { BaseError } from './base.js'
+import type { BaseError } from './base'
 
 export type ErrorEnvelope = {
   error: {

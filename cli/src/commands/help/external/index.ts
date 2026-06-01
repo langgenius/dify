@@ -1,6 +1,6 @@
-import { raw } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runHelpExternal } from './external.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { raw } from '@/framework/output'
+import { runHelpExternal } from './external'
 
 export default class HelpExternal extends DifyCommand {
   static override description = 'Agent-onboarding text for external-SSO bearers (dfoe_)'

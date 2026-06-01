@@ -1,10 +1,10 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { WorkspacesClient } from '../../../api/workspaces.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams'
-import { WorkspaceListOutput, WorkspaceRow } from './handlers.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { IOStreams } from '@/sys/io/streams'
+import { WorkspacesClient } from '@/api/workspaces'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { nullStreams } from '@/sys/io/streams'
+import { WorkspaceListOutput, WorkspaceRow } from './handlers'
 
 export const EMPTY_WORKSPACES_MESSAGE
   = 'No workspaces visible to this bearer (external-SSO subjects see empty data).\n'
