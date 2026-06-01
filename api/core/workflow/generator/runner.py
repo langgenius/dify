@@ -324,9 +324,7 @@ class WorkflowGenerator:
         """
         last_detail = ""
         for attempt in range(2):
-            attempt_messages = (
-                messages if attempt == 0 else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
-            )
+            attempt_messages = messages if attempt == 0 else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=attempt_messages,
                 model_parameters=model_parameters,
