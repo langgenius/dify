@@ -37,7 +37,7 @@ const PluginAuthInAgent = ({
     disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
-  } = usePluginAuth(pluginPayload, true)
+  } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
 
   const extraAuthorizationItems: Credential[] = [
     {

@@ -400,15 +400,10 @@ class TestSiteEndpoints:
             "session",
             MagicMock(scalar=lambda *_args, **_kwargs: site, commit=lambda: None),
         )
-        monkeypatch.setattr(
-            site_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "t1"),
-        )
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
         with app.test_request_context("/", json={"title": "My Site"}):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
@@ -439,15 +434,10 @@ class TestSiteEndpoints:
             MagicMock(scalar=lambda *_args, **_kwargs: site, commit=lambda: None),
         )
         monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
-        monkeypatch.setattr(
-            site_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "t1"),
-        )
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
         with app.test_request_context("/"):
-            result = method(app_model=SimpleNamespace(id="app-1"))
+            result = method(SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["access_token"] == "code"
@@ -588,11 +578,6 @@ class TestWorkflowStatisticEndpoints:
         )
         monkeypatch.setattr(
             workflow_statistic_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module,
             "parse_time_range",
             lambda *_args, **_kwargs: (None, None),
         )
@@ -601,7 +586,7 @@ class TestWorkflowStatisticEndpoints:
         method = _unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
@@ -616,11 +601,6 @@ class TestWorkflowStatisticEndpoints:
         )
         monkeypatch.setattr(
             workflow_statistic_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module,
             "parse_time_range",
             lambda *_args, **_kwargs: (None, None),
         )
@@ -629,7 +609,7 @@ class TestWorkflowStatisticEndpoints:
         method = _unwrap(api.get)
 
         with app.test_request_context("/"):
-            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
+            response = method(SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 

@@ -1,8 +1,8 @@
-import type { BaseError } from '../../../errors/base.js'
-import type { SseEvent } from '../../../http/sse.js'
-import { newError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { RUN_MODES } from './handlers.js'
+import type { BaseError } from '@/errors/base'
+import type { SseEvent } from '@/http/sse'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { RUN_MODES } from './handlers'
 
 export type HitlPauseData = {
   form_id: string

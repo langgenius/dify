@@ -708,20 +708,23 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
         logger.info("[Arize/Phoenix] Trace Entity Type: %s", type(trace_info))
         try:
-            if isinstance(trace_info, WorkflowTraceInfo):
-                self.workflow_trace(trace_info)
-            if isinstance(trace_info, MessageTraceInfo):
-                self.message_trace(trace_info)
-            if isinstance(trace_info, ModerationTraceInfo):
-                self.moderation_trace(trace_info)
-            if isinstance(trace_info, SuggestedQuestionTraceInfo):
-                self.suggested_question_trace(trace_info)
-            if isinstance(trace_info, DatasetRetrievalTraceInfo):
-                self.dataset_retrieval_trace(trace_info)
-            if isinstance(trace_info, ToolTraceInfo):
-                self.tool_trace(trace_info)
-            if isinstance(trace_info, GenerateNameTraceInfo):
-                self.generate_name_trace(trace_info)
+            match trace_info:
+                case WorkflowTraceInfo():
+                    self.workflow_trace(trace_info)
+                case MessageTraceInfo():
+                    self.message_trace(trace_info)
+                case ModerationTraceInfo():
+                    self.moderation_trace(trace_info)
+                case SuggestedQuestionTraceInfo():
+                    self.suggested_question_trace(trace_info)
+                case DatasetRetrievalTraceInfo():
+                    self.dataset_retrieval_trace(trace_info)
+                case ToolTraceInfo():
+                    self.tool_trace(trace_info)
+                case GenerateNameTraceInfo():
+                    self.generate_name_trace(trace_info)
+                case _:
+                    pass
 
         except Exception as e:
             logger.error("[Arize/Phoenix] Trace Entity Error: %s", str(e), exc_info=True)

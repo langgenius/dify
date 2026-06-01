@@ -1,4 +1,5 @@
 import yaml from 'js-yaml'
+import { OutputFormatNotSupportedError } from './errors'
 
 export type RawOutput = {
   readonly kind: 'raw'
@@ -30,6 +31,14 @@ export type NamePrintable = {
 export type JsonPrintable = {
   readonly json: () => unknown
 }
+
+export const OutputFormat = {
+  NAME: 'name',
+  JSON: 'json',
+  YAML: 'yaml',
+  TEXT: 'text',
+  WIDE: 'wide',
+} as const
 
 export type TableOutput<TRow extends TablePrintable> = {
   readonly kind: 'table'
@@ -77,32 +86,32 @@ export function stringifyOutput(output: CommandOutput): string {
 function stringifyFormattedOutput(output: FormattedOutput<FormattedPrintable>): string {
   switch (output.format) {
     case '':
-    case 'text':
+    case OutputFormat.TEXT:
       return output.data.text()
-    case 'json':
+    case OutputFormat.JSON:
       return `${JSON.stringify(output.data.json(), null, 2)}\n`
-    case 'yaml':
+    case OutputFormat.YAML:
       return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
-    case 'name':
+    case OutputFormat.NAME:
       return `${toName(output.data)}\n`
     default:
-      throw new Error(`output format ${JSON.stringify(output.format)} not supported, allowed: json, name, text, yaml`)
+      throw new OutputFormatNotSupportedError(output.format)
   }
 }
 
 function stringifyTableOutput(output: TableOutput<TablePrintable>): string {
   switch (output.format) {
     case '':
-    case 'wide':
+    case OutputFormat.WIDE:
       return renderTable(output)
-    case 'json':
+    case OutputFormat.JSON:
       return `${JSON.stringify(output.data.json(), null, 2)}\n`
-    case 'yaml':
+    case OutputFormat.YAML:
       return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
-    case 'name':
+    case OutputFormat.NAME:
       return `${toName(output.data)}\n`
     default:
-      throw new Error(`output format ${JSON.stringify(output.format)} not supported, allowed: json, name, wide, yaml`)
+      throw new OutputFormatNotSupportedError(output.format)
   }
 }
 
@@ -186,7 +195,7 @@ function formatTable(rows: readonly (readonly string[])[]): string {
 
 function toName(data: TablePrintable | FormattedPrintable): string {
   if (!isNamePrintable(data))
-    throw new Error('name output requires data.name()')
+    throw new OutputFormatNotSupportedError('name')
   return data.name()
 }
 

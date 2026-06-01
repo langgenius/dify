@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useState } from 'react'
 import SearchInput from '.'
 
@@ -355,9 +356,9 @@ const CommandPaletteDemo = () => {
                     <span className="text-xl">{cmd.icon}</span>
                     <span className="text-sm">{cmd.name}</span>
                   </div>
-                  <kbd className="rounded-sm bg-gray-200 px-2 py-1 font-mono text-xs">
+                  <Kbd>
                     {cmd.shortcut}
-                  </kbd>
+                  </Kbd>
                 </div>
               ))
             )

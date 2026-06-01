@@ -1,14 +1,14 @@
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { AddressInfo } from 'node:net'
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
-import type { CodeResponse } from './oauth-device.js'
+import type { CodeResponse } from './oauth-device'
 import { Buffer } from 'node:buffer'
 import * as http from 'node:http'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { isBaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { createClient } from '../http/client.js'
-import { DEFAULT_CLIENT_ID, DeviceFlowApi } from './oauth-device.js'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { createClient } from '@/http/client'
+import { DEFAULT_CLIENT_ID, DeviceFlowApi } from './oauth-device'
 
 type StubServer = {
   url: string

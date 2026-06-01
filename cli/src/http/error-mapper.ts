@@ -1,7 +1,7 @@
-import type { BaseError } from '../errors/base.js'
-import { newError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { redactBearer } from './sanitize.js'
+import type { BaseError } from '@/errors/base'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { redactBearer } from './sanitize'
 
 type WireFields = {
   code?: string
