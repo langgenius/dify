@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "A ser configurado",
   "modelProvider.ttsModel.key": "Modelo de Texto para Fala",
   "modelProvider.ttsModel.tip": "Defina o modelo padrão para entrada de texto para fala na conversa.",
-  "modelProvider.updateSetting": "Atualizar configuração",
   "modelProvider.upgradeForLoadBalancing": "Atualize seu plano para habilitar o balanceamento de carga.",
   "noData": "Sem dados",
   "operation.add": "Adicionar",

@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "To be configured",
   "modelProvider.ttsModel.key": "Text-to-Speech Model",
   "modelProvider.ttsModel.tip": "Set the default model for text-to-speech input in conversation.",
-  "modelProvider.updateSetting": "Instelling bijwerken",
   "modelProvider.upgradeForLoadBalancing": "Upgrade your plan to enable Load Balancing.",
   "noData": "No data",
   "operation.add": "Add",

@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "پیکربندی شود",
   "modelProvider.ttsModel.key": "مدل تبدیل متن به گفتار",
   "modelProvider.ttsModel.tip": "مدل پیش‌فرض را برای ورودی متن به گفتار در مکالمه تنظیم کنید.",
-  "modelProvider.updateSetting": "به‌روزرسانی تنظیمات",
   "modelProvider.upgradeForLoadBalancing": "برای فعال کردن تعادل بار، طرح خود را ارتقا دهید.",
   "noData": "بدون داده",
   "operation.add": "افزودن",

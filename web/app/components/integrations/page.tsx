@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
+import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,
   buildMarketplacePathByIntegrationSection,
@@ -95,7 +95,7 @@ export default function IntegrationsPage({
   const pluginSettingCategory = getPluginCategoryBySection(section)
   const pluginSettingAction = showPluginCategorySetting && pluginSettingCategory
     ? (
-        <UpdateSettingPopover
+        <UpdateSettingDialog
           category={pluginSettingCategory}
         />
       )

@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "設定中",
   "modelProvider.ttsModel.key": "テキスト-to-音声モデル",
   "modelProvider.ttsModel.tip": "会話でのテキスト-to-音声入力に使用するデフォルトモデルを設定します。",
-  "modelProvider.updateSetting": "設定を更新",
   "modelProvider.upgradeForLoadBalancing": "負荷分散を利用するには、プランのアップグレードが必要です。",
   "noData": "データなし",
   "operation.add": "追加",

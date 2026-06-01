@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "Untuk dikonfigurasi",
   "modelProvider.ttsModel.key": "Model Teks-ke-Ucapan",
   "modelProvider.ttsModel.tip": "Atur model default untuk input teks-ke-ucapan dalam percakapan.",
-  "modelProvider.updateSetting": "Perbarui pengaturan",
   "modelProvider.upgradeForLoadBalancing": "Tingkatkan paket Anda untuk mengaktifkan Penyeimbangan Beban.",
   "noData": "Tidak ada data",
   "operation.add": "Tambah",

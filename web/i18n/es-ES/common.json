@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "A configurar",
   "modelProvider.ttsModel.key": "Modelo de Texto a Voz",
   "modelProvider.ttsModel.tip": "Establece el modelo predeterminado para la entrada de texto a voz en la conversación.",
-  "modelProvider.updateSetting": "Actualizar configuración",
   "modelProvider.upgradeForLoadBalancing": "Actualiza tu plan para habilitar el Balanceo de Carga.",
   "noData": "Sin datos",
   "operation.add": "Agregar",

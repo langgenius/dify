@@ -84,7 +84,7 @@ describe('PluginsPicker', () => {
       />,
     )
 
-    expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":2}')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":2,"num":2}')).toBeInTheDocument()
     expect(screen.getByTestId('plugins-selected')).toHaveTextContent('dify/plugin-1,dify/plugin-2')
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
@@ -121,7 +121,7 @@ describe('PluginsPicker', () => {
       />,
     )
 
-    expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
     expect(screen.getByTestId('plugins-selected')).toHaveTextContent('dify/tool-plugin')
     expect(screen.getByTestId('plugins-selected')).not.toHaveTextContent('dify/model-plugin')
 

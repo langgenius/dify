@@ -17,7 +17,7 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import UpdateSettingPopover from '../update-setting-popover'
+import UpdateSettingDialog from '../update-setting-dialog'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
@@ -196,7 +196,7 @@ const ModelProviderPage = ({
       />
       <div className="flex shrink-0 items-center justify-end gap-2">
         {canSetPermissions && (
-          <UpdateSettingPopover
+          <UpdateSettingDialog
             category={PluginCategoryEnum.model}
           />
         )}

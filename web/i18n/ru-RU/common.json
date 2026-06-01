@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "Подлежит настройке",
   "modelProvider.ttsModel.key": "Модель преобразования текста в речь",
   "modelProvider.ttsModel.tip": "Установите модель по умолчанию для ввода текста в речь в разговоре.",
-  "modelProvider.updateSetting": "Обновить настройки",
   "modelProvider.upgradeForLoadBalancing": "Обновите свой тарифный план, чтобы включить балансировку нагрузки.",
   "noData": "Нет данных",
   "operation.add": "Добавить",

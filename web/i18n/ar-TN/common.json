@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "ليتم تكوينه",
   "modelProvider.ttsModel.key": "نموذج تحويل النص إلى كلام",
   "modelProvider.ttsModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل النص إلى كلام في المحادثة.",
-  "modelProvider.updateSetting": "تحديث الإعداد",
   "modelProvider.upgradeForLoadBalancing": "قم بترقية خطتك لتمكين موازنة التحميل.",
   "noData": "لا توجد بيانات",
   "operation.add": "إضافة",

@@ -142,12 +142,12 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
 }))
 
-vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
   __esModule: true,
   default: () => (
-    <div data-testid="update-setting-popover">
+    <div data-testid="update-setting-dialog">
       <button type="button">
-        common.modelProvider.updateSetting
+        plugin.autoUpdate.autoUpdate
         <span>plugin.autoUpdate.strategy.fixOnly.name</span>
       </button>
     </div>
@@ -499,12 +499,12 @@ describe('ProviderList', () => {
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
-    it('uses the new plugin update settings popover from the tools toolbar', () => {
+    it('uses the plugin update settings dialog from the tools toolbar', () => {
       renderProviderList(undefined, 'builtin')
 
-      expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
       expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
-      expect(screen.getByTestId('update-setting-popover')).toBeInTheDocument()
+      expect(screen.getByTestId('update-setting-dialog')).toBeInTheDocument()
     })
 
     it('hides the tools update settings action when permission management is unavailable', () => {
@@ -512,7 +512,7 @@ describe('ProviderList', () => {
 
       renderProviderList(undefined, 'builtin')
 
-      expect(screen.queryByTestId('update-setting-popover')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
     })
 
     it.each([
@@ -522,7 +522,7 @@ describe('ProviderList', () => {
     ] as const)('hides plugin update settings on the %s tool page', (category) => {
       renderProviderList({ category })
 
-      expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.autoUpdate.autoUpdate')).not.toBeInTheDocument()
       expect(screen.queryByText('plugin.autoUpdate.strategy.fixOnly.name')).not.toBeInTheDocument()
     })
   })

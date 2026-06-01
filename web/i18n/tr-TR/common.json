@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "Yapılandırılacak",
   "modelProvider.ttsModel.key": "Metinden Konuşmaya Modeli",
   "modelProvider.ttsModel.tip": "Konuşmada metinden konuşmaya giriş için varsayılan modeli ayarlayın.",
-  "modelProvider.updateSetting": "Ayarı güncelle",
   "modelProvider.upgradeForLoadBalancing": "Yük Dengelemeyi etkinleştirmek için planınızı yükseltin.",
   "noData": "Veri yok",
   "operation.add": "Ekle",

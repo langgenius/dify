@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "De configurat",
   "modelProvider.ttsModel.key": "Model de conversie vorbire-la-text",
   "modelProvider.ttsModel.tip": "Setați modelul implicit pentru intrarea de conversie vorbire-la-text în conversație.",
-  "modelProvider.updateSetting": "Actualizează setarea",
   "modelProvider.upgradeForLoadBalancing": "Actualizați-vă planul pentru a activa Load Balancing.",
   "noData": "Fără date",
   "operation.add": "Adaugă",

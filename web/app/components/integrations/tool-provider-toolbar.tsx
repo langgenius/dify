@@ -3,7 +3,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import SearchInput from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import UpdateSettingPopover from '@/app/components/header/account-setting/update-setting-popover'
+import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import LabelFilter from '@/app/components/tools/labels/filter'
 
@@ -66,7 +66,7 @@ export function ToolProviderToolbar({
           />
         </div>
         {showToolsUpdateSetting && (
-          <UpdateSettingPopover
+          <UpdateSettingDialog
             category={PluginCategoryEnum.tool}
           />
         )}

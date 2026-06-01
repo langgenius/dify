@@ -504,7 +504,6 @@
   "modelProvider.toBeConfigured": "ต้องกําหนดค่า",
   "modelProvider.ttsModel.key": "โมเดลการแปลงข้อความเป็นคําพูด",
   "modelProvider.ttsModel.tip": "ตั้งค่าโมเดลเริ่มต้นสําหรับการป้อนข้อมูลเป็นข้อความเป็นคําพูดในการสนทนา",
-  "modelProvider.updateSetting": "อัปเดตการตั้งค่า",
   "modelProvider.upgradeForLoadBalancing": "อัปเกรดแผนของคุณเพื่อเปิดใช้งานการปรับสมดุลโหลด",
   "noData": "ไม่มีข้อมูล",
   "operation.add": "เพิ่ม",

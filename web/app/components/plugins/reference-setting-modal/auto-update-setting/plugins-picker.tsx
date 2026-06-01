@@ -63,14 +63,20 @@ const PluginsPicker: FC<Props> = ({
     set: setToolPicker,
   }] = useBoolean(false)
   return (
-    <div className="mt-2 flex w-full flex-col gap-2 rounded-[10px] bg-background-section-burn p-2">
+    <div className="mt-2 flex w-full flex-col gap-2 rounded-[10px] bg-background-section-burn p-2.5">
       {hasSelected
         ? (
             <div className="flex items-center justify-between gap-3">
-              <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { ns: 'plugin', num: visiblePlugins.length })}</div>
+              <div className="min-w-0 flex-1 system-xs-medium text-text-tertiary">
+                {t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, {
+                  ns: 'plugin',
+                  count: visiblePlugins.length,
+                  num: visiblePlugins.length,
+                })}
+              </div>
               <button
                 type="button"
-                className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-tertiary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={handleClear}
               >
                 {t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}
@@ -83,7 +89,7 @@ const PluginsPicker: FC<Props> = ({
 
       {hasSelected && (
         <PluginsSelected
-          className="gap-2"
+          className="h-6 gap-1"
           plugins={visiblePlugins}
         />
       )}
