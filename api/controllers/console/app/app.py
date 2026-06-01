@@ -55,7 +55,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.feature_service import FeatureService
 
-ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
 
@@ -66,7 +66,7 @@ _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = Field(
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = Field(
         default="all", description="App mode filter"
     )
     name: str | None = Field(default=None, description="Filter by app name")
@@ -471,7 +471,8 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self):
+    @with_session(write=False)
+    def get(self, session: Session):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -508,7 +509,7 @@ class AppListApi(Resource):
         draft_trigger_app_ids: set[str] = set()
         if workflow_capable_app_ids:
             draft_workflows = (
-                db.session.execute(
+                session.execute(
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),

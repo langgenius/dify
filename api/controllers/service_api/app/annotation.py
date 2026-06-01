@@ -6,7 +6,7 @@ from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field, TypeAdapter
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
@@ -32,8 +32,19 @@ class AnnotationReplyActionPayload(BaseModel):
     embedding_model_name: str = Field(description="Embedding model name")
 
 
+class AnnotationListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Number of annotations per page")
+    keyword: str = Field(default="", description="Keyword to search annotations")
+
+
 register_schema_models(
-    service_api_ns, AnnotationCreatePayload, AnnotationReplyActionPayload, Annotation, AnnotationList
+    service_api_ns,
+    AnnotationCreatePayload,
+    AnnotationReplyActionPayload,
+    AnnotationListQuery,
+    Annotation,
+    AnnotationList,
 )
 
 
@@ -100,6 +111,7 @@ class AnnotationReplyActionStatusApi(Resource):
 class AnnotationListApi(Resource):
     @service_api_ns.doc("list_annotations")
     @service_api_ns.doc(description="List annotations for the application")
+    @service_api_ns.doc(params=query_params_from_model(AnnotationListQuery))
     @service_api_ns.doc(
         responses={
             200: "Annotations retrieved successfully",
@@ -114,18 +126,18 @@ class AnnotationListApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
         """List annotations for the application."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default="", type=str)
+        query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
 
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_model.id, page, limit, keyword)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app_model.id, query.page, query.limit, query.keyword
+        )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         response = AnnotationList(
             data=annotation_models,
-            has_more=len(annotation_list) == limit,
-            limit=limit,
+            has_more=len(annotation_list) == query.limit,
+            limit=query.limit,
             total=total,
-            page=page,
+            page=query.page,
         )
         return response.model_dump(mode="json")
 

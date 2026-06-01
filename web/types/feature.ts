@@ -1,26 +1,30 @@
-import type { ModelProviderQuotaGetPaid } from './model-provider'
+export const SSOProtocol = {
+  SAML: 'saml',
+  OIDC: 'oidc',
+  OAuth2: 'oauth2',
+} as const
 
-export enum SSOProtocol {
-  SAML = 'saml',
-  OIDC = 'oidc',
-  OAuth2 = 'oauth2',
-}
+export type SSOProtocol = typeof SSOProtocol[keyof typeof SSOProtocol]
 
-export enum LicenseStatus {
-  NONE = 'none',
-  INACTIVE = 'inactive',
-  ACTIVE = 'active',
-  EXPIRING = 'expiring',
-  EXPIRED = 'expired',
-  LOST = 'lost',
-}
+export const LicenseStatus = {
+  NONE: 'none',
+  INACTIVE: 'inactive',
+  ACTIVE: 'active',
+  EXPIRING: 'expiring',
+  EXPIRED: 'expired',
+  LOST: 'lost',
+} as const
 
-export enum InstallationScope {
-  ALL = 'all',
-  NONE = 'none',
-  OFFICIAL_ONLY = 'official_only',
-  OFFICIAL_AND_PARTNER = 'official_and_specific_partners',
-}
+export type LicenseStatus = typeof LicenseStatus[keyof typeof LicenseStatus]
+
+export const InstallationScope = {
+  ALL: 'all',
+  NONE: 'none',
+  OFFICIAL_ONLY: 'official_only',
+  OFFICIAL_AND_PARTNER: 'official_and_specific_partners',
+} as const
+
+export type InstallationScope = typeof InstallationScope[keyof typeof InstallationScope]
 
 type License = {
   status: LicenseStatus
@@ -28,8 +32,6 @@ type License = {
 }
 
 export type SystemFeatures = {
-  app_dsl_version: string
-  trial_models: ModelProviderQuotaGetPaid[]
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
@@ -70,8 +72,6 @@ export type SystemFeatures = {
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
-  app_dsl_version: '',
-  trial_models: [],
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
     restrict_to_marketplace_only: false,

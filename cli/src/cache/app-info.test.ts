@@ -1,14 +1,14 @@
-import type { AppMeta } from '../types/app-meta.js'
+import type { AppMeta } from '@/types/app-meta'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import yaml from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CACHE_DIR } from '../store/dir.js'
-import { CACHE_APP_INFO, cachePath, getCache } from '../store/manager.js'
-import { platform } from '../sys/index.js'
-import { FieldInfo, FieldParameters } from '../types/app-meta.js'
-import { APP_INFO_TTL_MS, loadAppInfoCache } from './app-info.js'
+import { ENV_CACHE_DIR } from '@/store/dir'
+import { CACHE_APP_INFO, cachePath, getCache } from '@/store/manager'
+import { platform } from '@/sys/index'
+import { FieldInfo, FieldParameters } from '@/types/app-meta'
+import { APP_INFO_TTL_MS, loadAppInfoCache } from './app-info'
 
 function appInfoPath(dir: string): string {
   return cachePath(dir, CACHE_APP_INFO)

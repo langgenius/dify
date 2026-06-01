@@ -1,9 +1,9 @@
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { isBaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { createClient } from './client.js'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { createClient } from './client'
 
 describe('http client', () => {
   let mock: DifyMock

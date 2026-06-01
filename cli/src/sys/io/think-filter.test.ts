@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { extractThinkBlocks, stripThinkBlocks, ThinkChunkFilter } from './think-filter.js'
+import { extractThinkBlocks, stripThinkBlocks, ThinkChunkFilter } from './think-filter'
 
 function captures() {
   const out = new PassThrough()
