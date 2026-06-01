@@ -4,6 +4,7 @@ Feature: Create Workflow app
     Given I am signed in as the default E2E admin
     When I open the apps console
     And I start creating a blank app
+    And I expand the beginner app types
     And I select the "Workflow" app type
     And I enter a unique E2E app name
     And I confirm app creation
