@@ -51,7 +51,7 @@ vi.mock('@/service/server', () => ({
   },
 }))
 
-vi.mock('@/service/server-system-features', () => ({
+vi.mock('@/features/system-features/server', () => ({
   serverSystemFeaturesQueryOptions: () => ({
     queryKey: ['console', 'system-features'],
     queryFn: mocks.systemFeaturesQueryFn,

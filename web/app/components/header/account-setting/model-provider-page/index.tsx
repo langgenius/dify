@@ -15,8 +15,8 @@ import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/us
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import UpdateSettingPopover from '../update-setting-popover'
 import {
   CustomConfigurationStatusEnum,

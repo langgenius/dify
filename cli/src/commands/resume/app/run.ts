@@ -1,7 +1,7 @@
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
 import type { AppInfoCache } from '@/cache/app-info'
 import type { RunContext } from '@/commands/run/app/_strategies/index'
+import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { AppMetaClient } from '@/api/app-meta'
 import { AppRunClient } from '@/api/app-run'
@@ -31,7 +31,7 @@ export type ResumeAppOptions = {
 
 export type ResumeAppDeps = {
   readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
   readonly cache?: AppInfoCache
@@ -90,9 +90,9 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
 
   let action = opts.action
   if (action === undefined) {
-    const formResp = await deps.http.get(
+    const formResp = await deps.http.get<{ user_actions: { id: string }[] }>(
       `apps/${encodeURIComponent(opts.appId)}/form/human_input/${encodeURIComponent(opts.formToken)}`,
-    ).json<{ user_actions: { id: string }[] }>()
+    )
     if (formResp.user_actions.length === 1) {
       action = formResp.user_actions[0]?.id ?? ''
     }

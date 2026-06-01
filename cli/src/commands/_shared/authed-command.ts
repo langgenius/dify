@@ -1,7 +1,7 @@
-import type { KyInstance } from 'ky'
 import type { HostsBundle } from '@/auth/hosts'
 import type { AppInfoCache } from '@/cache/app-info'
 import type { Command } from '@/framework/command'
+import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
 import { loadHosts } from '@/auth/hosts'
@@ -11,16 +11,16 @@ import { getEnv } from '@/env/registry'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { formatErrorForCli } from '@/errors/format'
-import { createClient } from '@/http/client'
+import { createHttpClient } from '@/http/client'
 import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme } from '@/util/host'
+import { hostWithScheme, openAPIBase } from '@/util/host'
 import { versionInfo } from '@/version/info'
 import { maybeNudgeCompat } from '@/version/nudge'
-import { resolveRetryAttempts } from './global-flags'
+import { resolveRetryAttempts } from './global-flags.js'
 
 export type AuthedContext = {
   readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
   readonly cache?: AppInfoCache
@@ -52,7 +52,7 @@ export async function buildAuthedContext(
     flag: opts.retryFlag,
     env: getEnv,
   })
-  const http = createClient({ host, bearer: bundle.tokens.bearer, retryAttempts })
+  const http = createHttpClient({ baseURL: openAPIBase(host), bearer: bundle.tokens.bearer, retryAttempts })
 
   const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
 
@@ -72,7 +72,7 @@ async function runCompatNudge(opts: {
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {
-        const http = createClient({ host, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+        const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
         return new MetaClient(http).serverVersion()
       },
       emit: line => opts.io.err.write(line),

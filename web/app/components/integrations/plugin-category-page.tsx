@@ -11,7 +11,7 @@ import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
 import { useUploader } from '@/app/components/plugins/plugin-page/use-uploader'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type PluginCategoryPageProps = {
   canInstall?: boolean
