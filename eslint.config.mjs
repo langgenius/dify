@@ -84,7 +84,7 @@ export default antfu(
       'no-restricted-imports': ['error', {
         patterns: [
           {
-            group: ['../**', './*/**'],
+            group: ['../**', './*/**', '..'],
             message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
           },
         ],
