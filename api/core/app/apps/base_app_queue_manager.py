@@ -219,5 +219,6 @@ class AppQueueManager(ABC):
             case _:
                 if isinstance(data, DeclarativeMeta) or hasattr(data, "_sa_instance_state"):
                     raise TypeError(
-                        "Critical Error: Passing SQLAlchemy Model instances that cause thread safety issues is not allowed."
+                        "Critical Error: Passing SQLAlchemy Model instances that"
+                        " cause thread safety issues is not allowed."
                     )
