@@ -1,8 +1,8 @@
-import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runSetMember } from './run'
+import { runSetMember } from './run.js'
 
 function active(): ActiveContext {
   return {
@@ -29,7 +29,7 @@ describe('runSetMember', () => {
       { memberId: 'acct-2', role: 'admin' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -48,7 +48,7 @@ describe('runSetMember', () => {
         { memberId: 'acct-2', role: 'owner' },
         {
           active: active(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -64,7 +64,7 @@ describe('runSetMember', () => {
         { memberId: '', role: 'admin' },
         {
           active: active(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -78,7 +78,7 @@ describe('runSetMember', () => {
       { memberId: 'acct-2', role: 'normal', workspace: 'ws-9' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },

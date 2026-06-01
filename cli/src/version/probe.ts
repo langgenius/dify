@@ -1,14 +1,14 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { CompatVerdict } from './compat'
-import type { Channel } from './info'
+import type { CompatVerdict } from './compat.js'
+import type { Channel } from './info.js'
 import type { ActiveContext } from '@/auth/hosts'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
 import { Registry } from '@/auth/hosts'
-import { createClient } from '@/http/client'
+import { createHttpClient } from '@/http/client'
 import { arch, platform } from '@/sys/index'
-import { hostWithScheme } from '@/util/host'
-import { difyCompat, evaluateCompat } from './compat'
-import { versionInfo } from './info'
+import { hostWithScheme, openAPIBase } from '@/util/host'
+import { difyCompat, evaluateCompat } from './compat.js'
+import { versionInfo } from './info.js'
 
 export type ClientBlock = {
   readonly version: string
@@ -52,7 +52,7 @@ const defaultLoadActive = async (): Promise<ActiveContext | undefined> => {
 }
 
 const defaultProbe: MetaProbe = async (endpoint) => {
-  const http = createClient({ host: endpoint, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+  const http = createHttpClient({ baseURL: openAPIBase(endpoint), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
   return new MetaClient(http).serverVersion()
 }
 

@@ -8,7 +8,7 @@ describe('createWorkflowSlice', () => {
     localStorage.clear()
   })
 
-  it('defaults to pointer mode and restores persisted control mode', () => {
+  it('defaults to pointer mode', () => {
     const defaultStore = createStore(createWorkflowSlice)
 
     expect(defaultStore.getState().controlMode).toBe('pointer')
@@ -16,10 +16,10 @@ describe('createWorkflowSlice', () => {
     localStorage.setItem('workflow-operation-mode', 'hand')
     const persistedStore = createStore(createWorkflowSlice)
 
-    expect(persistedStore.getState().controlMode).toBe('hand')
+    expect(persistedStore.getState().controlMode).toBe('pointer')
   })
 
-  it('persists control mode updates and stores run state payloads', () => {
+  it('updates control mode and stores run state payloads', () => {
     const store = createStore(createWorkflowSlice)
     const workflowRunningData: WorkflowRunningData & { resultText: string } = {
       result: {
@@ -35,7 +35,6 @@ describe('createWorkflowSlice', () => {
     store.getState().setWorkflowRunningData(workflowRunningData)
 
     expect(store.getState().controlMode).toBe('pointer')
-    expect(localStorage.getItem('workflow-operation-mode')).toBe('pointer')
     expect(store.getState().workflowRunningData?.resultText).toBe('streaming')
   })
 })

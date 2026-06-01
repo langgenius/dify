@@ -1,11 +1,11 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
 import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { stringifyOutput, table } from '@/framework/output'
-import { createClient } from '@/http/client'
-import { AppListOutput } from './handlers'
-import { runGetApp } from './run'
+import { AppListOutput } from './handlers.js'
+import { runGetApp } from './run.js'
 
 const baseActive: ActiveContext = {
   host: '127.0.0.1',
@@ -33,7 +33,7 @@ describe('runGetApp', () => {
   })
 
   function http() {
-    return createClient({ host: mock.url, bearer: 'dfoa_test' })
+    return testHttpClient(mock.url, 'dfoa_test')
   }
 
   async function render(opts: Parameters<typeof runGetApp>[0] = {}): Promise<string> {

@@ -1,12 +1,12 @@
-import type { KyInstance } from 'ky'
+import type { HttpClient } from '@/http/types'
 import { Registry } from '@/auth/hosts'
 import { DifyCommand } from '@/commands/_shared/dify-command'
-import { createClient } from '@/http/client'
+import { createHttpClient } from '@/http/client'
 import { getTokenStore, tokenKey } from '@/store/manager'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme } from '@/util/host'
-import { runLogout } from './logout'
+import { hostWithScheme, openAPIBase } from '@/util/host'
+import { runLogout } from './logout.js'
 
 export default class Logout extends DifyCommand {
   static override description = 'Log out of the active Dify host'
@@ -21,11 +21,11 @@ export default class Logout extends DifyCommand {
     const reg = Registry.load()
     const active = reg.resolveActive()
 
-    let http: KyInstance | undefined
+    let http: HttpClient | undefined
     if (active !== undefined) {
       const bearer = getTokenStore().store.get(tokenKey(active.host, active.email))
       if (bearer !== '') {
-        http = createClient({ host: hostWithScheme(active.host, active.scheme), bearer, retryAttempts: 0 })
+        http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
       }
     }
 

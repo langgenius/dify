@@ -4,13 +4,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { formatted, stringifyOutput } from '@/framework/output'
-import { createClient } from '@/http/client'
 import { ENV_CACHE_DIR } from '@/store/dir'
 import { CACHE_APP_INFO, getCache } from '@/store/manager'
-import { runDescribeApp } from './run'
+import { runDescribeApp } from './run.js'
 
 function active(): ActiveContext {
   return {
@@ -50,7 +50,7 @@ describe('runDescribeApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     const data = await runDescribeApp(
       opts,
-      { active: active(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     return stringifyOutput(formatted({ format: opts.format ?? '', data }))
   }
@@ -93,13 +93,13 @@ describe('runDescribeApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runDescribeApp(
       { appId: 'app-1' },
-      { active: active(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     const before = cache.get(mock.url, 'app-1')
     expect(before).toBeDefined()
     await runDescribeApp(
       { appId: 'app-1', refresh: true },
-      { active: active(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
     )
     const after = cache.get(mock.url, 'app-1')
     expect(after?.fetchedAt).not.toBe(before?.fetchedAt ?? '')
@@ -114,7 +114,7 @@ describe('runDescribeApp', () => {
       { appId: 'nope' },
       {
         active: active(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }),
+        http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
         host: mock.url,
       },
     )).rejects.toThrow()

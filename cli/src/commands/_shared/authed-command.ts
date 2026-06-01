@@ -1,7 +1,7 @@
-import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
 import type { AppInfoCache } from '@/cache/app-info'
 import type { Command } from '@/framework/command'
+import type { HttpClient } from '@/http/types'
 import type { Store } from '@/store/store'
 import type { IOStreams } from '@/sys/io/streams'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
@@ -10,19 +10,19 @@ import { loadAppInfoCache } from '@/cache/app-info'
 import { loadNudgeStore } from '@/cache/nudge-store'
 import { getEnv } from '@/env/registry'
 import { formatErrorForCli } from '@/errors/format'
-import { createClient } from '@/http/client'
+import { createHttpClient } from '@/http/client'
 import { getTokenStore, tokenKey } from '@/store/manager'
 import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme } from '@/util/host'
+import { hostWithScheme, openAPIBase } from '@/util/host'
 import { versionInfo } from '@/version/info'
 import { maybeNudgeCompat } from '@/version/nudge'
-import { resolveRetryAttempts } from './global-flags'
+import { resolveRetryAttempts } from './global-flags.js'
 
 export type AuthedContext = {
   readonly reg: Registry
   readonly active: ActiveContext
   readonly store: Store
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
   readonly cache?: AppInfoCache
@@ -51,7 +51,7 @@ export async function buildAuthedContext(
 
   const host = hostWithScheme(active.host, active.scheme)
   const retryAttempts = resolveRetryAttempts({ flag: opts.retryFlag, env: getEnv })
-  const http = createClient({ host, bearer, retryAttempts })
+  const http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts })
 
   const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
 
@@ -76,7 +76,7 @@ async function runCompatNudge(opts: {
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {
-        const http = createClient({ host, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+        const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
         return new MetaClient(http).serverVersion()
       },
       emit: line => opts.io.err.write(line),

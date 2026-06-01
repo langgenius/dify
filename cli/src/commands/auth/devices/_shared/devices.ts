@@ -1,6 +1,6 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
 import type { ActiveContext, Registry } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import type { Store } from '@/store/store'
 import type { IOStreams } from '@/sys/io/streams'
 import { AccountSessionsClient } from '@/api/account-sessions'
@@ -13,7 +13,7 @@ import { runWithSpinner } from '@/sys/io/spinner'
 export type DevicesListOptions = {
   readonly io: IOStreams
   readonly tokenId: string
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly json?: boolean
   readonly page?: number
   readonly limitRaw?: string
@@ -72,7 +72,7 @@ export type DevicesRevokeOptions = {
   readonly reg: Registry
   readonly active: ActiveContext
   readonly store: Store
-  readonly http: KyInstance
+  readonly http: HttpClient
   readonly target?: string
   readonly all: boolean
   readonly yes?: boolean

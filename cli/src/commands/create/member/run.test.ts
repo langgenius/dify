@@ -1,8 +1,8 @@
-import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runCreateMember } from './run'
+import { runCreateMember } from './run.js'
 
 function active(): ActiveContext {
   return {
@@ -37,7 +37,7 @@ describe('runCreateMember', () => {
       { email: 'new@example.com', role: 'normal' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -62,7 +62,7 @@ describe('runCreateMember', () => {
         { email: 'new@example.com', role: 'owner' },
         {
           active: active(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -78,7 +78,7 @@ describe('runCreateMember', () => {
         { email: '', role: 'normal' },
         {
           active: active(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },
@@ -93,7 +93,7 @@ describe('runCreateMember', () => {
       { email: 'new@example.com', role: 'admin', workspace: 'ws-9' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },

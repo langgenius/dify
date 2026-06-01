@@ -1,8 +1,8 @@
-import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runDeleteMember } from './run'
+import { runDeleteMember } from './run.js'
 
 function active(): ActiveContext {
   return {
@@ -29,7 +29,7 @@ describe('runDeleteMember', () => {
       { memberId: 'acct-2' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -47,7 +47,7 @@ describe('runDeleteMember', () => {
       { memberId: 'acct-2', workspace: 'ws-9' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -62,7 +62,7 @@ describe('runDeleteMember', () => {
         { memberId: '' },
         {
           active: active(),
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },

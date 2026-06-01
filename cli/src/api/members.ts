@@ -5,45 +5,40 @@ import type {
   MemberListResponse,
   MemberRoleUpdatePayload,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { HttpClient } from '@/http/types'
 
 /**
  * Thin client for /openapi/v1/workspaces/<id>/members.
  *
- * Errors are surfaced as ky HTTPErrors with the server's status code
+ * Errors are surfaced as BaseError via classifyResponse on non-2xx
  * (400/403/404/422). The CLI's AuthedCommand base layer maps those to
  * user-visible messages — clients never swallow status codes here.
  */
 export class MembersClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
   async list(workspaceId: string, q?: { page?: number, limit?: number }): Promise<MemberListResponse> {
-    const params = new URLSearchParams()
-    if (q?.page !== undefined)
-      params.set('page', String(q.page))
-    if (q?.limit !== undefined)
-      params.set('limit', String(q.limit))
-    const hasParams = Array.from(params.keys()).length > 0
-    const opts = hasParams ? { searchParams: params } : undefined
-    return this.http
-      .get(`workspaces/${encodeURIComponent(workspaceId)}/members`, opts)
-      .json<MemberListResponse>()
+    return this.http.get<MemberListResponse>(
+      `workspaces/${encodeURIComponent(workspaceId)}/members`,
+      { searchParams: { page: q?.page, limit: q?.limit } },
+    )
   }
 
   async invite(workspaceId: string, payload: MemberInvitePayload): Promise<MemberInviteResponse> {
-    return this.http
-      .post(`workspaces/${encodeURIComponent(workspaceId)}/members`, { json: payload })
-      .json<MemberInviteResponse>()
+    return this.http.post<MemberInviteResponse>(
+      `workspaces/${encodeURIComponent(workspaceId)}/members`,
+      { json: payload },
+    )
   }
 
   async remove(workspaceId: string, memberId: string): Promise<MemberActionResponse> {
-    return this.http
-      .delete(`workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`)
-      .json<MemberActionResponse>()
+    return this.http.delete<MemberActionResponse>(
+      `workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`,
+    )
   }
 
   async updateRole(
@@ -51,11 +46,9 @@ export class MembersClient {
     memberId: string,
     payload: MemberRoleUpdatePayload,
   ): Promise<MemberActionResponse> {
-    return this.http
-      .put(
-        `workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}/role`,
-        { json: payload },
-      )
-      .json<MemberActionResponse>()
+    return this.http.put<MemberActionResponse>(
+      `workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}/role`,
+      { json: payload },
+    )
   }
 }

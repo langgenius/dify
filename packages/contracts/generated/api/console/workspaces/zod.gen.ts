@@ -704,6 +704,7 @@ export const zBuiltinToolAddPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   name: z.string().max(30).nullish(),
   type: zCredentialType,
+  visibility: z.string().nullish(),
 })
 
 /**

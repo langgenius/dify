@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Registry } from '@/auth/hosts'
 import { ENV_CONFIG_DIR } from '@/store/dir'
 import { bufferStreams } from '@/sys/io/streams'
-import { runLogout } from './logout'
+import { runLogout } from './logout.js'
 
 class MemStore implements Store {
   readonly entries = new Map<string, unknown>()

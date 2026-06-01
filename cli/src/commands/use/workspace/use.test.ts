@@ -2,8 +2,8 @@ import type {
   WorkspaceDetailResponse,
   WorkspaceListResponse,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Registry } from '@/auth/hosts'
 import { ENV_CONFIG_DIR } from '@/store/dir'
 import { bufferStreams } from '@/sys/io/streams'
-import { runUseWorkspace } from './use'
+import { runUseWorkspace } from './use.js'
 
 function makeRegistry(): Registry {
   const reg = Registry.empty('file')
@@ -86,7 +86,7 @@ describe('runUseWorkspace', () => {
       {
         reg,
         active,
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io,
         workspacesFactory: () => client as never,
       },
@@ -119,7 +119,7 @@ describe('runUseWorkspace', () => {
 
     await runUseWorkspace(
       { workspaceId: 'ws-2' },
-      { reg, active, http: {} as KyInstance, io, workspacesFactory: () => client as never },
+      { reg, active, http: {} as HttpClient, io, workspacesFactory: () => client as never },
     )
 
     const reloaded = Registry.load()
@@ -138,7 +138,7 @@ describe('runUseWorkspace', () => {
 
     await runUseWorkspace(
       { workspaceId: 'ws-2' },
-      { reg, active, http: {} as KyInstance, io, workspacesFactory: () => client as never },
+      { reg, active, http: {} as HttpClient, io, workspacesFactory: () => client as never },
     )
 
     const reloaded = Registry.load()
@@ -164,7 +164,7 @@ describe('runUseWorkspace', () => {
         {
           reg,
           active,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },
@@ -195,7 +195,7 @@ describe('runUseWorkspace', () => {
         {
           reg,
           active,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },
@@ -234,7 +234,7 @@ describe('runUseWorkspace', () => {
         {
           reg,
           active,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io,
           workspacesFactory: () => client as never,
         },

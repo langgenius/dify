@@ -18,7 +18,7 @@ export type DatasetCreatePayload = {
   external_knowledge_id?: string | null
   indexing_technique?: string | null
   name: string
-  permission?: DatasetPermissionEnum
+  permission?: PermissionEnum
   provider?: string
 }
 
@@ -272,7 +272,7 @@ export type DatasetUpdatePayload = {
   partial_member_list?: Array<{
     [key: string]: string
   }> | null
-  permission?: DatasetPermissionEnum
+  permission?: PermissionEnum
   retrieval_model?: {
     [key: string]: unknown
   } | null
@@ -544,7 +544,7 @@ export type DatasetListItemResponse = {
   word_count: number
 }
 
-export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
+export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type DatasetDocMetadataResponse = {
   id: string

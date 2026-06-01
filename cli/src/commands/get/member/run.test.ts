@@ -1,9 +1,9 @@
 import type { MemberListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runGetMember } from './run'
+import { runGetMember } from './run.js'
 
 function active(): ActiveContext {
   return {
@@ -39,7 +39,7 @@ describe('runGetMember', () => {
       {},
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -56,7 +56,7 @@ describe('runGetMember', () => {
       { workspace: 'ws-9' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -71,7 +71,7 @@ describe('runGetMember', () => {
       { page: 3, limitRaw: '50' },
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -93,7 +93,7 @@ describe('runGetMember', () => {
       {},
       {
         active: a,
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -113,7 +113,7 @@ describe('runGetMember', () => {
         {},
         {
           active: noWs,
-          http: {} as KyInstance,
+          http: {} as HttpClient,
           io: bufferStreams(),
           envLookup: () => undefined,
           membersFactory: () => client as never,
@@ -140,7 +140,7 @@ describe('MemberListOutput shape', () => {
       {},
       {
         active: active(),
-        http: {} as KyInstance,
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
