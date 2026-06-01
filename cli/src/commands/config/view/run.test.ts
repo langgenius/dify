@@ -2,9 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '../../../store/dir.js'
-import { getConfigurationStore } from '../../../store/manager.js'
-import { runConfigView } from './run.js'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { getConfigurationStore } from '@/store/manager'
+import { runConfigView } from './run'
 
 describe('runConfigView', () => {
   let dir: string

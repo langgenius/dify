@@ -1,13 +1,13 @@
 import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { Store } from '../../../store/store.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { AccountSessionsClient } from '../../../api/account-sessions.js'
-import { clearLocal } from '../../../auth/hosts.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { getTokenStore } from '../../../store/manager.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import type { HostsBundle } from '@/auth/hosts'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { AccountSessionsClient } from '@/api/account-sessions'
+import { clearLocal } from '@/auth/hosts'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { getTokenStore } from '@/store/manager'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
 
 export type LogoutOptions = {
   readonly io: IOStreams

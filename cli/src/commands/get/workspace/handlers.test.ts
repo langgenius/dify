@@ -1,6 +1,6 @@
 import type { WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
 import { describe, expect, it } from 'vitest'
-import { newWorkspaceObject, WORKSPACE_MODE_KEY, WorkspaceListOutput, WorkspaceRow } from './handlers.js'
+import { newWorkspaceObject, WORKSPACE_MODE_KEY, WorkspaceListOutput, WorkspaceRow } from './handlers'
 
 function env(): WorkspaceListResponse {
   return {

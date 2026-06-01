@@ -12,6 +12,9 @@ type KeyPressRegistration = {
     ignoreInputs?: boolean
     preventDefault?: boolean
     stopPropagation?: boolean
+    meta?: {
+      scope?: string
+    }
   }
 }
 
@@ -187,6 +190,9 @@ describe('useShortcuts', () => {
     renderWorkflowHook(() => useWorkflowHotkeys())
 
     const deleteShortcut = findRegistration(registration => registration.keyFilter === 'Delete')
+    expect(deleteShortcut.options?.meta).toEqual(
+      expect.objectContaining({ scope: 'workflow-canvas' }),
+    )
 
     const bodyEvent = createKeyboardEvent()
     triggerShortcut(deleteShortcut, bodyEvent)

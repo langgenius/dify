@@ -5,7 +5,7 @@ import {
   isRawObject,
   NoCompatiblePrinterError,
   payload,
-} from './printer.js'
+} from './printer'
 
 describe('NoCompatiblePrinterError', () => {
   it('mentions format and allowed list when allowed is non-empty', () => {

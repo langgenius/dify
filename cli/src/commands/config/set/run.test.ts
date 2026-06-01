@@ -2,12 +2,12 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { loadConfig } from '../../../config/config-loader.js'
-import { isBaseError } from '../../../errors/base.js'
-import { ErrorCode, ExitCode } from '../../../errors/codes.js'
-import { ENV_CONFIG_DIR } from '../../../store/dir.js'
-import { getConfigurationStore } from '../../../store/manager.js'
-import { runConfigSet } from './run.js'
+import { loadConfig } from '@/config/config-loader'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode, ExitCode } from '@/errors/codes'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { getConfigurationStore } from '@/store/manager'
+import { runConfigSet } from './run'
 
 describe('runConfigSet', () => {
   let dir: string

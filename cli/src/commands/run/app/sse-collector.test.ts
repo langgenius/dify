@@ -1,6 +1,6 @@
-import type { SseEvent } from '../../../http/sse.js'
+import type { SseEvent } from '@/http/sse'
 import { describe, expect, it } from 'vitest'
-import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector.js'
+import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector'
 
 const enc = new TextEncoder()
 function ev(name: string, data: object): SseEvent {

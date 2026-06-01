@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Model, ModelItem, ModelProvider } from '../../declarations'
 import type { PopupProps } from '../popup'
-import type { SystemFeatures } from '@/types/feature'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -105,7 +104,7 @@ function PopupHarness(props: PopupTestProps) {
 }
 
 const renderPopup = (ui: ReactElement<PopupTestProps>) => renderWithSystemFeatures(ui, {
-  systemFeatures: { trial_models: mockTrialModels.current as unknown as SystemFeatures['trial_models'] },
+  trialModels: mockTrialModels.current,
 })
 
 const mockTrialCredits = vi.hoisted(() => ({
