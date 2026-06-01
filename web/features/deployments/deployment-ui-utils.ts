@@ -1,6 +1,6 @@
 import type { DeploymentUiStatus } from './runtime-status'
 
-export type DeploymentStatusTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
+type DeploymentStatusTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
 
 const STATUS_TONE: Record<DeploymentUiStatus, DeploymentStatusTone> = {
   deploy_failed: 'danger',
@@ -64,7 +64,7 @@ export function deploymentStatusLabelKey(status: DeploymentUiStatus) {
   return STATUS_LABEL_KEYS[status]
 }
 
-export function deploymentStatusTone(status: DeploymentUiStatus) {
+function deploymentStatusTone(status: DeploymentUiStatus) {
   return STATUS_TONE[status]
 }
 

@@ -2,45 +2,14 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import type { ComponentPropsWithRef } from 'react'
-import type { DeploymentUiStatus } from './runtime-status'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import {
-  deploymentStatusIconClassName,
   deploymentStatusLabelKey,
   deploymentStatusToneClassNames,
 } from './deployment-ui-utils'
 import { environmentName } from './environment'
 import { deploymentStatus } from './runtime-status'
-
-export function DeploymentStatusBadge({
-  status,
-  className,
-  compact,
-}: {
-  status: DeploymentUiStatus
-  className?: string
-  compact?: boolean
-}) {
-  const { t } = useTranslation('deployments')
-  const toneClassNames = deploymentStatusToneClassNames(status)
-
-  return (
-    <span
-      className={cn(
-        'inline-flex h-6 max-w-full items-center gap-1.5 rounded-md border px-2 system-xs-medium',
-        toneClassNames.badge,
-        className,
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn('size-3.5 shrink-0', deploymentStatusIconClassName(status), toneClassNames.icon)}
-      />
-      {!compact && <span className="truncate">{t(deploymentStatusLabelKey(status))}</span>}
-    </span>
-  )
-}
 
 type EnvironmentDeploymentBadgeProps = Omit<ComponentPropsWithRef<'span'>, 'children' | 'title'> & {
   row: EnvironmentDeployment

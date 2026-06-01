@@ -3,7 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 
 type EnvironmentMode = 'shared' | 'isolated'
-type EnvironmentHealth = 'ready' | 'degraded'
 
 const baseBadge = 'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 system-xs-medium whitespace-nowrap'
 
@@ -18,21 +17,6 @@ export function ModeBadge({ mode, className }: {
   return (
     <span className={cn(baseBadge, style, className)}>
       {t(mode === 'shared' ? 'mode.shared' : 'mode.isolated')}
-    </span>
-  )
-}
-
-export function HealthBadge({ health, className }: {
-  health: EnvironmentHealth
-  className?: string
-}) {
-  const { t } = useTranslation('deployments')
-  const style = health === 'ready'
-    ? 'border-util-colors-green-green-200 bg-util-colors-green-green-50 text-util-colors-green-green-700'
-    : 'border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700'
-  return (
-    <span className={cn(baseBadge, style, className)}>
-      {t(health === 'ready' ? 'health.ready' : 'health.degraded')}
     </span>
   )
 }
