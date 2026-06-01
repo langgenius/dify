@@ -1,6 +1,6 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC, RefObject } from 'react'
 import type { InputValueTypes, TextGenerationCustomConfig, TextGenerationRunControl } from './types'
-import type { SystemFeatures } from '@/features/system-features/types'
 import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -38,7 +38,7 @@ type TextGenerationSidebarProps = {
   runControl: TextGenerationRunControl | null
   savedMessages: SavedMessage[]
   siteInfo: SiteInfo
-  systemFeatures: SystemFeatures
+  systemFeatures: GetSystemFeaturesResponse
   textToSpeechConfig: TextToSpeechConfig | null
   visionConfig: VisionSettings
 }

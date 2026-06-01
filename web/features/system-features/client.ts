@@ -1,9 +1,8 @@
-import type { SystemFeatures } from './types'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_CLOUD_EDITION } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { cloudSystemFeatures } from './config'
-import { defaultSystemFeatures } from './types'
+import { cloudSystemFeatures, defaultSystemFeatures } from './config'
 
 /**
  * Soft-fallback to defaults so the dashboard stays usable when /system-features fails.
@@ -20,21 +19,21 @@ import { defaultSystemFeatures } from './types'
  * `staleTime`: inherit the 5-minute default from query-client-server.ts.
  */
 export const systemFeaturesQueryOptions = () => {
-  const queryKey = consoleQuery.systemFeatures.queryKey()
+  const queryKey = consoleQuery.systemFeatures.get.queryKey()
 
   if (IS_CLOUD_EDITION) {
-    return queryOptions<SystemFeatures>({
+    return queryOptions<GetSystemFeaturesResponse>({
       queryKey,
       queryFn: async () => cloudSystemFeatures,
       staleTime: Infinity,
     })
   }
 
-  return queryOptions<SystemFeatures>({
+  return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
     queryFn: async () => {
       try {
-        return await consoleClient.systemFeatures()
+        return await consoleClient.systemFeatures.get()
       }
       catch (err) {
         console.error('[systemFeatures] fetch failed, using defaults', err)

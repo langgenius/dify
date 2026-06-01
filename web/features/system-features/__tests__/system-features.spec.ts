@@ -1,11 +1,11 @@
-import type { SystemFeatures } from '../types'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures } from '../types'
+import { defaultSystemFeatures } from '../config'
 
 type LoadOptions = {
   cloudEnv?: Partial<typeof defaultCloudEnv>
   isCloudEdition: boolean
-  systemFeaturesResult?: SystemFeatures
+  systemFeaturesResult?: GetSystemFeaturesResponse
   systemFeaturesError?: Error
 }
 
@@ -54,11 +54,15 @@ const loadSystemFeaturesModule = async ({
   }))
   vi.doMock('@/service/client', () => ({
     consoleClient: {
-      systemFeatures,
+      systemFeatures: {
+        get: systemFeatures,
+      },
     },
     consoleQuery: {
       systemFeatures: {
-        queryKey: () => queryKey,
+        get: {
+          queryKey: () => queryKey,
+        },
       },
     },
   }))
@@ -96,11 +100,15 @@ const loadServerSystemFeaturesModule = async ({
   vi.doMock('@/service/server', () => ({
     getServerConsoleClientContext,
     serverConsoleClient: {
-      systemFeatures,
+      systemFeatures: {
+        get: systemFeatures,
+      },
     },
     serverConsoleQuery: {
       systemFeatures: {
-        queryKey: () => queryKey,
+        get: {
+          queryKey: () => queryKey,
+        },
       },
     },
   }))

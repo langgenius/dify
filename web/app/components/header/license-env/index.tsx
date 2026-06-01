@@ -5,7 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/types'
+import { LicenseStatus } from '@/features/system-features/constants'
 import PremiumBadge from '../../base/premium-badge'
 
 const LicenseNav = () => {
