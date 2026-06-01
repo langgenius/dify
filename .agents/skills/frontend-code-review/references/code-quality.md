@@ -40,7 +40,7 @@ Category: Code Quality
 
 ### Description
 
-When a frontend file grows large or mixes multiple responsibilities, suggest splitting it into focused components, hooks, or utilities. Prefer shallow local structure that matches existing repo patterns, such as a sibling `components/` folder, and avoid deep folder hierarchies unless the surrounding code already uses them.
+React component files should stay under 300 lines. When a frontend component file grows beyond that boundary or mixes multiple responsibilities, suggest splitting it into focused components, hooks, or utilities. Prefer shallow local structure that matches existing repo patterns, such as sibling component files, and avoid deep folder hierarchies unless the surrounding code already uses them.
 
 ## Reuse base and dify-ui components before hand-rolling UI
 
