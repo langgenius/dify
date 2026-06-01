@@ -39,6 +39,33 @@ from models.agent_config_entities import AgentSoulConfig
 logger = logging.getLogger(__name__)
 
 
+def publish_text_answer(*, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
+    """Publish a complete assistant answer as one chunk + message-end.
+
+    The EasyUI chat task pipeline consumes a QueueLLMChunkEvent stream followed
+    by a QueueMessageEndEvent; emitting the whole answer as a single chunk lets
+    both the backend-produced answer and short-circuited answers (moderation /
+    annotation reply) share the exact same persistence + SSE path.
+    """
+    chunk = LLMResultChunk(
+        model=model_name,
+        prompt_messages=[],
+        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=answer)),
+    )
+    queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
+    queue_manager.publish(
+        QueueMessageEndEvent(
+            llm_result=LLMResult(
+                model=model_name,
+                prompt_messages=[],
+                message=AssistantPromptMessage(content=answer),
+                usage=LLMUsage.empty_usage(),
+            ),
+        ),
+        PublishFrom.APPLICATION_MANAGER,
+    )
+
+
 class AgentAppRunner:
     """Runs one Agent App conversation turn against the Agent backend."""
 
@@ -122,23 +149,7 @@ class AgentAppRunner:
     def _publish_answer(self, *, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
         # MVP: emit the full answer as a single chunk + message-end. The chat
         # task pipeline streams the chunk over SSE and persists the message.
-        chunk = LLMResultChunk(
-            model=model_name,
-            prompt_messages=[],
-            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=answer)),
-        )
-        queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
-        queue_manager.publish(
-            QueueMessageEndEvent(
-                llm_result=LLMResult(
-                    model=model_name,
-                    prompt_messages=[],
-                    message=AssistantPromptMessage(content=answer),
-                    usage=LLMUsage.empty_usage(),
-                ),
-            ),
-            PublishFrom.APPLICATION_MANAGER,
-        )
+        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
 
     def _save_session(self, *, scope: AgentAppSessionScope, backend_run_id: str, snapshot: Any) -> None:
         try:
@@ -172,4 +183,4 @@ class AgentAppRunner:
         return json.dumps(output, ensure_ascii=False)
 
 
-__all__ = ["AgentAppRunner"]
+__all__ = ["AgentAppRunner", "publish_text_answer"]

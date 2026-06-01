@@ -336,7 +336,7 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, app_model: App, message_id: UUID):
         current_user, _ = current_account_with_tenant()
         message_id_str = str(message_id)

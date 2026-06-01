@@ -41,7 +41,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.llm.model_access import build_dify_model_access
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
-from models import Account, App, EndUser
+from models import Account, App, EndUser, Message
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from services.conversation_service import ConversationService
@@ -175,6 +175,21 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
                 app_config = application_generate_entity.app_config
 
+                # Apply app-level input guards (content moderation + annotation
+                # reply) before reaching the Agent backend, mirroring the EasyUI
+                # chat / agent-chat runners. These can short-circuit the turn.
+                app_model = db.session.get(App, app_config.app_id)
+                if app_model is None:
+                    raise AgentAppGeneratorError("App not found")
+                handled, query = self._run_input_guards(
+                    application_generate_entity=application_generate_entity,
+                    app_model=app_model,
+                    message=message,
+                    queue_manager=queue_manager,
+                )
+                if handled:
+                    return
+
                 dify_context = DifyRunContext(
                     tenant_id=app_config.tenant_id,
                     app_id=app_config.app_id,
@@ -205,7 +220,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     agent_config_snapshot_id=application_generate_entity.agent_config_snapshot_id,
                     agent_soul=agent_soul,
                     conversation_id=conversation.id,
-                    query=application_generate_entity.query,
+                    query=query,
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
@@ -217,6 +232,68 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
+
+    def _run_input_guards(
+        self,
+        *,
+        application_generate_entity: AgentAppGenerateEntity,
+        app_model: App,
+        message: Message,
+        queue_manager: AppQueueManager,
+    ) -> tuple[bool, str]:
+        """Apply input moderation + annotation reply before the backend call.
+
+        Returns ``(handled, query)``: when ``handled`` is True a direct answer
+        has already been published (a blocked/preset moderation response or a
+        matched annotation) and the backend turn must be skipped. Otherwise
+        ``query`` is the possibly moderation-overridden query to send onward.
+        """
+        from core.app.apps.agent_app.app_runner import publish_text_answer
+        from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+        from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+        from core.moderation.base import ModerationError
+        from core.moderation.input_moderation import InputModeration
+
+        app_config = application_generate_entity.app_config
+        model_name = application_generate_entity.model_conf.model
+        query = application_generate_entity.query
+
+        # content moderation (sensitive_word_avoidance); a blocked input yields a
+        # preset answer, an "overridden" action returns a sanitized query.
+        try:
+            _, _, query = InputModeration().check(
+                app_id=app_config.app_id,
+                tenant_id=app_config.tenant_id,
+                app_config=app_config,
+                inputs=dict(application_generate_entity.inputs),
+                query=query or "",
+                message_id=message.id,
+                trace_manager=application_generate_entity.trace_manager,
+            )
+        except ModerationError as e:
+            publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e))
+            return True, query
+
+        # annotation reply: a matching annotation answers the turn deterministically.
+        if query:
+            annotation_reply = AnnotationReplyFeature().query(
+                app_record=app_model,
+                message=message,
+                query=query,
+                user_id=application_generate_entity.user_id,
+                invoke_from=application_generate_entity.invoke_from,
+            )
+            if annotation_reply:
+                queue_manager.publish(
+                    QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                    PublishFrom.APPLICATION_MANAGER,
+                )
+                publish_text_answer(
+                    queue_manager=queue_manager, model_name=model_name, answer=annotation_reply.content
+                )
+                return True, query
+
+        return False, query
 
     def _resolve_agent(self, app_model: App) -> tuple[Agent, AgentConfigSnapshot, AgentSoulConfig]:
         agent = db.session.scalar(
