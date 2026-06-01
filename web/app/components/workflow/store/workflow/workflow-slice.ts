@@ -6,6 +6,7 @@ import type {
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { getLocalStorageItem, setLocalStorageItem } from '@/utils/local-storage'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -19,6 +20,14 @@ type MousePosition = {
   pageY: number
   elementX: number
   elementY: number
+}
+
+const getStoredControlMode = () => {
+  const storedControlMode = getLocalStorageItem('workflow-operation-mode')
+  if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
+    return storedControlMode
+
+  return 'pointer'
 }
 
 export type WorkflowSliceShape = {
@@ -92,16 +101,10 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,
   setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-  controlMode: (() => {
-    const storedControlMode = localStorage.getItem('workflow-operation-mode')
-    if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
-      return storedControlMode
-
-    return 'pointer'
-  })(),
+  controlMode: getStoredControlMode(),
   setControlMode: (controlMode) => {
     set(() => ({ controlMode }))
-    localStorage.setItem('workflow-operation-mode', controlMode)
+    setLocalStorageItem('workflow-operation-mode', controlMode)
   },
   pendingComment: null,
   setPendingComment: pendingComment => set(() => ({ pendingComment })),

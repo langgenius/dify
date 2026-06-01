@@ -39,8 +39,11 @@ vi.mock('@/service/system-features', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['sys'], queryFn: async () => ({}) }),
 }))
 
-vi.mock('@/service/use-common', () => ({
+vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
+}))
+
+vi.mock('@/service/use-common', () => ({
   commonQueryKeys: { currentWorkspace: ['currentWorkspace'] },
 }))
 
