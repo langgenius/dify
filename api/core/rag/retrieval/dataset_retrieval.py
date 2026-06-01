@@ -1525,16 +1525,18 @@ class DatasetRetrieval:
                 filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+                match value:
+                    case str():
+                        filters.append(json_field == value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
 
             case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                match value:
+                    case str():
+                        filters.append(json_field != value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1707,12 +1709,13 @@ class DatasetRetrieval:
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
-            if isinstance(text, str):
-                full_text += text
-            elif isinstance(text, list):
-                for i in text:
-                    if i.data:
-                        full_text += i.data
+            match text:
+                case str():
+                    full_text += text
+                case list():
+                    for i in text:
+                        if i.data:
+                            full_text += i.data
 
             if not model:
                 model = result.model
