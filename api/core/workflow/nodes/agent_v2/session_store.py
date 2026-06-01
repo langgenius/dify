@@ -84,13 +84,16 @@ class WorkflowAgentRuntimeSessionStore:
                     scope=WorkflowAgentSessionScope(
                         tenant_id=row.tenant_id,
                         app_id=row.app_id,
-                        workflow_id=row.workflow_id,
+                        # These columns are nullable on the unified runtime-session
+                        # table (workflow_run ⊕ conversation owner), but are always
+                        # populated for a workflow-owned row; coerce for the typed scope.
+                        workflow_id=row.workflow_id or "",
                         workflow_run_id=row.workflow_run_id,
-                        node_id=row.node_id,
+                        node_id=row.node_id or "",
                         node_execution_id=row.node_execution_id or "",
-                        binding_id=row.binding_id,
+                        binding_id=row.binding_id or "",
                         agent_id=row.agent_id,
-                        agent_config_snapshot_id=row.agent_config_snapshot_id,
+                        agent_config_snapshot_id=row.agent_config_snapshot_id or "",
                     ),
                     session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
                     backend_run_id=row.backend_run_id,

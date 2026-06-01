@@ -200,13 +200,15 @@ class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGe
     pass
 
 
-class AgentAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
+class AgentAppGenerateEntity(ChatAppGenerateEntity):
     """
     Agent App (new Agent app type) Generate Entity.
 
-    Rides the EasyUI chat pipeline, but the answer is produced by the dify-agent
-    backend rather than an in-process LLM call. ``model_conf`` is synthesized
-    from the bound Agent Soul model so the chat task pipeline can persist usage.
+    Subclasses ``ChatAppGenerateEntity`` so it rides the exact same EasyUI chat
+    pipeline (generator, task pipeline, message cycle) without widening every
+    accepted-entity union. The answer is produced by the dify-agent backend
+    rather than an in-process LLM call; ``model_conf`` is synthesized from the
+    bound Agent Soul model so the chat task pipeline can persist usage.
     """
 
     agent_id: str
