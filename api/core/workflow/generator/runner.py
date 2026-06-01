@@ -296,9 +296,7 @@ class WorkflowGenerator:
         last_error: Exception | None = None
         for attempt in range(2):
             attempt_messages = (
-                list(messages)
-                if attempt == 0
-                else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
+                list(messages) if attempt == 0 else [*messages, SystemPromptMessage(content=_JSON_RETRY_HINT)]
             )
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=attempt_messages,
