@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
