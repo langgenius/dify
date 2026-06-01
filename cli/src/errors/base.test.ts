@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BaseError, isBaseError, newError, unknownError } from './base.js'
-import { ErrorCode, ExitCode } from './codes.js'
+import { BaseError, isBaseError, newError, unknownError } from './base'
+import { ErrorCode, ExitCode } from './codes'
 
 describe('BaseError', () => {
   it('captures code, message, optional fields', () => {

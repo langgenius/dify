@@ -1,5 +1,5 @@
-import type { TextHandler } from '../../../printers/format-text.js'
-import type { ColorScheme } from '../../../sys/io/color.js'
+import type { TextHandler } from '@/printers/format-text'
+import type { ColorScheme } from '@/sys/io/color'
 
 export const RUN_MODES = {
   Chat: 'chat',

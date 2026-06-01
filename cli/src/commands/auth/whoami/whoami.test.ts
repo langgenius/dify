@@ -1,7 +1,7 @@
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { HostsBundle } from '@/auth/hosts'
 import { describe, expect, it } from 'vitest'
-import { bufferStreams } from '../../../sys/io/streams'
-import { runWhoami } from './whoami.js'
+import { bufferStreams } from '@/sys/io/streams'
+import { runWhoami } from './whoami'
 
 function accountBundle(): HostsBundle {
   return {

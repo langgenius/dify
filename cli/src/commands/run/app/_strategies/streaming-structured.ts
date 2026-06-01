@@ -1,12 +1,12 @@
-import type { SseEvent } from '../../../../http/sse.js'
-import type { RunContext, RunStrategy } from './index.js'
-import { buildRunBody } from '../../../../api/app-run.js'
-import { colorEnabled, colorScheme } from '../../../../sys/io/color.js'
-import { startSpinner } from '../../../../sys/io/spinner.js'
-import { extractThinkBlocks, stripThinkBlocks } from '../../../../sys/io/think-filter.js'
-import { chatConversationHint, newAppRunObject, RUN_MODES } from '../handlers.js'
-import { renderHitlHint, renderHitlOutput } from '../hitl-render.js'
-import { collect, HitlPauseError } from '../sse-collector.js'
+import type { RunContext, RunStrategy } from './index'
+import type { SseEvent } from '@/http/sse'
+import { buildRunBody } from '@/api/app-run'
+import { chatConversationHint, newAppRunObject, RUN_MODES } from '@/commands/run/app/handlers'
+import { renderHitlHint, renderHitlOutput } from '@/commands/run/app/hitl-render'
+import { collect, HitlPauseError } from '@/commands/run/app/sse-collector'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { startSpinner } from '@/sys/io/spinner'
+import { extractThinkBlocks, stripThinkBlocks } from '@/sys/io/think-filter'
 
 const CHAT_MODES: ReadonlySet<string> = new Set([RUN_MODES.Chat, RUN_MODES.AgentChat, RUN_MODES.AdvancedChat])
 

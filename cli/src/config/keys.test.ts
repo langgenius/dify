@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isBaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import {
   getKey,
   knownKeyNames,
@@ -8,8 +8,8 @@ import {
   lookupKey,
   setKey,
   unsetKey,
-} from './keys.js'
-import { emptyConfig } from './schema.js'
+} from './keys'
+import { emptyConfig } from './schema'
 
 describe('config keys', () => {
   it('exposes the v1.0 key set: defaults.format, defaults.limit, state.current_app', () => {

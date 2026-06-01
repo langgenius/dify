@@ -1,12 +1,12 @@
-import type { SseEvent } from '../../../http/sse.js'
-import type { StreamPrinter } from '../../../printers/stream-printer.js'
-import type { HitlPausePayload } from './sse-collector.js'
-import { newError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
-import { ThinkChunkFilter } from '../../../sys/io/think-filter.js'
-import { RUN_MODES } from './handlers.js'
-import { HitlPauseError } from './sse-collector.js'
+import type { HitlPausePayload } from './sse-collector'
+import type { SseEvent } from '@/http/sse'
+import type { StreamPrinter } from '@/printers/stream-printer'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { ThinkChunkFilter } from '@/sys/io/think-filter'
+import { RUN_MODES } from './handlers'
+import { HitlPauseError } from './sse-collector'
 
 const dec = new TextDecoder()
 

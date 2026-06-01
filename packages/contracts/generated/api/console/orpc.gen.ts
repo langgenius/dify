@@ -6,6 +6,7 @@ import { agents } from './agents/orpc.gen'
 import { allWorkspaces } from './all-workspaces/orpc.gen'
 import { apiBasedExtension } from './api-based-extension/orpc.gen'
 import { apiKeyAuth } from './api-key-auth/orpc.gen'
+import { appDslVersion } from './app-dsl-version/orpc.gen'
 import { app } from './app/orpc.gen'
 import { apps } from './apps/orpc.gen'
 import { auth } from './auth/orpc.gen'
@@ -43,6 +44,7 @@ import { tagBindings } from './tag-bindings/orpc.gen'
 import { tags } from './tags/orpc.gen'
 import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
+import { trialModels } from './trial-models/orpc.gen'
 import { website } from './website/orpc.gen'
 import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
@@ -56,6 +58,7 @@ export const contract = {
   apiBasedExtension,
   apiKeyAuth,
   app,
+  appDslVersion,
   apps,
   auth,
   billing,
@@ -92,6 +95,7 @@ export const contract = {
   tags,
   test,
   trialApps,
+  trialModels,
   website,
   workflow,
   workflowGenerate,

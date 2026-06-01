@@ -9,7 +9,7 @@ from uuid import UUID
 
 import sqlalchemy as sa
 from flask import request, send_file
-from flask_restx import Resource, marshal
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -34,14 +34,16 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.document_fields import (
-    document_fields,
-    document_status_fields,
-    document_with_segments_fields,
+    DocumentMetadataResponse,
+    DocumentResponse,
+    DocumentStatusListResponse,
+    DocumentStatusResponse,
+    normalize_enum,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
@@ -74,12 +76,6 @@ from ..wraps import (
 logger = logging.getLogger(__name__)
 
 
-def _normalize_enum(value: Any) -> Any:
-    if isinstance(value, str) or value is None:
-        return value
-    return getattr(value, "value", value)
-
-
 class DatasetResponse(ResponseModel):
     id: str
     name: str
@@ -93,7 +89,7 @@ class DatasetResponse(ResponseModel):
     @field_validator("data_source_type", "indexing_technique", mode="before")
     @classmethod
     def _normalize_enum_fields(cls, value: Any) -> Any:
-        return _normalize_enum(value)
+        return normalize_enum(value)
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -101,61 +97,10 @@ class DatasetResponse(ResponseModel):
         return to_timestamp(value)
 
 
-class DocumentMetadataResponse(ResponseModel):
-    id: str
-    name: str
-    type: str
-    value: str | None = None
-
-
-class DocumentResponse(ResponseModel):
-    id: str
-    position: int | None = None
-    data_source_type: str | None = None
-    data_source_info: Any = Field(default=None, validation_alias="data_source_info_dict")
-    data_source_detail_dict: Any = None
-    dataset_process_rule_id: str | None = None
-    name: str
-    created_from: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    tokens: int | None = None
-    indexing_status: str | None = None
-    error: str | None = None
-    enabled: bool | None = None
-    disabled_at: int | None = None
-    disabled_by: str | None = None
-    archived: bool | None = None
-    display_status: str | None = None
-    word_count: int | None = None
-    hit_count: int | None = None
-    doc_form: str | None = None
-    doc_metadata: list[DocumentMetadataResponse] = Field(default_factory=list, validation_alias="doc_metadata_details")
-    summary_index_status: str | None = None
-    need_summary: bool | None = None
-
-    @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
-    @classmethod
-    def _normalize_enum_fields(cls, value: Any) -> Any:
-        return _normalize_enum(value)
-
-    @field_validator("doc_metadata", mode="before")
-    @classmethod
-    def _normalize_doc_metadata(cls, value: Any) -> list[Any]:
-        if value is None:
-            return []
-        return value
-
-    @field_validator("created_at", "disabled_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
 class DocumentWithSegmentsResponse(DocumentResponse):
     process_rule_dict: Any = None
-    completed_segments: int | None = None
-    total_segments: int | None = None
+    completed_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
+    total_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class DatasetAndDocumentResponse(ResponseModel):
@@ -190,6 +135,14 @@ class DocumentDatasetListParam(BaseModel):
     fetch_val: str = Field("false", alias="fetch")
 
 
+class DocumentWithSegmentsListResponse(ResponseModel):
+    data: list[DocumentWithSegmentsResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
 register_schema_models(
     console_ns,
     KnowledgeConfig,
@@ -200,13 +153,19 @@ register_schema_models(
     GenerateSummaryPayload,
     DocumentMetadataUpdatePayload,
     DocumentBatchDownloadZipPayload,
+)
+register_response_schema_models(
+    console_ns,
+    SimpleResultMessageResponse,
+    SimpleResultResponse,
+    UrlResponse,
     DatasetResponse,
     DocumentMetadataResponse,
     DocumentResponse,
     DocumentWithSegmentsResponse,
     DatasetAndDocumentResponse,
+    DocumentWithSegmentsListResponse,
 )
-register_response_schema_models(console_ns, SimpleResultMessageResponse, SimpleResultResponse, UrlResponse)
 
 
 class DocumentResource(Resource):
@@ -312,7 +271,11 @@ class DatasetDocumentListApi(Resource):
             "status": "Filter documents by display status",
         }
     )
-    @console_ns.response(200, "Documents retrieved successfully")
+    @console_ns.response(
+        200,
+        "Documents retrieved successfully",
+        console_ns.models[DocumentWithSegmentsListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -425,18 +388,15 @@ class DatasetDocumentListApi(Resource):
                 )
                 document.completed_segments = completed_segments
                 document.total_segments = total_segments
-            data = marshal(documents, document_with_segments_fields)
-        else:
-            data = marshal(documents, document_fields)
         response = {
-            "data": data,
+            "data": documents,
             "has_more": len(documents) == limit,
             "limit": limit,
             "total": paginated_documents.total,
             "page": page,
         }
 
-        return response
+        return dump_response(DocumentWithSegmentsListResponse, response)
 
     @setup_required
     @login_required
@@ -482,9 +442,7 @@ class DatasetDocumentListApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return DatasetAndDocumentResponse.model_validate(
-            {"dataset": dataset, "documents": documents, "batch": batch}, from_attributes=True
-        ).model_dump(mode="json")
+        return dump_response(DatasetAndDocumentResponse, {"dataset": dataset, "documents": documents, "batch": batch})
 
     @setup_required
     @login_required
@@ -567,9 +525,7 @@ class DatasetInitApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return DatasetAndDocumentResponse.model_validate(
-            {"dataset": dataset, "documents": documents, "batch": batch}, from_attributes=True
-        ).model_dump(mode="json")
+        return dump_response(DatasetAndDocumentResponse, {"dataset": dataset, "documents": documents, "batch": batch})
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate")
@@ -742,6 +698,9 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 class DocumentBatchIndexingStatusApi(DocumentResource):
+    @console_ns.response(
+        200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -784,9 +743,8 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
             }
-            documents_status.append(marshal(document_dict, document_status_fields))
-        data = {"data": documents_status}
-        return data
+            documents_status.append(document_dict)
+        return dump_response(DocumentStatusListResponse, {"data": documents_status})
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
@@ -794,7 +752,9 @@ class DocumentIndexingStatusApi(DocumentResource):
     @console_ns.doc("get_document_indexing_status")
     @console_ns.doc(description="Get document indexing status")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @console_ns.response(200, "Indexing status retrieved successfully")
+    @console_ns.response(
+        200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusResponse.__name__]
+    )
     @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
@@ -839,7 +799,7 @@ class DocumentIndexingStatusApi(DocumentResource):
             "completed_segments": completed_segments,
             "total_segments": total_segments,
         }
-        return marshal(document_dict, document_status_fields)
+        return dump_response(DocumentStatusResponse, document_dict)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
@@ -1304,7 +1264,7 @@ class DocumentRenameApi(DocumentResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return DocumentResponse.model_validate(document, from_attributes=True).model_dump(mode="json")
+        return dump_response(DocumentResponse, document)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
