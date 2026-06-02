@@ -8,9 +8,16 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    only_edition_cloud,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from enums.cloud_plan import CloudPlan
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from services.billing_service import BillingService
 
 
@@ -32,8 +39,9 @@ class Subscription(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))
         BillingService.is_tenant_owner_or_admin(current_user)
         return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
@@ -45,8 +53,9 @@ class Invoices(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         BillingService.is_tenant_owner_or_admin(current_user)
         return BillingService.get_invoices(current_user.email, current_tenant_id)
 
@@ -63,8 +72,8 @@ class PartnerTenants(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    def put(self, partner_key: str):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def put(self, current_user: Account, partner_key: str):
 
         try:
             args = PartnerTenantsPayload.model_validate(console_ns.payload or {})
