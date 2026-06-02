@@ -551,7 +551,8 @@ class TestResourcePermissions:
             ]
         }
 
-        out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
+            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
 
         call = _call_args(mock_send)
         assert call.method == "POST"
@@ -562,6 +563,24 @@ class TestResourcePermissions:
             "app-2": [],
         }
 
+    def test_app_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(
+        self, mock_send: MagicMock
+    ):
+        mock_session = MagicMock()
+        mock_session.__enter__.return_value = mock_session
+        mock_session.scalar.return_value = "editor"
+        with (
+            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
+            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
+        ):
+            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
+
+        mock_send.assert_not_called()
+        assert out == {
+            "app-1": svc._LEGACY_APP_EDITOR_KEYS,
+            "app-2": svc._LEGACY_APP_EDITOR_KEYS,
+        }
+
     def test_dataset_permissions_batch_get(self, mock_send: MagicMock):
         mock_send.return_value = {
             "data": [
@@ -570,7 +589,8 @@ class TestResourcePermissions:
             ]
         }
 
-        out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
+            out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
 
         call = _call_args(mock_send)
         assert call.method == "POST"
@@ -579,6 +599,24 @@ class TestResourcePermissions:
         assert out == {
             "ds-1": ["dataset.acl.readonly"],
             "ds-2": ["dataset.acl.edit"],
+        }
+
+    def test_dataset_permissions_batch_get_uses_legacy_role_permissions_when_rbac_disabled(
+        self, mock_send: MagicMock
+    ):
+        mock_session = MagicMock()
+        mock_session.__enter__.return_value = mock_session
+        mock_session.scalar.return_value = "dataset_operator"
+        with (
+            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
+            patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
+        ):
+            out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
+
+        mock_send.assert_not_called()
+        assert out == {
+            "ds-1": svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
+            "ds-2": svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
         }
 
 

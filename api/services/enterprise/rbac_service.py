@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator
 
 from configs import dify_config
@@ -209,107 +210,76 @@ class MyPermissionsResponse(_RBACModel):
     dataset: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
 
 
+# Fallback permission snapshots for legacy Dify tenant roles when external RBAC is disabled.
+# Keep these keys aligned with langgenius/rbac's built-in workspace roles and access policies.
 _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
-    "workspace.member.view",
     "workspace.member.manage",
-    "workspace.role.view",
     "workspace.role.manage",
     "data_source.manage",
     "api_extension.manage",
     "customization.manage",
-    "page.explore.access",
-    "page.datasets.access",
-    "page.tool.access",
     "plugin.install",
+    "plugin.plugin_preferences",
     "plugin.manage",
-    "plugin.uninstall",
-    "plugin.preference.manage",
-    "model.manage",
+    "plugin.debug",
     "credential.use",
     "credential.manage",
     "app_library.access",
-    "app.create",
+    "app.create_and_management",
     "app.tag.manage",
-    "app.access_config",
-    "app.monitor.access",
-    "app.log.access",
-    "app.monitor.tracking_config",
-    "dataset.create",
+    "dataset.create_and_management",
     "dataset.tag.manage",
     "dataset.external.connect",
-    "dataset.access_config",
     "tool.manage",
     "mcp.manage",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
-    "workspace.member.view",
     "workspace.member.manage",
-    "workspace.role.view",
     "workspace.role.manage",
     "data_source.manage",
     "api_extension.manage",
     "customization.manage",
-    "page.explore.access",
-    "page.datasets.access",
-    "page.tool.access",
     "plugin.install",
-    "plugin.uninstall",
-    "plugin.preference.manage",
-    "model.manage",
+    "plugin.plugin_preferences",
+    "plugin.manage",
+    "plugin.debug",
     "credential.use",
     "credential.manage",
     "app_library.access",
-    "app.create",
+    "app.create_and_management",
     "app.tag.manage",
-    "app.access_config",
-    "app.monitor.access",
-    "app.log.access",
-    "app.monitor.tracking_config",
-    "dataset.create",
+    "dataset.create_and_management",
     "dataset.tag.manage",
     "dataset.external.connect",
-    "dataset.access_config",
     "tool.manage",
     "mcp.manage",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
-    "workspace.member.view",
     "workspace.member.manage",
     "api_extension.manage",
-    "page.explore.access",
-    "page.datasets.access",
-    "page.tool.access",
     "plugin.install",
-    "plugin.uninstall",
+    "credential.use",
     "app_library.access",
-    "app.create",
+    "app.create_and_management",
     "app.tag.manage",
-    "app.monitor.access",
-    "app.log.access",
-    "app.monitor.tracking_config",
-    "dataset.create",
+    "dataset.create_and_management",
     "dataset.tag.manage",
     "dataset.external.connect",
+    "tool.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "api_extension.manage",
-    "page.explore.access",
-    "page.datasets.access",
-    "page.tool.access",
     "plugin.install",
-    "plugin.uninstall",
+    "credential.use",
     "app_library.access",
-    "app.monitor.access",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
-    "page.datasets.access",
     "plugin.install",
-    "plugin.uninstall",
-    "dataset.create",
+    "dataset.create_and_management",
     "dataset.external.connect",
 ]
 
@@ -343,6 +313,7 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
     "app.acl.delete",
     "app.acl.release_and_version",
     "app.acl.monitor",
+    "app.acl.access_config",
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
@@ -363,6 +334,7 @@ _LEGACY_DATASET_OWNER_KEYS: list[str] = [
     "dataset.acl.pipeline_release",
     "dataset.acl.delete",
     "dataset.acl.access_config",
+    "dataset.api_key.manage",
 ]
 
 _LEGACY_DATASET_ADMIN_KEYS: list[str] = [
@@ -377,6 +349,7 @@ _LEGACY_DATASET_ADMIN_KEYS: list[str] = [
     "dataset.acl.pipeline_release",
     "dataset.acl.delete",
     "dataset.acl.access_config",
+    "dataset.api_key.manage",
 ]
 
 _LEGACY_DATASET_EDITOR_KEYS: list[str] = [
@@ -389,7 +362,6 @@ _LEGACY_DATASET_EDITOR_KEYS: list[str] = [
     "dataset.acl.use",
     "dataset.acl.delete_file",
     "dataset.acl.pipeline_release",
-    "dataset.acl.delete",
 ]
 
 _LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
@@ -402,7 +374,6 @@ _LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
     "dataset.acl.use",
     "dataset.acl.delete_file",
     "dataset.acl.pipeline_release",
-    "dataset.acl.delete",
 ]
 
 _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
@@ -436,20 +407,23 @@ def _legacy_my_permissions(tenant_id: str, account_id: str | None) -> MyPermissi
     if not account_id:
         return MyPermissionsResponse()
 
-    with session_factory.create_session() as session:
-        role = session.scalar(
-            select(TenantAccountJoin.role).where(
-                TenantAccountJoin.tenant_id == tenant_id,
-                TenantAccountJoin.account_id == account_id,
+    try:
+        with session_factory.create_session() as session:
+            role = session.scalar(
+                select(TenantAccountJoin.role).where(
+                    TenantAccountJoin.tenant_id == tenant_id,
+                    TenantAccountJoin.account_id == account_id,
+                )
             )
-        )
-        if not role:
-            return MyPermissionsResponse()
+            if not role:
+                return MyPermissionsResponse()
 
-        try:
-            tenant_role = TenantAccountRole(role)
-        except ValueError:
-            return MyPermissionsResponse()
+            try:
+                tenant_role = TenantAccountRole(role)
+            except ValueError:
+                return MyPermissionsResponse()
+    except SQLAlchemyError:
+        return MyPermissionsResponse()
 
     permissions = _LEGACY_MY_PERMISSIONS.get(tenant_role, {})
     return MyPermissionsResponse(
@@ -457,6 +431,20 @@ def _legacy_my_permissions(tenant_id: str, account_id: str | None) -> MyPermissi
         app=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("app", []))),
         dataset=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("dataset", []))),
     )
+
+
+def _legacy_resource_permission_keys_batch(
+    tenant_id: str,
+    account_id: str | None,
+    resource_ids: list[str],
+    resource_type: RBACResourceType,
+) -> dict[str, list[str]]:
+    snapshot = _legacy_my_permissions(tenant_id, account_id)
+    if resource_type == RBACResourceType.APP:
+        permission_keys = snapshot.app.default_permission_keys
+    else:
+        permission_keys = snapshot.dataset.default_permission_keys
+    return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
 
 
 # ---------- Mutation request models ----------
@@ -1279,6 +1267,8 @@ class RBACService:
         ) -> dict[str, list[str]]:
             if not app_ids:
                 return {}
+            if not dify_config.RBAC_ENABLED:
+                return _legacy_resource_permission_keys_batch(tenant_id, account_id, app_ids, RBACResourceType.APP)
             data = _inner_call(
                 "POST",
                 f"{_INNER_PREFIX}/apps/permission-keys/batch",
@@ -1297,6 +1287,10 @@ class RBACService:
         ) -> dict[str, list[str]]:
             if not dataset_ids:
                 return {}
+            if not dify_config.RBAC_ENABLED:
+                return _legacy_resource_permission_keys_batch(
+                    tenant_id, account_id, dataset_ids, RBACResourceType.DATASET
+                )
             data = _inner_call(
                 "POST",
                 f"{_INNER_PREFIX}/datasets/permission-keys/batch",

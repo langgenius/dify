@@ -88,7 +88,7 @@ class AppImportApi(Resource):
             ImportStatus.COMPLETED,
             ImportStatus.COMPLETED_WITH_WARNINGS,
         }
-        if is_created_app and result.app_id and dify_config.RBAC_ENABLED:
+        if is_created_app and result.app_id:
             result.permission_keys = get_app_permission_keys(
                 str(current_tenant_id),
                 current_user.id,
@@ -144,7 +144,7 @@ class AppImportConfirmApi(Resource):
                 ImportStatus.COMPLETED_WITH_WARNINGS,
             }
         )
-        if is_created_app and result.app_id and dify_config.RBAC_ENABLED:
+        if is_created_app and result.app_id:
             result.permission_keys = get_app_permission_keys(
                 str(current_tenant_id),
                 current_user.id,

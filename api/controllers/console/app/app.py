@@ -519,18 +519,14 @@ class AppListApi(Resource):
                     app.access_mode = res[str(app.id)].access_mode
 
         if app_pagination.items:
-            if dify_config.RBAC_ENABLED:
-                app_ids = [str(app.id) for app in app_pagination.items]
-                permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                    str(current_tenant_id),
-                    current_user.id,
-                    app_ids,
-                )
-                for app in app_pagination.items:
-                    app.permission_keys = permission_keys_map.get(str(app.id), [])
-            else:
-                for app in app_pagination.items:
-                    app.permission_keys = []
+            app_ids = [str(app.id) for app in app_pagination.items]
+            permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+                str(current_tenant_id),
+                current_user.id,
+                app_ids,
+            )
+            for app in app_pagination.items:
+                app.permission_keys = permission_keys_map.get(str(app.id), [])
 
         workflow_capable_app_ids = [
             str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
@@ -618,15 +614,12 @@ class AppApi(Resource):
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
-        if dify_config.RBAC_ENABLED:
-            app_access_matrix = enterprise_rbac_service.RBACService.AppAccess.matrix(
-                str(current_tenant_id),
-                current_user.id,
-                str(app_model.id),
-            )
-            app_model.permission_keys = _collect_app_access_permission_keys(app_access_matrix)
-        else:
-            app_model.permission_keys = []
+        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [str(app_model.id)],
+        )
+        app_model.permission_keys = permission_keys_map.get(str(app_model.id), [])
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -741,16 +734,13 @@ class AppCopyApi(Resource):
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
 
-        if app and dify_config.RBAC_ENABLED:
-            app.permission_keys = _collect_app_access_permission_keys(
-                enterprise_rbac_service.RBACService.AppAccess.matrix(
-                    str(current_tenant_id),
-                    current_user.id,
-                    str(app.id),
-                )
+        if app:
+            permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+                str(current_tenant_id),
+                current_user.id,
+                [str(app.id)],
             )
-        elif app:
-            app.permission_keys = []
+            app.permission_keys = permission_keys_map.get(str(app.id), [])
 
         response_model = AppDetailWithSite.model_validate(app, from_attributes=True)
         return response_model.model_dump(mode="json"), 201

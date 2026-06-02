@@ -65,10 +65,7 @@ def _validate_doc_form(value: str | None) -> str | None:
     return value
 
 
-def _ensure_permission_keys(dataset: Dataset, *, enabled: bool) -> None:
-    if not enabled:
-        setattr(dataset, "permission_keys", [])
-        return
+def _ensure_permission_keys(dataset: Dataset) -> None:
     if not isinstance(getattr(dataset, "permission_keys", None), list):
         setattr(dataset, "permission_keys", [])
 
@@ -423,9 +420,9 @@ class DatasetListApi(Resource):
             )
 
         for dataset in datasets:
-            _ensure_permission_keys(dataset, enabled=dify_config.RBAC_ENABLED)
+            _ensure_permission_keys(dataset)
 
-        if dify_config.RBAC_ENABLED and datasets:
+        if datasets:
             dataset_ids = [str(dataset.id) for dataset in datasets]
             permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
                 str(current_tenant_id),
@@ -516,7 +513,13 @@ class DatasetListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        _ensure_permission_keys(dataset, enabled=dify_config.RBAC_ENABLED)
+        _ensure_permission_keys(dataset)
+        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [str(dataset.id)],
+        )
+        setattr(dataset, "permission_keys", permission_keys_map.get(str(dataset.id), []))
         return dump_response(DatasetDetailResponse, dataset), 201
 
 
@@ -545,14 +548,13 @@ class DatasetApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        _ensure_permission_keys(dataset, enabled=dify_config.RBAC_ENABLED)
-        if dify_config.RBAC_ENABLED:
-            permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
-                str(current_tenant_id),
-                current_user.id,
-                [dataset_id_str],
-            )
-            setattr(dataset, "permission_keys", permission_keys_map.get(dataset_id_str, []))
+        _ensure_permission_keys(dataset)
+        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [dataset_id_str],
+        )
+        setattr(dataset, "permission_keys", permission_keys_map.get(dataset_id_str, []))
         data = dump_response(DatasetDetailResponse, dataset)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
@@ -626,7 +628,13 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        _ensure_permission_keys(dataset, enabled=dify_config.RBAC_ENABLED)
+        _ensure_permission_keys(dataset)
+        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [dataset_id_str],
+        )
+        setattr(dataset, "permission_keys", permission_keys_map.get(dataset_id_str, []))
         result_data = dump_response(DatasetDetailResponse, dataset)
         tenant_id = current_tenant_id
 

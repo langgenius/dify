@@ -454,7 +454,7 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
-def test_app_detail_api_attaches_permission_keys_from_access_matrix(app, app_module):
+def test_app_detail_api_attaches_permission_keys_from_batch_get(app, app_module):
     method = app_module.AppApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -484,24 +484,17 @@ def test_app_detail_api_attaches_permission_keys_from_access_matrix(app, app_mod
                 lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             )
             monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "matrix",
-                lambda tenant_id, account_id, app_id: SimpleNamespace(
-                    items=[
-                        SimpleNamespace(
-                            policy=SimpleNamespace(permission_keys=["app.acl.view_layout", "app.acl.edit"])
-                        ),
-                        SimpleNamespace(
-                            policy=SimpleNamespace(permission_keys=["app.acl.edit", "app.log.access"])
-                        ),
-                    ]
-                ),
+                app_module.enterprise_rbac_service.RBACService.AppPermissions,
+                "batch_get",
+                lambda tenant_id, account_id, app_ids: {
+                    "app-1": ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
+                },
             )
 
             resp = method(app_module.AppApi(), app_model=app_obj)
 
-    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit", "app.log.access"]
-    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.log.access"]
+    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
 
 
 def test_app_copy_api_attaches_permission_keys(app, app_module):
@@ -552,15 +545,9 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
                 lambda *_args, **_kwargs: fake_session,
             )
             monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "matrix",
-                lambda tenant_id, account_id, app_id: SimpleNamespace(
-                    items=[
-                        SimpleNamespace(
-                            policy=SimpleNamespace(permission_keys=["app.acl.view_layout", "app.acl.edit"])
-                        )
-                    ]
-                ),
+                app_module.enterprise_rbac_service.RBACService.AppPermissions,
+                "batch_get",
+                lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
 
             resp, status = method(app_module.AppCopyApi(), app_model=SimpleNamespace(id="app-original"))
