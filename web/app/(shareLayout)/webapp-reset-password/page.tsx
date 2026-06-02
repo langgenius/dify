@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -38,7 +39,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setLocalStorageItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))
