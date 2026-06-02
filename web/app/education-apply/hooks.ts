@@ -1,4 +1,5 @@
 import type { SearchParams } from './types'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -9,9 +10,9 @@ import {
   useState,
 } from 'react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
@@ -81,7 +82,10 @@ const isExpired = (expireAt?: number, timezone?: string) => {
 const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
   const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
