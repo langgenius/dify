@@ -43,7 +43,8 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
-  const [isRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY, false)
+  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY)
+  const isRenameHintDismissed = storedRenameHintDismissed ?? false
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
