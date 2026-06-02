@@ -145,20 +145,22 @@ const RoleTag = ({
             {t(isLocked ? 'accessRule.unlockBinding' : 'accessRule.lockBinding', { ns: 'permission' })}
           </DropdownMenuItem>
         )}
-        {showRemove && !!onRemove && (
-          <>
+        {
+          canChangeLockStatus && showRemove && !!onRemove && (
             <DropdownMenuSeparator className="my-0" />
-            <DropdownMenuItem
-              variant="destructive"
-              className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
-              onClick={() => {
-                onRemove(id, type)
-              }}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              {t('operation.remove', { ns: 'common' })}
-            </DropdownMenuItem>
-          </>
+          )
+        }
+        {showRemove && !!onRemove && (
+          <DropdownMenuItem
+            variant="destructive"
+            className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
+            onClick={() => {
+              onRemove(id, type)
+            }}
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+            {t('operation.remove', { ns: 'common' })}
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
