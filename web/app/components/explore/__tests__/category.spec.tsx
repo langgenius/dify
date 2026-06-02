@@ -72,7 +72,7 @@ describe('Category', () => {
     it('should render categories as a segmented control', () => {
       renderComponent({ value: 'Writing' })
 
-      expect(screen.getByRole('group', { name: 'explore.tryApp.category' })).toHaveClass('bg-components-segmented-control-bg-normal')
+      expect(screen.getByRole('group', { name: 'explore.tryApp.category' })).toHaveClass('bg-transparent')
       expect(screen.getByRole('button', { name: /explore\.apps\.allCategories/ })).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByRole('button', { name: 'explore.category.Writing' })).toHaveAttribute('aria-pressed', 'true')
     })

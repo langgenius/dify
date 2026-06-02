@@ -8,18 +8,14 @@ export function ExploreAppListHeader({
   allCategoriesEn,
   categories,
   currCategory,
-  hasFilterCondition,
   keywords,
-  resultCount,
   onCategoryChange,
   onKeywordsChange,
 }: {
   allCategoriesEn: string
   categories: string[]
   currCategory: string
-  hasFilterCondition: boolean
   keywords: string
-  resultCount: number
   onCategoryChange: (category: string) => void
   onKeywordsChange: (keywords: string) => void
 }) {
@@ -27,25 +23,22 @@ export function ExploreAppListHeader({
 
   return (
     <div className="sticky top-0 z-10 bg-background-body">
-      <div className="px-8 pt-4">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="flex min-w-0 items-center">
-            <div className="grow truncate system-xl-medium text-text-primary">
-              {!hasFilterCondition
-                ? t('apps.title', { ns: 'explore' })
-                : t('apps.resultNum', {
-                    num: resultCount,
-                    ns: 'explore',
-                  })}
-            </div>
-          </div>
-          <p className="truncate system-xs-regular text-text-tertiary">
-            {t('apps.description', { ns: 'explore' })}
-          </p>
+      <div className="flex items-center gap-2 px-8 pt-6">
+        <div className="min-w-0 flex-1 truncate system-xl-medium text-text-primary">
+          {t('apps.title', { ns: 'explore' })}
         </div>
+        <a
+          href="https://marketplace.dify.ai/templates"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary hover:text-text-secondary"
+        >
+          {t('apps.viewMore', { ns: 'explore' })}
+          <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
+        </a>
       </div>
 
-      <div className="flex items-end justify-between gap-4 px-8 pt-3 pb-3">
+      <div className="flex items-start justify-between gap-2 px-8 pt-3 pb-3">
         <Category
           className="min-w-0"
           list={categories}
@@ -55,7 +48,7 @@ export function ExploreAppListHeader({
         />
         <div className="flex shrink-0 items-center gap-3">
           <SearchInput
-            className="w-[200px] shrink-0"
+            className="w-40 shrink-0"
             value={keywords}
             onChange={onKeywordsChange}
           />

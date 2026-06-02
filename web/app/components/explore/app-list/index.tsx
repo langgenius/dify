@@ -203,12 +203,6 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
-  const hasFilterCondition
-    = !!keywords
-      || !!searchKeywords
-      || currCategory !== allCategoriesEn
-      || searchFilteredList.length !== filteredList.length
-
   if (isError || (!isLoading && !data))
     return null
 
@@ -238,9 +232,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
                 allCategoriesEn={allCategoriesEn}
                 categories={categories}
                 currCategory={currCategory}
-                hasFilterCondition={hasFilterCondition}
                 keywords={keywords}
-                resultCount={searchFilteredList.length}
                 onCategoryChange={setCurrCategory}
                 onKeywordsChange={handleKeywordsChange}
               />

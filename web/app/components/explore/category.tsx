@@ -1,10 +1,9 @@
 'use client'
 import type { AppCategory } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
-import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import exploreI18n from '@/i18n/en-US/explore.json'
-import { ThumbsUp } from '../base/icons/src/vender/line/alertsAndFeedback'
 
 type ICategoryProps = {
   className?: string
@@ -43,7 +42,7 @@ function Category({
   return (
     <SegmentedControl
       aria-label={t('tryApp.category', { ns: 'explore' })}
-      className={cn(className, 'max-w-full overflow-x-auto text-[13px]')}
+      className={cn(className, 'flex max-w-full flex-wrap items-start gap-1 overflow-visible rounded-none bg-transparent p-0 text-[13px]')}
       value={[selectedCategory]}
       onValueChange={handleValueChange}
     >
@@ -54,30 +53,20 @@ function Category({
           label: renderCategoryName(name),
           isAll: false,
         })),
-      ].map((item, index, items) => {
+      ].map((item) => {
         const isSelected = item.isAll ? isAllCategories : item.name === value
-        const nextItem = items[index + 1]
-        const isNextSelected = nextItem
-          ? nextItem.isAll ? isAllCategories : nextItem.name === value
-          : false
 
         return (
-          <span key={item.isAll ? 'all' : item.name} className="relative flex items-center">
-            <SegmentedControlItem
-              value={item.name}
-              className="shrink-0 cursor-pointer"
-            >
-              {item.isAll && (
-                <ThumbsUp className="mr-1 size-3.5" aria-hidden="true" />
-              )}
-              <span className="flex shrink-0 items-center justify-center gap-1 p-0.5">
-                {item.label}
-              </span>
-            </SegmentedControlItem>
-            {!isSelected && !isNextSelected && index < items.length - 1 && (
-              <SegmentedControlDivider className="absolute top-1/2 -right-px -translate-y-1/2" />
+          <SegmentedControlItem
+            key={item.isAll ? 'all' : item.name}
+            value={item.name}
+            className={cn(
+              'h-8 min-w-12 shrink-0 cursor-pointer rounded-lg border-0 px-2.5 py-2 text-center shadow-none hover:bg-state-base-hover focus-visible:ring-1 data-pressed:border-0 data-pressed:bg-state-base-active data-pressed:text-text-secondary data-pressed:shadow-none',
+              isSelected ? 'system-sm-semibold text-text-secondary' : 'system-sm-medium text-text-tertiary',
             )}
-          </span>
+          >
+            {item.label}
+          </SegmentedControlItem>
         )
       })}
     </SegmentedControl>
