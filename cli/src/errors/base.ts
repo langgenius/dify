@@ -15,9 +15,10 @@ export type ErrorEnvelope = {
     code: string
     message: string
     hint?: string
-    http_status?: number
+    httpStatus?: number
     method?: string
     url?: string
+    rawResponse?: string
   }
 }
 
@@ -137,11 +138,14 @@ export class HttpClientError extends BaseError {
   override toEnvelope(): ErrorEnvelope {
     const envelope = super.toEnvelope()
     if (this.httpStatus !== undefined)
-      envelope.error.http_status = this.httpStatus
+      envelope.error.httpStatus = this.httpStatus
     if (this.method !== undefined)
       envelope.error.method = this.method
     if (this.url !== undefined)
       envelope.error.url = this.url
+    if (isVerbose() && this.rawResponse) {
+      envelope.error.rawResponse = this.rawResponse;
+    }
     return envelope
   }
 
