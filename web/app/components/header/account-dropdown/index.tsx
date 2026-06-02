@@ -21,6 +21,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
+import { removeLocalStorageItem } from '@/utils/local-storage'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Compliance from './compliance'
@@ -124,9 +125,9 @@ export default function AppSelector() {
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
-    localStorage.removeItem('education-reverify-prev-expire-at')
-    localStorage.removeItem('education-reverify-has-noticed')
-    localStorage.removeItem('education-expired-has-noticed')
+    removeLocalStorageItem('education-reverify-prev-expire-at')
+    removeLocalStorageItem('education-reverify-has-noticed')
+    removeLocalStorageItem('education-expired-has-noticed')
 
     router.push('/signin')
   }
