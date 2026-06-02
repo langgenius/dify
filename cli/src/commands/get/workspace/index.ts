@@ -22,7 +22,7 @@ export default class GetWorkspace extends DifyCommand {
     const { flags } = this.parse(GetWorkspace, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
-    const result = await runGetWorkspace({ format }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
+    const result = await runGetWorkspace({ format }, { active: ctx.active, http: ctx.http, io: ctx.io })
     if (result.kind === 'empty')
       return raw(result.message)
     return table({

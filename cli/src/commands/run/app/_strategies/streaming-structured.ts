@@ -4,6 +4,8 @@ import { buildRunBody } from '@/api/app-run'
 import { chatConversationHint, newAppRunObject, RUN_MODES } from '@/commands/run/app/handlers'
 import { renderHitlHint, renderHitlOutput } from '@/commands/run/app/hitl-render'
 import { collect, HitlPauseError } from '@/commands/run/app/sse-collector'
+import { formatted, stringifyOutput } from '@/framework/output'
+import { handle, unhandle } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { startSpinner } from '@/sys/io/spinner'
 import { extractThinkBlocks, stripThinkBlocks } from '@/sys/io/think-filter'
@@ -30,7 +32,7 @@ async function* captureTaskId(
 
 export class StreamingStructuredStrategy implements RunStrategy {
   async execute(ctx: RunContext): Promise<void> {
-    const { opts, deps, mode, format, isText, printFlags, exit } = ctx
+    const { opts, deps, mode, format, isText, exit } = ctx
     const ctrl = new AbortController()
     const body = buildRunBody({
       message: opts.message,
@@ -50,7 +52,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
       ctrl.abort()
       exit(1)
     }
-    process.once('SIGINT', cleanup)
+    handle('SIGINT', cleanup)
 
     let resp: Record<string, unknown>
     try {
@@ -72,7 +74,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
     }
     finally {
       spinner.stop()
-      process.off('SIGINT', cleanup)
+      unhandle('SIGINT', cleanup)
     }
     let processedResp = resp
     if (typeof processedResp.answer === 'string') {
@@ -88,7 +90,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
     }
 
     const respMode = typeof processedResp.mode === 'string' && processedResp.mode !== '' ? processedResp.mode : mode
-    deps.io.out.write(printFlags.toPrinter(format).print(newAppRunObject(respMode, processedResp)))
+    deps.io.out.write(stringifyOutput(formatted({ format, data: newAppRunObject(respMode, processedResp) })))
     if (isText && CHAT_MODES.has(respMode)) {
       const cs = colorScheme(colorEnabled(deps.io.isErrTTY))
       const hint = chatConversationHint(processedResp, cs)

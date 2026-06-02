@@ -1,5 +1,5 @@
 import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { AppsClient } from '@/api/apps'
@@ -24,7 +24,7 @@ export type GetAppOptions = {
 }
 
 export type GetAppDeps = {
-  readonly bundle: HostsBundle
+  readonly active: ActiveContext
   readonly http: HttpClient
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
@@ -57,12 +57,12 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
         return runAllWorkspaces(apps, ws, opts, page, pageSize)
       }
       if (opts.appId !== undefined && opts.appId !== '') {
-        const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
-        const wsName = workspaceNameForId(deps.bundle, wsId)
+        const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
+        const wsName = workspaceNameForId(deps.active, wsId)
         const desc = await apps.describe(opts.appId, wsId, ['info'])
         return describeToEnvelope(desc, wsId, wsName)
       }
-      const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
+      const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
       return apps.list({
         workspaceId: wsId,
         page,
@@ -111,12 +111,13 @@ function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: str
   }
 }
 
-function workspaceNameForId(b: HostsBundle, id: string): string {
+function workspaceNameForId(active: ActiveContext, id: string): string {
   if (id === '')
     return ''
-  if (b.workspace?.id === id)
-    return b.workspace.name
-  for (const w of b.available_workspaces ?? []) {
+  const ctx = active.ctx
+  if (ctx.workspace?.id === id)
+    return ctx.workspace.name
+  for (const w of ctx.available_workspaces ?? []) {
     if (w.id === id)
       return w.name
   }
