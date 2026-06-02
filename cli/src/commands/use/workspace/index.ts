@@ -22,7 +22,8 @@ export default class UseWorkspace extends DifyCommand {
     const { args, flags } = this.parse(UseWorkspace, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     await runUseWorkspace({ workspaceId: args.workspaceId }, {
-      bundle: ctx.bundle,
+      reg: ctx.reg,
+      active: ctx.active,
       http: ctx.http,
       io: ctx.io,
     })

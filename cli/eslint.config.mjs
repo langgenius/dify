@@ -59,6 +59,12 @@ export default antfu(
     },
   },
   {
+    files: ['bin/**'],
+    rules: {
+      'antfu/no-top-level-await': 'off',
+    },
+  },
+  {
     files: ['src/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', {

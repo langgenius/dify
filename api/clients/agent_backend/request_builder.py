@@ -45,6 +45,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 AGENT_SOUL_PROMPT_LAYER_ID = "agent_soul_prompt"
 WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
+AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 
@@ -181,8 +182,137 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
         return value
 
 
+class AgentBackendAgentAppRunInput(BaseModel):
+    """Inputs to build one Agent App conversation-turn run request.
+
+    Unlike the workflow-node input there is no workflow-node-job prompt and no
+    previous-node context: the user prompt is the chat message, and multi-turn
+    continuity comes from ``session_snapshot`` + the history layer keyed by the
+    conversation.
+    """
+
+    model: AgentBackendModelConfig
+    execution_context: DifyExecutionContextLayerConfig
+    user_prompt: str
+    agent_soul_prompt: str | None = None
+    purpose: RunPurpose = "agent_app"
+    idempotency_key: str | None = None
+    output: AgentBackendOutputConfig | None = None
+    tools: DifyPluginToolsLayerConfig | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+    include_history: bool = True
+    suspend_on_exit: bool = True
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    @field_validator("user_prompt")
+    @classmethod
+    def _reject_blank_prompt(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("prompt must not be blank")
+        return value
+
+
 class AgentBackendRunRequestBuilder:
     """Converts API product state into the public ``dify-agent`` run protocol."""
+
+    def build_for_agent_app(self, run_input: AgentBackendAgentAppRunInput) -> CreateRunRequest:
+        """Build an Agent App conversation-turn run request.
+
+        Layer graph: optional Agent Soul system prompt → user prompt →
+        execution context → optional history (multi-turn) → LLM → optional
+        plugin tools → optional structured output. Mirrors the workflow-node
+        layer ordering minus the workflow-job / previous-node prompt.
+        """
+        layers: list[RunLayerSpec] = []
+        if run_input.agent_soul_prompt:
+            layers.append(
+                RunLayerSpec(
+                    name=AGENT_SOUL_PROMPT_LAYER_ID,
+                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
+                    metadata={**run_input.metadata, "origin": "agent_soul"},
+                    config=PromptLayerConfig(prefix=run_input.agent_soul_prompt),
+                )
+            )
+
+        layers.extend(
+            [
+                RunLayerSpec(
+                    name=AGENT_APP_USER_PROMPT_LAYER_ID,
+                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
+                    metadata={**run_input.metadata, "origin": "agent_app_user_prompt"},
+                    config=PromptLayerConfig(user=run_input.user_prompt),
+                ),
+                RunLayerSpec(
+                    name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=run_input.execution_context,
+                ),
+            ]
+        )
+
+        if run_input.include_history:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_AGENT_HISTORY_LAYER_ID,
+                    type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID,
+                    metadata={**run_input.metadata, "origin": "agent_session_history"},
+                )
+            )
+
+        layers.append(
+            RunLayerSpec(
+                name=DIFY_AGENT_MODEL_LAYER_ID,
+                type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+                deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                metadata=run_input.metadata,
+                config=DifyPluginLLMLayerConfig(
+                    plugin_id=run_input.model.plugin_id,
+                    model_provider=run_input.model.model_provider,
+                    model=run_input.model.model,
+                    credentials=run_input.model.credentials,
+                    model_settings=run_input.model.model_settings or None,
+                ),
+            )
+        )
+
+        if run_input.tools is not None and run_input.tools.tools:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_PLUGIN_TOOLS_LAYER_ID,
+                    type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.tools,
+                )
+            )
+
+        if run_input.output is not None:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_AGENT_OUTPUT_LAYER_ID,
+                    type=DIFY_OUTPUT_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=DifyOutputLayerConfig(
+                        json_schema=run_input.output.json_schema,
+                        description=run_input.output.description,
+                        strict=run_input.output.strict,
+                    ),
+                )
+            )
+
+        return CreateRunRequest(
+            composition=RunComposition(layers=layers),
+            purpose=run_input.purpose,
+            idempotency_key=run_input.idempotency_key,
+            metadata=run_input.metadata,
+            session_snapshot=run_input.session_snapshot,
+            on_exit=LayerExitSignals(
+                default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,
+            ),
+        )
 
     def build_cleanup_request(
         self,

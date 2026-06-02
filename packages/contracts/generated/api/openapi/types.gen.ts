@@ -86,6 +86,7 @@ export type AppListRow = {
 
 export type AppMode
   = | 'advanced-chat'
+    | 'agent'
     | 'agent-chat'
     | 'channel'
     | 'chat'

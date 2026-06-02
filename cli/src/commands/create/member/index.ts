@@ -33,7 +33,7 @@ export default class CreateMember extends DifyCommand {
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runCreateMember(
       { email: flags.email, role: flags.role, workspace: flags.workspace, format },
-      { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
+      { active: ctx.active, http: ctx.http, io: ctx.io },
     )
     return formatted({ format, data: result.data })
   }

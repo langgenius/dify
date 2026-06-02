@@ -1,6 +1,7 @@
 export type Scenario
   = | 'happy'
     | 'sso'
+    | 'no-email'
     | 'denied'
     | 'expired'
     | 'auth-expired'
