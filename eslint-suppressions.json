@@ -817,9 +817,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "react/set-state-in-effect": {
       "count": 4
     },
