@@ -30,6 +30,7 @@ from core.app.apps.agent_app.runtime_request_builder import (
 )
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore, AgentAppSessionScope
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -100,6 +101,7 @@ class AgentAppRunner:
             app_id=dify_context.app_id,
             conversation_id=conversation_id,
             agent_id=agent_id,
+            agent_config_snapshot_id=agent_config_snapshot_id,
         )
         session_snapshot = self._session_store.load_active_snapshot(scope)
 
@@ -117,7 +119,7 @@ class AgentAppRunner:
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
-        terminal = self._consume_stream(create_response.run_id)
+        terminal = self._consume_stream(create_response.run_id, queue_manager=queue_manager)
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             error = getattr(terminal, "error", None) or "Agent backend run did not complete successfully."
@@ -127,10 +129,16 @@ class AgentAppRunner:
         self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
         self._save_session(scope=scope, backend_run_id=terminal.run_id, snapshot=terminal.session_snapshot)
 
-    def _consume_stream(self, run_id: str):
+    def _consume_stream(self, run_id: str, *, queue_manager: AppQueueManager):
         terminal = None
         for public_event in self._agent_backend_client.stream_events(run_id):
+            if queue_manager.is_stopped():
+                self._cancel_run(run_id)
+                raise GenerateTaskStoppedError()
             for internal_event in self._event_adapter.adapt(public_event):
+                if queue_manager.is_stopped():
+                    self._cancel_run(run_id)
+                    raise GenerateTaskStoppedError()
                 if internal_event.type in (
                     AgentBackendInternalEventType.RUN_STARTED,
                     AgentBackendInternalEventType.STREAM_EVENT,
@@ -145,6 +153,12 @@ class AgentAppRunner:
             if terminal is not None:
                 break
         return terminal
+
+    def _cancel_run(self, run_id: str) -> None:
+        try:
+            self._agent_backend_client.cancel_run(run_id)
+        except Exception:
+            logger.warning("Failed to cancel stopped Agent App backend run: run_id=%s", run_id, exc_info=True)
 
     def _publish_answer(self, *, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
         # MVP: emit the full answer as a single chunk + message-end. The chat

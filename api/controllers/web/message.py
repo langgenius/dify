@@ -83,7 +83,7 @@ class MessageListApi(WebApiResource):
     )
     def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         raw_args = request.args.to_dict()

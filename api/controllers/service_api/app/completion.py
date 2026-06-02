@@ -41,6 +41,15 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
+def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None) -> bool:
+    """Agent App runtime is SSE-only until backend blocking runs are supported."""
+    if app_mode != AppMode.AGENT:
+        return response_mode == "streaming"
+    if response_mode == "blocking":
+        raise BadRequest("Agent App only supports streaming response mode.")
+    return True
+
+
 class CompletionRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str = Field(default="")
@@ -207,7 +216,7 @@ class ChatApi(Resource):
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        streaming = payload.response_mode == "streaming"
+        streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
 
         try:
             response = AppGenerateService.generate(

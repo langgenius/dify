@@ -2,7 +2,7 @@ import logging
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import SimpleResultResponse
@@ -35,6 +35,15 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None) -> bool:
+    """Agent App runtime is SSE-only until backend blocking runs are supported."""
+    if app_mode != AppMode.AGENT:
+        return response_mode == "streaming"
+    if response_mode == "blocking":
+        raise BadRequest("Agent App only supports streaming response mode.")
+    return True
 
 
 class CompletionMessagePayload(BaseModel):
@@ -177,7 +186,7 @@ class ChatApi(WebApiResource):
         payload = ChatMessagePayload.model_validate(web_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
-        streaming = payload.response_mode == "streaming"
+        streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
         args["auto_generate_name"] = False
 
         try:

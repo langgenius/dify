@@ -31,6 +31,7 @@ class AgentAppSessionScope:
     app_id: str
     conversation_id: str
     agent_id: str
+    agent_config_snapshot_id: str
 
 
 class AgentAppRuntimeSessionStore:
@@ -61,6 +62,7 @@ class AgentAppRuntimeSessionStore:
                     app_id=scope.app_id,
                     owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
                     agent_id=scope.agent_id,
+                    agent_config_snapshot_id=scope.agent_config_snapshot_id,
                     conversation_id=scope.conversation_id,
                     backend_run_id=backend_run_id,
                     session_snapshot=snapshot_json,
@@ -93,6 +95,7 @@ class AgentAppRuntimeSessionStore:
             AgentRuntimeSession.tenant_id == scope.tenant_id,
             AgentRuntimeSession.conversation_id == scope.conversation_id,
             AgentRuntimeSession.agent_id == scope.agent_id,
+            AgentRuntimeSession.agent_config_snapshot_id == scope.agent_config_snapshot_id,
         )
 
     @classmethod

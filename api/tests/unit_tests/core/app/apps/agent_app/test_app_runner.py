@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import CancelRunRequest, CancelRunResponse
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -19,6 +20,7 @@ from clients.agent_backend import (
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
 from models.agent_config_entities import AgentSoulConfig
@@ -40,6 +42,24 @@ class _FakeQueueManager:
 
     def publish(self, event: Any, _from: Any) -> None:
         self.events.append(event)
+
+    def is_stopped(self) -> bool:
+        return False
+
+
+class _StoppedQueueManager(_FakeQueueManager):
+    def is_stopped(self) -> bool:
+        return True
+
+
+class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.cancelled_run_ids: list[str] = []
+
+    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+        self.cancelled_run_ids.append(run_id)
+        return super().cancel_run(run_id, request=request)
 
 
 class _FakeSessionStore:
@@ -116,6 +136,7 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert store.saved
     saved_scope, saved_run_id, saved_snapshot = store.saved[0]
     assert saved_scope.conversation_id == "conv-1"
+    assert saved_scope.agent_config_snapshot_id == "snap-1"
     assert saved_run_id == "fake-run-1"
     assert saved_snapshot is not None
 
@@ -141,6 +162,18 @@ def test_failed_run_raises_agent_backend_error():
         _run(_runner(client, store), qm)
     # No message-end on failure; no snapshot saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert store.saved == []
+
+
+def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _StoppedQueueManager()
+
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(client, store), qm)
+
+    assert client.cancelled_run_ids == ["fake-run-1"]
     assert store.saved == []
 
 

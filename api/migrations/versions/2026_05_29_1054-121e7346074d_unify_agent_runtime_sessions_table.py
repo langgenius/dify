@@ -60,7 +60,9 @@ def upgrade() -> None:
         sa.Column("agent_config_snapshot_id", models.types.StringUUID(), nullable=True),
         # MySQL rejects defaults on TEXT; the ORM always supplies this value.
         sa.Column("composition_layer_specs", models.types.LongText(), nullable=False),
-        # Conversation-owner column (NULL for workflow owner).
+        # Conversation-owner column (NULL for workflow owner). Conversation
+        # sessions are also scoped by agent_config_snapshot_id so a Soul version
+        # change never resumes an incompatible backend snapshot.
         sa.Column("conversation_id", models.types.StringUUID(), nullable=True),
         sa.Column("status", sa.String(length=32), server_default=sa.text("'active'"), nullable=False),
         sa.Column("cleaned_at", sa.DateTime(), nullable=True),
@@ -77,7 +79,7 @@ def upgrade() -> None:
         )
         batch_op.create_index(
             "agent_runtime_session_conversation_scope_unique",
-            ["tenant_id", "conversation_id", "agent_id"],
+            ["tenant_id", "conversation_id", "agent_id", "agent_config_snapshot_id"],
             unique=True,
             postgresql_where=sa.text("conversation_id IS NOT NULL"),
         )

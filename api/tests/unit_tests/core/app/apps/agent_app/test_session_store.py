@@ -20,12 +20,15 @@ from core.db.session_factory import session_factory
 from models.agent import AgentRuntimeSession, AgentRuntimeSessionOwnerType, AgentRuntimeSessionStatus
 
 
-def _scope(conversation_id: str = "conv-1", agent_id: str = "agent-1") -> AgentAppSessionScope:
+def _scope(
+    conversation_id: str = "conv-1", agent_id: str = "agent-1", agent_config_snapshot_id: str = "snap-1"
+) -> AgentAppSessionScope:
     return AgentAppSessionScope(
         tenant_id="tenant-1",
         app_id="app-1",
         conversation_id=conversation_id,
         agent_id=agent_id,
+        agent_config_snapshot_id=agent_config_snapshot_id,
     )
 
 
@@ -70,6 +73,7 @@ def test_save_creates_conversation_owned_row_and_round_trips():
         row = session.query(AgentRuntimeSession).one()
         assert row.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION
         assert row.conversation_id == "conv-1"
+        assert row.agent_config_snapshot_id == "snap-1"
         assert row.workflow_run_id is None  # conversation owner leaves workflow cols NULL
         assert row.backend_run_id == "run-1"
 
@@ -113,3 +117,22 @@ def test_distinct_conversations_do_not_collide():
     assert store.load_active_snapshot(_scope(conversation_id="conv-B")) is not None
     with session_factory.create_session() as session:
         assert session.query(AgentRuntimeSession).count() == 2
+
+
+def test_distinct_agent_config_snapshots_do_not_reuse_prior_session():
+    store = AgentAppRuntimeSessionStore()
+    store.save_active_snapshot(
+        scope=_scope(agent_config_snapshot_id="snap-1"),
+        backend_run_id="a",
+        snapshot=_snapshot(),
+    )
+    store.save_active_snapshot(
+        scope=_scope(agent_config_snapshot_id="snap-2"), backend_run_id="b", snapshot=_snapshot(messages=2)
+    )
+
+    assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-1")) is not None
+    assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-2")) is not None
+    with session_factory.create_session() as session:
+        rows = session.query(AgentRuntimeSession).order_by(AgentRuntimeSession.backend_run_id).all()
+        assert len(rows) == 2
+        assert [row.agent_config_snapshot_id for row in rows] == ["snap-1", "snap-2"]

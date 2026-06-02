@@ -134,6 +134,10 @@ class AppQueueManager(ABC):
         self._check_for_sqlalchemy_models(event.model_dump())
         self._publish(event, pub_from)
 
+    def is_stopped(self) -> bool:
+        """Return whether the current task has been manually stopped."""
+        return self._is_stopped()
+
     @abstractmethod
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """

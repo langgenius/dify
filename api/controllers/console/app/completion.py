@@ -4,7 +4,7 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import SimpleResultResponse
@@ -39,6 +39,17 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_debugger_chat_streaming(
+    *, app_mode: AppMode, response_mode: str, response_mode_provided: bool = True
+) -> bool:
+    """Agent App runtime is SSE-only until backend blocking runs are supported."""
+    if app_mode != AppMode.AGENT:
+        return response_mode != "blocking"
+    if response_mode_provided and response_mode == "blocking":
+        raise BadRequest("Agent App only supports streaming response mode.")
+    return True
 
 
 class BaseMessagePayload(BaseModel):
@@ -164,10 +175,17 @@ class ChatMessageApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App):
-        args_model = ChatMessagePayload.model_validate(console_ns.payload)
+        raw_payload = console_ns.payload or {}
+        args_model = ChatMessagePayload.model_validate(raw_payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args_model.response_mode != "blocking"
+        streaming = _resolve_debugger_chat_streaming(
+            app_mode=AppMode.value_of(app_model.mode),
+            response_mode=args_model.response_mode,
+            response_mode_provided=isinstance(raw_payload, dict) and "response_mode" in raw_payload,
+        )
+        if AppMode.value_of(app_model.mode) == AppMode.AGENT:
+            args["response_mode"] = "streaming"
         args["auto_generate_name"] = False
 
         external_trace_id = get_external_trace_id(request)
@@ -215,7 +233,7 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def post(self, app_model: App, task_id: str):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
