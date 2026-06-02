@@ -20,7 +20,6 @@ import DatasetFooter from './dataset-footer'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
-import DatasetListPageTitle from './page-title'
 
 const List = () => {
   const { t } = useTranslation()
@@ -76,15 +75,23 @@ const List = () => {
       {showEmptyDataList
         ? (
             <>
-              <div className="sticky top-0 z-10 flex flex-col bg-background-body px-6 pt-2 pb-2">
-                <div className="flex min-h-14 items-start pt-2">
-                  <DatasetListPageTitle
-                    title={t('knowledge', { ns: 'dataset' })}
-                    description={t('studioDescription', { ns: 'dataset' })}
-                    titleClassName="text-dify-logo-black"
-                  />
-                </div>
-              </div>
+              <DatasetListHeader
+                apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+                includeAll={includeAll}
+                isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
+                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+                isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
+                keywords={keywords}
+                tagFilterValue={tagFilterValue}
+                onCreateDataset={() => push('/datasets/create')}
+                onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
+                onConnectDataset={() => push('/datasets/connect')}
+                onExternalApiClick={() => setShowExternalApiPanel(true)}
+                onIncludeAllChange={toggleIncludeAll}
+                onKeywordsChange={handleKeywordsChange}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onTagsChange={handleTagsChange}
+              />
               <DatasetFirstEmptyState />
             </>
           )
