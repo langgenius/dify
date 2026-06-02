@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -37,7 +38,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       setIsLoading(true)
       const ret = await sendEMailLoginCode(email, locale)
       if (ret.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setLocalStorageItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
