@@ -7,12 +7,16 @@ import { useTrialCredits } from '../use-trial-credits'
 
 type CreditsExhaustedAlertProps = {
   hasApiKeyFallback: boolean
+  credits?: number
+  totalCredits?: number
 }
 
-export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExhaustedAlertProps) {
+export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: creditsOverride, totalCredits: totalCreditsOverride }: CreditsExhaustedAlertProps) {
   const { t } = useTranslation()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
-  const { credits, totalCredits } = useTrialCredits()
+  const trialCredits = useTrialCredits()
+  const credits = creditsOverride ?? trialCredits.credits
+  const totalCredits = totalCreditsOverride ?? trialCredits.totalCredits
 
   const titleKey = hasApiKeyFallback
     ? 'modelProvider.card.creditsExhaustedFallback'
@@ -54,6 +58,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             {t('modelProvider.card.usageLabel', { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
+            {/* eslint-disable-next-line hyoban/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
             <CreditsCoin className="size-3" />
             <span>
               {formatNumber(usedCredits)}
