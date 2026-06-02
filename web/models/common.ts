@@ -19,10 +19,8 @@ export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export type UserProfileResponse = GetAccountProfileResponse
-
 export type UserProfileOriginResponse = {
-  json: () => Promise<UserProfileResponse>
+  json: () => Promise<GetAccountProfileResponse>
   bodyUsed: boolean
   headers: any
 }
@@ -37,7 +35,7 @@ export type LangGeniusVersionResponse = {
   current_env: string
 }
 
-export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
+export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
   avatar: string
   last_login_at?: string
   last_active_at?: string
