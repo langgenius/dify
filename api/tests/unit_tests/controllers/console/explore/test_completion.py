@@ -227,7 +227,7 @@ class TestCompletionStopApi:
         method = unwrap(api.post)
 
         with patch.object(completion_module.AppTaskService, "stop_task"):
-            resp, status = method("u1", completion_app, "task-1")
+            resp, status = method(api, "u1", completion_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
