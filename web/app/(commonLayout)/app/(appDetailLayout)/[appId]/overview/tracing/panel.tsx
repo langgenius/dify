@@ -27,7 +27,7 @@ import Loading from '@/app/components/base/loading'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
+import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
@@ -47,7 +47,7 @@ const Panel: FC = () => {
     resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
     workspacePermissionKeys,
   }), [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys])
-  const canConfigTracing = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.tracking_config')
+  const canConfigTracing = appACLCapabilities.canMonitor
   const readOnly = !canConfigTracing
 
   const [isLoaded, {

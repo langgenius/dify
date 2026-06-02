@@ -92,24 +92,26 @@ vi.mock('@remixicon/react', () => ({
 }))
 
 describe('AppDetailLayout permissions', () => {
+  const mockAppDetailResponse = (permissionKeys: string[] = []) => ({
+    data: {
+      id: 'app-1',
+      name: 'Test App',
+      mode: AppModeEnum.CHAT,
+      permission_keys: permissionKeys,
+    },
+    error: null,
+    isLoading: false,
+  } as unknown as ReturnType<typeof useAppDetail>)
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/app/app-1/overview'
     mockWorkspacePermissionKeys = []
-    vi.mocked(useAppDetail).mockReturnValue({
-      data: {
-        id: 'app-1',
-        name: 'Test App',
-        mode: AppModeEnum.CHAT,
-        permission_keys: [],
-      },
-      error: null,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useAppDetail>)
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse())
   })
 
   it('subscribes to app detail query and publishes query data into the app store', async () => {
-    mockWorkspacePermissionKeys = ['app.monitor.access']
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 
     render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
@@ -123,7 +125,7 @@ describe('AppDetailLayout permissions', () => {
   })
 
   it('does not re-subscribe the app detail query just because the child route changes', async () => {
-    mockWorkspacePermissionKeys = ['app.monitor.access']
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 
     const { rerender } = render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
     await waitFor(() => {
@@ -162,8 +164,8 @@ describe('AppDetailLayout permissions', () => {
     })
   })
 
-  it('allows direct overview access with workspace monitor permission', async () => {
-    mockWorkspacePermissionKeys = ['app.monitor.access']
+  it('allows direct overview access with app ACL monitor permission', async () => {
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 
     render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 

@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { fetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import { AppACLPermission } from '@/utils/permission'
 import Panel from '../panel'
 
 const testState = vi.hoisted(() => ({
@@ -122,20 +123,7 @@ describe('Tracing overview panel permissions', () => {
   })
 
   it('allows tracing config when app ACL includes monitor permission', async () => {
-    testState.appPermissionKeys = ['app.acl.monitor']
-
-    await renderPanel()
-
-    await waitFor(() => {
-      expect(testState.configButtonProps[0]).toMatchObject({
-        readOnly: false,
-        hasConfigured: false,
-      })
-    })
-  })
-
-  it('allows tracing config when workspace permission includes tracking config', async () => {
-    testState.workspacePermissionKeys = ['app.monitor.tracking_config']
+    testState.appPermissionKeys = [AppACLPermission.Monitor]
 
     await renderPanel()
 

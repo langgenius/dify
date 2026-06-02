@@ -30,7 +30,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
-import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
+import { getAppACLCapabilities } from '@/utils/permission'
 import s from './style.module.css'
 
 type IAppDetailLayoutProps = {
@@ -82,8 +82,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     () => getAppACLCapabilities(appDetailRes?.permission_keys, appCreatorPermissionOptions),
     [appCreatorPermissionOptions, appDetailRes?.permission_keys],
   )
-  const canAccessMonitor = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.monitor.access')
-  const canAccessLog = appACLCapabilities.canMonitor || hasPermission(workspacePermissionKeys, 'app.log.access')
+  const canAccessMonitor = appACLCapabilities.canMonitor
+  const canAccessLog = appACLCapabilities.canMonitor
 
   const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum): NavigationItem[] => {
     const navConfig = [
