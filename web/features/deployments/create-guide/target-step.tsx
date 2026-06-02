@@ -5,6 +5,7 @@ import type {
   EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
 import type { EnvVarValues } from '../components/env-var-bindings-utils'
+import type { UnsupportedDslNode } from '../error'
 import type { BindingSelections, EnvironmentOption } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +17,7 @@ import {
   RuntimeCredentialBindingsPanel,
 } from '../components/runtime-credential-bindings'
 import { TitleTooltip } from '../components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '../components/unsupported-dsl-nodes-alert'
 
 import {
   environmentBackend,
@@ -108,6 +110,7 @@ function TargetStep({
   isEnvironmentError,
   isBindingLoading,
   isBindingError,
+  unsupportedDslNodes,
   onSelectEnvironment,
   onSelectBinding,
   onSetEnvVar,
@@ -122,12 +125,15 @@ function TargetStep({
   isEnvironmentError: boolean
   isBindingLoading: boolean
   isBindingError: boolean
+  unsupportedDslNodes: UnsupportedDslNode[]
   onSelectEnvironment: (environmentId: string) => void
   onSelectBinding: (slot: string, value: string) => void
   onSetEnvVar: (key: string, value: string) => void
 }) {
   const { t } = useTranslation('deployments')
   const hasEnvironmentOptions = environments.length > 0
+  const hasUnsupportedDslNodes = unsupportedDslNodes.length > 0
+  const shouldRenderBindingSection = !(isBindingError && hasUnsupportedDslNodes)
 
   return (
     <StepShell
@@ -161,7 +167,10 @@ function TargetStep({
                   </div>
                 )}
         </div>
-        {isBindingLoading || isBindingError
+        {hasUnsupportedDslNodes && (
+          <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
+        )}
+        {shouldRenderBindingSection && (isBindingLoading || isBindingError)
           ? (
               <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
                 <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
@@ -177,22 +186,22 @@ function TargetStep({
                     )}
               </div>
             )
-          : (
-              <RuntimeCredentialBindingsPanel
-                slots={bindingSlots}
-                selections={bindingSelections}
-                title={t('createGuide.target.bindings')}
-                hint={t('createGuide.target.bindingHint')}
-                requiredLabel={t('createGuide.target.required')}
-                noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
-                noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
-                selectCredentialLabel={t('createGuide.target.selectCredential')}
-                missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
-                bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
-                onChange={onSelectBinding}
-                className="border-components-option-card-option-border bg-components-option-card-option-bg"
-              />
-            )}
+          : shouldRenderBindingSection && (
+            <RuntimeCredentialBindingsPanel
+              slots={bindingSlots}
+              selections={bindingSelections}
+              title={t('createGuide.target.bindings')}
+              hint={t('createGuide.target.bindingHint')}
+              requiredLabel={t('createGuide.target.required')}
+              noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
+              noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
+              selectCredentialLabel={t('createGuide.target.selectCredential')}
+              missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
+              bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
+              onChange={onSelectBinding}
+              className="border-components-option-card-option-border bg-components-option-card-option-bg"
+            />
+          )}
         {!isBindingLoading && !isBindingError && (
           <EnvVarBindingsPanel
             slots={envVarSlots}
@@ -225,6 +234,7 @@ export function TargetReviewSections({
   onSelectEnvironment,
   onSetEnvVar,
   selectedEnvironmentId,
+  unsupportedDslNodes,
 }: {
   bindingSelections: BindingSelections
   bindingSlots: CredentialSlot[]
@@ -239,6 +249,7 @@ export function TargetReviewSections({
   onSelectEnvironment: (environmentId: string) => void
   onSetEnvVar: (key: string, value: string) => void
   selectedEnvironmentId: string
+  unsupportedDslNodes: UnsupportedDslNode[]
 }) {
   return (
     <TargetStep
@@ -252,6 +263,7 @@ export function TargetReviewSections({
       isEnvironmentError={isEnvironmentError}
       isBindingLoading={isBindingLoading}
       isBindingError={isBindingError}
+      unsupportedDslNodes={unsupportedDslNodes}
       onSelectEnvironment={onSelectEnvironment}
       onSelectBinding={onSelectBinding}
       onSetEnvVar={onSetEnvVar}

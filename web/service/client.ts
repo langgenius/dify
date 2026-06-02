@@ -91,6 +91,8 @@ function shouldUseLocalDeploymentErrorToast(url: string, method?: string) {
       normalizedMethod === 'POST'
       && (
         pathname.endsWith('/enterprise/app-deploy/app-instances')
+        || pathname.endsWith('/enterprise/app-deploy/deployment-options/dsl')
+        || pathname.endsWith('/enterprise/app-deploy/deployment-options/source-app')
         || pathname.endsWith('/enterprise/app-deploy/releases/dsl')
         || pathname.endsWith('/enterprise/app-deploy/releases/source-app')
       )

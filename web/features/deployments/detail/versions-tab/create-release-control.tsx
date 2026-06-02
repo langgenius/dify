@@ -3,6 +3,7 @@
 import type { CreateReleaseReply } from '@dify/contracts/enterprise/types.gen'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { SourceAppPickerValue } from '../../components/create-instance-modal'
+import type { UnsupportedDslNode } from '../../error'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,7 +17,8 @@ import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { consoleQuery } from '@/service/client'
 import { SourceAppPicker } from '../../components/create-instance-modal'
-import { deploymentErrorMessage } from '../../error'
+import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
+import { deploymentErrorMessage, unsupportedDslNodeError } from '../../error'
 import { releaseLabel } from '../../release'
 
 type ReleaseSourceMode = 'sourceApp' | 'dsl'
@@ -61,6 +63,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const [releaseName, setReleaseName] = useState('')
   const [releaseNameTouched, setReleaseNameTouched] = useState(false)
   const [description, setDescription] = useState('')
+  const [unsupportedDslNodes, setUnsupportedDslNodes] = useState<UnsupportedDslNode[]>([])
   const dslReadTokenRef = useRef(0)
 
   const latestReleaseQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
@@ -99,6 +102,10 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     setDslReadError(false)
   }
 
+  function clearCreateError() {
+    setUnsupportedDslNodes([])
+  }
+
   function closeDialog() {
     setIsCreating(false)
     setReleaseSourceMode(DEFAULT_RELEASE_SOURCE_MODE)
@@ -107,12 +114,14 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     setReleaseName('')
     setReleaseNameTouched(false)
     setDescription('')
+    clearCreateError()
   }
 
   function handleReleaseSourceModeChange(nextMode: ReleaseSourceMode) {
     if (nextMode === releaseSourceMode)
       return
 
+    clearCreateError()
     setReleaseSourceMode(nextMode)
     if (nextMode === 'sourceApp')
       resetDslState()
@@ -121,6 +130,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   }
 
   function handleDslFileChange(file?: File) {
+    clearCreateError()
     const readToken = dslReadTokenRef.current + 1
     dslReadTokenRef.current = readToken
     setDslFile(file)
@@ -160,6 +170,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       setReleaseNameTouched(true)
       return
     }
+    clearCreateError()
 
     const handleSuccess = (response: CreateReleaseReply) => {
       if (!response.release?.id) {
@@ -172,9 +183,16 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       closeDialog()
     }
     const handleError = (error: unknown) => {
-      void deploymentErrorMessage(error).then((message) => {
+      void (async () => {
+        const unsupportedError = await unsupportedDslNodeError(error)
+        if (unsupportedError?.nodes.length) {
+          setUnsupportedDslNodes(unsupportedError.nodes)
+          return
+        }
+
+        const message = await deploymentErrorMessage(error)
         toast.error(message || t('versions.createFailed'))
-      })
+      })()
     }
 
     if (releaseSourceMode === 'dsl') {
@@ -297,7 +315,10 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                           <div className="flex min-h-12 items-center">
                             <SourceAppPicker
                               value={selectedSourceApp}
-                              onChange={setSourceApp}
+                              onChange={(app) => {
+                                setSourceApp(app)
+                                clearCreateError()
+                              }}
                               ariaLabel={t('versions.sourceAppOption')}
                             />
                           </div>
@@ -323,6 +344,8 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                         )}
                   </div>
                 </div>
+
+                <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
 
                 <div className="flex flex-col gap-2">
                   <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-name">

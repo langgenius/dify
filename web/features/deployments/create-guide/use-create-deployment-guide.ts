@@ -4,6 +4,7 @@ import type {
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
 import type { EnvVarValues } from '../components/env-var-bindings-utils'
+import type { UnsupportedDslNode } from '../error'
 import type {
   BindingSelections,
   EnvironmentOption,
@@ -14,7 +15,7 @@ import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { load as yamlLoad } from 'js-yaml'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -34,7 +35,7 @@ import {
   environmentDeploymentId,
   environmentMatchesIdentifier,
 } from '../environment'
-import { deploymentErrorMessage } from '../error'
+import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
 import { createDeploymentIdempotencyKey } from '../idempotency'
 
 type DslMetadata = {
@@ -127,6 +128,8 @@ export function useCreateDeploymentGuide() {
   const [manualBindingSelections, setManualBindingSelections] = useState<BindingSelections>({})
   const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
   const [isSkippingReleaseOnly, setIsSkippingReleaseOnly] = useState(false)
+  const [submissionUnsupportedDslNodes, setSubmissionUnsupportedDslNodes] = useState<UnsupportedDslNode[]>([])
+  const [deploymentOptionsUnsupportedDslNodes, setDeploymentOptionsUnsupportedDslNodes] = useState<UnsupportedDslNode[]>([])
   const dslReadTokenRef = useRef(0)
 
   const sourceAppsQuery = useInfiniteQuery({
@@ -159,8 +162,10 @@ export function useCreateDeploymentGuide() {
   const hasDslContent = Boolean(dslContent.trim())
   const encodedDslContent = hasDslContent ? encodeUtf8Base64(dslContent) : ''
   const shouldResolveDeploymentTarget = step === 'target'
-  const shouldLoadSourceDeploymentTarget = method === 'bindApp' && Boolean(effectiveSelectedApp?.id) && shouldResolveDeploymentTarget
-  const shouldLoadDslDeploymentTarget = method === 'importDsl' && hasDslContent && shouldResolveDeploymentTarget
+  const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
+  const shouldLoadDslDeploymentOptions = method === 'importDsl' && hasDslContent && !isReadingDsl && !dslReadError
+  const shouldLoadSourceDeploymentTarget = shouldLoadSourceDeploymentOptions && shouldResolveDeploymentTarget
+  const shouldLoadDslDeploymentTarget = shouldLoadDslDeploymentOptions && shouldResolveDeploymentTarget
   const shouldLoadDeploymentTarget = shouldLoadSourceDeploymentTarget || shouldLoadDslDeploymentTarget
 
   const deployableEnvironmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listDeployableEnvironments.queryOptions({
@@ -169,24 +174,51 @@ export function useCreateDeploymentGuide() {
     },
     enabled: shouldLoadDeploymentTarget,
   }))
-  const sourceDeploymentOptionsQuery = useQuery(consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
-    input: {
-      body: {
-        sourceAppId: effectiveSelectedApp?.id ?? '',
+  const sourceDeploymentOptionsQuery = useQuery({
+    ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromSourceApp.queryOptions({
+      input: {
+        body: {
+          sourceAppId: effectiveSelectedApp?.id ?? '',
+        },
       },
-    },
-    enabled: shouldLoadSourceDeploymentTarget,
-  }))
-  const dslDeploymentOptionsQuery = useQuery(consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
-    input: {
-      body: {
-        dsl: encodedDslContent,
+      enabled: shouldLoadSourceDeploymentOptions,
+    }),
+    retry: false,
+  })
+  const dslDeploymentOptionsQuery = useQuery({
+    ...consoleQuery.enterprise.releaseService.getDeploymentOptionsFromDsl.queryOptions({
+      input: {
+        body: {
+          dsl: encodedDslContent,
+        },
       },
-    },
-    enabled: shouldLoadDslDeploymentTarget,
-  }))
+      enabled: shouldLoadDslDeploymentOptions,
+    }),
+    retry: false,
+  })
   const deploymentOptionsQuery = method === 'importDsl' ? dslDeploymentOptionsQuery : sourceDeploymentOptionsQuery
   const deploymentOptions = deploymentOptionsQuery.data?.options
+  const unsupportedDslNodes = submissionUnsupportedDslNodes.length > 0
+    ? submissionUnsupportedDslNodes
+    : deploymentOptionsQuery.isError ? deploymentOptionsUnsupportedDslNodes : []
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!deploymentOptionsQuery.isError)
+      return
+
+    void unsupportedDslNodeError(deploymentOptionsQuery.error).then((unsupportedError) => {
+      if (cancelled)
+        return
+
+      setDeploymentOptionsUnsupportedDslNodes(unsupportedError?.nodes ?? [])
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [deploymentOptionsQuery.error, deploymentOptionsQuery.isError])
 
   const environments = shouldLoadDeploymentTarget
     ? deployableEnvironmentsQuery.data?.data?.filter(hasEnvironmentId) ?? []
@@ -222,8 +254,15 @@ export function useCreateDeploymentGuide() {
   const isSourceReady = Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
   const isInitialReleaseReady = Boolean(isSourceReady && submittedInstanceName && submittedReleaseName && !hasInstanceNameConflict)
   const showTargetConfiguration = Boolean(method && step === 'target')
+  const hasUnsupportedDslNodes = unsupportedDslNodes.length > 0
+
+  function clearUnsupportedDslNodes() {
+    setSubmissionUnsupportedDslNodes([])
+    setDeploymentOptionsUnsupportedDslNodes([])
+  }
 
   function selectMethod(nextMethod: GuideMethod) {
+    clearUnsupportedDslNodes()
     setMethod(nextMethod)
     setSelectedEnvironmentId('')
     setManualBindingSelections({})
@@ -231,6 +270,7 @@ export function useCreateDeploymentGuide() {
   }
 
   function handleDslFileChange(file?: File) {
+    clearUnsupportedDslNodes()
     const readToken = dslReadTokenRef.current + 1
     dslReadTokenRef.current = readToken
     setDslFile(file)
@@ -273,9 +313,9 @@ export function useCreateDeploymentGuide() {
 
   function canContinueCurrentStep() {
     if (step === 'source')
-      return isSourceReady
+      return isSourceReady && !hasUnsupportedDslNodes
     if (step === 'release') {
-      return isInitialReleaseReady
+      return isInitialReleaseReady && !hasUnsupportedDslNodes
     }
     if (step === 'target') {
       const deploymentTargetReady = shouldLoadDeploymentTarget
@@ -283,6 +323,7 @@ export function useCreateDeploymentGuide() {
         && !deployableEnvironmentsQuery.isError
         && !isBindingLoading
         && !deploymentOptionsQuery.isError
+        && !hasUnsupportedDslNodes
       return Boolean(
         selectedEnvironment?.id
         && deploymentTargetReady
@@ -292,6 +333,15 @@ export function useCreateDeploymentGuide() {
       )
     }
     return false
+  }
+
+  function canSkipDeploymentCurrentStep() {
+    return Boolean(
+      step === 'target'
+      && isInitialReleaseReady
+      && !deploymentOptionsQuery.isError
+      && !hasUnsupportedDslNodes,
+    )
   }
 
   function handleBack() {
@@ -384,6 +434,7 @@ export function useCreateDeploymentGuide() {
     if (method === 'importDsl' && !hasDslContent)
       return
 
+    setSubmissionUnsupportedDslNodes([])
     try {
       if (!deployToEnvironment) {
         await createInitialReleaseOnly()
@@ -442,6 +493,12 @@ export function useCreateDeploymentGuide() {
       router.push(`/deployments/${appInstanceId}/overview`)
     }
     catch (error) {
+      const unsupportedError = await unsupportedDslNodeError(error)
+      if (unsupportedError?.nodes.length) {
+        setSubmissionUnsupportedDslNodes(unsupportedError.nodes)
+        return
+      }
+
       const fallbackMessage = t(deployToEnvironment ? 'createGuide.errors.deployFailed' : 'createGuide.errors.createReleaseFailed')
       toast.error(await deploymentErrorMessage(error) || fallbackMessage)
     }
@@ -452,6 +509,9 @@ export function useCreateDeploymentGuide() {
   }
 
   async function handleSkipDeployment() {
+    if (!canSkipDeploymentCurrentStep())
+      return
+
     await createDeploymentAndRelease({ deployToEnvironment: false })
   }
 
@@ -496,7 +556,7 @@ export function useCreateDeploymentGuide() {
 
   return {
     canContinue: canContinueCurrentStep(),
-    canSkipDeployment: Boolean(step === 'target' && isInitialReleaseReady),
+    canSkipDeployment: canSkipDeploymentCurrentStep(),
     creationSectionsProps: {
       defaultedReleaseName,
       dslFile,
@@ -526,6 +586,7 @@ export function useCreateDeploymentGuide() {
       onSearchTextChange: setSourceSearchText,
       onSelectMethod: handleSelectMethod,
       onSelectSourceApp: (app: App) => {
+        clearUnsupportedDslNodes()
         setSelectedApp(app)
       },
       releaseDescription,
@@ -536,6 +597,7 @@ export function useCreateDeploymentGuide() {
       sourceName,
       sourceSearchText,
       stage: step === 'release' ? 'release' as const : 'source' as const,
+      unsupportedDslNodes,
     },
     handleBack,
     handlePrimaryAction,
@@ -562,6 +624,7 @@ export function useCreateDeploymentGuide() {
         setEnvVarValues(prev => ({ ...prev, [key]: value }))
       },
       selectedEnvironmentId: effectiveSelectedEnvironmentId,
+      unsupportedDslNodes,
     },
   }
 }

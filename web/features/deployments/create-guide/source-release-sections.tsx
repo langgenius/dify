@@ -1,8 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { UnsupportedDslNode } from '../error'
 import type { GuideMethod } from './types'
 import type { App } from '@/types/app'
+import { UnsupportedDslNodesAlert } from '../components/unsupported-dsl-nodes-alert'
 import { DslStep } from './dsl-step'
 import { MethodStep } from './method-step'
 import { ReleaseStep } from './release-step'
@@ -31,6 +33,7 @@ export function CreationSections({
   sourceName,
   sourceSearchText,
   stage,
+  unsupportedDslNodes,
   dslFile,
   isReadingDsl,
   dslReadError,
@@ -57,14 +60,15 @@ export function CreationSections({
   sourceName: string
   sourceSearchText: string
   stage: 'source' | 'release'
+  unsupportedDslNodes: UnsupportedDslNode[]
   dslFile?: File
   isReadingDsl: boolean
   dslReadError: boolean
 }) {
   return (
-    <div className="flex flex-col gap-7 pb-4">
+    <div className="flex h-full min-h-0 flex-col gap-7 pb-4">
       {stage === 'source' && (
-        <div className="flex flex-col gap-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
           <MethodStep method={method} onSelect={onSelectMethod} />
           {method === 'bindApp' && (
             <SourceStep
@@ -84,6 +88,7 @@ export function CreationSections({
               onDslFileChange={onDslFileChange}
             />
           )}
+          <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
         </div>
       )}
       {stage === 'release' && method && (

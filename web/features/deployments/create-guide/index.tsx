@@ -50,6 +50,7 @@ export function CreateDeploymentGuide() {
           </Link>
           <GuideFrame activeStep={step}>
             <GuideCard
+              contentScrollable={step !== 'source'}
               actions={(
                 <GuideActions
                   canContinue={canContinue}

@@ -108,8 +108,9 @@ export function SourceStep({
       description={t('createGuide.source.description')}
       descriptionClassName="lg:hidden"
       hideHeader
+      className="min-h-0 flex-1"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
         <div className="relative">
           <span className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
           <Input
@@ -131,7 +132,7 @@ export function SourceStep({
             </button>
           )}
         </div>
-        <div className="max-h-[336px] overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
           {isLoading
             ? <SourceAppSkeleton />
             : filteredApps.length === 0

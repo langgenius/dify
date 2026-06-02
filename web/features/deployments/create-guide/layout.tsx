@@ -133,15 +133,16 @@ function GuideProgressSummary({ activeStep }: {
   )
 }
 
-export function StepShell({ title, description, descriptionClassName, hideHeader, children }: {
+export function StepShell({ title, description, descriptionClassName, hideHeader, className, children }: {
   title: string
   description: string
   descriptionClassName?: string
   hideHeader?: boolean
+  className?: string
   children: ReactNode
 }) {
   return (
-    <section aria-label={hideHeader ? title : undefined} className="flex min-w-0 flex-col gap-4">
+    <section aria-label={hideHeader ? title : undefined} className={cn('flex min-w-0 flex-col gap-4', className)}>
       {!hideHeader && (
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="system-md-semibold text-text-primary">{title}</h2>
@@ -153,22 +154,31 @@ export function StepShell({ title, description, descriptionClassName, hideHeader
   )
 }
 
-export function GuideCard({ children, actions }: {
+export function GuideCard({ children, actions, contentScrollable = true }: {
   children: ReactNode
   actions: ReactNode
+  contentScrollable?: boolean
 }) {
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-      <ScrollArea
-        className="min-h-0 flex-1"
-        slotClassNames={{
-          viewport: 'overscroll-contain',
-          content: 'min-h-full pt-0.5 pb-6',
-          scrollbar: 'data-[orientation=vertical]:-me-5 data-[orientation=vertical]:my-1',
-        }}
-      >
-        {children}
-      </ScrollArea>
+      {contentScrollable
+        ? (
+            <ScrollArea
+              className="min-h-0 flex-1"
+              slotClassNames={{
+                viewport: 'overscroll-contain',
+                content: 'min-h-full pt-0.5 pb-6',
+                scrollbar: 'data-[orientation=vertical]:-me-5 data-[orientation=vertical]:my-1',
+              }}
+            >
+              {children}
+            </ScrollArea>
+          )
+        : (
+            <div className="min-h-0 flex-1 overflow-hidden pt-0.5 pb-6">
+              {children}
+            </div>
+          )}
       {actions}
     </div>
   )
