@@ -170,6 +170,13 @@ Reference sources from the old `1.13.3` candidate:
 - `web/app/components/datasets/`
 - `web/app/components/tools/`
 
+Additional patches replayed in this group for `1.14.2-enterprise`:
+
+- `api/core/tools/utils/system_oauth_encryption.py`: dedicated OAuth parameter encryption module using AES-CBC with SHA-256 key derivation from `SECRET_KEY`. Replaces `core.tools.utils.system_encryption.decrypt_system_params` with `decrypt_system_oauth_params` in `builtin_tools_manage_service.py` and `trigger_provider_service.py` for OAuth flows. This separation allows the OAuth encryption to evolve independently from the general system parameter encryption used elsewhere.
+- `web/app/components/app/configuration/config/normalize-generator-model.ts`: normalizes the model mode field for agent prompt generation (automatic and code-generator). Fixes a runtime type mismatch where `AppModeEnum.COMPLETION` was cast to `ModelModeType.chat`, causing incorrect model configuration when localStorage cached an incompatible mode.
+- `web/app/components/app/configuration/config/automatic/get-automatic-res.tsx` and `.../code-generator/get-code-generator-res.tsx`: apply `normalizeGeneratorModel` to all model reads and writes to prevent mode corruption across localStorage round-trips.
+- Tests: `api/tests/unit_tests/core/tools/utils/test_system_oauth_encryption_enterprise.py`, `web/app/components/app/configuration/config/automatic/__tests__/get-automatic-res.spec.tsx`, `web/app/components/app/configuration/config/code-generator/__tests__/get-code-generator-res.spec.tsx`.
+
 Validation:
 
 - Representative workflow, dataset, plugin, and tool flow tests pass.

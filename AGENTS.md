@@ -35,10 +35,12 @@ Do not use old chat summaries, local memory, the previous dirty `enterprise/main
 
 ## Enterprise Branch Strategy
 
-- Official stable tag/tree `1.14.0` is the current enterprise release baseline.
+- Official stable tag/tree `1.14.2` is the current enterprise release baseline.
 - `main` may mirror or observe official development state, but it is not the enterprise release base.
-- `codex/enterprise-candidate-1.14.0-20260430` is the current clean enterprise candidate rebuilt from official tag `1.14.0`.
-- The enterprise version for this candidate is `1.14.0-enterprise`.
+- `codex/enterprise-candidate-1.14.2-20260519` is the current clean enterprise candidate rebuilt from official tag `1.14.2`.
+- The enterprise version for this candidate is `1.14.2-enterprise`.
+- Enterprise images: `dify-api-enterprise:1.14.2-enterprise`, `dify-web-enterprise:1.14.2-enterprise`.
+- `worker` and `worker_beat` reuse the enterprise API image.
 - Future official releases, such as `1.15.0`, should start from the new official stable tag/tree and replay required enterprise patch groups, instead of mechanically merging official changes into an old enterprise tree.
 - The previous `enterprise/main`, `codex/enterprise-candidate-20260424`, and `D:\CodexSpace\dify-enterprise-candidate-20260424` are historical references only unless a specific patch is re-selected and validated.
 
@@ -73,7 +75,7 @@ Do not use old chat summaries, local memory, the previous dirty `enterprise/main
 - Do not treat "merge `upstream/main` into `enterprise/main`" as the enterprise maintenance method.
 - The default method is: fetch the official stable tag/tree, create a clean enterprise candidate from that release baseline, replay the required enterprise patch groups, validate each group, then promote the candidate.
 - Enterprise workspace, platform-admin, 智慧广场, Docker enterprise overlay, offline packaging, plugin offline install fixes, and dataset/hit-testing fixes are the business baseline that must survive each release sync.
-- If official `1.14.0` source is safer, more complete, or structurally better than the old `1.13.3` candidate, keep official source first and re-apply the minimum enterprise adjustment on top.
+- When upgrading to a new official stable tag, keep official source first and re-apply only the minimum enterprise adjustments on top.  Never carry local runtime data, build caches, or stale tests into the new candidate.
 - Never carry local runtime data, build caches, `node_modules`, stale tests, or broad unproven UI/performance experiments into a new candidate.
 - A release candidate is valid only after source checks, enterprise image rebuild, compose service recreation, browser-click validation, and log inspection all point to the same rebuilt image batch.
 
