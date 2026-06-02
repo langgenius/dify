@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "未找到匹配的命令",
   "gotoAnything.noResults": "未找到結果",
   "gotoAnything.pressEscToClose": "按 ESC 鍵關閉",
+  "gotoAnything.quickAction": "快捷操作",
   "gotoAnything.resultCount": "{{count}} 個結果",
   "gotoAnything.resultCount_other": "{{count}} 個結果",
   "gotoAnything.searchFailed": "搜索失敗",

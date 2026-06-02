@@ -102,6 +102,7 @@
   "gotoAnything.noMatchingCommands": "未找到匹配的命令",
   "gotoAnything.noResults": "未找到结果",
   "gotoAnything.pressEscToClose": "按 ESC 关闭",
+  "gotoAnything.quickAction": "快捷操作",
   "gotoAnything.resultCount": "{{count}} 个结果",
   "gotoAnything.resultCount_other": "{{count}} 个结果",
   "gotoAnything.searchFailed": "搜索失败",

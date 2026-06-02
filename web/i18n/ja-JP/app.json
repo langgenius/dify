@@ -102,6 +102,7 @@
   "gotoAnything.noMatchingCommands": "一致するコマンドが見つかりません",
   "gotoAnything.noResults": "結果が見つかりません",
   "gotoAnything.pressEscToClose": "ESC で閉じる",
+  "gotoAnything.quickAction": "クイックアクション",
   "gotoAnything.resultCount": "{{count}} 件の結果",
   "gotoAnything.resultCount_other": "{{count}} 件の結果",
   "gotoAnything.searchFailed": "検索に失敗しました",

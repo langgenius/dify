@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "لم يتم العثور على أوامر مطابقة",
   "gotoAnything.noResults": "لم يتم العثور على نتائج",
   "gotoAnything.pressEscToClose": "اضغط ESC للإغلاق",
+  "gotoAnything.quickAction": "إجراء سريع",
   "gotoAnything.resultCount": "{{count}} نتيجة",
   "gotoAnything.resultCount_other": "{{count}} نتائج",
   "gotoAnything.searchFailed": "فشل البحث",

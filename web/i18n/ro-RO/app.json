@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Nu s-au găsit comenzi potrivite",
   "gotoAnything.noResults": "Nu s-au găsit rezultate",
   "gotoAnything.pressEscToClose": "Apăsați ESC pentru a închide",
+  "gotoAnything.quickAction": "Acțiune rapidă",
   "gotoAnything.resultCount": "{{count}} rezultat",
   "gotoAnything.resultCount_other": "{{count}} rezultate",
   "gotoAnything.searchFailed": "Căutarea a eșuat",

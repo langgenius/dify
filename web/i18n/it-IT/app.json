@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Nessun comando corrispondente trovato",
   "gotoAnything.noResults": "Nessun risultato trovato",
   "gotoAnything.pressEscToClose": "Premi ESC per chiudere",
+  "gotoAnything.quickAction": "Azione rapida",
   "gotoAnything.resultCount": "{{count}} risultato",
   "gotoAnything.resultCount_other": "{{count}} risultati",
   "gotoAnything.searchFailed": "Ricerca non riuscita",

@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Eşleşen komut bulunamadı",
   "gotoAnything.noResults": "Sonuç bulunamadı",
   "gotoAnything.pressEscToClose": "Kapatmak için ESC tuşuna basın",
+  "gotoAnything.quickAction": "Hızlı işlem",
   "gotoAnything.resultCount": "{{count}} sonuç",
   "gotoAnything.resultCount_other": "{{count}} sonuç",
   "gotoAnything.searchFailed": "Arama başarısız oldu",
