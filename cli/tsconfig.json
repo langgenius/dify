@@ -11,9 +11,7 @@
       ]
     },
     "types": ["node"],
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": true,
+    "noEmit": true, // we already have bundlers to handle this.
     "outDir": "dist",
     "sourceMap": true
   },
