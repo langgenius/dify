@@ -7,11 +7,14 @@ import {
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import {
   appendSnippetInputFieldVars,
   filterSnippetSystemVars,
+  isSnippetCanvas,
 } from '@/app/components/workflow/nodes/_base/hooks/snippet-input-field-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
 
 type Params = {
   onlyLeafNodeVar?: boolean
@@ -52,6 +55,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const isSnippetFlow = useHooksStore(s => s.configsMap?.flowType) === FlowType.snippet || isSnippetCanvas()
 
   const nodeAvailabilityMap: { [key: string ]: { availableVars: NodeOutPutVar[], availableNodes: Node[] } } = {}
 
@@ -80,7 +84,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
         hideEnv,
         hideChatVar,
       }),
-    ])
+    ], isSnippetFlow)
     const result = {
       node,
       availableVars,
@@ -97,6 +101,7 @@ export const useGetNodesAvailableVarList = () => {
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const isSnippetFlow = useHooksStore(s => s.configsMap?.flowType) === FlowType.snippet || isSnippetCanvas()
   const getNodesAvailableVarList = useCallback((nodes: Node[], {
     onlyLeafNodeVar,
     filterVar,
@@ -134,7 +139,7 @@ export const useGetNodesAvailableVarList = () => {
           hideEnv,
           hideChatVar,
         }),
-      ])
+      ], isSnippetFlow)
       const result = {
         node,
         availableVars,
@@ -143,7 +148,7 @@ export const useGetNodesAvailableVarList = () => {
       nodeAvailabilityMap[nodeId] = result
     })
     return nodeAvailabilityMap
-  }, [getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode, snippetInputFields, t])
+  }, [getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode, isSnippetFlow, snippetInputFields, t])
   return {
     getNodesAvailableVarList,
   }

@@ -1,12 +1,16 @@
 import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
 import useAvailableVarList from '../use-available-var-list'
 
 const mockGetTreeLeafNodes = vi.hoisted(() => vi.fn())
 const mockGetBeforeNodesInSameBranchIncludeParent = vi.hoisted(() => vi.fn())
 const mockGetNodeById = vi.hoisted(() => vi.fn())
 const mockGetNodeAvailableVars = vi.hoisted(() => vi.fn())
+const mockFlowType = vi.hoisted(() => ({
+  value: undefined as FlowType | undefined,
+}))
 
 vi.mock('@/app/components/snippets/store', () => ({
   useSnippetDetailStore: (selector: (state: { fields: unknown[] }) => unknown) => selector({ fields: [] }),
@@ -26,6 +30,14 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { ragPipelineVariables: unknown[] }) => unknown) => selector({ ragPipelineVariables: [] }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store/store', () => ({
+  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) => selector({
+    configsMap: {
+      flowType: mockFlowType.value,
+    },
+  }),
 }))
 
 vi.mock('../use-node-info', () => ({
@@ -74,6 +86,7 @@ const outputVarsWithSystemVars: NodeOutPutVar[] = [
 describe('useAvailableVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFlowType.value = undefined
     globalThis.history.pushState({}, '', '/')
     mockGetBeforeNodesInSameBranchIncludeParent.mockReturnValue([createNode({ id: 'before-node' })])
     mockGetTreeLeafNodes.mockReturnValue([createNode({ id: 'leaf-node' })])
@@ -104,5 +117,22 @@ describe('useAvailableVarList', () => {
     }))
 
     expect(result.current.availableVars).toEqual(outputVarsWithSystemVars)
+  })
+
+  it('filters system variables when the current flow is a snippet', () => {
+    mockFlowType.value = FlowType.snippet
+
+    const { result } = renderHook(() => useAvailableVarList('node-1', {
+      filterVar: () => true,
+    }))
+
+    expect(result.current.availableVars).toEqual([{
+      nodeId: 'vars-node',
+      title: 'Vars',
+      vars: [{
+        variable: 'answer',
+        type: VarType.string,
+      }],
+    }])
   })
 })

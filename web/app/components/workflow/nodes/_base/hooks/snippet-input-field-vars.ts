@@ -14,8 +14,8 @@ export const isSnippetCanvas = () => {
   return /^\/snippets\/[^/]+\/orchestrate/.test(globalThis.location.pathname)
 }
 
-export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[]) => {
-  if (!isSnippetCanvas())
+export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[], isSnippetFlow = isSnippetCanvas()) => {
+  if (!isSnippetFlow)
     return availableVars
 
   return availableVars

@@ -27,6 +27,20 @@ type Props = {
 }
 
 const i18nPrefix = 'nodes.llm'
+const DEFAULT_MEMORY: Memory = {
+  window: {
+    enabled: false,
+    size: 50,
+  },
+  query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+}
+const SNIPPET_DEFAULT_MEMORY: Memory = {
+  window: {
+    enabled: false,
+    size: 50,
+  },
+  query_prompt_template: '',
+}
 
 const PanelMemorySection: FC<Props> = ({
   readOnly,
@@ -42,7 +56,9 @@ const PanelMemorySection: FC<Props> = ({
   handleMemoryChange,
 }) => {
   const { t } = useTranslation()
-  const shouldCheckSysQuery = flowType !== FlowType.snippet
+  const isSnippetFlow = flowType === FlowType.snippet
+  const shouldCheckSysQuery = !isSnippetFlow
+  const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
 
   if (!isChatMode)
     return null
@@ -75,7 +91,7 @@ const PanelMemorySection: FC<Props> = ({
                   </Infotip>
                 </div>
               )}
-              value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
+              value={inputs.memory.query_prompt_template || defaultMemory.query_prompt_template}
               onChange={handleSyeQueryChange}
               readOnly={readOnly}
               isShowContext={false}
@@ -101,6 +117,7 @@ const PanelMemorySection: FC<Props> = ({
         config={{ data: inputs.memory }}
         onChange={handleMemoryChange}
         canSetRoleName={isCompletionModel}
+        defaultMemory={defaultMemory}
       />
     </>
   )

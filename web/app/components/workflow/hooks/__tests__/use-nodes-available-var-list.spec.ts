@@ -2,12 +2,16 @@ import type { Node, NodeOutPutVar, Var } from '../../types'
 import { renderHook } from '@testing-library/react'
 import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { FlowType } from '@/types/common'
 import { BlockEnum, VarType } from '../../types'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from '../use-nodes-available-var-list'
 
 const mockGetTreeLeafNodes = vi.hoisted(() => vi.fn())
 const mockGetBeforeNodesInSameBranchIncludeParent = vi.hoisted(() => vi.fn())
 const mockGetNodeAvailableVars = vi.hoisted(() => vi.fn())
+const mockFlowType = vi.hoisted(() => ({
+  value: undefined as FlowType | undefined,
+}))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useIsChatMode: () => true,
@@ -17,6 +21,14 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
   useWorkflowVariables: () => ({
     getNodeAvailableVars: mockGetNodeAvailableVars,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store/store', () => ({
+  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) => selector({
+    configsMap: {
+      flowType: mockFlowType.value,
+    },
   }),
 }))
 
@@ -69,6 +81,7 @@ const outputVarsWithSystemVars: NodeOutPutVar[] = [
 describe('useNodesAvailableVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFlowType.value = undefined
     globalThis.history.pushState({}, '', '/')
     useSnippetDetailStore.getState().reset()
     mockGetBeforeNodesInSameBranchIncludeParent.mockImplementation((nodeId: string) => [createNode({ id: `before-${nodeId}` })])
@@ -176,6 +189,26 @@ describe('useNodesAvailableVarList', () => {
     }))
 
     expect(result.current['node-a']?.availableVars).toEqual(outputVarsWithSystemVars)
+  })
+
+  it('filters system variables when the current flow is a snippet', () => {
+    mockFlowType.value = FlowType.snippet
+    mockGetNodeAvailableVars.mockReturnValue(outputVarsWithSystemVars)
+
+    const currentNode = createNode({ id: 'node-a' })
+
+    const { result } = renderHook(() => useNodesAvailableVarList([currentNode], {
+      filterVar: () => true,
+    }))
+
+    expect(result.current['node-a']?.availableVars).toEqual([{
+      nodeId: 'vars-node',
+      title: 'Vars',
+      vars: [{
+        variable: 'answer',
+        type: VarType.string,
+      }],
+    }])
   })
 
   it('returns a callback version that can use leaf nodes or caller-provided nodes', () => {

@@ -28,6 +28,14 @@ const isSelectorKey = (key?: string) => {
   return key === 'selector' || !!key?.endsWith('_selector')
 }
 
+const isValueSelectorListKey = (key?: string) => {
+  return key === 'variables'
+}
+
+const isValueSelectorList = (value: unknown[]) => {
+  return value.length > 0 && value.every(isValueSelector)
+}
+
 const getCenteredViewport = (nodes: Node[]) => {
   if (!nodes.length)
     return DEFAULT_SNIPPET_VIEWPORT
@@ -76,6 +84,11 @@ const collectVariableSelectors = (
   if (Array.isArray(value)) {
     if (isSelectorKey(key) && isValueSelector(value))
       selectors.push(value)
+
+    if (isValueSelectorListKey(key) && isValueSelectorList(value)) {
+      value.forEach(selector => selectors.push(selector))
+      return
+    }
 
     value.forEach(item => collectVariableSelectors(item, selectors))
     return
@@ -200,6 +213,13 @@ const rewriteVariableReferences = (
       const nextSelector = selectorMap.get(value.join('.'))
       if (nextSelector)
         return nextSelector
+    }
+
+    if (isValueSelectorListKey(key) && isValueSelectorList(value)) {
+      return value.map((selector) => {
+        const nextSelector = selectorMap.get(selector.join('.'))
+        return nextSelector || selector
+      })
     }
 
     return value.map(item => rewriteVariableReferences(item, selectorMap))

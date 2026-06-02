@@ -122,4 +122,101 @@ describe('useCreateSnippetFromSelection', () => {
     ])
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('should convert system variables used by if-else and variable aggregator nodes', () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        title: 'LLM',
+      }),
+      createNode('if-else', {
+        type: BlockEnum.IfElse,
+        cases: [{
+          case_id: 'case-1',
+          conditions: [{
+            id: 'condition-1',
+            variable_selector: ['sys', 'query'],
+            comparison_operator: 'contains',
+            value: 'hello',
+          }],
+        }],
+      }),
+      createNode('variable-aggregator', {
+        type: BlockEnum.VariableAggregator,
+        variables: [
+          ['sys', 'files'],
+          ['llm', 'text'],
+        ],
+        advanced_settings: {
+          group_enabled: true,
+          groups: [{
+            groupId: 'group-1',
+            group_name: 'Group1',
+            variables: [
+              ['sys', 'workflow_id'],
+            ],
+          }],
+        },
+      }),
+    ]
+    const onClose = vi.fn()
+
+    const { result } = renderHook(() => useCreateSnippetFromSelection({
+      edges: [],
+      selectedNodes,
+      onClose,
+    }))
+
+    act(() => {
+      result.current.handleOpenCreateSnippet()
+    })
+
+    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
+
+    expect(dialogProps.inputFields).toEqual([
+      {
+        label: 'query',
+        variable: 'query',
+        type: PipelineInputVarType.textInput,
+        required: true,
+      },
+      {
+        label: 'files',
+        variable: 'files',
+        type: PipelineInputVarType.multiFiles,
+        required: true,
+      },
+      {
+        label: 'workflow_id',
+        variable: 'workflow_id',
+        type: PipelineInputVarType.textInput,
+        required: true,
+      },
+    ])
+
+    const ifElseNode = dialogProps.selectedGraph?.nodes.find(node => node.id === 'if-else')
+    const aggregatorNode = dialogProps.selectedGraph?.nodes.find(node => node.id === 'variable-aggregator')
+    const ifElseData = ifElseNode?.data as Record<string, unknown>
+    const aggregatorData = aggregatorNode?.data as {
+      variables?: string[][]
+      advanced_settings?: { groups?: Array<{ variables?: string[][] }> }
+    }
+
+    expect(ifElseData.cases).toEqual([{
+      case_id: 'case-1',
+      conditions: [{
+        id: 'condition-1',
+        variable_selector: [SNIPPET_INPUT_FIELD_NODE_ID, 'query'],
+        comparison_operator: 'contains',
+        value: 'hello',
+      }],
+    }])
+    expect(aggregatorData.variables).toEqual([
+      [SNIPPET_INPUT_FIELD_NODE_ID, 'files'],
+      ['llm', 'text'],
+    ])
+    expect(aggregatorData.advanced_settings?.groups?.[0]?.variables).toEqual([
+      [SNIPPET_INPUT_FIELD_NODE_ID, 'workflow_id'],
+    ])
+  })
 })
