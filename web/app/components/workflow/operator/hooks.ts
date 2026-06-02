@@ -13,7 +13,7 @@ import { generateNewNode } from '../utils'
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
   const { userProfile } = useAppContext()
-  const [showAuthorStorage] = useLocalStorage<string>(NOTE_SHOW_AUTHOR_STORAGE_KEY, '0', { raw: true })
+  const [showAuthorStorage] = useLocalStorage<string>(NOTE_SHOW_AUTHOR_STORAGE_KEY, 'true', { raw: true })
 
   const handleAddNote = useCallback(() => {
     const { newNode } = generateNewNode({
