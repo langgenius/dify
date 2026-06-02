@@ -37,6 +37,7 @@
   "plugin.debug": "プラグインをデバッグ",
   "plugin.install": "プラグインのインストールと更新",
   "plugin.manage": "プラグインを管理",
+  "plugin.plugin_preferences": "プラグイン設定を管理",
   "tool.manage": "ツールを管理",
   "workspace.member.manage": "メンバーを管理",
   "workspace.role.manage": "ロール権限とリソースアクセスルールを管理"

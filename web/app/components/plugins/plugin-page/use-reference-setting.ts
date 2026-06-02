@@ -26,8 +26,8 @@ const useReferenceSetting = () => {
   const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const canUninstall = canManagePlugin
   const canDebugger = hasPermission(workspacePermissionKeys, 'plugin.debug')
-  const canSetPermissions = hasPermission(workspacePermissionKeys, 'plugin.install')
-  const canSetAutoUpdate = hasPermission(workspacePermissionKeys, 'plugin.install')
+  const canSetPermissions = hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
+  const canSetAutoUpdate = hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
   const canSetPreferences = canSetPermissions || canSetAutoUpdate
 
   return {

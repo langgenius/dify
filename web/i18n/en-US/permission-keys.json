@@ -37,6 +37,7 @@
   "plugin.debug": "Debug plugins",
   "plugin.install": "Install and update plugins",
   "plugin.manage": "Manage plugins",
+  "plugin.plugin_preferences": "Manage plugin preferences",
   "tool.manage": "Manage tools",
   "workspace.member.manage": "Manage members",
   "workspace.role.manage": "Manage role permissions and resource access rules"
