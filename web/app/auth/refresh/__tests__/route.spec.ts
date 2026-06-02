@@ -103,7 +103,20 @@ describe('auth refresh route', () => {
     ))
 
     expect(response.status).toBe(303)
-    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
+  })
+
+  it('should default missing redirect targets to the home path', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
+    const { GET } = await import('../route')
+
+    const response = await GET(createRequest(
+      'http://localhost:3000/auth/refresh',
+      'refresh_token=expired',
+    ))
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
   })
 
   it('should not leak internal request origin when redirecting to signin', async () => {
