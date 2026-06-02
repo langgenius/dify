@@ -30,6 +30,7 @@ import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
@@ -78,7 +79,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setLocalStorageItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(
         isCurrentWorkspaceEditor,
         {

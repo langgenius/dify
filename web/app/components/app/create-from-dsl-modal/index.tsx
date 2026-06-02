@@ -27,6 +27,7 @@ import {
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -124,7 +125,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             ? t('newApp.appCreateDSLWarning', { ns: 'app' })
             : undefined,
         })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setLocalStorageItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
@@ -178,7 +179,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setLocalStorageItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
