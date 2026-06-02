@@ -18,7 +18,7 @@ from controllers.common.fields import (
     SimpleResultResponse,
     VerificationTokenResponse,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -48,7 +48,7 @@ from fields.base import ResponseModel
 from fields.member_fields import Account as AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone, to_timestamp
+from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
@@ -329,9 +329,9 @@ class AccountNameApi(Resource):
 
 @console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
-    @console_ns.expect(console_ns.models[AccountAvatarQuery.__name__])
     @console_ns.doc("get_account_avatar")
     @console_ns.doc(description="Get account avatar url")
+    @console_ns.doc(params=query_params_from_model(AccountAvatarQuery))
     @console_ns.response(200, "Success", console_ns.models[AvatarUrlResponse.__name__])
     @setup_required
     @login_required
@@ -342,7 +342,7 @@ class AccountAvatarApi(Resource):
         avatar = args.avatar
 
         if avatar.startswith(("http://", "https://")):
-            return {"avatar_url": avatar}
+            return dump_response(AvatarUrlResponse, {"avatar_url": avatar})
 
         upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
         if upload_file is None:
@@ -355,7 +355,7 @@ class AccountAvatarApi(Resource):
             raise NotFound("Avatar file not found")
 
         avatar_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
-        return {"avatar_url": avatar_url}
+        return dump_response(AvatarUrlResponse, {"avatar_url": avatar_url})
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
     @setup_required
