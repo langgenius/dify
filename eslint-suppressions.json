@@ -4397,11 +4397,6 @@
       "count": 9
     }
   },
-  "web/app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 8
