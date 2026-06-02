@@ -6,7 +6,7 @@ import { QueryClientProvider, QueryClient as TanStackQueryClient } from '@tansta
 import { createElement } from 'react'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 
-export const createMockAccountProfile = (
+const createMockAccountProfile = (
   overrides: Partial<GetAccountProfileResponse> = {},
 ): GetAccountProfileResponse => ({
   id: 'user-1',
@@ -19,7 +19,7 @@ export const createMockAccountProfile = (
   ...overrides,
 })
 
-export const createMockUserProfileResponse = (
+const createMockUserProfileResponse = (
   profile: Partial<GetAccountProfileResponse> = {},
 ): UserProfileWithMeta => ({
   profile: createMockAccountProfile(profile),
