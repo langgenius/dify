@@ -84,7 +84,7 @@ class HumanInputFileUploadService:
 
             form = recipient_model.form
             self._ensure_form_model_active(form)
-            upload_token = self._generate_unique_upload_token(session)
+            upload_token = self._generate_unique_upload_token()
             token_model = HumanInputFormUploadToken(
                 tenant_id=form.tenant_id,
                 app_id=form.app_id,
@@ -140,7 +140,7 @@ class HumanInputFileUploadService:
                 )
             )
 
-    def _generate_unique_upload_token(self, session: Session) -> str:
+    def _generate_unique_upload_token(self) -> str:
         return f"{HITL_UPLOAD_TOKEN_PREFIX}{secrets.token_urlsafe(_TOKEN_RANDOM_BYTES)}"
 
     def _resolve_upload_owner(
