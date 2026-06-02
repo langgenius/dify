@@ -362,6 +362,16 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         token_id: 'tok-sso-1',
       })
     }
+    if (scenario === 'no-email') {
+      return c.json({
+        token: 'dfoa_test',
+        subject_type: 'account',
+        account: { id: ACCOUNT.id, email: '', name: '' },
+        workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
+        default_workspace_id: 'ws-1',
+        token_id: 'tok-1',
+      })
+    }
     return c.json({
       token: 'dfoa_test',
       subject_type: 'account',

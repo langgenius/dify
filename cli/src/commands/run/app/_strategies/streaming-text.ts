@@ -2,11 +2,12 @@ import type { RunContext, RunStrategy } from './index'
 import { buildRunBody } from '@/api/app-run'
 import { renderHitlHint, renderHitlOutput } from '@/commands/run/app/hitl-render'
 import { decodeStreamError, HitlPauseError } from '@/commands/run/app/sse-collector'
+import { streamPrinterFor } from '@/commands/run/app/stream-handlers'
 import { handle, unhandle } from '@/sys/index'
 
 export class StreamingTextStrategy implements RunStrategy {
   async execute(ctx: RunContext): Promise<void> {
-    const { opts, deps, mode, printFlags, exit } = ctx
+    const { opts, deps, mode, exit } = ctx
     const ctrl = new AbortController()
     const body = buildRunBody({
       message: opts.message,
@@ -28,7 +29,7 @@ export class StreamingTextStrategy implements RunStrategy {
 
     try {
       const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal })
-      const sp = printFlags.toStreamPrinter(mode, ctx.think, deps.io.isErrTTY)
+      const sp = streamPrinterFor(mode, ctx.think, deps.io.isErrTTY)
       const dec = new TextDecoder()
       for await (const ev of events) {
         if (ev.name === 'ping')

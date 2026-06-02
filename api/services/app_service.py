@@ -24,6 +24,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import get_console_api_url
 from libs.login import current_user
 from models import Account
+from models.agent import AgentIconType
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 class AppListParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = "all"
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
     name: str | None = None
     tag_ids: list[str] | None = None
     is_created_by_me: bool | None = None
@@ -50,7 +51,7 @@ class AppListParams(BaseModel):
 class CreateAppParams(BaseModel):
     name: str = Field(min_length=1)
     description: str | None = None
-    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -125,6 +126,8 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT)
         elif params.mode == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT)
+        elif params.mode == "agent":
+            filters.append(App.mode == AppMode.AGENT)
 
         if params.status:
             filters.append(App.status == params.status)
@@ -247,6 +250,39 @@ class AppService:
             db.session.flush()
 
             app.app_model_config_id = app_model_config.id
+        elif app_mode == AppMode.AGENT:
+            # An Agent App keeps its model / prompt / tools in the bound Agent
+            # Soul, so the app_model_config row carries no model — only the
+            # app-level presentation features the PRD requires (conversation
+            # opener, follow-up suggestions, citations, moderation, annotation).
+            # They default to disabled/empty here and are read by both the
+            # webapp /parameters endpoint and the chat pipeline. agent_mode is
+            # left unset so App.is_agent stays False (this is the new Agent App
+            # type, not a legacy function-call/react agent).
+            agent_app_model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
+            db.session.add(agent_app_model_config)
+            db.session.flush()
+
+            app.app_model_config_id = agent_app_model_config.id
+
+        # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
+        # Created in the same transaction so the App and its backing Agent persist
+        # atomically; the Agent Soul (model/prompt/tools) is configured afterward
+        # in the Composer.
+        if app_mode == AppMode.AGENT:
+            from services.agent.roster_service import AgentRosterService
+
+            icon_type = AgentIconType(params.icon_type) if params.icon_type else None
+            AgentRosterService(db.session).create_backing_agent_for_app(
+                tenant_id=tenant_id,
+                account_id=account.id,
+                app_id=app.id,
+                name=params.name,
+                description=params.description or "",
+                icon_type=icon_type,
+                icon=params.icon,
+                icon_background=params.icon_background,
+            )
 
         db.session.commit()
 

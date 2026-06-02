@@ -14,7 +14,10 @@ export const ACCOUNT_HELP_TEXT = `difyctl: account-bearer onboarding
 
 Tips:
   * Pass --workspace <id> when you need to target a non-default workspace.
-  * Use --stream for long-running workflow calls (post-v1.0 milestone).
+  * Use --stream for long-running workflow calls.
+  * 'difyctl auth list' shows all authenticated hosts and accounts.
+  * 'difyctl use host [--domain <host>]' switches the active Dify instance.
+  * 'difyctl use account [--email <email>]' switches accounts on the current host.
   * 'difyctl env list' shows every env var difyctl reads.
 `
 
