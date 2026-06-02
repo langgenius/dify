@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any, Protocol, cast
 
-from pydantic import JsonValue
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -40,6 +40,11 @@ from repositories.factory import DifyAPIRepositoryFactory
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+_JsonObjectAdapter = TypeAdapter(dict[str, JsonValue])
+_JsonValueAdapter = TypeAdapter(JsonValue)
+_MappingSequenceAdapter = TypeAdapter(Sequence[Mapping[str, Any]])
 
 
 class Form:
@@ -344,7 +349,7 @@ class HumanInputService:
         form_definition: FormDefinitionProtocol,
         form_data: Mapping[str, Any],
     ) -> dict[str, JsonValue]:
-        normalized_form_data: dict[str, JsonValue] = {key: cast(JsonValue, value) for key, value in form_data.items()}
+        normalized_form_data: dict[str, JsonValue] = _JsonObjectAdapter.validate_python(form_data)
         inputs_by_name = {form_input.output_variable_name: form_input for form_input in form_definition.inputs}
         for name, form_input in inputs_by_name.items():
             if name not in form_data:
@@ -379,7 +384,7 @@ class HumanInputService:
                 form_input=form_input,
                 value=value,
             )
-        return cast(JsonValue, value)
+        return _JsonValueAdapter.validate_python(value)
 
     @classmethod
     def _normalize_select_value(
@@ -435,6 +440,12 @@ class HumanInputService:
         form_input: FileListInputConfig,
         value: Any,
     ) -> JsonValue:
+        try:
+            validated_value = _MappingSequenceAdapter.validate_python(value)
+        except ValidationError as exc:
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file list input '{form_input.output_variable_name}': {exc}"
+            ) from exc
         if not isinstance(value, list):
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file list input '{form_input.output_variable_name}': expected list"
@@ -450,7 +461,7 @@ class HumanInputService:
         try:
             # `build_from_mappings` performs the same tenant-aware ownership validation in batch.
             files = build_from_mappings(
-                mappings=cast(Sequence[Mapping[str, Any]], value),
+                mappings=validated_value,
                 tenant_id=tenant_id,
                 config=upload_config,
                 strict_type_validation=True,

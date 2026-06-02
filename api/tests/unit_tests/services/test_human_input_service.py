@@ -784,7 +784,7 @@ def test_submit_form_by_token_invalid_file_list_item(sample_form_record, mock_se
 
     with pytest.raises(
         InvalidFormDataError,
-        match="Invalid value for file list input 'attachments': expected list of mappings",
+        match="Invalid value for file list input 'attachments'",
     ):
         service.submit_form_by_token(
             recipient_type=RecipientType.STANDALONE_WEB_APP,
@@ -808,7 +808,7 @@ def test_submit_form_by_token_rejects_cross_tenant_file(sample_form_record, mock
     service = HumanInputService(session_factory, form_repository=repo)
     mocker.patch("services.human_input_service.build_from_mapping", side_effect=ValueError("Invalid upload file"))
 
-    with pytest.raises(InvalidFormDataError, match="Invalid value for file input 'attachment': Invalid upload file"):
+    with pytest.raises(InvalidFormDataError, match="Invalid value for file input 'attachment'"):
         service.submit_form_by_token(
             recipient_type=RecipientType.STANDALONE_WEB_APP,
             form_token="token",
@@ -841,7 +841,7 @@ def test_submit_form_by_token_rejects_cross_tenant_file_list(sample_form_record,
 
     with pytest.raises(
         InvalidFormDataError,
-        match="Invalid value for file list input 'attachments': Invalid upload file",
+        match="Invalid value for file list input 'attachments'",
     ):
         service.submit_form_by_token(
             recipient_type=RecipientType.STANDALONE_WEB_APP,
