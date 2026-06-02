@@ -3,14 +3,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { del, get, post, put } from '@/service/base'
 import {
+  useBindingLock,
+  useBindingUnlock,
   useCopyAccessRule,
   useCreateAccessRule,
   useDeleteAccessRule,
+  useInfiniteWorkspaceAppAccessRules,
+  useInfiniteWorkspaceDatasetAccessRules,
   useUpdateAccessRule,
   useUpdateAppAccessRuleBindings,
   useUpdateDatasetAccessRuleBindings,
-  useWorkspaceAppAccessRules,
-  useWorkspaceDatasetAccessRules,
 } from '../use-workspace-access-rules'
 
 vi.mock('@/service/base', () => ({
@@ -45,7 +47,7 @@ describe('use-workspace-access-rules', () => {
   // Queries load workspace-level app and dataset access policies from separate endpoints.
   describe('Queries', () => {
     it('should fetch workspace app access rules', async () => {
-      renderHook(() => useWorkspaceAppAccessRules({ page: 1, limit: 20 }), { wrapper: createWrapper() })
+      renderHook(() => useInfiniteWorkspaceAppAccessRules({ page: 1, limit: 20 }), { wrapper: createWrapper() })
 
       await waitFor(() => {
         expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/apps/access-policy', {
@@ -55,7 +57,7 @@ describe('use-workspace-access-rules', () => {
     })
 
     it('should fetch workspace dataset access rules', async () => {
-      renderHook(() => useWorkspaceDatasetAccessRules({ page: 1, limit: 20 }), { wrapper: createWrapper() })
+      renderHook(() => useInfiniteWorkspaceDatasetAccessRules({ page: 1, limit: 20 }), { wrapper: createWrapper() })
 
       await waitFor(() => {
         expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/datasets/access-policy', {
@@ -150,6 +152,19 @@ describe('use-workspace-access-rules', () => {
           account_ids: ['account-2'],
         },
       })
+    })
+
+    it('should lock and unlock access rule bindings by binding id', async () => {
+      const lockHook = renderHook(() => useBindingLock(), { wrapper: createWrapper() })
+      const unlockHook = renderHook(() => useBindingUnlock(), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await lockHook.result.current.mutateAsync('binding-1')
+        await unlockHook.result.current.mutateAsync('binding-2')
+      })
+
+      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/access-policy-bindings/binding-1/lock')
+      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/access-policy-bindings/binding-2/unlock')
     })
   })
 })

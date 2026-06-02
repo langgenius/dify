@@ -17,6 +17,7 @@ export type AccessRuleRowProps = {
   onEdit?: (rule: AccessPolicyWithBindings) => void
   onAddRole?: (rule: AccessPolicyWithBindings) => void
   onRemove?: (payload: RemoveBindingPayload) => void
+  onToggleLockStatus?: (bindingId: string, newStatus: boolean) => void
 }
 
 const AccessRuleRow = ({
@@ -29,6 +30,7 @@ const AccessRuleRow = ({
   onEdit,
   onAddRole,
   onRemove,
+  onToggleLockStatus,
 }: AccessRuleRowProps) => {
   const { t } = useTranslation()
   const { policy, roles, accounts } = rule
@@ -38,6 +40,9 @@ const AccessRuleRow = ({
   const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])
   const handleAddRole = useCallback(() => onAddRole?.(rule), [onAddRole, rule])
+  const handleToggleLockStatus = useCallback((bindingId: string, newStatus: boolean) => {
+    onToggleLockStatus?.(bindingId, newStatus)
+  }, [onToggleLockStatus])
 
   const handleRemove = useCallback((id: string, type: BindingType) => {
     if (!onRemove)
@@ -72,10 +77,12 @@ const AccessRuleRow = ({
             <RoleTag
               key={role.role_id}
               id={role.role_id}
+              bindingId={role.binding_id}
               label={role.role_name}
               type="role"
               isLocked={role.is_locked}
-              canChangeLockStatus={isWorkspaceBinding && canManage}
+              canChangeLockStatus={isWorkspaceBinding && canManage && !!onToggleLockStatus}
+              onToggleLockStatus={handleToggleLockStatus}
               showRemove={canManage}
               onRemove={handleRemove}
             />
@@ -84,11 +91,13 @@ const AccessRuleRow = ({
             <RoleTag
               key={account.account_id}
               id={account.account_id}
+              bindingId={account.binding_id}
               label={account.account_name}
               type="account"
               avatar={account.avatar}
               isLocked={account.is_locked}
-              canChangeLockStatus={isWorkspaceBinding && canManage}
+              canChangeLockStatus={isWorkspaceBinding && canManage && !!onToggleLockStatus}
+              onToggleLockStatus={handleToggleLockStatus}
               showRemove={canManage}
               onRemove={handleRemove}
             />

@@ -1,17 +1,23 @@
+import type { InfiniteData } from '@tanstack/react-query'
 import type { PermissionSetFormValues, PermissionSetModalMode } from './permission-set-modal'
-import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/access-control'
+import type { AccessPolicyWithBindings, GetAppAccessPoliciesResponse, RemoveBindingPayload } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  useBindingLock,
+  useBindingUnlock,
   useCreateAccessRule,
   useInfiniteWorkspaceAppAccessRules,
   useUpdateAccessRule,
   useUpdateAppAccessRuleBindings,
+  workspaceAccessRulesQueryKeys,
 } from '@/service/access-control/use-workspace-access-rules'
 import AccessRuleSection from './access-rule-section'
 import AddRuleTargetsModal from './add-rule-targets-modal'
 import PermissionSetModal from './permission-set-modal'
+import { updateAccessRulesBindingLockStatus } from './utils'
 
 type AppAccessRuleSectionProps = {
   className?: string
@@ -27,6 +33,7 @@ const AppAccessRuleSection = ({
   className,
 }: AppAccessRuleSectionProps) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [addingRule, setAddingRule] = useState<AccessPolicyWithBindings | null>(null)
   const [permissionSetModalState, setPermissionSetModalState] = useState<PermissionSetModalState | null>(null)
 
@@ -41,6 +48,8 @@ const AppAccessRuleSection = ({
     page: 1,
     limit: 5,
   })
+  const { mutate: lockBinding } = useBindingLock()
+  const { mutate: unlockBinding } = useBindingUnlock()
   const { mutateAsync: createAccessRule } = useCreateAccessRule()
   const { mutateAsync: updateAccessRule } = useUpdateAccessRule()
   const { mutateAsync: updateAppAccessRuleBindings } = useUpdateAppAccessRuleBindings()
@@ -134,6 +143,23 @@ const AppAccessRuleSection = ({
     })
   }, [t, updateAppAccessRuleBindings])
 
+  const handleToggleLockStatus = useCallback((bindingId: string, newStatus: boolean) => {
+    const mutationOptions = {
+      onSuccess: () => {
+        queryClient.setQueriesData<InfiniteData<GetAppAccessPoliciesResponse>>(
+          { queryKey: workspaceAccessRulesQueryKeys.app() },
+          data => updateAccessRulesBindingLockStatus(data, bindingId, newStatus),
+        )
+        toast.success(t('accessRule.updated', { ns: 'permission' }))
+      },
+    }
+
+    if (newStatus)
+      lockBinding(bindingId, mutationOptions)
+    else
+      unlockBinding(bindingId, mutationOptions)
+  }, [lockBinding, queryClient, t, unlockBinding])
+
   const handlePermissionSetSubmit = useCallback((values: PermissionSetFormValues) => {
     if (!permissionSetModalState)
       return
@@ -185,6 +211,7 @@ const AppAccessRuleSection = ({
         onEditRule={handleEdit}
         onAddRole={handleAddRole}
         onRemoveBinding={handleRemoveBinding}
+        onToggleLockStatus={handleToggleLockStatus}
         className={className}
       />
       {addingRule && (

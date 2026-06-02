@@ -26,6 +26,7 @@ type AccessRuleSectionProps = {
   onEditRule?: (rule: AccessPolicyWithBindings) => void
   onAddRole?: (rule: AccessPolicyWithBindings) => void
   onRemoveBinding?: (payload: RemoveBindingPayload) => void
+  onToggleLockStatus?: (bindingId: string, newStatus: boolean) => void
   className?: string
 }
 
@@ -44,6 +45,7 @@ const AccessRuleSection = ({
   onEditRule,
   onAddRole,
   onRemoveBinding,
+  onToggleLockStatus,
   className,
 }: AccessRuleSectionProps) => {
   const { t } = useTranslation()
@@ -173,6 +175,7 @@ const AccessRuleSection = ({
                         onEdit={onEditRule}
                         onAddRole={onAddRole}
                         onRemove={onRemoveBinding}
+                        onToggleLockStatus={onToggleLockStatus}
                       />
                     ))}
                     <div ref={anchorRef} className="h-1" />

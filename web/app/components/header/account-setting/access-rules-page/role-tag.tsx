@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 
 export type RoleTagProps = {
   id: string
+  bindingId: string
   label: string
   type: BindingType
   avatar?: string | null
@@ -26,6 +27,7 @@ export type RoleTagProps = {
   showRemove?: boolean
   onRemove?: (id: string, type: BindingType) => void
   canChangeLockStatus?: boolean
+  onToggleLockStatus?: (id: string, newStatus: boolean) => void
   className?: string
 }
 
@@ -57,6 +59,7 @@ const RoleTagAvatar = ({
 
 const RoleTag = ({
   id,
+  bindingId,
   label,
   type,
   avatar,
@@ -64,6 +67,7 @@ const RoleTag = ({
   showRemove = false,
   onRemove,
   canChangeLockStatus = false,
+  onToggleLockStatus,
   className,
 }: RoleTagProps) => {
   const { t } = useTranslation()
@@ -130,7 +134,9 @@ const RoleTag = ({
         {canChangeLockStatus && (
           <DropdownMenuItem
             className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular text-text-secondary"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              onToggleLockStatus?.(bindingId, !isLocked)
+            }}
           >
             <span
               aria-hidden
@@ -145,7 +151,9 @@ const RoleTag = ({
             <DropdownMenuItem
               variant="destructive"
               className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
-              onClick={() => onRemove(id, type)}
+              onClick={() => {
+                onRemove(id, type)
+              }}
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
               {t('operation.remove', { ns: 'common' })}

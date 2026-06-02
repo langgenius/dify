@@ -2,7 +2,10 @@ import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/ac
 import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useQueryClient } from '@tanstack/react-query'
 import {
+  useBindingLock,
+  useBindingUnlock,
   useCreateAccessRule,
   useInfiniteWorkspaceAppAccessRules,
   useInfiniteWorkspaceDatasetAccessRules,
@@ -14,9 +17,12 @@ import AccessRulesPage from '../index'
 
 const mocks = vi.hoisted(() => ({
   createAccessRule: vi.fn(),
+  bindingLock: vi.fn(),
+  bindingUnlock: vi.fn(),
   updateAccessRule: vi.fn(),
   updateAppAccessRuleBindings: vi.fn(),
   updateDatasetAccessRuleBindings: vi.fn(),
+  setQueriesData: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -25,7 +31,22 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+
+  return {
+    ...actual,
+    useQueryClient: vi.fn(),
+  }
+})
+
 vi.mock('@/service/access-control/use-workspace-access-rules', () => ({
+  workspaceAccessRulesQueryKeys: {
+    app: () => ['workspace-access-rules', 'app'],
+    dataset: () => ['workspace-access-rules', 'dataset'],
+  },
+  useBindingLock: vi.fn(),
+  useBindingUnlock: vi.fn(),
   useCreateAccessRule: vi.fn(),
   useInfiniteWorkspaceAppAccessRules: vi.fn(),
   useInfiniteWorkspaceDatasetAccessRules: vi.fn(),
@@ -42,6 +63,7 @@ vi.mock('../access-rule-section', () => ({
     onEditRule,
     onAddRole,
     onRemoveBinding,
+    onToggleLockStatus,
   }: {
     title: string
     rules: AccessPolicyWithBindings[]
@@ -49,6 +71,7 @@ vi.mock('../access-rule-section', () => ({
     onEditRule: (rule: AccessPolicyWithBindings) => void
     onAddRole: (rule: AccessPolicyWithBindings) => void
     onRemoveBinding: (payload: RemoveBindingPayload) => void
+    onToggleLockStatus?: (bindingId: string, newStatus: boolean) => void
   }) => (
     <section aria-label={title}>
       <h2>{title}</h2>
@@ -75,6 +98,24 @@ vi.mock('../access-rule-section', () => ({
         })}
       >
         remove binding
+        {' '}
+        {title}
+      </button>
+      <button
+        type="button"
+        aria-label={`lock binding ${title}`}
+        onClick={() => onToggleLockStatus?.(rules[0]!.roles[0]!.binding_id, true)}
+      >
+        lock binding
+        {' '}
+        {title}
+      </button>
+      <button
+        type="button"
+        aria-label={`unlock binding ${title}`}
+        onClick={() => onToggleLockStatus?.(rules[0]!.accounts[0]!.binding_id, false)}
+      >
+        unlock binding
         {' '}
         {title}
       </button>
@@ -157,7 +198,6 @@ const appRule: AccessPolicyWithBindings = {
     role_name: 'Role 1',
     binding_id: 'role-binding-1',
     is_locked: false,
-    avatar: '',
   }],
   accounts: [{
     account_id: 'member-1',
@@ -181,7 +221,6 @@ const datasetRule: AccessPolicyWithBindings = {
     role_name: 'Dataset Role 1',
     binding_id: 'dataset-role-binding-1',
     is_locked: false,
-    avatar: '',
   }],
   accounts: [{
     account_id: 'dataset-member-1',
@@ -197,7 +236,10 @@ const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
     return Promise.resolve()
   })
 
-  return { mutateAsync: mock }
+  return {
+    mutate: mock,
+    mutateAsync: mock,
+  }
 }
 
 const pagination = {
@@ -208,6 +250,9 @@ const pagination = {
 }
 
 const setupHooks = () => {
+  vi.mocked(useQueryClient).mockReturnValue({
+    setQueriesData: mocks.setQueriesData,
+  } as unknown as ReturnType<typeof useQueryClient>)
   vi.mocked(useInfiniteWorkspaceAppAccessRules).mockReturnValue({
     data: { pages: [{ items: [appRule], pagination }], pageParams: [1] },
     isLoading: false,
@@ -224,6 +269,8 @@ const setupHooks = () => {
     hasNextPage: false,
     error: null,
   } as unknown as ReturnType<typeof useInfiniteWorkspaceDatasetAccessRules>)
+  vi.mocked(useBindingLock).mockReturnValue(mockMutation(mocks.bindingLock) as unknown as ReturnType<typeof useBindingLock>)
+  vi.mocked(useBindingUnlock).mockReturnValue(mockMutation(mocks.bindingUnlock) as unknown as ReturnType<typeof useBindingUnlock>)
   vi.mocked(useCreateAccessRule).mockReturnValue(mockMutation(mocks.createAccessRule) as unknown as ReturnType<typeof useCreateAccessRule>)
   vi.mocked(useUpdateAccessRule).mockReturnValue(mockMutation(mocks.updateAccessRule) as unknown as ReturnType<typeof useUpdateAccessRule>)
   vi.mocked(useUpdateAppAccessRuleBindings).mockReturnValue(mockMutation(mocks.updateAppAccessRuleBindings) as unknown as ReturnType<typeof useUpdateAppAccessRuleBindings>)
@@ -299,5 +346,83 @@ describe('AccessRulesPage', () => {
       role_ids: ['role-next'],
       account_ids: ['account-next'],
     }, expect.any(Object))
+  })
+
+  it('locks app bindings and updates only the matching cached binding', async () => {
+    render(<AccessRulesPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'lock binding permission.accessRule.appTitle' }))
+
+    expect(mocks.bindingLock).toHaveBeenCalledWith('role-binding-1', expect.any(Object))
+    expect(mocks.setQueriesData).toHaveBeenCalledWith({
+      queryKey: ['workspace-access-rules', 'app'],
+    }, expect.any(Function))
+
+    const updateCachedRules = mocks.setQueriesData.mock.calls[0]![1] as (data: {
+      pages: Array<{ items: AccessPolicyWithBindings[], pagination: typeof pagination }>
+      pageParams: number[]
+    }) => {
+      pages: Array<{ items: AccessPolicyWithBindings[], pagination: typeof pagination }>
+      pageParams: number[]
+    }
+    const cachedRole = { ...appRule.roles[0]!, is_locked: false }
+    const cachedAccount = { ...appRule.accounts[0]!, is_locked: false }
+    const cachedRule = {
+      ...appRule,
+      roles: [cachedRole],
+      accounts: [cachedAccount],
+    }
+    const cachedData = {
+      pages: [{ items: [cachedRule], pagination }],
+      pageParams: [1],
+    }
+
+    const updatedData = updateCachedRules(cachedData)
+
+    expect(updatedData.pages[0]!.items[0]!.roles[0]!.is_locked).toBe(true)
+    expect(updatedData.pages[0]!.items[0]!.accounts[0]).toBe(cachedAccount)
+  })
+
+  it('unlocks app bindings through the unlock mutation', async () => {
+    render(<AccessRulesPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'unlock binding permission.accessRule.appTitle' }))
+
+    expect(mocks.bindingUnlock).toHaveBeenCalledWith('member-binding-1', expect.any(Object))
+  })
+
+  it('locks dataset bindings and updates only the matching cached binding', async () => {
+    render(<AccessRulesPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'lock binding permission.accessRule.datasetTitle' }))
+
+    expect(mocks.bindingLock).toHaveBeenCalledWith('dataset-role-binding-1', expect.any(Object))
+    expect(mocks.setQueriesData).toHaveBeenCalledWith({
+      queryKey: ['workspace-access-rules', 'dataset'],
+    }, expect.any(Function))
+
+    const updateCachedRules = mocks.setQueriesData.mock.calls[0]![1] as (data: {
+      pages: Array<{ items: AccessPolicyWithBindings[], pagination: typeof pagination }>
+      pageParams: number[]
+    }) => {
+      pages: Array<{ items: AccessPolicyWithBindings[], pagination: typeof pagination }>
+      pageParams: number[]
+    }
+    const cachedRole = { ...datasetRule.roles[0]!, is_locked: false }
+    const cachedAccount = { ...datasetRule.accounts[0]!, is_locked: false }
+    const cachedRule = {
+      ...datasetRule,
+      roles: [cachedRole],
+      accounts: [cachedAccount],
+    }
+    const cachedData = {
+      pages: [{ items: [cachedRule], pagination }],
+      pageParams: [1],
+    }
+
+    const updatedData = updateCachedRules(cachedData)
+
+    expect(updatedData.pages[0]!.items[0]!.roles[0]!.is_locked).toBe(true)
+    expect(updatedData.pages[0]!.items[0]!.accounts[0]).toBe(cachedAccount)
   })
 })

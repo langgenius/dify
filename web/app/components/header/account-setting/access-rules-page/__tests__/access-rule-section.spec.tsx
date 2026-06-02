@@ -1,4 +1,6 @@
 import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AccessRuleSection from '../access-rule-section'
@@ -32,7 +34,6 @@ const rule: AccessPolicyWithBindings = {
     role_name: 'Admin',
     binding_id: 'role-binding-1',
     is_locked: true,
-    avatar: '',
   }],
   accounts: [{
     account_id: 'account-1',
@@ -51,6 +52,21 @@ class MockIntersectionObserver {
 
   observe = vi.fn()
   disconnect = vi.fn()
+}
+
+const renderWithQueryClient = (children: ReactNode) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>,
+  )
 }
 
 describe('AccessRuleSection', () => {
@@ -137,5 +153,32 @@ describe('AccessRuleSection', () => {
     )
 
     expect(fetchNextPage).not.toHaveBeenCalled()
+  })
+
+  it('should toggle a role binding lock status by binding id', async () => {
+    mocks.workspacePermissionKeys = ['workspace.role.manage']
+    const onToggleLockStatus = vi.fn()
+
+    renderWithQueryClient(
+      <AccessRuleSection
+        title="App Access Rules"
+        rules={[{
+          ...rule,
+          roles: [{
+            ...rule.roles[0]!,
+            is_locked: false,
+          }],
+        }]}
+        totalCount={1}
+        isLoadingRules={false}
+        defaultExpanded
+        onToggleLockStatus={onToggleLockStatus}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.bindingActionsAria.*Admin/ }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /permission\.accessRule\.lockBinding/ }))
+
+    expect(onToggleLockStatus).toHaveBeenCalledWith('role-binding-1', true)
   })
 })

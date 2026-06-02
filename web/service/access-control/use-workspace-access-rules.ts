@@ -15,11 +15,18 @@ import { del, get, post, put } from '../base'
 
 const NAME_SPACE = 'workspace-access-rules'
 
+type WorkspaceAccessRulesQueryParams = Omit<PaginationParameters, 'page'>
+
+export const workspaceAccessRulesQueryKeys = {
+  app: (params?: WorkspaceAccessRulesQueryParams) => params ? [NAME_SPACE, 'app', params] as const : [NAME_SPACE, 'app'] as const,
+  dataset: (params?: WorkspaceAccessRulesQueryParams) => params ? [NAME_SPACE, 'dataset', params] as const : [NAME_SPACE, 'dataset'] as const,
+}
+
 export const useInfiniteWorkspaceAppAccessRules = (params: PaginationParameters = {}) => {
   const { page = 1, ...queryParams } = params
 
   return useInfiniteQuery({
-    queryKey: [NAME_SPACE, 'app', queryParams],
+    queryKey: workspaceAccessRulesQueryKeys.app(queryParams),
     queryFn: ({ pageParam }) => get<GetAppAccessPoliciesResponse>('/workspaces/current/rbac/workspace/apps/access-policy', {
       params: {
         ...queryParams,
@@ -42,7 +49,7 @@ export const useInfiniteWorkspaceDatasetAccessRules = (params: PaginationParamet
   const { page = 1, ...queryParams } = params
 
   return useInfiniteQuery({
-    queryKey: [NAME_SPACE, 'dataset', queryParams],
+    queryKey: workspaceAccessRulesQueryKeys.dataset(queryParams),
     queryFn: ({ pageParam }) => get<GetDatasetAccessPoliciesResponse>('/workspaces/current/rbac/workspace/datasets/access-policy', {
       params: {
         ...queryParams,
@@ -78,7 +85,7 @@ export const useCreateAccessRule = () => {
       })
     },
     onSuccess: (_, { resourceType }) => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, resourceType] })
+      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
     },
   })
 }
@@ -100,7 +107,7 @@ export const useUpdateAccessRule = () => {
       })
     },
     onSuccess: (_, { resourceType }) => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, resourceType] })
+      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
     },
   })
 }
@@ -114,7 +121,7 @@ export const useCopyAccessRule = (resourceType: AccessPolicyResourceType) => {
       return post<AccessPolicy>(`/workspaces/current/rbac/access-policies/${id}/copy`, {})
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, resourceType] })
+      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
     },
   })
 }
@@ -128,7 +135,7 @@ export const useDeleteAccessRule = (resourceType: AccessPolicyResourceType) => {
       return del<CommonResponse>(`/workspaces/current/rbac/access-policies/${id}`, {})
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, resourceType] })
+      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
     },
   })
 }
@@ -147,7 +154,7 @@ export const useUpdateAppAccessRuleBindings = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'app'] })
+      queryClient.invalidateQueries({ queryKey: workspaceAccessRulesQueryKeys.app() })
     },
   })
 }
@@ -166,7 +173,25 @@ export const useUpdateDatasetAccessRuleBindings = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'dataset'] })
+      queryClient.invalidateQueries({ queryKey: workspaceAccessRulesQueryKeys.dataset() })
+    },
+  })
+}
+
+export const useBindingLock = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'binding-lock'],
+    mutationFn: (bindingId: string) => {
+      return put(`/workspaces/current/rbac/access-policy-bindings/${bindingId}/lock`)
+    },
+  })
+}
+
+export const useBindingUnlock = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'binding-unlock'],
+    mutationFn: (bindingId: string) => {
+      return put(`/workspaces/current/rbac/access-policy-bindings/${bindingId}/unlock`)
     },
   })
 }
