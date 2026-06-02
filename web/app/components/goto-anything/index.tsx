@@ -11,12 +11,10 @@ import { SlashCommandProvider } from './actions/commands/slash-provider'
 import CommandSelector from './command-selector'
 import { EmptyState, Footer, ResultList, SearchInput } from './components'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
-import {
-  useGotoAnythingModal,
-  useGotoAnythingNavigation,
-  useGotoAnythingResults,
-  useGotoAnythingSearch,
-} from './hooks'
+import { useGotoAnythingModal } from './hooks/use-goto-anything-modal'
+import { useGotoAnythingNavigation } from './hooks/use-goto-anything-navigation'
+import { useGotoAnythingResults } from './hooks/use-goto-anything-results'
+import { useGotoAnythingSearch } from './hooks/use-goto-anything-search'
 
 type Props = {
   onHide?: () => void

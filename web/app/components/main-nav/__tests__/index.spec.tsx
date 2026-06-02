@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
@@ -5,12 +6,12 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider } from 'jotai'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/atoms'
-import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
+import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
@@ -219,13 +220,25 @@ const appContextValue: AppContextValue = {
 
 const renderMainNav = (
   systemFeatures = { branding: { enabled: false } },
+  options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
   const getMockAppContext = useAppContext as Mock
   const currentAppContext = getMockAppContext() as AppContextValue
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
-  return renderWithSystemFeatures(<JotaiProvider><MainNav /></JotaiProvider>, { systemFeatures, queryClient })
+  return renderWithSystemFeatures(
+    <JotaiProvider store={options.store}>
+      <MainNav />
+      {options.extra}
+    </JotaiProvider>,
+    { systemFeatures, queryClient },
+  )
+}
+
+function GotoAnythingOpenProbe() {
+  const open = useGotoAnythingOpen()
+  return <div data-testid="goto-anything-open">{String(open)}</div>
 }
 
 describe('MainNav', () => {
@@ -484,15 +497,14 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
-  it('dispatches the goto anything open event from the search button', () => {
-    const handleOpen = vi.fn()
-    window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+  it('opens goto anything from the search button', () => {
+    const store = createStore()
 
-    renderMainNav()
+    renderMainNav(undefined, { store, extra: <GotoAnythingOpenProbe /> })
+    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(handleOpen).toHaveBeenCalledTimes(1)
-    window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
   })
 
   it('shows Learn Dify switch in help menu and restores it from localStorage', async () => {

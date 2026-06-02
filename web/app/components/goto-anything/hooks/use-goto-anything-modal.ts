@@ -11,8 +11,6 @@ type UseGotoAnythingModalReturn = {
   inputRef: RefObject<HTMLInputElement | null>
 }
 
-export const GOTO_ANYTHING_OPEN_EVENT = 'dify:goto-anything-open'
-
 export const useGotoAnythingModal = (): UseGotoAnythingModalReturn => {
   const open = useGotoAnythingOpen()
   const setOpen = useSetGotoAnythingOpen()
@@ -24,13 +22,6 @@ export const useGotoAnythingModal = (): UseGotoAnythingModalReturn => {
   }, {
     ignoreInputs: !open,
   })
-
-  useEffect(() => {
-    const handleOpen = () => setOpen(true)
-
-    window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
-    return () => window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
-  }, [setOpen])
 
   useEffect(() => {
     if (open) {

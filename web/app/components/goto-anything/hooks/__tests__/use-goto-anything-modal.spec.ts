@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { createElement } from 'react'
-import { GOTO_ANYTHING_OPEN_EVENT, useGotoAnythingModal } from '../use-goto-anything-modal'
+import { useGotoAnythingModal } from '../use-goto-anything-modal'
 
 type KeyPressEvent = {
   preventDefault: () => void
@@ -118,20 +118,6 @@ describe('useGotoAnythingModal', () => {
       })
 
       expect(preventDefaultMock).toHaveBeenCalled()
-    })
-  })
-
-  describe('open event', () => {
-    it('should open the modal when the global open event is dispatched', () => {
-      const { result } = renderGotoAnythingModalHook()
-
-      expect(result.current.open).toBe(false)
-
-      act(() => {
-        window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))
-      })
-
-      expect(result.current.open).toBe(true)
     })
   })
 

@@ -1,10 +1,7 @@
 'use client'
 
-import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
+import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import ToggleButton from './toggle-button'
@@ -14,14 +11,13 @@ type AppDetailTopProps = {
   onToggle?: () => void
 }
 
-const SEARCH_SHORTCUT = ['Mod', 'K']
-
 const AppDetailTop = ({
   expand = true,
   onToggle,
 }: AppDetailTopProps) => {
   const { t } = useTranslation()
   const router = useRouter()
+  const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
@@ -58,28 +54,14 @@ const AppDetailTop = ({
         )}
       </div>
       {expand && (
-        <Tooltip>
-          <TooltipTrigger
-            render={(
-              <button
-                type="button"
-                aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
-                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
-                onClick={() => window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))}
-              >
-                <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-              </button>
-            )}
-          />
-          <TooltipContent placement="bottom" className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]">
-            <span className="px-0.5">{t('gotoAnything.quickAction', { ns: 'app' })}</span>
-            <KbdGroup>
-              {SEARCH_SHORTCUT.map(key => (
-                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
-              ))}
-            </KbdGroup>
-          </TooltipContent>
-        </Tooltip>
+        <button
+          type="button"
+          aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+          className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={() => setGotoAnythingOpen(true)}
+        >
+          <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+        </button>
       )}
       {onToggle && (
         <ToggleButton
