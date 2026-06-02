@@ -56,7 +56,7 @@ class MessageListApi(Resource):
         Retrieves messages with pagination support using first_id.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         query_args = MessageListQuery.model_validate(request.args.to_dict())
@@ -167,7 +167,7 @@ class MessageSuggestedApi(Resource):
         """
         message_id_str = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         try:

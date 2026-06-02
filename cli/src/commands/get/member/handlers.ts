@@ -1,6 +1,5 @@
 import type { MemberListResponse, MemberResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { TableCell } from '@/framework/output'
-import type { TableColumn } from '@/printers/format-table'
+import type { TableCell, TableColumn } from '@/framework/output'
 
 export const MEMBER_MODE_KEY = 'member'
 const CURRENT_MARKER = '*'
