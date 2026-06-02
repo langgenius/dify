@@ -25,6 +25,8 @@ effect) plus the contract below.
 
 OUTPUT FORMATS
   json, yaml, name, wide, text
+  This is the union; support is per-command. Each command's allowed set is the
+  `options` of its `output` flag in `difyctl help -o json`.
 
 EXIT CODES
   0  success

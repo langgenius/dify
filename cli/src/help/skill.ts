@@ -48,6 +48,8 @@ function contractBlock(): string {
 
 OUTPUT FORMATS
   ${formats}
+  This is the union; support is per-command. Each command's allowed set is the
+  \`options\` of its \`output\` flag in \`${BIN} help -o json\`.
 
 EXIT CODES
 ${exitCodes}

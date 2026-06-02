@@ -151,7 +151,7 @@ describe('formatHelp structured output', () => {
   it('emits a JSON descriptor under json format', () => {
     const ctor = makeCmd({
       description: 'Lists apps',
-      flags: { output: Flags.string({ description: 'fmt', char: 'o' }) },
+      flags: { output: Flags.outputFormat({ options: ['json', 'yaml', 'name', 'wide'], default: '' }) },
       args: { id: Args.string({ description: 'app id', required: true }) },
       examples: ['<%= config.bin %> get app'],
       agentGuide: 'WORKFLOW',
@@ -160,9 +160,18 @@ describe('formatHelp structured output', () => {
     expect(obj.command).toBe('get app')
     expect(obj.description).toBe('Lists apps')
     expect(obj.flags[0]).toMatchObject({ name: 'output', char: 'o', type: 'string' })
+    expect(obj.flags[0].options).toEqual(['json', 'yaml', 'name', 'wide'])
     expect(obj.args[0]).toMatchObject({ name: 'id', required: true })
     expect(obj.examples).toEqual(['difyctl get app'])
     expect(obj.agentGuide).toBe('WORKFLOW')
+  })
+
+  it('sets a flag options to null when the flag has no enum constraint', () => {
+    const ctor = makeCmd({
+      flags: { name: Flags.string({ description: 'a name' }) },
+    })
+    const obj = JSON.parse(formatHelp(ctor, 'get app', 'json'))
+    expect(obj.flags[0].options).toBeNull()
   })
 
   it('sets agentGuide to null when absent', () => {

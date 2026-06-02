@@ -15,6 +15,7 @@ export type FlagDescriptor = {
   type: string
   default: ArgValueType | null
   multiple: boolean
+  options: readonly string[] | null
   description: string
 }
 
@@ -91,6 +92,7 @@ export function describeCommand(ctor: CommandConstructor, path: string): Command
       type: def.type,
       default: def.default ?? null,
       multiple: def.multiple ?? false,
+      options: def.options ?? null,
       description: def.description,
     })),
     examples: renderExamples(ctor),
