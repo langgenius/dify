@@ -1,26 +1,32 @@
 'use client'
 
 import type {
-  EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvVarValues } from '../env-var-bindings-utils'
+import type {
+  DeploymentEnvVarSlot,
+  EnvVarValues,
+} from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import type { EnvironmentOption } from './form-sections'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
+import { dslEnvVarSlots } from '../../dsl'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
+import { fetchReleaseDsl } from '../../release-dsl'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
 import { closeDeployDrawerAtom } from '../../store'
 import {
+  envVarValuesWithDefaults,
   hasEnvVarSlotKey,
   hasMissingRequiredEnvVarValue,
+  mergeEnvVarSlotMetadata,
   selectedDeploymentEnvVars,
 } from '../env-var-bindings-utils'
 import {
@@ -52,7 +58,7 @@ type DeployReadyFormProps = DeployFormProps & {
 
 type BindingSelections = RuntimeCredentialBindingSelections
 
-function requiredSlotEnvVarSlot(slot: NonNullable<Release['requiredSlots']>[number]): EnvVarSlot | undefined {
+function requiredSlotEnvVarSlot(slot: NonNullable<Release['requiredSlots']>[number]): DeploymentEnvVarSlot | undefined {
   if (slot.type !== 'SLOT_TYPE_ENV_VAR')
     return undefined
 
@@ -87,6 +93,7 @@ function DeployReadyForm({
   const targetRelease = displayedRelease ?? selectedRelease
   const targetReleaseId = targetRelease?.id ?? selectedReleaseId
   const hasSelectedEnvironment = Boolean(selectedEnvironmentId && selectedEnvironment)
+  const canReuseEnvSnapshot = Boolean(lockedEnvId)
   const shouldLoadBindingOptions = Boolean(appInstanceId && targetReleaseId && hasSelectedEnvironment)
   const bindingOptions = useQuery(consoleQuery.enterprise.releaseService.listReleaseCredentialCandidates.queryOptions({
     input: shouldLoadBindingOptions
@@ -97,34 +104,69 @@ function DeployReadyForm({
         }
       : skipToken,
   }))
+  const releaseDslQuery = useQuery({
+    queryKey: ['deployment-release-dsl', targetReleaseId],
+    queryFn: () => fetchReleaseDsl(targetReleaseId),
+    enabled: Boolean(targetReleaseId),
+    retry: false,
+  })
   const bindingSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
-  const envVarSlots = targetRelease?.requiredSlots
-    ?.map(requiredSlotEnvVarSlot)
-    .filter((slot): slot is EnvVarSlot => hasEnvVarSlotKey(slot)) ?? []
+  const releaseEnvVarSlots = useMemo(() => {
+    return targetRelease?.requiredSlots
+      ?.map(requiredSlotEnvVarSlot)
+      .filter((slot): slot is DeploymentEnvVarSlot => hasEnvVarSlotKey(slot)) ?? []
+  }, [targetRelease?.requiredSlots])
+  const releaseDslEnvVarSlots = useMemo(() => {
+    return releaseDslQuery.data ? dslEnvVarSlots(releaseDslQuery.data) : []
+  }, [releaseDslQuery.data])
+  const envVarSlots = useMemo(() => {
+    return mergeEnvVarSlotMetadata(releaseEnvVarSlots, releaseDslEnvVarSlots)
+  }, [releaseDslEnvVarSlots, releaseEnvVarSlots])
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
   const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
+  const [showValidationErrors, setShowValidationErrors] = useState(false)
+  const effectiveEnvVarValues = useMemo(() => {
+    return envVarValuesWithDefaults(envVarValues, envVarSlots)
+  }, [envVarSlots, envVarValues])
   const selectedBindings = selectedRuntimeCredentialSelections(bindingSlots, manualBindings)
   const deploymentCredentials = selectedDeploymentRuntimeCredentials(bindingSlots, selectedBindings)
-  const deploymentEnvVars = selectedDeploymentEnvVars(envVarSlots, envVarValues)
+  const deploymentEnvVars = selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues)
   const bindingOptionsLoading = Boolean(targetReleaseId && hasSelectedEnvironment && (bindingOptions.isLoading || bindingOptions.isFetching))
   const bindingOptionsReady = Boolean(targetReleaseId && hasSelectedEnvironment && bindingOptions.data && !bindingOptionsLoading && !bindingOptions.isError)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]))
-  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, envVarValues))
+  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
   const isSubmitting = startDeploy.isPending
-  const canDeploy = Boolean(
+  const deployFormReady = Boolean(
     selectedEnvironmentId
     && selectedEnvironment
     && targetReleaseId
     && bindingOptionsReady
-    && requiredBindingsReady
-    && requiredEnvVarsReady
     && !isSubmitting,
+  )
+  const canDeploy = Boolean(
+    deployFormReady
+    && requiredBindingsReady
+    && requiredEnvVarsReady,
   )
 
   const lockedEnv = lockedEnvId ? environments.find(e => e.id === lockedEnvId) : undefined
   const submitLabel = isSubmitting ? t('deployDrawer.deploying') : t('deployDrawer.deploy')
 
+  function handleSelectRelease(releaseId: string) {
+    setSelectedReleaseId(releaseId)
+    setManualBindings({})
+    setEnvVarValues({})
+    setShowValidationErrors(false)
+  }
+
+  function handleSelectEnvironment(environmentId: string) {
+    setSelectedEnvId(environmentId)
+    setShowValidationErrors(false)
+  }
+
   const handleDeploy = () => {
+    setShowValidationErrors(true)
+
     if (!canDeploy || !targetReleaseId)
       return
 
@@ -142,6 +184,7 @@ function DeployReadyForm({
           credentials: deploymentCredentials,
           envVars: deploymentEnvVars.length > 0 ? deploymentEnvVars : undefined,
           idempotencyKey,
+          reuseEnvSnapshot: canReuseEnvSnapshot || undefined,
         },
       },
       {
@@ -166,7 +209,7 @@ function DeployReadyForm({
             isExistingRelease={isExistingRelease}
             releases={releases}
             selectedReleaseId={selectedReleaseId}
-            onSelectRelease={setSelectedReleaseId}
+            onSelectRelease={handleSelectRelease}
           />
 
           <EnvironmentField
@@ -174,7 +217,7 @@ function DeployReadyForm({
             lockedEnv={lockedEnv}
             lockedEnvId={lockedEnvId}
             selectedEnvironmentId={selectedEnvironmentId}
-            onSelectEnvironment={setSelectedEnvId}
+            onSelectEnvironment={handleSelectEnvironment}
           />
 
           {targetReleaseId && hasSelectedEnvironment && (
@@ -184,7 +227,9 @@ function DeployReadyForm({
               bindingOptionsLoading={bindingOptionsLoading}
               bindingOptionsError={bindingOptions.isError}
               envVarSlots={envVarSlots}
-              envVarValues={envVarValues}
+              envVarValues={effectiveEnvVarValues}
+              showMissingRequiredBindings={showValidationErrors}
+              showMissingRequiredEnvVars={showValidationErrors}
               onBindingChange={(slot, value) => setManualBindings(prev => ({ ...prev, [slot]: value }))}
               onEnvVarChange={(key, value) => setEnvVarValues(prev => ({ ...prev, [key]: value }))}
             />
@@ -196,7 +241,7 @@ function DeployReadyForm({
         <Button type="button" variant="secondary" onClick={closeDeployDrawer}>
           {t('deployDrawer.cancel')}
         </Button>
-        <Button variant="primary" disabled={!canDeploy} onClick={handleDeploy}>
+        <Button variant="primary" disabled={!deployFormReady} onClick={handleDeploy}>
           {submitLabel}
         </Button>
       </div>

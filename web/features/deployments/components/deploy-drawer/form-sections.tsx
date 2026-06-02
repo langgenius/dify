@@ -3,10 +3,12 @@
 import type {
   CredentialSlot,
   Environment,
-  EnvVarSlot,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvVarValues } from '../env-var-bindings-utils'
+import type {
+  DeploymentEnvVarSlot,
+  EnvVarValues,
+} from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useTranslation } from 'react-i18next'
@@ -41,6 +43,7 @@ function BindingOptionsPanel({
   isLoading,
   hasError,
   bindingCountLabel,
+  showMissingRequired,
   onChange,
 }: {
   slots: CredentialSlot[]
@@ -48,6 +51,7 @@ function BindingOptionsPanel({
   isLoading: boolean
   hasError: boolean
   bindingCountLabel: string
+  showMissingRequired: boolean
   onChange: (slot: string, value: string) => void
 }) {
   const { t } = useTranslation('deployments')
@@ -84,6 +88,7 @@ function BindingOptionsPanel({
       selectCredentialLabel={t('deployDrawer.selectCredential')}
       missingRequiredLabel={t('deployDrawer.missingRequiredBinding')}
       bindingCountLabel={bindingCountLabel}
+      showMissingRequired={showMissingRequired}
       listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
       onChange={onChange}
     />
@@ -246,6 +251,8 @@ export function DeploymentBindingsSection({
   bindingOptionsError,
   envVarSlots,
   envVarValues,
+  showMissingRequiredBindings,
+  showMissingRequiredEnvVars,
   onBindingChange,
   onEnvVarChange,
 }: {
@@ -253,8 +260,10 @@ export function DeploymentBindingsSection({
   bindingSelections: RuntimeCredentialBindingSelections
   bindingOptionsLoading: boolean
   bindingOptionsError: boolean
-  envVarSlots: EnvVarSlot[]
+  envVarSlots: DeploymentEnvVarSlot[]
   envVarValues: EnvVarValues
+  showMissingRequiredBindings: boolean
+  showMissingRequiredEnvVars: boolean
   onBindingChange: (slot: string, value: string) => void
   onEnvVarChange: (key: string, value: string) => void
 }) {
@@ -268,6 +277,7 @@ export function DeploymentBindingsSection({
         isLoading={bindingOptionsLoading}
         hasError={bindingOptionsError}
         bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
+        showMissingRequired={showMissingRequiredBindings}
         onChange={onBindingChange}
       />
       {!bindingOptionsLoading && !bindingOptionsError && (
@@ -281,7 +291,7 @@ export function DeploymentBindingsSection({
           envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
           missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
           listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
-          showMissingRequired
+          showMissingRequired={showMissingRequiredEnvVars}
           onChange={onEnvVarChange}
         />
       )}

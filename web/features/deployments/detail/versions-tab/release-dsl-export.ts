@@ -1,6 +1,6 @@
 import type { Release } from '@dify/contracts/enterprise/types.gen'
-import { get } from '@/service/base'
 import { downloadBlob } from '@/utils/download'
+import { fetchReleaseDslResponse } from '../../release-dsl'
 
 const YAML_EXTENSION_PATTERN = /\.ya?ml$/i
 const INVALID_FILENAME_CHARS_PATTERN = /[\\/:*?"<>|]+/g
@@ -30,11 +30,7 @@ export async function exportReleaseDsl({ release, appInstanceName }: {
   release: Release & { id: string }
   appInstanceName?: string
 }) {
-  const response = await get<Response>(
-    `enterprise/app-deploy/releases/${encodeURIComponent(release.id)}/dsl`,
-    {},
-    { needAllResponseContent: true, silent: true },
-  )
+  const response = await fetchReleaseDslResponse(release.id)
   const data = await response.blob()
   downloadBlob({
     data,

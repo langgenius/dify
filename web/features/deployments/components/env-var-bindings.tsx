@@ -1,7 +1,9 @@
 'use client'
 
-import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
-import type { EnvVarValues } from './env-var-bindings-utils'
+import type {
+  DeploymentEnvVarSlot,
+  EnvVarValues,
+} from './env-var-bindings-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -11,7 +13,7 @@ import {
 import { TitleTooltip } from './title-tooltip'
 
 type EnvVarBindingsPanelProps = {
-  slots: EnvVarSlot[]
+  slots: DeploymentEnvVarSlot[]
   values: EnvVarValues
   title: string
   hint: string
@@ -62,6 +64,7 @@ export function EnvVarBindingsPanel({
       <div className={cn('max-h-[min(360px,34dvh)] overflow-y-auto border-t border-divider-subtle', listClassName)}>
         {slots.map((slot, index) => {
           const key = envVarSlotKey(slot)
+          const description = slot.description?.trim()
           const inputId = envVarInputId(index, key)
           const missing = showMissingRequired && hasMissingRequiredEnvVarValue(slot, values)
 
@@ -78,6 +81,11 @@ export function EnvVarBindingsPanel({
                     {requiredLabel}
                   </span>
                 </div>
+                {description && (
+                  <div className="system-xs-regular text-text-tertiary">
+                    {description}
+                  </div>
+                )}
                 <Input
                   id={inputId}
                   value={values[key] ?? ''}

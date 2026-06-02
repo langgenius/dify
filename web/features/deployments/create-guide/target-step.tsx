@@ -2,9 +2,11 @@
 
 import type {
   CredentialSlot,
-  EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvVarValues } from '../components/env-var-bindings-utils'
+import type {
+  DeploymentEnvVarSlot,
+  EnvVarValues,
+} from '../components/env-var-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
 import type { BindingSelections, EnvironmentOption } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -117,7 +119,7 @@ function TargetStep({
 }: {
   environments: EnvironmentOption[]
   bindingSlots: CredentialSlot[]
-  envVarSlots: EnvVarSlot[]
+  envVarSlots: DeploymentEnvVarSlot[]
   selectedEnvironmentId: string
   bindingSelections: BindingSelections
   envVarValues: EnvVarValues
@@ -238,7 +240,7 @@ export function TargetReviewSections({
 }: {
   bindingSelections: BindingSelections
   bindingSlots: CredentialSlot[]
-  envVarSlots: EnvVarSlot[]
+  envVarSlots: DeploymentEnvVarSlot[]
   envVarValues: EnvVarValues
   environments: EnvironmentOption[]
   isBindingError: boolean

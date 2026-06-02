@@ -14,14 +14,15 @@ import type {
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { load as yamlLoad } from 'js-yaml'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import {
+  envVarValuesWithDefaults,
   hasEnvVarSlotKey,
   hasMissingRequiredEnvVarValue,
+  mergeEnvVarSlotMetadata,
   selectedDeploymentEnvVars,
 } from '../components/env-var-bindings-utils'
 import {
@@ -32,17 +33,15 @@ import {
 } from '../components/runtime-credential-bindings-utils'
 import { DEPLOYMENT_PAGE_SIZE, SOURCE_APPS_PAGE_SIZE } from '../data'
 import {
+  dslAppName,
+  dslEnvVarSlots,
+} from '../dsl'
+import {
   environmentDeploymentId,
   environmentMatchesIdentifier,
 } from '../environment'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../error'
 import { createDeploymentIdempotencyKey } from '../idempotency'
-
-type DslMetadata = {
-  app?: {
-    name?: unknown
-  }
-}
 
 const RANDOM_SUFFIX_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 const RANDOM_SUFFIX_LENGTH = 4
@@ -62,18 +61,6 @@ function encodeUtf8Base64(value: string) {
     chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
 
   return btoa(chunks.join(''))
-}
-
-function dslAppName(content: string) {
-  try {
-    const parsed = yamlLoad(content) as DslMetadata | undefined
-    const name = parsed?.app?.name
-
-    return typeof name === 'string' ? name.trim() : ''
-  }
-  catch {
-    return ''
-  }
 }
 
 function randomLetterCombination(length: number) {
@@ -226,14 +213,26 @@ export function useCreateDeploymentGuide() {
   const bindingSlots = shouldLoadDeploymentTarget
     ? deploymentOptions?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
-  const envVarSlots = shouldLoadDeploymentTarget
-    ? deploymentOptions?.envVarSlots?.filter(hasEnvVarSlotKey) ?? []
-    : []
+  const deploymentOptionEnvVarSourceSlots = deploymentOptions?.envVarSlots
+  const deploymentOptionEnvVarSlots = useMemo(() => {
+    return shouldLoadDeploymentTarget
+      ? deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? []
+      : []
+  }, [deploymentOptionEnvVarSourceSlots, shouldLoadDeploymentTarget])
+  const dslEnvVarSlotMetadata = useMemo(() => {
+    return method === 'importDsl' && dslContent ? dslEnvVarSlots(dslContent) : []
+  }, [dslContent, method])
+  const envVarSlots = useMemo(() => {
+    return mergeEnvVarSlotMetadata(deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata)
+  }, [deploymentOptionEnvVarSlots, dslEnvVarSlotMetadata])
+  const effectiveEnvVarValues = useMemo(() => {
+    return envVarValuesWithDefaults(envVarValues, envVarSlots)
+  }, [envVarSlots, envVarValues])
   const effectiveSelectedEnvironmentId = selectedEnvironmentId || environments[0]?.id || ''
   const selectedEnvironment = environments.find(env => environmentMatchesIdentifier(env, effectiveSelectedEnvironmentId)) ?? environments[0]
   const bindingSelections = selectedRuntimeCredentialSelections(bindingSlots, manualBindingSelections)
   const requiredBindingsReady = bindingSlots.every(slot => !hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
-  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, envVarValues))
+  const requiredEnvVarsReady = envVarSlots.every(slot => !hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
   const isEnvironmentLoading = shouldLoadDeploymentTarget && (deployableEnvironmentsQuery.isLoading || (deployableEnvironmentsQuery.isFetching && !deployableEnvironmentsQuery.data))
   const isBindingLoading = shouldLoadDeploymentTarget && (deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data))
   const isDeploying = isSkippingReleaseOnly
@@ -450,7 +449,7 @@ export function useCreateDeploymentGuide() {
       const missingRequiredBinding = bindingSlots.some(slot => hasMissingRequiredRuntimeCredentialBinding(slot, bindingSelections[runtimeCredentialSlotKey(slot)]))
       if (missingRequiredBinding)
         throw new Error('Missing required deployment binding.')
-      const missingRequiredEnvVar = envVarSlots.some(slot => hasMissingRequiredEnvVarValue(slot, envVarValues))
+      const missingRequiredEnvVar = envVarSlots.some(slot => hasMissingRequiredEnvVarValue(slot, effectiveEnvVarValues))
       if (missingRequiredEnvVar)
         throw new Error('Missing required deployment environment variable.')
 
@@ -465,7 +464,7 @@ export function useCreateDeploymentGuide() {
               releaseName: submittedReleaseName,
               releaseDescription: submittedReleaseDescription || undefined,
               credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
-              envVars: selectedDeploymentEnvVars(envVarSlots, envVarValues),
+              envVars: selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues),
               idempotencyKey,
               expectedDslDigest: deploymentOptions?.dslDigest,
             },
@@ -480,7 +479,7 @@ export function useCreateDeploymentGuide() {
                 releaseName: submittedReleaseName,
                 releaseDescription: submittedReleaseDescription || undefined,
                 credentials: selectedDeploymentRuntimeCredentials(bindingSlots, bindingSelections),
-                envVars: selectedDeploymentEnvVars(envVarSlots, envVarValues),
+                envVars: selectedDeploymentEnvVars(envVarSlots, effectiveEnvVarValues),
                 idempotencyKey,
                 expectedDslDigest: deploymentOptions?.dslDigest,
               },
@@ -611,7 +610,7 @@ export function useCreateDeploymentGuide() {
       bindingSlots,
       environments,
       envVarSlots,
-      envVarValues,
+      envVarValues: effectiveEnvVarValues,
       isBindingError: deploymentOptionsQuery.isError,
       isBindingLoading,
       isEnvironmentError: deployableEnvironmentsQuery.isError,
