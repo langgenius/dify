@@ -140,3 +140,23 @@ def test_service_document_list_documents_query_params_render(monkeypatch: pytest
 
     for name in ("page", "limit", "keyword", "status"):
         assert params[name]["in"] == "query"
+
+
+def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/swagger.json").get_json()
+    operation = payload["paths"]["/account/avatar"]["get"]
+    params = _parameters_by_name(operation)
+
+    assert "payload" not in params
+    assert params["avatar"]["in"] == "query"
+    assert params["avatar"]["required"] is True

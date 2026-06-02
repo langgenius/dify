@@ -42,6 +42,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
@@ -223,6 +224,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -334,7 +336,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       })
       setShowDuplicateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()

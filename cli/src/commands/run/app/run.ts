@@ -7,7 +7,7 @@ import { AppRunClient } from '@/api/app-run'
 import { AppsClient } from '@/api/apps'
 import { FileUploadClient } from '@/api/file-upload'
 import { pickStrategy } from '@/commands/run/app/_strategies/index'
-import { BaseError } from '@/errors/base'
+import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { getEnv, processExit } from '@/sys/index'
 import { FieldInfo } from '@/types/app-meta'
@@ -82,6 +82,25 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
+
+  try {
+    await executeRun(opts, deps, meta, wsId)
+  }
+  catch (err) {
+    if (err instanceof HttpClientError && err.httpStatus === 422) {
+      await meta.invalidate(opts.appId)
+      throw err.withHint('app metadata cache cleared — if the app was recently republished, run the command again')
+    }
+    throw err
+  }
+}
+
+async function executeRun(
+  opts: RunAppOptions,
+  deps: RunAppDeps,
+  meta: AppMetaClient,
+  wsId: string,
+): Promise<void> {
   const m = await meta.get(opts.appId, wsId, [FieldInfo])
   const mode = m.info?.mode ?? ''
   if (mode === '')

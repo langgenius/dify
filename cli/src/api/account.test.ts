@@ -2,7 +2,7 @@ import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '@/errors/base'
+import { isHttpClientError } from '@/errors/base'
 import { AccountClient } from './account.js'
 
 function makeClient(host: string): AccountClient {
@@ -35,7 +35,7 @@ describe('AccountClient.get', () => {
     stub = await startStubServer(cap => jsonResponder(401, { error: 'expired' }, cap))
 
     await expect(makeClient(stub.url).get()).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 401,
+      err => isHttpClientError(err) && err.httpStatus === 401,
     )
   })
 })

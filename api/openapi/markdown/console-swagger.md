@@ -27,7 +27,7 @@ Get account avatar url
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountAvatarQuery](#accountavatarquery) |
+| avatar | query | Avatar file ID | Yes | string |
 
 ##### Responses
 
@@ -10561,6 +10561,7 @@ Get banner list
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
+| avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
 | id | string |  | Yes |
