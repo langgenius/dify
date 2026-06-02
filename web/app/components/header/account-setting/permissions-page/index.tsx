@@ -132,6 +132,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
                 variant="primary"
                 size="small"
                 onClick={openCreate}
+                disabled={isLoading}
               >
                 {t('role.addRole', { ns: 'permission' })}
               </Button>
@@ -140,6 +141,8 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
         </div>
         <RoleList
           groups={roleGroups}
+          isLoading={isLoading}
+          isFetchingNextPage={isFetchingNextPage}
           onView={handleView}
           onEdit={handleEdit}
         />

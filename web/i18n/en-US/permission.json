@@ -1,6 +1,7 @@
 {
   "accessRule.addRoleAria": "Add role to {{name}}",
   "accessRule.appTitle": "App Access Rules",
+  "accessRule.bindingActionsAria": "Actions for {{name}}",
   "accessRule.bindingRemoved": "Rule binding removed successfully",
   "accessRule.bindingUpdated": "Rule binding updated successfully",
   "accessRule.collapseSection": "Collapse {{title}}",
@@ -12,6 +13,7 @@
   "accessRule.deleted": "Access rule deleted successfully",
   "accessRule.expandSection": "Expand {{title}}",
   "accessRule.loadingMore": "Loading more access rules...",
+  "accessRule.lockBinding": "Lock",
   "accessRule.lockedSummary_one": "· {{count}} locked",
   "accessRule.lockedSummary_other": "· {{count}} locked",
   "accessRule.newPermissionSet": "New permission set",
@@ -19,6 +21,7 @@
   "accessRule.removeBindingAria": "Remove {{name}}",
   "accessRule.summary_one": "{{count}} permission set",
   "accessRule.summary_other": "{{count}} permission sets",
+  "accessRule.unlockBinding": "Unlock",
   "accessRule.updated": "Access rule updated successfully",
   "addRuleTargets.description": "Select roles or members to grant this access level by default.",
   "addRuleTargets.descriptionWithName": "Select roles or members to grant the \"{{name}}\" access level by default.",

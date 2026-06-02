@@ -3,6 +3,7 @@
 import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import Row from './row'
 
 export type RoleListGroup = {
@@ -15,6 +16,8 @@ export type RoleListGroup = {
 export type RoleListProps = {
   groups: RoleListGroup[]
   className?: string
+  isLoading?: boolean
+  isFetchingNextPage?: boolean
   onView?: (role: Role) => void
   onEdit?: (role: Role) => void
 }
@@ -22,10 +25,20 @@ export type RoleListProps = {
 const RoleList = ({
   groups,
   className,
+  isLoading = false,
+  isFetchingNextPage = false,
   onView,
   onEdit,
 }: RoleListProps) => {
   const { t } = useTranslation()
+
+  if (isLoading) {
+    return (
+      <div className={cn('px-1 py-8 text-center', className)}>
+        <Loading type="app" />
+      </div>
+    )
+  }
 
   return (
     <div className={cn('flex flex-col gap-y-6', className)}>
@@ -52,6 +65,11 @@ const RoleList = ({
           </div>
         </section>
       ))}
+      {isFetchingNextPage && (
+        <div className="px-1 py-3 text-center">
+          <Loading type="app" />
+        </div>
+      )}
     </div>
   )
 }

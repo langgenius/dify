@@ -1,4 +1,7 @@
 {
+  "accessRule.bindingActionsAria": "{{name}} 的操作",
+  "accessRule.lockBinding": "鎖定",
+  "accessRule.unlockBinding": "解鎖",
   "common.duplicateAction": "建立副本",
   "group.app": "應用",
   "group.app_acl": "應用訪問權限",

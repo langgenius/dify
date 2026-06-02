@@ -1,6 +1,7 @@
 {
   "accessRule.addRoleAria": "{{name}} にロールを追加",
   "accessRule.appTitle": "アプリアクセスルール",
+  "accessRule.bindingActionsAria": "{{name}} の操作",
   "accessRule.bindingRemoved": "ルールのバインドを削除しました",
   "accessRule.bindingUpdated": "ルールのバインドを更新しました",
   "accessRule.collapseSection": "{{title}} を折りたたむ",
@@ -12,6 +13,7 @@
   "accessRule.deleted": "アクセスルールを削除しました",
   "accessRule.expandSection": "{{title}} を展開",
   "accessRule.loadingMore": "アクセスルールをさらに読み込み中...",
+  "accessRule.lockBinding": "ロック",
   "accessRule.lockedSummary_one": "· {{count}} 件ロック済み",
   "accessRule.lockedSummary_other": "· {{count}} 件ロック済み",
   "accessRule.newPermissionSet": "新しい権限セット",
@@ -19,6 +21,7 @@
   "accessRule.removeBindingAria": "{{name}} を削除",
   "accessRule.summary_one": "{{count}} 件の権限セット",
   "accessRule.summary_other": "{{count}} 件の権限セット",
+  "accessRule.unlockBinding": "ロック解除",
   "accessRule.updated": "アクセスルールを更新しました",
   "addRuleTargets.description": "このアクセスレベルをデフォルトで付与するロールまたはメンバーを選択します。",
   "addRuleTargets.descriptionWithName": "「{{name}}」アクセスレベルをデフォルトで付与するロールまたはメンバーを選択します。",

@@ -1,6 +1,7 @@
 {
   "accessRule.addRoleAria": "为 {{name}} 添加角色",
   "accessRule.appTitle": "应用访问规则",
+  "accessRule.bindingActionsAria": "{{name}} 的操作",
   "accessRule.bindingRemoved": "规则绑定已移除",
   "accessRule.bindingUpdated": "规则绑定已更新",
   "accessRule.collapseSection": "折叠 {{title}}",
@@ -12,6 +13,7 @@
   "accessRule.deleted": "访问规则已删除",
   "accessRule.expandSection": "展开 {{title}}",
   "accessRule.loadingMore": "正在加载更多访问规则...",
+  "accessRule.lockBinding": "锁定",
   "accessRule.lockedSummary_one": "· {{count}} 个锁定",
   "accessRule.lockedSummary_other": "· {{count}} 个锁定",
   "accessRule.newPermissionSet": "新建权限集",
@@ -19,6 +21,7 @@
   "accessRule.removeBindingAria": "移除 {{name}}",
   "accessRule.summary_one": "{{count}} 个权限集",
   "accessRule.summary_other": "{{count}} 个权限集",
+  "accessRule.unlockBinding": "解锁",
   "accessRule.updated": "访问规则已更新",
   "addRuleTargets.description": "选择默认授予该访问级别的角色或成员。",
   "addRuleTargets.descriptionWithName": "选择默认授予“{{name}}”访问级别的角色或成员。",

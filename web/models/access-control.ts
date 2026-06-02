@@ -141,13 +141,13 @@ export type Bindings = {
     role_name: string
     binding_id: string
     is_locked: boolean
-    avatar: string
   }>
   accounts: Array<{
     account_id: string
     account_name: string
     binding_id: string
     is_locked: boolean
+    avatar?: string
   }>
 }
 

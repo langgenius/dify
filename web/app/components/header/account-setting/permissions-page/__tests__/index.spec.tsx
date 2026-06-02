@@ -1,3 +1,4 @@
+import type { AppContextValue } from '@/context/app-context'
 import type { Role } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, within } from '@testing-library/react'
@@ -20,9 +21,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+  useSelector: vi.fn((selector: (state: AppContextValue) => unknown) => selector({
     workspacePermissionKeys: mocks.workspacePermissionKeys,
-  })),
+  } as AppContextValue)),
 }))
 
 vi.mock('@/service/access-control/use-workspace-roles', () => ({
@@ -37,20 +38,30 @@ vi.mock('../hooks', () => ({
 vi.mock('../role-list', () => ({
   default: ({
     groups,
+    isLoading,
+    isFetchingNextPage,
     onView,
     onEdit,
   }: {
     groups: Array<{ items: Role[] }>
+    isLoading?: boolean
+    isFetchingNextPage?: boolean
     onView: (role: Role) => void
     onEdit: (role: Role) => void
   }) => {
-    const role = groups[0]!.items[0]!
+    const role = groups[0]?.items[0]
 
     return (
       <div>
-        <span>{role.name}</span>
-        <button type="button" onClick={() => onView(role)}>view role</button>
-        <button type="button" onClick={() => onEdit(role)}>edit role</button>
+        {isLoading && <span>initial role loading</span>}
+        {isFetchingNextPage && <span>next role page loading</span>}
+        {role && (
+          <>
+            <span>{role.name}</span>
+            <button type="button" onClick={() => onView(role)}>view role</button>
+            <button type="button" onClick={() => onEdit(role)}>edit role</button>
+          </>
+        )}
       </div>
     )
   },
@@ -120,9 +131,9 @@ describe('PermissionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.workspacePermissionKeys = []
-    vi.mocked(useAppContextSelector).mockImplementation((selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    vi.mocked(useAppContextSelector).mockImplementation((selector: (state: AppContextValue) => unknown) => selector({
       workspacePermissionKeys: mocks.workspacePermissionKeys,
-    }))
+    } as AppContextValue))
     vi.mocked(useRoleGroups).mockReturnValue({
       roleGroups: [{
         id: 'global_custom',
@@ -136,8 +147,8 @@ describe('PermissionsPage', () => {
       hasNextPage: false,
       error: null,
     } as ReturnType<typeof useRoleGroups>)
-    vi.mocked(useCreateWorkspaceRole).mockReturnValue(mockMutation(mocks.createWorkspaceRole) as ReturnType<typeof useCreateWorkspaceRole>)
-    vi.mocked(useUpdateWorkspaceRole).mockReturnValue(mockMutation(mocks.updateWorkspaceRole) as ReturnType<typeof useUpdateWorkspaceRole>)
+    vi.mocked(useCreateWorkspaceRole).mockReturnValue(mockMutation(mocks.createWorkspaceRole) as unknown as ReturnType<typeof useCreateWorkspaceRole>)
+    vi.mocked(useUpdateWorkspaceRole).mockReturnValue(mockMutation(mocks.updateWorkspaceRole) as unknown as ReturnType<typeof useUpdateWorkspaceRole>)
   })
 
   it('hides role creation without workspace role manage permission', () => {
@@ -164,6 +175,22 @@ describe('PermissionsPage', () => {
     )
     expect(title).toHaveClass('truncate', 'system-md-semibold', 'text-text-secondary')
     expect(description).toHaveClass('truncate', 'system-xs-regular', 'text-text-tertiary')
+  })
+
+  it('passes role loading states to the role list', () => {
+    vi.mocked(useRoleGroups).mockReturnValue({
+      roleGroups: [],
+      isLoading: true,
+      isFetchingNextPage: true,
+      fetchNextPage: vi.fn(),
+      hasNextPage: true,
+      error: null,
+    } as ReturnType<typeof useRoleGroups>)
+
+    renderPermissionsPage()
+
+    expect(screen.getByText('initial role loading')).toBeInTheDocument()
+    expect(screen.getByText('next role page loading')).toBeInTheDocument()
   })
 
   it('creates workspace roles when role management is allowed', async () => {

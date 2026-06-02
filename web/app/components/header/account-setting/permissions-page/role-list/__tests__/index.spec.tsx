@@ -42,6 +42,18 @@ describe('RoleList', () => {
   })
 
   describe('Rendering', () => {
+    it('shows a loading status while the first page is loading', () => {
+      render(
+        <RoleList
+          groups={[]}
+          isLoading
+        />,
+      )
+
+      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.queryByText(/permission\.role\.groups/)).not.toBeInTheDocument()
+    })
+
     it('renders role groups with compact section labels', () => {
       render(
         <RoleList
@@ -75,6 +87,25 @@ describe('RoleList', () => {
       expect(customLabel).toHaveClass('min-h-6', 'system-sm-medium', 'text-text-secondary')
       expect(screen.getByText('Owner')).toBeInTheDocument()
       expect(screen.getByText('Executive')).toBeInTheDocument()
+    })
+
+    it('shows a bottom loading status while fetching the next page', () => {
+      render(
+        <RoleList
+          groups={[
+            {
+              id: 'builtin',
+              category: 'global_system_default',
+              title: 'System Roles',
+              items: [createRole()],
+            },
+          ]}
+          isFetchingNextPage
+        />,
+      )
+
+      expect(screen.getByText('Owner')).toBeInTheDocument()
+      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
     })
   })
 

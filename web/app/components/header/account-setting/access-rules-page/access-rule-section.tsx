@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import Loading from '@/app/components/base/loading'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { hasPermission } from '@/utils/permission'
 import AccessRuleRow from './access-rule-row'
@@ -150,8 +151,8 @@ const AccessRuleSection = ({
         >
           {isLoadingRules
             ? (
-                <div className="px-1 py-8 text-center system-sm-regular text-text-tertiary">
-                  {t('loading', { ns: 'common' })}
+                <div className="px-1 py-8 text-center">
+                  <Loading type="app" />
                 </div>
               )
             : rules.length === 0
@@ -177,7 +178,7 @@ const AccessRuleSection = ({
                     <div ref={anchorRef} className="h-1" />
                     {isFetchingNextPage && (
                       <div className="px-1 py-3 text-center system-xs-regular text-text-tertiary">
-                        {t('accessRule.loadingMore', { ns: 'permission' })}
+                        <Loading type="app" />
                       </div>
                     )}
                   </>

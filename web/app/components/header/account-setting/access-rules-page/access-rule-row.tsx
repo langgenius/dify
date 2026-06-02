@@ -71,6 +71,7 @@ const AccessRuleRow = ({
               id={role.role_id}
               label={role.role_name}
               type="role"
+              isLocked={role.is_locked}
               showRemove={canManage}
               onRemove={handleRemove}
             />
@@ -81,6 +82,8 @@ const AccessRuleRow = ({
               id={account.account_id}
               label={account.account_name}
               type="account"
+              avatar={account.avatar}
+              isLocked={account.is_locked}
               showRemove={canManage}
               onRemove={handleRemove}
             />
@@ -89,10 +92,10 @@ const AccessRuleRow = ({
             <button
               type="button"
               onClick={handleAddRole}
-              className="inline-flex h-6 items-center gap-0.5 rounded-md border border-divider-deep px-1.5 system-xs-medium text-text-tertiary hover:border-divider-solid hover:text-text-secondary"
+              className="inline-flex h-6 items-center gap-1 rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 pr-2 system-xs-regular text-text-primary transition-colors outline-none hover:bg-components-button-secondary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               aria-label={t('accessRule.addRoleAria', { ns: 'permission', name: policy.name })}
             >
-              <span aria-hidden className="i-ri-add-line h-3 w-3" />
+              <span aria-hidden className="i-ri-add-line size-3.5 shrink-0 text-text-tertiary" />
               {t('operation.add', { ns: 'common' })}
             </button>
           )}
