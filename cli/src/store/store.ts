@@ -69,6 +69,9 @@ abstract class FileBasedStore implements Store {
   }
 
   lock(): void {
+    // Ensure the parent directory exists before creating the lock file.
+    // On a fresh CI runner /home/runner/.cache/difyctl/ may not exist yet.
+    fs.mkdirSync(dirname(`${this.filePath}.lock`), { recursive: true, mode: DIR_PERM })
     try {
       lockfile.lockSync(`${this.filePath}.lock`, {
         stale: 30_000,
