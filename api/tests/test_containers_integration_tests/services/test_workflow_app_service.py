@@ -821,7 +821,7 @@ class TestWorkflowAppService:
             id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="test_session_123",
             created_at=datetime.now(UTC),
