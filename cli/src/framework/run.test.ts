@@ -267,11 +267,11 @@ describe('run() catch routing', () => {
 describe('hidden commands', () => {
   it('omits a hidden top-level command from printTopLevelHelp', async () => {
     class Visible extends Command {
-      override description = 'visible cmd'
+      static override description = 'visible cmd'
       async run() {}
     }
     class Hidden extends Command {
-      override description = 'hidden cmd'
+      static override description = 'hidden cmd'
       static hidden = true
       async run() {}
     }
@@ -286,11 +286,11 @@ describe('hidden commands', () => {
 
   it('omits a hidden subcommand from its topic listing', async () => {
     class Public extends Command {
-      override description = 'visible sub'
+      static override description = 'visible sub'
       async run() {}
     }
     class HiddenSub extends Command {
-      override description = 'hidden sub'
+      static override description = 'hidden sub'
       static hidden = true
       async run() {}
     }

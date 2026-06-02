@@ -27,11 +27,11 @@ type ParseResult<C extends CommandConstructor> = {
 }
 
 export abstract class Command implements ICommand {
-  description?: string
-  flags: Record<string, FlagDefinition<OptionalArgValueType>> = {}
+  static description?: string
+  static flags: Record<string, FlagDefinition<OptionalArgValueType>> = {}
 
-  args: Record<string, ArgDefinition<string | undefined>> = {}
-  examples: string[] = []
+  static args: Record<string, ArgDefinition<string | undefined>> = {}
+  static examples: string[] = []
 
   abstract run(argv: string[]): Promise<CommandOutput | void>
 
