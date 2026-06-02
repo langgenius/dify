@@ -44,7 +44,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_id,
-            type=EndUserType.SERVICE_API_LEGACY,
+            type=EndUserType.SERVICE_API,
             external_user_id=f"ext-{uuid4()}",
             name="End User",
             session_id=f"session-{uuid4()}",
