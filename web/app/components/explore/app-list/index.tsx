@@ -222,7 +222,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
         {systemFeatures.enable_explore_banner && (
-          <div className="mt-4 px-12">
+          <div className="mt-4 px-8">
             <Banner />
           </div>
         )}
@@ -252,7 +252,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
           <nav
             className={cn(
               s.appList,
-              'grid shrink-0 content-start gap-3 px-6 sm:px-12',
+              'grid shrink-0 content-start gap-3 px-8',
             )}
           >
             {isLoading

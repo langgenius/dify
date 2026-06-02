@@ -14,7 +14,7 @@ export function RecommendationSectionSkeleton({
   const { t } = useTranslation()
 
   return (
-    <section className={cn('px-12 pb-6', className)} role="status" aria-label={t('loading', { ns: 'common' })}>
+    <section className={cn('px-8 pb-6', className)} role="status" aria-label={t('loading', { ns: 'common' })}>
       <SkeletonContainer>
         <div className="flex min-h-12 items-end justify-between gap-4 pb-2">
           <div className="min-w-0 flex-1">
@@ -52,13 +52,13 @@ export function ExploreHeaderSkeleton() {
 
   return (
     <div role="status" aria-label={t('loading', { ns: 'common' })} className="sticky top-0 z-10 bg-background-body">
-      <div className="px-12 pt-4">
+      <div className="px-8 pt-4">
         <div className="flex min-w-0 flex-col gap-0.5">
           <SkeletonRectangle className="h-6 w-32 animate-pulse" />
           <SkeletonRectangle className="h-3 w-80 animate-pulse" />
         </div>
       </div>
-      <div className="flex items-end justify-between gap-4 px-12 pt-3 pb-3">
+      <div className="flex items-end justify-between gap-4 px-8 pt-3 pb-3">
         <div className="flex min-w-0 flex-1 gap-2">
           {Array.from({ length: 4 }, (_, index) => (
             <SkeletonRectangle key={index} className="h-7 w-24 animate-pulse rounded-lg" />

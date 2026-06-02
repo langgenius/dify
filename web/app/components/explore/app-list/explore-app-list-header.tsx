@@ -27,7 +27,7 @@ export function ExploreAppListHeader({
 
   return (
     <div className="sticky top-0 z-10 bg-background-body">
-      <div className="px-12 pt-4">
+      <div className="px-8 pt-4">
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex min-w-0 items-center">
             <div className="grow truncate system-xl-medium text-text-primary">
@@ -45,7 +45,7 @@ export function ExploreAppListHeader({
         </div>
       </div>
 
-      <div className="flex items-end justify-between gap-4 px-12 pt-3 pb-3">
+      <div className="flex items-end justify-between gap-4 px-8 pt-3 pb-3">
         <Category
           className="min-w-0"
           list={categories}

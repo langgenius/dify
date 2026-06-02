@@ -33,19 +33,20 @@ const ContinueWork = ({
     return null
 
   return (
-    <section className={cn('px-12 pb-6', className)} aria-labelledby="continue-work-title">
-      <div className="flex items-center justify-between">
-        <h2 id="continue-work-title" className="min-w-0 truncate system-xl-semibold text-text-primary">
+    <section className={cn('px-8 pb-6', className)} aria-labelledby="continue-work-title">
+      <div className="flex items-center justify-between pt-2">
+        <h2 id="continue-work-title" className="min-w-0 truncate system-xl-medium text-text-primary">
           {t('continueWork.title', { ns: 'explore' })}
         </h2>
         <Link
           href="/apps"
-          className="ml-4 shrink-0 system-sm-medium text-text-accent"
+          className="ml-4 flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary"
         >
           {t('continueWork.exploreStudio', { ns: 'explore' })}
+          <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
         {apps.map(app => (
           <ContinueWorkItem key={app.id} app={app} />
         ))}
