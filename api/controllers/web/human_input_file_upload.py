@@ -179,7 +179,7 @@ class HumanInputRemoteFileUploadApi(Resource):
             raise BlockedFileExtensionError() from exc
 
         upload_service.record_upload_file(context=context, file_id=upload_file.id)
-        payload1 = FileWithSignedUrl(
+        response = FileWithSignedUrl(
             id=upload_file.id,
             name=upload_file.name,
             size=upload_file.size,
@@ -189,4 +189,4 @@ class HumanInputRemoteFileUploadApi(Resource):
             created_by=upload_file.created_by,
             created_at=int(upload_file.created_at.timestamp()),
         )
-        return payload1.model_dump(mode="json"), 201
+        return response.model_dump(mode="json"), 201
