@@ -20,7 +20,7 @@ from sqlalchemy import (
     orm,
     select,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
@@ -561,6 +561,17 @@ class Workflow(Base):  # bug
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[VariableBase]):
+        self.set_environment_variables(value)
+
+    def set_environment_variables(self, value: Sequence[VariableBase], *, session: Session | None = None) -> None:
+        """Serialize environment variables for storage.
+
+        Secret variables need the tenant public key before they can be stored.
+        Pass ``session`` when the caller owns the transaction, especially from
+        service methods that already loaded the workflow and tenant-scoped app
+        with a specific session.
+        """
+
         if not value:
             self._environment_variables = "{}"
             return
@@ -586,7 +597,9 @@ class Workflow(Base):  # bug
         # encrypt secret variables value
         def encrypt_func(var: VariableBase) -> VariableBase:
             if isinstance(var, SecretVariable):
-                return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
+                return var.model_copy(
+                    update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value, session=session)}
+                )
             else:
                 return var
 

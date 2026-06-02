@@ -1,10 +1,12 @@
 """FastAPI infrastructure assembly for the standalone API v2 process.
 
-Provides PostgreSQL and Redis, also the legacy Flask extension host.
-Database engine and sessionmaker construction lives in ``core.db.session_factory``.
+Builds DB engines, sync/async session makers, Redis, and the Flask extension
+host required by shared services. Engine and sessionmaker construction belongs
+to ``core.db.session_factory`` so API v2 and existing service code share one
+connection policy.
 
-This module still creates a minimal Flask extension host because shared services
-depend on Flask extension state during the migration.
+TODO: remove the Flask extension host after shared services no longer depend on
+Flask extension state for database, storage, Redis, sessions, and cookies.
 """
 
 from __future__ import annotations
@@ -58,22 +60,23 @@ def create_fastapi_infra() -> FastAPIInfra:
 def _create_extension_host_app() -> DifyApp:
     """Create the minimal Flask extension host required by shared services.
 
-    Some existing service-layer code still depends on Flask extension state
-    such as Flask-SQLAlchemy's scoped session and Flask's cookie serializer.
-    This app intentionally does not register HTTP routes, controllers, request
-    hooks, or Socket.IO handlers.
+    Provides extension initialization only. Do not register HTTP routes,
+    request hooks, Socket.IO handlers, or controller modules here.
 
-    TODO: ultimately remove these
+    TODO: replace Flask extension contracts with framework-neutral providers.
     """
 
     app = DifyApp("fastapi_infra")
     app.config.from_mapping(dify_config.model_dump())
 
-    from extensions import ext_database, ext_redis, ext_session_factory, ext_set_secretkey
+    from extensions import ext_database, ext_redis, ext_session_factory, ext_set_secretkey, ext_storage
 
     for extension in (
         ext_database,
         ext_redis,
+        # Generated SECRET_KEY values are persisted through storage, so storage
+        # must exist before ext_set_secretkey resolves an empty SECRET_KEY.
+        ext_storage,
         ext_set_secretkey,
         ext_session_factory,
     ):

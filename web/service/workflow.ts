@@ -9,21 +9,41 @@ import type {
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
-import { get, post } from './base'
+import { get, getConsoleV2, post, postConsoleV2 } from './base'
 import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = ContractWorkflowDraftFeaturesPayload
+export type SyncWorkflowDraftResponse = Partial<CommonResponse> & {
+  id?: string
+  updated_at: number
+  hash: string
+}
+
+type SyncWorkflowDraftPayload = Pick<
+  FetchWorkflowDraftResponse,
+  'graph' | 'features' | 'environment_variables' | 'conversation_variables'
+>
+
+// TODO: Migrate this, especially after the migration for RAG
+// This is used instead of splitting
+// Because too many FE files will be affected
+// This 2 functions are shared between app and RAG workflow drafts
+const shouldUseConsoleV2WorkflowDraft = (url: string) => {
+  return /^\/?apps\/[^/]+\/workflows\/draft$/.test(url)
+}
 
 export const fetchWorkflowDraft = (url: string) => {
-  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+  const request = shouldUseConsoleV2WorkflowDraft(url) ? getConsoleV2 : get
+  return request(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const syncWorkflowDraft = ({ url, params }: {
   url: string
-  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+  params: SyncWorkflowDraftPayload
 }) => {
-  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
+  const request = shouldUseConsoleV2WorkflowDraft(url) ? postConsoleV2 : post
+  return request<SyncWorkflowDraftResponse>(url, { body: params }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {

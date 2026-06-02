@@ -1,4 +1,4 @@
-"""FastAPI dependency providers for shared API v2 infrastructure."""
+"""FastAPI dependencies for shared infrastructure and request-scoped sessions."""
 
 from __future__ import annotations
 
@@ -10,9 +10,8 @@ from flask import Flask
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from api_fastapi.infra import FastAPIInfra
 from extensions.ext_redis import RedisClientWrapper
-
-from .infra import FastAPIInfra
 
 
 def get_fastapi_infra(request: Request) -> FastAPIInfra:
