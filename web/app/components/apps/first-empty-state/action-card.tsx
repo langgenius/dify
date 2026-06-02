@@ -70,9 +70,13 @@ function ActionCardContent({
     return (
       <>
         {badge && (
-          <span className="absolute top-0 right-0 rounded-tr-xl bg-util-colors-indigo-indigo-100 py-1 pr-2 pl-2 system-2xs-medium-uppercase text-util-colors-indigo-indigo-700 uppercase">
-            {badge}
-          </span>
+          <CornerLabel
+            label={badge}
+            className="absolute top-0 right-0 z-5"
+            cornerClassName="text-util-colors-indigo-indigo-100"
+            labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
+            textClassName="text-util-colors-indigo-indigo-700"
+          />
         )}
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section text-text-tertiary">
           {icon}

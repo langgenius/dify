@@ -53,8 +53,8 @@ function DatasetFirstEmptyState() {
         <section className="absolute inset-0 flex items-center justify-center overflow-hidden p-2" aria-labelledby="datasets-first-empty-title">
           <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
             <div className="flex flex-col items-center gap-3">
-              <div className="flex size-14 items-center justify-center rounded-[10px] backdrop-blur-md">
-                <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
+                <div className="flex size-full min-w-px items-center justify-center">
                   <span aria-hidden className="i-ri-book-2-line size-6 text-text-tertiary" />
                 </div>
               </div>

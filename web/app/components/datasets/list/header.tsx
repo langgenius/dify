@@ -65,22 +65,25 @@ const DatasetListHeader = ({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {isCurrentWorkspaceOwner && (
-            <CheckboxWithLabel
-              isChecked={includeAll}
-              onChange={onIncludeAllChange}
-              label={t('allKnowledge', { ns: 'dataset' })}
-              labelClassName="system-md-regular text-text-tertiary"
-              className="h-8"
-              tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
-            />
-          )}
           <TagFilter type="knowledge" value={tagFilterValue} onChange={onTagsChange} onOpenTagManagement={onOpenTagManagement} />
           <SearchInput
             className="w-[200px]"
             value={keywords}
             onChange={onKeywordsChange}
           />
+          {isCurrentWorkspaceOwner && (
+            <>
+              <div className="h-3.5 w-px bg-divider-regular" />
+              <CheckboxWithLabel
+                isChecked={includeAll}
+                onChange={onIncludeAllChange}
+                label={t('allKnowledge', { ns: 'dataset' })}
+                labelClassName="system-md-regular text-text-tertiary"
+                className="h-8"
+                tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
+              />
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isCurrentWorkspaceEditor && (
