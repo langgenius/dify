@@ -4,17 +4,37 @@ on:
   workflow_dispatch:
     inputs:
       cli_ref:
-        description: "Git ref to build the CLI from (default: current branch)"
+        description: "Git ref (default: current branch)"
         type: string
         required: false
+
+      # ── Suite toggles ──────────────────────────────────────────────────────
+      suite_discovery:
+        description: "Run discovery suite (get app / describe app)"
+        type: boolean
+        default: true
+      suite_run:
+        description: "Run run suite (basic / streaming / conversation / file / hitl / cache)"
+        type: boolean
+        default: true
+      suite_auth:
+        description: "Run auth suite (login / logout / status / whoami / devices / use)"
+        type: boolean
+        default: false
+      suite_config:
+        description: "Run config suite"
+        type: boolean
+        default: false
+
+      # ── Case filter ────────────────────────────────────────────────────────
       test_scope:
-        description: "Test scope to run"
+        description: "smoke = [P0] only / full = all cases"
         type: choice
         required: false
-        default: smoke
+        default: full
         options:
-          - smoke      # [P0] cases only — fast
-          - full       # all cases
+          - smoke
+          - full
 
 permissions:
   contents: read
@@ -29,14 +49,12 @@ jobs:
         shell: bash
 
     steps:
-      # ── Checkout ───────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
 
-      # ── Runtime setup ──────────────────────────────────────────────────────
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
@@ -44,9 +62,6 @@ jobs:
         with:
           bun-version: latest
 
-      # Re-initialise pnpm to match the CLI's packageManager (pnpm@11.x).
-      # setup-web installs pnpm@9 via setup-vp; this step overrides it so
-      # the CLI workspace uses the correct version declared in cli/package.json.
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           package_json_field: packageManager
@@ -60,8 +75,7 @@ jobs:
         working-directory: cli
         run: pnpm tree:gen
 
-      # ── Run E2E tests ──────────────────────────────────────────────────────
-      - name: Run E2E tests (${{ inputs.test_scope || 'smoke' }})
+      - name: Run E2E tests
         working-directory: cli
         env:
           DIFY_E2E_HOST:            ${{ secrets.DIFY_E2E_HOST }}
@@ -75,13 +89,44 @@ jobs:
           DIFY_E2E_HITL_APP_ID:     ${{ secrets.DIFY_E2E_HITL_APP_ID }}
           DIFY_E2E_FILE_APP_ID:     ${{ secrets.DIFY_E2E_FILE_APP_ID }}
         run: |
-          if [ "${{ inputs.test_scope }}" = "full" ]; then
-            pnpm test:e2e
-          else
-            pnpm test:e2e:smoke
+          # ── Build file list from suite toggles ─────────────────────────────
+          FILES=()
+          if [ "${{ inputs.suite_discovery }}" = "true" ]; then
+            FILES+=( test/e2e/suites/discovery/**/*.e2e.ts )
+          fi
+          if [ "${{ inputs.suite_run }}" = "true" ]; then
+            FILES+=( test/e2e/suites/run/**/*.e2e.ts )
+          fi
+          if [ "${{ inputs.suite_auth }}" = "true" ]; then
+            # auth/use currently has a known command-path bug; included when explicitly selected
+            FILES+=( test/e2e/suites/auth/status.e2e.ts )
+            FILES+=( test/e2e/suites/auth/whoami.e2e.ts )
+            FILES+=( test/e2e/suites/auth/logout.e2e.ts )
+            FILES+=( test/e2e/suites/auth/devices.e2e.ts )
+            FILES+=( test/e2e/suites/auth/use.e2e.ts )
+          fi
+          if [ "${{ inputs.suite_config }}" = "true" ]; then
+            FILES+=( test/e2e/suites/config/**/*.e2e.ts )
           fi
 
-      # ── Upload results ─────────────────────────────────────────────────────
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No suites selected — nothing to run."
+            exit 0
+          fi
+
+          # ── Apply case filter ───────────────────────────────────────────────
+          NAME_PATTERN=""
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            NAME_PATTERN='--testNamePattern="\[P0\]"'
+          fi
+
+          echo "Running suites: ${FILES[*]}"
+          echo "Scope: ${{ inputs.test_scope }}"
+
+          pnpm vp test --config vitest.e2e.config.ts \
+            $NAME_PATTERN \
+            "${FILES[@]}"
+
       - name: Upload test results on failure
         if: failure()
         uses: actions/upload-artifact@v4
