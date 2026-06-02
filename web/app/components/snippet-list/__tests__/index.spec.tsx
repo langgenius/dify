@@ -7,11 +7,11 @@ import SnippetList from '..'
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
 const mockSetKeywords = vi.hoisted(() => vi.fn())
 const mockSetTagIDs = vi.hoisted(() => vi.fn())
-const mockSetCreatorID = vi.hoisted(() => vi.fn())
+const mockSetCreatorIDs = vi.hoisted(() => vi.fn())
 const mockQueryState = vi.hoisted(() => ({
   tagIDs: [] as string[],
   keywords: '',
-  creatorID: '',
+  creatorIDs: [] as string[],
 }))
 
 vi.mock('@/service/use-snippets', () => ({
@@ -46,7 +46,7 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
     query: mockQueryState,
     setKeywords: mockSetKeywords,
     setTagIDs: mockSetTagIDs,
-    setCreatorID: mockSetCreatorID,
+    setCreatorIDs: mockSetCreatorIDs,
   }),
 }))
 
@@ -61,7 +61,9 @@ vi.mock('@/service/client', () => ({
       },
     },
     systemFeatures: {
-      queryKey: () => ['console', 'systemFeatures'],
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+      },
     },
   },
 }))
@@ -181,7 +183,7 @@ describe('SnippetList', () => {
     vi.clearAllMocks()
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
-    mockQueryState.creatorID = ''
+    mockQueryState.creatorIDs = []
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockUseInfiniteSnippetList.mockReturnValue({
@@ -205,7 +207,7 @@ describe('SnippetList', () => {
   it('passes creator, tag, and search filters to the snippets list query', () => {
     mockQueryState.tagIDs = ['tag-1', 'tag-2']
     mockQueryState.keywords = 'sales'
-    mockQueryState.creatorID = 'creator-1'
+    mockQueryState.creatorIDs = ['creator-1', 'creator-2']
 
     renderList()
 
@@ -214,7 +216,7 @@ describe('SnippetList', () => {
       limit: 30,
       keyword: 'sales',
       tag_ids: ['tag-1', 'tag-2'],
-      creator_id: 'creator-1',
+      creator_ids: ['creator-1', 'creator-2'],
     }, {
       enabled: true,
     })
@@ -238,13 +240,13 @@ describe('SnippetList', () => {
     expect(mockSetKeywords).toHaveBeenCalledWith('')
   })
 
-  it('updates the creator query state as a single creator filter', () => {
+  it('updates the creator query state as a multi creator filter', () => {
     renderList()
 
     fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
     fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
-    expect(mockSetCreatorID).toHaveBeenCalledWith('creator-2')
+    expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
   })
 
   it('hides the create button for non-editors', () => {

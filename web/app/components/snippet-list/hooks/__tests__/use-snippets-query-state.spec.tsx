@@ -19,20 +19,20 @@ describe('useSnippetsQueryState', () => {
     expect(result.current.query).toEqual({
       tagIDs: [],
       keywords: '',
-      creatorID: '',
+      creatorIDs: [],
     })
     expect(typeof result.current.setKeywords).toBe('function')
     expect(typeof result.current.setTagIDs).toBe('function')
-    expect(typeof result.current.setCreatorID).toBe('function')
+    expect(typeof result.current.setCreatorIDs).toBe('function')
   })
 
-  it('should parse URL filters without reading creatorID', () => {
-    const { result } = renderWithAdapter('?tagIDs=tag1;tag2&keywords=search+term&creatorID=creator-1')
+  it('should parse URL filters without creator state', () => {
+    const { result } = renderWithAdapter('?tagIDs=tag1;tag2&keywords=search+term')
 
     expect(result.current.query).toEqual({
       tagIDs: ['tag1', 'tag2'],
       keywords: 'search term',
-      creatorID: '',
+      creatorIDs: [],
     })
   })
 
@@ -74,14 +74,14 @@ describe('useSnippetsQueryState', () => {
     }
   })
 
-  it('should update creator ID in local state without writing to the URL', () => {
+  it('should update creator IDs in local state without writing to the URL', () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
-      result.current.setCreatorID('creator-1')
+      result.current.setCreatorIDs(['creator-1', 'creator-2'])
     })
 
-    expect(result.current.query.creatorID).toBe('creator-1')
+    expect(result.current.query.creatorIDs).toEqual(['creator-1', 'creator-2'])
     expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 })

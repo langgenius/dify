@@ -13,7 +13,7 @@ const snippetListQueryParsers = {
 
 export function useSnippetsQueryState() {
   const [urlQuery, setUrlQuery] = useQueryStates(snippetListQueryParsers)
-  const [creatorID, setCreatorID] = useState('')
+  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
 
   const setKeywords = useCallback((keywords: string) => {
     setUrlQuery({ keywords })
@@ -23,19 +23,19 @@ export function useSnippetsQueryState() {
     setUrlQuery({ tagIDs })
   }, [setUrlQuery])
 
-  const handleSetCreatorID = useCallback((creatorID: string) => {
-    setCreatorID(creatorID)
+  const handleSetCreatorIDs = useCallback((creatorIDs: string[]) => {
+    setCreatorIDs(creatorIDs)
   }, [])
 
   const query = useMemo(() => ({
     ...urlQuery,
-    creatorID,
-  }), [creatorID, urlQuery])
+    creatorIDs,
+  }), [creatorIDs, urlQuery])
 
   return useMemo(() => ({
     query,
     setKeywords,
     setTagIDs,
-    setCreatorID: handleSetCreatorID,
-  }), [handleSetCreatorID, query, setKeywords, setTagIDs])
+    setCreatorIDs: handleSetCreatorIDs,
+  }), [handleSetCreatorIDs, query, setKeywords, setTagIDs])
 }

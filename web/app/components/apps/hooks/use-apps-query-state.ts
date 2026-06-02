@@ -13,7 +13,7 @@ const appListQueryParsers = {
 
 export function useAppsQueryState() {
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const [creatorID, setCreatorID] = useState('')
+  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
 
   const setCategory = useCallback((category: AppListCategory) => {
     setUrlQuery({ category })
@@ -23,19 +23,19 @@ export function useAppsQueryState() {
     setUrlQuery({ keywords })
   }, [setUrlQuery])
 
-  const handleSetCreatorID = useCallback((creatorID: string) => {
-    setCreatorID(creatorID)
+  const handleSetCreatorIDs = useCallback((creatorIDs: string[]) => {
+    setCreatorIDs(creatorIDs)
   }, [])
 
   const query = useMemo(() => ({
     ...urlQuery,
-    creatorID,
-  }), [creatorID, urlQuery])
+    creatorIDs,
+  }), [creatorIDs, urlQuery])
 
   return useMemo(() => ({
     query,
     setCategory,
     setKeywords,
-    setCreatorID: handleSetCreatorID,
-  }), [handleSetCreatorID, query, setCategory, setKeywords])
+    setCreatorIDs: handleSetCreatorIDs,
+  }), [handleSetCreatorIDs, query, setCategory, setKeywords])
 }

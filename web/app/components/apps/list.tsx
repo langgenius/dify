@@ -13,6 +13,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
@@ -55,10 +56,10 @@ const List: FC<Props> = ({
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { category, keywords, creatorID },
+    query: { category, keywords, creatorIDs },
     setCategory,
     setKeywords,
-    setCreatorID,
+    setCreatorIDs,
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
@@ -67,6 +68,7 @@ const List: FC<Props> = ({
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
+  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)
@@ -94,9 +96,9 @@ const List: FC<Props> = ({
     limit: 30,
     name: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(creatorID ? { creator_id: creatorID } : {}),
+    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
     ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, creatorID, debouncedKeywords, tagIDs])
+  }), [category, creatorIDs, debouncedKeywords, tagIDs])
 
   const {
     data,
@@ -132,11 +134,11 @@ const List: FC<Props> = ({
   const anchorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
-      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
+    if (needRefreshAppList === '1') {
+      setNeedRefreshAppList(null)
       refetch()
     }
-  }, [refetch])
+  }, [needRefreshAppList, refetch, setNeedRefreshAppList])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -167,10 +169,6 @@ const List: FC<Props> = ({
     }
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
-
-  const handleCreatorsChange = useCallback((creatorIDs: string[]) => {
-    setCreatorID(creatorIDs.at(-1) ?? '')
-  }, [setCreatorID])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -210,8 +208,8 @@ const List: FC<Props> = ({
               onChange={setCategory}
             />
             <CreatorsFilter
-              value={creatorID ? [creatorID] : []}
-              onChange={handleCreatorsChange}
+              value={creatorIDs}
+              onChange={setCreatorIDs}
             />
             <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <div className="relative w-50">

@@ -26,7 +26,7 @@ type SnippetListParams = {
   limit?: number
   keyword?: string
   tag_ids?: string[]
-  creator_id?: string
+  creator_ids?: string[]
   is_published?: boolean
 }
 
@@ -117,7 +117,7 @@ const normalizeSnippetListParams = (params: SnippetListParams) => {
     limit: params.limit ?? DEFAULT_SNIPPET_LIST_PARAMS.limit,
     ...(params.keyword ? { keyword: params.keyword } : {}),
     ...(params.tag_ids?.length ? { tag_ids: params.tag_ids } : {}),
-    ...(params.creator_id ? { creator_id: params.creator_id } : {}),
+    ...(params.creator_ids?.length ? { creator_ids: params.creator_ids } : {}),
     ...(typeof params.is_published === 'boolean' ? { is_published: params.is_published } : {}),
   }
 }

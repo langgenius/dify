@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -50,10 +50,10 @@ const SnippetList = () => {
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { tagIDs, keywords, creatorID },
+    query: { tagIDs, keywords, creatorIDs },
     setKeywords,
     setTagIDs,
-    setCreatorID,
+    setCreatorIDs,
   } = useSnippetsQueryState()
   const debouncedKeywords = useDebounce(keywords, { wait: SNIPPET_LIST_SEARCH_DEBOUNCE_MS })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -67,8 +67,8 @@ const SnippetList = () => {
     limit: 30,
     keyword: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(creatorID ? { creator_id: creatorID } : {}),
-  }), [creatorID, debouncedKeywords, tagIDs])
+    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
+  }), [creatorIDs, debouncedKeywords, tagIDs])
 
   const {
     data,
@@ -114,10 +114,6 @@ const SnippetList = () => {
     return () => observer?.disconnect()
   }, [error, fetchNextPage, hasNextPage, isCurrentWorkspaceDatasetOperator, isFetchingNextPage, isLoading])
 
-  const handleCreatorsChange = useCallback((creatorIDs: string[]) => {
-    setCreatorID(creatorIDs.at(-1) ?? '')
-  }, [setCreatorID])
-
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const snippets = useMemo<SnippetListItem[]>(() => pages.flatMap(({ data: pageSnippets }) => pageSnippets), [pages])
   const hasAnySnippet = (pages[0]?.total ?? 0) > 0
@@ -128,8 +124,8 @@ const SnippetList = () => {
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background-body px-12 pt-7 pb-5">
         <div className="flex flex-wrap items-center gap-2">
           <CreatorsFilter
-            value={creatorID ? [creatorID] : []}
-            onChange={handleCreatorsChange}
+            value={creatorIDs}
+            onChange={setCreatorIDs}
           />
           <TagFilter type="snippet" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
           <div className="relative w-50">

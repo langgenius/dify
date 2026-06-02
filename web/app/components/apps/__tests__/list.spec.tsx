@@ -56,12 +56,12 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 const mockSetKeywords = vi.fn()
-const mockSetCreatorID = vi.fn()
+const mockSetCreatorIDs = vi.fn()
 const mockSetCategory = vi.fn()
 const mockQueryState = {
   category: 'all',
   keywords: '',
-  creatorID: '',
+  creatorIDs: [] as string[],
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
   isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
@@ -69,7 +69,7 @@ vi.mock('../hooks/use-apps-query-state', () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
-    setCreatorID: mockSetCreatorID,
+    setCreatorIDs: mockSetCreatorIDs,
   }),
 }))
 
@@ -81,7 +81,7 @@ vi.mock('@/service/use-common', () => ({
         { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
       ],
     },
-    setCreatorID: mockSetCreatorID,
+    setCreatorIDs: mockSetCreatorIDs,
   }),
 }))
 
@@ -233,14 +233,14 @@ vi.mock('../footer', () => ({
   },
 }))
 
-let intersectionCallback: IntersectionObserverCallback | null = null
+let intersectionCallbacks: IntersectionObserverCallback[] = []
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
 beforeAll(() => {
   globalThis.IntersectionObserver = class MockIntersectionObserver {
     constructor(callback: IntersectionObserverCallback) {
-      intersectionCallback = callback
+      intersectionCallbacks.push(callback)
     }
 
     observe = mockObserve
@@ -285,9 +285,9 @@ describe('List', () => {
     mockServiceState.isFetchingNextPage = false
     mockQueryState.category = 'all'
     mockQueryState.keywords = ''
-    mockQueryState.creatorID = ''
+    mockQueryState.creatorIDs = []
     mockUseWorkflowOnlineUsers.mockClear()
-    intersectionCallback = null
+    intersectionCallbacks = []
     localStorage.clear()
   })
 
@@ -418,7 +418,7 @@ describe('List', () => {
   describe('App List Query', () => {
     it('should build paged query input from active filters', () => {
       mockQueryState.keywords = 'sales'
-      mockQueryState.creatorID = 'creator-1'
+      mockQueryState.creatorIDs = ['creator-1', 'creator-2']
       mockQueryState.category = AppModeEnum.WORKFLOW
 
       renderList()
@@ -432,7 +432,7 @@ describe('List', () => {
           limit: 30,
           name: 'sales',
           tag_ids: ['tag-1'],
-          creator_id: 'creator-1',
+          creator_ids: ['creator-1', 'creator-2'],
           mode: AppModeEnum.WORKFLOW,
         },
       })
@@ -465,13 +465,13 @@ describe('List', () => {
       expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
     })
 
-    it('should handle creator selection as a single creator filter', () => {
+    it('should handle creator selection as a multi creator filter', () => {
       renderList()
 
       fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
       fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
-      expect(mockSetCreatorID).toHaveBeenCalledWith('creator-2')
+      expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
     })
   })
 
@@ -658,16 +658,18 @@ describe('List', () => {
   })
 
   describe('Infinite Scroll', () => {
-    it('should call fetchNextPage when intersection observer triggers', () => {
+    it('should call fetchNextPage when intersection observer triggers', async () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallback) {
+      await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+
+      if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallback!(
+          intersectionCallbacks.forEach(callback => callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          )
+          ))
         })
       }
 
@@ -678,12 +680,12 @@ describe('List', () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallback) {
+      if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallback!(
+          intersectionCallbacks.forEach(callback => callback(
             [{ isIntersecting: false } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          )
+          ))
         })
       }
 
@@ -695,12 +697,12 @@ describe('List', () => {
       mockServiceState.isLoading = true
       renderList()
 
-      if (intersectionCallback) {
+      if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallback!(
+          intersectionCallbacks.forEach(callback => callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          )
+          ))
         })
       }
 
