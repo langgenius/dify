@@ -211,11 +211,24 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(linkElement).toHaveClass('text-text-accent-light-mode-only')
     })
 
-    it('should use pathname when rendered outside the app detail route segment', () => {
+    it('should not mark logs active on the annotations pathname', () => {
       render(
         <NavLink
           {...mockProps}
           href="/app/123/logs"
+          pathname="/app/123/annotations"
+        />,
+      )
+
+      const linkElement = screen.getByRole('link', { name: 'Orchestrate' })
+      expect(linkElement).not.toHaveClass('bg-components-menu-item-bg-active')
+    })
+
+    it('should use pathname to mark annotations active when rendered outside the app detail route segment', () => {
+      render(
+        <NavLink
+          {...mockProps}
+          href="/app/123/annotations"
           pathname="/app/123/annotations"
         />,
       )

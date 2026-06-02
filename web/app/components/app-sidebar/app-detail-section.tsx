@@ -6,6 +6,8 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
+  RiStickyNoteFill,
+  RiStickyNoteLine,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
@@ -44,6 +46,7 @@ const AppDetailSection = () => {
 
     const appId = appDetail.id
     const isWorkflowApp = appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
+    const supportsAnnotations = appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
 
     return [
       ...(isCurrentWorkspaceEditor
@@ -63,13 +66,18 @@ const AppDetailSection = () => {
       },
       ...(isCurrentWorkspaceEditor
         ? [{
-            name: appDetail.mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
+            name: t('appMenus.logs', { ns: 'common' }),
             href: `/app/${appId}/logs`,
             icon: RiFileList3Line,
             selectedIcon: RiFileList3Fill,
-          }]
+          }, ...(supportsAnnotations
+            ? [{
+                name: t('appMenus.annotations', { ns: 'common' }),
+                href: `/app/${appId}/annotations`,
+                icon: RiStickyNoteLine,
+                selectedIcon: RiStickyNoteFill,
+              }]
+            : [])]
         : []
       ),
       {
