@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "Nieprawidłowy klucz API",
   "modelProvider.item.deleteDesc": "{{modelName}} są używane jako modele wnioskowania systemowego. Niektóre funkcje mogą nie być dostępne po usunięciu. Proszę potwierdź.",
   "modelProvider.item.freeQuota": "LIMIT GRATIS",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Równoważenie obciążenia",
   "modelProvider.loadBalancingDescription": "Zmniejsz presję dzięki wielu zestawom poświadczeń.",
   "modelProvider.loadBalancingHeadline": "Równoważenie obciążenia",

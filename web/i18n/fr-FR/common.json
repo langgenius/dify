@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "Clé API invalide",
   "modelProvider.item.deleteDesc": "{{modelName}} sont utilisés comme modèles de raisonnement système. Certaines fonctions ne seront pas disponibles après la suppression. Veuillez confirmer.",
   "modelProvider.item.freeQuota": "QUOTA GRATUIT",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Équilibrage",
   "modelProvider.loadBalancingDescription": "Réduisez la pression grâce à plusieurs ensembles d’informations d’identification.",
   "modelProvider.loadBalancingHeadline": "Équilibrage",

@@ -59,15 +59,13 @@ const mockQuotaConfig = {
 const renderModelProviderPage = (
   props: {
     enableMarketplace?: boolean
-    fixedWarningAlignment?: 'viewport' | 'content-frame'
     searchText?: string
     stickyToolbar?: boolean
   } = {},
 ) => {
-  const { fixedWarningAlignment, searchText = '', enableMarketplace = true, stickyToolbar = true } = props
+  const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
   return renderWithSystemFeatures((
     <ModelProviderPage
-      fixedWarningAlignment={fixedWarningAlignment}
       searchText={searchText}
       stickyToolbar={stickyToolbar}
     />
@@ -136,7 +134,13 @@ vi.mock('../provider-added-card/quota-panel', () => ({
 }))
 
 vi.mock('../system-model-selector', () => ({
-  default: () => <div data-testid="system-model-selector" />,
+  default: ({ className, notConfigured }: { className?: string, notConfigured?: boolean }) => (
+    <div
+      data-testid="system-model-selector"
+      data-not-configured={String(notConfigured)}
+      className={className}
+    />
+  ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
@@ -295,8 +299,11 @@ describe('ModelProviderPage', () => {
   it('should render main elements', () => {
     renderModelProviderPage()
     expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })).toBeInTheDocument()
-    expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
+    const autoUpdateButton = screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })
+    const systemModelSelector = screen.getByTestId('system-model-selector')
+    expect(autoUpdateButton).toBeInTheDocument()
+    expect(systemModelSelector).toBeInTheDocument()
+    expect(systemModelSelector.compareDocumentPosition(autoUpdateButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
@@ -450,14 +457,17 @@ describe('ModelProviderPage', () => {
       expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
     })
 
-    it('should align the fixed warning to the content frame when requested', () => {
-      const { container } = renderModelProviderPage({ fixedWarningAlignment: 'content-frame' })
+    it('should render the none-configured warning inline with the system model selector', () => {
+      const { container } = renderModelProviderPage()
       const warning = screen.getByText('common.modelProvider.noneConfigured')
-      const warningContainer = warning.closest('.fixed')
+      const warningContainer = warning.closest('.rounded-lg')
+      const systemModelSelector = screen.getByTestId('system-model-selector')
 
-      expect(warningContainer).not.toHaveClass('right-2')
-      expect(warningContainer).toHaveClass('right-0', 'left-[var(--model-provider-warning-left,0px)]')
-      expect(warning.closest('.mx-auto')).toHaveClass('max-w-[1600px]', 'justify-end', 'px-6')
+      expect(warning.closest('.fixed')).toBeNull()
+      expect(warningContainer).toHaveClass('inline-flex', 'bg-components-panel-bg-blur')
+      expect(warningContainer).toContainElement(systemModelSelector)
+      expect(systemModelSelector).toHaveAttribute('data-not-configured', 'true')
+      expect(systemModelSelector).toHaveClass('h-6')
       expect(container.firstElementChild).toHaveClass('relative')
     })
 

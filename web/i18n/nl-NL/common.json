@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "Invalid API key",
   "modelProvider.item.deleteDesc": "{{modelName}} are being used as system reasoning models. Some functions will not be available after removal. Please confirm.",
   "modelProvider.item.freeQuota": "FREE QUOTA",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Load balancing",
   "modelProvider.loadBalancingDescription": "Configure multiple credentials for the model and invoke them automatically. ",
   "modelProvider.loadBalancingHeadline": "Load Balancing",

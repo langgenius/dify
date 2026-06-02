@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "Invalid API key",
   "modelProvider.item.deleteDesc": "{{modelName}} 被用作系统推理模型。删除后部分功能将无法使用。请确认。",
   "modelProvider.item.freeQuota": "免费额度",
+  "modelProvider.learnMore": "了解更多",
   "modelProvider.loadBalancing": "负载均衡",
   "modelProvider.loadBalancingDescription": "为模型配置多组凭据，并自动调用。",
   "modelProvider.loadBalancingHeadline": "负载均衡",

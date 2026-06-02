@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "Cheie API nevalidă",
   "modelProvider.item.deleteDesc": "{{modelName}} sunt utilizate ca modele de raționare a sistemului. Unele funcții nu vor fi disponibile după eliminare. Vă rugăm să confirmați.",
   "modelProvider.item.freeQuota": "COTĂ GRATUITĂ",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Echilibrare",
   "modelProvider.loadBalancingDescription": "Reduceți presiunea cu mai multe seturi de acreditări.",
   "modelProvider.loadBalancingHeadline": "Echilibrare",

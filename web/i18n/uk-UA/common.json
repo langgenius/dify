@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "Недійсний ключ API",
   "modelProvider.item.deleteDesc": "{{modelName}} використовуються як системні моделі міркування. Деякі функції будуть недоступні після видалення. Будь ласка, підтвердьте.",
   "modelProvider.item.freeQuota": "БЕЗКОШТОВНА КВОТА",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Балансування навантаження",
   "modelProvider.loadBalancingDescription": "Зменшіть тиск за допомогою кількох наборів облікових даних.",
   "modelProvider.loadBalancingHeadline": "Балансування навантаження",

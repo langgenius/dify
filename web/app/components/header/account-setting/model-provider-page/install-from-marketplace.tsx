@@ -52,8 +52,8 @@ const InstallFromMarketplace = ({
           <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
           {t('modelProvider.installProvider', { ns: 'common' })}
         </button>
-        <div className="mb-2 flex items-center pt-2">
-          <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
+        <div className="flex items-center gap-1">
+          <span className="system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
           <Link
             target="_blank"
             rel="noopener noreferrer"

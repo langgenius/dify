@@ -442,6 +442,7 @@
   "modelProvider.invalidApiKey": "잘못된 API 키",
   "modelProvider.item.deleteDesc": "{{modelName}}은 (는) 시스템 추론 모델로 사용 중입니다. 제거 후 일부 기능을 사용할 수 없습니다. 확인하시겠습니까?",
   "modelProvider.item.freeQuota": "무료 할당량",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "부하 분산 (Load balancing)",
   "modelProvider.loadBalancingDescription": "여러 자격 증명 세트로 부담을 줄입니다.",
   "modelProvider.loadBalancingHeadline": "로드 밸런싱",

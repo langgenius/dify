@@ -6,7 +6,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -34,7 +34,6 @@ import { providerToPluginId } from './utils'
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
 type Props = {
-  fixedWarningAlignment?: 'viewport' | 'content-frame'
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSearchTextChange?: (value: string) => void
   searchText: string
@@ -78,7 +77,6 @@ function ModelProviderListSkeleton() {
 }
 
 const ModelProviderPage = ({
-  fixedWarningAlignment = 'viewport',
   layout,
   onSearchTextChange,
   searchText,
@@ -90,7 +88,6 @@ const ModelProviderPage = ({
   const {
     canSetPermissions,
   } = useCanSetPluginSettings()
-  const [warningDismissed, setWarningDismissed] = useState(false)
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
@@ -168,6 +165,19 @@ const ModelProviderPage = ({
       ? 'modelProvider.noneConfigured'
       : null
   const showWarning = !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
+  const systemModelSelector = (className: string) => (
+    <SystemModelSelector
+      className={className}
+      notConfigured={showWarning}
+      textGenerationDefaultModel={textGenerationDefaultModel}
+      embeddingsDefaultModel={embeddingsDefaultModel}
+      rerankDefaultModel={rerankDefaultModel}
+      speech2textDefaultModel={speech2textDefaultModel}
+      ttsDefaultModel={ttsDefaultModel}
+      isLoading={isDefaultModelLoading}
+      hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+    />
+  )
 
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(
@@ -184,7 +194,7 @@ const ModelProviderPage = ({
   const toolbar = (
     <div className={stickyToolbar
       ? layout
-        ? 'mb-2 flex items-center justify-between gap-3 bg-components-panel-bg pb-2'
+        ? 'flex w-full items-center justify-between gap-3'
         : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
       : 'mb-2 flex items-center justify-between gap-3'}
     >
@@ -195,54 +205,33 @@ const ModelProviderPage = ({
         onChange={onSearchTextChange ?? noop}
       />
       <div className="flex shrink-0 items-center justify-end gap-2">
+        {showWarning
+          ? (
+              <div className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]">
+                <div className="pointer-events-none absolute inset-[-1px] bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
+                <div className="relative flex shrink-0 items-center gap-1">
+                  <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
+                  <span className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
+                    {t(warningTextKey, { ns: 'common' })}
+                  </span>
+                </div>
+                <div className="relative shrink-0">
+                  {systemModelSelector('h-6 px-1.5 text-xs font-medium')}
+                </div>
+              </div>
+            )
+          : systemModelSelector('h-8 px-3 system-sm-medium')}
         {canSetPermissions && (
           <UpdateSettingDialog
             category={PluginCategoryEnum.model}
           />
         )}
-        <SystemModelSelector
-          className="h-8 px-3 system-sm-medium"
-          notConfigured={showWarning}
-          textGenerationDefaultModel={textGenerationDefaultModel}
-          embeddingsDefaultModel={embeddingsDefaultModel}
-          rerankDefaultModel={rerankDefaultModel}
-          speech2textDefaultModel={speech2textDefaultModel}
-          ttsDefaultModel={ttsDefaultModel}
-          isLoading={isDefaultModelLoading}
-          hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
-        />
       </div>
     </div>
   )
 
   const body = (
     <>
-      {showWarning && !warningDismissed && (
-        <div className={fixedWarningAlignment === 'content-frame'
-          ? 'pointer-events-none fixed top-2 right-0 left-[var(--model-provider-warning-left,0px)] z-50'
-          : 'fixed top-2 right-2 z-50 p-2'}
-        >
-          <div className={fixedWarningAlignment === 'content-frame'
-            ? 'mx-auto box-border flex w-full max-w-[1600px] justify-end px-6 py-2'
-            : undefined}
-          >
-            <div className="pointer-events-auto flex items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]">
-              <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
-              <span className="shrink-0 system-xs-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
-                {t(warningTextKey, { ns: 'common' })}
-              </span>
-              <button
-                type="button"
-                className="flex size-4 shrink-0 items-center justify-center text-text-tertiary hover:text-text-secondary"
-                aria-label={t('operation.close', { ns: 'common' })}
-                onClick={() => setWarningDismissed(true)}
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {isLoadingModelProviders && <ModelProviderListSkeleton />}
       {!isLoadingModelProviders && !configuredProviders.length && (
@@ -267,7 +256,7 @@ const ModelProviderPage = ({
       )}
       {!isLoadingModelProviders && !!filteredNotConfiguredProviders?.length && (
         <>
-          <div className="mb-2 flex items-center pt-2 system-md-semibold text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
+          <div className="mb-2 flex items-center system-md-semibold text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
           <div className="relative">
             {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard
