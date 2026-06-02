@@ -6,12 +6,6 @@ WHEN TO USE
     difyctl resume app <app_id> <form_token> --workflow-run-id <id> \\
       --inputs '{"name":"Alice"}' -o json
 
-ARGUMENTS & FLAGS
-  <form_token>              from the pause JSON
-  --workflow-run-id <id>    from the pause JSON (required)
-  --action <id>             user action; auto-selected if the form has one
-  --inputs / --inputs-file  form values as a JSON object
-
 LOOP
   A resume can pause again (exit 2 with a new form_token). Repeat until
   exit 0. Pass --stream to print events live.

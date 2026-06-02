@@ -9,9 +9,6 @@ DISCOVERY
   decides how you call run app. Use 'difyctl describe app <id>' for the full
   input schema.
 
-FILTERS
-  --mode <mode>   --name <substring>   --tag <name>   --limit <n>   --page <n>
-
 ERROR RECOVERY
   not logged in (exit 4)   difyctl auth login
   empty list               wrong workspace — try -A or --workspace <id>

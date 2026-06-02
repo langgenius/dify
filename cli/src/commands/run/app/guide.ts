@@ -16,18 +16,6 @@ APP MODES
                          JSON object via --inputs.
   agent-chat             Conversational with autonomous tool use.
 
-FLAGS
-  --inputs '{"k":"v"}'   All input variables as one JSON object.
-                           --inputs '{"language":"English","topic":"AI safety"}'
-  --inputs-file path     Load inputs from a JSON file. Mutually exclusive
-                         with --inputs.
-  --file key=@path       Named file input. Supports local files (--file key=@/path/to/file)
-                         and remote URLs (--file key=https://url). Repeatable for multiple
-                         file inputs.
-  --stream               Print output live as tokens/events arrive.
-  --conversation <id>    Resume a conversation (chat/advanced-chat only).
-  --workspace <id>       Target a specific workspace.
-
 HITL PAUSE (exit code 2)
   When a workflow pauses for human input, stdout receives a JSON object
   with status "paused", form_token, workflow_run_id, and resolved_default_values.
