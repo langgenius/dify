@@ -12,10 +12,10 @@ export type ErrorEnvelope = {
     code: string
     message: string
     hint?: string
-    httpStatus?: number
+    http_status?: number
     method?: string
     url?: string
-    rawResponse?: string
+    raw_response?: string
   }
 }
 
@@ -31,14 +31,14 @@ export function formatErrorForCli(err: PrintableError, opts: FormatErrorOptions 
 }
 
 function renderEnvelope(env: ErrorEnvelope): string {
-  const raw = env.error.rawResponse
+  const raw = env.error.raw_response
   if (raw === undefined)
     return JSON.stringify(env)
   if (!isVerbose()) {
-    delete env.error.rawResponse
+    delete env.error.raw_response
     return JSON.stringify(env)
   }
-  env.error.rawResponse = redactBearer(raw)
+  env.error.raw_response = redactBearer(raw)
   return JSON.stringify(env)
 }
 
@@ -50,9 +50,9 @@ function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
     lines.push(`${cs.magenta('hint:')} ${cs.cyan(e.hint)}`)
   if (e.method !== undefined && e.url !== undefined)
     lines.push(`request: ${e.method} ${e.url}`)
-  if (e.httpStatus !== undefined)
-    lines.push(`http_status: ${e.httpStatus}`)
-  if (isVerbose() && e.rawResponse)
-    lines.push(`raw_response: ${redactBearer(e.rawResponse)}`)
+  if (e.http_status !== undefined)
+    lines.push(`http_status: ${e.http_status}`)
+  if (isVerbose() && e.raw_response)
+    lines.push(`raw_response: ${redactBearer(e.raw_response)}`)
   return lines.join('\n')
 }

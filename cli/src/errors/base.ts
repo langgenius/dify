@@ -102,13 +102,13 @@ export class HttpClientError extends BaseError {
   override toEnvelope(): ErrorEnvelope {
     const envelope = super.toEnvelope()
     if (this.httpStatus !== undefined)
-      envelope.error.httpStatus = this.httpStatus
+      envelope.error.http_status = this.httpStatus
     if (this.method !== undefined)
       envelope.error.method = this.method
     if (this.url !== undefined)
       envelope.error.url = this.url
     if (this.rawResponse !== undefined)
-      envelope.error.rawResponse = this.rawResponse
+      envelope.error.raw_response = this.rawResponse
     return envelope
   }
 
