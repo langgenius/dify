@@ -8,9 +8,9 @@ from flask_restx import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import Account
 from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
@@ -133,12 +133,10 @@ class OAuthServerUserAuthorizeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @oauth_server_client_id_required
-    def post(self, oauth_provider_app: OAuthProviderApp):
-        current_user, _ = current_account_with_tenant()
-        account = current_user
-        user_account_id = account.id
-
+    def post(self, oauth_provider_app: OAuthProviderApp, current_user: Account):
+        user_account_id = current_user.id
         code = OAuthServerService.sign_oauth_authorization_code(oauth_provider_app.client_id, user_account_id)
         return jsonable_encoder(
             {

@@ -1,29 +1,30 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../auth/hosts.js'
-import type { AppInfoCache } from '../../cache/app-info.js'
-import type { Command } from '../../framework/command.js'
-import type { IOStreams } from '../../io/streams.js'
-import { META_PROBE_TIMEOUT_MS, MetaClient } from '../../api/meta.js'
-import { loadHosts } from '../../auth/hosts.js'
-import { loadAppInfoCache } from '../../cache/app-info.js'
-import { loadNudgeStore } from '../../cache/nudge-store.js'
-import { resolveConfigDir } from '../../config/dir.js'
-import { BaseError } from '../../errors/base.js'
-import { ErrorCode } from '../../errors/codes.js'
-import { formatErrorForCli } from '../../errors/format.js'
-import { createClient } from '../../http/client.js'
-import { realStreams } from '../../io/streams.js'
-import { hostWithScheme } from '../../util/host.js'
-import { versionInfo } from '../../version/info.js'
-import { maybeNudgeCompat } from '../../version/nudge.js'
+import type { ActiveContext } from '@/auth/hosts'
+import type { AppInfoCache } from '@/cache/app-info'
+import type { Command } from '@/framework/command'
+import type { HttpClient } from '@/http/types'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
+import { notLoggedInError, Registry } from '@/auth/hosts'
+import { loadAppInfoCache } from '@/cache/app-info'
+import { loadNudgeStore } from '@/cache/nudge-store'
+import { getEnv } from '@/env/registry'
+import { formatErrorForCli } from '@/errors/format'
+import { createHttpClient } from '@/http/client'
+import { getTokenStore, tokenKey } from '@/store/manager'
+import { realStreams } from '@/sys/io/streams'
+import { hostWithScheme, openAPIBase } from '@/util/host'
+import { versionInfo } from '@/version/info'
+import { maybeNudgeCompat } from '@/version/nudge'
 import { resolveRetryAttempts } from './global-flags.js'
 
 export type AuthedContext = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly reg: Registry
+  readonly active: ActiveContext
+  readonly store: Store
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
-  readonly configDir: string
   readonly cache?: AppInfoCache
 }
 
@@ -37,45 +38,45 @@ export async function buildAuthedContext(
   cmd: Pick<Command, 'error'>,
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
-  const configDir = resolveConfigDir()
-  const bundle = await loadHosts(configDir)
-  if (bundle === undefined || bundle.tokens?.bearer === undefined || bundle.tokens.bearer === '') {
-    const err = new BaseError({
-      code: ErrorCode.NotLoggedIn,
-      message: 'not logged in',
-      hint: 'run \'difyctl auth login\'',
-    })
-    cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: process.stderr.isTTY }), { exit: err.exit() })
-  }
-
-  const host = hostWithScheme(bundle.current_host, bundle.scheme)
-  const retryAttempts = resolveRetryAttempts({
-    flag: opts.retryFlag,
-    env: (k: string) => process.env[k],
-  })
-  const http = createClient({ host, bearer: bundle.tokens.bearer, retryAttempts })
   const io = realStreams(opts.format ?? '')
+  const reg = Registry.load()
+  const active = reg.resolveActive()
+  if (active === undefined)
+    fail(cmd, opts, io)
 
-  const cache = opts.withCache === true ? await loadAppInfoCache({ configDir }) : undefined
+  const { store } = getTokenStore()
+  const bearer = store.get(tokenKey(active.host, active.email))
+  if (bearer === '')
+    fail(cmd, opts, io)
 
-  await runCompatNudge({ configDir, host, io })
+  const host = hostWithScheme(active.host, active.scheme)
+  const retryAttempts = resolveRetryAttempts({ flag: opts.retryFlag, env: getEnv })
+  const http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts })
 
-  return { bundle, http, host, io, configDir, cache }
+  const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
+
+  await runCompatNudge({ host, io })
+
+  return { reg, active, store, http, host, io, cache }
+}
+
+function fail(cmd: Pick<Command, 'error'>, opts: AuthedContextOptions, io: IOStreams): never {
+  const err = notLoggedInError()
+  cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: io.isErrTTY }), { exit: err.exit() })
 }
 
 // Best-effort nudge: never throws, never blocks. Lives here so every authed
 // command flows through it without per-command wiring.
 async function runCompatNudge(opts: {
-  readonly configDir: string
   readonly host: string
   readonly io: IOStreams
 }): Promise<void> {
   try {
-    const store = await loadNudgeStore({ configDir: opts.configDir })
+    const store = await loadNudgeStore()
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {
-        const http = createClient({ host, timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+        const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
         return new MetaClient(http).serverVersion()
       },
       emit: line => opts.io.err.write(line),

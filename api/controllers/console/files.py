@@ -28,7 +28,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
 from libs.login import login_required
-from models.account import Account
+from models import Account
 from services.file_service import FileService
 
 from . import console_ns

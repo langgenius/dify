@@ -55,7 +55,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.feature_service import FeatureService
 
-ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
 
@@ -66,7 +66,7 @@ _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = Field(
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = Field(
         default="all", description="App mode filter"
     )
     name: str | None = Field(default=None, description="Filter by app name")
@@ -115,7 +115,9 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
+    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"] = Field(
+        ..., description="App mode"
+    )
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
@@ -393,6 +395,8 @@ class AppDetailWithSite(AppDetail):
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
+    # For Agent App type: the roster Agent backing this app (None otherwise).
+    bound_agent_id: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -467,7 +471,8 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self):
+    @with_session(write=False)
+    def get(self, session: Session):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -504,7 +509,7 @@ class AppListApi(Resource):
         draft_trigger_app_ids: set[str] = set()
         if workflow_capable_app_ids:
             draft_workflows = (
-                db.session.execute(
+                session.execute(
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
@@ -573,7 +578,7 @@ class AppApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @get_app_model(mode=None)
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get app detail"""
         app_service = AppService()
 
@@ -581,7 +586,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode
+            app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -598,7 +603,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def put(self, app_model):
+    def put(self, app_model: App):
         """Update app"""
         args = UpdateAppPayload.model_validate(console_ns.payload)
 
@@ -627,7 +632,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def delete(self, app_model):
+    def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
         app_service.delete_app(app_model)
@@ -648,7 +653,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
@@ -709,7 +714,7 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -731,7 +736,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Publish app to Creators Platform"""
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
@@ -762,7 +767,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -784,7 +789,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
@@ -811,7 +816,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model(mode=None)
     @edit_permission_required
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -833,7 +838,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model(mode=None)
-    def post(self, app_model):
+    def post(self, app_model: App):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
@@ -874,7 +879,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_app_model
-    def post(self, app_model):
+    def post(self, app_model: App):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 

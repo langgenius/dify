@@ -4,6 +4,8 @@ import type { FC } from 'react'
 import type { FormInputItem } from '../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -12,7 +14,6 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
 import { useWorkflowVariableType } from '../../../hooks'
 import { BlockEnum } from '../../../types'
-import { isMac } from '../../../utils'
 import AddInputField from './add-input-field'
 
 type FormContentProps = {
@@ -28,14 +29,6 @@ type FormContentProps = {
   availableVars: NodeOutPutVar[]
   availableNodes: Node[]
   readonly?: boolean
-}
-
-const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
-  return <span className={cn('mx-0.5 inline-flex size-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder', className)}>{children}</span>
-}
-
-const CtrlKey: FC = () => {
-  return <Key className={cn('mr-0', !isMac() && 'w-7')}>{isMac() ? '⌘' : 'Ctrl'}</Key>
 }
 
 const FormContent: FC<FormContentProps> = ({
@@ -162,8 +155,8 @@ const FormContent: FC<FormContentProps> = ({
             ns="workflow"
             components={
               {
-                Key: <Key>/</Key>,
-                CtrlKey: <CtrlKey />,
+                Key: <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>,
+                CtrlKey: <Kbd className="mx-0.5 text-text-placeholder">{formatForDisplay('Mod')}</Kbd>,
               }
             }
           />

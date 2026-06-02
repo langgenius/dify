@@ -25,12 +25,13 @@ from controllers.console.wraps import (
     account_initialization_required,
     is_allow_transfer_owner,
     setup_required,
+    with_current_user,
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.member_fields import AccountWithRole, AccountWithRoleList
 from libs.helper import extract_remote_ip
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
@@ -77,7 +78,7 @@ register_response_schema_models(console_ns, SimpleResultDataResponse, Verificati
 def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
     if role != TenantAccountRole.DATASET_OPERATOR:
         return True
-    return FeatureService.get_features(tenant_id=tenant_id).dataset_operator_enabled
+    return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
 
 
 def _normalize_invitee_emails(emails: list[str]) -> list[str]:
@@ -113,7 +114,7 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
     if new_member_count <= 0:
         return
 
-    features = FeatureService.get_features(tenant_id=tenant_id)
+    features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
 
     if dify_config.ENTERPRISE_ENABLED:
         workspace_members = features.workspace_members
@@ -136,8 +137,8 @@ class MemberListApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
-    def get(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
@@ -154,7 +155,8 @@ class MemberInviteEmailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = MemberInvitePayload.model_validate(payload)
 
@@ -163,7 +165,6 @@ class MemberInviteEmailApi(Resource):
         interface_language = args.language
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-        current_user, _ = current_account_with_tenant()
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
@@ -223,8 +224,8 @@ class MemberCancelInviteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, member_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def delete(self, current_user: Account, member_id: UUID):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
@@ -256,14 +257,14 @@ class MemberUpdateRoleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, member_id: UUID):
+    @with_current_user
+    def put(self, current_user: Account, member_id: UUID):
         payload = console_ns.payload or {}
         args = MemberRoleUpdatePayload.model_validate(payload)
         new_role = args.role
 
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(new_role, current_user.current_tenant.id):
@@ -297,8 +298,8 @@ class DatasetOperatorMemberListApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
-    def get(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
@@ -317,13 +318,13 @@ class SendOwnerTransferEmailApi(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = OwnerTransferEmailPayload.model_validate(payload)
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
-        current_user, _ = current_account_with_tenant()
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
@@ -355,11 +356,11 @@ class OwnerTransferCheckApi(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = OwnerTransferCheckPayload.model_validate(payload)
         # check if the current user is the owner of the workspace
-        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
@@ -399,12 +400,12 @@ class OwnerTransfer(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self, member_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, member_id: UUID):
         payload = console_ns.payload or {}
         args = OwnerTransferPayload.model_validate(payload)
 
         # check if the current user is the owner of the workspace
-        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):

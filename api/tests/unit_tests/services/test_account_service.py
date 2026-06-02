@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -436,7 +436,10 @@ class TestAccountService:
         mock_db_dependencies["db"].session.scalar.return_value = mock_tenant_join
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with (
+            patch("services.account_service.datetime") as mock_datetime,
+            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
+        ):
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
@@ -447,6 +450,7 @@ class TestAccountService:
             # Verify results
             assert result == mock_account
             assert mock_account.set_tenant_id.called
+            mock_refresh_last_active.assert_called_once_with(mock_account)
 
     def test_load_user_not_found(self, mock_db_dependencies):
         """Test user loading when user does not exist."""
@@ -483,7 +487,10 @@ class TestAccountService:
         mock_db_dependencies["db"].session.scalar.side_effect = [None, mock_available_tenant]
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with (
+            patch("services.account_service.datetime") as mock_datetime,
+            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
+        ):
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
@@ -495,6 +502,7 @@ class TestAccountService:
             assert result == mock_account
             assert mock_available_tenant.current is True
             self._assert_database_operations_called(mock_db_dependencies["db"])
+            mock_refresh_last_active.assert_called_once_with(mock_account)
 
     def test_load_user_no_tenants(self, mock_db_dependencies):
         """Test user loading when user has no tenants at all."""
@@ -516,6 +524,68 @@ class TestAccountService:
 
             # Verify results
             assert result is None
+
+    def test_refresh_account_last_active_uses_redis_gate_and_conditional_update(self, mock_db_dependencies):
+        """Test last-active refresh is gated in Redis and conditionally written to DB."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        now = datetime(2026, 6, 2, 2, 45, 49)
+        mock_account.last_active_at = now - timedelta(minutes=15)
+
+        with (
+            patch("services.account_service.naive_utc_now", return_value=now),
+            patch("services.account_service.redis_client") as mock_redis_client,
+        ):
+            mock_redis_client.set.return_value = True
+
+            AccountService._refresh_account_last_active(mock_account)
+
+        mock_redis_client.set.assert_called_once_with(
+            "account_last_active_refresh:user-123",
+            1,
+            ex=600,
+            nx=True,
+        )
+        mock_db_dependencies["db"].session.execute.assert_called_once()
+        mock_db_dependencies["db"].session.commit.assert_called_once()
+
+    def test_refresh_account_last_active_skips_db_when_redis_gate_exists(self, mock_db_dependencies):
+        """Test concurrent refresh attempts do not enqueue duplicate DB updates."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        now = datetime(2026, 6, 2, 2, 45, 49)
+        mock_account.last_active_at = now - timedelta(minutes=15)
+
+        with (
+            patch("services.account_service.naive_utc_now", return_value=now),
+            patch("services.account_service.redis_client") as mock_redis_client,
+        ):
+            mock_redis_client.set.return_value = None
+
+            AccountService._refresh_account_last_active(mock_account)
+
+        mock_redis_client.set.assert_called_once_with(
+            "account_last_active_refresh:user-123",
+            1,
+            ex=600,
+            nx=True,
+        )
+        mock_db_dependencies["db"].session.execute.assert_not_called()
+        mock_db_dependencies["db"].session.commit.assert_not_called()
+
+    def test_refresh_account_last_active_skips_recent_account(self, mock_db_dependencies):
+        """Test recent activity does not touch Redis or DB."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        now = datetime(2026, 6, 2, 2, 45, 49)
+        mock_account.last_active_at = now - timedelta(minutes=5)
+
+        with (
+            patch("services.account_service.naive_utc_now", return_value=now),
+            patch("services.account_service.redis_client") as mock_redis_client,
+        ):
+            AccountService._refresh_account_last_active(mock_account)
+
+        mock_redis_client.set.assert_not_called()
+        mock_db_dependencies["db"].session.execute.assert_not_called()
+        mock_db_dependencies["db"].session.commit.assert_not_called()
 
 
 class TestTenantService:
@@ -566,6 +636,52 @@ class TestTenantService:
         """Helper method to verify that specific exception is raised."""
         with pytest.raises(exception_type):
             callable_func(*args, **kwargs)
+
+    # ==================== get_account_role_in_tenant Tests ====================
+    # Backs `require_workspace_role`: None => non-member (gate maps to 404),
+    # otherwise the caller's role (gate maps an out-of-set role to 403).
+
+    def test_get_account_role_in_tenant_returns_role_for_member(self):
+        """A row in TenantAccountJoin yields the caller's role."""
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.ADMIN
+
+        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+
+        assert role == TenantAccountRole.ADMIN
+
+    def test_get_account_role_in_tenant_returns_none_for_non_member(self):
+        """No join row => None, so the gate cannot leak the workspace's existence."""
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+
+        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+
+        assert role is None
+
+    def test_get_account_role_in_tenant_short_circuits_empty_account_id(self):
+        """None/empty account_id (SSO bearer, missing identity) returns None
+        without ever touching the session."""
+        mock_session = MagicMock()
+
+        assert TenantService.get_account_role_in_tenant(mock_session, None, "tenant-1") is None
+        mock_session.execute.assert_not_called()
+
+    def test_get_account_role_in_tenant_query_is_scoped(self):
+        """The lookup must filter on BOTH tenant_id and account_id — otherwise
+        a member of workspace A could read their role for workspace B. Compile
+        the statement and assert both identifiers appear in the WHERE clause."""
+        account_id = "11111111-1111-1111-1111-111111111111"
+        tenant_id = "22222222-2222-2222-2222-222222222222"
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.NORMAL
+
+        TenantService.get_account_role_in_tenant(mock_session, account_id, tenant_id)
+
+        stmt = mock_session.execute.call_args.args[0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert account_id in compiled
+        assert tenant_id in compiled
 
     # ==================== Tenant Creation Tests ====================
 

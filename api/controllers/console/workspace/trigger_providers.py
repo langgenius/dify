@@ -122,12 +122,15 @@ class TriggerSubscriptionListApi(Resource):
     def get(self, provider):
         """List all trigger subscriptions for the current tenant's provider"""
         user = current_user
+        assert isinstance(user, Account)
         assert user.current_tenant_id is not None
 
         try:
             return jsonable_encoder(
                 TriggerProviderService.list_trigger_provider_subscriptions(
-                    tenant_id=user.current_tenant_id, provider_id=TriggerProviderID(provider)
+                    tenant_id=user.current_tenant_id,
+                    provider_id=TriggerProviderID(provider),
+                    user=user,
                 )
             )
         except ValueError as e:

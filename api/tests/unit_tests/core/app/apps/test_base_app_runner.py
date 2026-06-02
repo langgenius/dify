@@ -12,6 +12,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.base_app_runner import AppRunner
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -39,6 +40,23 @@ class _QueueRecorder:
     def publish(self, event, pub_from):
         _ = pub_from
         self.events.append(event)
+
+
+class _ClosableStream:
+    def __init__(self, chunks: list[LLMResultChunk]) -> None:
+        self._chunks = chunks
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if not self._chunks:
+            raise StopIteration
+        return self._chunks.pop(0)
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class TestAppRunner:
@@ -330,6 +348,28 @@ class TestAppRunner:
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
         assert queue.events[-1].llm_result.usage == usage
         exception_logger.assert_called_once()
+
+    def test_handle_invoke_result_stream_closes_generator_when_stopped(self):
+        runner = AppRunner()
+        chunk = LLMResultChunk(
+            model="stream-model",
+            prompt_messages=[AssistantPromptMessage(content="prompt")],
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="a")),
+        )
+        stream = _ClosableStream([chunk])
+
+        queue_manager = SimpleNamespace(
+            publish=MagicMock(side_effect=GenerateTaskStoppedError("stopped")),
+        )
+
+        with pytest.raises(GenerateTaskStoppedError):
+            runner._handle_invoke_result_stream(
+                invoke_result=stream,
+                queue_manager=queue_manager,
+                agent=False,
+            )
+
+        assert stream.closed is True
 
     def test_handle_multimodal_image_content_fallback_return_branch(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()

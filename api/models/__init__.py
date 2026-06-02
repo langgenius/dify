@@ -15,11 +15,16 @@ from .agent import (
     AgentConfigSnapshot,
     AgentIconType,
     AgentKind,
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
+    WorkflowAgentRuntimeSession,
+    WorkflowAgentRuntimeSessionStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .comment import (
@@ -27,6 +32,8 @@ from .comment import (
     WorkflowCommentMention,
     WorkflowCommentReply,
 )
+from .credential_permission import CredentialPermission
+from .credential_permission import CredentialType as CredentialPermissionType
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -48,6 +55,7 @@ from .enums import (
     AppTriggerStatus,
     AppTriggerType,
     CreatorUserRole,
+    PermissionEnum,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
@@ -144,6 +152,9 @@ __all__ = [
     "AgentConfigSnapshot",
     "AgentIconType",
     "AgentKind",
+    "AgentRuntimeSession",
+    "AgentRuntimeSessionOwnerType",
+    "AgentRuntimeSessionStatus",
     "AgentScope",
     "AgentSource",
     "AgentStatus",
@@ -166,6 +177,8 @@ __all__ = [
     "Conversation",
     "ConversationVariable",
     "CreatorUserRole",
+    "CredentialPermission",
+    "CredentialPermissionType",
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
@@ -201,6 +214,7 @@ __all__ = [
     "MessageFile",
     "OAuthAccessToken",
     "OperationLog",
+    "PermissionEnum",
     "PinnedConversation",
     "Provider",
     "ProviderModel",
@@ -235,6 +249,8 @@ __all__ = [
     "Workflow",
     "WorkflowAgentBindingType",
     "WorkflowAgentNodeBinding",
+    "WorkflowAgentRuntimeSession",
+    "WorkflowAgentRuntimeSessionStatus",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
     "WorkflowArchiveLog",

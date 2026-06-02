@@ -4,7 +4,6 @@ import type { InstalledApp } from '@/models/explore'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,6 +12,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { changeLanguage } from '@/i18n-config/client'
 import { AppSourceType, delConversation, pinConversation, renameConversation, unpinConversation, updateFeedback } from '@/service/share'
 import { useInvalidateShareConversations, useShareChatList, useShareConversationName, useShareConversations } from '@/service/use-share'
@@ -141,9 +141,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       }
     }
   }, [appId, setSidebarCollapseState])
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
-    defaultValue: {},
-  })
+  const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {

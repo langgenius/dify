@@ -2,6 +2,15 @@
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
     "rootDir": "src",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@test/*": [
+        "./test/*"
+      ]
+    },
     "types": ["node"],
     "declaration": true,
     "declarationMap": true,

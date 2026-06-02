@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
+from pydantic import BaseModel
+from werkzeug.exceptions import HTTPException
 
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -13,12 +15,17 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     cloud_utm_record,
     enterprise_license_required,
+    model_validate,
     only_edition_cloud,
     only_edition_enterprise,
     only_edition_self_hosted,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
+    with_current_user_id,
 )
-from models.account import AccountStatus
+from models import Account
+from models.account import AccountStatus, TenantAccountRole
 from services.feature_service import LicenseStatus
 
 
@@ -31,6 +38,17 @@ class MockUser(UserMixin):
 
     def get_id(self) -> str:
         return self.id
+
+
+def make_account(account_id: str = "account-1") -> Account:
+    account = Account(
+        name="Test Account",
+        email=f"{account_id}@example.com",
+        status=AccountStatus.ACTIVE,
+    )
+    account.id = account_id
+    account.role = TenantAccountRole.OWNER
+    return account
 
 
 def create_app_with_login():
@@ -84,6 +102,117 @@ class TestAccountInitialization:
                 protected_view()
 
 
+class TestCurrentContextInjection:
+    """Test request context injection decorators."""
+
+    def test_with_current_tenant_id_injects_tenant_id(self):
+        class Handler:
+            @with_current_tenant_id
+            def get(self, current_tenant_id: str):
+                return current_tenant_id
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(MagicMock(), "tenant-123")):
+            assert Handler().get() == "tenant-123"
+
+    def test_with_current_user_injects_account(self):
+        current_user = make_account()
+
+        class Handler:
+            @with_current_user
+            def get(self, injected_user):
+                return injected_user
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
+            assert Handler().get() is current_user
+
+    def test_with_current_user_id_injects_user_id_string(self):
+        current_user = make_account("user-42")
+
+        class Handler:
+            @with_current_user_id
+            def get(self, current_user_id: str):
+                return current_user_id
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
+            result = Handler().get()
+            assert result == "user-42"
+            assert isinstance(result, str)
+
+    def test_stacked_current_context_injectors_preserve_argument_order(self):
+        current_user = make_account()
+
+        class Handler:
+            @with_current_user
+            @with_current_tenant_id
+            def get(self, current_tenant_id: str, injected_user):
+                return current_tenant_id, injected_user
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-123")):
+            assert Handler().get() == ("tenant-123", current_user)
+
+    def test_stacked_user_id_and_tenant_id_injectors(self):
+        current_user = make_account("user-99")
+
+        class Handler:
+            @with_current_user_id
+            @with_current_tenant_id
+            def get(self, current_tenant_id: str, current_user_id: str):
+                return current_user_id, current_tenant_id
+
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-456")):
+            assert Handler().get() == ("user-99", "tenant-456")
+
+
+class TestModelValidationInjection:
+    """Test request model validation decorator."""
+
+    class Payload(BaseModel):
+        name: str
+        count: int
+
+    def test_should_inject_payload_from_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def post(self, payload: TestModelValidationInjection.Payload, item_id: str):
+                return payload, item_id
+
+        with app.test_request_context("/items/item-1", method="POST", json={"name": "alpha", "count": "2"}):
+            payload, item_id = Handler().post(item_id="item-1")
+
+        assert payload == self.Payload(name="alpha", count=2)
+        assert item_id == "item-1"
+
+    def test_should_inject_payload_from_query_params(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def get(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items?name=alpha&count=2", method="GET"):
+            payload = Handler().get()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_raise_unprocessable_entity_for_invalid_payload(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def post(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items", method="POST", json={"name": "alpha"}):
+            with pytest.raises(HTTPException) as exc_info:
+                Handler().post()
+
+        assert exc_info.value.code == 422
+        assert "count" in exc_info.value.description
+
+
 class TestEditionChecks:
     """Test edition-specific decorators"""
 
@@ -114,7 +243,7 @@ class TestEditionChecks:
         # Act & Assert
         with app.test_request_context():
             with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
-                with pytest.raises(Exception) as exc_info:
+                with pytest.raises(HTTPException) as exc_info:
                     cloud_view()
                 assert exc_info.value.code == 404
 
@@ -177,7 +306,7 @@ class TestBillingEnabled:
         with app.test_request_context():
             with patch("controllers.console.wraps.dify_config.BILLING_ENABLED", False):
                 with patch("controllers.console.wraps.FeatureService.get_features") as get_features:
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         billing_view()
 
         assert exc_info.value.code == 403
@@ -204,11 +333,43 @@ class TestBillingResourceLimits:
         with patch(
             "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
         ):
-            with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
+            with patch(
+                "controllers.console.wraps.FeatureService.get_features", return_value=mock_features
+            ) as get_features:
                 result = add_member()
 
         # Assert
         assert result == "member_added"
+        get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    def test_should_load_vector_space_from_dedicated_quota_api(self):
+        """Test vector-space limit checks avoid loading the full feature payload."""
+        # Arrange
+        mock_vector_space = MagicMock()
+        mock_vector_space.limit = 10
+        mock_vector_space.size = 5
+
+        @cloud_edition_billing_resource_check("vector_space")
+        def add_segment():
+            return "segment_added"
+
+        # Act
+        with patch(
+            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
+        ):
+            with (
+                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True),
+                patch(
+                    "controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space
+                ) as get_vector_space,
+                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
+            ):
+                result = add_segment()
+
+        # Assert
+        assert result == "segment_added"
+        get_vector_space.assert_called_once_with("tenant123")
+        get_features.assert_not_called()
 
     def test_should_reject_when_over_resource_limit(self):
         """Test that requests are rejected when over resource limits"""
@@ -230,7 +391,7 @@ class TestBillingResourceLimits:
                 return_value=(MockUser("test_user"), "tenant123"),
             ):
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         add_member()
                     assert exc_info.value.code == 403
                     assert "members has reached the limit" in str(exc_info.value.description)
@@ -255,7 +416,7 @@ class TestBillingResourceLimits:
                 return_value=(MockUser("test_user"), "tenant123"),
             ):
                 with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         upload_document()
                     assert exc_info.value.code == 403
 
@@ -329,7 +490,7 @@ class TestRateLimiting:
                 with patch(
                     "controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit
                 ):
-                    with pytest.raises(Exception) as exc_info:
+                    with pytest.raises(HTTPException) as exc_info:
                         knowledge_request()
 
                     # Verify error

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveRetryAttempts } from './global-flags.js'
+import { resolveRetryAttempts } from './global-flags'
 
 describe('resolveRetryAttempts', () => {
   it('returns flag value when given', () => {

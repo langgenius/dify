@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 export const CURRENT_SCHEMA_VERSION = 1
-export const FILE_NAME = 'config.yml'
 
 export const ALLOWED_FORMATS = ['json', 'yaml', 'table', 'wide', 'name', 'text'] as const
 export type AllowedFormat = (typeof ALLOWED_FORMATS)[number]

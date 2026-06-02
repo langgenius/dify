@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Literal, override
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
-from core.helper.ssrf_proxy import graphon_ssrf_proxy
+from core.file import remote_fetcher
 from core.tools.signature import sign_tool_file
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
@@ -46,7 +46,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
     @override
     def http_get(self, url: str, *, follow_redirects: bool = True) -> HttpResponseProtocol:
-        return graphon_ssrf_proxy.get(url, follow_redirects=follow_redirects)
+        return remote_fetcher.graphon_remote_file_fetcher.get(url, follow_redirects=follow_redirects)
 
     @override
     def storage_load(self, path: str, *, stream: bool = False) -> bytes | Generator:

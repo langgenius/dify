@@ -2,7 +2,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Header from '../signin/_header'
 import ActivateForm from './activateForm'
 

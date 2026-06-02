@@ -25,6 +25,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
@@ -43,9 +44,10 @@ from fields.conversation_fields import (
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import to_timestamp, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService, attach_message_extra_contents
@@ -178,9 +180,9 @@ class ChatMessageListApi(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
         conversation = db.session.scalar(
@@ -257,9 +259,8 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_model):
-        current_user, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         args = MessageFeedbackPayload.model_validate(console_ns.payload)
 
         message_id = str(args.message_id)
@@ -314,7 +315,7 @@ class MessageAnnotationCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         count = db.session.scalar(
             select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
         )
@@ -336,9 +337,9 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model, message_id: UUID):
-        current_user, _ = current_account_with_tenant()
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    @with_current_user
+    def get(self, current_user: Account, app_model: App, message_id: UUID):
         message_id_str = str(message_id)
 
         try:
@@ -379,7 +380,7 @@ class MessageFeedbackExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
+    def get(self, app_model: App):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
         # Import the service function
@@ -417,7 +418,7 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model, message_id: UUID):
+    def get(self, app_model: App, message_id: UUID):
         message_id_str = str(message_id)
 
         message = db.session.scalar(

@@ -346,6 +346,19 @@ class TestWorkflowService:
 
         assert result == mock_workflow
 
+    def test_get_draft_workflow_uses_provided_session(self, workflow_service, mock_db_session):
+        """Test get_draft_workflow can reuse an injected SQLAlchemy session."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
+        session = MagicMock()
+        session.scalar.return_value = mock_workflow
+
+        result = workflow_service.get_draft_workflow(app, session=session)
+
+        assert result == mock_workflow
+        session.scalar.assert_called_once()
+        mock_db_session.session.scalar.assert_not_called()
+
     def test_get_draft_workflow_returns_none(self, workflow_service, mock_db_session):
         """Test get_draft_workflow returns None when no draft exists."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
@@ -369,6 +382,21 @@ class TestWorkflowService:
         result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id)
 
         assert result == mock_workflow
+
+    def test_get_draft_workflow_with_workflow_id_reuses_provided_session(self, workflow_service):
+        """Test get_draft_workflow passes an injected session to published workflow lookup."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        workflow_id = "workflow-123"
+        session = MagicMock()
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(version="v1")
+
+        with patch.object(
+            workflow_service, "get_published_workflow_by_id", return_value=mock_workflow
+        ) as mock_get_published:
+            result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id, session=session)
+
+        assert result == mock_workflow
+        mock_get_published.assert_called_once_with(app, workflow_id, session=session)
 
     # ==================== Get Published Workflow Tests ====================
     # These tests verify retrieval of published workflows (versioned snapshots)

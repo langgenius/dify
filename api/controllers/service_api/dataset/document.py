@@ -12,7 +12,6 @@ from typing import Self
 from uuid import UUID
 
 from flask import request, send_file
-from flask_restx import marshal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -27,7 +26,12 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.common.fields import UrlResponse
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -44,7 +48,13 @@ from core.errors.error import ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from fields.document_fields import document_fields, document_status_fields
+from fields.base import ResponseModel
+from fields.document_fields import (
+    DocumentListResponse,
+    DocumentResponse,
+    DocumentStatusListResponse,
+)
+from libs.helper import dump_response
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
@@ -107,6 +117,44 @@ class DocumentListQuery(BaseModel):
     status: str | None = Field(default=None, description="Document status filter")
 
 
+DOCUMENT_CREATE_BY_FILE_PARAMS = {
+    "dataset_id": "Dataset ID",
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": True,
+        "description": "Document file to upload.",
+    },
+    "data": {
+        "in": "formData",
+        "type": "string",
+        "required": False,
+        "description": "Optional JSON string with document creation settings.",
+    },
+}
+DOCUMENT_UPDATE_BY_FILE_PARAMS = {
+    "dataset_id": "Dataset ID",
+    "document_id": "Document ID",
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": False,
+        "description": "Replacement document file.",
+    },
+    "data": {
+        "in": "formData",
+        "type": "string",
+        "required": False,
+        "description": "Optional JSON string with document update settings.",
+    },
+}
+
+
+class DocumentAndBatchResponse(ResponseModel):
+    document: DocumentResponse
+    batch: str
+
+
 register_enum_models(service_api_ns, RetrievalMethod)
 
 register_schema_models(
@@ -121,7 +169,14 @@ register_schema_models(
     PreProcessingRule,
     Segmentation,
 )
-register_response_schema_models(service_api_ns, UrlResponse)
+register_response_schema_models(
+    service_api_ns,
+    UrlResponse,
+    DocumentResponse,
+    DocumentAndBatchResponse,
+    DocumentListResponse,
+    DocumentStatusListResponse,
+)
 
 
 def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
@@ -188,8 +243,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
         raise ProviderNotInitializeError(ex.description)
     document = documents[0]
 
-    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
-    return documents_and_batch_fields, 200
+    return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
 
 
 def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
@@ -248,8 +302,7 @@ def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID
         raise ProviderNotInitializeError(ex.description)
     document = documents[0]
 
-    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
-    return documents_and_batch_fields, 200
+    return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-text")
@@ -266,6 +319,9 @@ class DocumentAddByTextApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             400: "Bad request - invalid parameters",
         }
+    )
+    @service_api_ns.response(
+        200, "Document created successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
@@ -296,6 +352,9 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
             400: "Bad request - invalid parameters",
         }
     )
+    @service_api_ns.response(
+        200, "Document created successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
+    )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -318,6 +377,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             404: "Document not found",
         }
+    )
+    @service_api_ns.response(
+        200, "Document updated successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -347,6 +409,9 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
             404: "Document not found",
         }
     )
+    @service_api_ns.response(
+        200, "Document updated successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
+    )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
@@ -363,13 +428,16 @@ class DocumentAddByFileApi(DatasetApiResource):
 
     @service_api_ns.doc("create_document_by_file")
     @service_api_ns.doc(description="Create a new document by uploading a file")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=DOCUMENT_CREATE_BY_FILE_PARAMS)
     @service_api_ns.doc(
         responses={
             200: "Document created successfully",
             401: "Unauthorized - invalid API token",
             400: "Bad request - invalid file or parameters",
         }
+    )
+    @service_api_ns.response(
+        200, "Document created successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
@@ -462,8 +530,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
-        return documents_and_batch_fields, 200
+        return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
 
 
 def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
@@ -539,8 +606,7 @@ def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     document = documents[0]
-    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": document.batch}
-    return documents_and_batch_fields, 200
+    return dump_response(DocumentAndBatchResponse, {"document": document, "batch": document.batch}), 200
 
 
 @service_api_ns.route(
@@ -558,13 +624,16 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
             "Use PATCH /datasets/{dataset_id}/documents/{document_id} instead."
         )
     )
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=DOCUMENT_UPDATE_BY_FILE_PARAMS)
     @service_api_ns.doc(
         responses={
             200: "Document updated successfully",
             401: "Unauthorized - invalid API token",
             404: "Document not found",
         }
+    )
+    @service_api_ns.response(
+        200, "Document updated successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -577,13 +646,16 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
 class DocumentListApi(DatasetApiResource):
     @service_api_ns.doc("list_documents")
     @service_api_ns.doc(description="List all documents in a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DocumentListQuery)})
     @service_api_ns.doc(
         responses={
             200: "Documents retrieved successfully",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
         }
+    )
+    @service_api_ns.response(
+        200, "Documents retrieved successfully", service_api_ns.models[DocumentListResponse.__name__]
     )
     def get(self, tenant_id, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
@@ -618,14 +690,14 @@ class DocumentListApi(DatasetApiResource):
         )
 
         response = {
-            "data": marshal(documents, document_fields),
+            "data": documents,
             "has_more": len(documents) == query_params.limit,
             "limit": query_params.limit,
             "total": paginated_documents.total,
             "page": query_params.page,
         }
 
-        return response
+        return dump_response(DocumentListResponse, response)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
@@ -680,6 +752,11 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             404: "Dataset or documents not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Indexing status retrieved successfully",
+        service_api_ns.models[DocumentStatusListResponse.__name__],
+    )
     def get(self, tenant_id, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -729,9 +806,8 @@ class DocumentIndexingStatusApi(DatasetApiResource):
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
             }
-            documents_status.append(marshal(document_dict, document_status_fields))
-        data = {"data": documents_status}
-        return data
+            documents_status.append(document_dict)
+        return dump_response(DocumentStatusListResponse, {"data": documents_status})
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
@@ -890,13 +966,16 @@ class DocumentApi(DatasetApiResource):
 
     @service_api_ns.doc("update_document_by_file")
     @service_api_ns.doc(description="Update an existing document by uploading a file")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=DOCUMENT_UPDATE_BY_FILE_PARAMS)
     @service_api_ns.doc(
         responses={
             200: "Document updated successfully",
             401: "Unauthorized - invalid API token",
             404: "Document not found",
         }
+    )
+    @service_api_ns.response(
+        200, "Document updated successfully", service_api_ns.models[DocumentAndBatchResponse.__name__]
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")

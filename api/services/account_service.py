@@ -119,6 +119,8 @@ class TokenPair(BaseModel):
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
 REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
+ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX = "account_last_active_refresh:"
+ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
 
 
 class AccountService:
@@ -151,6 +153,40 @@ class AccountService:
     @staticmethod
     def _get_account_refresh_token_key(account_id: str) -> str:
         return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
+
+    @staticmethod
+    def _get_account_last_active_refresh_key(account_id: str) -> str:
+        return f"{ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX}{account_id}"
+
+    @staticmethod
+    @redis_fallback(default_return=True)
+    def _should_refresh_account_last_active(account_id: str) -> bool:
+        return bool(
+            redis_client.set(
+                AccountService._get_account_last_active_refresh_key(account_id),
+                1,
+                ex=int(ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL.total_seconds()),
+                nx=True,
+            )
+        )
+
+    @staticmethod
+    def _refresh_account_last_active(account: Account) -> None:
+        now = naive_utc_now()
+        refresh_before = now - ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL
+
+        if account.last_active_at >= refresh_before:
+            return
+
+        if not AccountService._should_refresh_account_last_active(account.id):
+            return
+
+        db.session.execute(
+            update(Account)
+            .where(Account.id == account.id, Account.last_active_at < refresh_before)
+            .values(last_active_at=now, updated_at=func.current_timestamp())
+        )
+        db.session.commit()
 
     @staticmethod
     def _store_refresh_token(refresh_token: str, account_id: str):
@@ -229,9 +265,7 @@ class AccountService:
             available_ta.current = True
             db.session.commit()
 
-        if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
-            account.last_active_at = naive_utc_now()
-            db.session.commit()
+        AccountService._refresh_account_last_active(account)
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         db.session.refresh(account)
@@ -1286,6 +1320,34 @@ class TenantService:
             )
         ).scalar_one_or_none()
         return row is not None
+
+    @staticmethod
+    def get_account_role_in_tenant(
+        session: Session | scoped_session,
+        account_id: uuid.UUID | str | None,
+        tenant_id: str,
+    ) -> TenantAccountRole | None:
+        """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
+
+        Backs ``controllers.openapi.auth.role_gate.require_workspace_role``:
+        the gate maps ``None`` to 404 (non-member — no cross-tenant ID leak)
+        and an out-of-set role to 403, so it never touches the ORM itself.
+
+        ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
+        bearers (no account) collapse to the non-member path. Mirrors the
+        session-injection style of :meth:`account_belongs_to_tenant` rather
+        than :meth:`get_user_role`, which loads full ``Account``/``Tenant``
+        objects against the Flask-scoped ``db.session``.
+        """
+        if not account_id:
+            return None
+        role = session.execute(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        ).scalar_one_or_none()
+        return TenantAccountRole(role) if role is not None else None
 
     @staticmethod
     def get_tenant_by_id(session: Session | scoped_session, tenant_id: str) -> Tenant | None:
