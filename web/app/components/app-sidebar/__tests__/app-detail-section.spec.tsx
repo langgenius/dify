@@ -36,7 +36,7 @@ vi.mock('../app-info/use-app-info-actions', () => ({
 }))
 
 vi.mock('../../base/divider', () => ({
-  default: () => <hr />,
+  default: ({ className }: { className?: string }) => <hr className={className} />,
 }))
 
 vi.mock('../nav-link', () => ({
@@ -66,6 +66,17 @@ describe('AppDetailSection', () => {
       expect(screen.getByRole('link', { name: 'common.appMenus.annotations' })).toHaveAttribute('href', '/app/app-1/annotations')
     })
 
+    it('should render dividers before logs and after annotations for chat apps', () => {
+      // Arrange
+      mockAppMode = 'chat'
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getAllByRole('separator')).toHaveLength(3)
+    })
+
     it('should only render logs navigation for workflow apps', () => {
       // Arrange
       mockAppMode = 'workflow'
@@ -78,6 +89,17 @@ describe('AppDetailSection', () => {
       expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
     })
 
+    it('should render dividers before and after logs for workflow apps', () => {
+      // Arrange
+      mockAppMode = 'workflow'
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getAllByRole('separator')).toHaveLength(3)
+    })
+
     it('should only render logs navigation for completion apps', () => {
       // Arrange
       mockAppMode = 'completion'
@@ -87,6 +109,19 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('href', '/app/app-1/logs')
+      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
+    })
+
+    it('should not render log group dividers for non-editor users', () => {
+      // Arrange
+      mockIsCurrentWorkspaceEditor = false
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getAllByRole('separator')).toHaveLength(1)
+      expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
     })
   })

@@ -13,7 +13,7 @@ import {
   RiTerminalWindowFill,
   RiTerminalWindowLine,
 } from '@remixicon/react'
-import { useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
@@ -30,6 +30,19 @@ type AppDetailNavItem = {
   icon: NavIcon
   selectedIcon: NavIcon
 }
+
+const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
+const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
+
+const renderNavDivider = (key: string) => (
+  <div key={key} className="px-3 py-0.5">
+    <Divider
+      type="horizontal"
+      bgStyle="gradient"
+      className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
+    />
+  </div>
+)
 
 const AppDetailSection = () => {
   const { t } = useTranslation()
@@ -92,6 +105,8 @@ const AppDetailSection = () => {
   if (!appDetail)
     return null
 
+  const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
+
   return (
     <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
       <div className="py-2">
@@ -108,16 +123,24 @@ const AppDetailSection = () => {
         />
       </div>
       <nav className="flex flex-col gap-y-0.5 px-1 py-2">
-        {navigation.map(item => (
-          <NavLink
-            key={item.href}
-            mode="expand"
-            iconMap={{ selected: item.selectedIcon, normal: item.icon }}
-            name={item.name}
-            href={item.href}
-            pathname={pathname}
-          />
-        ))}
+        {navigation.map((item) => {
+          const shouldRenderDividerBefore = isLogsNavItem(item)
+          const shouldRenderDividerAfter = hasAnnotationsNavigation ? isAnnotationsNavItem(item) : isLogsNavItem(item)
+
+          return (
+            <Fragment key={item.href}>
+              {shouldRenderDividerBefore && renderNavDivider(`${item.href}-before`)}
+              <NavLink
+                mode="expand"
+                iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+                name={item.name}
+                href={item.href}
+                pathname={pathname}
+              />
+              {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`)}
+            </Fragment>
+          )
+        })}
       </nav>
     </div>
   )
