@@ -2,7 +2,7 @@ import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '@/errors/base'
+import { isHttpClientError } from '@/errors/base'
 import { AppsClient } from './apps.js'
 
 const LIST_BODY = { page: 1, limit: 20, total: 0, has_more: false, data: [] }
@@ -74,7 +74,7 @@ describe('AppsClient.list', () => {
     stub = await startStubServer(cap => jsonResponder(403, { error: 'forbidden' }, cap))
 
     await expect(makeClient(stub.url).list({ workspaceId: 'ws-1' })).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 403,
+      err => isHttpClientError(err) && err.httpStatus === 403,
     )
   })
 })
