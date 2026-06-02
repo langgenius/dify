@@ -1,25 +1,20 @@
-import builtins
+"""Route tests for the console ping endpoint."""
 
 import pytest
 from flask import Flask
-from flask.views import MethodView
 
-from extensions import ext_fastopenapi
-
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+from controllers.console import bp as console_bp
 
 
 @pytest.fixture
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
     return app
 
 
-def test_console_ping_fastopenapi_returns_pong(app: Flask):
-    ext_fastopenapi.init_app(app)
-
+def test_console_ping_returns_pong(app: Flask):
     client = app.test_client()
     response = client.get("/console/api/ping")
 
