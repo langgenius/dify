@@ -3,9 +3,9 @@
 import type { ReactNode } from 'react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import Loading from '@/app/components/base/loading'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { redirect, usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 const datasetOperatorRedirectRoutes = ['/apps', '/app', '/explore', '/tools'] as const
 

@@ -2,8 +2,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { defaultSystemFeatures } from '@/types/feature'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import { setRuntimeFavicon } from '@/utils/favicon'
 import { basePath } from '@/utils/var'
 

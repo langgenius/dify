@@ -22,10 +22,6 @@ export default antfu(
       '!packages/**',
       '!web/**',
       '!e2e/**',
-      '!cli/**',
-      'cli/context/**',
-      'cli/docs/**',
-      'cli/oclif.manifest.json',
       '!eslint.config.mjs',
       '!package.json',
       '!pnpm-workspace.yaml',
@@ -76,19 +72,6 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
-    },
-  },
-  {
-    files: ['cli/src/**/*.ts'],
-    rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          {
-            group: ['../**', './*/**', '..'],
-            message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
-          },
-        ],
-      }],
     },
   },
 )

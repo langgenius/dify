@@ -30,7 +30,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     systemFeatures: {
-      queryKey: mocks.systemFeaturesQueryKey,
+      get: {
+        queryKey: mocks.systemFeaturesQueryKey,
+      },
     },
     workspaces: {
       current: {

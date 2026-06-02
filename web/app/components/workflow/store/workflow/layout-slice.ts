@@ -1,5 +1,16 @@
 import type { StateCreator } from 'zustand'
-import { getLocalStorageBoolean, getLocalStorageNumber } from '@/utils/local-storage'
+
+const getStoredMaximizeCanvas = () => {
+  if (typeof window === 'undefined')
+    return false
+
+  try {
+    return window.localStorage.getItem('workflow-canvas-maximize') === 'true'
+  }
+  catch {
+    return false
+  }
+}
 
 export type LayoutSliceShape = {
   workflowCanvasWidth?: number
@@ -35,10 +46,10 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   rightPanelWidth: undefined,
   setRightPanelWidth: width => set(state =>
     state.rightPanelWidth === width ? state : ({ rightPanelWidth: width })),
-  nodePanelWidth: getLocalStorageNumber('workflow-node-panel-width', 400),
+  nodePanelWidth: 400,
   setNodePanelWidth: width => set(state =>
     state.nodePanelWidth === width ? state : ({ nodePanelWidth: width })),
-  previewPanelWidth: getLocalStorageNumber('debug-and-preview-panel-width', 400),
+  previewPanelWidth: 400,
   setPreviewPanelWidth: width => set(state =>
     state.previewPanelWidth === width ? state : ({ previewPanelWidth: width })),
   otherPanelWidth: 400,
@@ -50,10 +61,10 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   bottomPanelHeight: 324,
   setBottomPanelHeight: height => set(state =>
     state.bottomPanelHeight === height ? state : ({ bottomPanelHeight: height })),
-  variableInspectPanelHeight: getLocalStorageNumber('workflow-variable-inpsect-panel-height', 320),
+  variableInspectPanelHeight: 320,
   setVariableInspectPanelHeight: height => set(state =>
     state.variableInspectPanelHeight === height ? state : ({ variableInspectPanelHeight: height })),
-  maximizeCanvas: getLocalStorageBoolean('workflow-canvas-maximize'),
+  maximizeCanvas: getStoredMaximizeCanvas(),
   setMaximizeCanvas: maximize => set(state =>
     state.maximizeCanvas === maximize ? state : ({ maximizeCanvas: maximize })),
 })
