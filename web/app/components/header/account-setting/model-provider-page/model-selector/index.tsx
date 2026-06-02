@@ -23,6 +23,7 @@ type ModelSelectorProps = {
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
+  showModelMeta?: boolean
 }
 function ModelSelector({
   defaultModel,
@@ -36,6 +37,7 @@ function ModelSelector({
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
+  showModelMeta,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -127,6 +129,7 @@ function ModelSelector({
           className={triggerClassName}
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+          showModelMeta={showModelMeta}
         />
       </ComboboxTrigger>
       <ComboboxContent
