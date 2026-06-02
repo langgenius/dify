@@ -17,6 +17,7 @@ from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_access_token
+from models.enums import EndUserType
 from models.model import App, EndUser, Site
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
@@ -82,7 +83,7 @@ class PassportResource(Resource):
                 end_user = EndUser(
                     tenant_id=app_model.tenant_id,
                     app_id=app_model.id,
-                    type="browser",
+                    type=EndUserType.BROWSER,
                     is_anonymous=True,
                     session_id=user_id,
                 )
@@ -92,7 +93,7 @@ class PassportResource(Resource):
             end_user = EndUser(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                type="browser",
+                type=EndUserType.BROWSER,
                 is_anonymous=True,
                 session_id=generate_session_id(),
             )
@@ -181,7 +182,7 @@ def exchange_token_for_existing_web_user(
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=True,
             session_id=session_id,
         )
@@ -225,7 +226,7 @@ def _exchange_for_public_app_token(app_model, site, token_decoded):
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=True,
             session_id=generate_session_id(),
         )

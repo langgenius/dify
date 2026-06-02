@@ -205,6 +205,17 @@ class InvokeFrom(StrEnum):
         return source_mapping.get(self, "dev")
 
 
+class EndUserType(StrEnum):
+    """Persisted type values for the ``end_users.type`` column."""
+
+    BROWSER = "browser"
+    MCP = "mcp"
+    OPENAPI = "openapi"
+    SERVICE_API = "service-api"
+    SERVICE_API_LEGACY = "service_api"
+    TRIGGER = "trigger"
+
+
 class DocumentDocType(StrEnum):
     """Document doc_type classification"""
 
