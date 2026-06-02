@@ -40,9 +40,9 @@ const InstallFromMarketplace = ({
   }, [])
 
   return (
-    <div id="model-provider-marketplace" className="mb-2 scroll-mt-4">
-      <Divider className="mt-4! h-px" />
-      <div className="flex items-center justify-between">
+    <div id="model-provider-marketplace" className="flex scroll-mt-4 flex-col gap-2">
+      <Divider className="my-2! h-px" />
+      <div className="flex h-5 items-center justify-between">
         <button
           type="button"
           className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
