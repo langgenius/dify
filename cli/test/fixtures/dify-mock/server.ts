@@ -288,6 +288,12 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const isAgent = app.is_agent === true || app.mode === 'agent-chat'
     const query = body.query ?? ''
     const scenario = getScenario()
+    if (scenario === 'run-422-stale') {
+      return c.json(
+        { error: { code: 'query_not_supported_for_workflow', message: 'query not supported for workflow mode' } },
+        { status: 422 },
+      )
+    }
     if (scenario === 'stream-error') {
       const errSse = sseChunks([{ event: 'error', data: { message: 'boom', status: 503 } }])
       return new Response(errSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
