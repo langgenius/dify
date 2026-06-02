@@ -18,7 +18,7 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.message_entities import PromptMessageContentType, PromptMessageContentUnionTypes
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -153,16 +153,22 @@ class TokenBufferMemory:
 
         messages = list(reversed(thread_messages))
 
+        model_schema = self.model_instance.get_model_schema()
+        supports_vision = model_schema.supports_prompt_content_type(PromptMessageContentType.IMAGE)
+
         curr_message_tokens = 0
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files
-            user_files = db.session.scalars(
-                select(MessageFile).where(
-                    MessageFile.message_id == message.id,
-                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
-                )
-            ).all()
+            if supports_vision:
+                user_files = db.session.scalars(
+                    select(MessageFile).where(
+                        MessageFile.message_id == message.id,
+                        (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
+                    )
+                ).all()
+            else:
+                user_files = []
 
             if user_files:
                 user_prompt_message = self._build_prompt_message_with_files(
@@ -177,9 +183,12 @@ class TokenBufferMemory:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
-            assistant_files = db.session.scalars(
-                select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
-            ).all()
+            if supports_vision:
+                assistant_files = db.session.scalars(
+                    select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
+                ).all()
+            else:
+                assistant_files = []
 
             if assistant_files:
                 assistant_prompt_message = self._build_prompt_message_with_files(

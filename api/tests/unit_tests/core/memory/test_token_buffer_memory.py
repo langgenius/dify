@@ -9,6 +9,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
+    PromptMessageContentType,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -873,6 +874,72 @@ class TestGetHistoryPromptMessages:
         assert user_msg.content == "My query"
         assert isinstance(ai_msg, AssistantPromptMessage)
         assert ai_msg.content == "My answer"
+
+    def test_non_vision_model_skips_file_queries(self):
+        """When model doesn't support vision, file queries are skipped entirely
+        and plain text messages are returned regardless of stored files."""
+        mem = self._make_memory()
+        msg = _make_message(answer="answer text")
+        msg.query = "query text"
+        msg.parent_message_id = None
+
+        mock_schema = MagicMock()
+        mock_schema.supports_prompt_content_type.return_value = False
+        mem.model_instance.get_model_schema = MagicMock(return_value=mock_schema)
+
+        with (
+            patch("core.memory.token_buffer_memory.db") as mock_db,
+            patch(
+                "core.memory.token_buffer_memory.extract_thread_messages",
+                return_value=[msg],
+            ),
+        ):
+            mock_db.session.scalars.return_value.all.return_value = [msg]
+            result = mem.get_history_prompt_messages()
+
+        assert len(result) == 2
+        user_msg, ai_msg = result
+        assert isinstance(user_msg, UserPromptMessage)
+        assert user_msg.content == "query text"
+        assert isinstance(ai_msg, AssistantPromptMessage)
+        assert ai_msg.content == "answer text"
+        mem.model_instance.get_model_schema.assert_called_once()
+        mock_schema.supports_prompt_content_type.assert_called_once_with(PromptMessageContentType.IMAGE)
+
+    def test_vision_model_queries_files(self):
+        """When model supports vision, file queries are executed for each message."""
+        mem = self._make_memory()
+        msg = _make_message(answer="answer text")
+        msg.query = "query text"
+        msg.parent_message_id = None
+
+        mock_schema = MagicMock()
+        mock_schema.supports_prompt_content_type.return_value = True
+        mem.model_instance.get_model_schema = MagicMock(return_value=mock_schema)
+
+        call_count = {"n": 0}
+
+        def scalars_side_effect(stmt):
+            r = MagicMock()
+            if call_count["n"] == 0:
+                r.all.return_value = [msg]  # messages query
+            else:
+                r.all.return_value = []  # file queries
+            call_count["n"] += 1
+            return r
+
+        with (
+            patch("core.memory.token_buffer_memory.db") as mock_db,
+            patch(
+                "core.memory.token_buffer_memory.extract_thread_messages",
+                return_value=[msg],
+            ),
+        ):
+            mock_db.session.scalars.side_effect = scalars_side_effect
+            result = mem.get_history_prompt_messages()
+
+        assert len(result) == 2
+        assert call_count["n"] == 3  # messages + user_files + assistant_files
 
 
 # ===========================================================================
