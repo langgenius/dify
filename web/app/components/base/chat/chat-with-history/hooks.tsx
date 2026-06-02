@@ -21,6 +21,9 @@ import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
+const WEBAPP_SIDEBAR_COLLAPSE_STORAGE_KEY = 'webappSidebarCollapse'
+const rawStorageOptions = { raw: true } as const
+
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
   messages.forEach((item) => {
@@ -116,31 +119,21 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
     setLocaleFromProps()
   }, [appData])
-  const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const localState = localStorage.getItem('webappSidebarCollapse')
-        return localState === 'collapsed'
-      }
-      catch {
-        // localStorage may be disabled in private browsing mode or by security settings
-        // fallback to default value
-        return false
-      }
-    }
-    return false
-  })
+  const [storedSidebarCollapseState, setStoredSidebarCollapseState] = useLocalStorage<string>(
+    WEBAPP_SIDEBAR_COLLAPSE_STORAGE_KEY,
+    undefined,
+    rawStorageOptions,
+  )
+  const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(storedSidebarCollapseState === 'collapsed')
+  useEffect(() => {
+    setSidebarCollapseState(storedSidebarCollapseState === 'collapsed')
+  }, [storedSidebarCollapseState])
   const handleSidebarCollapse = useCallback((state: boolean) => {
     if (appId) {
       setSidebarCollapseState(state)
-      try {
-        localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
-      }
-      catch {
-        // localStorage may be disabled, continue without persisting state
-      }
+      setStoredSidebarCollapseState(state ? 'collapsed' : 'expanded')
     }
-  }, [appId, setSidebarCollapseState])
+  }, [appId, setSidebarCollapseState, setStoredSidebarCollapseState])
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
