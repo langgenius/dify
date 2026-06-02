@@ -2,10 +2,19 @@ import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from '../use-create-snippet'
 
-const mockPush = vi.fn()
-const mockMutateAsync = vi.fn()
-const mockToastSuccess = vi.fn()
-const mockToastError = vi.fn()
+const {
+  mockMutateAsync,
+  mockPush,
+  mockSyncDraftWorkflow,
+  mockToastError,
+  mockToastSuccess,
+} = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
+  mockPush: vi.fn(),
+  mockSyncDraftWorkflow: vi.fn(),
+  mockToastError: vi.fn(),
+  mockToastSuccess: vi.fn(),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -16,6 +25,14 @@ vi.mock('@/service/use-snippets', () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
   }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    snippets: {
+      syncDraftWorkflow: mockSyncDraftWorkflow,
+    },
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -49,6 +66,7 @@ describe('useCreateSnippet', () => {
   describe('Create Flow', () => {
     it('should create snippet with graph and navigate on success', async () => {
       mockMutateAsync.mockResolvedValue({ id: 'snippet-123' })
+      mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
       const graph = {
         nodes: [],
         edges: [],
@@ -81,6 +99,20 @@ describe('useCreateSnippet', () => {
         body: {
           name: 'My snippet',
           description: 'desc',
+          graph,
+          input_fields: [
+            {
+              label: 'topic',
+              variable: 'topic',
+              type: PipelineInputVarType.textInput,
+              required: true,
+            },
+          ],
+        },
+      })
+      expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
+        params: { snippetId: 'snippet-123' },
+        body: {
           graph,
           input_fields: [
             {

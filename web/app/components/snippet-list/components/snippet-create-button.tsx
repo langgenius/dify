@@ -6,51 +6,30 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-snippet'
 import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl-dialog'
-import { useRouter } from '@/next/navigation'
-import {
-  useCreateSnippetMutation,
-} from '@/service/use-snippets'
 
 const SnippetCreateButton = () => {
   const { t } = useTranslation('snippet')
-  const { push } = useRouter()
-  const createSnippetMutation = useCreateSnippetMutation()
+  const {
+    createSnippetMutation,
+    handleCreateSnippet,
+    isCreatingSnippet,
+  } = useCreateSnippet()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  const handleCreateSnippet = ({
-    name,
-    description,
-  }: {
-    name: string
-    description: string
-  }) => {
-    createSnippetMutation.mutate({
-      body: {
-        name,
-        description: description || undefined,
-      },
-    }, {
-      onSuccess: (snippet) => {
-        toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
-        setIsCreateDialogOpen(false)
-        push(`/snippets/${snippet.id}/orchestrate`)
-      },
-    })
-  }
+  const isSubmitting = isCreatingSnippet || createSnippetMutation.isPending
 
   return (
     <>
       <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <PopoverTrigger
           render={(
-            <Button disabled={createSnippetMutation.isPending}>
+            <Button disabled={isSubmitting}>
               <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
               <span>{t('create')}</span>
               <span aria-hidden className="ml-0.5 i-ri-arrow-down-s-line size-4" />
@@ -93,9 +72,12 @@ const SnippetCreateButton = () => {
       {isCreateDialogOpen && (
         <CreateSnippetDialog
           isOpen={isCreateDialogOpen}
-          isSubmitting={createSnippetMutation.isPending}
+          isSubmitting={isSubmitting}
           onClose={() => setIsCreateDialogOpen(false)}
-          onConfirm={handleCreateSnippet}
+          onConfirm={async (payload) => {
+            await handleCreateSnippet(payload)
+            setIsCreateDialogOpen(false)
+          }}
         />
       )}
       {isImportDialogOpen && (

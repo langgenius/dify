@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SnippetCreateButton from '../snippet-create-button'
 
-const { mockPush, mockCreateMutate, mockImportMutateAsync, mockConfirmImportMutateAsync, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+const { mockPush, mockCreateMutateAsync, mockSyncDraftWorkflow, mockImportMutateAsync, mockConfirmImportMutateAsync, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockPush: vi.fn(),
-  mockCreateMutate: vi.fn(),
+  mockCreateMutateAsync: vi.fn(),
+  mockSyncDraftWorkflow: vi.fn(),
   mockImportMutateAsync: vi.fn(),
   mockConfirmImportMutateAsync: vi.fn(),
   mockToastSuccess: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/service/use-snippets', () => ({
   useCreateSnippetMutation: () => ({
-    mutate: mockCreateMutate,
+    mutateAsync: mockCreateMutateAsync,
     isPending: false,
   }),
   useImportSnippetDSLMutation: () => ({
@@ -38,15 +39,22 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    snippets: {
+      syncDraftWorkflow: mockSyncDraftWorkflow,
+    },
+  },
+}))
+
 describe('SnippetCreateButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should open the create dialog and create a snippet from the modal', async () => {
-    mockCreateMutate.mockImplementation((_payload, options?: { onSuccess?: (snippet: { id: string }) => void }) => {
-      options?.onSuccess?.({ id: 'snippet-123' })
-    })
+    mockCreateMutateAsync.mockResolvedValue({ id: 'snippet-123' })
+    mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
 
     render(<SnippetCreateButton />)
 
@@ -62,14 +70,31 @@ describe('SnippetCreateButton', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /workflow\.snippet\.confirm/i }))
 
-    expect(mockCreateMutate).toHaveBeenCalledWith({
+    await waitFor(() => {
+      expect(mockCreateMutateAsync).toHaveBeenCalledWith({
+        body: {
+          name: 'My Snippet',
+          description: 'Useful snippet description',
+          graph: {
+            nodes: [],
+            edges: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+          },
+          input_fields: undefined,
+        },
+      })
+    })
+    expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
+      params: { snippetId: 'snippet-123' },
       body: {
-        name: 'My Snippet',
-        description: 'Useful snippet description',
+        graph: {
+          nodes: [],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        input_fields: undefined,
       },
-    }, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+    })
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
