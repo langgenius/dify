@@ -36,6 +36,10 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
 | `DIFY_AGENT_PLUGIN_DAEMON_URL` | `http://localhost:5002` | Base URL for the Dify plugin daemon. |
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
+| `DIFY_AGENT_SHELLCTL_ENTRYPOINT` | empty | Base URL for the shellctl server used by `dify.shell`; required when runs include the shell layer. |
+| `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token sent to the shellctl server. |
+| `DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL` | empty | Public Dify Agent Server back-proxy base URL reachable from shellctl-managed remote machines; enables `DIFY_AGENT_BACK_PROXY_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Server-wide root secret used to derive shell back-proxy JWE keys; required when `DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL` is set and must be unpadded base64url for 32 bytes. |
 | `DIFY_AGENT_PLUGIN_DAEMON_CONNECT_TIMEOUT` | `10` | Plugin-daemon HTTP connect timeout in seconds. |
 | `DIFY_AGENT_PLUGIN_DAEMON_READ_TIMEOUT` | `600` | Plugin-daemon HTTP read timeout in seconds. |
 | `DIFY_AGENT_PLUGIN_DAEMON_WRITE_TIMEOUT` | `30` | Plugin-daemon HTTP write timeout in seconds. |
@@ -53,6 +57,11 @@ DIFY_AGENT_SHUTDOWN_GRACE_SECONDS=30
 DIFY_AGENT_RUN_RETENTION_SECONDS=259200
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-daemon-key
+DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
+DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
+# Generate with: python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
+DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL=https://agent.example.com/back-proxy
+DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
 ```
 
 Run records and event streams use the same retention. Status writes refresh the

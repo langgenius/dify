@@ -108,7 +108,23 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "assert dify_agent_layers_dify_plugin.__all__ == ['DIFY_PLUGIN_LLM_LAYER_TYPE_ID', 'DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID', 'DifyPluginCredentialValue', 'DifyPluginLLMLayerConfig', 'DifyPluginToolCredentialType', 'DifyPluginToolConfig', 'DifyPluginToolOption', 'DifyPluginToolParameter', 'DifyPluginToolParameterForm', 'DifyPluginToolParameterType', 'DifyPluginToolsLayerConfig', 'DifyPluginToolValue']",
             "assert dify_agent_layers_output.__all__ == ['DIFY_OUTPUT_LAYER_TYPE_ID', 'DifyOutputLayerConfig']",
             "assert dify_agent_layers_shell.__all__ == ['DIFY_SHELL_LAYER_TYPE_ID', 'DifyShellCliToolConfig', 'DifyShellEnvVarConfig', 'DifyShellLayerConfig', 'DifyShellSandboxConfig', 'DifyShellSecretRefConfig']",
+            "assert hasattr(dify_agent_protocol, 'BackProxyConnectRequest')",
         ],
+    )
+
+
+def test_cli_main_import_is_client_safe() -> None:
+    _run_import_check(
+        blocked_imports=[
+            "dify_agent.server",
+            "fastapi",
+            "jwcrypto",
+            "pydantic_settings",
+            "redis",
+            "shell_session_manager",
+        ],
+        imports=["dify_agent.cli.main"],
+        assertions=["assert hasattr(dify_agent_cli_main, 'main')"],
     )
 
 

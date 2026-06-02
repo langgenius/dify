@@ -13,7 +13,8 @@ stateful Dify shell layer, and the Dify plugin business-layer family:
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings are injected through the provider factory for
 ``DifyExecutionContextLayer`` and the optional shellctl entrypoint/auth token plus
-client factory are injected for ``DifyShellLayer``. The resulting ``Compositor``
+client factory plus optional shell back proxy URL/token issuer are injected for
+``DifyShellLayer``. The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
 layer instances inside ``resource_context()``, and never enter session
@@ -37,6 +38,7 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
+from dify_agent.server.tokens.back_proxy import BackProxyTokenCodec
 
 
 type DifyAgentLayerProvider = LayerProvider[Any]
@@ -48,6 +50,8 @@ def create_default_layer_providers(
     plugin_daemon_api_key: str = "",
     shellctl_entrypoint: str | None = None,
     shellctl_auth_token: str | None = None,
+    shell_back_proxy_public_url: str | None = None,
+    shell_back_proxy_token_codec: BackProxyTokenCodec | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers.
 
@@ -58,6 +62,13 @@ def create_default_layer_providers(
     setting explicitly.
     """
     shellctl_token = shellctl_auth_token or ""
+    shell_back_proxy_token_factory = None
+    if shell_back_proxy_token_codec is not None:
+        def shell_back_proxy_token_factory(execution_context: DifyExecutionContextLayerConfig, *, session_id: str | None) -> str:
+            return shell_back_proxy_token_codec.encode_connection_token(
+                execution_context,
+                session_id=session_id,
+            )
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
@@ -76,6 +87,8 @@ def create_default_layer_providers(
                 DifyShellLayerConfig.model_validate(config),
                 shellctl_entrypoint=shellctl_entrypoint,
                 shellctl_client_factory=create_shellctl_client_factory(token=shellctl_token),
+                shell_back_proxy_public_url=shell_back_proxy_public_url,
+                shell_back_proxy_token_factory=shell_back_proxy_token_factory,
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from typing import ClassVar
 
 import pytest
@@ -16,6 +17,10 @@ from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
 from dify_agent.server.app import create_app, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
+
+
+def _base64url_secret(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
 class FakeRedis:
@@ -139,6 +144,8 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         plugin_daemon_api_key="daemon-secret",
         shellctl_entrypoint="http://shellctl",
         shellctl_auth_token="shell-secret",
+        shell_back_proxy_public_url="https://agent.example.com/back-proxy",
+        server_secret_key=_base64url_secret(b"1" * 32),
         plugin_daemon_connect_timeout=1,
         plugin_daemon_read_timeout=2,
         plugin_daemon_write_timeout=3,
@@ -167,6 +174,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert execution_context_layer.daemon_url == "http://plugin-daemon"
         assert execution_context_layer.daemon_api_key == "daemon-secret"
         assert shell_layer.shellctl_entrypoint == "http://shellctl"
+        assert shell_layer.shell_back_proxy_public_url == "https://agent.example.com/back-proxy"
         shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
         assert isinstance(shellctl_client, ShellctlClient)
         assert shellctl_client.token == "shell-secret"
@@ -177,6 +185,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         store = scheduler.store
         assert isinstance(store, RedisRunStore)
         assert store.run_retention_seconds == 7
+        assert any(route.path == "/back-proxy/connections" for route in create_app(settings).routes)
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert FakeRunScheduler.created[0].plugin_daemon_http_client.is_closed is True

@@ -58,15 +58,22 @@ class StaticToolsTestLayer(ToolsLayer):
 
 
 class FakeRunnerShellctlClient:
-    run_calls: list[tuple[str, str | None, float]]
+    run_calls: list[tuple[str, str | None, Mapping[str, str] | None, float]]
     closed: bool
 
     def __init__(self) -> None:
         self.run_calls = []
         self.closed = False
 
-    async def run(self, script: str, *, cwd: str | None = None, timeout: float = 10.0) -> JobResult:
-        self.run_calls.append((script, cwd, timeout))
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None = None,
+        env: Mapping[str, str] | None = None,
+        timeout: float = 10.0,
+    ) -> JobResult:
+        self.run_calls.append((script, cwd, env, timeout))
         return JobResult(
             job_id="mkdir-job",
             status=JobStatusName.EXITED,

@@ -51,10 +51,28 @@ DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
 client on the no-token path. Set it only when the shellctl server is started with
 bearer authentication.
 
+To let commands inside user-visible shell jobs call back to the Dify Agent server
+with `dify-agent ...`, also enable the shell back proxy:
+
+```env
+DIFY_AGENT_SHELL_BACK_PROXY_PUBLIC_URL=https://agent.example.com/back-proxy
+DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
+```
+
+`DIFY_AGENT_SERVER_SECRET_KEY` must be unpadded base64url text for exactly 32
+decoded bytes. One way to generate it is:
+
+```bash
+python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
+```
+
 ## Client request shape
 
-A client adds the shell layer as an ordinary composition layer. The shell layer
-does not need dependencies. A typical run still also includes:
+A client adds the shell layer as an ordinary composition layer. Basic shell jobs
+do not need dependencies. To inject `DIFY_AGENT_BACK_PROXY_URL` and
+`DIFY_AGENT_BACK_PROXY_AUTH_JWE` into user-visible `shell.run` jobs, declare the
+execution-context layer as the shell layer's `execution_context` dependency. A
+typical run still also includes:
 
 - a prompt layer that supplies the task;
 - an execution-context layer carrying tenant/user context;
@@ -109,6 +127,7 @@ product, and a SHA-256 hash of the CSV content.""",
             RunLayerSpec(
                 name="shell",
                 type=DIFY_SHELL_LAYER_TYPE_ID,
+                deps={"execution_context": "execution_context"},
                 config=DifyShellLayerConfig(),
             ),
             RunLayerSpec(
@@ -144,7 +163,12 @@ The same request serialized as JSON has these important layer entries:
     "schema_version": 1,
     "layers": [
       {"name": "prompt", "type": "plain.prompt"},
-      {"name": "shell", "type": "dify.shell", "config": {}},
+      {
+        "name": "shell",
+        "type": "dify.shell",
+        "deps": {"execution_context": "execution_context"},
+        "config": {}
+      },
       {"name": "execution_context", "type": "dify.execution_context"},
       {
         "name": "llm",
@@ -196,7 +220,7 @@ defaults.
 The provided `docker/shellctl/Dockerfile` installs:
 
 - `tmux`, required by `shellctl` to manage shell jobs;
-- `shell-session-manager==2.1.1`, which provides the `shellctl` CLI/server;
+- `shell-session-manager==2.2.0`, which provides the `shellctl` CLI/server;
 - `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
   workspace;
 - a non-root default user named `dify`.
