@@ -1,4 +1,5 @@
 import type { HelpTopic } from './topics'
+import type { CommandEffect } from '@/framework/command'
 import type { CommandDescriptor } from '@/framework/help'
 import type { CommandTree } from '@/framework/registry'
 import { describeCommand } from '@/framework/help'
@@ -64,7 +65,7 @@ HUMAN-IN-THE-LOOP
 }
 
 function safetyBlock(tree: CommandTree): string {
-  const byEffect = (effect: string) =>
+  const byEffect = (effect: CommandEffect) =>
     collectCommands(tree)
       .map(({ command, path }) => describeCommand(command, path.join(' ')))
       .filter(d => d.effect === effect)
