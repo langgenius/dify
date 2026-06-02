@@ -114,6 +114,16 @@ class TokenBufferMemory:
                 prompt_message_contents.append(prompt_message)
             prompt_message_contents.append(TextPromptMessageContent(data=text_content))
 
+            # Filter out content types the current model doesn't support
+            # (e.g., skip image content when model is not a vision model)
+            model_schema = self.model_instance.get_model_schema()
+            prompt_message_contents = [
+                c
+                for c in prompt_message_contents
+                if c.type == PromptMessageContentType.TEXT
+                or model_schema.supports_prompt_content_type(c.type)
+            ]
+
             if is_user_message:
                 return UserPromptMessage(content=prompt_message_contents)
             else:
@@ -153,22 +163,16 @@ class TokenBufferMemory:
 
         messages = list(reversed(thread_messages))
 
-        model_schema = self.model_instance.get_model_schema()
-        supports_vision = model_schema.supports_prompt_content_type(PromptMessageContentType.IMAGE)
-
         curr_message_tokens = 0
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files
-            if supports_vision:
-                user_files = db.session.scalars(
-                    select(MessageFile).where(
-                        MessageFile.message_id == message.id,
-                        (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
-                    )
-                ).all()
-            else:
-                user_files = []
+            user_files = db.session.scalars(
+                select(MessageFile).where(
+                    MessageFile.message_id == message.id,
+                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
+                )
+            ).all()
 
             if user_files:
                 user_prompt_message = self._build_prompt_message_with_files(
@@ -183,12 +187,9 @@ class TokenBufferMemory:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
-            if supports_vision:
-                assistant_files = db.session.scalars(
-                    select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
-                ).all()
-            else:
-                assistant_files = []
+            assistant_files = db.session.scalars(
+                select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
+            ).all()
 
             if assistant_files:
                 assistant_prompt_message = self._build_prompt_message_with_files(
