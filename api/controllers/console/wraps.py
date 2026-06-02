@@ -36,6 +36,33 @@ FIELD_NAME_CODE = "code"
 ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
 
+# Do not use @cache here: a pre-setup False result must not be memoized.
+_setup_required_completed = False
+
+
+def mark_setup_completed() -> None:
+    """Remember in this process that one-time self-hosted setup has completed."""
+    global _setup_required_completed
+
+    _setup_required_completed = True
+
+
+def _is_setup_completed() -> bool:
+    """Check whether setup exists, caching only successful observations.
+
+    Not using @cache because it's difficult to evict and only cache True.
+    """
+    global _setup_required_completed
+
+    if _setup_required_completed:
+        return True
+
+    if db.session.scalar(select(DifySetup).limit(1)):
+        _setup_required_completed = True
+        return True
+
+    return False
+
 
 def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
@@ -219,10 +246,12 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 
 def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Require self-hosted bootstrap setup before serving protected routes."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and not db.session.scalar(select(DifySetup).limit(1)):
+        if dify_config.EDITION == "SELF_HOSTED" and not _is_setup_completed():
             if os.environ.get("INIT_PASSWORD"):
                 raise NotInitValidateError()
             raise NotSetupError()

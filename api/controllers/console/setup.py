@@ -13,7 +13,7 @@ from services.account_service import RegisterService, TenantService
 
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
-from .wraps import only_edition_self_hosted
+from .wraps import mark_setup_completed, only_edition_self_hosted
 
 
 class SetupRequestPayload(BaseModel):
@@ -95,6 +95,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
         ip_address=extract_remote_ip(request),
         language=payload.language,
     )
+    mark_setup_completed()
 
     return SetupResponse(result="success")
 
