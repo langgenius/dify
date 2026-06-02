@@ -32,8 +32,9 @@ export const SKILL_SHELL: SkillShell = {
     + 'interface. Every command supports `-o json` for stable, machine-readable '
     + 'output — always pass it.',
   safetyFraming:
-    'difyctl commands are classified by what they do to remote state. Read-only '
-    + 'commands are safe to call freely and are not listed here. Confirm intent '
-    + 'before any command below, and treat `destructive` commands as irreversible.',
+    'difyctl commands are classified by what they change — remote state or local '
+    + 'files. Read-only commands are safe to call freely and are not listed here. '
+    + 'Confirm intent before any command below, and treat `destructive` commands '
+    + 'as irreversible.',
   workflow: ['auth login', 'get app', 'describe app', 'run app', 'resume app'],
 }

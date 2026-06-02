@@ -11,8 +11,6 @@ export default antfu(
       'docs/**',
       'dist/**',
       'coverage/**',
-      // Generated agent skill; drift is gated by `pnpm skill:check`, not lint.
-      'skill/**',
       ...original,
     ],
     typescript: {

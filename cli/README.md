@@ -42,6 +42,10 @@ Run `difyctl <cmd> --help` for per-command reference.
 
 For agents (and scripting), every help surface is machine-readable: `difyctl help -o json` dumps the whole command tree plus the global contract (exit codes, output formats, error envelope, HITL protocol), and `difyctl <cmd> --help -o json` returns one command's descriptor.
 
+## Agent skill
+
+`difyctl skill init [dir]` writes a cross-agent skill bundle (`SKILL.md` + `reference/`) derived from your installed binary — same source as `help -o json`, just packaged so an agent auto-loads it. With no `dir` it writes `./.claude/skills/difyctl/` (project-level); `--user` targets `~/.claude/skills/difyctl/`. The bundle is generated, not checked in, and always matches your binary; the command prints the path it wrote. If a copy ever looks stale, run `difyctl version` and regenerate.
+
 ## Output formats
 
 | Flag      | Behavior                                               |
