@@ -72,7 +72,7 @@ class HumanInputFileUploadService:
     def issue_upload_token(self, form_token: str) -> HumanInputUploadToken:
         """Create an upload token for an active human input recipient token."""
 
-        with self._session_maker(expire_on_commit=False) as session, session.begin():
+        with self._session_maker() as session, session.begin():
             recipient_model = session.scalar(
                 select(HumanInputFormRecipient)
                 .options(selectinload(HumanInputFormRecipient.form))
@@ -129,7 +129,7 @@ class HumanInputFileUploadService:
     def record_upload_file(self, *, context: HumanInputUploadContext, file_id: str) -> None:
         """Record that a file was uploaded through a specific form upload token."""
 
-        with self._session_maker(expire_on_commit=False) as session, session.begin():
+        with self._session_maker() as session, session.begin():
             session.add(
                 HumanInputFormUploadFile(
                     tenant_id=context.tenant_id,
