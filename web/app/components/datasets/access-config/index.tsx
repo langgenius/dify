@@ -15,7 +15,7 @@ type DatasetAccessConfigPageProps = {
 
 const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) => {
   const { t } = useTranslation()
-  const { data: datasetAccessRulesResponse } = useDatasetAccessRules(datasetId)
+  const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
@@ -42,6 +42,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
             resourceId={datasetId}
             rules={datasetAccessRules}
             canManage={datasetACLCapabilities.canAccessConfig}
+            isLoadingRules={isLoadingDatasetAccessRules}
             title={t('accessRule.datasetTitle', { ns: 'permission' })}
           />
         </div>

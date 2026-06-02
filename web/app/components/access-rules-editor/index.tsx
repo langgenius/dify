@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import AccessRuleRow from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
 import AddRuleTargetsModal from '@/app/components/header/account-setting/access-rules-page/add-rule-targets-modal'
 import { useUpdateAppAccessRuleBindings } from '@/service/access-control/use-app-access-config'
@@ -14,6 +15,7 @@ export type AccessRulesEditorProps = {
   resourceId: string
   rules: AccessPolicyWithBindings[]
   canManage: boolean
+  isLoadingRules?: boolean
   title?: string
   className?: string
 }
@@ -22,6 +24,7 @@ const AccessRulesEditor = ({
   resourceId,
   rules,
   canManage,
+  isLoadingRules = false,
   title,
   className,
 }: AccessRulesEditorProps) => {
@@ -157,30 +160,36 @@ const AccessRulesEditor = ({
         </div>
       </div>
 
-      {rules.length === 0
+      {isLoadingRules
         ? (
-            <div className="px-4 py-8 text-center system-sm-regular text-text-tertiary">
-              {t('accessRule.noRules', { ns: 'permission' })}
+            <div className="px-4 py-8 text-center">
+              <Loading type="app" />
             </div>
           )
-        : (
-            <div className="px-4">
-              {
-                rules.map((rule, index) => (
-                  <AccessRuleRow
-                    key={rule.policy.id}
-                    rule={rule}
-                    canManage={canManage}
-                    bindingTarget="resource"
-                    showMenu={false}
-                    onAddRole={handleAddRole}
-                    onRemove={handleRemoveRole}
-                    className={cn(index > 0 && 'border-t border-divider-subtle')}
-                  />
-                ))
-              }
-            </div>
-          )}
+        : rules.length === 0
+          ? (
+              <div className="px-4 py-8 text-center system-sm-regular text-text-tertiary">
+                {t('accessRule.noRules', { ns: 'permission' })}
+              </div>
+            )
+          : (
+              <div className="px-4">
+                {
+                  rules.map((rule, index) => (
+                    <AccessRuleRow
+                      key={rule.policy.id}
+                      rule={rule}
+                      canManage={canManage}
+                      bindingTarget="resource"
+                      showMenu={false}
+                      onAddRole={handleAddRole}
+                      onRemove={handleRemoveRole}
+                      className={cn(index > 0 && 'border-t border-divider-subtle')}
+                    />
+                  ))
+                }
+              </div>
+            )}
 
       {currentRule && (
         <AddRuleTargetsModal

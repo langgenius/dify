@@ -4,6 +4,7 @@ import AppAccessConfigPage from '../index'
 
 const mockAppAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
+  isLoading: false,
 }))
 
 const mockAppPermissionKeys = vi.hoisted(() => ({
@@ -17,6 +18,7 @@ const mockAccessRulesEditor = vi.hoisted(() => ({
 vi.mock('@/service/access-control/use-app-access-config', () => ({
   useAppAccessRules: vi.fn(() => ({
     data: { items: mockAppAccessRules.items },
+    isLoading: mockAppAccessRules.isLoading,
   })),
 }))
 
@@ -43,6 +45,7 @@ describe('AppAccessConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAppAccessRules.items = []
+    mockAppAccessRules.isLoading = false
     mockAppPermissionKeys.value = []
     mockAccessRulesEditor.props = null
   })
@@ -55,6 +58,14 @@ describe('AppAccessConfigPage', () => {
       expect(screen.getByRole('heading', { name: 'common.settings.appAccessPermissions' })).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('app-1:false')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
+    })
+
+    it('should pass access rule loading state to the editor', () => {
+      mockAppAccessRules.isLoading = true
+
+      render(<AppAccessConfigPage appId="app-1" />)
+
+      expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
     })
 
     it('should allow management when app ACL includes access config permission', () => {

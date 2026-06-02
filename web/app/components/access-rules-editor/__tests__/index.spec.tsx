@@ -163,6 +163,22 @@ describe('AccessRulesEditor resource bindings', () => {
     expect(mockAccessRuleRow.props[0]?.showMenu).toBe(false)
   })
 
+  it('should render loading state before empty or row content', () => {
+    renderWithQueryClient(
+      <AccessRulesEditor
+        resourceId="app-resource-id"
+        title="App access rules"
+        rules={[]}
+        canManage
+        isLoadingRules
+      />,
+    )
+
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.queryByText('permission.accessRule.noRules')).not.toBeInTheDocument()
+    expect(mockAccessRuleRow.props).toHaveLength(0)
+  })
+
   it('should pass locked bindings to the add targets modal', () => {
     const rule = createRule('app')
     rule.roles = [{

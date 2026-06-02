@@ -4,6 +4,7 @@ import DatasetAccessConfigPage from '../index'
 
 const mockDatasetAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
+  isLoading: false,
 }))
 
 const mockDatasetPermissionKeys = vi.hoisted(() => ({
@@ -17,6 +18,7 @@ const mockAccessRulesEditor = vi.hoisted(() => ({
 vi.mock('@/service/access-control/use-dataset-access-config', () => ({
   useDatasetAccessRules: vi.fn(() => ({
     data: { items: mockDatasetAccessRules.items },
+    isLoading: mockDatasetAccessRules.isLoading,
   })),
 }))
 
@@ -43,6 +45,7 @@ describe('DatasetAccessConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDatasetAccessRules.items = []
+    mockDatasetAccessRules.isLoading = false
     mockDatasetPermissionKeys.value = []
     mockAccessRulesEditor.props = null
   })
@@ -55,6 +58,14 @@ describe('DatasetAccessConfigPage', () => {
       expect(screen.getByRole('heading', { name: 'common.settings.knowledgeBaseAccessPermissions' })).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('dataset-1:false')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
+    })
+
+    it('should pass access rule loading state to the editor', () => {
+      mockDatasetAccessRules.isLoading = true
+
+      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+
+      expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
     })
 
     it('should allow management when dataset ACL includes access config permission', () => {

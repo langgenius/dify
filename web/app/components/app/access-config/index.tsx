@@ -15,7 +15,7 @@ type AppAccessConfigPageProps = {
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const { t } = useTranslation()
-  const { data: appAccessRulesResponse } = useAppAccessRules(appId)
+  const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId)
   const appDetail = useAppStore(state => state.appDetail)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
@@ -42,6 +42,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
             resourceId={appId}
             rules={appAccessRules}
             canManage={appACLCapabilities.canAccessConfig}
+            isLoadingRules={isLoadingAppAccessRules}
             title={t('accessRule.appTitle', { ns: 'permission' })}
           />
         </div>
