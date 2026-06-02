@@ -6,7 +6,7 @@ import json
 import threading
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -802,17 +802,36 @@ def test_generate_tool_icon_urls_for_builtin_and_plugin():
 def test_generate_tool_icon_urls_for_workflow_and_api():
     workflow_provider = SimpleNamespace(icon='{"background": "#222", "content": "W"}')
     api_provider = SimpleNamespace(icon='{"background": "#333", "content": "A"}')
+    mock_engine = object()
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.scalar.side_effect = [workflow_provider, api_provider]
-        assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {"background": "#222", "content": "W"}
-        assert ToolManager.generate_api_tool_icon_url("tenant-1", "api-1") == {"background": "#333", "content": "A"}
+        mock_db.engine = mock_engine
+        with patch("core.tools.tool_manager.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session.scalar.side_effect = [workflow_provider, api_provider]
+            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
+            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
+            assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "wf-1") == {
+                "background": "#222",
+                "content": "W",
+            }
+            assert ToolManager.generate_api_tool_icon_url("tenant-1", "api-1") == {"background": "#333", "content": "A"}
+            # Verify sessions are created with the engine
+            assert mock_session_cls.call_count == 2
+            mock_session_cls.assert_called_with(mock_engine, expire_on_commit=False)
 
 
 def test_generate_tool_icon_urls_missing_workflow_and_api_use_default():
+    mock_engine = object()
     with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.session.scalar.return_value = None
-        assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
-        assert ToolManager.generate_api_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
+        mock_db.engine = mock_engine
+        with patch("core.tools.tool_manager.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session.scalar.return_value = None
+            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
+            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
+            assert ToolManager.generate_workflow_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
+            assert ToolManager.generate_api_tool_icon_url("tenant-1", "missing")["background"] == "#252525"
+            assert mock_session_cls.call_count == 2
 
 
 def test_get_tool_icon_for_builtin_provider_variants():

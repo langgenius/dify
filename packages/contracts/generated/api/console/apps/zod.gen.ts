@@ -86,6 +86,31 @@ export const zAgentComposerValidateResponse = z.object({
 })
 
 /**
+ * AgentAppFeaturesRequest
+ *
+ * Presentation features configurable on an Agent App.
+ *
+ * All fields are optional; an omitted field is reset to its disabled/empty
+ * default (the config form sends the full desired feature state on save).
+ */
+export const zAgentAppFeaturesRequest = z.object({
+  opening_statement: z.string().nullish(),
+  retriever_resource: z.record(z.string(), z.unknown()).nullish(),
+  sensitive_word_avoidance: z.record(z.string(), z.unknown()).nullish(),
+  speech_to_text: z.record(z.string(), z.unknown()).nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: z.record(z.string(), z.unknown()).nullish(),
+  text_to_speech: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -169,19 +194,12 @@ export const zSuggestedQuestionsResponse = z.object({
 })
 
 /**
- * SimpleResultResponse
- */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
-})
-
-/**
  * CompletionMessagePayload
  */
 export const zCompletionMessagePayload = z.object({
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()),
+  model_config: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
   retriever_from: z.string().optional().default('dev'),
@@ -623,7 +641,7 @@ export const zCreateAppPayload = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: zIconType.optional(),
-  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  mode: z.enum(['advanced-chat', 'agent', 'agent-chat', 'chat', 'completion', 'workflow']),
   name: z.string().min(1),
 })
 
@@ -799,6 +817,24 @@ export const zAgentComposerSoulCandidatesResponse = z.object({
  */
 export const zComposerCandidateCapabilities = z.object({
   human_roster_available: z.boolean().optional().default(false),
+})
+
+/**
+ * AgentReferencingWorkflowResponse
+ */
+export const zAgentReferencingWorkflowResponse = z.object({
+  app_id: z.string(),
+  app_mode: z.string(),
+  app_name: z.string(),
+  node_ids: z.array(z.string()).optional(),
+  workflow_id: z.string(),
+})
+
+/**
+ * AgentReferencingWorkflowsResponse
+ */
+export const zAgentReferencingWorkflowsResponse = z.object({
+  data: z.array(zAgentReferencingWorkflowResponse).optional(),
 })
 
 /**
@@ -1415,6 +1451,7 @@ export const zAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
   api_base_url: z.string().nullish(),
   app_model_config: zModelConfig.optional(),
+  bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   deleted_tools: z.array(zDeletedTool).optional(),
@@ -2378,7 +2415,16 @@ export const zGetAppsQuery = z.object({
   is_created_by_me: z.boolean().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   mode: z
-    .enum(['advanced-chat', 'agent-chat', 'all', 'channel', 'chat', 'completion', 'workflow'])
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'all',
+      'channel',
+      'chat',
+      'completion',
+      'workflow',
+    ])
     .optional()
     .default('all'),
   name: z.string().nullish(),
@@ -2606,6 +2652,26 @@ export const zPostAppsByAppIdAgentComposerValidatePath = z.object({
  * Agent app composer validation result
  */
 export const zPostAppsByAppIdAgentComposerValidateResponse = zAgentComposerValidateResponse
+
+export const zPostAppsByAppIdAgentFeaturesBody = zAgentAppFeaturesRequest
+
+export const zPostAppsByAppIdAgentFeaturesPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Features updated successfully
+ */
+export const zPostAppsByAppIdAgentFeaturesResponse = zSimpleResultResponse
+
+export const zGetAppsByAppIdAgentReferencingWorkflowsPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Referencing workflows listed successfully
+ */
+export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),

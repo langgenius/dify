@@ -1,6 +1,6 @@
 import type { WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
 import { describe, expect, it } from 'vitest'
-import { newWorkspaceObject, WORKSPACE_MODE_KEY, WorkspaceListOutput, WorkspaceRow } from './handlers'
+import { WorkspaceListOutput, WorkspaceRow } from './handlers'
 
 function env(): WorkspaceListResponse {
   return {
@@ -12,12 +12,6 @@ function env(): WorkspaceListResponse {
 }
 
 describe('get/workspace handlers', () => {
-  it('newWorkspaceObject mode = workspace + raw passthrough', () => {
-    const obj = newWorkspaceObject(env())
-    expect(obj.mode()).toBe(WORKSPACE_MODE_KEY)
-    expect(obj.raw().workspaces[0]?.id).toBe('ws-1')
-  })
-
   it('WorkspaceRow defines table, name, and json print shapes', () => {
     const row = new WorkspaceRow('ws-1', 'Default', 'owner', 'normal', true)
     expect(row.tableRow()).toEqual(['ws-1', 'Default', 'owner', 'normal', '*'])

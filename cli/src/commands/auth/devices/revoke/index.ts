@@ -26,7 +26,9 @@ export default class DevicesRevoke extends DifyCommand {
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     await runDevicesRevoke({
       io: ctx.io,
-      bundle: ctx.bundle,
+      reg: ctx.reg,
+      active: ctx.active,
+      store: ctx.store,
       http: ctx.http,
       target: args.target,
       all: flags.all,

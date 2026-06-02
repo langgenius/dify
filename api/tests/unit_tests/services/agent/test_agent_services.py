@@ -662,3 +662,100 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
         ComposerConfigValidator.validate_node_job_dict(
             {"declared_outputs": [{"name": "matrix", "type": "array", "array_item": {"type": "array"}}]}
         )
+
+
+class TestAgentAppBackingAgent:
+    """S1: an Agent App (mode=agent) is backed 1:1 by a roster Agent linked via
+    ``Agent.app_id``. ``AppService.create_app`` builds the backing agent inside
+    its own transaction, so the helper must add+flush without committing."""
+
+    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        agent = service.create_backing_agent_for_app(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            app_id="app-1",
+            name="Iris",
+            description="clarifier",
+        )
+
+        # Agent is bound to the app and is a roster/agent_app entry.
+        assert agent.app_id == "app-1"
+        assert agent.scope == AgentScope.ROSTER
+        assert agent.source == AgentSource.AGENT_APP
+        assert agent.status == AgentStatus.ACTIVE
+        assert agent.agent_kind == AgentKind.DIFY_AGENT
+        assert agent.name == "Iris"
+        # A v1 snapshot + revision are seeded and wired as the active version.
+        snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
+        assert len(snapshots) == 1
+        assert snapshots[0].version == 1
+        assert agent.active_config_snapshot_id == snapshots[0].id
+        revisions = [
+            a for a in session.added if getattr(a, "operation", None) == AgentConfigRevisionOperation.CREATE_VERSION
+        ]
+        assert len(revisions) == 1
+        # Caller (AppService.create_app) owns the commit — helper must not commit.
+        assert session.commits == 0
+
+    def test_get_app_backing_agent_queries_active_agent_app_agent(self):
+        sentinel = SimpleNamespace(id="agent-1", app_id="app-1")
+        session = FakeSession(scalar=[sentinel])
+        service = AgentRosterService(session)
+
+        result = service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert result is sentinel
+
+    def test_get_app_backing_agent_returns_none_when_unbound(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None
+
+
+class TestListWorkflowsReferencingAppAgent:
+    def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [
+            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-b"),
+            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-a"),
+            SimpleNamespace(app_id="wf-app-2", workflow_id="wf-2", node_id="node-a"),
+        ]
+        apps = [
+            SimpleNamespace(id="wf-app-1", name="Beta Flow", mode="workflow"),
+            SimpleNamespace(id="wf-app-2", name="Alpha Flow", mode="advanced-chat"),
+        ]
+        # scalar -> backing agent; scalars -> bindings, then resolved apps.
+        session = FakeSession(scalar=[agent], scalars=[bindings, apps])
+        service = AgentRosterService(session)
+
+        result = service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert [r["app_name"] for r in result] == ["Alpha Flow", "Beta Flow"]
+        beta = next(r for r in result if r["app_id"] == "wf-app-1")
+        assert beta["node_ids"] == ["node-a", "node-b"]  # deduped + sorted
+        assert beta["workflow_id"] == "wf-1"
+
+    def test_returns_empty_when_no_backing_agent(self):
+        session = FakeSession()  # scalar() -> None
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-x") == []
+
+    def test_returns_empty_when_no_bindings(self):
+        agent = SimpleNamespace(id="agent-1")
+        session = FakeSession(scalar=[agent], scalars=[[]])
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
+
+    def test_skips_orphaned_binding_whose_app_is_gone(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [SimpleNamespace(app_id="wf-app-gone", workflow_id="wf-9", node_id="node-a")]
+        session = FakeSession(scalar=[agent], scalars=[bindings, []])  # no apps resolved
+        service = AgentRosterService(session)
+
+        assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []

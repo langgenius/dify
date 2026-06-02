@@ -1,7 +1,8 @@
 import type { HttpClient } from '@/http/types'
-import { loadHosts } from '@/auth/hosts'
+import { Registry } from '@/auth/hosts'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { createHttpClient } from '@/http/client'
+import { getTokenStore, tokenKey } from '@/store/manager'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { realStreams } from '@/sys/io/streams'
 import { hostWithScheme, openAPIBase } from '@/util/host'
@@ -16,21 +17,21 @@ export default class Logout extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     this.parse(Logout, argv)
-    const bundle = loadHosts()
+    const io = realStreams()
+    const reg = Registry.load()
+    const active = reg.resolveActive()
 
     let http: HttpClient | undefined
-    if (bundle !== undefined && bundle.current_host !== '' && bundle.tokens?.bearer !== undefined && bundle.tokens.bearer !== '') {
-      http = createHttpClient({
-        baseURL: openAPIBase(hostWithScheme(bundle.current_host, bundle.scheme)),
-        bearer: bundle.tokens.bearer,
-        retryAttempts: 0,
-      })
+    if (active !== undefined) {
+      const bearer = getTokenStore().store.get(tokenKey(active.host, active.email))
+      if (bearer !== '') {
+        http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
+      }
     }
 
-    const io = realStreams()
     await runWithSpinner(
       { io, label: 'Signing out', enabled: true, style: 'dify-dim' },
-      () => runLogout({ io, bundle, http }),
+      () => runLogout({ io, reg, http }),
     )
   }
 }
