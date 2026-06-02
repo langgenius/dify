@@ -12,12 +12,12 @@ import {
   buildMarketplacePathByIntegrationSection,
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
-import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
+import { useDocLink } from '@/context/i18n'
+import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
 import { useIntegrationSection } from './hooks/use-integration-section'
-import { IntegrationPageHeader } from './page-header'
 import IntegrationSectionRenderer from './section-renderer'
 import { IntegrationSidebarActions, IntegrationSidebarUtilityActions } from './sidebar-actions'
 import {
@@ -57,6 +57,7 @@ export default function IntegrationsPage({
   section: routeSection,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
   const {
@@ -82,11 +83,7 @@ export default function IntegrationsPage({
   } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
-  const useFillLayout = section === 'provider' || section === 'data-source' || isToolSection || isPluginCategory
-  const headerFrameClassName = cn(
-    toolsContentInsetClassNames.compact,
-    toolsUnifiedContentFrameClassName,
-  )
+  const useFillLayout = section === 'provider' || section === 'data-source' || section === 'custom-endpoint' || isToolSection || isPluginCategory
   const scrollAreaLabel = integrationHeader?.title ?? activeItem?.label
   const sidebarWidthStyle = {
     '--integrations-sidebar-width': '200px',
@@ -101,6 +98,20 @@ export default function IntegrationsPage({
       )
     : undefined
   const marketplacePath = buildMarketplacePathByIntegrationSection(section)
+  const modelProviderDescription = (
+    <span className="inline-flex min-w-0 items-center gap-0.5">
+      <span className="truncate">{t('modelProvider.pageDesc', { ns: 'common' })}</span>
+      <Link
+        className="inline-flex shrink-0 items-center text-text-accent"
+        href={docLink('/use-dify/workspace/model-providers')}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {t('modelProvider.learnMore', { ns: 'common' })}
+        <span aria-hidden className="i-ri-external-link-line size-3" />
+      </Link>
+    </span>
+  )
   const handleSwitchToMarketplace = () => {
     if (onSwitchToMarketplace) {
       onSwitchToMarketplace(marketplacePath)
@@ -217,28 +228,14 @@ export default function IntegrationsPage({
         )}
       </aside>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {integrationHeader && (
-          <IntegrationPageHeader
-            title={integrationHeader.title}
-            description={integrationHeader.description}
-            frameClassName={headerFrameClassName}
-          />
-        )}
-        {!integrationHeader && !isToolSection && (
-          <IntegrationPageHeader
-            align="center"
-            title={activeItem?.label}
-            description={section === 'provider' ? t('modelProvider.pageDesc', { ns: 'common' }) : undefined}
-            descriptionClassName="mt-0.5 system-xs-regular"
-            frameClassName={headerFrameClassName}
-          />
-        )}
         {useFillLayout
           ? (
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <IntegrationSectionRenderer
                   key={section}
                   section={section}
+                  title={integrationHeader?.title ?? activeItem?.label}
+                  description={integrationHeader?.description ?? (section === 'provider' ? modelProviderDescription : undefined)}
                   scrollAreaLabel={scrollAreaLabel}
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
@@ -261,6 +258,8 @@ export default function IntegrationsPage({
                 <IntegrationSectionRenderer
                   key={section}
                   section={section}
+                  title={integrationHeader?.title ?? activeItem?.label}
+                  description={integrationHeader?.description}
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}

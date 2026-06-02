@@ -101,7 +101,7 @@ const DataSourcePage = ({
   const toolbar = (
     <div className={stickyToolbar
       ? layout
-        ? 'mb-2 flex items-center justify-between gap-3 bg-components-panel-bg pb-2'
+        ? 'flex w-full items-center justify-between gap-3'
         : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
       : 'mb-2 flex items-center justify-between gap-3'}
     >

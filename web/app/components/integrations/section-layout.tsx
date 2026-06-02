@@ -7,37 +7,26 @@ type IntegrationSectionLayoutProps = {
   bodyClassName?: string
   children: ReactNode
   label?: string
-  toolbar?: ReactNode
-  toolbarClassName?: string
 }
 
 export function IntegrationSectionLayout({
   bodyClassName,
   children,
   label,
-  toolbar,
-  toolbarClassName,
 }: IntegrationSectionLayoutProps) {
   return (
-    <>
-      {toolbar && (
-        <div className={toolbarClassName}>
-          {toolbar}
-        </div>
-      )}
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        label={label}
-        slotClassNames={{
-          viewport: 'overscroll-contain',
-          content: 'min-h-full',
-          scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
-        }}
-      >
-        <div className={bodyClassName}>
-          {children}
-        </div>
-      </ScrollArea>
-    </>
+    <ScrollArea
+      className="min-h-0 flex-1 overflow-hidden"
+      label={label}
+      slotClassNames={{
+        viewport: 'overscroll-contain',
+        content: 'min-h-full',
+        scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+      }}
+    >
+      <div className={bodyClassName}>
+        {children}
+      </div>
+    </ScrollArea>
   )
 }
