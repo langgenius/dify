@@ -4621,11 +4621,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/note-node/hooks.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/note-node/note-editor/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -4653,9 +4648,6 @@
     }
   },
   "web/app/components/workflow/operator/hooks.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
