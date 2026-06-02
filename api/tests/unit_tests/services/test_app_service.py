@@ -127,3 +127,31 @@ class TestOpenapiVisibilityHelpers:
         assert out == rows
         gate.assert_called_once()
         mock_session.execute.assert_called_once()
+
+
+class TestAgentAppType:
+    """S1: new ``AppMode.AGENT`` app type wiring."""
+
+    def test_agent_mode_enum_and_template_exist(self):
+        from constants.model_template import default_app_templates
+        from models.model import AppMode
+
+        assert AppMode.AGENT.value == "agent"
+        assert AppMode.AGENT in default_app_templates
+        # Runtime config comes from the Agent Soul, so no model_config is seeded.
+        assert "model_config" not in default_app_templates[AppMode.AGENT]
+        assert default_app_templates[AppMode.AGENT]["app"]["mode"] == AppMode.AGENT
+
+    def test_create_app_params_accepts_agent_mode(self):
+        from services.app_service import CreateAppParams
+
+        params = CreateAppParams(name="Iris", mode="agent")
+        assert params.mode == "agent"
+
+    def test_bound_agent_id_is_none_for_non_agent_app(self):
+        """Non-agent apps short-circuit without touching the DB."""
+        from models.model import App, AppMode
+
+        app = App()
+        app.mode = AppMode.CHAT
+        assert app.bound_agent_id is None
