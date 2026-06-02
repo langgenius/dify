@@ -901,16 +901,10 @@ export const agentFeatures = {
 
 /**
  * List workflow apps that reference this Agent App's bound Agent (read-only)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get6 = oc
   .route({
-    deprecated: true,
-    description:
-      'List workflow apps that reference this Agent App\'s bound Agent (read-only)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentReferencingWorkflows',

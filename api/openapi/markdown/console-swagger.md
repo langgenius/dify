@@ -1098,10 +1098,10 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Referencing workflows listed successfully |
-| 404 | App not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Referencing workflows listed successfully | [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse) |
+| 404 | App not found |  |
 
 ### /apps/{app_id}/agent/logs
 
@@ -11004,6 +11004,22 @@ the current roster/workflow APIs scoped to Dify Agent.
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | message_id | string | Message UUID | Yes |
+
+#### AgentReferencingWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_mode | string |  | Yes |
+| app_name | string |  | Yes |
+| node_ids | [ string ] |  | No |
+| workflow_id | string |  | Yes |
+
+#### AgentReferencingWorkflowsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentReferencingWorkflowResponse](#agentreferencingworkflowresponse) ] |  | No |
 
 #### AgentRosterListResponse
 

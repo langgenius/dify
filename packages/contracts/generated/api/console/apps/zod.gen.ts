@@ -820,6 +820,24 @@ export const zComposerCandidateCapabilities = z.object({
 })
 
 /**
+ * AgentReferencingWorkflowResponse
+ */
+export const zAgentReferencingWorkflowResponse = z.object({
+  app_id: z.string(),
+  app_mode: z.string(),
+  app_name: z.string(),
+  node_ids: z.array(z.string()).optional(),
+  workflow_id: z.string(),
+})
+
+/**
+ * AgentReferencingWorkflowsResponse
+ */
+export const zAgentReferencingWorkflowsResponse = z.object({
+  data: z.array(zAgentReferencingWorkflowResponse).optional(),
+})
+
+/**
  * AnnotationHitHistory
  */
 export const zAnnotationHitHistory = z.object({
@@ -2653,7 +2671,7 @@ export const zGetAppsByAppIdAgentReferencingWorkflowsPath = z.object({
 /**
  * Referencing workflows listed successfully
  */
-export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),

@@ -225,6 +225,10 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type AgentReferencingWorkflowsResponse = {
+  data?: Array<AgentReferencingWorkflowResponse>
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -1129,6 +1133,14 @@ export type AgentComposerSoulCandidatesResponse = {
 
 export type ComposerCandidateCapabilities = {
   human_roster_available?: boolean
+}
+
+export type AgentReferencingWorkflowResponse = {
+  app_id: string
+  app_mode: string
+  app_name: string
+  node_ids?: Array<string>
+  workflow_id: string
 }
 
 export type AnnotationHitHistory = {
@@ -2312,9 +2324,7 @@ export type GetAppsByAppIdAgentReferencingWorkflowsError
   = GetAppsByAppIdAgentReferencingWorkflowsErrors[keyof GetAppsByAppIdAgentReferencingWorkflowsErrors]
 
 export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentReferencingWorkflowsResponse
 }
 
 export type GetAppsByAppIdAgentReferencingWorkflowsResponse
