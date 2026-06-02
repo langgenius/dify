@@ -3413,16 +3413,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/featured-tools.tsx": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/block-selector/featured-triggers.tsx": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/block-selector/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 1
