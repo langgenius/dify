@@ -1,7 +1,7 @@
 import type { PermissionSetFormValues, PermissionSetModalMode } from './permission-set-modal'
 import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useCreateAccessRule,
@@ -47,6 +47,23 @@ const AppAccessRuleSection = ({
 
   const appAccessRules = appAccessRulesResponse?.pages.flatMap(page => page.items) || []
   const totalCount = appAccessRulesResponse?.pages[0]?.pagination.total_count || 0
+  const addingRuleTargetIds = useMemo(() => {
+    if (!addingRule) {
+      return {
+        initialRoleIds: [],
+        initialMemberIds: [],
+        lockedRoleIds: [],
+        lockedMemberIds: [],
+      }
+    }
+
+    return {
+      initialRoleIds: addingRule.roles.map(role => role.role_id),
+      initialMemberIds: addingRule.accounts.map(account => account.account_id),
+      lockedRoleIds: addingRule.roles.filter(role => role.is_locked).map(role => role.role_id),
+      lockedMemberIds: addingRule.accounts.filter(account => account.is_locked).map(account => account.account_id),
+    }
+  }, [addingRule])
 
   const closeAddModal = useCallback(() => {
     setAddingRule(null)
@@ -173,8 +190,10 @@ const AppAccessRuleSection = ({
       {addingRule && (
         <AddRuleTargetsModal
           ruleName={addingRule.policy.name}
-          initialRoleIds={addingRule.roles.map(role => role.role_id)}
-          initialMemberIds={addingRule.accounts.map(account => account.account_id)}
+          initialRoleIds={addingRuleTargetIds.initialRoleIds}
+          initialMemberIds={addingRuleTargetIds.initialMemberIds}
+          lockedRoleIds={addingRuleTargetIds.lockedRoleIds}
+          lockedMemberIds={addingRuleTargetIds.lockedMemberIds}
           onClose={closeAddModal}
           onSubmit={handleAddSubmit}
         />

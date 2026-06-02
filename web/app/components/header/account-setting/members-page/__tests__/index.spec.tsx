@@ -1,4 +1,5 @@
 import type { AppContextValue } from '@/context/app-context'
+import type { Role } from '@/models/access-control'
 import type { ICurrentWorkspace, Member } from '@/models/common'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,6 +22,19 @@ vi.mock('@/service/use-common')
 
 const renderMembersPage = () => renderWithSystemFeatures(<MembersPage />, {
   systemFeatures: { is_email_setup: true },
+})
+
+const createRole = (overrides: Partial<Role>): Role => ({
+  id: 'role-1',
+  tenant_id: 'tenant-1',
+  type: 'workspace',
+  category: 'global_custom',
+  name: 'Role',
+  description: '',
+  is_builtin: false,
+  permission_keys: [],
+  role_tag: '',
+  ...overrides,
 })
 
 vi.mock('../edit-workspace-modal', () => ({
@@ -105,13 +119,13 @@ vi.mock('../member-details-modal', () => ({
     member: Member
     onClose: () => void
     canAssignRoles?: boolean
-    onAssignSubmit?: (roleIds: string[]) => void
+    onAssignSubmit?: (roles: Role[]) => void
   }) => (
     <div>
       <div>Member Details Modal</div>
       <div data-testid="details-member-name">{member.name}</div>
       <div data-testid="details-can-assign">{String(canAssignRoles)}</div>
-      <button onClick={() => onAssignSubmit?.(['role-next'])}>Submit Member Roles</button>
+      <button onClick={() => onAssignSubmit?.([createRole({ id: 'role-next', name: 'Next role' })])}>Submit Member Roles</button>
       <button onClick={onClose}>Close Member Details Modal</button>
     </div>
   ),
@@ -137,7 +151,7 @@ describe('MembersPage', () => {
       last_login_at: '1731000000',
       created_at: '1731000000',
       status: 'active',
-      roles: [{ id: 'owner-role', name: 'Owner' }],
+      roles: [createRole({ id: 'owner-role', name: 'Owner', is_builtin: true, role_tag: 'owner' })],
     },
     {
       id: '2',
@@ -150,7 +164,7 @@ describe('MembersPage', () => {
       last_login_at: '1731000000',
       created_at: '1731000000',
       status: 'active',
-      roles: [{ id: 'admin-role', name: 'Admin' }],
+      roles: [createRole({ id: 'admin-role', name: 'Admin', is_builtin: true })],
     },
   ]
 

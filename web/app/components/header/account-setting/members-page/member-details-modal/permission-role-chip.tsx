@@ -20,7 +20,7 @@ export type PermissionRoleChipProps = {
   label: string
   isOwner: boolean
   permissionKeys: string[]
-  onRemove?: (roleId: string) => void
+  onRemove?: () => void
   className?: string
 }
 
@@ -149,7 +149,7 @@ const PermissionRoleChip = ({
         <DropdownMenuItem
           variant="destructive"
           className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
-          onClick={() => onRemove(roleId)}
+          onClick={onRemove}
         >
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           {t('operation.remove', { ns: 'common' })}

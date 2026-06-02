@@ -4,9 +4,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
+import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import MemberDetailsModal from '../index'
 
 vi.mock('@/service/access-control/use-member-roles')
+vi.mock('@/service/access-control/use-workspace-roles')
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -29,7 +31,7 @@ const member: Member = {
   avatar_url: '',
   role: 'admin',
   roles: [
-    { id: 'role-1', name: 'Custom role' },
+    createRole({ id: 'role-1', name: 'Custom role' }),
   ],
   last_active_at: '1731000000',
   last_login_at: '1731000000',
@@ -48,6 +50,28 @@ describe('MemberDetailsModal', () => {
         ],
       },
     } as unknown as ReturnType<typeof useRolesOfMember>)
+    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+      data: {
+        pages: [{
+          data: [
+            createRole({ id: 'role-1', name: 'Custom role' }),
+            createRole({ id: 'role-2', name: 'Second role' }),
+          ],
+          pagination: {
+            total_count: 2,
+            per_page: 20,
+            current_page: 1,
+            total_pages: 1,
+          },
+        }],
+        pageParams: [1],
+      },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
   })
 
   describe('Role actions', () => {
@@ -65,7 +89,7 @@ describe('MemberDetailsModal', () => {
       expect(screen.queryByRole('button', { name: /members\.memberDetails\.removeRoleAria/i })).not.toBeInTheDocument()
     })
 
-    it('should show role action menu and remove role when role assignment is allowed', async () => {
+    it('should submit pending role changes only after save is clicked', async () => {
       const user = userEvent.setup()
       const handleAssignSubmit = vi.fn()
 
@@ -92,7 +116,40 @@ describe('MemberDetailsModal', () => {
 
       await user.click(screen.getByRole('menuitem', { name: /common\.operation\.remove/i }))
 
-      expect(handleAssignSubmit).toHaveBeenCalledWith(['role-2'])
+      expect(handleAssignSubmit).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      expect(handleAssignSubmit).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'role-2', name: 'Second role' }),
+      ])
+    })
+
+    it('should keep assigned role selections pending until save is clicked', async () => {
+      const user = userEvent.setup()
+      const handleAssignSubmit = vi.fn()
+
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          onClose={vi.fn()}
+          onAssignSubmit={handleAssignSubmit}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
+      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+
+      expect(handleAssignSubmit).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      expect(handleAssignSubmit).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'role-1', name: 'Custom role' }),
+        expect.objectContaining({ id: 'role-2', name: 'Second role' }),
+      ])
     })
   })
 })

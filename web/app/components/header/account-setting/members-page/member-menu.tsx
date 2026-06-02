@@ -1,4 +1,5 @@
 'use client'
+import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -9,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -40,7 +41,7 @@ const MemberMenu = ({
   const canRemove = !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
 
-  const selectedRoles = useMemo(() => member.roles?.map(role => role.id) || [], [member.roles])
+  const selectedRoles = member.roles || []
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -49,10 +50,10 @@ const MemberMenu = ({
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
-  const handleAssignRolesSubmit = useCallback((roleIds: string[]) => {
+  const handleAssignRolesSubmit = useCallback((roles: Role[]) => {
     updateRolesOfMember({
       memberId: member.id,
-      roleIds,
+      roleIds: roles.map(role => role.id),
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))

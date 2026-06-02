@@ -1,5 +1,6 @@
 'use client'
 
+import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -19,7 +20,7 @@ export type MemberDetailsModalProps = {
   member: Member
   canAssignRoles?: boolean
   onClose: () => void
-  onAssignSubmit?: (roleIds: string[]) => void
+  onAssignSubmit?: (roles: Role[]) => void
 }
 
 const MemberDetailsModal = ({
@@ -32,26 +33,32 @@ const MemberDetailsModal = ({
   const [assignOpen, setAssignOpen] = useState(false)
 
   const { data: rolesOfMember } = useRolesOfMember(member.id)
+  const [pendingRoles, setPendingRoles] = useState<Role[]>()
 
   const roles = useMemo(() => rolesOfMember?.roles ?? [], [rolesOfMember?.roles])
+  const selectedRoles = pendingRoles ?? roles
+  const selectedRoleIds = useMemo(() => selectedRoles.map(role => role.id), [selectedRoles])
 
-  const builtinRoles = useMemo(() => roles.filter(role => role.is_builtin), [roles])
-  const customRoles = useMemo(() => roles.filter(role => !role.is_builtin), [roles])
-  const selectedRoles = useMemo(() => roles.map(role => role.id), [roles])
+  const builtinRoles = useMemo(() => selectedRoles.filter(role => role.is_builtin), [selectedRoles])
+  const customRoles = useMemo(() => selectedRoles.filter(role => !role.is_builtin), [selectedRoles])
 
   const handleClose = useCallback(() => {
     setAssignOpen(false)
   }, [])
 
-  const handleAssignSubmit = useCallback((ids: string[]) => {
-    onAssignSubmit?.(ids)
+  const handleAssignSubmit = useCallback((roles: Role[]) => {
+    setPendingRoles(roles)
     setAssignOpen(false)
-  }, [onAssignSubmit])
+  }, [])
 
-  const handleRemove = useCallback((id: string) => {
-    const roleIds = selectedRoles.filter(roleId => roleId !== id)
-    onAssignSubmit?.(roleIds)
-  }, [selectedRoles, onAssignSubmit])
+  const handleRemove = useCallback((role: Role) => {
+    setPendingRoles(selectedRoles.filter(selectedRole => selectedRole.id !== role.id))
+  }, [selectedRoles])
+
+  const handleSave = useCallback(() => {
+    onAssignSubmit?.(selectedRoles)
+    onClose()
+  }, [onAssignSubmit, onClose, selectedRoles])
 
   return (
     <>
@@ -99,7 +106,7 @@ const MemberDetailsModal = ({
                   })}
                 </span>
                 <span className="system-xs-medium text-text-tertiary">
-                  {roles.length}
+                  {selectedRoleIds.length}
                 </span>
               </div>
               {canAssignRoles && (
@@ -135,7 +142,7 @@ const MemberDetailsModal = ({
                       label={role.name}
                       isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
-                      onRemove={canAssignRoles ? handleRemove : undefined}
+                      onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
                     />
                   ))}
                 </div>
@@ -156,13 +163,28 @@ const MemberDetailsModal = ({
                       label={role.name}
                       isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
-                      onRemove={canAssignRoles ? handleRemove : undefined}
+                      onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
                     />
                   ))}
                 </div>
               </div>
             )}
           </div>
+
+          {canAssignRoles && (
+            <div className="flex items-center justify-end gap-2 px-6 pt-2 pb-4">
+              <Button variant="secondary" onClick={onClose}>
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                disabled={!onAssignSubmit}
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

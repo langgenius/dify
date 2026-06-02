@@ -1,5 +1,6 @@
 'use client'
 
+import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -20,6 +21,8 @@ type AddRuleTargetsModalBaseProps = {
   ruleName?: string
   initialRoleIds?: string[]
   initialMemberIds?: string[]
+  lockedRoleIds?: string[]
+  lockedMemberIds?: string[]
   onClose: () => void
   onSubmit: (selection: { roleIds: string[], memberIds: string[] }) => void
 }
@@ -35,6 +38,8 @@ const AddRuleTargetsModalBody = ({
   ruleName,
   initialRoleIds = [],
   initialMemberIds = [],
+  lockedRoleIds = [],
+  lockedMemberIds = [],
   onClose,
   onSubmit,
 }: AddRuleTargetsModalBaseProps) => {
@@ -47,6 +52,10 @@ const AddRuleTargetsModalBody = ({
     onSubmit({ roleIds: selectedRoleIds, memberIds: selectedMemberIds })
     onClose()
   }, [onClose, onSubmit, selectedMemberIds, selectedRoleIds])
+
+  const handleSelectedRolesChange = useCallback((roles: Role[]) => {
+    setSelectedRoleIds(roles.map(role => role.id))
+  }, [])
 
   const description = ruleName
     ? t('addRuleTargets.descriptionWithName', { ns: 'permission', name: ruleName })
@@ -103,12 +112,14 @@ const AddRuleTargetsModalBody = ({
       {activeTab === 'roles' && (
         <RolesTab
           selectedRoleIds={selectedRoleIds}
-          onSelectedRoleIdsChange={setSelectedRoleIds}
+          disabledRoleIds={lockedRoleIds}
+          onSelectedRolesChange={handleSelectedRolesChange}
         />
       )}
       {activeTab === 'members' && (
         <MembersTab
           selectedMemberIds={selectedMemberIds}
+          disabledMemberIds={lockedMemberIds}
           onSelectedMemberIdsChange={setSelectedMemberIds}
         />
       )}
@@ -134,6 +145,8 @@ const AddRuleTargetsModal = ({
   ruleName,
   initialRoleIds,
   initialMemberIds,
+  lockedRoleIds,
+  lockedMemberIds,
   onClose,
   onSubmit,
 }: AddRuleTargetsModalProps) => {
@@ -149,6 +162,8 @@ const AddRuleTargetsModal = ({
         ruleName={ruleName}
         initialRoleIds={initialRoleIds}
         initialMemberIds={initialMemberIds}
+        lockedRoleIds={lockedRoleIds}
+        lockedMemberIds={lockedMemberIds}
         onClose={onClose}
         onSubmit={onSubmit}
       />

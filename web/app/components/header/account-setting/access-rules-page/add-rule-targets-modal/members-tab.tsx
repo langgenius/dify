@@ -4,10 +4,10 @@ import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 
 type AssignableMemberOption = {
@@ -19,6 +19,7 @@ type AssignableMemberOption = {
 
 type MembersTabProps = {
   selectedMemberIds: string[]
+  disabledMemberIds?: string[]
   onSelectedMemberIdsChange: (selectedMemberIds: string[]) => void
 }
 
@@ -31,6 +32,7 @@ const toMemberOption = (member: Member): AssignableMemberOption => ({
 
 const MembersTab = ({
   selectedMemberIds,
+  disabledMemberIds = [],
   onSelectedMemberIdsChange,
 }: MembersTabProps) => {
   const { t } = useTranslation()
@@ -58,6 +60,9 @@ const MembersTab = ({
   }, [members, keyword])
 
   const toggleMember = (id: string) => {
+    if (disabledMemberIds.includes(id))
+      return
+
     onSelectedMemberIdsChange(
       selectedMemberIds.includes(id)
         ? selectedMemberIds.filter(selectedId => selectedId !== id)
@@ -68,14 +73,28 @@ const MembersTab = ({
   return (
     <>
       <div className="shrink-0 px-6 pt-3 pb-2">
-        <Input
-          showLeftIcon
-          showClearIcon
-          value={keyword}
-          onChange={e => setKeyword(e.target.value)}
-          onClear={() => setKeyword('')}
-          placeholder={t('addRuleTargets.searchMembers', { ns: 'permission' })}
-        />
+        <div className="relative">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
+          />
+          <Input
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            placeholder={t('addRuleTargets.searchMembers', { ns: 'permission' })}
+            className="pr-8 pl-8"
+          />
+          {keyword && (
+            <button
+              type="button"
+              className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-components-input-border-active"
+              aria-label={t('operation.clear', { ns: 'common' })}
+              onClick={() => setKeyword('')}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <ScrollArea
@@ -98,6 +117,7 @@ const MembersTab = ({
                 <ul className="flex flex-col gap-0.5 pb-2">
                   {filteredMembers.map((member) => {
                     const checked = selectedMemberIds.includes(member.id)
+                    const disabled = disabledMemberIds.includes(member.id)
                     const handleToggle = () => toggleMember(member.id)
 
                     return (
@@ -105,10 +125,12 @@ const MembersTab = ({
                         <div
                           role="checkbox"
                           aria-checked={checked}
-                          tabIndex={0}
+                          aria-disabled={disabled}
+                          tabIndex={disabled ? -1 : 0}
                           className={cn(
                             'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
                             checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
+                            disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                           )}
                           onClick={handleToggle}
                           onKeyDown={(e) => {
@@ -120,6 +142,7 @@ const MembersTab = ({
                         >
                           <Checkbox
                             checked={checked}
+                            disabled={disabled}
                             className="pointer-events-none"
                           />
                           <Avatar

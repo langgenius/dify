@@ -1,4 +1,5 @@
 'use client'
+import type { Role } from '@/models/access-control'
 import type { InvitationResult, Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -54,10 +55,10 @@ const MembersPage = () => {
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
-  const handleAssignRolesSubmit = (roleIds: string[]) => {
+  const handleAssignRolesSubmit = (roles: Role[]) => {
     updateRolesOfMember({
       memberId: detailsMember!.id,
-      roleIds,
+      roleIds: roles.map(role => role.id),
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))

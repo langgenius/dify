@@ -1,23 +1,40 @@
 'use client'
 
+import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type WorkspaceRoleCheckboxListProps = {
   selectedRoleIds: string[]
-  onSelectedRoleIdsChange: (selectedRoleIds: string[]) => void
+  selectedRoles?: Role[]
+  disabledRoleIds?: string[]
+  onSelectedRolesChange: (selectedRoles: Role[]) => void
 }
 
 const PAGE_SIZE = 20
 
+const createSelectedRolePlaceholder = (id: string): Role => ({
+  id,
+  tenant_id: '',
+  type: 'workspace',
+  category: 'global_custom',
+  name: id,
+  description: '',
+  is_builtin: false,
+  permission_keys: [],
+  role_tag: '',
+})
+
 const WorkspaceRoleCheckboxList = ({
   selectedRoleIds,
-  onSelectedRoleIdsChange,
+  selectedRoles,
+  disabledRoleIds = [],
+  onSelectedRolesChange,
 }: WorkspaceRoleCheckboxListProps) => {
   const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
@@ -34,6 +51,7 @@ const WorkspaceRoleCheckboxList = ({
   } = useWorkspaceRoleList({
     page: 1,
     limit: PAGE_SIZE,
+    include_owner: 1,
   })
 
   useEffect(() => {
@@ -60,6 +78,13 @@ const WorkspaceRoleCheckboxList = ({
   }, [rolesLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const roles = useMemo(() => rolesData?.pages.flatMap(page => page.data) ?? [], [rolesData])
+  const selectedRoleObjects = useMemo(() => {
+    if (selectedRoles)
+      return selectedRoles
+
+    const roleById = new Map(roles.map(role => [role.id, role]))
+    return selectedRoleIds.map(roleId => roleById.get(roleId) ?? createSelectedRolePlaceholder(roleId))
+  }, [roles, selectedRoleIds, selectedRoles])
 
   const filteredRoles = useMemo(() => {
     const trimmed = keyword.trim().toLowerCase()
@@ -73,25 +98,42 @@ const WorkspaceRoleCheckboxList = ({
     )
   }, [roles, keyword])
 
-  const toggleRole = (id: string) => {
-    onSelectedRoleIdsChange(
-      selectedRoleIds.includes(id)
-        ? selectedRoleIds.filter(selectedId => selectedId !== id)
-        : [...selectedRoleIds, id],
+  const toggleRole = (role: Role) => {
+    if (disabledRoleIds.includes(role.id))
+      return
+
+    onSelectedRolesChange(
+      selectedRoleIds.includes(role.id)
+        ? selectedRoleObjects.filter(selectedRole => selectedRole.id !== role.id)
+        : [...selectedRoleObjects, role],
     )
   }
 
   return (
     <>
       <div className="shrink-0 px-6 pt-3 pb-2">
-        <Input
-          showLeftIcon
-          showClearIcon
-          value={keyword}
-          onChange={e => setKeyword(e.target.value)}
-          onClear={() => setKeyword('')}
-          placeholder={t('role.searchPlaceholder', { ns: 'permission' })}
-        />
+        <div className="relative">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
+          />
+          <Input
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            placeholder={t('role.searchPlaceholder', { ns: 'permission' })}
+            className="pr-8 pl-8"
+          />
+          {keyword && (
+            <button
+              type="button"
+              className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-components-input-border-active"
+              aria-label={t('operation.clear', { ns: 'common' })}
+              onClick={() => setKeyword('')}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <ScrollArea
@@ -116,17 +158,20 @@ const WorkspaceRoleCheckboxList = ({
                   <ul className="flex flex-col gap-0.5 pb-2">
                     {filteredRoles.map((role) => {
                       const checked = selectedRoleIds.includes(role.id)
-                      const handleToggle = () => toggleRole(role.id)
+                      const disabled = disabledRoleIds.includes(role.id)
+                      const handleToggle = () => toggleRole(role)
 
                       return (
                         <li key={role.id}>
                           <div
                             role="checkbox"
                             aria-checked={checked}
-                            tabIndex={0}
+                            aria-disabled={disabled}
+                            tabIndex={disabled ? -1 : 0}
                             className={cn(
                               'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
                               checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
+                              disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                             )}
                             onClick={handleToggle}
                             onKeyDown={(e) => {
@@ -138,6 +183,7 @@ const WorkspaceRoleCheckboxList = ({
                           >
                             <Checkbox
                               checked={checked}
+                              disabled={disabled}
                               className="pointer-events-none mt-0.5"
                             />
                             <div className="min-w-0 flex-1">

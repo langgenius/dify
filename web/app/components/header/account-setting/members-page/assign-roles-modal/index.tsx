@@ -1,5 +1,6 @@
 'use client'
 
+import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -13,9 +14,9 @@ import { useTranslation } from 'react-i18next'
 import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
 
 export type AssignRolesModalProps = {
-  selectedRoles: string[]
+  selectedRoles: Role[]
   onClose: () => void
-  onSubmit: (roleIds: string[]) => void
+  onSubmit: (roles: Role[]) => void
 }
 
 type AssignRolesModalBodyProps = AssignRolesModalProps
@@ -27,6 +28,7 @@ const AssignRolesModalBody = ({
 }: AssignRolesModalBodyProps) => {
   const { t } = useTranslation()
   const [selected, setSelected] = useState(selectedRoles)
+  const selectedRoleIds = selected.map(role => role.id)
 
   const handleConfirm = () => {
     onSubmit(selected)
@@ -55,8 +57,9 @@ const AssignRolesModalBody = ({
       </div>
 
       <WorkspaceRoleCheckboxList
-        selectedRoleIds={selected}
-        onSelectedRoleIdsChange={setSelected}
+        selectedRoleIds={selectedRoleIds}
+        selectedRoles={selected}
+        onSelectedRolesChange={setSelected}
       />
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
