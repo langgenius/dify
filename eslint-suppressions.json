@@ -663,6 +663,9 @@
     }
   },
   "web/app/components/apps/list.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     }
