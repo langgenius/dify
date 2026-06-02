@@ -45,7 +45,6 @@ import {
   syncSnippetDraftWorkflowContract,
   updateCustomizedSnippetContract,
 } from './console/snippets'
-import { systemFeaturesContract } from './console/system'
 import {
   tagBindingCreateContract,
   tagBindingRemoveContract,
@@ -107,7 +106,6 @@ export const consoleRouterContract = {
       get: accountProfileContract,
     },
   },
-  systemFeatures: systemFeaturesContract,
   apps: {
     ...communityContract.apps,
     list: appListContract,

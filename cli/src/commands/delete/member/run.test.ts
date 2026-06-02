@@ -1,17 +1,18 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { describe, expect, it, vi } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
-import { runDeleteMember } from './run'
+import { runDeleteMember } from './run.js'
 
-function bundle(): HostsBundle {
+function active(): ActiveContext {
   return {
-    current_host: 'cloud.dify.ai',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 'me@example.com', name: 'Me' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+    host: 'cloud.dify.ai',
+    email: 'me@example.com',
+    ctx: {
+      account: { id: 'acct-1', email: 'me@example.com', name: 'Me' },
+      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+      available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+    },
   }
 }
 
@@ -27,8 +28,8 @@ describe('runDeleteMember', () => {
     const result = await runDeleteMember(
       { memberId: 'acct-2' },
       {
-        bundle: bundle(),
-        http: {} as KyInstance,
+        active: active(),
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -45,8 +46,8 @@ describe('runDeleteMember', () => {
     await runDeleteMember(
       { memberId: 'acct-2', workspace: 'ws-9' },
       {
-        bundle: bundle(),
-        http: {} as KyInstance,
+        active: active(),
+        http: {} as HttpClient,
         io: bufferStreams(),
         membersFactory: () => client as never,
       },
@@ -60,8 +61,8 @@ describe('runDeleteMember', () => {
       runDeleteMember(
         { memberId: '' },
         {
-          bundle: bundle(),
-          http: {} as KyInstance,
+          active: active(),
+          http: {} as HttpClient,
           io: bufferStreams(),
           membersFactory: () => client as never,
         },

@@ -1,29 +1,30 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { resumeApp } from '@/commands/resume/app/run'
-import { createClient } from '@/http/client'
 import { ENV_CACHE_DIR } from '@/store/dir'
 import { CACHE_APP_INFO, getCache } from '@/store/manager'
 import { bufferStreams } from '@/sys/io/streams'
-import { runApp } from './run'
+import { runApp } from './run.js'
 
-function bundle(): HostsBundle {
+function active(): ActiveContext {
   return {
-    current_host: 'http://localhost',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
-    ],
+    host: 'http://localhost',
+    email: 't@d.ai',
+    ctx: {
+      account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
+      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+      available_workspaces: [
+        { id: 'ws-1', name: 'Default', role: 'owner' },
+        { id: 'ws-2', name: 'Other', role: 'normal' },
+      ],
+    },
   }
 }
 
@@ -51,7 +52,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: hi\n')
     expect(io.errBuf()).toContain('--conversation conv-1')
@@ -62,7 +63,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await expect(runApp(
       { appId: 'app-2', message: 'hi' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )).rejects.toMatchObject({ code: 'usage_invalid_flag' })
   })
 
@@ -71,7 +72,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputs: { x: '1' } },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
   })
@@ -81,7 +82,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi', format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, answer: string }
     expect(parsed.mode).toBe('chat')
@@ -92,7 +93,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     await expect(runApp(
       { appId: 'app-1', format: 'bogus' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
     )).rejects.toThrow(/not supported/)
   })
 
@@ -101,8 +102,8 @@ describe('runApp', () => {
     await expect(runApp(
       { appId: 'nope', message: 'hi' },
       {
-        bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }),
+        active: active(),
+        http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
         host: mock.url,
         io,
       },
@@ -114,7 +115,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi', stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('echo: ')
     expect(io.outBuf()).toContain('hi')
@@ -126,7 +127,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi', stream: true, format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, answer: string, conversation_id: string }
     expect(parsed.mode).toBe('chat')
@@ -139,7 +140,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-4', workspace: 'ws-2', message: 'do research' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('do research')
     expect(io.errBuf()).toContain('--conversation conv-1')
@@ -150,7 +151,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-4', workspace: 'ws-2', message: 'go', stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('go')
     expect(io.errBuf()).toContain('thought:')
@@ -161,7 +162,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputs: { x: '1' }, stream: true, format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, data: { status: string } }
     expect(parsed.mode).toBe('workflow')
@@ -174,7 +175,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await expect(runApp(
       { appId: 'app-1', message: 'hi', stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
     )).rejects.toMatchObject({ code: 'server_5xx' })
   })
 
@@ -186,7 +187,7 @@ describe('runApp', () => {
     await writeFile(inputsFile, JSON.stringify({ x: 'from-file' }))
     await runApp(
       { appId: 'app-2', inputsFile },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
   })
@@ -198,7 +199,7 @@ describe('runApp', () => {
     await writeFile(inputsFile, JSON.stringify([1, 2, 3]))
     await expect(runApp(
       { appId: 'app-2', inputsFile },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
     )).rejects.toThrow(/must be a JSON object/)
   })
 
@@ -207,7 +208,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputsJson: '{"x":"hello"}' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
   })
@@ -219,7 +220,7 @@ describe('runApp', () => {
     await writeFile(inputsFile, '{}')
     await expect(runApp(
       { appId: 'app-2', inputsJson: '{}', inputsFile },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
     )).rejects.toThrow(/mutually exclusive/)
   })
 
@@ -231,8 +232,8 @@ describe('runApp', () => {
     await expect(runApp(
       { appId: 'app-2', inputs: {} },
       {
-        bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test' }),
+        active: active(),
+        http: testHttpClient(mock.url, 'dfoa_test'),
         host: mock.url,
         io,
         cache,
@@ -260,8 +261,8 @@ describe('runApp', () => {
     await expect(runApp(
       { appId: 'app-2', inputs: {}, format: 'json' },
       {
-        bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test' }),
+        active: active(),
+        http: testHttpClient(mock.url, 'dfoa_test'),
         host: mock.url,
         io,
         cache,
@@ -284,7 +285,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await resumeApp(
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, withHistory: false },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: resumed\n')
   })
@@ -295,7 +296,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await resumeApp(
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {} },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: resumed\n')
   })
@@ -306,7 +307,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await resumeApp(
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     // stream mode for workflow: node_started → "→ <title>" on stderr
     expect(io.errBuf()).toContain('After Resume')
@@ -317,7 +318,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', files: ['doc=https://example.com/report.pdf'] },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
     expect(mock.uploadCallCount).toBe(0)
@@ -338,7 +339,7 @@ describe('runApp', () => {
     await writeFile(filePath, 'fake pdf content')
     await runApp(
       { appId: 'app-2', files: [`doc=@${filePath}`] },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
     expect(mock.uploadCallCount).toBe(1)
@@ -355,7 +356,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputs: { doc: 'old-value' }, files: ['doc=https://example.com/override.pdf'] },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
     const runInputs = mock.lastRunBody?.inputs as Record<string, unknown>

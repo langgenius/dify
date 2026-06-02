@@ -1,10 +1,11 @@
 'use client'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname } from '@/next/navigation'
-import { useLocalStorageBoolean } from '@/utils/local-storage'
 import s from './index.module.css'
 
 type HeaderWrapperProps = {
@@ -19,14 +20,14 @@ const HeaderWrapper = ({
   // Check if the current path is a workflow canvas & fullscreen
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const storedHideHeader = useLocalStorageBoolean('workflow-canvas-maximize')
+  const [storedHideHeader] = useLocalStorage<boolean>('workflow-canvas-maximize', false)
   const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
   const hideHeader = eventHideHeader ?? storedHideHeader
   const { eventEmitter } = useEventEmitterContextContext()
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === 'workflow-canvas-maximize')
-      setEventHideHeader(v.payload)
+  eventEmitter?.useSubscription((value: EventEmitterValue) => {
+    if (typeof value === 'object' && value.type === 'workflow-canvas-maximize' && typeof value.payload === 'boolean')
+      setEventHideHeader(value.payload)
   })
 
   return (

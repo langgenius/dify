@@ -1,5 +1,5 @@
-import type { KyInstance } from 'ky'
 import type { SseEvent } from '@/http/sse'
+import type { HttpClient } from '@/http/types'
 import { parseSSE } from '@/http/sse'
 import { normalizeDifyStream } from '@/http/sse-dify'
 
@@ -35,9 +35,9 @@ export type StreamOptions = {
 }
 
 export class AppRunClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
@@ -46,12 +46,12 @@ export class AppRunClient {
     body: Record<string, unknown>,
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
-    const res = await this.http.post(`apps/${encodeURIComponent(appId)}/run`, {
+    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}/run`, {
+      method: 'POST',
       json: body,
       headers: { Accept: 'text/event-stream' },
-      retry: { limit: 0 },
-      timeout: false,
       signal: opts.signal,
+      throwOnError: true,
     })
     if (res.body === null)
       throw new Error('streaming response body missing')
@@ -61,7 +61,7 @@ export class AppRunClient {
   async stopTask(appId: string, taskId: string): Promise<void> {
     await this.http.post(`apps/${encodeURIComponent(appId)}/tasks/${encodeURIComponent(taskId)}/stop`, {
       json: {},
-      timeout: 30_000,
+      timeoutMs: 30_000,
     })
   }
 
@@ -73,7 +73,7 @@ export class AppRunClient {
   ): Promise<void> {
     await this.http.post(
       `apps/${encodeURIComponent(appId)}/form/human_input/${encodeURIComponent(formToken)}`,
-      { json: { action, inputs }, timeout: 30_000 },
+      { json: { action, inputs }, timeoutMs: 30_000 },
     )
   }
 
@@ -83,15 +83,14 @@ export class AppRunClient {
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
     const url = `apps/${encodeURIComponent(appId)}/tasks/${encodeURIComponent(workflowRunId)}/events`
-    const res = await this.http.get(url, {
+    const res = await this.http.stream(url, {
       searchParams: {
         include_state_snapshot: opts.includeStateSnapshot === true ? 'true' : 'false',
         continue_on_pause: 'false',
       },
       headers: { Accept: 'text/event-stream' },
-      retry: { limit: 0 },
-      timeout: false,
       signal: opts.signal,
+      throwOnError: true,
     })
     if (res.body === null)
       throw new Error('reconnect stream body missing')
