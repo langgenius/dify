@@ -12,6 +12,7 @@ import {
   DatasetPermission,
   DataSourceType,
 } from '@/models/datasets'
+import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
@@ -583,25 +584,28 @@ describe('knowledge-retrieval path', () => {
       const onDateChange = vi.fn()
       const onRemoveCondition = vi.fn()
       const onUpdateCondition = vi.fn()
+      const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
 
       const { container } = render(
-        <div>
-          <ConditionOperator
-            variableType={MetadataFilteringVariableType.string}
-            value={MetadataComparisonOperator.contains}
-            onSelect={onSelect}
-          />
-          <ConditionDate
-            value={1710000000}
-            onChange={onDateChange}
-          />
-          <ConditionItem
-            metadataList={[createMetadata()]}
-            condition={createCondition()}
-            onRemoveCondition={onRemoveCondition}
-            onUpdateCondition={onUpdateCondition}
-          />
-        </div>,
+        <AccountProfileQueryProvider queryClient={queryClient}>
+          <div>
+            <ConditionOperator
+              variableType={MetadataFilteringVariableType.string}
+              value={MetadataComparisonOperator.contains}
+              onSelect={onSelect}
+            />
+            <ConditionDate
+              value={1710000000}
+              onChange={onDateChange}
+            />
+            <ConditionItem
+              metadataList={[createMetadata()]}
+              condition={createCondition()}
+              onRemoveCondition={onRemoveCondition}
+              onUpdateCondition={onUpdateCondition}
+            />
+          </div>
+        </AccountProfileQueryProvider>,
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
