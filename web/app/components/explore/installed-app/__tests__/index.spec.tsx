@@ -159,9 +159,9 @@ describe('InstalledApp', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
+    it('should render without crashing', async () => {
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+      expect(await screen.findByText(/Chat With History/i)).toBeInTheDocument()
     })
 
     it('should render loading state when fetching app params', () => {
