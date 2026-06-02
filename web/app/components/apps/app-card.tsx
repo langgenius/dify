@@ -53,6 +53,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { downloadBlob } from '@/utils/download'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -334,7 +335,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       })
       setShowDuplicateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setLocalStorageItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()
