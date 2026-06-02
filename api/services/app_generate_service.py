@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.agent_app.app_generator import AgentAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
@@ -135,6 +136,15 @@ class AppGenerateService:
                     return rate_limit.generate(
                         AgentChatAppGenerator.convert_to_event_stream(
                             AgentChatAppGenerator().generate(
+                                app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            ),
+                        ),
+                        request_id,
+                    )
+                case AppMode.AGENT:
+                    return rate_limit.generate(
+                        AgentAppGenerator.convert_to_event_stream(
+                            AgentAppGenerator().generate(
                                 app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                             ),
                         ),

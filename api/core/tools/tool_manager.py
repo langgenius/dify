@@ -962,34 +962,41 @@ class ToolManager:
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            workflow_provider: WorkflowToolProvider | None = db.session.scalar(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .limit(1)
-            )
+            # Use a short-lived session to avoid holding a database transaction
+            # during long-running nested workflow execution.
+            # Fixes: idle in transaction when Workflow Tool runs (#36902)
+            with Session(db.engine, expire_on_commit=False) as session:
+                workflow_provider: WorkflowToolProvider | None = session.scalar(
+                    select(WorkflowToolProvider)
+                    .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+                    .limit(1)
+                )
 
-            if workflow_provider is None:
-                raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
+                if workflow_provider is None:
+                    raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            icon = emoji_icon_adapter.validate_json(workflow_provider.icon)
-            return icon
+                icon = emoji_icon_adapter.validate_json(workflow_provider.icon)
+                return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            api_provider: ApiToolProvider | None = db.session.scalar(
-                select(ApiToolProvider)
-                .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                .limit(1)
-            )
+            # Use a short-lived session to avoid holding a database transaction
+            # during long-running tool execution.
+            with Session(db.engine, expire_on_commit=False) as session:
+                api_provider: ApiToolProvider | None = session.scalar(
+                    select(ApiToolProvider)
+                    .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
+                    .limit(1)
+                )
 
-            if api_provider is None:
-                raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
+                if api_provider is None:
+                    raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            icon = emoji_icon_adapter.validate_json(api_provider.icon)
-            return icon
+                icon = emoji_icon_adapter.validate_json(api_provider.icon)
+                return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 

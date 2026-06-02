@@ -290,7 +290,7 @@ class AverageSessionInteractionStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))

@@ -3383,16 +3383,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/featured-tools.tsx": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/block-selector/featured-triggers.tsx": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/block-selector/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 1
@@ -4601,11 +4591,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/note-node/hooks.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/note-node/note-editor/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -4633,9 +4618,6 @@
     }
   },
   "web/app/components/workflow/operator/hooks.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5134,9 +5116,6 @@
     }
   },
   "web/context/provider-context-provider.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }

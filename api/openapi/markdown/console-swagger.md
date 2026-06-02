@@ -1061,6 +1061,48 @@ Run draft workflow for advanced chat application
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | [AgentComposerValidateResponse](#agentcomposervalidateresponse) |
 
+### /apps/{app_id}/agent-features
+
+#### POST
+##### Description
+
+Update an Agent App's presentation features (opener, follow-up, citations, ...)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [AgentAppFeaturesRequest](#agentappfeaturesrequest) |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Features updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 400 | Invalid configuration |  |
+| 404 | App not found |  |
+
+### /apps/{app_id}/agent-referencing-workflows
+
+#### GET
+##### Description
+
+List workflow apps that reference this Agent App's bound Agent (read-only)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Referencing workflows listed successfully | [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse) |
+| 404 | App not found |  |
+
 ### /apps/{app_id}/agent/logs
 
 #### GET
@@ -10519,6 +10561,7 @@ Get banner list
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
+| avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
 | id | string |  | Yes |
@@ -10725,6 +10768,23 @@ Get banner list
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | variant | string |  | Yes |
+
+#### AgentAppFeaturesRequest
+
+Presentation features configurable on an Agent App.
+
+All fields are optional; an omitted field is reset to its disabled/empty
+default (the config form sends the full desired feature state on save).
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| opening_statement | string | Conversation opener shown before the first turn | No |
+| retriever_resource | object | Citations / attributions config, e.g. {'enabled': true} | No |
+| sensitive_word_avoidance | object | Content moderation config | No |
+| speech_to_text | object | Speech-to-text config | No |
+| suggested_questions | [ string ] | Preset questions shown alongside the opener | No |
+| suggested_questions_after_answer | object | Follow-up suggestions config, e.g. {'enabled': true} | No |
+| text_to_speech | object | Text-to-speech config | No |
 
 #### AgentComposerAgentResponse
 
@@ -10945,6 +11005,22 @@ the current roster/workflow APIs scoped to Dify Agent.
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | message_id | string | Message UUID | Yes |
+
+#### AgentReferencingWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_mode | string |  | Yes |
+| app_name | string |  | Yes |
+| node_ids | [ string ] |  | No |
+| workflow_id | string |  | Yes |
+
+#### AgentReferencingWorkflowsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentReferencingWorkflowResponse](#agentreferencingworkflowresponse) ] |  | No |
 
 #### AgentRosterListResponse
 
@@ -11392,6 +11468,7 @@ Enum class for api provider schema type.
 | access_mode | string |  | No |
 | api_base_url | string |  | No |
 | app_model_config | [ModelConfig](#modelconfig) |  | No |
+| bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
@@ -11460,7 +11537,7 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer | Page size (1-100) | No |
-| mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
 | page | integer | Page number (1-99999) | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -11729,7 +11806,7 @@ Button styles for user actions.
 | conversation_id | string | Conversation ID | No |
 | files | [  ] | Uploaded files | No |
 | inputs | object |  | Yes |
-| model_config | object |  | Yes |
+| model_config | object |  | No |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query | Yes |
 | response_mode | string | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
@@ -11868,7 +11945,7 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | files | [  ] | Uploaded files | No |
 | inputs | object |  | Yes |
-| model_config | object |  | Yes |
+| model_config | object |  | No |
 | query | string | Query text | No |
 | response_mode | string | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string | Retriever source | No |
@@ -12156,7 +12233,7 @@ Condition detail
 | icon | string | Icon | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
-| mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
 #### CredentialType

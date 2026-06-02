@@ -98,6 +98,7 @@ class TestAppModelValidation:
             "workflow",
             "advanced-chat",
             "agent-chat",
+            "agent",
             "channel",
             "rag-pipeline",
         }
