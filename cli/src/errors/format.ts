@@ -1,6 +1,6 @@
-import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { isVerbose } from '@/framework/context'
 import { redactBearer } from '@/http/sanitize'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
 
 export type FormatErrorOptions = {
   readonly format?: string
@@ -19,7 +19,7 @@ export type ErrorEnvelope = {
   }
 }
 
-export interface PrintableError {
+export type PrintableError = {
   toEnvelope: () => ErrorEnvelope
 }
 

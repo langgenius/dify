@@ -1,7 +1,7 @@
+import type { HttpClientError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
 import { describe, expect, it } from 'vitest'
 import { collect, collectorFor, decodeStreamError, HitlPauseError } from './sse-collector'
-import type { HttpClientError } from '@/errors/base'
 
 const enc = new TextEncoder()
 function ev(name: string, data: object): SseEvent {

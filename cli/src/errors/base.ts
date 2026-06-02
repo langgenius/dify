@@ -1,5 +1,5 @@
-import type { ErrorEnvelope, PrintableError } from './format'
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import type { ErrorEnvelope, PrintableError } from './format'
 import { ErrorCode, exitFor } from './codes'
 
 export type BaseErrorOptions = {
