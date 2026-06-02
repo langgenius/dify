@@ -76,8 +76,8 @@ const RowMenu = ({
 
   const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
-  const hasViewAction = roleCategory === 'global_system_default' && role.role_tag === 'owner'
-  const hasEditAction = (roleCategory === 'global_custom' || (roleCategory === 'global_system_default' && role.role_tag !== 'owner')) && canManageRoles
+  const hasViewAction = roleCategory === 'global_system_default'
+  const hasEditAction = roleCategory === 'global_custom' && canManageRoles
   const hasDuplicateAction = roleCategory === 'global_custom' && canManageRoles
   const hasDeleteAction = roleCategory === 'global_custom' && canManageRoles
 

@@ -34,10 +34,10 @@ const RoleList = ({
           key={group.id}
           className="flex flex-col gap-y-1"
         >
-          <div className="flex h-6 items-center system-sm-medium text-text-secondary">
+          <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
             {t(`role.groups.${group.id}`, { ns: 'permission', defaultValue: group.title })}
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {group.items.map(row => (
               <Row
                 key={row.id}

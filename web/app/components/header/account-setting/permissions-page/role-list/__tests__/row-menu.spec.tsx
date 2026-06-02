@@ -1,5 +1,5 @@
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RowMenu from '../row-menu'
 
@@ -48,13 +48,22 @@ const createRole = (overrides: Partial<Role> = {}): Role => ({
 const openMenu = async () => {
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'common.operation.moreActions' }))
-  return user
+  const menus = screen.getAllByRole('menu')
+  return {
+    user,
+    menu: menus[menus.length - 1]!,
+  }
 }
 
 describe('RowMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.body.querySelectorAll('[role="menu"], [role="menuitem"]').forEach(element => element.remove())
     mockWorkspacePermissionKeys.value = ['workspace.role.manage']
+  })
+
+  afterEach(() => {
+    document.body.querySelectorAll('[role="menu"], [role="menuitem"]').forEach(element => element.remove())
   })
 
   describe('Rendering', () => {
@@ -66,13 +75,13 @@ describe('RowMenu', () => {
         />,
       )
 
-      await openMenu()
+      const { menu } = await openMenu()
 
-      expect(screen.getByRole('menuitem', { name: 'common.operation.view' })).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.view' })).toBeInTheDocument()
+      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.edit' })).not.toBeInTheDocument()
     })
 
-    it('should hide view action for non-owner system roles', async () => {
+    it('should render view action for non-owner system roles', async () => {
       render(
         <RowMenu
           roleCategory="global_system_default"
@@ -80,10 +89,10 @@ describe('RowMenu', () => {
         />,
       )
 
-      await openMenu()
+      const { menu } = await openMenu()
 
-      expect(screen.queryByRole('menuitem', { name: 'common.operation.view' })).not.toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.view' })).toBeInTheDocument()
+      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.edit' })).not.toBeInTheDocument()
     })
 
     it('should hide view action for custom roles', async () => {
@@ -99,12 +108,12 @@ describe('RowMenu', () => {
         />,
       )
 
-      await openMenu()
+      const { menu } = await openMenu()
 
-      expect(screen.queryByRole('menuitem', { name: 'common.operation.view' })).not.toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+      expect(within(menu).queryByRole('menuitem', { name: 'common.operation.view' })).not.toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'permission.common.duplicateAction' })).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
     })
   })
 
@@ -120,8 +129,8 @@ describe('RowMenu', () => {
         />,
       )
 
-      const user = await openMenu()
-      await user.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
+      const { user, menu } = await openMenu()
+      await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.view' }))
 
       expect(onView).toHaveBeenCalledTimes(1)
       expect(onView).toHaveBeenCalledWith(role)

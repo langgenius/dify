@@ -91,8 +91,8 @@ export default function AccountSetting({
         {
           key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
           name: t('settings.resourceAccess', { ns: 'common' }),
-          icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
-          activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
+          icon: <span className={cn('i-ri-lock-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-lock-fill', iconClassName)} />,
         },
       )
     }
