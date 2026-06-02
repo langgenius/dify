@@ -119,11 +119,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
     "no-console": {
       "count": 19
@@ -250,11 +245,6 @@
   "web/app/components/app-sidebar/app-info/app-operations.tsx": {
     "react/set-state-in-effect": {
       "count": 4
-    }
-  },
-  "web/app/components/app-sidebar/app-info/use-app-info-actions.ts": {
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "web/app/components/app-sidebar/index.tsx": {
@@ -551,9 +541,6 @@
     }
   },
   "web/app/components/app/create-app-dialog/app-list/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -567,9 +554,6 @@
     }
   },
   "web/app/components/app/create-app-modal/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -577,9 +561,6 @@
   "web/app/components/app/create-from-dsl-modal/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 2
     },
     "no-restricted-imports": {
       "count": 1
@@ -646,9 +627,6 @@
     }
   },
   "web/app/components/app/switch-app-modal/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -681,11 +659,6 @@
   },
   "web/app/components/app/workflow-log/trigger-by-display.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/apps/app-card.tsx": {
-    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -5166,11 +5139,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/hooks/use-import-dsl.ts": {
-    "no-restricted-globals": {
-      "count": 2
     }
   },
   "web/hooks/use-metadata.ts": {
