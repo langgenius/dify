@@ -32,13 +32,18 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
 
   return (
     <ScrollArea
-      className="h-full bg-components-panel-bg"
+      className="h-full bg-background-body"
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
-      <div className="w-full px-16 py-8">
-        <h1 className="title-2xl-semi-bold text-text-primary">{t('settings.appAccessPermissions', { ns: 'common' })}</h1>
-        <div className="mt-6">
-          <AccessRulesEditor resourceId={appId} rules={appAccessRules} canManage={appACLCapabilities.canAccessConfig} />
+      <div className="w-full max-w-304 px-8 py-6">
+        <h1 className="system-sm-semibold text-text-primary">{t('settings.appAccessPermissions', { ns: 'common' })}</h1>
+        <div className="mt-4">
+          <AccessRulesEditor
+            resourceId={appId}
+            rules={appAccessRules}
+            canManage={appACLCapabilities.canAccessConfig}
+            title={t('accessRule.appTitle', { ns: 'permission' })}
+          />
         </div>
       </div>
     </ScrollArea>

@@ -11,6 +11,7 @@ export type AccessRuleRowProps = {
   rule: AccessPolicyWithBindings
   canManage: boolean
   className?: string
+  bindingTarget?: 'workspace' | 'resource'
   showMenu?: boolean
   onView?: (rule: AccessPolicyWithBindings) => void
   onEdit?: (rule: AccessPolicyWithBindings) => void
@@ -22,6 +23,7 @@ const AccessRuleRow = ({
   rule,
   canManage,
   className,
+  bindingTarget = 'workspace',
   showMenu = true,
   onView,
   onEdit,
@@ -31,6 +33,7 @@ const AccessRuleRow = ({
   const { t } = useTranslation()
   const { policy, roles, accounts } = rule
   const { id: policyId, resource_type } = policy
+  const isWorkspaceBinding = bindingTarget === 'workspace'
 
   const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])
@@ -72,6 +75,7 @@ const AccessRuleRow = ({
               label={role.role_name}
               type="role"
               isLocked={role.is_locked}
+              canChangeLockStatus={isWorkspaceBinding && canManage}
               showRemove={canManage}
               onRemove={handleRemove}
             />
@@ -84,6 +88,7 @@ const AccessRuleRow = ({
               type="account"
               avatar={account.avatar}
               isLocked={account.is_locked}
+              canChangeLockStatus={isWorkspaceBinding && canManage}
               showRemove={canManage}
               onRemove={handleRemove}
             />
@@ -92,7 +97,7 @@ const AccessRuleRow = ({
             <button
               type="button"
               onClick={handleAddRole}
-              className="inline-flex h-6 items-center gap-1 rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 pr-2 system-xs-regular text-text-primary transition-colors outline-none hover:bg-components-button-secondary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="inline-flex h-6 items-center gap-1 rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 pr-2 system-xs-medium text-components-button-secondary-text transition-colors outline-none hover:bg-components-button-secondary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               aria-label={t('accessRule.addRoleAria', { ns: 'permission', name: policy.name })}
             >
               <span aria-hidden className="i-ri-add-line size-3.5 shrink-0 text-text-tertiary" />

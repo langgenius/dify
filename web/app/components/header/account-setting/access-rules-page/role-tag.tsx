@@ -25,6 +25,7 @@ export type RoleTagProps = {
   isLocked?: boolean
   showRemove?: boolean
   onRemove?: (id: string, type: BindingType) => void
+  canChangeLockStatus?: boolean
   className?: string
 }
 
@@ -62,13 +63,14 @@ const RoleTag = ({
   isLocked = false,
   showRemove = false,
   onRemove,
+  canChangeLockStatus = false,
   className,
 }: RoleTagProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const isMember = type === 'account'
-  const canOpenMenu = showRemove && !!onRemove
+  const canOpenMenu = (showRemove && !!onRemove) || canChangeLockStatus
 
   const chipClassName = cn(
     'inline-flex h-6 max-w-full items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-section p-1 system-xs-regular text-text-primary transition-colors outline-none',
@@ -125,25 +127,31 @@ const RoleTag = ({
         sideOffset={4}
         popupClassName="w-[236px] rounded-xl p-1"
       >
-        <DropdownMenuItem
-          className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular text-text-secondary"
-          onClick={() => setOpen(false)}
-        >
-          <span
-            aria-hidden
-            className={cn('size-4 shrink-0', isLocked ? 'i-ri-lock-unlock-line' : 'i-ri-lock-line')}
-          />
-          {t(isLocked ? 'accessRule.unlockBinding' : 'accessRule.lockBinding', { ns: 'permission' })}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-0" />
-        <DropdownMenuItem
-          variant="destructive"
-          className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
-          onClick={() => onRemove(id, type)}
-        >
-          <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-          {t('operation.remove', { ns: 'common' })}
-        </DropdownMenuItem>
+        {canChangeLockStatus && (
+          <DropdownMenuItem
+            className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular text-text-secondary"
+            onClick={() => setOpen(false)}
+          >
+            <span
+              aria-hidden
+              className={cn('size-4 shrink-0', isLocked ? 'i-ri-lock-unlock-line' : 'i-ri-lock-line')}
+            />
+            {t(isLocked ? 'accessRule.unlockBinding' : 'accessRule.lockBinding', { ns: 'permission' })}
+          </DropdownMenuItem>
+        )}
+        {showRemove && !!onRemove && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
+            <DropdownMenuItem
+              variant="destructive"
+              className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
+              onClick={() => onRemove(id, type)}
+            >
+              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+              {t('operation.remove', { ns: 'common' })}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

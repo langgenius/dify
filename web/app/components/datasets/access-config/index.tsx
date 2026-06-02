@@ -32,13 +32,18 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
 
   return (
     <ScrollArea
-      className="h-full bg-components-panel-bg"
+      className="h-full bg-background-body"
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
-      <div className="px-12 py-8">
-        <h1 className="title-2xl-semi-bold text-text-primary">{t('settings.knowledgeBaseAccessPermissions', { ns: 'common' })}</h1>
-        <div className="mt-6">
-          <AccessRulesEditor resourceId={datasetId} rules={datasetAccessRules} canManage={datasetACLCapabilities.canAccessConfig} />
+      <div className="w-full max-w-304 px-8 py-6">
+        <h1 className="system-sm-semibold text-text-primary">{t('settings.knowledgeBaseAccessPermissions', { ns: 'common' })}</h1>
+        <div className="mt-4">
+          <AccessRulesEditor
+            resourceId={datasetId}
+            rules={datasetAccessRules}
+            canManage={datasetACLCapabilities.canAccessConfig}
+            title={t('accessRule.datasetTitle', { ns: 'permission' })}
+          />
         </div>
       </div>
     </ScrollArea>
