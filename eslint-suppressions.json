@@ -817,9 +817,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/hooks.tsx": {
-    "react/set-state-in-effect": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 18
     }
