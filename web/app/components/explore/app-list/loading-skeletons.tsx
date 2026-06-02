@@ -74,19 +74,19 @@ export function ExploreHeaderSkeleton() {
 
   return (
     <div role="status" aria-label={t('loading', { ns: 'common' })} className="sticky top-0 z-10 bg-background-body">
-      <div className="px-8 pt-4">
-        <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex items-center gap-2 px-8 pt-6">
+        <div className="min-w-0 flex-1">
           <SkeletonRectangle className="h-6 w-32 animate-pulse" />
-          <SkeletonRectangle className="h-3 w-80 animate-pulse" />
         </div>
+        <SkeletonRectangle className="h-4 w-20 shrink-0 animate-pulse" />
       </div>
-      <div className="flex items-end justify-between gap-4 px-8 pt-3 pb-3">
-        <div className="flex min-w-0 flex-1 gap-2">
+      <div className="flex items-start justify-between gap-2 px-8 pt-3 pb-3">
+        <div className="flex min-w-0 flex-1 gap-1">
           {Array.from({ length: 4 }, (_, index) => (
-            <SkeletonRectangle key={index} className="h-7 w-24 animate-pulse rounded-lg" />
+            <SkeletonRectangle key={index} className="h-8 w-24 animate-pulse rounded-lg" />
           ))}
         </div>
-        <SkeletonRectangle className="h-8 w-[200px] shrink-0 animate-pulse rounded-lg" />
+        <SkeletonRectangle className="h-8 w-40 shrink-0 animate-pulse rounded-lg" />
       </div>
     </div>
   )
