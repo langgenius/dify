@@ -3,8 +3,10 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import ContinueWork from '@/app/components/explore/continue-work'
-import LearnDify from '@/app/components/explore/learn-dify'
+import dynamic from '@/next/dynamic'
 import { RecommendationSectionSkeleton } from './loading-skeletons'
+
+const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), { ssr: false })
 
 export function ExploreRecommendations({
   canCreate,
