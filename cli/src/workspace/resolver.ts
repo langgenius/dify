@@ -1,11 +1,11 @@
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
 export type WorkspaceResolveInputs = {
   readonly flag?: string
   readonly env?: string
-  readonly bundle?: HostsBundle
+  readonly active?: ActiveContext
 }
 
 export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
@@ -13,13 +13,13 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
     return inputs.flag
   if (truthy(inputs.env))
     return inputs.env
-  const b = inputs.bundle
-  if (b !== undefined) {
-    if (truthy(b.workspace?.id))
-      return b.workspace.id
-    if (b.available_workspaces !== undefined && b.available_workspaces.length > 0
-      && truthy(b.available_workspaces[0]?.id)) {
-      return b.available_workspaces[0].id
+  const ctx = inputs.active?.ctx
+  if (ctx !== undefined) {
+    if (truthy(ctx.workspace?.id))
+      return ctx.workspace.id
+    if (ctx.available_workspaces !== undefined && ctx.available_workspaces.length > 0
+      && truthy(ctx.available_workspaces[0]?.id)) {
+      return ctx.available_workspaces[0].id
     }
   }
   throw new BaseError({

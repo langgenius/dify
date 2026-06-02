@@ -32,7 +32,7 @@ export default class DescribeApp extends DifyCommand {
       format,
       data: await runDescribeApp(
         { appId: args.id, workspace: flags.workspace, format, refresh: flags.refresh },
-        { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
+        { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
       ),
     })
   }

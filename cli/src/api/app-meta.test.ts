@@ -3,14 +3,14 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
-import { createClient } from '@/http/client'
 import { ENV_CACHE_DIR } from '@/store/dir'
 import { CACHE_APP_INFO, getCache } from '@/store/manager'
 import { FieldInfo, FieldParameters } from '@/types/app-meta'
-import { AppMetaClient } from './app-meta'
-import { AppsClient } from './apps'
+import { AppMetaClient } from './app-meta.js'
+import { AppsClient } from './apps.js'
 
 describe('AppMetaClient', () => {
   let mock: DifyMock
@@ -33,7 +33,7 @@ describe('AppMetaClient', () => {
 
   it('cache miss → fetch → populate; warm hit skips network', async () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
-    const apps = new AppsClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const apps = new AppsClient(testHttpClient(mock.url, 'dfoa_test'))
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache })
 
@@ -48,7 +48,7 @@ describe('AppMetaClient', () => {
 
   it('slim hit + full request triggers fresh fetch + merges', async () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
-    const apps = new AppsClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const apps = new AppsClient(testHttpClient(mock.url, 'dfoa_test'))
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache })
 
@@ -62,7 +62,7 @@ describe('AppMetaClient', () => {
 
   it('expired cache entry refetches', async () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO), ttlMs: 100, now: () => new Date('2026-05-09T00:00:00Z') })
-    const apps = new AppsClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const apps = new AppsClient(testHttpClient(mock.url, 'dfoa_test'))
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache, now: () => new Date('2026-05-09T00:00:00Z') })
 
@@ -76,7 +76,7 @@ describe('AppMetaClient', () => {
 
   it('invalidate forces next get to fetch', async () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
-    const apps = new AppsClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const apps = new AppsClient(testHttpClient(mock.url, 'dfoa_test'))
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache })
 
@@ -89,7 +89,7 @@ describe('AppMetaClient', () => {
   })
 
   it('no cache: each call hits network', async () => {
-    const apps = new AppsClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const apps = new AppsClient(testHttpClient(mock.url, 'dfoa_test'))
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url })
 

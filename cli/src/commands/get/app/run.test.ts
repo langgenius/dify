@@ -1,23 +1,24 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
 import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { stringifyOutput, table } from '@/framework/output'
-import { createClient } from '@/http/client'
-import { AppListOutput } from './handlers'
-import { runGetApp } from './run'
+import { AppListOutput } from './handlers.js'
+import { runGetApp } from './run.js'
 
-const baseBundle: HostsBundle = {
-  current_host: '127.0.0.1',
+const baseActive: ActiveContext = {
+  host: '127.0.0.1',
+  email: 'tester@dify.ai',
+  ctx: {
+    account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
+    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+    available_workspaces: [
+      { id: 'ws-1', name: 'Default', role: 'owner' },
+      { id: 'ws-2', name: 'Other', role: 'normal' },
+    ],
+  },
   scheme: 'http',
-  account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-  workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-  available_workspaces: [
-    { id: 'ws-1', name: 'Default', role: 'owner' },
-    { id: 'ws-2', name: 'Other', role: 'normal' },
-  ],
-  token_storage: 'file',
-  tokens: { bearer: 'dfoa_test' },
 }
 
 describe('runGetApp', () => {
@@ -32,11 +33,11 @@ describe('runGetApp', () => {
   })
 
   function http() {
-    return createClient({ host: mock.url, bearer: 'dfoa_test' })
+    return testHttpClient(mock.url, 'dfoa_test')
   }
 
   async function render(opts: Parameters<typeof runGetApp>[0] = {}): Promise<string> {
-    const result = await runGetApp(opts, { bundle: baseBundle, http: http() })
+    const result = await runGetApp(opts, { active: baseActive, http: http() })
     return stringifyOutput(table({
       format: opts.format ?? '',
       data: result.data,
@@ -134,7 +135,11 @@ describe('runGetApp', () => {
   })
 
   it('throws NotLoggedIn-equivalent when no workspace can be resolved', async () => {
-    const minimal: HostsBundle = { current_host: 'h', token_storage: 'file' }
-    await expect(runGetApp({}, { bundle: minimal, http: http() })).rejects.toThrow(/no workspace/)
+    const minimal: ActiveContext = {
+      host: 'h',
+      email: 'x@x.com',
+      ctx: { account: { email: 'x@x.com', name: 'X' } },
+    }
+    await expect(runGetApp({}, { active: minimal, http: http() })).rejects.toThrow(/no workspace/)
   })
 })

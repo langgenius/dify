@@ -1,6 +1,6 @@
 import type { HitlPausePayload } from './sse-collector'
+import type { StreamPrinter } from '@/framework/stream'
 import type { SseEvent } from '@/http/sse'
-import type { StreamPrinter } from '@/printers/stream-printer'
 import { newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'

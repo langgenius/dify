@@ -1,5 +1,5 @@
 import type { SearchParams } from './types'
-import { useDebounceFn, useLocalStorageState } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -12,9 +12,9 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
-import { getLocalStorageItem, setLocalStorageItem } from '@/utils/local-storage'
 import {
   EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
@@ -85,15 +85,9 @@ const useEducationReverifyNotice = ({
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
   const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
-  const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
-    defaultValue: 0,
-  })
-  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
-    defaultValue: false,
-  })
-  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
-    defaultValue: false,
-  })
+  const [prevExpireAt, setPrevExpireAt] = useLocalStorage<number>('education-reverify-prev-expire-at', 0)
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorage<boolean>('education-reverify-has-noticed', false)
+  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorage<boolean>('education-expired-has-noticed', false)
 
   useEffect(() => {
     if (isLoading || !timezone)
@@ -134,7 +128,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = getLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const [educationVerifying, setEducationVerifying] = useLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'no', { raw: true })
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -157,9 +151,9 @@ export const useEducationInit = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        setLocalStorageItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        setEducationVerifying('yes')
     }
     if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()
-  }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
+  }, [setShowAccountSettingModal, setEducationVerifying, educationVerifying, educationVerifyAction])
 }
