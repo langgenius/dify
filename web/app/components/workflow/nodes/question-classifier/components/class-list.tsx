@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
@@ -42,17 +43,7 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
-  const [isRenameHintDismissed, setIsRenameHintDismissed] = useState(() => {
-    if (typeof window === 'undefined')
-      return true
-
-    try {
-      return window.localStorage.getItem(INLINE_LABEL_HINT_STORAGE_KEY) === 'true'
-    }
-    catch {
-      return false
-    }
-  })
+  const [isRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY, false)
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
@@ -104,12 +95,7 @@ const ClassList: FC<Props> = ({
       return
 
     setIsRenameHintDismissed(true)
-    try {
-      window.localStorage.setItem(INLINE_LABEL_HINT_STORAGE_KEY, 'true')
-    }
-    catch {
-    }
-  }, [isRenameHintDismissed])
+  }, [isRenameHintDismissed, setIsRenameHintDismissed])
 
   const shouldShowRenameHint = !readonly && !isRenameHintDismissed && list.some((item, index) => {
     return isDefaultClassLabel(item.label, index + 1, t)
