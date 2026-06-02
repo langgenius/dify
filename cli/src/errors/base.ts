@@ -1,6 +1,7 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { ErrorCode, exitFor } from './codes'
+import { isVerbose } from '@/framework/context'
 
 export type BaseErrorOptions = {
   readonly code: ErrorCodeValue
@@ -123,11 +124,14 @@ export class HttpClientError extends BaseError {
   }
 
   override humanError(isErrTTY: boolean): string {
+    
     const lines: string[] = [super.humanError(isErrTTY)]
     if (this.method !== undefined && this.url !== undefined)
       lines.push(`request: ${this.method} ${this.url}`)
     if (this.httpStatus !== undefined)
       lines.push(`http_status: ${this.httpStatus}`)
+    if (isVerbose() && this.rawResponse)
+      lines.push(`raw_response: ${this.rawResponse}`)
     return lines.join('\n')
   }
 
