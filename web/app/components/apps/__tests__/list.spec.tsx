@@ -475,6 +475,12 @@ describe('List', () => {
   })
 
   describe('Local Storage Refresh', () => {
+    it('should not write a default refresh key when no refresh is pending', () => {
+      renderList()
+
+      expect(localStorage.getItem('needRefreshAppList')).toBeNull()
+    })
+
     it('should call refetch when refresh key is set in localStorage', () => {
       localStorage.setItem('needRefreshAppList', '1')
 
