@@ -96,8 +96,8 @@ export class Registry {
     const entry = this.data.hosts[host]
     if (entry === undefined)
       return undefined
-    const email = entry.current_account
-    if (email === undefined || email === '')
+    const email = entry?.current_account
+    if (!email)
       return undefined
     const ctx = entry.accounts[email]
     if (ctx === undefined)
