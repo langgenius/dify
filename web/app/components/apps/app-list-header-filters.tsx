@@ -58,7 +58,7 @@ function AppListHeaderFilters({
   const appTypeValue: AppTypeChipValue = category === 'all' ? '' : category
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+    <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
         <Chip
           value={appTypeValue}

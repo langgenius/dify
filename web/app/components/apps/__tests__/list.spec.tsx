@@ -375,9 +375,9 @@ describe('List', () => {
       renderList()
 
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
-      expect(screen.getByText('app.firstEmpty.description'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
-      expect(screen.queryByRole('combobox', { name: /^app\.types\./ })).not.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
@@ -399,7 +399,7 @@ describe('List', () => {
 
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
-      expect(screen.queryByRole('combobox', { name: /^app\.types\./ })).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'app.types.all' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('footer')).not.toBeInTheDocument()
     })
 

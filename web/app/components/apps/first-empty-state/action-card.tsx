@@ -1,9 +1,9 @@
-'use client'
-
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import CornerLabel from '@/app/components/base/corner-label'
 import Link from '@/next/link'
+
+type VisualStyle = 'default' | 'compact' | 'list'
 
 type BaseProps = {
   badge?: string
@@ -11,7 +11,7 @@ type BaseProps = {
   description: string
   icon: ReactNode
   title: string
-  visualStyle?: 'default' | 'compact'
+  visualStyle?: VisualStyle
 }
 
 type ButtonActionCardProps = BaseProps & {
@@ -26,7 +26,7 @@ type LinkActionCardProps = BaseProps & {
 
 type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
 
-const baseCardClassName = 'relative flex flex-col rounded-xl border border-components-panel-border bg-components-panel-on-panel-item-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm'
+const baseCardClassName = 'relative flex rounded-xl bg-components-button-secondary-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden'
 const compactBadgeClassName = {
   basic: {
     corner: 'text-util-colors-orange-orange-50',
@@ -40,29 +40,46 @@ const compactBadgeClassName = {
   },
 }
 
-type CompactBadgeProps = {
+function CompactBadge({
+  badge,
+  badgeVariant,
+}: {
   badge: string
   badgeVariant: 'basic' | 'advanced'
+}) {
+  return (
+    <CornerLabel
+      label={badge}
+      className="absolute top-0 right-0 z-5"
+      cornerClassName={compactBadgeClassName[badgeVariant].corner}
+      labelClassName={cn('rounded-tr-xl pr-2', compactBadgeClassName[badgeVariant].label)}
+      textClassName={compactBadgeClassName[badgeVariant].text}
+    />
+  )
 }
 
-const CompactBadge: FC<CompactBadgeProps> = ({ badge, badgeVariant }) => (
-  <CornerLabel
-    label={badge}
-    className="absolute top-0 right-0 z-5"
-    cornerClassName={compactBadgeClassName[badgeVariant].corner}
-    labelClassName={cn('rounded-tr-xl pr-2', compactBadgeClassName[badgeVariant].label)}
-    textClassName={compactBadgeClassName[badgeVariant].text}
-  />
-)
-
-const ActionCardContent: FC<BaseProps> = ({
+function ActionCardContent({
   badge,
   badgeVariant = 'basic',
   description,
   icon,
   title,
   visualStyle = 'default',
-}) => {
+}: BaseProps) {
+  if (visualStyle === 'list') {
+    return (
+      <>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section text-text-tertiary">
+          {icon}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate system-md-medium text-text-secondary">{title}</span>
+          <span className="truncate system-xs-regular text-text-tertiary">{description}</span>
+        </span>
+      </>
+    )
+  }
+
   const isCompact = visualStyle === 'compact'
   const badgeNode = badge
     ? isCompact
@@ -86,25 +103,44 @@ const ActionCardContent: FC<BaseProps> = ({
   )
 }
 
-const FirstEmptyActionCard: FC<FirstEmptyActionCardProps> = (props) => {
+function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
   const className = cn(
     baseCardClassName,
+    props.visualStyle === 'list'
+      ? 'w-full items-center gap-3 overflow-hidden px-3 py-2.5 backdrop-blur-md'
+      : 'flex-col border border-components-panel-border bg-components-panel-on-panel-item-bg hover:shadow-sm',
     props.visualStyle === 'compact'
       ? 'min-h-[156px] overflow-hidden px-4 pt-6 pb-3'
-      : 'min-h-[204px] p-6',
+      : props.visualStyle === 'list'
+        ? undefined
+        : 'min-h-[204px] p-6',
   )
 
   if (props.href) {
     return (
       <Link href={props.href} className={className}>
-        <ActionCardContent badge={props.badge} badgeVariant={props.badgeVariant} description={props.description} icon={props.icon} title={props.title} visualStyle={props.visualStyle} />
+        <ActionCardContent
+          badge={props.badge}
+          badgeVariant={props.badgeVariant}
+          description={props.description}
+          icon={props.icon}
+          title={props.title}
+          visualStyle={props.visualStyle}
+        />
       </Link>
     )
   }
 
   return (
     <button type="button" className={className} onClick={props.onClick}>
-      <ActionCardContent badge={props.badge} badgeVariant={props.badgeVariant} description={props.description} icon={props.icon} title={props.title} visualStyle={props.visualStyle} />
+      <ActionCardContent
+        badge={props.badge}
+        badgeVariant={props.badgeVariant}
+        description={props.description}
+        icon={props.icon}
+        title={props.title}
+        visualStyle={props.visualStyle}
+      />
     </button>
   )
 }

@@ -10,6 +10,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -53,6 +54,7 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
+  const [needsRefreshAppList, setNeedsRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)
@@ -118,11 +120,11 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
   const anchorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
-      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
+    if (needsRefreshAppList === '1') {
+      setNeedsRefreshAppList(null)
       refetch()
     }
-  }, [refetch])
+  }, [needsRefreshAppList, refetch, setNeedsRefreshAppList])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -202,30 +204,27 @@ function List({ controlRefreshList = 0 }: { controlRefreshList?: number }) {
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-col bg-background-body px-6 pt-2 pb-2">
-          <div className="flex min-h-14 items-start pt-2">
-            <div className="flex flex-col gap-0.5">
-              <h1 className="text-xl/6 font-semibold text-dify-logo-black">{t('menus.apps', { ns: 'common' })}</h1>
-              <p className="system-sm-regular text-text-tertiary">{t('studioDescription', { ns: 'app' })}</p>
+        <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
+          <div className="flex h-6 items-center">
+            <div className="flex items-center">
+              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.apps', { ns: 'common' })}</h1>
             </div>
           </div>
-          {!showFirstEmptyState && (
-            <AppListHeaderFilters
-              category={category}
-              tagIDs={tagIDs}
-              keywords={keywords}
-              isCreatedByMe={isCreatedByMe}
-              onCategoryChange={handleCategoryChange}
-              onTagIDsChange={setTagIDs}
-              onKeywordsChange={setKeywords}
-              onCreatedByMeChange={handleCreatedByMeChange}
-              onCreateBlank={() => setShowNewAppModal(true)}
-              onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
-              onImportDSL={() => setShowCreateFromDSLModal(true)}
-              onOpenTagManagement={() => setShowTagManagementModal(true)}
-              showCreateButton={isCurrentWorkspaceEditor}
-            />
-          )}
+          <AppListHeaderFilters
+            category={category}
+            tagIDs={tagIDs}
+            keywords={keywords}
+            isCreatedByMe={isCreatedByMe}
+            onCategoryChange={handleCategoryChange}
+            onTagIDsChange={setTagIDs}
+            onKeywordsChange={setKeywords}
+            onCreatedByMeChange={handleCreatedByMeChange}
+            onCreateBlank={() => setShowNewAppModal(true)}
+            onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
+            onImportDSL={() => setShowCreateFromDSLModal(true)}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            showCreateButton={isCurrentWorkspaceEditor}
+          />
         </div>
         {showFirstEmptyState
           ? (

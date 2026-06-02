@@ -219,7 +219,12 @@ const MainNav = ({
         <div className={cn(
           isCollapsedAppDetailNavigation
             ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
-            : 'flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]',
+            : cn(
+                'flex w-60 items-center justify-between py-3 pr-1 pl-3',
+                isAppDetailNavigation
+                  ? 'bg-components-panel-bg'
+                  : 'bg-gradient-to-b from-background-body-transparent to-background-body to-50% backdrop-blur-[2px]',
+              ),
         )}
         >
           {isCollapsedAppDetailNavigation
