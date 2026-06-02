@@ -16,20 +16,20 @@ def test_auth_router_is_pipeline_router():
     assert isinstance(auth_router, PipelineRouter)
 
 
-def test_account_pipeline_prepare_has_five_entries():
-    assert len(account_pipeline._prepare) == 5
+def test_account_pipeline_prepare_has_six_entries():
+    assert len(account_pipeline._prepare) == 6
 
 
-def test_account_auth_list_has_six_entries():
-    assert len(account_pipeline._auth) == 6
+def test_account_auth_list_has_seven_entries():
+    assert len(account_pipeline._auth) == 7
 
 
 def test_external_sso_pipeline_prepare_has_four_entries():
     assert len(external_sso_pipeline._prepare) == 4
 
 
-def test_external_sso_auth_list_has_three_entries():
-    assert len(external_sso_pipeline._auth) == 3
+def test_external_sso_auth_list_has_four_entries():
+    assert len(external_sso_pipeline._auth) == 4
 
 
 def test_account_pipeline_has_unconditional_load_account():
@@ -41,17 +41,14 @@ def test_external_sso_pipeline_all_prepare_entries_are_when():
     assert all(isinstance(s, When) for s in external_sso_pipeline._prepare)
 
 
-def test_first_auth_entry_is_check_scope_in_both_pipelines():
-    assert not isinstance(account_pipeline._auth[0], When)
-    assert not isinstance(external_sso_pipeline._auth[0], When)
+def test_account_pipeline_has_one_unconditional_auth_step():
+    non_when = [s for s in account_pipeline._auth if not isinstance(s, When)]
+    assert len(non_when) == 1
 
 
-def test_remaining_auth_entries_are_when_for_account():
-    assert all(isinstance(s, When) for s in account_pipeline._auth[1:])
-
-
-def test_remaining_auth_entries_are_when_for_external_sso():
-    assert all(isinstance(s, When) for s in external_sso_pipeline._auth[1:])
+def test_external_sso_pipeline_has_one_unconditional_auth_step():
+    non_when = [s for s in external_sso_pipeline._auth if not isinstance(s, When)]
+    assert len(non_when) == 1
 
 
 def test_router_routes_contain_both_token_types():

@@ -5,9 +5,8 @@ endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
 that matches /openapi/v1/account.
 
-Member-management endpoints are gated by both `accept_subjects` (SSO out)
-and `require_workspace_role` (membership / role lookup against the path's
-``workspace_id``).
+Member-management endpoints use ``guard_workspace`` which enforces
+workspace membership and optional role requirements via the auth pipeline.
 """
 
 from __future__ import annotations

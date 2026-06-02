@@ -127,22 +127,16 @@ class PipelineRouter:
         scope: Scope | None = None,
         allowed_token_types: frozenset[TokenType] | None = None,
         edition: frozenset[Edition] | None = None,
+        workspace_membership: bool = False,
+        allowed_roles: frozenset[TenantAccountRole] | None = None,
     ) -> Callable:
-        def decorator(view: Callable) -> Callable:
-            @wraps(view)
-            def decorated(*args: Any, **kwargs: Any) -> Any:
-                return self._execute(
-                    args,
-                    kwargs,
-                    view,
-                    scope=scope,
-                    allowed_token_types=allowed_token_types,
-                    edition=edition,
-                )
-
-            return decorated
-
-        return decorator
+        return self._make_decorator(
+            scope=scope,
+            allowed_token_types=allowed_token_types,
+            edition=edition,
+            workspace_membership=workspace_membership,
+            allowed_roles=allowed_roles,
+        )
 
     def guard_workspace(
         self,
@@ -152,6 +146,23 @@ class PipelineRouter:
         edition: frozenset[Edition] | None = None,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
     ) -> Callable:
+        return self._make_decorator(
+            scope=scope,
+            allowed_token_types=allowed_token_types,
+            edition=edition,
+            workspace_membership=True,
+            allowed_roles=allowed_roles,
+        )
+
+    def _make_decorator(
+        self,
+        *,
+        scope: Scope | None,
+        allowed_token_types: frozenset[TokenType] | None,
+        edition: frozenset[Edition] | None,
+        workspace_membership: bool,
+        allowed_roles: frozenset[TenantAccountRole] | None,
+    ) -> Callable:
         def decorator(view: Callable) -> Callable:
             @wraps(view)
             def decorated(*args: Any, **kwargs: Any) -> Any:
@@ -162,7 +173,7 @@ class PipelineRouter:
                     scope=scope,
                     allowed_token_types=allowed_token_types,
                     edition=edition,
-                    workspace_membership=True,
+                    workspace_membership=workspace_membership,
                     allowed_roles=allowed_roles,
                 )
 

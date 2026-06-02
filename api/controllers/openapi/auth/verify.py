@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from flask import request
-from werkzeug.exceptions import Forbidden, Unauthorized, UnprocessableEntity
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized, UnprocessableEntity
 
 from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
@@ -40,15 +40,19 @@ def check_workspace_mismatch(data: AuthData) -> None:
 
 
 def check_workspace_role(data: AuthData) -> None:
-    if data.tenant is None or data.account_id is None:
-        raise Unauthorized("workspace or account context missing")
     if data.allowed_roles is None:
         return
-    role = TenantService.get_account_role_in_tenant(db.session, str(data.account_id), str(data.tenant.id))
-    if role is None:
-        raise Forbidden("workspace_membership_revoked")
-    if role not in data.allowed_roles:
+    if data.tenant_role is None:
+        raise NotFound("workspace not found")
+    if data.tenant_role not in data.allowed_roles:
         raise Forbidden("insufficient workspace role")
+
+
+def check_app_api_enabled(data: AuthData) -> None:
+    if data.app is None:
+        return
+    if not data.app.enable_api:
+        raise Forbidden("service_api_disabled")
 
 
 def check_app_access(data: AuthData) -> None:

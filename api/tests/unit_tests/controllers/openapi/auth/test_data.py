@@ -160,3 +160,24 @@ def test_auth_data_allowed_roles_set():
         allowed_roles=roles,
     )
     assert data.allowed_roles == roles
+
+
+def test_auth_data_tenant_role_default_none():
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+    )
+    assert data.tenant_role is None
+
+
+def test_auth_data_tenant_role_set():
+    from models.account import TenantAccountRole
+
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+        tenant_role=TenantAccountRole.ADMIN,
+    )
+    assert data.tenant_role == TenantAccountRole.ADMIN

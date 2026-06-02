@@ -3,12 +3,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.verify import (
     check_acl,
     check_app_access,
+    check_app_api_enabled,
     check_membership,
     check_private_app_permission,
     check_scope,
@@ -188,57 +189,47 @@ def test_check_workspace_mismatch_passes_when_no_request_workspace_id(flask_app)
 
 
 def test_check_workspace_role_passes_when_allowed_roles_none():
-    tenant = MagicMock(spec=Tenant)
-    check_workspace_role(_data(tenant=tenant, account_id=uuid.uuid4(), allowed_roles=None))
+    check_workspace_role(_data(allowed_roles=None))
 
 
-def test_check_workspace_role_raises_unauthorized_when_tenant_missing():
-    with pytest.raises(Unauthorized):
-        check_workspace_role(
-            _data(tenant=None, account_id=uuid.uuid4(), allowed_roles=frozenset({TenantAccountRole.ADMIN}))
-        )
-
-
-def test_check_workspace_role_raises_unauthorized_when_account_missing():
-    tenant = MagicMock(spec=Tenant)
-    with pytest.raises(Unauthorized):
-        check_workspace_role(_data(tenant=tenant, account_id=None, allowed_roles=frozenset({TenantAccountRole.ADMIN})))
-
-
-def test_check_workspace_role_raises_forbidden_when_not_member():
-    tenant = MagicMock(spec=Tenant)
-    tenant.id = uuid.uuid4()
-    data = _data(tenant=tenant, account_id=uuid.uuid4(), allowed_roles=frozenset({TenantAccountRole.ADMIN}))
-    with patch("controllers.openapi.auth.verify.TenantService.get_account_role_in_tenant", return_value=None):
-        with pytest.raises(Forbidden, match="workspace_membership_revoked"):
-            check_workspace_role(data)
+def test_check_workspace_role_raises_not_found_when_not_member():
+    data = _data(tenant_role=None, allowed_roles=frozenset({TenantAccountRole.ADMIN}))
+    with pytest.raises(NotFound):
+        check_workspace_role(data)
 
 
 def test_check_workspace_role_raises_forbidden_when_wrong_role():
-    tenant = MagicMock(spec=Tenant)
-    tenant.id = uuid.uuid4()
     data = _data(
-        tenant=tenant,
-        account_id=uuid.uuid4(),
+        tenant_role=TenantAccountRole.EDITOR,
         allowed_roles=frozenset({TenantAccountRole.OWNER}),
     )
-    with patch(
-        "controllers.openapi.auth.verify.TenantService.get_account_role_in_tenant",
-        return_value=TenantAccountRole.EDITOR,
-    ):
-        with pytest.raises(Forbidden, match="insufficient workspace role"):
-            check_workspace_role(data)
+    with pytest.raises(Forbidden, match="insufficient workspace role"):
+        check_workspace_role(data)
 
 
 def test_check_workspace_role_passes_when_role_allowed():
-    tenant = MagicMock(spec=Tenant)
-    tenant.id = uuid.uuid4()
     data = _data(
-        tenant=tenant,
-        account_id=uuid.uuid4(),
+        tenant_role=TenantAccountRole.ADMIN,
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    with patch(
-        "controllers.openapi.auth.verify.TenantService.get_account_role_in_tenant", return_value=TenantAccountRole.ADMIN
-    ):
-        check_workspace_role(data)
+    check_workspace_role(data)
+
+
+# --- check_app_api_enabled ---
+
+
+def test_check_app_api_enabled_passes_when_enabled():
+    app = MagicMock(spec=App)
+    app.enable_api = True
+    check_app_api_enabled(_data(app=app))
+
+
+def test_check_app_api_enabled_raises_forbidden_when_disabled():
+    app = MagicMock(spec=App)
+    app.enable_api = False
+    with pytest.raises(Forbidden, match="service_api_disabled"):
+        check_app_api_enabled(_data(app=app))
+
+
+def test_check_app_api_enabled_passes_when_app_none():
+    check_app_api_enabled(_data(app=None))

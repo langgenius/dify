@@ -12,9 +12,11 @@ from controllers.openapi.auth.prepare import (
     load_app_access_mode,
     load_tenant,
     load_tenant_from_request,
+    load_workspace_role,
     resolve_external_user,
 )
 from libs.oauth_bearer import TokenType
+from models.account import TenantAccountRole
 
 
 def _make_auth_data(**kwargs) -> AuthData:
@@ -56,14 +58,21 @@ def test_load_app_raises_not_found_when_not_normal():
             load_app(data)
 
 
-def test_load_app_raises_forbidden_when_api_disabled():
+def test_load_app_stashes_app_even_when_api_disabled():
     app = MagicMock()
     app.status = "normal"
     app.enable_api = False
     data = _make_auth_data(path_params={"app_id": "abc"})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
-        with pytest.raises(Forbidden):
-            load_app(data)
+        load_app(data)
+    assert data.app is app
+
+
+def test_load_app_skips_when_already_set():
+    existing_app = MagicMock()
+    data = _make_auth_data(app=existing_app, path_params={"app_id": "abc"})
+    load_app(data)
+    assert data.app is existing_app
 
 
 def test_load_tenant_writes_tenant():
@@ -75,6 +84,13 @@ def test_load_tenant_writes_tenant():
     with patch("controllers.openapi.auth.prepare.TenantService.get_tenant_by_id", return_value=tenant):
         load_tenant(data)
     assert data.tenant is tenant
+
+
+def test_load_tenant_skips_when_already_set():
+    existing_tenant = MagicMock()
+    data = _make_auth_data(app=MagicMock(), tenant=existing_tenant)
+    load_tenant(data)
+    assert data.tenant is existing_tenant
 
 
 def test_load_tenant_raises_forbidden_when_archived():
@@ -115,6 +131,13 @@ def test_load_account_writes_caller():
         load_account(data)
     assert data.caller is account
     assert data.caller_kind == "account"
+
+
+def test_load_account_skips_when_already_set():
+    existing_caller = MagicMock()
+    data = _make_auth_data(account_id=uuid.uuid4(), caller=existing_caller)
+    load_account(data)
+    assert data.caller is existing_caller
 
 
 def test_load_account_sets_current_tenant_when_tenant_present():
@@ -247,3 +270,79 @@ def test_load_tenant_from_request_raises_not_found_when_archived(flask_app):
         with patch("controllers.openapi.auth.prepare.TenantService.get_tenant_by_id", return_value=tenant):
             with pytest.raises(NotFound):
                 load_tenant_from_request(data)
+
+
+def test_load_tenant_from_request_raises_not_found_when_invalid_uuid(flask_app):
+    data = _make_auth_data(path_params={"workspace_id": "not-a-uuid"})
+    with flask_app.test_request_context("/test"):
+        with pytest.raises(NotFound):
+            load_tenant_from_request(data)
+
+
+# --- load_workspace_role ---
+
+
+def test_load_workspace_role_stashes_role():
+    tenant = MagicMock()
+    tenant.id = uuid.uuid4()
+    caller = MagicMock()
+    caller.status = "active"
+    data = _make_auth_data(account_id=uuid.uuid4(), tenant=tenant, caller=caller)
+    with patch(
+        "controllers.openapi.auth.prepare.TenantService.get_account_role_in_tenant",
+        return_value=TenantAccountRole.ADMIN,
+    ):
+        load_workspace_role(data)
+    assert data.tenant_role == TenantAccountRole.ADMIN
+
+
+def test_load_workspace_role_none_when_not_member():
+    tenant = MagicMock()
+    tenant.id = uuid.uuid4()
+    caller = MagicMock()
+    caller.status = "active"
+    data = _make_auth_data(account_id=uuid.uuid4(), tenant=tenant, caller=caller)
+    with patch(
+        "controllers.openapi.auth.prepare.TenantService.get_account_role_in_tenant",
+        return_value=None,
+    ):
+        load_workspace_role(data)
+    assert data.tenant_role is None
+
+
+def test_load_workspace_role_none_when_account_inactive():
+    tenant = MagicMock()
+    tenant.id = uuid.uuid4()
+    caller = MagicMock()
+    caller.status = "banned"
+    data = _make_auth_data(account_id=uuid.uuid4(), tenant=tenant, caller=caller)
+    load_workspace_role(data)
+    assert data.tenant_role is None
+
+
+def test_load_workspace_role_skips_when_already_set():
+    tenant = MagicMock()
+    tenant.id = uuid.uuid4()
+    caller = MagicMock()
+    caller.status = "active"
+    data = _make_auth_data(
+        account_id=uuid.uuid4(),
+        tenant=tenant,
+        caller=caller,
+        tenant_role=TenantAccountRole.OWNER,
+    )
+    load_workspace_role(data)
+    assert data.tenant_role == TenantAccountRole.OWNER
+
+
+def test_load_workspace_role_skips_when_tenant_missing():
+    data = _make_auth_data(account_id=uuid.uuid4())
+    load_workspace_role(data)
+    assert data.tenant_role is None
+
+
+def test_load_workspace_role_skips_when_account_id_missing():
+    tenant = MagicMock()
+    data = _make_auth_data(tenant=tenant, account_id=None)
+    load_workspace_role(data)
+    assert data.tenant_role is None

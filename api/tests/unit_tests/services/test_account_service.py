@@ -568,8 +568,8 @@ class TestTenantService:
             callable_func(*args, **kwargs)
 
     # ==================== get_account_role_in_tenant Tests ====================
-    # Backs `require_workspace_role`: None => non-member (gate maps to 404),
-    # otherwise the caller's role (gate maps an out-of-set role to 403).
+    # Backs the auth pipeline's `load_workspace_role`: None => non-member
+    # (pipeline maps to 404), otherwise the caller's role (out-of-set role => 403).
 
     def test_get_account_role_in_tenant_returns_role_for_member(self):
         """A row in TenantAccountJoin yields the caller's role."""
