@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { Banner as BannerType } from '@/models/app'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,10 +21,10 @@ const LoadingState: FC = () => {
     <div
       role="status"
       aria-label={t('loading', { ns: 'common' })}
-      className="relative flex w-full flex-col items-start overflow-hidden rounded-[24px] bg-background-default-dodge shadow-xs"
+      className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4"
     >
-      <div className="flex w-full flex-col gap-1 px-8 pt-8 pb-8">
-        <SkeletonRectangle className="my-0 h-8 w-[360px] max-w-full animate-pulse" />
+      <div className="flex w-full flex-col gap-1">
+        <SkeletonRectangle className="my-0 h-6 w-[240px] max-w-full animate-pulse" />
         <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
       </div>
     </div>
@@ -117,15 +116,15 @@ const Banner: FC = () => {
 
   return (
     <div
-      className="relative flex w-full flex-col items-start overflow-hidden rounded-[24px] bg-background-default-dodge transition-shadow hover:shadow-xs"
+      className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={cn('flex w-full flex-col gap-1 px-8 pt-8', notShowSlider && 'pb-8')}>
-        <p className="truncate title-5xl-semi-bold text-dify-logo-black">
+      <div className="flex w-full flex-col gap-1">
+        <p className="truncate title-3xl-semi-bold text-text-primary">
           {t('banner.greeting', { name: userName, ns: 'explore' })}
         </p>
-        <p className="truncate body-md-regular text-text-secondary">
+        <p className="truncate body-sm-regular text-text-secondary">
           {t('banner.tagline', { ns: 'explore' })}
         </p>
       </div>
@@ -142,7 +141,7 @@ const Banner: FC = () => {
                 stopOnMouseEnter: true,
               }),
             ]}
-            className="w-full rounded-2xl shadow-xs"
+            className="w-full rounded-2xl"
           >
             <BannerImpressionTracker
               banners={enabledBanners}

@@ -222,9 +222,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
         {systemFeatures.enable_explore_banner && (
-          <div className="mt-4 px-8">
-            <Banner />
-          </div>
+          <Banner />
         )}
         <ExploreRecommendations
           canCreate={hasEditPermission}

@@ -168,8 +168,8 @@ describe('Banner', () => {
       render(<Banner />)
 
       const loadingWrapper = screen.getByRole('status', { name: 'loading' })
-      expect(loadingWrapper).toHaveClass('rounded-[24px]', 'bg-background-default-dodge')
-      expect(loadingWrapper.querySelector('.px-8.pt-8.pb-8')).toBeInTheDocument()
+      expect(loadingWrapper).toHaveClass('px-8', 'pt-6', 'pb-4')
+      expect(loadingWrapper.querySelector('.gap-1')).toBeInTheDocument()
     })
   })
 

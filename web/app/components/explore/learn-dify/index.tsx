@@ -91,37 +91,40 @@ const LearnDifyContent = ({
       style={isClosing ? { transform: collapseTransform, transformOrigin: 'center center' } : undefined}
       aria-labelledby="learn-dify-title"
     >
-      <div className="flex min-h-12 items-end justify-between gap-4 pb-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-4">
-            <h2 id="learn-dify-title" className="min-w-0 truncate system-xl-semibold text-text-primary">
+      <div className="-mx-4 rounded-2xl bg-background-section p-4">
+        <div className="flex items-start justify-between gap-4 pb-2.5">
+          <div className="min-w-0">
+            <h2 id="learn-dify-title" className="truncate system-xl-medium text-text-primary">
               {title ?? t('learnDify.title', { ns: 'explore' })}
             </h2>
-            {onHide && (
-              <button type="button" className="shrink-0 system-sm-medium text-text-primary" onClick={handleHide}>
-                {t('learnDify.hide', { ns: 'explore' })}
-              </button>
-            )}
-          </div>
-          {showDescription && (
-            <div className="mt-1 flex items-center justify-between gap-4">
-              <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
+            {showDescription && (
+              <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">
                 {t('learnDify.description', { ns: 'explore' })}
               </p>
-            </div>
+            )}
+          </div>
+          {onHide && (
+            <button
+              type="button"
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+              aria-label={t('learnDify.hide', { ns: 'explore' })}
+              onClick={handleHide}
+            >
+              <span className="i-ri-close-line size-4" aria-hidden="true" />
+            </button>
           )}
         </div>
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {visibleItems.map(item => (
-          <LearnDifyItem
-            key={item.app_id}
-            canCreate={canCreate}
-            item={item}
-            onCreate={onCreate}
-            onTry={onTry}
-          />
-        ))}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+          {visibleItems.map(item => (
+            <LearnDifyItem
+              key={item.app_id}
+              canCreate={canCreate}
+              item={item}
+              onCreate={onCreate}
+              onTry={onTry}
+            />
+          ))}
+        </div>
       </div>
     </section>
   )
