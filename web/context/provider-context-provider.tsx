@@ -16,6 +16,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,
@@ -38,6 +39,8 @@ const unlimitedMemberInviteLimit: MemberInviteLimit = {
   size: 0,
   limit: 0,
 }
+
+const ANTHROPIC_QUOTA_NOTICE_STORAGE_KEY = 'anthropic_quota_notice'
 
 const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>): MemberInviteLimit => {
   if (!data)
@@ -155,8 +158,14 @@ export const ProviderContextProvider = ({
   // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
+  const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useLocalStorage<string>(
+    ANTHROPIC_QUOTA_NOTICE_STORAGE_KEY,
+    'false',
+    { raw: true },
+  )
+
   useEffect(() => {
-    if (localStorage.getItem('anthropic_quota_notice') === 'true')
+    if (anthropicQuotaNotice === 'true')
       return
 
     if (dayjs().isAfter(dayjs('2025-03-17')))
@@ -167,14 +176,14 @@ export const ProviderContextProvider = ({
       if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
         const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
-          localStorage.setItem('anthropic_quota_notice', 'true')
+          setAnthropicQuotaNotice('true')
           toast.info(t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }), {
             timeout: 60000,
           })
         }
       }
     }
-  }, [providersData, t])
+  }, [anthropicQuotaNotice, providersData, setAnthropicQuotaNotice, t])
 
   return (
     <ProviderContext.Provider value={{
