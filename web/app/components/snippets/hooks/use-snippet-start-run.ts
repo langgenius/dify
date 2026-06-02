@@ -1,18 +1,16 @@
-import type { SnippetInputField } from '@/models/snippet'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
 import { useCallback } from 'react'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useSnippetDetailStore } from '../store'
 
 type UseSnippetStartRunOptions = {
   handleRun: (params: SnippetDraftRunPayload) => void
-  inputFields: SnippetInputField[]
 }
 
 export const useSnippetStartRun = ({
   handleRun,
-  inputFields,
 }: UseSnippetStartRunOptions) => {
   const workflowStore = useWorkflowStore()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
@@ -40,14 +38,16 @@ export const useSnippetStartRun = ({
 
     setShowDebugAndPreviewPanel(true)
 
-    if (inputFields.length > 0) {
+    const currentInputFields = useSnippetDetailStore.getState().fields
+
+    if (currentInputFields.length > 0) {
       setShowInputsPanel(true)
       return
     }
 
     setShowInputsPanel(false)
     handleRun({ inputs: {} })
-  }, [handleCancelDebugAndPreviewPanel, handleRun, inputFields.length, workflowStore])
+  }, [handleCancelDebugAndPreviewPanel, handleRun, workflowStore])
 
   const handleStartWorkflowRun = useCallback(() => {
     handleWorkflowStartRunInWorkflow()

@@ -349,7 +349,6 @@ const SnippetMain = ({
     handleWorkflowStartRunInWorkflow,
   } = useSnippetStartRun({
     handleRun,
-    inputFields: fields,
   })
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
   useEffect(() => {
