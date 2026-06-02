@@ -13,9 +13,9 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -74,6 +74,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
+  const setNeedRefreshAppList = useSetLocalStorage<string>('NEED_REFRESH_APP_LIST_KEY', { raw: true })
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
@@ -124,7 +125,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             ? t('newApp.appCreateDSLWarning', { ns: 'app' })
             : undefined,
         })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setNeedRefreshAppList('1')
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
@@ -178,7 +179,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setNeedRefreshAppList('1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
