@@ -14,6 +14,7 @@ export type AccountAvatarPayload = {
 
 export type Account = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -133,6 +134,20 @@ export type AccountIntegrateResponse = {
   is_bound: boolean
   link?: string | null
   provider: string
+}
+
+export type AccountWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
 }
 
 export type GetAccountAvatarData = {
