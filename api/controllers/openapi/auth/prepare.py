@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from flask import request
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
 
 from controllers.openapi.auth.data import AuthData
@@ -28,6 +29,18 @@ def load_tenant(data: AuthData) -> None:
     tenant = TenantService.get_tenant_by_id(db.session, str(data.app.tenant_id))
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
+    data.tenant = tenant
+
+
+def load_tenant_from_request(data: AuthData) -> None:
+    if data.tenant is not None:
+        return
+    workspace_id = data.path_params.get("workspace_id") or request.args.get("workspace_id")
+    if not workspace_id:
+        raise NotFound("workspace not found")
+    tenant = TenantService.get_tenant_by_id(db.session, workspace_id)
+    if tenant is None or tenant.status == TenantStatus.ARCHIVE:
+        raise NotFound("workspace not found")
     data.tenant = tenant
 
 

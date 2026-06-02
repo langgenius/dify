@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from controllers.openapi.auth.data import AuthData, ExternalIdentity
@@ -10,6 +11,7 @@ from controllers.openapi.auth.prepare import (
     load_app,
     load_app_access_mode,
     load_tenant,
+    load_tenant_from_request,
     resolve_external_user,
 )
 from libs.oauth_bearer import TokenType
@@ -181,3 +183,67 @@ def test_load_app_access_mode_no_op_when_app_missing():
     data = _make_auth_data()
     load_app_access_mode(data)
     assert data.app_access_mode is None
+
+
+@pytest.fixture
+def flask_app():
+    return Flask(__name__)
+
+
+def test_load_tenant_from_request_from_path_params(flask_app):
+    tenant = MagicMock()
+    tenant.status = "normal"
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={"workspace_id": wid})
+    with flask_app.test_request_context("/test"):
+        with patch("controllers.openapi.auth.prepare.TenantService.get_tenant_by_id", return_value=tenant):
+            load_tenant_from_request(data)
+    assert data.tenant is tenant
+
+
+def test_load_tenant_from_request_from_query_param(flask_app):
+    tenant = MagicMock()
+    tenant.status = "normal"
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={})
+    with flask_app.test_request_context(f"/test?workspace_id={wid}"):
+        with patch("controllers.openapi.auth.prepare.TenantService.get_tenant_by_id", return_value=tenant):
+            load_tenant_from_request(data)
+    assert data.tenant is tenant
+
+
+def test_load_tenant_from_request_skips_when_already_set(flask_app):
+    existing_tenant = MagicMock()
+    data = _make_auth_data(tenant=existing_tenant, path_params={})
+    with flask_app.test_request_context("/test"):
+        load_tenant_from_request(data)
+    assert data.tenant is existing_tenant
+
+
+def test_load_tenant_from_request_raises_not_found_when_no_id(flask_app):
+    data = _make_auth_data(path_params={})
+    with flask_app.test_request_context("/test"):
+        with pytest.raises(NotFound):
+            load_tenant_from_request(data)
+
+
+def test_load_tenant_from_request_raises_not_found_when_missing(flask_app):
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={"workspace_id": wid})
+    with flask_app.test_request_context("/test"):
+        with patch("controllers.openapi.auth.prepare.TenantService.get_tenant_by_id", return_value=None):
+            with pytest.raises(NotFound):
+                load_tenant_from_request(data)
+
+
+def test_load_tenant_from_request_raises_not_found_when_archived(flask_app):
+    from models.account import TenantStatus
+
+    tenant = MagicMock()
+    tenant.status = TenantStatus.ARCHIVE
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={"workspace_id": wid})
+    with flask_app.test_request_context("/test"):
+        with patch("controllers.openapi.auth.prepare.TenantService.get_tenant_by_id", return_value=tenant):
+            with pytest.raises(NotFound):
+                load_tenant_from_request(data)

@@ -16,12 +16,12 @@ def test_auth_router_is_pipeline_router():
     assert isinstance(auth_router, PipelineRouter)
 
 
-def test_account_pipeline_prepare_has_four_entries():
-    assert len(account_pipeline._prepare) == 4
+def test_account_pipeline_prepare_has_five_entries():
+    assert len(account_pipeline._prepare) == 5
 
 
-def test_account_auth_list_has_five_entries():
-    assert len(account_pipeline._auth) == 5
+def test_account_auth_list_has_six_entries():
+    assert len(account_pipeline._auth) == 6
 
 
 def test_external_sso_pipeline_prepare_has_four_entries():
