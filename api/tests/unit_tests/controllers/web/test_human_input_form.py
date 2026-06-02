@@ -291,7 +291,25 @@ def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pyte
         upload_token="hitl_upload_token-1",
         expires_at=expiration_time,
     )
-    monkeypatch.setattr(human_input_module, "HumanInputFileUploadService", lambda engine: service_mock)
+    workflow_run_repository = MagicMock()
+    repo_factory = MagicMock(return_value=workflow_run_repository)
+    captured: dict[str, object] = {}
+
+    def _service_factory(session_factory, workflow_run_repository):
+        captured["session_factory"] = session_factory
+        captured["workflow_run_repository"] = workflow_run_repository
+        return service_mock
+
+    monkeypatch.setattr(
+        human_input_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        repo_factory,
+    )
+    monkeypatch.setattr(
+        human_input_module,
+        "HumanInputFileUploadService",
+        _service_factory,
+    )
     monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=object()))
 
     limiter_mock = MagicMock()
@@ -307,6 +325,8 @@ def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pyte
         "upload_token": "hitl_upload_token-1",
         "expires_at": int(expiration_time.timestamp()),
     }
+    repo_factory.assert_called_once()
+    assert captured["workflow_run_repository"] is workflow_run_repository
     service_mock.issue_upload_token.assert_called_once_with("token-1")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 

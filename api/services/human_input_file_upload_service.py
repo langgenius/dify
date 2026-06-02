@@ -20,7 +20,6 @@ from models.human_input import (
 )
 from models.model import App, EndUser
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import FormExpiredError, FormNotFoundError, FormSubmittedError
 
 HITL_UPLOAD_TOKEN_PREFIX = "hitl_upload_"
@@ -63,14 +62,12 @@ class HumanInputFileUploadService:
     def __init__(
         self,
         session_factory: sessionmaker[Session] | Engine,
-        workflow_run_repository: APIWorkflowRunRepository | None = None,
-    ):
+        workflow_run_repository: APIWorkflowRunRepository,
+    ) -> None:
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_maker = session_factory
-        self._workflow_run_repository = (
-            workflow_run_repository or DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
-        )
+        self._workflow_run_repository = workflow_run_repository
 
     def issue_upload_token(self, form_token: str) -> HumanInputUploadToken:
         """Create an upload token for an active human input recipient token."""

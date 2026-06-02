@@ -2,6 +2,7 @@ import httpx
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl
+from sqlalchemy.orm import sessionmaker
 
 import services
 from controllers.common import helpers
@@ -20,6 +21,7 @@ from extensions.ext_database import db
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from graphon.file import helpers as file_helpers
 from libs.exception import BaseHTTPException
+from repositories.factory import DifyAPIRepositoryFactory
 from services.file_service import FileService
 from services.human_input_file_upload_service import (
     HITL_UPLOAD_TOKEN_PREFIX,
@@ -51,6 +53,15 @@ class HumanInputRemoteFileUploadPayload(BaseModel):
 
 
 register_schema_models(web_ns, HumanInputRemoteFileUploadPayload, FileResponse, FileWithSignedUrl)
+
+
+def _create_upload_service() -> HumanInputFileUploadService:
+    session_factory = sessionmaker(bind=db.engine)
+    workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+    return HumanInputFileUploadService(
+        session_factory=session_factory,
+        workflow_run_repository=workflow_run_repository,
+    )
 
 
 def _extract_hitl_upload_token() -> str:
@@ -102,7 +113,7 @@ class HumanInputFileUploadApi(Resource):
         """Upload one local file for a HITL human input form."""
 
         token = _extract_hitl_upload_token()
-        upload_service = HumanInputFileUploadService(db.engine)
+        upload_service = _create_upload_service()
         context = _validate_context(upload_service, token)
         file = _parse_local_upload_file()
 
@@ -132,7 +143,7 @@ class HumanInputRemoteFileUploadApi(Resource):
         """Upload one remote URL file for a HITL human input form."""
 
         token = _extract_hitl_upload_token()
-        upload_service = HumanInputFileUploadService(db.engine)
+        upload_service = _create_upload_service()
         context = _validate_context(upload_service, token)
         payload = HumanInputRemoteFileUploadPayload.model_validate(request.get_json(silent=True) or {})
         url = str(payload.url)

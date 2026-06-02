@@ -49,6 +49,25 @@ def _upload_file() -> SimpleNamespace:
     )
 
 
+def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> tuple[MagicMock, dict[str, object]]:
+    workflow_run_repository = MagicMock()
+    repo_factory = MagicMock(return_value=workflow_run_repository)
+    captured: dict[str, object] = {}
+
+    def _service_factory(session_factory, workflow_run_repository):
+        captured["session_factory"] = session_factory
+        captured["workflow_run_repository"] = workflow_run_repository
+        return service
+
+    monkeypatch.setattr(
+        upload_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        repo_factory,
+    )
+    monkeypatch.setattr(upload_module, "HumanInputFileUploadService", _service_factory)
+    return repo_factory, captured
+
+
 def test_local_upload_requires_authorization_before_reading_files(app: Flask) -> None:
     data = {"file": (BytesIO(b"content"), "sample.txt")}
 
@@ -65,7 +84,7 @@ def test_local_upload_requires_authorization_before_reading_files(app: Flask) ->
 def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
-    monkeypatch.setattr(upload_module, "HumanInputFileUploadService", lambda engine: service)
+    repo_factory, captured = _patch_upload_service(monkeypatch, service)
 
     file_service = MagicMock()
     file_service.upload_file.return_value = _upload_file()
@@ -91,6 +110,8 @@ def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pyt
     file_service.upload_file.assert_called_once()
     assert file_service.upload_file.call_args.kwargs["source"] is None
     assert file_service.upload_file.call_args.kwargs["user"].id == "owner-1"
+    repo_factory.assert_called_once()
+    assert captured["workflow_run_repository"] is repo_factory.return_value
     service.record_upload_file.assert_called_once_with(
         context=service.validate_upload_token.return_value,
         file_id="file-1",
@@ -100,7 +121,7 @@ def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pyt
 def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
-    monkeypatch.setattr(upload_module, "HumanInputFileUploadService", lambda engine: service)
+    _patch_upload_service(monkeypatch, service)
     monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
 
     with app.test_request_context(
@@ -118,7 +139,7 @@ def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.
 def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     service.validate_upload_token.side_effect = InvalidUploadTokenForbiddenError()
-    monkeypatch.setattr(upload_module, "HumanInputFileUploadService", lambda engine: service)
+    _patch_upload_service(monkeypatch, service)
     monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
     ssrf_proxy = MagicMock()
     monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
@@ -139,7 +160,7 @@ def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: p
 def test_remote_upload_records_form_file_link(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     service.validate_upload_token.return_value = _upload_context()
-    monkeypatch.setattr(upload_module, "HumanInputFileUploadService", lambda engine: service)
+    _patch_upload_service(monkeypatch, service)
     monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
 
     response = MagicMock()

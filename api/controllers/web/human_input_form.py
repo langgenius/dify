@@ -11,6 +11,7 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -24,6 +25,7 @@ from graphon.nodes.human_input.entities import FormInputConfig
 from libs.helper import RateLimiter, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
 from models.model import App, Site
+from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
@@ -53,6 +55,15 @@ _FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
     max_attempts=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS,
     time_window=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS,
 )
+
+
+def _create_upload_service() -> HumanInputFileUploadService:
+    session_factory = sessionmaker(bind=db.engine)
+    workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+    return HumanInputFileUploadService(
+        session_factory=session_factory,
+        workflow_run_repository=workflow_run_repository,
+    )
 
 
 class FormDefinitionPayload(TypedDict):
@@ -100,7 +111,7 @@ class HumanInputFormUploadTokenApi(Resource):
         _FORM_UPLOAD_TOKEN_RATE_LIMITER.increment_rate_limit(ip_address)
 
         try:
-            token = HumanInputFileUploadService(db.engine).issue_upload_token(form_token)
+            token = _create_upload_service().issue_upload_token(form_token)
         except FormNotFoundError:
             raise NotFoundError("Form not found")
 

@@ -184,6 +184,16 @@ def _create_waiting_form(
     return form_id, recipient_id, created_by
 
 
+def _create_service(
+    session_maker,
+    workflow_run_repository: MagicMock | None = None,
+) -> HumanInputFileUploadService:
+    return HumanInputFileUploadService(
+        session_maker,
+        workflow_run_repository=workflow_run_repository or MagicMock(),
+    )
+
+
 def test_issue_upload_token_persists_token_without_technical_end_user(
     monkeypatch: pytest.MonkeyPatch,
     session_maker,
@@ -191,7 +201,7 @@ def test_issue_upload_token_persists_token_without_technical_end_user(
     form_id, recipient_id, _created_by = _create_waiting_form(session_maker)
     monkeypatch.setattr(service_module.secrets, "token_urlsafe", lambda _bytes: "random-value")
 
-    token = HumanInputFileUploadService(session_maker).issue_upload_token("form-token-1")
+    token = _create_service(session_maker).issue_upload_token("form-token-1")
 
     assert token.upload_token == f"{HITL_UPLOAD_TOKEN_PREFIX}random-value"
     with session_maker() as session:
@@ -205,7 +215,7 @@ def test_issue_upload_token_persists_token_without_technical_end_user(
 
 def test_validate_upload_token_returns_account_owner_and_record_file_link(session_maker) -> None:
     form_id, recipient_id, created_by = _create_waiting_form(session_maker, created_by_role=CreatorUserRole.ACCOUNT)
-    token = HumanInputFileUploadService(session_maker).issue_upload_token("form-token-1")
+    token = _create_service(session_maker).issue_upload_token("form-token-1")
     workflow_run_repository = MagicMock()
     workflow_run_repository.get_workflow_run_by_id.return_value = SimpleNamespace(
         tenant_id="00000000-0000-0000-0000-000000000010",
@@ -229,7 +239,7 @@ def test_validate_upload_token_returns_account_owner_and_record_file_link(sessio
         run_id="00000000-0000-0000-0000-000000000012",
     )
 
-    HumanInputFileUploadService(session_maker).record_upload_file(
+    _create_service(session_maker).record_upload_file(
         context=context,
         file_id="00000000-0000-0000-0000-000000000099",
     )
@@ -245,7 +255,7 @@ def test_validate_upload_token_returns_account_owner_and_record_file_link(sessio
 
 def test_validate_upload_token_returns_end_user_owner(session_maker) -> None:
     form_id, recipient_id, created_by = _create_waiting_form(session_maker, created_by_role=CreatorUserRole.END_USER)
-    token = HumanInputFileUploadService(session_maker).issue_upload_token("form-token-1")
+    token = _create_service(session_maker).issue_upload_token("form-token-1")
     workflow_run_repository = MagicMock()
     workflow_run_repository.get_workflow_run_by_id.return_value = SimpleNamespace(
         tenant_id="00000000-0000-0000-0000-000000000010",
@@ -270,9 +280,9 @@ def test_validate_upload_token_allows_delivery_test_form(session_maker) -> None:
         session_maker,
         form_kind=HumanInputFormKind.DELIVERY_TEST,
     )
-    token = HumanInputFileUploadService(session_maker).issue_upload_token("form-token-1")
+    token = _create_service(session_maker).issue_upload_token("form-token-1")
 
-    context = HumanInputFileUploadService(session_maker).validate_upload_token(token.upload_token)
+    context = _create_service(session_maker).validate_upload_token(token.upload_token)
 
     assert context.form_id == form_id
     assert context.recipient_id == recipient_id
@@ -283,7 +293,7 @@ def test_validate_upload_token_allows_delivery_test_form(session_maker) -> None:
 
 def test_validate_upload_token_rejects_submitted_form(session_maker) -> None:
     form_id, _recipient_id, _created_by = _create_waiting_form(session_maker)
-    token = HumanInputFileUploadService(session_maker).issue_upload_token("form-token-1")
+    token = _create_service(session_maker).issue_upload_token("form-token-1")
     with session_maker.begin() as session:
         form = session.get(HumanInputForm, form_id)
         assert form is not None
@@ -291,4 +301,4 @@ def test_validate_upload_token_rejects_submitted_form(session_maker) -> None:
         form.submitted_at = naive_utc_now()
 
     with pytest.raises(FormSubmittedError):
-        HumanInputFileUploadService(session_maker).validate_upload_token(token.upload_token)
+        _create_service(session_maker).validate_upload_token(token.upload_token)
