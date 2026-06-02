@@ -5,6 +5,7 @@ import { useSnippetPublish } from '../use-snippet-publish'
 const mockMutateAsync = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetQueryData = vi.fn()
+const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
 
 let isPending = false
@@ -20,6 +21,10 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
     setQueryData: mockSetQueryData,
   }),
+}))
+
+vi.mock('@/service/use-workflow', () => ({
+  useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
 vi.mock('@/service/use-snippet-workflows', () => ({
@@ -71,6 +76,7 @@ describe('useSnippetPublish', () => {
       const updateSnippetDetail = setQueryDataCall![1] as (old: { is_published: boolean }) => { is_published: boolean }
       expect(updateSnippetDetail({ is_published: false })).toEqual({ is_published: true })
       expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
+      expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
       expect(toast.success).toHaveBeenCalledWith('snippet.saveSuccess')
     })
 
@@ -89,6 +95,7 @@ describe('useSnippetPublish', () => {
       expect(mockMutateAsync).not.toHaveBeenCalled()
       expect(mockSetQueryData).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()
+      expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
       expect(toast.success).not.toHaveBeenCalled()
     })
 

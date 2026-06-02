@@ -7,6 +7,7 @@ import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-c
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
+import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 type UseSnippetPublishOptions = {
   snippetId: string
@@ -19,6 +20,7 @@ export const useSnippetPublish = ({
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
   const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
 
   const handlePublish = useCallback(async () => {
@@ -39,6 +41,7 @@ export const useSnippetPublish = ({
         old => old ? { ...old, is_published: true } : old,
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
+      resetWorkflowVersionHistory()
       toast.success(t('saveSuccess'))
       return true
     }
@@ -46,7 +49,7 @@ export const useSnippetPublish = ({
       toast.error(error instanceof Error ? error.message : t('publishFailed'))
       return false
     }
-  }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, snippetId, t, workflowStore])
+  }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, resetWorkflowVersionHistory, snippetId, t, workflowStore])
 
   return {
     handlePublish,
