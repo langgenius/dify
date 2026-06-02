@@ -240,8 +240,6 @@ class ChatMessageStopApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user_id
     def post(self, current_user_id: str, app_model: App, task_id: str):
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
 
         AppTaskService.stop_task(
             task_id=task_id,
