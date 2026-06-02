@@ -5146,9 +5146,6 @@
     }
   },
   "web/context/provider-context-provider.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
