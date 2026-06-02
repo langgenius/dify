@@ -2,6 +2,7 @@ import type { ErrorCodeValue, ExitCodeValue } from './codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { ErrorCode, exitFor } from './codes'
 import { isVerbose } from '@/framework/context'
+import { redactBearer } from '@/http/sanitize'
 
 export type BaseErrorOptions = {
   readonly code: ErrorCodeValue
@@ -131,7 +132,7 @@ export class HttpClientError extends BaseError {
     if (this.httpStatus !== undefined)
       lines.push(`http_status: ${this.httpStatus}`)
     if (isVerbose() && this.rawResponse)
-      lines.push(`raw_response: ${this.rawResponse}`)
+      lines.push(`raw_response: ${redactBearer(this.rawResponse)}`)
     return lines.join('\n')
   }
 
@@ -144,7 +145,7 @@ export class HttpClientError extends BaseError {
     if (this.url !== undefined)
       envelope.error.url = this.url
     if (isVerbose() && this.rawResponse) {
-      envelope.error.rawResponse = this.rawResponse;
+      envelope.error.rawResponse = redactBearer(this.rawResponse);
     }
     return envelope
   }
