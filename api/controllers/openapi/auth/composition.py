@@ -7,6 +7,7 @@ from controllers.openapi.auth.conditions import (
     PATH_HAS_APP_ID,
     WEBAPP_AUTH_ENABLED,
     WORKSPACE_MEMBERSHIP_REQUIRED,
+    WORKSPACE_SCOPED,
 )
 from controllers.openapi.auth.data import Edition
 from controllers.openapi.auth.flow import When
@@ -23,9 +24,9 @@ from controllers.openapi.auth.prepare import (
 from controllers.openapi.auth.verify import (
     check_acl,
     check_app_api_enabled,
-    check_membership,
     check_private_app_permission,
     check_scope,
+    check_workspace_member,
     check_workspace_mismatch,
     check_workspace_role,
 )
@@ -35,16 +36,16 @@ account_pipeline = AuthPipeline(
     prepare=[
         When(PATH_HAS_APP_ID, then=load_app),
         When(PATH_HAS_APP_ID, then=load_tenant),
-        When(WORKSPACE_MEMBERSHIP_REQUIRED & ~PATH_HAS_APP_ID, then=load_tenant_from_request),
+        When(WORKSPACE_MEMBERSHIP_REQUIRED, then=load_tenant_from_request),
         load_account,
-        When(HAS_ALLOWED_ROLES, then=load_workspace_role),
+        When(WORKSPACE_SCOPED, then=load_workspace_role),
         When(PATH_HAS_APP_ID & EDITION_EE, then=load_app_access_mode),
     ],
     auth=[
         When(PATH_HAS_APP_ID, then=check_app_api_enabled),
         check_scope,
-        When((PATH_HAS_APP_ID | WORKSPACE_MEMBERSHIP_REQUIRED) & ~HAS_ALLOWED_ROLES, then=check_membership),
-        When(WORKSPACE_MEMBERSHIP_REQUIRED & PATH_HAS_APP_ID, then=check_workspace_mismatch),
+        When(WORKSPACE_SCOPED, then=check_workspace_member),
+        When(PATH_HAS_APP_ID, then=check_workspace_mismatch),
         When(HAS_ALLOWED_ROLES, then=check_workspace_role),
         When(PATH_HAS_APP_ID & EDITION_EE & WEBAPP_AUTH_ENABLED, then=check_acl),
         When(EDITION_EE & LOADED_APP_IS_PRIVATE, then=check_private_app_permission),

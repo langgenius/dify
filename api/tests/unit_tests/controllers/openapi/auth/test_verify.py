@@ -3,16 +3,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.verify import (
     check_acl,
     check_app_access,
     check_app_api_enabled,
-    check_membership,
     check_private_app_permission,
     check_scope,
+    check_workspace_member,
     check_workspace_mismatch,
     check_workspace_role,
 )
@@ -45,28 +45,13 @@ def test_check_scope_raises_forbidden_when_scope_missing():
         check_scope(_data(required_scope=Scope.APPS_RUN, scopes=frozenset({Scope.APPS_READ})))
 
 
-def test_check_membership_raises_unauthorized_when_tenant_none():
-    with pytest.raises(Unauthorized):
-        check_membership(_data(tenant=None))
+def test_check_workspace_member_raises_not_found_when_no_role():
+    with pytest.raises(NotFound, match="workspace not found"):
+        check_workspace_member(_data(tenant_role=None))
 
 
-def test_check_membership_calls_check_workspace_membership():
-    tenant = MagicMock(spec=Tenant)
-    tenant.id = "tenant-1"
-    data = _data(
-        account_id=uuid.uuid4(),
-        token_hash="myhash",
-        tenants={"tenant-1": True},
-        tenant=tenant,
-    )
-    with patch("controllers.openapi.auth.verify.check_workspace_membership") as mock_cwm:
-        check_membership(data)
-    mock_cwm.assert_called_once_with(
-        account_id=data.account_id,
-        tenant_id="tenant-1",
-        token_hash="myhash",
-        membership_cache=data.tenants,
-    )
+def test_check_workspace_member_passes_when_role_present():
+    check_workspace_member(_data(tenant_role=TenantAccountRole.NORMAL))
 
 
 def test_check_app_access_passes_when_tenant_none():
