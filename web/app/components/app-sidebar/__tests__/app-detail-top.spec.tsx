@@ -10,6 +10,14 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('../toggle-button', () => ({
+  default: ({ expand, handleToggle }: { expand: boolean, handleToggle: () => void }) => (
+    <button type="button" data-testid="toggle-button" data-expand={expand} onClick={handleToggle}>
+      Toggle
+    </button>
+  ),
+}))
+
 describe('AppDetailTop', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,5 +47,15 @@ describe('AppDetailTop', () => {
     expect(handleOpen).toHaveBeenCalledTimes(1)
 
     window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+  })
+
+  it('renders the sidebar toggle action in the top right', () => {
+    const onToggle = vi.fn()
+
+    render(<AppDetailTop expand={false} onToggle={onToggle} />)
+    fireEvent.click(screen.getByTestId('toggle-button'))
+
+    expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')
+    expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })

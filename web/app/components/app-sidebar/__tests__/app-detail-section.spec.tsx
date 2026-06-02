@@ -28,7 +28,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('../app-info', () => ({
-  AppInfoView: () => <div data-testid="app-info" />,
+  AppInfoView: ({ expand }: { expand: boolean }) => <div data-testid="app-info" data-expand={expand} />,
 }))
 
 vi.mock('../app-info/use-app-info-actions', () => ({
@@ -40,8 +40,8 @@ vi.mock('../../base/divider', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href }: { name: string, href: string }) => (
-    <a href={href}>{name}</a>
+  default: ({ name, href, mode }: { name: string, href: string, mode: string }) => (
+    <a href={href} data-mode={mode}>{name}</a>
   ),
 }))
 
@@ -74,7 +74,7 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getAllByRole('separator')).toHaveLength(3)
+      expect(screen.getAllByRole('separator')).toHaveLength(2)
     })
 
     it('should only render logs navigation for workflow apps', () => {
@@ -97,7 +97,7 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getAllByRole('separator')).toHaveLength(3)
+      expect(screen.getAllByRole('separator')).toHaveLength(2)
     })
 
     it('should only render logs navigation for completion apps', () => {
@@ -120,9 +120,18 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getAllByRole('separator')).toHaveLength(1)
+      expect(screen.queryAllByRole('separator')).toHaveLength(0)
       expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
+    })
+
+    it('should pass collapsed mode to app info and navigation links when collapsed', () => {
+      // Act
+      render(<AppDetailSection expand={false} />)
+
+      // Assert
+      expect(screen.getByTestId('app-info')).toHaveAttribute('data-expand', 'false')
+      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('data-mode', 'collapse')
     })
   })
 })

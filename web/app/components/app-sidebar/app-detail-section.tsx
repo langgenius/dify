@@ -44,7 +44,13 @@ const renderNavDivider = (key: string) => (
   </div>
 )
 
-const AppDetailSection = () => {
+type AppDetailSectionProps = {
+  expand?: boolean
+}
+
+const AppDetailSection = ({
+  expand = true,
+}: AppDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -109,20 +115,13 @@ const AppDetailSection = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
-      <div className="py-2">
+      <div className="px-1 py-2">
         <AppInfoView
-          expand
+          expand={expand}
           actions={appInfoActions}
         />
       </div>
-      <div className="px-2 py-2">
-        <Divider
-          type="horizontal"
-          bgStyle="gradient"
-          className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
-        />
-      </div>
-      <nav className="flex flex-col gap-y-0.5 px-1 py-2">
+      <nav className="flex flex-col gap-y-0.5 px-1 py-1">
         {navigation.map((item) => {
           const shouldRenderDividerBefore = isLogsNavItem(item)
           const shouldRenderDividerAfter = hasAnnotationsNavigation ? isAnnotationsNavItem(item) : isLogsNavItem(item)
@@ -131,7 +130,7 @@ const AppDetailSection = () => {
             <Fragment key={item.href}>
               {shouldRenderDividerBefore && renderNavDivider(`${item.href}-before`)}
               <NavLink
-                mode="expand"
+                mode={expand ? 'expand' : 'collapse'}
                 iconMap={{ selected: item.selectedIcon, normal: item.icon }}
                 name={item.name}
                 href={item.href}

@@ -4,14 +4,23 @@ import { useTranslation } from 'react-i18next'
 import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import ToggleButton from './toggle-button'
 
-const AppDetailTop = () => {
+type AppDetailTopProps = {
+  expand?: boolean
+  onToggle?: () => void
+}
+
+const AppDetailTop = ({
+  expand = true,
+  onToggle,
+}: AppDetailTopProps) => {
   const { t } = useTranslation()
   const router = useRouter()
 
   return (
-    <div className="flex items-center py-3 pr-3 pl-1">
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+    <div className="flex items-center py-2 pr-2 pl-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <div className="flex shrink-0 items-center py-1 pr-1 pl-0.5">
           <button
             type="button"
@@ -29,27 +38,37 @@ const AppDetailTop = () => {
             <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
           </Link>
         </div>
-        <span className="mx-1.5 shrink-0 system-md-regular text-text-quaternary">
-          /
-        </span>
-        <Link
-          href="/apps"
-          className="shrink-0 truncate system-sm-semibold-uppercase text-text-secondary hover:text-text-primary"
-        >
-          {t('menus.apps', { ns: 'common' })}
-        </Link>
+        {expand && (
+          <>
+            <span className="mx-1 shrink-0 system-md-regular text-text-quaternary">
+              /
+            </span>
+            <Link
+              href="/apps"
+              className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+            >
+              {t('menus.apps', { ns: 'common' })}
+            </Link>
+          </>
+        )}
       </div>
-      <button
-        type="button"
-        aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
-        className="flex shrink-0 items-center gap-1 overflow-hidden rounded-[10px] p-1 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
-        onClick={() => window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))}
-      >
-        <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-        <span className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-          ⌘K
-        </span>
-      </button>
+      {expand && (
+        <button
+          type="button"
+          aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+          className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+          onClick={() => window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))}
+        >
+          <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+        </button>
+      )}
+      {onToggle && (
+        <ToggleButton
+          expand={expand}
+          handleToggle={onToggle}
+          className="size-8 rounded-[10px] px-0 text-text-tertiary shadow-none hover:bg-state-base-hover hover:text-text-secondary"
+        />
+      )}
     </div>
   )
 }
