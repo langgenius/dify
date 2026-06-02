@@ -1,6 +1,6 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '@/auth/hosts'
+import type { ActiveContext } from '@/auth/hosts'
 import type { AppInfoCache } from '@/cache/app-info'
+import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { AppMetaClient } from '@/api/app-meta'
 import { AppRunClient } from '@/api/app-run'
@@ -12,9 +12,8 @@ import { ErrorCode } from '@/errors/codes'
 import { getEnv, processExit } from '@/sys/index'
 import { FieldInfo } from '@/types/app-meta'
 import { resolveWorkspaceId } from '@/workspace/resolver'
-import { resolveFileInputs } from './file-flags'
-import { RUN_MODES } from './handlers'
-import { AppRunPrintFlags } from './print-flags'
+import { resolveFileInputs } from './file-flags.js'
+import { RUN_MODES } from './handlers.js'
 
 export type RunAppOptions = {
   readonly appId: string
@@ -32,8 +31,8 @@ export type RunAppOptions = {
 }
 
 export type RunAppDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
   readonly cache?: AppInfoCache
@@ -80,9 +79,28 @@ async function resolveInputs(
 
 export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<void> {
   const env = deps.envLookup ?? getEnv
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
+  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
+
+  try {
+    await executeRun(opts, deps, meta, wsId)
+  }
+  catch (err) {
+    if (err instanceof BaseError && err.httpStatus === 422) {
+      await meta.invalidate(opts.appId)
+      throw err.withHint('app metadata cache cleared — if the app was recently republished, run the command again')
+    }
+    throw err
+  }
+}
+
+async function executeRun(
+  opts: RunAppOptions,
+  deps: RunAppDeps,
+  meta: AppMetaClient,
+  wsId: string,
+): Promise<void> {
   const m = await meta.get(opts.appId, wsId, [FieldInfo])
   const mode = m.info?.mode ?? ''
   if (mode === '')
@@ -110,9 +128,8 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   const isText = TEXT_FORMATS.has(format)
   const livePrint = opts.stream === true
   const runClient = new AppRunClient(deps.http)
-  const printFlags = new AppRunPrintFlags()
 
   const exit = deps.exit ?? processExit
-  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit, think: opts.think ?? false }
+  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, exit, think: opts.think ?? false }
   await pickStrategy(isText, livePrint).execute(ctx)
 }

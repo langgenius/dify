@@ -6,16 +6,16 @@ describe('createLayoutSlice', () => {
     localStorage.clear()
   })
 
-  it('reads persisted panel sizes from localStorage', () => {
+  it('uses static panel defaults', () => {
     localStorage.setItem('workflow-node-panel-width', '460')
     localStorage.setItem('debug-and-preview-panel-width', '520')
     localStorage.setItem('workflow-variable-inpsect-panel-height', '240')
 
     const store = createStore(createLayoutSlice)
 
-    expect(store.getState().nodePanelWidth).toBe(460)
-    expect(store.getState().previewPanelWidth).toBe(520)
-    expect(store.getState().variableInspectPanelHeight).toBe(240)
+    expect(store.getState().nodePanelWidth).toBe(400)
+    expect(store.getState().previewPanelWidth).toBe(400)
+    expect(store.getState().variableInspectPanelHeight).toBe(320)
   })
 
   it('updates canvas and panel dimensions through the slice setters', () => {

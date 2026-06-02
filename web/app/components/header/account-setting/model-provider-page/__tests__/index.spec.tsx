@@ -25,7 +25,7 @@ const { mockSetAccountSettingModal, mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSaveAutoUpgrade: vi.fn(),
 }))
 
-const { mockReferenceSetting } = vi.hoisted(() => ({
+const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
   mockReferenceSetting: {
     permission: {},
     auto_upgrade: {
@@ -36,6 +36,9 @@ const { mockReferenceSetting } = vi.hoisted(() => ({
       include_plugins: [],
     },
   } as MockReferenceSetting,
+  mockAutoUpgradeError: {
+    value: undefined as Error | undefined,
+  },
 }))
 
 const { mockProviderContextState } = vi.hoisted(() => ({
@@ -160,9 +163,9 @@ vi.mock('@/service/use-plugins', () => ({
           auto_upgrade: mockReferenceSetting.auto_upgrade,
         }
       : undefined,
-    error: undefined,
+    error: mockAutoUpgradeError.value,
     isFetching: false,
-    isLoading: !mockReferenceSetting.auto_upgrade,
+    isLoading: !mockReferenceSetting.auto_upgrade && !mockAutoUpgradeError.value,
   }),
   useMutationPluginAutoUpgradeSettings: () => ({
     mutate: mockSaveAutoUpgrade,
@@ -170,12 +173,14 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ render }: { render: ReactNode }) => render,
-  PopoverContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="update-setting-popover">{children}</div>
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ render }: { render: ReactNode }) => render,
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="update-setting-dialog">{children}</div>
   ),
+  DialogTitle: () => null,
+  DialogCloseButton: () => <button type="button" aria-label="close" />,
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -251,6 +256,7 @@ describe('ModelProviderPage', () => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     mockProviderContextState.isLoadingModelProviders = false
+    mockAutoUpgradeError.value = undefined
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
       upgrade_time_of_day: 0,
@@ -289,7 +295,7 @@ describe('ModelProviderPage', () => {
   it('should render main elements', () => {
     renderModelProviderPage()
     expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })).toBeInTheDocument()
     expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
@@ -307,13 +313,13 @@ describe('ModelProviderPage', () => {
     renderModelProviderPage()
 
     expect(screen.getAllByText('plugin.autoUpdate.strategy.latest.name')[0]).toBeInTheDocument()
-    expect(screen.getAllByTestId('update-setting-popover')[0]).toBeInTheDocument()
-    expect(screen.getByText('plugin.autoUpdate.automaticUpdates')).toBeInTheDocument()
+    expect(screen.getAllByTestId('update-setting-dialog')[0]).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' })).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
     expect(screen.getByTestId('update-time-picker')).toBeInTheDocument()
     expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
   })
 
   it('should not expose editable update settings while backend auto-upgrade data is loading', () => {
@@ -321,19 +327,31 @@ describe('ModelProviderPage', () => {
 
     renderModelProviderPage()
 
-    const updateSettingButton = screen.getByText('common.modelProvider.updateSetting').closest('button')
+    const updateSettingButton = screen.getByText('plugin.autoUpdate.autoUpdate').closest('button')
     expect(updateSettingButton).not.toBeDisabled()
     expect(screen.queryByText('plugin.autoUpdate.strategy.latest.name')).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('common.loading')
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
     expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
-    expect(screen.getByTestId('update-setting-popover')).toBeInTheDocument()
+    expect(screen.getByTestId('update-setting-dialog')).toBeInTheDocument()
   })
 
-  it('should update scope from the popover while keeping the backend returned strategy', () => {
+  it('should render a failure state when backend auto-upgrade data fails', () => {
+    mockReferenceSetting.auto_upgrade = undefined
+    mockAutoUpgradeError.value = new Error('auto-upgrade failed')
+
     renderModelProviderPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.scopeMode.partial' }))
+    expect(screen.getByText('common.api.actionFailed')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+    expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
+  })
+
+  it('should update scope from the dialog while keeping the backend returned strategy', () => {
+    renderModelProviderPage()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.upgradeMode.partial' }))
     saveUpdateSettings()
 
     expect(mockSaveAutoUpgrade).toHaveBeenCalledWith({

@@ -13,6 +13,7 @@ import type {
   EnvironmentVariable,
   Node,
 } from './types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
@@ -33,6 +34,7 @@ import { setAutoFreeze } from 'immer'
 import {
   Fragment,
   memo,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -105,6 +107,7 @@ import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
+import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
 import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
@@ -355,20 +358,21 @@ export const Workflow: FC<WorkflowProps> = memo(({
       handleCommentIconClick(target)
   }, [activeComment, handleCommentIconClick, visibleComments])
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === WORKFLOW_DATA_UPDATE) {
-      setNodes(v.payload.nodes)
-      store.getState().setNodes(v.payload.nodes)
-      setEdges(v.payload.edges)
+  eventEmitter?.useSubscription((v: EventEmitterValue) => {
+    if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
+      const payload = v.payload as WorkflowDataUpdatePayload
+      setNodes(payload.nodes)
+      store.getState().setNodes(payload.nodes)
+      setEdges(payload.edges)
       workflowStore.setState({ contextMenuTarget: undefined })
 
-      if (v.payload.viewport)
-        reactflow.setViewport(v.payload.viewport)
+      if (payload.viewport)
+        reactflow.setViewport(payload.viewport)
 
-      if (v.payload.hash)
-        setSyncWorkflowDraftHash(v.payload.hash)
+      if (payload.hash)
+        setSyncWorkflowDraftHash(payload.hash)
 
-      onWorkflowDataUpdate?.(v.payload)
+      onWorkflowDataUpdate?.(payload)
 
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
@@ -851,6 +855,9 @@ const WorkflowWithDefaultContext = ({
         nodes={nodes}
         edges={edges}
       >
+        <Suspense fallback={null}>
+          <WorkflowLocalStorageBridge />
+        </Suspense>
         <DatasetsDetailProvider nodes={nodes}>
           {children}
         </DatasetsDetailProvider>

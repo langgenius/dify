@@ -24,22 +24,20 @@ const ToolItem: FC<Props> = ({
   const { plugin_id, declaration } = payload
   const { label, author: org } = declaration
   return (
-    <div className="p-1">
-      <div
-        className="flex w-full items-center gap-1 rounded-lg py-1 pr-2 pl-3 select-none hover:bg-state-base-hover"
-      >
-        <div className="flex min-w-0 grow items-center gap-2 pr-2">
-          <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
-          <div className="shrink-0 truncate system-sm-medium text-text-secondary">{renderI18nObject(label, language)}</div>
-          <div className="min-w-0 truncate system-xs-regular text-text-quaternary">{org}</div>
-        </div>
-        <Checkbox
-          checked={isChecked}
-          onCheckedChange={() => onCheckChange()}
-          className="shrink-0"
-          aria-label={renderI18nObject(label, language)}
-        />
+    <div
+      className="flex w-full items-center gap-1 rounded-lg py-1 pr-2 pl-3 select-none hover:bg-state-base-hover"
+    >
+      <div className="flex min-w-0 grow items-center gap-2 pr-2">
+        <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
+        <div className="min-w-0 truncate system-sm-medium text-text-secondary">{renderI18nObject(label, language)}</div>
+        <div className="min-w-0 truncate system-xs-regular text-text-quaternary">{org}</div>
       </div>
+      <Checkbox
+        checked={isChecked}
+        onCheckedChange={() => onCheckChange()}
+        className="shrink-0"
+        aria-label={renderI18nObject(label, language)}
+      />
     </div>
   )
 }

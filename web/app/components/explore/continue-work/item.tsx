@@ -24,7 +24,7 @@ const ContinueWorkItem = ({
   const href = getRedirectionPath(Boolean(isCurrentWorkspaceEditor), app)
 
   return (
-    <Link href={href} className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 pt-4 pb-5 shadow-md">
+    <Link href={href} className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3">
       <div className="relative shrink-0">
         <AppIcon
           size="large"
@@ -35,7 +35,7 @@ const ContinueWorkItem = ({
         />
         <AppTypeIcon
           type={app.mode}
-          wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-sm"
+          wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"
           className="size-3"
         />
       </div>

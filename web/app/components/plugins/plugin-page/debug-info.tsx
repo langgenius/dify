@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
 import KeyValueItem from '../base/key-value-item'
+import { PluginSidecarPanel } from './plugin-sidecar-panel'
 
 const i18nPrefix = 'debugInfo'
 
@@ -62,33 +63,41 @@ function DebugInfo({
       />
       <PopoverContent
         placement={popupPlacement}
-        popupClassName="flex w-[256px] flex-col items-start gap-1 rounded-xl border border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg"
+        popupClassName="border-0 bg-transparent p-0 shadow-none"
       >
-        <div className="flex items-center gap-1 self-stretch">
-          <span className="flex shrink-0 grow basis-0 flex-col items-start justify-center system-sm-semibold text-text-secondary">
-            {t(`${i18nPrefix}.title`, { ns: 'plugin' })}
-          </span>
-          <a
-            href={docLink('/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only"
-          >
-            <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="size-3" />
-          </a>
-        </div>
-        <div className="space-y-0.5">
-          <KeyValueItem
-            label="URL"
-            value={`${info.host}:${info.port}`}
-          />
-          <KeyValueItem
-            label="Key"
-            value={info.key || ''}
-            maskedValue={maskedKey}
-          />
-        </div>
+        <PluginSidecarPanel
+          title={t(`${i18nPrefix}.title`, { ns: 'plugin' })}
+          footer={(
+            <div className="flex w-full shrink-0 flex-col items-start">
+              <div className="flex w-full shrink-0 items-center justify-end gap-2 px-4 pt-2 pb-4">
+                <div className="flex min-w-0 flex-1 items-center gap-1">
+                  <a
+                    href={docLink('/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
+                  >
+                    <span>{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
+                    <RiArrowRightUpLine className="size-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+        >
+          <div className="flex w-full shrink-0 flex-col items-start justify-center gap-1 px-4 py-2">
+            <KeyValueItem
+              label="Port"
+              value={`${info.host}:${info.port}`}
+            />
+            <KeyValueItem
+              label="Key"
+              value={info.key || ''}
+              maskedValue={maskedKey}
+              valueMaxWidthClassName="max-w-[224px]"
+            />
+          </div>
+        </PluginSidecarPanel>
       </PopoverContent>
     </Popover>
   )

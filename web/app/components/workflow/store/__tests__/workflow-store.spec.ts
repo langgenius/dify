@@ -64,11 +64,10 @@ describe('createWorkflowStore', () => {
       testSetter(setter, stateKey, value)
     })
 
-    it('should persist controlMode to localStorage', () => {
+    it('should update controlMode in the workflow store', () => {
       const store = createStore()
       store.getState().setControlMode('pointer')
       expect(store.getState().controlMode).toBe('pointer')
-      expect(localStorage.setItem).toHaveBeenCalledWith('workflow-operation-mode', 'pointer')
     })
 
     it('should update clipboard nodes and edges with setClipboardData', () => {
@@ -175,9 +174,9 @@ describe('createWorkflowStore', () => {
     })
   })
 
-  describe('localStorage Initialization', () => {
-    it('should read controlMode from localStorage', () => {
-      localStorage.setItem('workflow-operation-mode', 'pointer')
+  describe('Static defaults and legacy maximize initialization', () => {
+    it('should keep controlMode default in the store when localStorage has a value', () => {
+      localStorage.setItem('workflow-operation-mode', 'hand')
       const store = createStore()
       expect(store.getState().controlMode).toBe('pointer')
     })
@@ -187,10 +186,10 @@ describe('createWorkflowStore', () => {
       expect(store.getState().controlMode).toBe('pointer')
     })
 
-    it('should read panelWidth from localStorage', () => {
+    it('should keep panelWidth default in the store when localStorage has a value', () => {
       localStorage.setItem('workflow-node-panel-width', '500')
       const store = createStore()
-      expect(store.getState().panelWidth).toBe(500)
+      expect(store.getState().panelWidth).toBe(420)
     })
 
     it('should default panelWidth to 420 when localStorage is empty', () => {
@@ -198,22 +197,22 @@ describe('createWorkflowStore', () => {
       expect(store.getState().panelWidth).toBe(420)
     })
 
-    it('should read nodePanelWidth from localStorage', () => {
+    it('should keep nodePanelWidth default in the store when localStorage has a value', () => {
       localStorage.setItem('workflow-node-panel-width', '350')
       const store = createStore()
-      expect(store.getState().nodePanelWidth).toBe(350)
+      expect(store.getState().nodePanelWidth).toBe(400)
     })
 
-    it('should read previewPanelWidth from localStorage', () => {
+    it('should keep previewPanelWidth default in the store when localStorage has a value', () => {
       localStorage.setItem('debug-and-preview-panel-width', '450')
       const store = createStore()
-      expect(store.getState().previewPanelWidth).toBe(450)
+      expect(store.getState().previewPanelWidth).toBe(400)
     })
 
-    it('should read variableInspectPanelHeight from localStorage', () => {
+    it('should keep variableInspectPanelHeight default in the store when localStorage has a value', () => {
       localStorage.setItem('workflow-variable-inpsect-panel-height', '200')
       const store = createStore()
-      expect(store.getState().variableInspectPanelHeight).toBe(200)
+      expect(store.getState().variableInspectPanelHeight).toBe(320)
     })
   })
 

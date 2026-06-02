@@ -77,7 +77,7 @@ const ToolPicker: FC<Props> = ({
   }
 
   const listContent = (
-    <div className="max-h-[396px] overflow-y-auto">
+    <div className="max-h-[396px] overflow-y-auto p-1">
       {filteredList.map(item => (
         <ToolItem
           key={item.plugin_id}
@@ -106,35 +106,36 @@ const ToolPicker: FC<Props> = ({
       <PopoverTrigger render={resolvedTrigger} />
       <PopoverContent
         placement="top"
-        sideOffset={0}
+        sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="relative min-h-20 w-[476px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-          <div className="p-2 pb-1">
-            <SearchBox
-              search={query}
-              onSearchChange={setQuery}
-              tags={tags}
-              onTagsChange={setTags}
-              placeholder={t('searchTools', { ns: 'plugin' })!}
-              inputClassName="w-full"
-            />
-          </div>
-          <div className="flex items-center justify-between bg-components-panel-bg px-3 pb-2">
-            <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
-              {tabs.map(tab => (
-                <div
-                  className={cn(
-                    'flex h-6 shrink-0 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
-                    'text-xs font-medium text-text-secondary',
-                    effectivePluginType === tab.key && 'bg-state-base-hover-alt',
-                  )}
-                  key={tab.key}
-                  onClick={() => setPluginType(tab.key)}
-                >
-                  {tab.name}
-                </div>
-              ))}
+        <div className="relative min-h-20 w-[432px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs">
+          <div className="flex flex-col overflow-hidden rounded-t-lg border-b border-divider-subtle bg-background-section-burn">
+            <div className="bg-components-panel-bg p-2">
+              <SearchBox
+                search={query}
+                onSearchChange={setQuery}
+                tags={tags}
+                onTagsChange={setTags}
+                placeholder={t('searchTools', { ns: 'plugin' })!}
+                inputClassName="w-full"
+              />
+            </div>
+            <div className="flex items-center justify-between bg-components-panel-bg px-3 pb-2">
+              <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
+                {tabs.map(tab => (
+                  <div
+                    className={cn(
+                      'flex h-6 shrink-0 cursor-pointer items-center rounded-md px-2 system-xs-medium text-text-tertiary hover:bg-state-base-hover',
+                      effectivePluginType === tab.key && 'bg-state-base-hover-alt system-xs-semibold text-text-primary',
+                    )}
+                    key={tab.key}
+                    onClick={() => setPluginType(tab.key)}
+                  >
+                    {tab.name}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           {!isLoading && filteredList.length > 0 && listContent}

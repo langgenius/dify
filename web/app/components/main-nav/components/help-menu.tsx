@@ -24,7 +24,7 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import SupportMenu from './support-menu'
 
 const HelpMenu = () => {

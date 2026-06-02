@@ -290,9 +290,11 @@ export const zUsageCheckResponse = z.object({
 })
 
 /**
- * DatasetPermissionEnum
+ * PermissionEnum
+ *
+ * Shared permission levels for resources (datasets, credentials, etc.)
  */
-export const zDatasetPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
+export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
 
 /**
  * DatasetCreatePayload
@@ -303,7 +305,7 @@ export const zDatasetCreatePayload = z.object({
   external_knowledge_id: z.string().nullish(),
   indexing_technique: z.string().nullish(),
   name: z.string().min(1).max(40),
-  permission: zDatasetPermissionEnum.optional(),
+  permission: zPermissionEnum.optional(),
   provider: z.string().optional().default('vendor'),
 })
 
@@ -322,7 +324,7 @@ export const zDatasetUpdatePayload = z.object({
   is_multimodal: z.boolean().nullish().default(false),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
-  permission: zDatasetPermissionEnum.optional(),
+  permission: zPermissionEnum.optional(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
 })

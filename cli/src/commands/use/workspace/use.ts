@@ -1,8 +1,7 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle, Workspace } from '@/auth/hosts'
+import type { ActiveContext, Registry, Workspace } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { WorkspacesClient } from '@/api/workspaces'
-import { saveHosts } from '@/auth/hosts'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
@@ -13,10 +12,11 @@ export type UseWorkspaceOptions = {
 }
 
 export type UseWorkspaceDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly reg: Registry
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly io: IOStreams
-  readonly workspacesFactory?: (http: KyInstance) => WorkspacesClient
+  readonly workspacesFactory?: (http: HttpClient) => WorkspacesClient
 }
 
 /**
@@ -31,14 +31,14 @@ export type UseWorkspaceDeps = {
  *      stays in sync. Failure here also aborts; the server-side current has
  *      already moved, but the local file is left untouched. A follow-up
  *      `difyctl get workspace` will reconcile.
- *   3. Persist `workspace` + `available_workspaces` atomically via `saveHosts`.
+ *   3. Persist `workspace` + `available_workspaces` atomically via `saveRegistry`.
  */
 export async function runUseWorkspace(
   opts: UseWorkspaceOptions,
   deps: UseWorkspaceDeps,
-): Promise<HostsBundle> {
+): Promise<Registry> {
   const cs = colorScheme(colorEnabled(deps.io.isErrTTY))
-  const factory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
+  const factory = deps.workspacesFactory ?? ((h: HttpClient) => new WorkspacesClient(h))
   const client = factory(deps.http)
 
   const detail = await runWithSpinner(
@@ -60,16 +60,13 @@ export async function runUseWorkspace(
     })
   }
 
-  const next: HostsBundle = {
-    ...deps.bundle,
+  const nextCtx = {
+    ...deps.active.ctx,
     workspace: { id: matched.id, name: matched.name, role: matched.role },
-    available_workspaces: list.workspaces.map<Workspace>(w => ({
-      id: w.id,
-      name: w.name,
-      role: w.role,
-    })),
+    available_workspaces: list.workspaces.map<Workspace>(w => ({ id: w.id, name: w.name, role: w.role })),
   }
-  saveHosts(next)
+  deps.reg.upsert(deps.active.host, deps.active.email, nextCtx)
+  deps.reg.save()
   deps.io.out.write(`${cs.successIcon()} Switched to ${matched.name} (${matched.id})\n`)
-  return next
+  return deps.reg
 }

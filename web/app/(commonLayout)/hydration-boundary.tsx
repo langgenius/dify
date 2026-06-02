@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
 import { getServerConsoleClientContext, resolveServerConsoleApiUrl, serverConsoleQuery } from '@/service/server'
-import { serverSystemFeaturesQueryOptions } from '@/service/server-system-features'
 import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
@@ -32,7 +32,7 @@ const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPa
 
 const getCurrentPath = async () => {
   const requestHeaders = await headers()
-  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/apps`
+  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/`
   const search = requestHeaders.get(CURRENT_SEARCH_HEADER) || ''
   return `${pathname}${search}`
 }

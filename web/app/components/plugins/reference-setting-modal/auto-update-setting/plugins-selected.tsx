@@ -15,10 +15,10 @@ const PluginsSelected: FC<Props> = ({
   className,
   plugins,
 }) => {
-  const isShowAll = plugins.length < MAX_DISPLAY_COUNT
+  const isShowAll = plugins.length <= MAX_DISPLAY_COUNT
   const displayPlugins = plugins.slice(0, MAX_DISPLAY_COUNT)
   return (
-    <div className={cn('flex items-center', className)}>
+    <div className={cn('flex min-w-0 items-center overflow-hidden', className)}>
       {displayPlugins.map(plugin => (
         <Icon key={plugin} size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin}/icon`} />
       ))}

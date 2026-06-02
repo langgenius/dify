@@ -1,6 +1,3 @@
-import base64
-import hashlib
-import hmac
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -33,34 +30,6 @@ class TestDatasourceFileManager:
         assert "timestamp=1700000000" in signed_url
         assert f"nonce={mock_urandom.return_value.hex()}" in signed_url
         assert "sign=" in signed_url
-
-    @patch("core.datasource.datasource_file_manager.time.time")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_verify_file(self, mock_config, mock_time):
-        # Setup
-        mock_config.SECRET_KEY = "test_secret"
-        mock_config.FILES_ACCESS_TIMEOUT = 300
-        mock_time.return_value = 1700000000
-
-        datasource_file_id = "file_id_123"
-        timestamp = "1699999800"  # 200 seconds ago
-        nonce = "some_nonce"
-
-        # Manually calculate sign
-        data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        secret_key = b"test_secret"
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-        # Execute & Verify Success
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, encoded_sign) is True
-
-        # Verify Failure - Wrong Sign
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, "wrong_sign") is False
-
-        # Verify Failure - Timeout
-        mock_time.return_value = 1700000500  # 700 seconds after timestamp (300 is timeout)
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, encoded_sign) is False
 
     @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
@@ -170,7 +139,7 @@ class TestDatasourceFileManager:
         assert upload_file.name == "unique_hex.pdf"
         assert upload_file.extension == ".pdf"
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
@@ -180,7 +149,7 @@ class TestDatasourceFileManager:
         mock_response = MagicMock()
         mock_response.content = b"bits"
         mock_response.headers = {}  # No content-type in headers
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -190,7 +159,7 @@ class TestDatasourceFileManager:
         # Verify
         assert tool_file.mimetype == "image/png"  # Guessed from .png in URL
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
@@ -200,7 +169,7 @@ class TestDatasourceFileManager:
         mock_response = MagicMock()
         mock_response.content = b"bits"
         mock_response.headers = {}
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -212,7 +181,7 @@ class TestDatasourceFileManager:
         # Verify
         assert tool_file.mimetype == "application/octet-stream"
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
@@ -222,7 +191,7 @@ class TestDatasourceFileManager:
         mock_response = MagicMock()
         mock_response.content = b"downloaded bits"
         mock_response.headers = {"Content-Type": "image/jpeg"}
-        mock_ssrf.get.return_value = mock_response
+        mock_ssrf.make_request.return_value = mock_response
 
         # Execute
         tool_file = DatasourceFileManager.create_file_by_url(
@@ -235,10 +204,10 @@ class TestDatasourceFileManager:
         assert tool_file.file_key == "tools/tenant_456/unique_hex.jpg"
         mock_storage.save.assert_called_once()
 
-    @patch("core.datasource.datasource_file_manager.ssrf_proxy")
+    @patch("core.datasource.datasource_file_manager.remote_fetcher")
     def test_create_file_by_url_timeout(self, mock_ssrf):
         # Setup
-        mock_ssrf.get.side_effect = httpx.TimeoutException("Timeout")
+        mock_ssrf.make_request.side_effect = httpx.TimeoutException("Timeout")
 
         # Execute & Verify
         with pytest.raises(ValueError, match="timeout when downloading file"):

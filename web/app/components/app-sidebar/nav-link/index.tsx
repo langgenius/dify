@@ -33,14 +33,7 @@ const NavLink = ({
   pathname,
 }: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
-  const formattedSegment = (() => {
-    let res = pathname ? pathname.toLowerCase().split('/').filter(Boolean).pop() : segment?.toLowerCase()
-    // logs and annotations use the same nav
-    if (res === 'annotations')
-      res = 'logs'
-
-    return res
-  })()
+  const formattedSegment = pathname ? pathname.toLowerCase().split('/').filter(Boolean).pop() : segment?.toLowerCase()
   const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 

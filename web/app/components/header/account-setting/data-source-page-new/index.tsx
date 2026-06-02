@@ -7,12 +7,12 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import UpdateSettingPopover from '../update-setting-popover'
+import UpdateSettingDialog from '../update-setting-dialog'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 
@@ -112,7 +112,7 @@ const DataSourcePage = ({
         onChange={setSearchText}
       />
       {canSetPermissions && (
-        <UpdateSettingPopover
+        <UpdateSettingDialog
           category={PluginCategoryEnum.datasource}
         />
       )}

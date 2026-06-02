@@ -16,12 +16,12 @@ import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { useAppContext } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -203,12 +203,6 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
-  const hasFilterCondition
-    = !!keywords
-      || !!searchKeywords
-      || currCategory !== allCategoriesEn
-      || searchFilteredList.length !== filteredList.length
-
   if (isError || (!isLoading && !data))
     return null
 
@@ -222,9 +216,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
         {systemFeatures.enable_explore_banner && (
-          <div className="mt-4 px-12">
-            <Banner />
-          </div>
+          <Banner />
         )}
         <ExploreRecommendations
           canCreate={hasEditPermission}
@@ -240,9 +232,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
                 allCategoriesEn={allCategoriesEn}
                 categories={categories}
                 currCategory={currCategory}
-                hasFilterCondition={hasFilterCondition}
                 keywords={keywords}
-                resultCount={searchFilteredList.length}
                 onCategoryChange={setCurrCategory}
                 onKeywordsChange={handleKeywordsChange}
               />
@@ -252,7 +242,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
           <nav
             className={cn(
               s.appList,
-              'grid shrink-0 content-start gap-3 px-6 sm:px-12',
+              'grid shrink-0 content-start gap-3 px-8',
             )}
           >
             {isLoading

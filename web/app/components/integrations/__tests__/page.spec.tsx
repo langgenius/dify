@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
 
@@ -77,14 +77,14 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
   __esModule: true,
   default: () => (
     <button
       type="button"
-      data-testid="update-setting-popover"
+      data-testid="update-setting-dialog"
     >
-      common.modelProvider.updateSetting
+      plugin.autoUpdate.autoUpdate
       <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
@@ -307,16 +307,16 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'custom-endpoint' })
 
     expect(screen.getByTestId('api-extension-page')).toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.updateSetting')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.autoUpdate.autoUpdate')).not.toBeInTheDocument()
   })
 
-  it('disables the plugin debug action when debug permission is unavailable', () => {
+  it('hides the plugin debug action when debug permission is unavailable', () => {
     mockCanDebugger.mockReturnValue(false)
 
     renderIntegrationsPage({ section: 'data-source' })
 
-    expect(screen.getByLabelText('plugin.privilege.noDebugPermissionTooltip')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin.debugInfo.title' })).toBeDisabled()
+    expect(screen.queryByLabelText('plugin.privilege.noDebugPermissionTooltip')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin debug' })).not.toBeInTheDocument()
   })
 
   it('renders existing pages from route sections', () => {
@@ -524,7 +524,7 @@ describe('IntegrationsPage', () => {
   it.each(['trigger', 'extension', 'agent-strategy'] as const)('renders plugin update settings action in the category toolbar for %s', (section) => {
     renderIntegrationsPage({ section })
 
-    expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
   })
 
@@ -536,23 +536,23 @@ describe('IntegrationsPage', () => {
     expect(mockRouterPush).toHaveBeenCalledWith('/marketplace?category=tool')
   })
 
-  it('disables the install action and category installs when install permission is unavailable', () => {
+  it('hides the install action and category installs when install permission is unavailable', () => {
     mockCanManagement.mockReturnValue(false)
 
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.getByLabelText('plugin.privilege.noInstallPermissionTooltip')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin install' })).toBeDisabled()
+    expect(screen.queryByLabelText('plugin.privilege.noInstallPermissionTooltip')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin install' })).not.toBeInTheDocument()
     expect(screen.getByTestId('plugin-category-trigger')).toHaveAttribute('data-can-install', 'false')
   })
 
-  it('disables the debug action when debug permission is unavailable', () => {
+  it('hides the debug action when debug permission is unavailable', () => {
     mockCanDebugger.mockReturnValue(false)
 
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.getByLabelText('plugin.privilege.noDebugPermissionTooltip')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin.debugInfo.title' })).toBeDisabled()
+    expect(screen.queryByLabelText('plugin.privilege.noDebugPermissionTooltip')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin debug' })).not.toBeInTheDocument()
   })
 
   it('hides plugin update settings action when permission management is unavailable', () => {
@@ -560,7 +560,7 @@ describe('IntegrationsPage', () => {
 
     renderIntegrationsPage({ section: 'trigger' })
 
-    expect(screen.queryByTestId('update-setting-popover')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
   })
 
   it('opens the sidebar plugin permissions quick settings and updates permissions', () => {
@@ -572,7 +572,11 @@ describe('IntegrationsPage', () => {
     expect(screen.getByText('plugin.privilege.quickWhoCanInstall')).toBeInTheDocument()
     expect(screen.getByText('plugin.privilege.quickWhoCanDebug')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.noone' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('plugin.privilege.permissions').closest('.w-\\[360px\\]')).toHaveClass('rounded-2xl', 'shadow-2xl')
+    expect(screen.getByRole('radio', { name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.everyone' })).toHaveClass('w-[104px]', 'h-8')
+
+    fireEvent.click(screen.getByRole('radio', { name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.noone' }))
 
     expect(mockSetReferenceSettings).toHaveBeenCalledWith({
       install_permission: 'noone',
@@ -580,18 +584,22 @@ describe('IntegrationsPage', () => {
     })
   })
 
-  it('disables the sidebar plugin permissions quick settings when permission management is unavailable', () => {
+  it('hides the sidebar plugin permissions quick settings when permission management is unavailable', () => {
     mockCanSetPermissions.mockReturnValue(false)
     renderIntegrationsPage({ section: 'provider' })
 
-    const trigger = screen.getByRole('button', { name: 'plugin.privilege.permissions' })
-
-    expect(trigger).toBeDisabled()
-
-    fireEvent.click(trigger)
-
+    expect(screen.queryByRole('button', { name: 'plugin.privilege.permissions' })).not.toBeInTheDocument()
     expect(screen.queryByText('plugin.privilege.quickWhoCanInstall')).not.toBeInTheDocument()
     expect(screen.queryByText('plugin.privilege.quickWhoCanDebug')).not.toBeInTheDocument()
+  })
+
+  it('uses the no-action sidebar spacing when install permission is unavailable', () => {
+    mockCanManagement.mockReturnValue(false)
+
+    renderIntegrationsPage({ section: 'provider' })
+
+    expect(screen.getByText('common.settings.integrations').parentElement?.parentElement).toHaveClass('mb-3', 'pt-1', 'pb-0.5')
+    expect(screen.getByRole('link', { name: 'common.settings.provider' }).parentElement).toHaveClass('py-4')
   })
 
   it('keeps the integrations sidebar expanded without a collapse control', () => {
@@ -609,7 +617,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('button', { name: 'plugin tasks' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveTextContent('plugin.debugInfo.title')
     expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveClass('h-8', 'w-full', 'gap-2', 'rounded-lg', 'py-1', 'pr-1', 'pl-2', 'system-sm-medium')
-    expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement?.parentElement).toHaveClass('w-46')
+    expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement).toHaveClass('w-46')
     expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveTextContent('plugin.privilege.permissions')
     expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveClass('h-8', 'w-full', 'gap-2', 'rounded-lg', 'py-1', 'pr-1', 'pl-2', 'system-sm-medium')
     expect(screen.queryByText('common.settings.customTool')).not.toBeInTheDocument()

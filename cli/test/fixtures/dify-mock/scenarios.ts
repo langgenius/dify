@@ -1,6 +1,7 @@
 export type Scenario
   = | 'happy'
     | 'sso'
+    | 'no-email'
     | 'denied'
     | 'expired'
     | 'auth-expired'
@@ -12,6 +13,7 @@ export type Scenario
     | 'hitl-resume'
     | 'server-version-empty'
     | 'server-version-unsupported'
+    | 'run-422-stale'
 
 export type AccountFixture = {
   id: string

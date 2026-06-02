@@ -107,7 +107,7 @@ function IntegrationSidebarInstallActions({
           triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width]"
           triggerLabel={installLabel}
           triggerOpenClassName="bg-components-button-primary-bg-hover"
-          popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
+          popupClassName="w-[200px]"
           installContextCategory={installContextCategory}
           showTriggerArrow={false}
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
@@ -145,61 +145,38 @@ export function IntegrationSidebarUtilityActions({
 
   return (
     <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">
-      <PermissionTooltipWrapper
-        show={!canDebugger}
-        content={t('privilege.noDebugPermissionTooltip', { ns: 'plugin' })}
-        placement="top"
-        className="w-full"
-      >
-        {canDebugger
-          ? (
-              <DebugInfo
-                popupPlacement="top-start"
-                triggerVariant="ghost"
-                triggerClassName={sidebarUtilityActionClassName}
-                triggerContent={(
-                  <>
-                    <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-                      <span className="i-ri-bug-line size-4" />
-                    </span>
-                    <span className="min-w-0 truncate">{debugLabel}</span>
-                  </>
-                )}
-              />
-            )
-          : (
-              <Button
-                variant="ghost"
-                disabled
-                className={sidebarUtilityActionClassName}
-                aria-label={debugLabel}
-                title={debugLabel}
-              >
-                <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-                  <span className="i-ri-bug-line size-4" />
-                </span>
-                <span className="min-w-0 truncate">{debugLabel}</span>
-              </Button>
-            )}
-      </PermissionTooltipWrapper>
-      <Popover>
-        <PopoverTrigger
-          render={(
-            <Button
-              variant="ghost"
-              disabled={!showPermissionQuickPanel}
-              className={sidebarUtilityActionClassName}
-              aria-label={permissionsLabel}
-              title={permissionsLabel}
-            >
+      {canDebugger && (
+        <DebugInfo
+          popupPlacement="top-start"
+          triggerVariant="ghost"
+          triggerClassName={sidebarUtilityActionClassName}
+          triggerContent={(
+            <>
               <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-                <span className="i-ri-equalizer-2-line size-4" />
+                <span className="i-ri-bug-line size-4" />
               </span>
-              <span className="min-w-0 truncate">{permissionsLabel}</span>
-            </Button>
+              <span className="min-w-0 truncate">{debugLabel}</span>
+            </>
           )}
         />
-        {showPermissionQuickPanel && permission && (
+      )}
+      {showPermissionQuickPanel && permission && (
+        <Popover>
+          <PopoverTrigger
+            render={(
+              <Button
+                variant="ghost"
+                className={sidebarUtilityActionClassName}
+                aria-label={permissionsLabel}
+                title={permissionsLabel}
+              >
+                <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+                  <span className="i-ri-equalizer-2-line size-4" />
+                </span>
+                <span className="min-w-0 truncate">{permissionsLabel}</span>
+              </Button>
+            )}
+          />
           <PopoverContent
             placement="top-start"
             sideOffset={4}
@@ -210,8 +187,8 @@ export function IntegrationSidebarUtilityActions({
               onChange={onPermissionChange}
             />
           </PopoverContent>
-        )}
-      </Popover>
+        </Popover>
+      )}
     </div>
   )
 }

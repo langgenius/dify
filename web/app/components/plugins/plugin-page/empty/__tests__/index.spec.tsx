@@ -1,10 +1,10 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
-import type { SystemFeatures } from '@/types/feature'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { InstallationScope } from '@/types/feature'
+import { InstallationScope } from '@/features/system-features/constants'
 
 // ==================== Imports (after mocks) ====================
 
@@ -32,7 +32,7 @@ const {
         plugin_installation_scope: 'all' as const,
         restrict_to_marketplace_only: false,
       },
-    } as Partial<SystemFeatures>,
+    } as Partial<GetSystemFeaturesResponse>,
     pluginList: { plugins: [] as Array<{ id: string }> } as { plugins: Array<{ id: string }> } | undefined,
   }
   return {
@@ -105,7 +105,7 @@ const setMockFilters = (filters: Partial<FilterState>) => {
   mockState.filters = { ...mockState.filters, ...filters }
 }
 
-const setMockSystemFeatures = (features: Partial<SystemFeatures>) => {
+const setMockSystemFeatures = (features: Partial<GetSystemFeaturesResponse>) => {
   mockState.systemFeatures = { ...mockState.systemFeatures, ...features }
 }
 

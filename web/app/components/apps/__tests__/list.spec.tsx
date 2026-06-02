@@ -23,7 +23,9 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    systemFeatures: vi.fn(),
+    systemFeatures: {
+      get: vi.fn(),
+    },
   },
   consoleQuery: {
     apps: {
@@ -37,7 +39,9 @@ vi.mock('@/service/client', () => ({
       },
     },
     systemFeatures: {
-      queryKey: () => ['console', 'systemFeatures'],
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+      },
     },
   },
 }))

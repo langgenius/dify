@@ -41,8 +41,8 @@ const LearnDifyItem = ({
   }
 
   return (
-    <article className="group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md">
-      <div className="flex items-center gap-3">
+    <article className="group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs">
+      <div className="flex flex-col items-start gap-2 pb-1">
         <AppIcon
           size="large"
           iconType={appBasicInfo.icon_type}
@@ -50,11 +50,11 @@ const LearnDifyItem = ({
           background={appBasicInfo.icon_background}
           imageUrl={appBasicInfo.icon_url}
         />
-        <h3 className="line-clamp-2 min-h-10 min-w-0 flex-1 system-md-semibold text-text-secondary" title={appBasicInfo.name}>
+        <h3 className="w-full truncate system-md-semibold text-text-secondary" title={appBasicInfo.name}>
           {appBasicInfo.name}
         </h3>
       </div>
-      <p className="mt-3 line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+      <p className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
         {item.description}
       </p>
       {showHoverActions && (

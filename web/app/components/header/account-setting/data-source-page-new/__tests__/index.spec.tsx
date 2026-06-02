@@ -73,11 +73,11 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   }),
 }))
 
-vi.mock('@/app/components/header/account-setting/update-setting-popover', () => ({
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
   __esModule: true,
   default: () => (
     <button type="button">
-      common.modelProvider.updateSetting
+      plugin.autoUpdate.autoUpdate
       <span>plugin.autoUpdate.strategy.fixOnly.name</span>
     </button>
   ),
@@ -205,7 +205,7 @@ describe('DataSourcePage Component', () => {
       // Assert
       expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('common.modelProvider.searchModels').closest('.sticky')).toHaveClass('top-0', 'z-10', '-mx-6', 'bg-components-panel-bg', 'px-6', 'pb-2')
-      expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
       expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
       expect(screen.getByText('dataSourcePage.notSetUpTitle')).toBeInTheDocument()

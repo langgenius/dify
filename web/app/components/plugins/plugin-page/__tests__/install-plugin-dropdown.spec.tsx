@@ -184,9 +184,9 @@ describe('InstallPluginDropdown', () => {
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
-    expect(container.querySelector('.i-custom-vender-integrations-install-marketplace')).toHaveClass('size-4', 'shrink-0')
-    expect(container.querySelector('.i-custom-vender-integrations-install-github')).toHaveClass('size-4', 'shrink-0')
-    expect(container.querySelector('.i-custom-vender-integrations-install-local-package')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-plugin-box-sparkle-fill')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-solid-general-github')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-solid-files-file-zip')).toHaveClass('size-4', 'shrink-0')
   })
 
   it('applies custom trigger label and presentation props', () => {

@@ -6,12 +6,14 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
+  RiStickyNoteFill,
+  RiStickyNoteLine,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
   RiTerminalWindowLine,
 } from '@remixicon/react'
-import { useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
@@ -29,7 +31,26 @@ type AppDetailNavItem = {
   selectedIcon: NavIcon
 }
 
-const AppDetailSection = () => {
+const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
+const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
+
+const renderNavDivider = (key: string) => (
+  <div key={key} className="px-3 py-0.5">
+    <Divider
+      type="horizontal"
+      bgStyle="gradient"
+      className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
+    />
+  </div>
+)
+
+type AppDetailSectionProps = {
+  expand?: boolean
+}
+
+const AppDetailSection = ({
+  expand = true,
+}: AppDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -44,6 +65,7 @@ const AppDetailSection = () => {
 
     const appId = appDetail.id
     const isWorkflowApp = appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
+    const supportsAnnotations = appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
 
     return [
       ...(isCurrentWorkspaceEditor
@@ -63,13 +85,18 @@ const AppDetailSection = () => {
       },
       ...(isCurrentWorkspaceEditor
         ? [{
-            name: appDetail.mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
+            name: t('appMenus.logs', { ns: 'common' }),
             href: `/app/${appId}/logs`,
             icon: RiFileList3Line,
             selectedIcon: RiFileList3Fill,
-          }]
+          }, ...(supportsAnnotations
+            ? [{
+                name: t('appMenus.annotations', { ns: 'common' }),
+                href: `/app/${appId}/annotations`,
+                icon: RiStickyNoteLine,
+                selectedIcon: RiStickyNoteFill,
+              }]
+            : [])]
         : []
       ),
       {
@@ -84,32 +111,35 @@ const AppDetailSection = () => {
   if (!appDetail)
     return null
 
+  const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
+
   return (
     <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
-      <div className="py-2">
+      <div className="px-1 py-2">
         <AppInfoView
-          expand
+          expand={expand}
           actions={appInfoActions}
         />
       </div>
-      <div className="px-2 py-2">
-        <Divider
-          type="horizontal"
-          bgStyle="gradient"
-          className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
-        />
-      </div>
-      <nav className="flex flex-col gap-y-0.5 px-1 py-2">
-        {navigation.map(item => (
-          <NavLink
-            key={item.href}
-            mode="expand"
-            iconMap={{ selected: item.selectedIcon, normal: item.icon }}
-            name={item.name}
-            href={item.href}
-            pathname={pathname}
-          />
-        ))}
+      <nav className="flex flex-col gap-y-0.5 px-1 py-1">
+        {navigation.map((item) => {
+          const shouldRenderDividerBefore = isLogsNavItem(item)
+          const shouldRenderDividerAfter = hasAnnotationsNavigation ? isAnnotationsNavItem(item) : isLogsNavItem(item)
+
+          return (
+            <Fragment key={item.href}>
+              {shouldRenderDividerBefore && renderNavDivider(`${item.href}-before`)}
+              <NavLink
+                mode={expand ? 'expand' : 'collapse'}
+                iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+                name={item.name}
+                href={item.href}
+                pathname={pathname}
+              />
+              {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`)}
+            </Fragment>
+          )
+        })}
       </nav>
     </div>
   )

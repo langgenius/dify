@@ -124,10 +124,10 @@ export const BannerItem: FC<BannerItemProps> = ({
 
   return (
     <div
-      className="flex min-h-[168px] w-full cursor-pointer items-center gap-2 overflow-hidden rounded-2xl px-8"
+      className="flex min-h-[168px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs"
       onClick={handleBannerClick}
     >
-      <div className="flex h-[200px] min-w-px flex-1 flex-col items-end gap-3 rounded-2xl pt-4 pb-8">
+      <div className="flex min-w-px flex-1 flex-col items-end gap-3 self-stretch rounded-2xl py-6 pl-8">
         <div className="flex min-h-24 w-full flex-wrap items-end gap-1 py-1">
           <div
             ref={textAreaRef}
@@ -190,7 +190,7 @@ export const BannerItem: FC<BannerItemProps> = ({
         </div>
       </div>
 
-      <div className="flex max-w-60 shrink-0 flex-col items-center justify-center p-4 max-lg:hidden">
+      <div className="flex w-60 max-w-60 shrink-0 flex-col items-end self-stretch p-2 max-lg:hidden">
         <img
           src={imgSrc}
           alt={title}

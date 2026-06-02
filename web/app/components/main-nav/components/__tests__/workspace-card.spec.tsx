@@ -7,9 +7,9 @@ import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { LicenseStatus } from '@/features/system-features/constants'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { LicenseStatus } from '@/types/feature'
 import { WorkspaceCard } from '../workspace-card'
 
 const { mockSwitchWorkspace, mockIsCloudEdition, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(() => ({
@@ -215,7 +215,7 @@ describe('WorkspaceCard', () => {
       systemFeatures: {
         license: {
           status: LicenseStatus.ACTIVE,
-          expired_at: null,
+          expired_at: '',
         },
       },
     })

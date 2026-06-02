@@ -606,8 +606,7 @@ describe('auto-update-setting', () => {
 
         // Assert - all 14 icons are displayed
         expect(screen.getAllByTestId('plugin-icon')).toHaveLength(14)
-        // Note: Component shows "+0" when exactly at limit due to < vs <= comparison
-        // This is the actual behavior (isShowAll = plugins.length < MAX_DISPLAY_COUNT)
+        expect(screen.queryByText('+0')).not.toBeInTheDocument()
       })
 
       it('should handle MAX_DISPLAY_COUNT + 1 plugins showing overflow', () => {
@@ -1011,7 +1010,7 @@ describe('auto-update-setting', () => {
         render(<PluginsPicker {...defaultProps} value={['plugin-1', 'plugin-2']} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' })).toBeInTheDocument()
       })
 
@@ -1034,7 +1033,7 @@ describe('auto-update-setting', () => {
         )
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
       })
     })
 
@@ -1205,7 +1204,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
       })
 
       it('should show exclude_plugins when mode is exclude', () => {
@@ -1221,7 +1220,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":3}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":3,"num":3}')).toBeInTheDocument()
       })
     })
 
@@ -1416,7 +1415,7 @@ describe('auto-update-setting', () => {
         const { rerender } = render(<AutoUpdateSetting {...defaultProps} payload={partialPayload} />)
 
         // Assert - partial mode shows include_plugins count
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
 
         // Act - change to exclude mode
         const excludePayload = createMockAutoUpdateConfig({
@@ -1428,7 +1427,7 @@ describe('auto-update-setting', () => {
         rerender(<AutoUpdateSetting {...defaultProps} payload={excludePayload} />)
 
         // Assert - exclude mode shows exclude_plugins count
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
       })
     })
 
@@ -1577,7 +1576,7 @@ describe('auto-update-setting', () => {
       render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
       // Assert - partial mode shows include_plugins
-      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":1}')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":1,"num":1}')).toBeInTheDocument()
     })
   })
 })

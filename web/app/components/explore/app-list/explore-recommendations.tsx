@@ -20,14 +20,14 @@ export function ExploreRecommendations({
   return (
     <>
       {isContinueWorkLoading
-        ? <RecommendationSectionSkeleton className="mt-10" />
-        : <ContinueWork className="mt-10" />}
+        ? <RecommendationSectionSkeleton className="pb-4" />
+        : <ContinueWork className="pb-4" />}
       <LearnDify
         canCreate={canCreate}
-        className="mt-4"
+        className="pb-0"
         loadingFallback={(
           <RecommendationSectionSkeleton
-            className={isContinueWorkLoading ? 'mt-4' : 'mt-10'}
+            className="pb-0"
             hasDescription
           />
         )}

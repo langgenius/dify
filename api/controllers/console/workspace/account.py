@@ -173,7 +173,6 @@ class CheckEmailUniquePayload(BaseModel):
 
 register_schema_models(
     console_ns,
-    AccountResponse,
     AccountInitPayload,
     AccountNamePayload,
     AccountAvatarPayload,
@@ -245,6 +244,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    AccountResponse,
     AvatarUrlResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,

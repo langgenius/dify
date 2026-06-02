@@ -23,8 +23,12 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
       className="block w-full"
       aria-label={!expand ? `${appDetail.name} - ${modeLabel}` : undefined}
     >
-      <div className="flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover">
-        <div className="flex items-center gap-1">
+      <div className={cn(
+        'rounded-xl hover:bg-state-base-hover',
+        expand ? 'flex items-start gap-2 p-2' : 'flex flex-col gap-2 p-1',
+      )}
+      >
+        <div className={cn('flex items-center', expand ? 'shrink-0' : 'gap-1')}>
           <div className={cn(!expand && 'ml-1')}>
             <AppIcon
               size={expand ? 'large' : 'small'}
@@ -34,13 +38,6 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
               imageUrl={appDetail.icon_url}
             />
           </div>
-          {expand && (
-            <div className="ml-auto flex items-center justify-center rounded-md p-0.5">
-              <div className="flex size-5 items-center justify-center">
-                <RiEqualizer2Line className="size-4 text-text-tertiary" />
-              </div>
-            </div>
-          )}
         </div>
         {!expand && (
           <div className="flex items-center justify-center">
@@ -50,14 +47,19 @@ const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => 
           </div>
         )}
         {expand && (
-          <div className="flex flex-col items-start gap-1">
-            <div className="flex w-full">
-              <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">{appDetail.name}</div>
+          <>
+            <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
+              <div className="flex w-full min-w-0 pr-1">
+                <div className="truncate system-md-semibold text-text-secondary">{appDetail.name}</div>
+              </div>
+              <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
+                {modeLabel}
+              </div>
             </div>
-            <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
-              {getAppModeLabel(appDetail.mode, t)}
+            <div className="flex size-5 shrink-0 items-center justify-center rounded-md p-0.5">
+              <RiEqualizer2Line className="size-4 text-text-tertiary" />
             </div>
-          </div>
+          </>
         )}
       </div>
     </button>

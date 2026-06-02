@@ -7,6 +7,7 @@ import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/atoms'
 import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
@@ -116,11 +117,15 @@ vi.mock('@/app/components/header/github-star', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar/app-detail-section', () => ({
-  default: () => <div data-testid="app-detail-section" />,
+  default: ({ expand }: { expand: boolean }) => <div data-testid="app-detail-section" data-expand={expand} />,
 }))
 
 vi.mock('@/app/components/app-sidebar/app-detail-top', () => ({
-  default: () => <div data-testid="app-detail-top" />,
+  default: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="app-detail-top" data-expand={expand}>
+      <button type="button" data-testid="app-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/app-sidebar/dataset-detail-section', () => ({
@@ -221,7 +226,8 @@ const renderMainNav = (
   systemFeatures = { branding: { enabled: false } },
 ) => {
   const queryClient = createTestQueryClient()
-  const currentAppContext = (useAppContext as Mock)() as AppContextValue
+  const getMockAppContext = useAppContext as Mock
+  const currentAppContext = getMockAppContext() as AppContextValue
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   return renderWithSystemFeatures(<JotaiProvider><MainNav /></JotaiProvider>, { systemFeatures, queryClient })
@@ -272,6 +278,7 @@ describe('MainNav', () => {
       mutateAsync: mockUpdatePinStatus,
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
+    useAppStore.getState().setAppSidebarExpand('')
   })
 
   it('renders primary navigation with the planned routes', () => {
@@ -395,11 +402,25 @@ describe('MainNav', () => {
 
     expect(screen.getByTestId('app-detail-top')).toBeInTheDocument()
     expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
+    expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+  })
+
+  it('collapses app detail navigation from the top-right toggle', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-14')
+    expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
   })
 
   it('replaces global navigation with dataset detail navigation on dataset routes', () => {

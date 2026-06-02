@@ -67,7 +67,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const res = appDetailRes
     // redirection
     const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs') || pathname.endsWith('annotations'))) {
       router.replace(`/app/${appId}/overview`)
       return
     }
@@ -95,7 +95,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }
 
   return (
-    <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
+    <div className={cn(s.app, 'relative ml-1 flex', 'overflow-hidden')}>
       <div className="grow overflow-hidden bg-components-panel-bg">
         {children}
       </div>

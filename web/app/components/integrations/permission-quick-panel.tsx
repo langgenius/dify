@@ -1,8 +1,11 @@
 'use client'
 
 import type { Permissions } from '@/app/components/plugins/types'
-import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
+import { PluginSidecarPanel } from '@/app/components/plugins/plugin-page/plugin-sidecar-panel'
 import { PermissionType } from '@/app/components/plugins/types'
 
 export type PermissionSettingKey = keyof Permissions
@@ -17,6 +20,13 @@ type PermissionQuickPanelProps = {
   permission: Permissions
   onChange: (key: PermissionSettingKey, value: PermissionType) => void
 }
+
+const permissionOptionCardClassName = cn(
+  'flex h-8 w-[104px] shrink-0 items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-center system-sm-regular text-text-secondary transition-colors',
+  'hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
+  'focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+  'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:font-medium data-checked:text-text-primary data-checked:shadow-xs data-checked:shadow-shadow-shadow-3',
+)
 
 export function PermissionQuickPanel({
   permission,
@@ -41,46 +51,42 @@ export function PermissionQuickPanel({
   ]
 
   return (
-    <div className="w-[249px] overflow-hidden rounded-2xl border-t border-components-panel-border bg-components-panel-bg shadow-xl">
-      <div className="border-b-[0.5px] border-black/5 py-2">
-        <div className="flex flex-col gap-1 px-1 pt-0.5 pb-1">
-          <div className="px-3 pt-1 pb-0.5 system-sm-semibold-uppercase text-text-secondary">
-            {t('privilege.permissions', { ns: 'plugin' })}
-          </div>
-          {rows.map(row => (
-            <div key={row.key} className="flex flex-col gap-0.5 px-3 py-1">
-              <div className="flex min-h-6 items-center system-sm-semibold whitespace-nowrap text-text-secondary">
-                {row.label}
-              </div>
-              <SegmentedControl<PermissionType>
-                value={[row.value]}
-                onValueChange={(value) => {
-                  const nextValue = value[0]
-                  if (nextValue)
-                    onChange(row.key, nextValue)
-                }}
-                aria-label={row.label}
-                className="w-fit"
-              >
-                {permissionSettingOptions.map((option) => {
-                  const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
-
-                  return (
-                    <SegmentedControlItem
-                      key={option}
-                      value={option}
-                      aria-label={`${row.label}: ${optionLabel}`}
-                      className="shrink-0"
-                    >
-                      <span className="px-0.5 py-0.5">{optionLabel}</span>
-                    </SegmentedControlItem>
-                  )
-                })}
-              </SegmentedControl>
+    <PluginSidecarPanel title={t('privilege.permissions', { ns: 'plugin' })}>
+      <div className="flex w-full shrink-0 flex-col items-start justify-center gap-3 px-4 pt-2 pb-4">
+        {rows.map(row => (
+          <div key={row.key} className="flex w-full shrink-0 flex-col items-start gap-1">
+            <div className="flex min-h-6 items-center system-sm-medium whitespace-nowrap text-text-secondary">
+              {row.label}
             </div>
-          ))}
-        </div>
+            <RadioGroup<PermissionType>
+              value={row.value}
+              onValueChange={(nextValue) => {
+                if (nextValue)
+                  onChange(row.key, nextValue)
+              }}
+              aria-label={row.label}
+              className="w-full gap-2"
+            >
+              {permissionSettingOptions.map((option) => {
+                const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
+
+                return (
+                  <RadioRoot
+                    key={option}
+                    value={option}
+                    variant="unstyled"
+                    nativeButton
+                    render={<button type="button" className={permissionOptionCardClassName} />}
+                    aria-label={`${row.label}: ${optionLabel}`}
+                  >
+                    <span className="min-w-0 truncate">{optionLabel}</span>
+                  </RadioRoot>
+                )
+              })}
+            </RadioGroup>
+          </div>
+        ))}
       </div>
-    </div>
+    </PluginSidecarPanel>
   )
 }
