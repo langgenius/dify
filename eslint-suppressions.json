@@ -5128,11 +5128,6 @@
       "count": 1
     }
   },
-  "web/features/deployments/detail/versions-tab/release-dsl-export.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/hooks/use-async-window-open.spec.ts": {
     "ts/no-explicit-any": {
       "count": 6
