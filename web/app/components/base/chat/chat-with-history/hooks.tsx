@@ -125,9 +125,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     rawStorageOptions,
   )
   const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(storedSidebarCollapseState === 'collapsed')
-  useEffect(() => {
-    setSidebarCollapseState(storedSidebarCollapseState === 'collapsed')
-  }, [storedSidebarCollapseState])
   const handleSidebarCollapse = useCallback((state: boolean) => {
     if (appId) {
       setSidebarCollapseState(state)
@@ -202,6 +199,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
+    // eslint-disable-next-line react/set-state-in-effect -- This handler intentionally syncs derived input defaults when called from the reset effect below.
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -298,6 +296,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
+      // eslint-disable-next-line react/set-state-in-effect -- Conversation query results intentionally replace the local editable list.
       setOriginConversationList(appConversationData?.data)
   }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
@@ -314,6 +313,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [originConversationList, showNewConversationItemInList, t])
   useEffect(() => {
     if (newConversation) {
+      // eslint-disable-next-line react/set-state-in-effect -- Newly resolved conversation names intentionally patch the local list cache.
       setOriginConversationList(produce((draft) => {
         const index = draft.findIndex(item => item.id === newConversation.id)
         if (index > -1)
@@ -337,6 +337,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
   useEffect(() => {
     if (currentConversationItem)
+      // eslint-disable-next-line react/set-state-in-effect -- Selected conversation changes intentionally resync the editable input snapshot.
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
   const checkInputsRequired = useCallback((silent?: boolean) => {
