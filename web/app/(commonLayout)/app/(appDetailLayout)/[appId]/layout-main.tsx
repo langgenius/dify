@@ -95,7 +95,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }
 
   return (
-    <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
+    <div className={cn(s.app, 'relative ml-1 flex', 'overflow-hidden')}>
       <div className="grow overflow-hidden bg-components-panel-bg">
         {children}
       </div>
