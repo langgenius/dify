@@ -124,7 +124,6 @@ export class HttpClientError extends BaseError {
   }
 
   override humanError(isErrTTY: boolean): string {
-    
     const lines: string[] = [super.humanError(isErrTTY)]
     if (this.method !== undefined && this.url !== undefined)
       lines.push(`request: ${this.method} ${this.url}`)
