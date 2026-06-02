@@ -21,6 +21,7 @@ export const zAccountAvatarPayload = z.object({
  */
 export const zAccount = z.object({
   avatar: z.string().nullish(),
+  avatar_url: z.string().readonly().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -203,6 +204,23 @@ export const zAccountIntegrateResponse = z.object({
  */
 export const zAccountIntegrateListResponse = z.object({
   data: z.array(zAccountIntegrateResponse),
+})
+
+/**
+ * Account
+ */
+export const zAccountWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
 })
 
 export const zGetAccountAvatarQuery = z.object({
