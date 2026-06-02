@@ -49,7 +49,7 @@ export default class ResumeApp extends DifyCommand {
         stream: flags.stream,
         think: flags.think,
       },
-      { bundle: ctx.bundle, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
+      { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )
   }
 }

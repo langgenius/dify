@@ -1,6 +1,7 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -234,12 +235,15 @@ const renderConversationList = ({
   logs?: any
   searchParams?: string
 } = {}) => {
+  const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
   return renderWithNuqs(
-    <ConversationList
-      appDetail={appDetail}
-      logs={logs}
-      onRefresh={mockOnRefresh}
-    />,
+    <AccountProfileQueryProvider queryClient={queryClient}>
+      <ConversationList
+        appDetail={appDetail}
+        logs={logs}
+        onRefresh={mockOnRefresh}
+      />
+    </AccountProfileQueryProvider>,
     { searchParams },
   )
 }
