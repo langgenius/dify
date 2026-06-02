@@ -3406,14 +3406,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
-    "no-restricted-properties": {
-      "count": 3
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/tool-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
