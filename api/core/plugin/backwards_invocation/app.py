@@ -3,7 +3,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -13,10 +12,12 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.db.session_factory import create_session
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
 from models import Account
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode, AppModelConfig, EndUser
+from models.workflow import Workflow
 from services.end_user_service import EndUserService
 
 
@@ -30,14 +31,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
         """Retrieve app parameters."""
         if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app.workflow
+            workflow = cls._get_workflow(app)
             if workflow is None:
                 raise ValueError("unexpected app type")
 
             features_dict: dict[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            app_model_config = app.app_model_config
+            app_model_config = cls._get_app_model_config(app)
             if app_model_config is None:
                 raise ValueError("unexpected app type")
 
@@ -79,7 +80,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
                 return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
             case AppMode.WORKFLOW:
-                return cls.invoke_workflow_app(app, user, stream, inputs, files)
+                workflow = cls._get_workflow(app)
+                if not workflow:
+                    raise ValueError("unexpected app type")
+                return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files)
             case AppMode.COMPLETION:
                 return cls.invoke_completion_app(app, user, stream, inputs, files)
             case _:
@@ -101,7 +105,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         match app.mode:
             case AppMode.ADVANCED_CHAT:
-                workflow = app.workflow
+                workflow = cls._get_workflow(app)
                 if not workflow:
                     raise ValueError("unexpected app type")
 
@@ -158,6 +162,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     def invoke_workflow_app(
         cls,
         app: App,
+        workflow: Workflow,
         user: EndUser | Account,
         stream: bool,
         inputs: Mapping,
@@ -166,10 +171,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke workflow app
         """
-        workflow = app.workflow
-        if not workflow:
-            raise ValueError("unexpected app type")
-
         pause_config = PauseStateLayerConfig(
             session_factory=db.engine,
             state_owner_user_id=workflow.created_by,
@@ -211,12 +212,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         get the user by user id
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with create_session() as session:
             stmt = select(EndUser).where(EndUser.id == user_id)
             user = session.scalar(stmt)
             if not user:
                 stmt = select(Account).where(Account.id == user_id)
                 user = session.scalar(stmt)
+            if user:
+                session.expunge(user)
 
         if not user:
             raise ValueError("user not found")
@@ -229,7 +232,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         get app
         """
         try:
-            app = db.session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).limit(1))
+            with create_session() as session:
+                app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).limit(1))
+                if app:
+                    session.expunge(app)
         except Exception:
             raise ValueError("app not found")
 
@@ -237,3 +243,33 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             raise ValueError("app not found")
 
         return app
+
+    @classmethod
+    def _get_workflow(cls, app: App) -> Workflow | None:
+        """
+        get workflow without relying on App.workflow's request-scoped session property
+        """
+        if not app.workflow_id:
+            return None
+
+        with create_session() as session:
+            workflow = session.scalar(select(Workflow).where(Workflow.id == app.workflow_id).limit(1))
+            if workflow:
+                session.expunge(workflow)
+            return workflow
+
+    @classmethod
+    def _get_app_model_config(cls, app: App) -> AppModelConfig | None:
+        """
+        get app model config without relying on App.app_model_config's request-scoped session property
+        """
+        if not app.app_model_config_id:
+            return None
+
+        with create_session() as session:
+            app_model_config = session.scalar(
+                select(AppModelConfig).where(AppModelConfig.id == app.app_model_config_id).limit(1)
+            )
+            if app_model_config:
+                session.expunge(app_model_config)
+            return app_model_config

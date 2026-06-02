@@ -85,27 +85,24 @@ def build_runner():
 
 def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
+    # create_session() returns a context manager whose body yields a session that
+    # supports both scalar() (app record lookup) and begin()/scalars().all()
+    # (conversation variable initialization).
+    mock_session = MagicMock()
+    mock_session.scalar.return_value = MagicMock()
+    mock_session.scalars.return_value.all.return_value = []
+
+    session_context = MagicMock()
+    session_context.__enter__.return_value = mock_session
+    session_context.__exit__.return_value = False
+    mock_session.begin.return_value.__enter__.return_value = mock_session
+    mock_session.begin.return_value.__exit__.return_value = False
+
     return patch.multiple(
         "core.app.apps.advanced_chat.app_runner",
-        Session=MagicMock(
-            return_value=MagicMock(
-                __enter__=lambda s: s,
-                __exit__=lambda *a, **k: False,
-                scalar=lambda *a, **k: MagicMock(),
-            ),
-        ),
-        sessionmaker=MagicMock(
-            return_value=MagicMock(
-                begin=MagicMock(
-                    return_value=MagicMock(
-                        __enter__=lambda s: MagicMock(scalars=MagicMock(return_value=MagicMock(all=lambda: []))),
-                        __exit__=lambda *a, **k: False,
-                    ),
-                ),
-            ),
-        ),
+        create_session=MagicMock(return_value=session_context),
         select=MagicMock(),
-        db=MagicMock(engine=MagicMock()),
+        session_factory=MagicMock(get_session_maker=MagicMock(return_value=MagicMock())),
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),

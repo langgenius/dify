@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -27,6 +28,19 @@ class DummyQueueManager:
 
     def publish(self, event, pub_from):
         self.published.append((event, pub_from))
+
+
+@contextmanager
+def patched_create_session(*, return_value=None, side_effect=None):
+    session = MagicMock()
+    if side_effect is not None:
+        session.scalar.side_effect = side_effect
+    else:
+        session.scalar.return_value = return_value
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    with patch("core.app.apps.chat.app_runner.create_session", return_value=session_context):
+        yield session
 
 
 class TestChatAppGenerator:
@@ -167,7 +181,7 @@ class TestChatAppRunner:
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        with patch("core.app.apps.chat.app_runner.db.session.scalar", return_value=None):
+        with patched_create_session(return_value=None):
             with pytest.raises(ValueError):
                 runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
 
@@ -195,10 +209,7 @@ class TestChatAppRunner:
         )
 
         with (
-            patch(
-                "core.app.apps.chat.app_runner.db.session.scalar",
-                return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            ),
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", side_effect=ModerationError("blocked")),
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
@@ -233,10 +244,7 @@ class TestChatAppRunner:
         annotation = SimpleNamespace(id="ann-1", content="answer")
 
         with (
-            patch(
-                "core.app.apps.chat.app_runner.db.session.scalar",
-                return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            ),
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=annotation),
@@ -272,10 +280,7 @@ class TestChatAppRunner:
         )
 
         with (
-            patch(
-                "core.app.apps.chat.app_runner.db.session.scalar",
-                return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            ),
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
