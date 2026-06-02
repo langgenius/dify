@@ -19,7 +19,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required, with_current_user_id
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -131,14 +131,13 @@ class CompletionMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model: App, task_id: str):
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+    @with_current_user_id
+    def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
-            user_id=current_user.id,
+            user_id=current_user_id,
             app_mode=AppMode.value_of(app_model.mode),
         )
 
@@ -212,14 +211,13 @@ class ChatMessageStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, task_id: str):
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+    @with_current_user_id
+    def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
-            user_id=current_user.id,
+            user_id=current_user_id,
             app_mode=AppMode.value_of(app_model.mode),
         )
 
