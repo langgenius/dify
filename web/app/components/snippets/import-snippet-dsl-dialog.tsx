@@ -157,8 +157,9 @@ function ImportSnippetDSLDialog({
       return
     }
 
-    toast.error(response.error || t('importFailed', { ns: 'snippet' }))
-  }, [handleImportSuccess, t])
+    if (response.error)
+      toast.error(response.error)
+  }, [handleImportSuccess])
 
   const handleImport = useCallback(async () => {
     try {
@@ -171,9 +172,10 @@ function ImportSnippetDSLDialog({
       handleImportResponse(response)
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('importFailed', { ns: 'snippet' }))
+      if (error instanceof Error && error.message)
+        toast.error(error.message)
     }
-  }, [currentTab, dslUrl, fileContent, handleImportResponse, importSnippetMutation, t])
+  }, [currentTab, dslUrl, fileContent, handleImportResponse, importSnippetMutation])
 
   const handleConfirmImport: MouseEventHandler = useCallback(async () => {
     if (!importId)
@@ -184,9 +186,10 @@ function ImportSnippetDSLDialog({
       handleImportResponse(response)
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('importFailed', { ns: 'snippet' }))
+      if (error instanceof Error && error.message)
+        toast.error(error.message)
     }
-  }, [confirmSnippetImportMutation, handleImportResponse, importId, t])
+  }, [confirmSnippetImportMutation, handleImportResponse, importId])
 
   const tabs = useMemo(() => [
     {
