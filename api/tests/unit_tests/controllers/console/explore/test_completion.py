@@ -222,17 +222,12 @@ class TestCompletionApi:
 
 
 class TestCompletionStopApi:
-    def test_stop_success(self, completion_app, user):
+    def test_stop_success(self, completion_app):
         api = completion_module.CompletionStopApi()
         method = unwrap(api.post)
 
-        user.id = "u1"
-
-        with (
-            patch.object(completion_module, "current_user", user),
-            patch.object(completion_module.AppTaskService, "stop_task"),
-        ):
-            resp, status = method(completion_app, "task-1")
+        with patch.object(completion_module.AppTaskService, "stop_task"):
+            resp, status = method("u1", completion_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
@@ -244,7 +239,7 @@ class TestCompletionStopApi:
         installed_app = MagicMock(app=MagicMock(mode=AppMode.CHAT))
 
         with pytest.raises(NotCompletionAppError):
-            method(installed_app, "task")
+            method("u1", installed_app, "task")
 
 
 class TestChatApi:
@@ -435,17 +430,11 @@ class TestChatApi:
 
 
 class TestChatStopApi:
-    def test_stop_success(self, chat_app, user):
+    def test_stop_success(self, chat_app):
         api = completion_module.ChatStopApi()
         method = unwrap(api.post)
-
-        user.id = "u1"
-
-        with (
-            patch.object(completion_module, "current_user", user),
-            patch.object(completion_module.AppTaskService, "stop_task"),
-        ):
-            resp, status = method(chat_app, "task-1")
+        with patch.object(completion_module.AppTaskService, "stop_task"):
+            resp, status = method("u1", chat_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
@@ -457,4 +446,4 @@ class TestChatStopApi:
         installed_app = MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
 
         with pytest.raises(NotChatAppError):
-            method(installed_app, "task")
+            method("u1", installed_app, "task")
