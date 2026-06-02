@@ -89,24 +89,23 @@ jobs:
           DIFY_E2E_HITL_APP_ID:     ${{ secrets.DIFY_E2E_HITL_APP_ID }}
           DIFY_E2E_FILE_APP_ID:     ${{ secrets.DIFY_E2E_FILE_APP_ID }}
         run: |
-          # ── Build file list from suite toggles ─────────────────────────────
+          # ── Collect test files with find (avoids unquoted-glob issues) ──────
           FILES=()
           if [ "${{ inputs.suite_discovery }}" = "true" ]; then
-            FILES+=( test/e2e/suites/discovery/**/*.e2e.ts )
+            while IFS= read -r f; do FILES+=("$f"); done \
+              < <(find test/e2e/suites/discovery -name "*.e2e.ts" | sort)
           fi
           if [ "${{ inputs.suite_run }}" = "true" ]; then
-            FILES+=( test/e2e/suites/run/**/*.e2e.ts )
+            while IFS= read -r f; do FILES+=("$f"); done \
+              < <(find test/e2e/suites/run -name "*.e2e.ts" | sort)
           fi
           if [ "${{ inputs.suite_auth }}" = "true" ]; then
-            # auth/use currently has a known command-path bug; included when explicitly selected
-            FILES+=( test/e2e/suites/auth/status.e2e.ts )
-            FILES+=( test/e2e/suites/auth/whoami.e2e.ts )
-            FILES+=( test/e2e/suites/auth/logout.e2e.ts )
-            FILES+=( test/e2e/suites/auth/devices.e2e.ts )
-            FILES+=( test/e2e/suites/auth/use.e2e.ts )
+            while IFS= read -r f; do FILES+=("$f"); done \
+              < <(find test/e2e/suites/auth -name "*.e2e.ts" | sort)
           fi
           if [ "${{ inputs.suite_config }}" = "true" ]; then
-            FILES+=( test/e2e/suites/config/**/*.e2e.ts )
+            while IFS= read -r f; do FILES+=("$f"); done \
+              < <(find test/e2e/suites/config -name "*.e2e.ts" | sort)
           fi
 
           if [ ${#FILES[@]} -eq 0 ]; then
@@ -114,18 +113,19 @@ jobs:
             exit 0
           fi
 
-          # ── Apply case filter ───────────────────────────────────────────────
-          NAME_PATTERN=""
-          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
-            NAME_PATTERN='--testNamePattern="\[P0\]"'
-          fi
-
-          echo "Running suites: ${FILES[*]}"
+          echo "Running ${#FILES[@]} test files:"
+          printf '  %s\n' "${FILES[@]}"
           echo "Scope: ${{ inputs.test_scope }}"
 
-          pnpm vp test --config vitest.e2e.config.ts \
-            $NAME_PATTERN \
-            "${FILES[@]}"
+          # ── Apply P0-only filter if smoke scope ─────────────────────────────
+          if [ "${{ inputs.test_scope }}" = "smoke" ]; then
+            pnpm vp test --config vitest.e2e.config.ts \
+              --testNamePattern="\[P0\]" \
+              "${FILES[@]}"
+          else
+            pnpm vp test --config vitest.e2e.config.ts \
+              "${FILES[@]}"
+          fi
 
       - name: Upload test results on failure
         if: failure()
