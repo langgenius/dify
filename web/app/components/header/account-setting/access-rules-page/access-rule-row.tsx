@@ -56,15 +56,15 @@ const AccessRuleRow = ({
   }, [accounts, onRemove, policyId, resource_type, roles])
 
   return (
-    <div className={cn('flex items-start gap-2 py-3.5', className)}>
+    <div className={cn('flex items-start gap-3 px-1 py-3.5', className)}>
       <div className="min-w-0 flex-1">
-        <div className="system-sm-semibold text-text-secondary">
+        <div className="flex h-6 items-center system-sm-semibold text-text-primary">
           {policy.name}
         </div>
-        <p className="mt-0.5 system-xs-regular text-text-tertiary">
+        <p className="system-xs-regular leading-4 text-text-tertiary">
           {policy.description}
         </p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {roles.map(role => (
             <RoleTag
               key={role.role_id}

@@ -5,9 +5,9 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useCreateAccessRule,
+  useInfiniteWorkspaceDatasetAccessRules,
   useUpdateAccessRule,
   useUpdateDatasetAccessRuleBindings,
-  useWorkspaceDatasetAccessRules,
 } from '@/service/access-control/use-workspace-access-rules'
 import AccessRuleSection from './access-rule-section'
 import AddRuleTargetsModal from './add-rule-targets-modal'
@@ -30,15 +30,23 @@ const DatasetAccessRuleSection = ({
   const [addingRule, setAddingRule] = useState<AccessPolicyWithBindings | null>(null)
   const [permissionSetModalState, setPermissionSetModalState] = useState<PermissionSetModalState | null>(null)
 
-  const { data: datasetAccessRulesResponse, isLoading } = useWorkspaceDatasetAccessRules({
+  const {
+    data: datasetAccessRulesResponse,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+  } = useInfiniteWorkspaceDatasetAccessRules({
     page: 1,
-    limit: 20,
+    limit: 5,
   })
   const { mutateAsync: createAccessRule } = useCreateAccessRule()
   const { mutateAsync: updateAccessRule } = useUpdateAccessRule()
   const { mutateAsync: updateDatasetAccessRuleBindings } = useUpdateDatasetAccessRuleBindings()
 
-  const datasetAccessRules = datasetAccessRulesResponse?.items || []
+  const datasetAccessRules = datasetAccessRulesResponse?.pages.flatMap(page => page.items) || []
+  const totalCount = datasetAccessRulesResponse?.pages[0]?.pagination.total_count || 0
 
   const closeAddModal = useCallback(() => {
     setAddingRule(null)
@@ -148,7 +156,12 @@ const DatasetAccessRuleSection = ({
       <AccessRuleSection
         title={t('accessRule.datasetTitle', { ns: 'permission' })}
         rules={datasetAccessRules}
+        totalCount={totalCount}
         isLoadingRules={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        fetchNextPage={fetchNextPage}
+        error={error}
         onCreate={handleCreate}
         onViewRule={handleView}
         onEditRule={handleEdit}

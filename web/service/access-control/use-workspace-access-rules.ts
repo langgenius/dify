@@ -10,22 +10,54 @@ import type {
   UpdateAccessPolicyRequest,
 } from '@/models/access-control'
 import type { CommonResponse } from '@/models/common'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { del, get, post, put } from '../base'
 
 const NAME_SPACE = 'workspace-access-rules'
 
-export const useWorkspaceAppAccessRules = (params?: PaginationParameters) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'app', params],
-    queryFn: () => get<GetAppAccessPoliciesResponse>('/workspaces/current/rbac/workspace/apps/access-policy', { params }),
+export const useInfiniteWorkspaceAppAccessRules = (params: PaginationParameters = {}) => {
+  const { page = 1, ...queryParams } = params
+
+  return useInfiniteQuery({
+    queryKey: [NAME_SPACE, 'app', queryParams],
+    queryFn: ({ pageParam }) => get<GetAppAccessPoliciesResponse>('/workspaces/current/rbac/workspace/apps/access-policy', {
+      params: {
+        ...queryParams,
+        page: pageParam,
+      },
+    }),
+    initialPageParam: page,
+    getNextPageParam: (lastPage) => {
+      const { current_page, total_pages } = lastPage.pagination
+
+      if (current_page < total_pages)
+        return current_page + 1
+
+      return undefined
+    },
   })
 }
 
-export const useWorkspaceDatasetAccessRules = (params?: PaginationParameters) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'dataset', params],
-    queryFn: () => get<GetDatasetAccessPoliciesResponse>('/workspaces/current/rbac/workspace/datasets/access-policy', { params }),
+export const useInfiniteWorkspaceDatasetAccessRules = (params: PaginationParameters = {}) => {
+  const { page = 1, ...queryParams } = params
+
+  return useInfiniteQuery({
+    queryKey: [NAME_SPACE, 'dataset', queryParams],
+    queryFn: ({ pageParam }) => get<GetDatasetAccessPoliciesResponse>('/workspaces/current/rbac/workspace/datasets/access-policy', {
+      params: {
+        ...queryParams,
+        page: pageParam,
+      },
+    }),
+    initialPageParam: page,
+    getNextPageParam: (lastPage) => {
+      const { current_page, total_pages } = lastPage.pagination
+
+      if (current_page < total_pages)
+        return current_page + 1
+
+      return undefined
+    },
   })
 }
 

@@ -4,11 +4,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   useCreateAccessRule,
+  useInfiniteWorkspaceAppAccessRules,
+  useInfiniteWorkspaceDatasetAccessRules,
   useUpdateAccessRule,
   useUpdateAppAccessRuleBindings,
   useUpdateDatasetAccessRuleBindings,
-  useWorkspaceAppAccessRules,
-  useWorkspaceDatasetAccessRules,
 } from '@/service/access-control/use-workspace-access-rules'
 import AccessRulesPage from '../index'
 
@@ -26,9 +26,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/service/access-control/use-workspace-access-rules', () => ({
-  useWorkspaceAppAccessRules: vi.fn(),
-  useWorkspaceDatasetAccessRules: vi.fn(),
   useCreateAccessRule: vi.fn(),
+  useInfiniteWorkspaceAppAccessRules: vi.fn(),
+  useInfiniteWorkspaceDatasetAccessRules: vi.fn(),
   useUpdateAccessRule: vi.fn(),
   useUpdateAppAccessRuleBindings: vi.fn(),
   useUpdateDatasetAccessRuleBindings: vi.fn(),
@@ -152,8 +152,19 @@ const appRule: AccessPolicyWithBindings = {
     created_at: '2026-01-01',
     updated_at: '2026-01-01',
   },
-  roles: [{ role_id: 'role-1', role_name: 'Role 1' }],
-  accounts: [{ account_id: 'member-1', account_name: 'Member 1' }],
+  roles: [{
+    role_id: 'role-1',
+    role_name: 'Role 1',
+    binding_id: 'role-binding-1',
+    is_locked: false,
+    avatar: '',
+  }],
+  accounts: [{
+    account_id: 'member-1',
+    account_name: 'Member 1',
+    binding_id: 'member-binding-1',
+    is_locked: false,
+  }],
 }
 
 const datasetRule: AccessPolicyWithBindings = {
@@ -165,8 +176,19 @@ const datasetRule: AccessPolicyWithBindings = {
     name: 'Dataset rule',
     permission_keys: ['dataset.acl.edit'],
   },
-  roles: [{ role_id: 'dataset-role-1', role_name: 'Dataset Role 1' }],
-  accounts: [{ account_id: 'dataset-member-1', account_name: 'Dataset Member 1' }],
+  roles: [{
+    role_id: 'dataset-role-1',
+    role_name: 'Dataset Role 1',
+    binding_id: 'dataset-role-binding-1',
+    is_locked: false,
+    avatar: '',
+  }],
+  accounts: [{
+    account_id: 'dataset-member-1',
+    account_name: 'Dataset Member 1',
+    binding_id: 'dataset-member-binding-1',
+    is_locked: false,
+  }],
 }
 
 const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
@@ -178,15 +200,30 @@ const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
   return { mutateAsync: mock }
 }
 
+const pagination = {
+  total_count: 1,
+  per_page: 20,
+  current_page: 1,
+  total_pages: 1,
+}
+
 const setupHooks = () => {
-  vi.mocked(useWorkspaceAppAccessRules).mockReturnValue({
-    data: { items: [appRule] },
+  vi.mocked(useInfiniteWorkspaceAppAccessRules).mockReturnValue({
+    data: { pages: [{ items: [appRule], pagination }], pageParams: [1] },
     isLoading: false,
-  } as ReturnType<typeof useWorkspaceAppAccessRules>)
-  vi.mocked(useWorkspaceDatasetAccessRules).mockReturnValue({
-    data: { items: [datasetRule] },
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    error: null,
+  } as unknown as ReturnType<typeof useInfiniteWorkspaceAppAccessRules>)
+  vi.mocked(useInfiniteWorkspaceDatasetAccessRules).mockReturnValue({
+    data: { pages: [{ items: [datasetRule], pagination }], pageParams: [1] },
     isLoading: false,
-  } as ReturnType<typeof useWorkspaceDatasetAccessRules>)
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    error: null,
+  } as unknown as ReturnType<typeof useInfiniteWorkspaceDatasetAccessRules>)
   vi.mocked(useCreateAccessRule).mockReturnValue(mockMutation(mocks.createAccessRule) as unknown as ReturnType<typeof useCreateAccessRule>)
   vi.mocked(useUpdateAccessRule).mockReturnValue(mockMutation(mocks.updateAccessRule) as unknown as ReturnType<typeof useUpdateAccessRule>)
   vi.mocked(useUpdateAppAccessRuleBindings).mockReturnValue(mockMutation(mocks.updateAppAccessRuleBindings) as unknown as ReturnType<typeof useUpdateAppAccessRuleBindings>)

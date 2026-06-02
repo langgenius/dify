@@ -5,9 +5,9 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useCreateAccessRule,
+  useInfiniteWorkspaceAppAccessRules,
   useUpdateAccessRule,
   useUpdateAppAccessRuleBindings,
-  useWorkspaceAppAccessRules,
 } from '@/service/access-control/use-workspace-access-rules'
 import AccessRuleSection from './access-rule-section'
 import AddRuleTargetsModal from './add-rule-targets-modal'
@@ -30,15 +30,23 @@ const AppAccessRuleSection = ({
   const [addingRule, setAddingRule] = useState<AccessPolicyWithBindings | null>(null)
   const [permissionSetModalState, setPermissionSetModalState] = useState<PermissionSetModalState | null>(null)
 
-  const { data: appAccessRulesResponse, isLoading } = useWorkspaceAppAccessRules({
+  const {
+    data: appAccessRulesResponse,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+  } = useInfiniteWorkspaceAppAccessRules({
     page: 1,
-    limit: 20,
+    limit: 5,
   })
   const { mutateAsync: createAccessRule } = useCreateAccessRule()
   const { mutateAsync: updateAccessRule } = useUpdateAccessRule()
   const { mutateAsync: updateAppAccessRuleBindings } = useUpdateAppAccessRuleBindings()
 
-  const appAccessRules = appAccessRulesResponse?.items || []
+  const appAccessRules = appAccessRulesResponse?.pages.flatMap(page => page.items) || []
+  const totalCount = appAccessRulesResponse?.pages[0]?.pagination.total_count || 0
 
   const closeAddModal = useCallback(() => {
     setAddingRule(null)
@@ -148,7 +156,13 @@ const AppAccessRuleSection = ({
       <AccessRuleSection
         title={t('accessRule.appTitle', { ns: 'permission' })}
         rules={appAccessRules}
+        totalCount={totalCount}
         isLoadingRules={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        fetchNextPage={fetchNextPage}
+        error={error}
+        defaultExpanded
         onCreate={handleCreate}
         onViewRule={handleView}
         onEditRule={handleEdit}
