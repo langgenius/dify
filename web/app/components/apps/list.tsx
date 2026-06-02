@@ -14,7 +14,6 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -126,8 +125,6 @@ const List: FC<Props> = ({
     }
   }, [controlRefreshList, refetch])
 
-  const [needRefresh, setNeedRefresh] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, undefined, { raw: true })
-
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
     { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
@@ -139,11 +136,11 @@ const List: FC<Props> = ({
   ]
 
   useEffect(() => {
-    if (needRefresh === '1') {
-      setNeedRefresh(null)
+    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
+      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       refetch()
     }
-  }, [])
+  }, [refetch])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
