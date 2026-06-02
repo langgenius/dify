@@ -1,5 +1,4 @@
-import type { BaseError } from '@/errors/base'
-import { newError } from '@/errors/base'
+import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { redactBearer } from './sanitize'
 
@@ -32,54 +31,49 @@ async function readBody(response: Response): Promise<{ raw: string, parsed?: Wir
 }
 
 export async function classifyResponse(request: Request, response: Response): Promise<BaseError> {
-  const { parsed } = await readBody(response.clone())
+  const { parsed, raw } = await readBody(response.clone())
   const wire: WireFields = parsed?.error ?? parsed ?? {}
   const status = response.status
   const url = redactBearer(response.url || request.url)
   const method = request.method
 
   if (status === 401) {
-    return newError(
+    return HttpClientError.from(newError(
       ErrorCode.AuthExpired,
       wire.message ?? 'session expired or revoked',
-    )
+    ))
       .withHint(wire.hint ?? 'run \'difyctl auth login\' to sign in again')
       .withHttpStatus(status)
       .withRequest(method, url)
   }
 
   if (status >= 500) {
-    return newError(
+    return HttpClientError.from(newError(
       ErrorCode.Server5xx,
       wire.message ?? `server error (HTTP ${status})`,
-    )
+    ))
       .withHttpStatus(status)
       .withRequest(method, url)
+      .withRawResponse(raw)
   }
 
-  const err = newError(
+  const err = HttpClientError.from(newError(
     ErrorCode.Server4xxOther,
     wire.message ?? `request failed (HTTP ${status})`,
-  )
+  ))
     .withHttpStatus(status)
     .withRequest(method, url)
+    .withRawResponse(raw)
   return wire.hint !== undefined ? err.withHint(wire.hint) : err
 }
 
 export function classifyTransportError(err: unknown): BaseError {
-  const message = err instanceof Error ? err.message : String(err)
-  const sanitized = redactBearer(message)
-
-  if (err instanceof Error && err.name === 'TimeoutError')
-    return newError(ErrorCode.NetworkTimeout, 'request timed out').wrap(err)
-  if (err instanceof Error && err.name === 'AbortError')
-    return newError(ErrorCode.NetworkTimeout, 'request aborted').wrap(err)
-  if (sanitized.toLowerCase().includes('econnrefused'))
-    return newError(ErrorCode.NetworkDns, 'connection refused').wrap(err)
-  if (sanitized.toLowerCase().includes('enotfound'))
-    return newError(ErrorCode.NetworkDns, 'host lookup failed').wrap(err)
-  if (sanitized.toLowerCase().includes('etimedout'))
-    return newError(ErrorCode.NetworkTimeout, 'connection timed out').wrap(err)
-
-  return newError(ErrorCode.Unknown, sanitized).wrap(err)
+  if (err instanceof BaseError) {
+    return err
+  }
+  if (!(err instanceof Error)) {
+    return newError(ErrorCode.Unknown, String(err)).wrap(err)
+  }
+  // there isn't a practical way to classify network errors reliably
+  return newError(ErrorCode.NetworkConnection, err.message).wrap(err)
 }

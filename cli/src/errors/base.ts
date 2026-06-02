@@ -1,31 +1,35 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { ErrorCode, exitFor } from './codes'
 
 export type BaseErrorOptions = {
   readonly code: ErrorCodeValue
   readonly message: string
   readonly hint?: string
-  readonly httpStatus?: number
-  readonly method?: string
-  readonly url?: string
   readonly cause?: unknown
+}
+
+export type ErrorEnvelope = {
+  error: {
+    code: string
+    message: string
+    hint?: string
+    http_status?: number
+    method?: string
+    url?: string
+  }
 }
 
 export class BaseError extends Error {
   readonly code: ErrorCodeValue
   readonly hint?: string
-  readonly httpStatus?: number
-  readonly method?: string
-  readonly url?: string
 
   constructor(opts: BaseErrorOptions) {
     super(opts.message, opts.cause === undefined ? undefined : { cause: opts.cause })
     this.name = 'BaseError'
     this.code = opts.code
     this.hint = opts.hint
-    this.httpStatus = opts.httpStatus
-    this.method = opts.method
-    this.url = opts.url
+
     Object.setPrototypeOf(this, new.target.prototype)
   }
 
@@ -39,30 +43,43 @@ export class BaseError extends Error {
       : `${this.code}: ${this.message}`
   }
 
-  withHint(hint: string): BaseError {
-    return new BaseError({ ...this.snapshot(), hint })
+  humanError(isErrTTY: boolean): string {
+    const cs = colorScheme(colorEnabled(isErrTTY))
+    const lines: string[] = [`${this.code}: ${this.message}`]
+    if (this.hint !== undefined)
+      lines.push(`${cs.magenta('hint:')} ${cs.cyan(this.hint)}`)
+    return lines.join('\n')
   }
 
-  withHttpStatus(httpStatus: number): BaseError {
-    return new BaseError({ ...this.snapshot(), httpStatus })
+  toEnvelope(): ErrorEnvelope {
+    const payload: ErrorEnvelope['error'] = {
+      code: this.code,
+      message: this.message,
+    }
+    if (this.hint !== undefined)
+      payload.hint = this.hint
+    return { error: payload }
   }
 
-  withRequest(method: string, url: string): BaseError {
-    return new BaseError({ ...this.snapshot(), method, url })
+  renderEnvelope(): string {
+    return JSON.stringify(this.toEnvelope())
   }
 
-  wrap(cause: unknown): BaseError {
-    return new BaseError({ ...this.snapshot(), cause })
+  withHint<T extends BaseError>(this: T, hint: string): T {
+    const Ctor = this.constructor as new (opts: BaseErrorOptions) => T
+    return new Ctor({ ...this.snapshot(), hint })
   }
 
-  private snapshot(): BaseErrorOptions {
+  wrap<T extends BaseError>(this: T, cause: unknown): T {
+    const Ctor = this.constructor as new (opts: BaseErrorOptions) => T
+    return new Ctor({ ...this.snapshot(), cause })
+  }
+
+  protected snapshot(): BaseErrorOptions {
     return {
       code: this.code,
       message: this.message,
       hint: this.hint,
-      httpStatus: this.httpStatus,
-      method: this.method,
-      url: this.url,
       cause: this.cause,
     }
   }
@@ -76,6 +93,86 @@ export function isBaseError(value: unknown): value is BaseError {
   return value instanceof BaseError
 }
 
+export function isHttpClientError(value: unknown): value is HttpClientError {
+  return value instanceof HttpClientError
+}
+
 export function unknownError(message: string, cause?: unknown): BaseError {
   return new BaseError({ code: ErrorCode.Unknown, message, cause })
+}
+
+type HttpClientErrorOptions = BaseErrorOptions & {
+  readonly httpStatus?: number
+  readonly method?: string
+  readonly url?: string
+  readonly rawResponse?: string
+}
+
+export class HttpClientError extends BaseError {
+  readonly httpStatus?: number
+  readonly method?: string
+  readonly url?: string
+  readonly rawResponse?: string
+
+  constructor(opts: HttpClientErrorOptions) {
+    super(opts)
+    this.httpStatus = opts.httpStatus
+    this.method = opts.method
+    this.url = opts.url
+    this.rawResponse = opts.rawResponse
+  }
+
+  override humanError(isErrTTY: boolean): string {
+    const lines: string[] = [super.humanError(isErrTTY)]
+    if (this.method !== undefined && this.url !== undefined)
+      lines.push(`request: ${this.method} ${this.url}`)
+    if (this.httpStatus !== undefined)
+      lines.push(`http_status: ${this.httpStatus}`)
+    return lines.join('\n')
+  }
+
+  override toEnvelope(): ErrorEnvelope {
+    const envelope = super.toEnvelope()
+    if (this.httpStatus !== undefined)
+      envelope.error.http_status = this.httpStatus
+    if (this.method !== undefined)
+      envelope.error.method = this.method
+    if (this.url !== undefined)
+      envelope.error.url = this.url
+    return envelope
+  }
+
+  protected override snapshot(): HttpClientErrorOptions {
+    return {
+      ...super.snapshot(),
+      httpStatus: this.httpStatus,
+      method: this.method,
+      url: this.url,
+      rawResponse: this.rawResponse,
+    }
+  }
+
+  public static from(error: BaseError): HttpClientError {
+    return new HttpClientError({
+      code: error.code,
+      message: error.message,
+      hint: error.hint,
+      cause: error.cause,
+    })
+  }
+
+  withHttpStatus(httpStatus: number): HttpClientError {
+    return new HttpClientError({ ...this.snapshot(), httpStatus })
+  }
+
+  withRequest(method: string, url: string): HttpClientError {
+    return new HttpClientError({ ...this.snapshot(), method, url })
+  }
+
+  withRawResponse(rawResponse: string): HttpClientError {
+    if (!rawResponse) {
+      return this
+    }
+    return new HttpClientError({ ...this.snapshot(), rawResponse })
+  }
 }

@@ -9,6 +9,11 @@ export const httpRetryFlag = Flags.integer({
   helpGroup: 'GLOBAL',
 })
 
+export const verbosity = Flags.boolean({
+  char: 'v',
+  description: 'enable verbose output',
+})
+
 export type ResolveRetryAttemptsOpts = {
   flag: number | undefined
   env: (k: string) => string | undefined
