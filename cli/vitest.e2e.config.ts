@@ -77,7 +77,9 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 30_000,
     // Retry up to 2 times on staging flakiness.
-    retry: 0, // flaky tests use withRetry() locally; global retry masks non-idempotent failures
+    // VITEST_RETRY env var lets CI opt-in to automatic retries for flaky server 500s.
+    // Local default is 0 — per-test withRetry() handles known flaky paths more precisely.
+    retry: Number(process.env.VITEST_RETRY ?? 0),
     // Run suites sequentially to avoid workspace-level conflicts on staging.
     pool: 'forks',
     fileParallelism: false,

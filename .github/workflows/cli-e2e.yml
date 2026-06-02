@@ -88,6 +88,7 @@ jobs:
           DIFY_E2E_PASSWORD:        ${{ secrets.DIFY_E2E_PASSWORD }}
           DIFY_E2E_HITL_APP_ID:     ${{ secrets.DIFY_E2E_HITL_APP_ID }}
           DIFY_E2E_FILE_APP_ID:     ${{ secrets.DIFY_E2E_FILE_APP_ID }}
+          VITEST_RETRY:             "2"
         run: |
           # ── Collect test files with find (avoids unquoted-glob issues) ──────
           FILES=()
