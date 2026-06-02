@@ -7,6 +7,11 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { TitleTooltip } from '../../components/title-tooltip'
+import {
+  deploymentStatusIconClassName,
+  deploymentStatusLabelKey,
+  deploymentStatusToneClassNames,
+} from '../../deployment-ui-utils'
 import { environmentId, environmentName } from '../../environment'
 import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus } from '../../runtime-status'
@@ -135,14 +140,22 @@ function RuntimeStatusSignal({ status, t }: {
   status: DeploymentUiStatus
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
-  const config = runtimeStatusConfig(status)
-  const label = runtimeStatusLabel(status, t)
+  const toneClassNames = deploymentStatusToneClassNames(status)
+  const label = t(deploymentStatusLabelKey(status))
 
   return (
     <TitleTooltip content={label}>
-      <span className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass)}>
-        <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
-        <span>{label}</span>
+      <span
+        className={cn(
+          'inline-flex h-6 max-w-full shrink-0 cursor-default items-center gap-1.5 rounded-md border px-2 system-xs-medium',
+          toneClassNames.badge,
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn('size-3.5 shrink-0', deploymentStatusIconClassName(status), toneClassNames.icon)}
+        />
+        <span className="truncate">{label}</span>
       </span>
     </TitleTooltip>
   )
@@ -164,71 +177,6 @@ function StatusSignal({ className, config, drift, t }: {
       </span>
     </TitleTooltip>
   )
-}
-
-function runtimeStatusConfig(status: DeploymentUiStatus): {
-  dotClass: string
-  statusClass: string
-} {
-  switch (status) {
-    case 'ready':
-      return {
-        dotClass: 'bg-util-colors-green-green-500',
-        statusClass: 'text-util-colors-green-green-700',
-      }
-    case 'deploying':
-      return {
-        dotClass: 'bg-util-colors-blue-blue-500 animate-pulse',
-        statusClass: 'text-util-colors-blue-blue-700',
-      }
-    case 'deploy_failed':
-      return {
-        dotClass: 'bg-util-colors-red-red-500',
-        statusClass: 'text-util-colors-red-red-700',
-      }
-    case 'drifted':
-      return {
-        dotClass: 'bg-util-colors-warning-warning-500',
-        statusClass: 'text-util-colors-warning-warning-700',
-      }
-    case 'invalid':
-      return {
-        dotClass: 'bg-util-colors-red-red-500',
-        statusClass: 'text-util-colors-red-red-700',
-      }
-    case 'not_deployed':
-      return {
-        dotClass: 'bg-text-quaternary',
-        statusClass: 'text-text-tertiary',
-      }
-    case 'unknown':
-      return {
-        dotClass: 'bg-text-quaternary',
-        statusClass: 'text-text-tertiary',
-      }
-  }
-}
-
-function runtimeStatusLabel(
-  status: DeploymentUiStatus,
-  t: ReturnType<typeof useTranslation<'deployments'>>['t'],
-): string {
-  switch (status) {
-    case 'ready':
-      return t('status.ready')
-    case 'deploying':
-      return t('status.deploying')
-    case 'deploy_failed':
-      return t('status.deployFailed')
-    case 'drifted':
-      return t('status.drifted')
-    case 'invalid':
-      return t('status.invalid')
-    case 'not_deployed':
-      return t('status.notDeployed')
-    case 'unknown':
-      return t('status.unknown')
-  }
 }
 
 function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseId }: {
