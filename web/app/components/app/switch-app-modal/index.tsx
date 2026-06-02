@@ -23,9 +23,9 @@ import AppIcon from '@/app/components/base/app-icon'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
@@ -47,6 +47,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
 
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
+  const setNeedRefreshAppList = useSetLocalStorage<string>('NEED_REFRESH_APP_LIST_KEY', { raw: true })
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
@@ -78,7 +79,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefreshAppList('1')
       getRedirection(
         isCurrentWorkspaceEditor,
         {
