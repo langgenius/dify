@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker, validates
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -2085,6 +2085,12 @@ class EndUser(Base, UserMixin):
     _is_anonymous: Mapped[bool] = mapped_column(
         "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
     )
+
+    @validates("type")
+    def _validate_type(self, _key: str, value: EndUserType | str) -> EndUserType | str:
+        if value in {EndUserType.SERVICE_API_LEGACY, EndUserType.SERVICE_API_LEGACY.value}:
+            raise ValueError("EndUser type service_api is legacy and cannot be used for new records.")
+        return value
 
     @property
     @override
