@@ -4,6 +4,7 @@ import type { Collection } from './types'
 import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { CardPayload } from '@/app/components/plugins/card'
 import { cn } from '@langgenius/dify-ui/cn'
+import IntegrationsToolProviderCard from '@/app/components/integrations/tool-provider-card'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -67,6 +68,7 @@ export function ToolProviderGrid({
   getTagLabel,
   hasCategoryCollections,
   isLoading,
+  useIntegrationsCard,
   isSearchResultEmpty,
   onRefreshData,
   onSelectProvider,
@@ -78,6 +80,7 @@ export function ToolProviderGrid({
   getTagLabel: (label: string) => string
   hasCategoryCollections: boolean
   isLoading: boolean
+  useIntegrationsCard?: boolean
   isSearchResultEmpty: boolean
   onRefreshData: () => void
   onSelectProvider: (providerId: string) => void
@@ -86,8 +89,11 @@ export function ToolProviderGrid({
 
   return (
     <div
+      data-testid="tool-provider-grid"
       className={cn(
-        'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
+        useIntegrationsCard
+          ? 'relative flex shrink-0 flex-wrap content-start items-start gap-2 pt-1 pb-4'
+          : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
         frameClassName,
         showWorkflowEmptyState && 'grow',
       )}
@@ -100,21 +106,31 @@ export function ToolProviderGrid({
               {collections.map(collection => (
                 <div
                   key={collection.id}
+                  className={cn(useIntegrationsCard && 'flex min-w-[min(100%,496px)] flex-1')}
                   onClick={() => onSelectProvider(collection.id)}
                 >
-                  <Card
-                    className={cn(
-                      'cursor-pointer',
-                      currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
-                    )}
-                    hideCornerMark
-                    payload={collectionToCardPayload(collection)}
-                    footer={(
-                      <CardMoreInfo
-                        tags={collection.labels?.map(label => getTagLabel(label)) || []}
-                      />
-                    )}
-                  />
+                  {useIntegrationsCard
+                    ? (
+                        <IntegrationsToolProviderCard
+                          collection={collection}
+                          current={currentProviderId === collection.id}
+                        />
+                      )
+                    : (
+                        <Card
+                          className={cn(
+                            'cursor-pointer',
+                            currentProviderId === collection.id && 'border-[1.5px] border-components-option-card-option-selected-border',
+                          )}
+                          hideCornerMark
+                          payload={collectionToCardPayload(collection)}
+                          footer={(
+                            <CardMoreInfo
+                              tags={collection.labels?.map(label => getTagLabel(label)) || []}
+                            />
+                          )}
+                        />
+                      )}
                 </div>
               ))}
               {showWorkflowEmptyState && (

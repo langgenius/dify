@@ -89,7 +89,7 @@ const PluginsPicker: FC<Props> = ({
 
       {hasSelected && (
         <PluginsSelected
-          className="h-6 gap-1"
+          className="h-6 w-full gap-1"
           plugins={visiblePlugins}
         />
       )}

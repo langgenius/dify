@@ -1,5 +1,5 @@
 'use client'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { ToolsContentInset } from '@/app/components/tools/content-inset'
 import type { Collection } from '@/app/components/tools/types'
@@ -34,6 +34,7 @@ import { ToolProviderToolbar } from './tool-provider-toolbar'
 type ProviderListProps = {
   category?: ToolCategory
   contentInset?: ToolsContentInset
+  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
 }
 
 type BuiltinMarketplacePanelProps = {
@@ -78,6 +79,7 @@ const BuiltinMarketplacePanel = ({
 const ProviderList = ({
   category,
   contentInset = 'default',
+  layout,
 }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
@@ -144,23 +146,26 @@ const ProviderList = ({
   }, [checkedInstalledData])
   const containerRef = useRef<HTMLDivElement>(null)
 
-  return (
+  const toolbar = (
+    <ToolProviderToolbar
+      activeTab={activeTab}
+      currentProviderId={currentProviderId}
+      frameClassName={layout ? undefined : toolListFrameClassName}
+      isRouteCategory={isRouteCategory}
+      keywords={keywords}
+      options={options}
+      showLabelFilter={showLabelFilter}
+      showToolsUpdateSetting={showToolsUpdateSetting}
+      tagFilterValue={tagFilterValue}
+      onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
+      onKeywordsChange={handleKeywordsChange}
+      onTagsChange={handleTagsChange}
+    />
+  )
+
+  const body = (
     <>
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-components-panel-bg">
-        <ToolProviderToolbar
-          activeTab={activeTab}
-          currentProviderId={currentProviderId}
-          frameClassName={toolListFrameClassName}
-          isRouteCategory={isRouteCategory}
-          keywords={keywords}
-          options={options}
-          showLabelFilter={showLabelFilter}
-          showToolsUpdateSetting={showToolsUpdateSetting}
-          tagFilterValue={tagFilterValue}
-          onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
-          onKeywordsChange={handleKeywordsChange}
-          onTagsChange={handleTagsChange}
-        />
         <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
@@ -178,6 +183,7 @@ const ProviderList = ({
                   getTagLabel={getTagLabel}
                   hasCategoryCollections={activeTabCollectionList.length > 0}
                   isLoading={isCollectionListLoading}
+                  useIntegrationsCard={contentInset === 'compact'}
                   isSearchResultEmpty={isCollectionSearchEmpty}
                   onRefreshData={refetch}
                   onSelectProvider={setCurrentProviderId}
@@ -219,6 +225,16 @@ const ProviderList = ({
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={() => setCurrentProviderId(undefined)}
       />
+    </>
+  )
+
+  if (layout)
+    return layout({ body, toolbar })
+
+  return (
+    <>
+      {toolbar}
+      {body}
     </>
   )
 }

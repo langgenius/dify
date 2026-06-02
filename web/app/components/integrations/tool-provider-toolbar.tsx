@@ -28,7 +28,7 @@ export function ToolProviderToolbar({
 }: {
   activeTab: string
   currentProviderId?: string
-  frameClassName: string
+  frameClassName?: string
   isRouteCategory: boolean
   keywords: string
   options: ToolProviderToolbarOption[]
@@ -42,7 +42,8 @@ export function ToolProviderToolbar({
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-wrap items-center justify-start gap-x-2 gap-y-2 bg-components-panel-bg pt-2 pb-0',
+        'flex shrink-0 flex-wrap items-center justify-start gap-x-2 gap-y-2',
+        frameClassName ? 'bg-components-panel-bg pt-2 pb-0' : 'w-full',
         frameClassName,
         currentProviderId && 'pr-6',
       )}
