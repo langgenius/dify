@@ -1,6 +1,7 @@
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import MemberDetailsModal from '../index'
@@ -62,6 +63,36 @@ describe('MemberDetailsModal', () => {
 
       expect(screen.queryByRole('button', { name: /members\.memberDetails\.assign/i })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /members\.memberDetails\.removeRoleAria/i })).not.toBeInTheDocument()
+    })
+
+    it('should show role action menu and remove role when role assignment is allowed', async () => {
+      const user = userEvent.setup()
+      const handleAssignSubmit = vi.fn()
+
+      vi.mocked(useRolesOfMember).mockReturnValue({
+        data: {
+          account_id: member.id,
+          roles: [
+            createRole({ id: 'role-1', name: 'Custom role' }),
+            createRole({ id: 'role-2', name: 'Second role' }),
+          ],
+        },
+      } as unknown as ReturnType<typeof useRolesOfMember>)
+
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          onClose={vi.fn()}
+          onAssignSubmit={handleAssignSubmit}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /Custom role/i }))
+
+      await user.click(screen.getByRole('menuitem', { name: /common\.operation\.remove/i }))
+
+      expect(handleAssignSubmit).toHaveBeenCalledWith(['role-2'])
     })
   })
 })
