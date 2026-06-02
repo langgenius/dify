@@ -410,40 +410,6 @@ def test_validate_human_input_submission_accepts_select_file_and_file_list(mock_
         }
     )
 
-    service.validate_human_input_submission(
-        form_definition=definition,
-        selected_action_id="submit",
-        form_data={
-            "decision": "approve",
-            "attachment": {
-                "type": "document",
-                "transfer_method": "remote_url",
-                "remote_url": "https://example.com/file.txt",
-                "filename": "file.txt",
-                "extension": ".txt",
-                "mime_type": "text/plain",
-            },
-            "attachments": [
-                {
-                    "type": "document",
-                    "transfer_method": "remote_url",
-                    "remote_url": "https://example.com/first.txt",
-                    "filename": "first.txt",
-                    "extension": ".txt",
-                    "mime_type": "text/plain",
-                },
-                {
-                    "type": "document",
-                    "transfer_method": "remote_url",
-                    "remote_url": "https://example.com/second.txt",
-                    "filename": "second.txt",
-                    "extension": ".txt",
-                    "mime_type": "text/plain",
-                },
-            ],
-        },
-    )
-
 
 @pytest.mark.parametrize(
     ("input_definition", "submitted_value", "expected_message"),

@@ -308,20 +308,6 @@ class HumanInputService:
         global_deadline = created_at + timedelta(seconds=global_timeout_seconds)
         return global_deadline <= current
 
-    @staticmethod
-    def validate_human_input_submission(
-        *,
-        form_definition: FormDefinitionProtocol,
-        selected_action_id: str,
-        form_data: Mapping[str, Any],
-    ) -> None:
-        graphon_validate_human_input_submission(
-            inputs=form_definition.inputs,
-            user_actions=form_definition.user_actions,
-            selected_action_id=selected_action_id,
-            form_data=form_data,
-        )
-
     @classmethod
     def validate_and_normalize_submission(
         cls,
