@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 
 class SnippetListQuery(BaseModel):
@@ -11,7 +11,11 @@ class SnippetListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     keyword: str | None = None
     is_published: bool | None = Field(default=None, description="Filter by published status")
-    creators: list[str] | None = Field(default=None, description="Filter by creator account IDs")
+    creators: list[str] | None = Field(
+        default=None,
+        description="Filter by creator account IDs",
+        validation_alias=AliasChoices("creators", "creator_id"),
+    )
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
 
     @field_validator("creators", mode="before")

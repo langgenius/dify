@@ -13,6 +13,14 @@ def test_snippet_list_query_accepts_comma_separated_tag_ids() -> None:
     assert query.tag_ids == [first, second]
 
 
+def test_snippet_list_query_accepts_creator_id_alias() -> None:
+    creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
+
+    query = SnippetListQuery.model_validate({"creator_id": creator_id})
+
+    assert query.creators == [creator_id]
+
+
 def test_normalize_snippet_list_query_accepts_indexed_tag_ids() -> None:
     first = "11111111-1111-1111-1111-111111111111"
     second = "22222222-2222-2222-2222-222222222222"
