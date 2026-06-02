@@ -111,17 +111,6 @@ const removeStorageItem = typeof window === 'undefined'
       }
     }
 
-const removeStorageItemWithoutDispatch = typeof window === 'undefined'
-  ? noop
-  : (key: string) => {
-      try {
-        window.localStorage.removeItem(key)
-      }
-      catch {
-        console.warn(`[${HOOK_NAME}] Failed to remove value from localStorage, it might be blocked`)
-      }
-    }
-
 function getStorageItem(key: string) {
   if (typeof window === 'undefined')
     return null
@@ -266,30 +255,6 @@ function useLocalStorage<T>(
   const setState = useSetLocalStorage<T>(key, options)
 
   return [value, setState] as const
-}
-
-export const useLocalStorageSnapshot = <T>(
-  key: string,
-  options: UseLocalStorageRawOption | UseLocalStorageParserOption<T> = defaultStorageOptions as UseLocalStorageParserOption<T>,
-) => {
-  const { deserializer } = getStorageOptions(options)
-
-  const getSnapshot = useCallback(() => {
-    try {
-      const raw = getStorageItem(key)
-      return raw === null ? null : deserializer(raw)
-    }
-    catch (error) {
-      console.warn(error)
-      return null
-    }
-  }, [key, deserializer])
-
-  const removeSnapshot = useCallback(() => {
-    removeStorageItemWithoutDispatch(key)
-  }, [key])
-
-  return [getSnapshot, removeSnapshot] as const
 }
 
 export { useLocalStorage }

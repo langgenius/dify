@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
-import { useLocalStorage, useLocalStorageSnapshot } from '../index'
+import { useLocalStorage } from '../index'
 
 describe('useLocalStorage', () => {
   beforeEach(() => {
@@ -91,22 +91,5 @@ describe('useLocalStorage', () => {
     }
 
     expect(() => renderToString(<Component />)).toThrow('[foxact/use-local-storage] cannot be used on the server without a serverValue')
-  })
-
-  it('should read and remove a snapshot without writing defaults', () => {
-    const { result } = renderHook(() => useLocalStorageSnapshot<string>('refresh-flag', { raw: true }))
-
-    expect(result.current[0]()).toBeNull()
-    expect(window.localStorage.getItem('refresh-flag')).toBeNull()
-
-    window.localStorage.setItem('refresh-flag', '1')
-
-    expect(result.current[0]()).toBe('1')
-
-    act(() => {
-      result.current[1]()
-    })
-
-    expect(window.localStorage.getItem('refresh-flag')).toBeNull()
   })
 })
