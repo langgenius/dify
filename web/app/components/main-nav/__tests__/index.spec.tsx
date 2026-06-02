@@ -325,6 +325,23 @@ describe('MainNav', () => {
     expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
   })
 
+  it('hides the environment tag when app detail navigation is collapsed', () => {
+    mockPathname = '/app/app-1/overview'
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      langGeniusVersionInfo: {
+        ...appContextValue.langGeniusVersionInfo,
+        current_env: 'TESTING',
+      },
+    })
+
+    const { container } = renderMainNav()
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+
+    expect(screen.queryByText('common.environment.testing')).not.toBeInTheDocument()
+    expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
+  })
+
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
@@ -409,7 +426,9 @@ describe('MainNav', () => {
     expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
@@ -422,7 +441,8 @@ describe('MainNav', () => {
     renderMainNav()
     fireEvent.click(screen.getByTestId('app-detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-14')
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')

@@ -64,6 +64,8 @@ const MainNav = ({
   const [storedAppSidebarExpand, setStoredAppSidebarExpand] = useLocalStorage<string>(APP_DETAIL_SIDEBAR_STORAGE_KEY, 'expand', { raw: true })
   const appDetailNavigationMode = appSidebarExpand === 'collapse' || (!appSidebarExpand && storedAppSidebarExpand === 'collapse') ? 'collapse' : 'expand'
   const appDetailNavigationExpanded = appDetailNavigationMode === 'expand'
+  const isCollapsedAppDetailNavigation = showAppDetailNavigation && !appDetailNavigationExpanded
+  const isAppDetailNavigation = showAppDetailNavigation
   const handleToggleAppDetailNavigation = useCallback(() => {
     setAppSidebarExpand(appDetailNavigationExpanded ? 'collapse' : 'expand')
   }, [appDetailNavigationExpanded, setAppSidebarExpand])
@@ -156,64 +158,86 @@ const MainNav = ({
   return (
     <aside
       className={cn(
-        'flex h-full shrink-0 flex-col overflow-hidden transition-all',
-        showAppDetailNavigation && !appDetailNavigationExpanded ? 'w-14' : 'w-60',
-        showDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
+        'flex h-full shrink-0 overflow-hidden transition-all',
+        isAppDetailNavigation
+          ? appDetailNavigationExpanded
+            ? 'w-[248px] bg-background-body p-1'
+            : 'w-16 bg-background-body p-1'
+          : 'w-60 flex-col',
+        showDetailNavigation && !isAppDetailNavigation ? 'bg-components-panel-bg-blur' : 'bg-background-body',
         className,
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col">
-        {showDetailNavigation
-          ? showAppDetailNavigation
-            ? (
-                <AppDetailTop
-                  expand={appDetailNavigationExpanded}
-                  onToggle={handleToggleAppDetailNavigation}
-                />
-              )
-            : <DatasetDetailTop />
-          : (
-              <>
-                <div className="flex items-center justify-between px-2 pt-4 pb-2">
-                  {renderLogo()}
-                  <MainNavSearchButton />
-                </div>
-                <div className="p-2">
-                  <WorkspaceCard />
-                </div>
-              </>
-            )}
-        {showDetailNavigation
-          ? showAppDetailNavigation
-            ? <AppDetailSection expand={appDetailNavigationExpanded} />
-            : <DatasetDetailSection />
-          : (
-              <>
-                <nav className="space-y-1 p-2">
-                  {navItems.map(item => (
-                    <MainNavLink key={item.href} item={item} pathname={pathname} />
-                  ))}
-                </nav>
-                {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
-              </>
-            )}
-        {showEnvTag && (
-          <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
-            <EnvNav />
-          </div>
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col',
+          isAppDetailNavigation && 'overflow-hidden rounded-lg bg-components-panel-bg',
+          isCollapsedAppDetailNavigation ? 'w-14' : isAppDetailNavigation && 'w-60',
         )}
-      </div>
-      <div className={cn(
-        'flex items-center bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 backdrop-blur-[2px]',
-        showAppDetailNavigation && !appDetailNavigationExpanded
-          ? 'w-14 justify-center px-2'
-          : 'w-60 justify-between pr-1 pl-3',
-      )}
       >
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-          <AccountSection />
+        <div className="flex min-h-0 flex-1 flex-col">
+          {showDetailNavigation
+            ? showAppDetailNavigation
+              ? (
+                  <AppDetailTop
+                    expand={appDetailNavigationExpanded}
+                    onToggle={handleToggleAppDetailNavigation}
+                  />
+                )
+              : <DatasetDetailTop />
+            : (
+                <>
+                  <div className="flex items-center justify-between px-2 pt-4 pb-2">
+                    {renderLogo()}
+                    <MainNavSearchButton />
+                  </div>
+                  <div className="p-2">
+                    <WorkspaceCard />
+                  </div>
+                </>
+              )}
+          {showDetailNavigation
+            ? showAppDetailNavigation
+              ? <AppDetailSection expand={appDetailNavigationExpanded} />
+              : <DatasetDetailSection />
+            : (
+                <>
+                  <nav className="space-y-1 p-2">
+                    {navItems.map(item => (
+                      <MainNavLink key={item.href} item={item} pathname={pathname} />
+                    ))}
+                  </nav>
+                  {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+                </>
+              )}
+          {showEnvTag && !isCollapsedAppDetailNavigation && (
+            <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
+              <EnvNav />
+            </div>
+          )}
         </div>
-        {(!showAppDetailNavigation || appDetailNavigationExpanded) && <HelpMenu />}
+        <div className={cn(
+          isCollapsedAppDetailNavigation
+            ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
+            : 'flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]',
+        )}
+        >
+          {isCollapsedAppDetailNavigation
+            ? (
+                <>
+                  <HelpMenu compact />
+                  <AccountSection compact />
+                </>
+              )
+            : (
+                <>
+                  <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+                    <AccountSection />
+                  </div>
+                  {(!showAppDetailNavigation || appDetailNavigationExpanded) && <HelpMenu />}
+                </>
+              )}
+        </div>
       </div>
     </aside>
   )
