@@ -114,7 +114,7 @@ describe('error envelope', () => {
   it('renderEnvelope returns a single-line JSON string', () => {
     const err = newError(ErrorCode.AuthExpired, 'session expired')
       .withHint('run difyctl auth login')
-    const out = err.renderEnvelope()
+    const out = JSON.stringify(err.toEnvelope())
     expect(out).toBe(
       '{"error":{"code":"auth_expired","message":"session expired","hint":"run difyctl auth login"}}',
     )
@@ -123,7 +123,7 @@ describe('error envelope', () => {
 
   it('renderEnvelope output round-trips through JSON.parse to an ErrorEnvelope shape', () => {
     const err = newError(ErrorCode.UsageInvalidFlag, 'bad flag').withHint('see --help')
-    const parsed = JSON.parse(err.renderEnvelope())
+    const parsed = JSON.parse(JSON.stringify(err.toEnvelope()))
     expect(parsed).toEqual({
       error: { code: 'usage_invalid_flag', message: 'bad flag', hint: 'see --help' },
     })

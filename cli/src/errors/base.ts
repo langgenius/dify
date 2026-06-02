@@ -1,8 +1,6 @@
+import type { ErrorEnvelope, PrintableError } from './format'
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
-import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { ErrorCode, exitFor } from './codes'
-import { isVerbose } from '@/framework/context'
-import { redactBearer } from '@/http/sanitize'
 
 export type BaseErrorOptions = {
   readonly code: ErrorCodeValue
@@ -11,19 +9,7 @@ export type BaseErrorOptions = {
   readonly cause?: unknown
 }
 
-export type ErrorEnvelope = {
-  error: {
-    code: string
-    message: string
-    hint?: string
-    httpStatus?: number
-    method?: string
-    url?: string
-    rawResponse?: string
-  }
-}
-
-export class BaseError extends Error {
+export class BaseError extends Error implements PrintableError {
   readonly code: ErrorCodeValue
   readonly hint?: string
 
@@ -46,14 +32,6 @@ export class BaseError extends Error {
       : `${this.code}: ${this.message}`
   }
 
-  humanError(isErrTTY: boolean): string {
-    const cs = colorScheme(colorEnabled(isErrTTY))
-    const lines: string[] = [`${this.code}: ${this.message}`]
-    if (this.hint !== undefined)
-      lines.push(`${cs.magenta('hint:')} ${cs.cyan(this.hint)}`)
-    return lines.join('\n')
-  }
-
   toEnvelope(): ErrorEnvelope {
     const payload: ErrorEnvelope['error'] = {
       code: this.code,
@@ -62,10 +40,6 @@ export class BaseError extends Error {
     if (this.hint !== undefined)
       payload.hint = this.hint
     return { error: payload }
-  }
-
-  renderEnvelope(): string {
-    return JSON.stringify(this.toEnvelope())
   }
 
   withHint<T extends BaseError>(this: T, hint: string): T {
@@ -125,17 +99,6 @@ export class HttpClientError extends BaseError {
     this.rawResponse = opts.rawResponse
   }
 
-  override humanError(isErrTTY: boolean): string {
-    const lines: string[] = [super.humanError(isErrTTY)]
-    if (this.method !== undefined && this.url !== undefined)
-      lines.push(`request: ${this.method} ${this.url}`)
-    if (this.httpStatus !== undefined)
-      lines.push(`http_status: ${this.httpStatus}`)
-    if (isVerbose() && this.rawResponse)
-      lines.push(`raw_response: ${redactBearer(this.rawResponse)}`)
-    return lines.join('\n')
-  }
-
   override toEnvelope(): ErrorEnvelope {
     const envelope = super.toEnvelope()
     if (this.httpStatus !== undefined)
@@ -144,9 +107,8 @@ export class HttpClientError extends BaseError {
       envelope.error.method = this.method
     if (this.url !== undefined)
       envelope.error.url = this.url
-    if (isVerbose() && this.rawResponse) {
-      envelope.error.rawResponse = redactBearer(this.rawResponse);
-    }
+    if (this.rawResponse !== undefined)
+      envelope.error.rawResponse = this.rawResponse
     return envelope
   }
 
