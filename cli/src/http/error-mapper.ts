@@ -74,6 +74,7 @@ export function classifyTransportError(err: unknown): BaseError {
   if (!(err instanceof Error)) {
     return newError(ErrorCode.Unknown, String(err)).wrap(err)
   }
+  const sanitized = redactBearer(err.message)
   // there isn't a practical way to classify network errors reliably
-  return newError(ErrorCode.NetworkConnection, err.message).wrap(err)
+  return newError(ErrorCode.NetworkConnection, sanitized).wrap(err)
 }
