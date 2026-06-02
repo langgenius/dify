@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Ujemajoči se ukazi niso našli",
   "gotoAnything.noResults": "Ni najdenih rezultatov",
   "gotoAnything.pressEscToClose": "Pritisnite ESC za zapiranje",
+  "gotoAnything.quickAction": "Hitro dejanje",
   "gotoAnything.resultCount": "{{count}} rezultat",
   "gotoAnything.resultCount_other": "{{count}} rezultatov",
   "gotoAnything.searchFailed": "Iskanje ni uspelo",

@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Không tìm thấy lệnh phù hợp",
   "gotoAnything.noResults": "Không tìm thấy kết quả",
   "gotoAnything.pressEscToClose": "Nhấn ESC để đóng",
+  "gotoAnything.quickAction": "Thao tác nhanh",
   "gotoAnything.resultCount": "{{count}} kết quả",
   "gotoAnything.resultCount_other": "{{count}} kết quả",
   "gotoAnything.searchFailed": "Tìm kiếm không thành công",

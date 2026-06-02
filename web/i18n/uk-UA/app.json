@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Відповідних команд не знайдено",
   "gotoAnything.noResults": "Результатів не знайдено",
   "gotoAnything.pressEscToClose": "Натисніть ESC, щоб закрити",
+  "gotoAnything.quickAction": "Швидка дія",
   "gotoAnything.resultCount": "{{count}} результат",
   "gotoAnything.resultCount_other": "{{count}} результатів",
   "gotoAnything.searchFailed": "Пошук не вдався",

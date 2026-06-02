@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "Tidak ada perintah yang cocok ditemukan",
   "gotoAnything.noResults": "Tidak ada hasil yang ditemukan",
   "gotoAnything.pressEscToClose": "Tekan ESC untuk menutup",
+  "gotoAnything.quickAction": "Aksi cepat",
   "gotoAnything.resultCount": "hasil {{count}}",
   "gotoAnything.resultCount_other": "hasil {{count}}",
   "gotoAnything.searchFailed": "Pencarian gagal",

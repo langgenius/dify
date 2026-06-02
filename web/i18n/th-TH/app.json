@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "ไม่พบคำสั่งที่ตรงกัน",
   "gotoAnything.noResults": "ไม่พบผลลัพธ์",
   "gotoAnything.pressEscToClose": "กด ESC เพื่อปิด",
+  "gotoAnything.quickAction": "การดำเนินการด่วน",
   "gotoAnything.resultCount": "{{count}} ผลลัพธ์",
   "gotoAnything.resultCount_other": "{{count}} ผลลัพธ์",
   "gotoAnything.searchFailed": "การค้นหาล้มเหลว",

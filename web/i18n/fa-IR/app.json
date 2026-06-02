@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "هیچ دستوری منطبق یافت نشد",
   "gotoAnything.noResults": "هیچ نتیجه ای یافت نشد",
   "gotoAnything.pressEscToClose": "برای بستن ESC را فشار دهید",
+  "gotoAnything.quickAction": "اقدام سریع",
   "gotoAnything.resultCount": "{{count}} نتیجه",
   "gotoAnything.resultCount_other": "{{count}} نتیجه",
   "gotoAnything.searchFailed": "جستجو انجام نشد",

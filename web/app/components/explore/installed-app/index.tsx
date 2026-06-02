@@ -15,13 +15,15 @@ import AppUnavailable from '../../base/app-unavailable'
 const ChatWithHistory = dynamic(() => import('@/app/components/base/chat/chat-with-history'), { ssr: false })
 
 const InstalledAppFrame = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full border-t-4 border-l-4 border-components-chat-input-border bg-background-body p-2">
+  <div className="h-full bg-background-body pt-2 pl-2">
     {children}
   </div>
 )
 
+const installedAppSurfaceClassName = 'rounded-tr-none rounded-bl-none border-t-4 border-l-4 border-components-chat-input-border'
+
 const InstalledTextGenerationSurface = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full overflow-hidden rounded-2xl shadow-md">
+  <div className={`h-full overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}>
     {children}
   </div>
 )
@@ -146,7 +148,7 @@ const InstalledApp = ({
   return (
     <InstalledAppFrame>
       {installedApp?.app.mode !== AppModeEnum.COMPLETION && installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
-        <ChatWithHistory installedAppInfo={installedApp} className="overflow-hidden rounded-2xl shadow-md" />
+        <ChatWithHistory installedAppInfo={installedApp} className={`overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`} />
       )}
       {installedApp?.app.mode === AppModeEnum.COMPLETION && (
         <InstalledTextGenerationSurface>

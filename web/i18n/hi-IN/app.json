@@ -96,6 +96,7 @@
   "gotoAnything.noMatchingCommands": "कोई मिलती-जुलती कमांड्स नहीं मिलीं",
   "gotoAnything.noResults": "कोई परिणाम नहीं मिले",
   "gotoAnything.pressEscToClose": "बंद करने के लिए ESC दबाएं",
+  "gotoAnything.quickAction": "त्वरित कार्रवाई",
   "gotoAnything.resultCount": "{{count}} परिणाम",
   "gotoAnything.resultCount_other": "{{count}} परिणाम",
   "gotoAnything.searchFailed": "खोज विफल रहा",
