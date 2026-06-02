@@ -20,7 +20,7 @@ def _load_generate_swagger_markdown_docs_module():
     return module
 
 
-def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(tmp_path, monkeypatch):
+def test_generate_markdown_docs_keeps_split_docs(tmp_path, monkeypatch):
     module = _load_generate_swagger_markdown_docs_module()
     swagger_dir = tmp_path / "openapi"
     markdown_dir = tmp_path / "markdown"
@@ -37,17 +37,10 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
             paths.append(path)
         return paths
 
-    def write_fastopenapi_specs(output_dir: Path) -> list[Path]:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        path = output_dir / module.FASTOPENAPI_SPEC_TARGETS[0].filename
-        path.write_text("{}", encoding="utf-8")
-        return [path]
-
     def convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
         markdown_path.write_text(f"# {spec_path.stem}\n\n## Routes\n", encoding="utf-8")
 
     monkeypatch.setattr(module, "generate_specs", write_specs)
-    monkeypatch.setattr(module, "generate_fastopenapi_specs", write_fastopenapi_specs)
     monkeypatch.setattr(module, "_convert_spec_to_markdown", convert_spec_to_markdown)
 
     written_paths = module.generate_markdown_docs(swagger_dir, markdown_dir)
@@ -62,11 +55,8 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
     assert not list(swagger_dir.glob("*.json"))
 
     console_markdown = (markdown_dir / "console-swagger.md").read_text(encoding="utf-8")
-    assert "## FastOpenAPI Preview (OpenAPI 3.0)" in console_markdown
-    assert "### fastopenapi-console-openapi" in console_markdown
-    assert "#### Routes" in console_markdown
-    assert "FastOpenAPI Preview" not in (markdown_dir / "web-swagger.md").read_text(encoding="utf-8")
-    assert "FastOpenAPI Preview" not in (markdown_dir / "service-swagger.md").read_text(encoding="utf-8")
+    assert "# console-swagger" in console_markdown
+    assert "## Routes" in console_markdown
 
 
 def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(tmp_path, monkeypatch):
@@ -86,17 +76,10 @@ def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagg
             paths.append(path)
         return paths
 
-    def write_fastopenapi_specs(output_dir: Path) -> list[Path]:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        path = output_dir / module.FASTOPENAPI_SPEC_TARGETS[0].filename
-        path.write_text("{}", encoding="utf-8")
-        return [path]
-
     def convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
         markdown_path.write_text(f"# {spec_path.stem}\n", encoding="utf-8")
 
     monkeypatch.setattr(module, "generate_specs", write_specs)
-    monkeypatch.setattr(module, "generate_fastopenapi_specs", write_fastopenapi_specs)
     monkeypatch.setattr(module, "_convert_spec_to_markdown", convert_spec_to_markdown)
 
     module.generate_markdown_docs(swagger_dir, markdown_dir)
