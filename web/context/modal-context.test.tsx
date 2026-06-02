@@ -155,7 +155,10 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await user.click(screen.getByRole('button', { name: 'open account setting' }))
     await user.click(await screen.findByRole('button', { name: 'cancel account setting' }))
 
-    expect(mockSetEducationVerifying).toHaveBeenCalledWith(null)
+    expect(mockSetEducationVerifying).toHaveBeenCalledWith(expect.any(Function))
+    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (educationVerifying: string) => string | null
+    expect(updater('yes')).toBeNull()
+    expect(updater('no')).toBe('no')
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

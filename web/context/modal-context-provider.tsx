@@ -104,7 +104,7 @@ export const ModalContextProvider = ({
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
-    setEducationVerifying(null)
+    setEducationVerifying(educationVerifying => educationVerifying === 'yes' ? null : educationVerifying)
     accountSettingCallbacksRef.current?.onCancelCallback?.()
     accountSettingCallbacksRef.current = null
     setUrlAccountModalState(null)
