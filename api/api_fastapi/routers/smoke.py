@@ -1,4 +1,4 @@
-"""Smoke endpoints that verify API v2 infrastructure wiring."""
+"""System probe endpoints for API v2 process and dependency readiness."""
 
 from uuid import uuid4
 
@@ -14,28 +14,39 @@ from extensions.ext_redis import RedisClientWrapper
 router = APIRouter(prefix="/system", tags=["system"])
 
 
-class InfraSmokeResponse(BaseModel):
+class InfraHealthResponse(BaseModel):
     redis: bool
     sync_db: bool
     async_db: bool
 
 
-@router.get("/smoke")
-async def smoke(
+class HealthResponse(BaseModel):
+    status: str
+
+
+@router.get("/ping")
+async def ping() -> HealthResponse:
+    """Unauthenticated process health probe that avoids external dependencies."""
+
+    return HealthResponse(status="ok")
+
+
+@router.get("/health")
+async def health(
     redis: RedisDep,
     sync_session: SyncSessionDep,
     async_session: AsyncSessionDep,
-) -> InfraSmokeResponse:
-    """Unauthenticated smoke probe for new FastAPI infrastructure."""
+) -> InfraHealthResponse:
+    """Unauthenticated dependency health probe for new FastAPI infrastructure."""
 
     redis_ok = _touch_redis(redis)
     sync_db_ok = _touch_sync_db(sync_session)
     async_db_ok = await _touch_async_db(async_session)
-    return InfraSmokeResponse(redis=redis_ok, sync_db=sync_db_ok, async_db=async_db_ok)
+    return InfraHealthResponse(redis=redis_ok, sync_db=sync_db_ok, async_db=async_db_ok)
 
 
 def _touch_redis(redis: RedisClientWrapper) -> bool:
-    key = f"fastapi:smoke:{uuid4()}"
+    key = f"fastapi:health:{uuid4()}"
     redis.set(key, "1", ex=30)
     value = redis.get(key)
     redis.delete(key)

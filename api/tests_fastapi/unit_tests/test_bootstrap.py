@@ -3,31 +3,59 @@
 from __future__ import annotations
 
 import pytest
+from fastapi.testclient import TestClient
 
 from api_fastapi.factory import create_fastapi_app
 from api_fastapi.infra import FastAPIInfra
+from configs import dify_config
 from core.db.session_factory import session_factory
 from tests_fastapi.helpers import apptest_get
 
 
-def test_smoke_endpoint_touches_new_redis_and_db_infra(fake_infra: FastAPIInfra) -> None:
+def test_fastapi_v2_allows_console_cors_preflight(
+    fake_infra: FastAPIInfra,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Browser preflights for console-authenticated v2 routes must match Flask console CORS."""
+
+    monkeypatch.setattr(dify_config, "inner_CONSOLE_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
     app = create_fastapi_app(infra=fake_infra)
 
-    response = apptest_get(app, "/api/v2/system/smoke")
+    response = TestClient(app).options(
+        "/api/v2/apps/example/workflows/draft",
+        headers={
+            "Origin": "http://127.0.0.1:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Authorization,X-CSRF-Token",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:3000"
+    assert response.headers["access-control-allow-credentials"] == "true"
+    assert "Authorization" in response.headers["access-control-allow-headers"]
+    assert "X-CSRF-Token" in response.headers["access-control-allow-headers"]
+
+
+def test_health_endpoint_touches_new_redis_and_db_infra(fake_infra: FastAPIInfra) -> None:
+    app = create_fastapi_app(infra=fake_infra)
+
+    response = apptest_get(app, "/api/v2/system/health")
 
     assert response.status_code == 200
     assert response.json() == {"redis": True, "sync_db": True, "async_db": True}
 
 
-def test_fastapi_openapi_documents_smoke_route(fake_infra: FastAPIInfra) -> None:
+def test_fastapi_openapi_documents_system_probe_routes(fake_infra: FastAPIInfra) -> None:
     app = create_fastapi_app(infra=fake_infra)
 
     response = apptest_get(app, "/api/v2/openapi.json")
 
     assert response.status_code == 200
     schema = response.json()
-    assert "/api/v2/system/smoke" in schema["paths"]
-    assert "InfraSmokeResponse" in schema["components"]["schemas"]
+    assert "/api/v2/system/health" in schema["paths"]
+    assert "/api/v2/system/ping" in schema["paths"]
+    assert "InfraHealthResponse" in schema["components"]["schemas"]
 
 
 @pytest.mark.parametrize(

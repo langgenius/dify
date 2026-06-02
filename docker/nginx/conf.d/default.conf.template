@@ -9,6 +9,11 @@ server {
       include proxy.conf;
     }
 
+    location /api/v2 {
+      proxy_pass http://api_fastapi:5001;
+      include proxy.conf;
+    }
+
     location /api {
       proxy_pass http://api:5001;
       include proxy.conf;

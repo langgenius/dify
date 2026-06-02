@@ -511,7 +511,8 @@ class HttpConfig(BaseSettings):
         default="",
     )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 

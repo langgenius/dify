@@ -1,4 +1,4 @@
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, API_V2_PREFIX } from '@/config'
 
 const LEGACY_CONSOLE_API_SUFFIX = '/console/api'
 const API_ROOT_SUFFIX = '/api'
@@ -19,5 +19,8 @@ export const consoleApiV2PrefixFrom = (configuredApiPrefix: string) => {
 }
 
 export const consoleApiV2Prefix = () => {
+  if (API_V2_PREFIX)
+    return API_V2_PREFIX
+
   return consoleApiV2PrefixFrom(API_PREFIX)
 }

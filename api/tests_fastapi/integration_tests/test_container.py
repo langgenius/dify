@@ -24,8 +24,8 @@ from tests_fastapi.container_setup import (
 )
 
 
-def test_smoke_route_uses_fastapi_testcontainers(fastapi_client_with_containers: TestClient) -> None:
-    response = fastapi_client_with_containers.get("/api/v2/system/smoke")
+def test_health_route_uses_fastapi_testcontainers(fastapi_client_with_containers: TestClient) -> None:
+    response = fastapi_client_with_containers.get("/api/v2/system/health")
 
     assert response.status_code == 200
     assert response.json() == {"redis": True, "sync_db": True, "async_db": True}

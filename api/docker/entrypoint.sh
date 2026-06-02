@@ -71,6 +71,16 @@ if [[ "${MODE}" == "worker" ]]; then
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
 
+elif [[ "${MODE}" == "fastapi" ]]; then
+  GRANIAN_LOG_LEVEL=${LOG_LEVEL:-info}
+  exec granian \
+    --interface asgi \
+    --host "${DIFY_BIND_ADDRESS:-0.0.0.0}" \
+    --port "${DIFY_PORT:-5001}" \
+    --workers ${SERVER_WORKER_AMOUNT:-1} \
+    --log-level "${GRANIAN_LOG_LEVEL,,}" \
+    fastapi_app:app
+
 elif [[ "${MODE}" == "job" ]]; then
   # Job mode: Run a one-time Flask command and exit
   # Pass Flask command and arguments via container args

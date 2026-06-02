@@ -202,6 +202,28 @@ export const startApi = async () => {
   })
 }
 
+export const startFastApi = async () => {
+  const env = await getApiEnvironment()
+
+  await runForegroundProcess({
+    command: 'uv',
+    args: [
+      'run',
+      '--project',
+      '.',
+      '--no-sync',
+      'uvicorn',
+      'fastapi_app:app',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      process.env.E2E_FASTAPI_PORT || '5004',
+    ],
+    cwd: apiDir,
+    env,
+  })
+}
+
 export const startCelery = async () => {
   const env = await getApiEnvironment()
 
@@ -334,7 +356,7 @@ export const startMiddleware = async () => {
 }
 
 const printUsage = () => {
-  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|api|celery|web>')
+  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|api|fastapi|celery|web>')
 }
 
 const main = async () => {
@@ -343,6 +365,9 @@ const main = async () => {
   switch (command) {
     case 'api':
       await startApi()
+      return
+    case 'fastapi':
+      await startFastApi()
       return
     case 'celery':
       await startCelery()

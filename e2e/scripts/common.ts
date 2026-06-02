@@ -42,6 +42,8 @@ export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')
 export const e2eWebEnvOverrides = {
   NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
+  NEXT_PUBLIC_API_V2_PREFIX:
+    process.env.E2E_API_V2_PREFIX || 'http://127.0.0.1:5004/api/v2',
   NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
 } satisfies Record<string, string>
 
