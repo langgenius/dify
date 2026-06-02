@@ -44,26 +44,25 @@ const GotoAnythingDialog: FC<Props> = ({
 
   // Modal state management
   const {
-    show,
-    setShow,
+    open,
+    onOpenChange,
     inputRef,
-    handleClose: modalClose,
   } = useGotoAnythingModal()
 
   // Reset state when modal opens/closes
   useEffect(() => {
-    if (show && !prevShowRef.current) {
+    if (open && !prevShowRef.current) {
       // Modal just opened - reset search
       setSearchQuery('')
     }
-    else if (!show && prevShowRef.current) {
+    else if (!open && prevShowRef.current) {
       // Modal just closed
       setSearchQuery('')
       clearSelection()
       onHide?.()
     }
-    prevShowRef.current = show
-  }, [show, setSearchQuery, clearSelection, onHide])
+    prevShowRef.current = open
+  }, [open, setSearchQuery, clearSelection, onHide])
 
   // Results fetching and processing
   const {
@@ -94,7 +93,7 @@ const GotoAnythingDialog: FC<Props> = ({
     setSearchQuery,
     clearSelection,
     inputRef,
-    onClose: () => setShow(false),
+    onClose: () => onOpenChange(false),
   })
 
   // Handle search input change
@@ -118,12 +117,12 @@ const GotoAnythingDialog: FC<Props> = ({
         if (handler?.mode === 'direct' && handler.execute && isAvailable) {
           e.preventDefault()
           handler.execute()
-          setShow(false)
+          onOpenChange(false)
           setSearchQuery('')
         }
       }
     }
-  }, [searchQuery, setShow, setSearchQuery])
+  }, [searchQuery, onOpenChange, setSearchQuery])
 
   // Determine which empty state to show
   const emptyStateVariant = useMemo(() => {
@@ -144,11 +143,8 @@ const GotoAnythingDialog: FC<Props> = ({
     <>
       <SlashCommandProvider />
       <Dialog
-        open={show}
-        onOpenChange={(open) => {
-          if (!open)
-            modalClose()
-        }}
+        open={open}
+        onOpenChange={onOpenChange}
       >
         <DialogContent className="w-[480px]! overflow-hidden p-0!">
           <Command
