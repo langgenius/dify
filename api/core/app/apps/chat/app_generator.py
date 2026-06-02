@@ -238,6 +238,18 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
+                if conversation is None :
+                    queue_manager.publish_error(
+                       ValueError(f"Conversation not found: {conversation_id}"),
+                          PublishFrom.APPLICATION_MANAGER,
+                    )
+                    return
+                if message is None:
+                    queue_manager.publish_error(
+                        ValueError(f"Message not found: {message_id}"),
+                        PublishFrom.APPLICATION_MANAGER,
+                    )
+                    return
 
                 # chatbot app
                 runner = ChatAppRunner()
@@ -258,7 +270,9 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except ValueError as e:
                 if dify_config.DEBUG:
-                    logger.exception("Error when generating")
+                    logger.exception(" Value Error when generating")
+                else:
+                    logger.warning("ValueError when generating: %s", str(e))
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
                 logger.exception("Unknown Error when generating")
