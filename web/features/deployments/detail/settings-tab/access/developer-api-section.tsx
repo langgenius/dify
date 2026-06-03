@@ -443,37 +443,47 @@ export function DeveloperApiSection({
                       />
                     </div>
                   )}
-                  {apiKeys.length === 0
+                  {environments.length > 0
                     ? (
-                        <DetailEmptyState
-                          variant="section"
-                          icon={environments.length === 0 ? 'i-ri-rocket-line' : 'i-ri-key-2-line'}
-                          title={environments.length === 0
-                            ? t('access.api.emptyTitle')
-                            : t('access.api.noKeysTitle')}
-                          description={environments.length === 0
-                            ? t('access.api.empty')
-                            : t('access.api.noKeys')}
-                          action={(
-                            environments.length > 0
-                              ? (
-                                  <ApiKeyGenerateMenu
-                                    appInstanceId={appInstanceId}
-                                    environments={environments}
-                                    triggerVariant="primary"
-                                    onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-                                  />
-                                )
-                              : undefined
-                          )}
-                        />
-                      )
-                    : (
-                        <ApiKeyListSection
-                          apiKeys={apiKeys}
+                        <ApiKeyGenerateMenu
+                          appInstanceId={appInstanceId}
                           environments={environments}
-                        />
-                      )}
+                          triggerVariant="primary"
+                          onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+                        >
+                          {({ trigger }) => apiKeys.length === 0
+                            ? (
+                                <DetailEmptyState
+                                  variant="section"
+                                  icon="i-ri-key-2-line"
+                                  title={t('access.api.noKeysTitle')}
+                                  description={t('access.api.noKeys')}
+                                  action={trigger}
+                                />
+                              )
+                            : (
+                                <ApiKeyListSection
+                                  apiKeys={apiKeys}
+                                  environments={environments}
+                                />
+                              )}
+                        </ApiKeyGenerateMenu>
+                      )
+                    : apiKeys.length === 0
+                      ? (
+                          <DetailEmptyState
+                            variant="section"
+                            icon="i-ri-rocket-line"
+                            title={t('access.api.emptyTitle')}
+                            description={t('access.api.empty')}
+                          />
+                        )
+                      : (
+                          <ApiKeyListSection
+                            apiKeys={apiKeys}
+                            environments={environments}
+                          />
+                        )}
                   {visibleCreatedApiToken && (
                     <CreatedApiTokenDialog
                       token={visibleCreatedApiToken}

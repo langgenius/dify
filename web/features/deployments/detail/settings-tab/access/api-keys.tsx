@@ -5,7 +5,7 @@ import type {
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -326,12 +326,14 @@ export function ApiKeyGenerateMenu({
   onCreatedToken,
   triggerVariant = 'secondary',
   triggerClassName,
+  children,
 }: {
   appInstanceId: string
   environments: Environment[]
   onCreatedToken: (token: string) => void
   triggerVariant?: ButtonProps['variant']
   triggerClassName?: string
+  children?: (props: { trigger: ReactNode }) => ReactNode
 }) {
   const { t } = useTranslation('deployments')
   const nameInputId = useId()
@@ -412,18 +414,22 @@ export function ApiKeyGenerateMenu({
     )
   }
 
+  const trigger = (
+    <Button
+      type="button"
+      variant={triggerVariant}
+      disabled={disabled}
+      onClick={handleOpenCreateDialog}
+      className={cn('gap-1.5', triggerClassName)}
+    >
+      <span className="i-ri-add-line size-4" aria-hidden="true" />
+      {t('access.api.newKey')}
+    </Button>
+  )
+
   return (
     <>
-      <Button
-        type="button"
-        variant={triggerVariant}
-        disabled={disabled}
-        onClick={handleOpenCreateDialog}
-        className={cn('gap-1.5', triggerClassName)}
-      >
-        <span className="i-ri-add-line size-4" aria-hidden="true" />
-        {t('access.api.newKey')}
-      </Button>
+      {children ? children({ trigger }) : trigger}
       <Dialog open={createDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
           <DialogCloseButton disabled={isCreating} />
