@@ -527,7 +527,7 @@ def register_client(
 
     response = ssrf_proxy.post(
         registration_url,
-        json=client_metadata.model_dump(),
+        json=client_metadata.model_dump(exclude_none=True),
         headers={"Content-Type": "application/json"},
     )
     if not response.is_success:
