@@ -416,6 +416,10 @@ describe('SnippetMain', () => {
 
   describe('Publish', () => {
     it('should call the publish mutation', async () => {
+      mockDoSyncWorkflowDraft.mockResolvedValueOnce({
+        graph: payload.graph,
+        input_fields: payload.inputFields,
+      })
       renderSnippetMain()
 
       fireEvent.click(screen.getByRole('button', { name: 'publish' }))
@@ -424,6 +428,47 @@ describe('SnippetMain', () => {
         expect(mockPublishSnippetMutateAsync).toHaveBeenCalledWith({
           params: { snippetId: 'snippet-1' },
         })
+      })
+    })
+
+    it('should not publish when syncing the latest draft fails', async () => {
+      mockDoSyncWorkflowDraft.mockResolvedValueOnce(undefined)
+      renderSnippetMain({ hasInitialDraftChanges: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'publish' }))
+
+      await waitFor(() => {
+        expect(mockDoSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      })
+      expect(mockPublishSnippetMutateAsync).not.toHaveBeenCalled()
+    })
+
+    it('should update local draft state with latest synced graph after publishing', async () => {
+      const latestDraftNode = {
+        id: 'published-draft-node',
+        position: { x: 10, y: 20 },
+        data: { type: BlockEnum.Code, title: 'Published draft node' },
+      } as WorkflowProps['nodes'][number]
+      mockDoSyncWorkflowDraft.mockResolvedValueOnce({
+        graph: {
+          nodes: [latestDraftNode],
+          edges: [],
+          viewport: { x: 30, y: 40, zoom: 1.2 },
+        },
+        input_fields: [payload.inputFields[0]],
+      })
+      renderSnippetMain({ hasInitialDraftChanges: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'publish' }))
+
+      await waitFor(() => {
+        expect(mockPublishSnippetMutateAsync).toHaveBeenCalled()
+      })
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      expect(mockDoSyncWorkflowDraft.mock.invocationCallOrder[0]!).toBeLessThan(mockPublishSnippetMutateAsync.mock.invocationCallOrder[0]!)
+
+      await waitFor(() => {
+        expect(capturedWorkflowNodes?.map(node => node.id)).toContain('published-draft-node')
       })
     })
   })
@@ -443,6 +488,55 @@ describe('SnippetMain', () => {
         expect(mockSyncInputFieldsDraft).toHaveBeenCalledWith(payload.inputFields, {
           onRefresh: expect.any(Function),
         })
+      })
+    })
+
+    it('should update local draft state with the published workflow after canceling changes', async () => {
+      const latestDraftNode = {
+        id: 'latest-draft-node',
+        position: { x: 10, y: 20 },
+        data: { type: BlockEnum.Code, title: 'Latest draft node' },
+      } as WorkflowProps['nodes'][number]
+      const publishedNode = {
+        id: 'published-node',
+        position: { x: 30, y: 40 },
+        data: { type: BlockEnum.Code, title: 'Published node' },
+      } as WorkflowProps['nodes'][number]
+      const publishedWorkflow = {
+        graph: {
+          nodes: [publishedNode],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        input_fields: payload.inputFields,
+      }
+      mockUseSnippetPublishedWorkflow.mockReturnValue({
+        data: publishedWorkflow,
+        refetch: vi.fn(),
+      })
+      mockDoSyncWorkflowDraft.mockResolvedValueOnce({
+        graph: {
+          nodes: [latestDraftNode],
+          edges: [],
+          viewport: { x: 30, y: 40, zoom: 1.2 },
+        },
+        input_fields: payload.inputFields,
+      })
+      renderSnippetMain({ hasInitialDraftChanges: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'exit without save' }))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+      await waitFor(() => {
+        expect(capturedWorkflowNodes?.map(node => node.id)).toContain('latest-draft-node')
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
+
+      await waitFor(() => {
+        expect(capturedWorkflowNodes?.map(node => node.id)).toContain('published-node')
       })
     })
   })

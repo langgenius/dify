@@ -56,12 +56,13 @@ type SnippetMainContentProps = {
   canDiscardChanges: boolean
   hasDraftChanges: boolean
   isEditing: boolean
+  onBeforePublish: () => Promise<Omit<SnippetDraftSyncPayload, 'hash'> | void>
   onCancel: () => void | Promise<void>
   onDiscardRoute: () => void | Promise<void>
   onEdit: () => void
   onExitEditing: () => void | Promise<void>
   onExitEditingWithoutSave: () => void | Promise<void>
-  onSaved: () => void
+  onSaved: (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => void
   onSavedAndExitEditing: () => void
 }
 
@@ -84,6 +85,7 @@ const SnippetMainContent = ({
   canDiscardChanges,
   hasDraftChanges,
   isEditing,
+  onBeforePublish,
   onCancel,
   onDiscardRoute,
   onEdit,
@@ -102,12 +104,16 @@ const SnippetMainContent = ({
   })
 
   const handlePublishSnippet = useCallback(async () => {
+    const syncedDraftPayload = await onBeforePublish()
+    if (!syncedDraftPayload)
+      return false
+
     const didSave = await handlePublish()
     if (didSave)
-      onSaved()
+      onSaved(syncedDraftPayload)
 
     return didSave
-  }, [handlePublish, onSaved])
+  }, [handlePublish, onBeforePublish, onSaved])
 
   const handleSaveAndExitEditing = useCallback(async () => {
     const didSave = await handlePublishSnippet()
@@ -397,23 +403,6 @@ const SnippetMain = ({
     return syncWorkflowDraft(...args)
   }, [isEditing, setHasDraftChanges, syncWorkflowDraft])
 
-  const handleCancelChanges = useCallback(async () => {
-    const workflow = publishedWorkflow ?? (await refetchPublishedWorkflow()).data
-    if (!workflow)
-      return
-
-    handleRestoreFromPublishedWorkflow(workflow as never)
-
-    const publishedInputFields = Array.isArray(workflow.input_fields)
-      ? workflow.input_fields as SnippetInputField[]
-      : []
-    setFields(publishedInputFields)
-    void syncInputFieldsDraft(publishedInputFields, {
-      onRefresh: setFields,
-    })
-    setHasDraftChanges(false)
-  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, setHasDraftChanges, syncInputFieldsDraft])
-
   const handleFieldsChangeInEditing = useCallback((nextFields: SnippetInputField[]) => {
     handleFieldsChange(nextFields)
     setHasDraftChanges(true)
@@ -450,6 +439,26 @@ const SnippetMain = ({
     })
     setFields(inputFields)
   }, [draftPayload, fields, setFields])
+
+  const handleCancelChanges = useCallback(async () => {
+    const workflow = publishedWorkflow ?? (await refetchPublishedWorkflow()).data
+    if (!workflow)
+      return
+
+    handleRestoreFromPublishedWorkflow(workflow as never)
+
+    const publishedInputFields = Array.isArray(workflow.input_fields)
+      ? workflow.input_fields as SnippetInputField[]
+      : []
+    updateLocalDraftFromSyncPayload({
+      graph: workflow.graph,
+      input_fields: publishedInputFields,
+    })
+    void syncInputFieldsDraft(publishedInputFields, {
+      onRefresh: setFields,
+    })
+    setHasDraftChanges(false)
+  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, setHasDraftChanges, syncInputFieldsDraft, updateLocalDraftFromSyncPayload])
 
   const handleExitEditing = useCallback(async () => {
     if (hasDraftChanges)
@@ -560,12 +569,16 @@ const SnippetMain = ({
             canDiscardChanges={hasPublishedWorkflow}
             hasDraftChanges={hasDraftChanges}
             isEditing={isEditing}
+            onBeforePublish={() => syncWorkflowDraft(true)}
             onCancel={handleCancelChanges}
             onDiscardRoute={handleDiscardAndRoute}
             onEdit={handleEdit}
             onExitEditing={handleExitEditing}
             onExitEditingWithoutSave={handleExitEditingWithoutSave}
-            onSaved={() => setHasDraftChanges(false)}
+            onSaved={(syncedDraftPayload) => {
+              updateLocalDraftFromSyncPayload(syncedDraftPayload)
+              setHasDraftChanges(false)
+            }}
             onSavedAndExitEditing={() => {
               setHasDraftChanges(false)
               setIsEditing(false)
