@@ -206,6 +206,11 @@ class PluginListResponse(BaseModel):
     total: int
 
 
+class PluginListWithoutTotalResponse(BaseModel):
+    list: list[PluginEntity]
+    has_more: bool
+
+
 class PluginDynamicSelectOptionsResponse(BaseModel):
     options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")
 

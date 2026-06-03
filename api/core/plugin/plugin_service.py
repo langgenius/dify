@@ -23,6 +23,7 @@ from core.helper.marketplace import download_plugin_pkg
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
+    PluginCategory,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -33,6 +34,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTask,
     PluginInstallTaskStatus,
     PluginListResponse,
+    PluginListWithoutTotalResponse,
     PluginModelProviderEntity,
     PluginVerification,
 )
@@ -294,6 +296,19 @@ class PluginService:
         manager = PluginInstaller()
         plugins = manager.list_plugins_with_total(tenant_id, page, page_size)
         return plugins
+
+    @staticmethod
+    def list_by_category(
+        tenant_id: str, category: PluginCategory, page: int, page_size: int
+    ) -> PluginListWithoutTotalResponse:
+        """
+        List plugins in one category with a has-more cursor signal and without calculating total.
+
+        The daemon scans tenant installations in the existing list order and stops once it finds one extra match.
+        This keeps pagination usable before category is persisted on installation rows.
+        """
+        manager = PluginInstaller()
+        return manager.list_plugins_by_category(tenant_id, category, page, page_size)
 
     @staticmethod
     def list_installations_from_ids(tenant_id: str, ids: Sequence[str]) -> Sequence[PluginInstallation]:

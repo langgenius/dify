@@ -19,6 +19,7 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from core.plugin.entities.plugin import PluginCategory
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from fields.base import ResponseModel
@@ -300,6 +301,29 @@ class PluginListApi(Resource):
             return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
+
+
+@console_ns.route("/workspaces/current/plugin/<string:category>/list")
+class PluginCategoryListApi(Resource):
+    @console_ns.expect(console_ns.models[ParserList.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, category: str):
+        _, tenant_id = current_account_with_tenant()
+        args = ParserList.model_validate(request.args.to_dict(flat=True))
+
+        try:
+            plugin_category = PluginCategory(category)
+        except ValueError:
+            return {"code": "invalid_param", "message": "invalid plugin category"}, 400
+
+        try:
+            plugins = PluginService.list_by_category(tenant_id, plugin_category, args.page, args.page_size)
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return jsonable_encoder({"plugins": plugins.list, "has_more": plugins.has_more})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
