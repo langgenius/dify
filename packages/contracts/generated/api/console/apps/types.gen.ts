@@ -219,6 +219,20 @@ export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
+export type WorkspaceListResponse = {
+  entries?: Array<WorkspaceFileEntryResponse>
+  path: string
+  truncated?: boolean
+}
+
+export type WorkspacePreviewResponse = {
+  binary: boolean
+  path: string
+  size: number
+  text?: string | null
+  truncated: boolean
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -1134,6 +1148,13 @@ export type AgentReferencingWorkflowResponse = {
   app_name: string
   node_ids?: Array<string>
   workflow_id: string
+}
+
+export type WorkspaceFileEntryResponse = {
+  mtime: number
+  name: string
+  size: number
+  type: 'dir' | 'file' | 'symlink'
 }
 
 export type AnnotationHitHistory = {
@@ -2449,6 +2470,72 @@ export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
 
 export type GetAppsByAppIdAgentReferencingWorkflowsResponse
   = GetAppsByAppIdAgentReferencingWorkflowsResponses[keyof GetAppsByAppIdAgentReferencingWorkflowsResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    conversation_id: string
+    path?: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesResponses = {
+  200: WorkspaceListResponse
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesResponse
+  = GetAppsByAppIdAgentWorkspaceFilesResponses[keyof GetAppsByAppIdAgentWorkspaceFilesResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    conversation_id: string
+    path: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files/download'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadErrors = {
+  413: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadError
+  = GetAppsByAppIdAgentWorkspaceFilesDownloadErrors[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadErrors]
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponses = {
+  200: Blob | File
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponse
+  = GetAppsByAppIdAgentWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    conversation_id: string
+    path: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files/preview'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponses = {
+  200: WorkspacePreviewResponse
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponse
+  = GetAppsByAppIdAgentWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdAgentWorkspaceFilesPreviewResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
@@ -4227,6 +4314,82 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
   = GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query?: {
+    node_execution_id?: string
+    path?: string
+  }
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files'
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses = {
+  200: WorkspaceListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadData
+  = {
+    body?: never
+    path: {
+      app_id: string
+      node_id: string
+      workflow_run_id: string
+    }
+    query: {
+      node_execution_id?: string
+      path: string
+    }
+    url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/download'
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors
+  = {
+    413: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadError
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses
+  = {
+    200: Blob | File
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses]
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query: {
+    node_execution_id?: string
+    path: string
+  }
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/preview'
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses
+  = {
+    200: WorkspacePreviewResponse
+  }
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never

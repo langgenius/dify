@@ -8,7 +8,14 @@ import pytest
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from agenton.layers import LifecycleState
-from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.shell import (
+    DIFY_SHELL_LAYER_TYPE_ID,
+    DifyShellCliToolConfig,
+    DifyShellEnvVarConfig,
+    DifyShellLayerConfig,
+    DifyShellSandboxConfig,
+    DifyShellSecretRefConfig,
+)
 from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState, ShellctlClientFactory
 from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
@@ -180,9 +187,11 @@ class FakeShellctlClient:
         self.events.append(("close", "client"))
 
 
-def _shell_layer(*, client_factory: ShellctlClientFactory) -> DifyShellLayer:
+def _shell_layer(
+    *, client_factory: ShellctlClientFactory, config: DifyShellLayerConfig | None = None
+) -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(),
+        config or DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=client_factory,
     )
@@ -378,9 +387,51 @@ def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising
     assert client.closed is True
 
 
+def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(time, "time", lambda: 0xABC12)
+    monkeypatch.setattr(secrets, "token_hex", lambda _nbytes: "ff")
+
+    def run_handler(script: str, cwd: str | None, timeout: float) -> JobResult:
+        if cwd is None:
+            assert timeout == 30.0
+            return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+        assert cwd == "~/workspace/abc12ff"
+        assert "export PROJECT_NAME='demo project'" in script
+        assert "export QUOTED='it'\\''s ok'" in script
+        assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
+        assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
+        assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
+        assert "apt-get install -y ripgrep" in script
+        return _job_result("bootstrap-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = _shell_layer(
+        client_factory=lambda _entrypoint: client,
+        config=DifyShellLayerConfig(
+            cli_tools=[DifyShellCliToolConfig(name="ripgrep", install_commands=["apt-get install -y ripgrep"])],
+            env=[
+                DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project"),
+                DifyShellEnvVarConfig(name="QUOTED", value="it's ok"),
+            ],
+            secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="secret-1")],
+            sandbox=DifyShellSandboxConfig(provider="independent", config={"cpu": 2}),
+        ),
+    )
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            await layer.on_context_create()
+
+    asyncio.run(scenario())
+
+    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
+    assert layer.runtime_state.job_ids == ["mkdir-job", "bootstrap-job"]
+
+
 def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -> None:
     def run_handler(script: str, cwd: str | None, timeout: float) -> JobResult:
-        assert script == "pwd"
+        assert script.endswith("\npwd")
+        assert '. ".dify/env.sh"' in script
         assert cwd == "~/workspace/abc12ff"
         assert timeout == 2.5
         return _job_result(
@@ -441,24 +492,24 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
-            run_tool_def = await tools["shell.run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-            wait_tool_def = await tools["shell.wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-            input_tool_def = await tools["shell.input"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-            interrupt_tool_def = await tools["shell.interrupt"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            run_tool_def = await tools["shell_run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            wait_tool_def = await tools["shell_wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            input_tool_def = await tools["shell_input"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
+            interrupt_tool_def = await tools["shell_interrupt"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
 
-            run_result = await tools["shell.run"].function_schema.call(
+            run_result = await tools["shell_run"].function_schema.call(
                 {"script": "pwd", "timeout": 2.5},
                 None,  # pyright: ignore[reportArgumentType]
             )
-            wait_result = await tools["shell.wait"].function_schema.call(
+            wait_result = await tools["shell_wait"].function_schema.call(
                 {"job_id": "user-job", "timeout": 4.0},
                 None,  # pyright: ignore[reportArgumentType]
             )
-            input_result = await tools["shell.input"].function_schema.call(
+            input_result = await tools["shell_input"].function_schema.call(
                 {"job_id": "user-job", "text": "ls\n", "timeout": 5.0},
                 None,  # pyright: ignore[reportArgumentType]
             )
-            interrupt_result = await tools["shell.interrupt"].function_schema.call(
+            interrupt_result = await tools["shell_interrupt"].function_schema.call(
                 {"job_id": "user-job", "grace_seconds": 1.5},
                 None,  # pyright: ignore[reportArgumentType]
             )
@@ -471,7 +522,7 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
             assert "offset" not in wait_tool_def.parameters_json_schema.get("properties", {})
             assert "offset" not in input_tool_def.parameters_json_schema.get("properties", {})
             assert "offset" not in interrupt_tool_def.parameters_json_schema.get("properties", {})
-            assert set(tools) == {"shell.run", "shell.wait", "shell.input", "shell.interrupt"}
+            assert set(tools) == {"shell_run", "shell_wait", "shell_input", "shell_interrupt"}
             assert run_result["job_id"] == "user-job"
             assert run_result["offset"] == 10
             assert wait_result["offset"] == 18
@@ -501,15 +552,15 @@ def test_shell_layer_tools_reject_untracked_job_ids_without_shellctl_calls() -> 
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
-            wait_result = await tools["shell.wait"].function_schema.call(
+            wait_result = await tools["shell_wait"].function_schema.call(
                 {"job_id": "missing-job"},
                 None,  # pyright: ignore[reportArgumentType]
             )
-            input_result = await tools["shell.input"].function_schema.call(
+            input_result = await tools["shell_input"].function_schema.call(
                 {"job_id": "missing-job", "text": "hello"},
                 None,  # pyright: ignore[reportArgumentType]
             )
-            interrupt_result = await tools["shell.interrupt"].function_schema.call(
+            interrupt_result = await tools["shell_interrupt"].function_schema.call(
                 {"job_id": "missing-job"},
                 None,  # pyright: ignore[reportArgumentType]
             )
@@ -535,7 +586,7 @@ def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_contex
         with pytest.raises(RuntimeError, match="resource_context"):
             await layer.on_context_suspend()
 
-        run_result = await tools["shell.run"].function_schema.call(
+        run_result = await tools["shell_run"].function_schema.call(
             {"script": "pwd"},
             None,  # pyright: ignore[reportArgumentType]
         )
