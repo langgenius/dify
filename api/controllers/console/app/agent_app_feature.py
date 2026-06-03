@@ -18,9 +18,15 @@ from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_user,
+)
 from events.app_event import app_model_config_was_updated
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from models.model import App, AppMode
 from services.agent_app_feature_service import AgentAppFeatureConfigService
 
@@ -65,9 +71,9 @@ class AgentAppFeatureConfigResource(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT])
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         args = AgentAppFeaturesRequest.model_validate(console_ns.payload)
-        current_user, _ = current_account_with_tenant()
 
         new_app_model_config = AgentAppFeatureConfigService.update_features(
             app_model=app_model,
