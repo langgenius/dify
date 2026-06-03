@@ -281,7 +281,7 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert list(pipeline._dispatch_event(event)) == ["done"]
 
-    def test_handle_stop_event_yields_finish(self):
+    def test_handle_stop_event_yields_finish(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
@@ -291,6 +291,17 @@ class TestWorkflowGenerateTaskPipeline:
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
+
+        @contextmanager
+        def _fake_session():
+            class FakeSession:
+                def scalar(self, stmt):
+                    return None
+                def commit(self):
+                    pass
+            yield FakeSession()
+
+        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
 
         responses = list(
             pipeline._handle_workflow_failed_and_stop_events(
