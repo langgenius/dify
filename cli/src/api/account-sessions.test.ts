@@ -2,7 +2,7 @@ import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '@/errors/base'
+import { isHttpClientError } from '@/errors/base'
 import { AccountSessionsClient } from './account-sessions.js'
 
 const LIST_BODY = { page: 1, limit: 100, total: 0, has_more: false, data: [] }
@@ -70,7 +70,7 @@ describe('AccountSessionsClient.revoke', () => {
       jsonResponder(404, { error: { code: 'not_found', message: 'session not found' } }, cap))
 
     await expect(makeClient(stub.url).revoke('missing')).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 404,
+      err => isHttpClientError(err) && err.httpStatus === 404,
     )
   })
 

@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net'
 import * as http from 'node:http'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { isBaseError } from '@/errors/base'
+import { isBaseError, isHttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { openAPIBase } from '@/util/host'
 import { createHttpClient } from './client.js'
@@ -116,8 +116,8 @@ describe('http client', () => {
       await client.get('workspaces')
     }
     catch (err) { caught = err }
-    expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught)) {
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught)) {
       expect(caught.code).toBe(ErrorCode.AuthExpired)
       expect(caught.httpStatus).toBe(401)
       expect(caught.method).toBe('GET')
@@ -138,8 +138,8 @@ describe('http client', () => {
       await client.get('workspaces')
     }
     catch (err) { caught = err }
-    expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught)) {
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught)) {
       expect(caught.code).toBe(ErrorCode.Server5xx)
       expect(caught.httpStatus).toBe(503)
     }
@@ -187,8 +187,8 @@ describe('http client', () => {
       await client.get('apps/nope/describe')
     }
     catch (err) { caught = err }
-    expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught))
       expect(caught.code).toBe(ErrorCode.Server4xxOther)
   })
 
@@ -205,8 +205,8 @@ describe('http client', () => {
       await client.get('workspaces')
     }
     catch (err) { caught = err }
-    expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught))
       expect(caught.httpStatus).toBe(429)
   })
 

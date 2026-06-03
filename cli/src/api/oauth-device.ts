@@ -1,5 +1,5 @@
 import type { HttpClient } from '@/http/types'
-import { BaseError } from '@/errors/base'
+import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_CLIENT_ID = 'difyctl'
@@ -80,7 +80,7 @@ export class DeviceFlowApi {
     if (res.status === 404)
       throw versionSkew()
     if (!res.ok) {
-      throw new BaseError({
+      throw new HttpClientError({
         code: ErrorCode.Server4xxOther,
         message: `device/code: HTTP ${res.status}`,
         httpStatus: res.status,
@@ -133,8 +133,8 @@ export class DeviceFlowApi {
   }
 }
 
-function versionSkew(): BaseError {
-  return new BaseError({
+function versionSkew(): HttpClientError {
+  return new HttpClientError({
     code: ErrorCode.UnsupportedEndpoint,
     message: 'this Dify host does not implement the OAuth device flow',
     httpStatus: 404,
