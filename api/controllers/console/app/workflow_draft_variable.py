@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, TypedDict
+from typing import Any, Concatenate, TypedDict
 from uuid import UUID
 
 from flask import Response, request
@@ -214,7 +214,9 @@ workflow_draft_variable_list_model = console_ns.model(
 )
 
 
-def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
+def _api_prerequisite[T, **P, R](
+    f: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -231,8 +233,8 @@ def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
-        return f(*args, **kwargs)
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+        return f(self, *args, **kwargs)
 
     return wrapper
 

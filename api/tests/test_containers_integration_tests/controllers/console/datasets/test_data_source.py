@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -19,31 +21,18 @@ from controllers.console.datasets.data_source import (
     DataSourceNotionPreviewApi,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import DataSourceOauthBinding
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from models import Account, DataSourceOauthBinding
 
 
 @pytest.fixture
-def tenant_ctx():
-    return (MagicMock(id="u1"), "tenant-1")
+def current_user() -> Account:
+    account = Account(name="Test User", email="u1@example.com")
+    account.id = "u1"
+    return account
 
 
 @pytest.fixture
-def patch_tenant(tenant_ctx):
-    with patch(
-        "controllers.console.datasets.data_source.current_account_with_tenant",
-        return_value=tenant_ctx,
-    ):
-        yield
-
-
-@pytest.fixture
-def mock_engine():
+def mock_engine() -> Iterator[None]:
     with patch.object(
         type(data_source.db),
         "engine",
@@ -55,12 +44,12 @@ def mock_engine():
 
 class TestDataSourceApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_get_success(self, app: Flask, patch_tenant):
+    def test_get_success(self, app: Flask) -> None:
         api = DataSourceApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         binding = DataSourceOauthBinding(
             tenant_id="tenant-1",
@@ -93,7 +82,7 @@ class TestDataSourceApi:
                 return_value=MagicMock(all=lambda: [binding]),
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
         assert response["data"][0] == {
@@ -120,9 +109,9 @@ class TestDataSourceApi:
             "link": "http://localhost/console/api/oauth/data-source/notion",
         }
 
-    def test_get_no_bindings(self, app: Flask, patch_tenant):
+    def test_get_no_bindings(self, app: Flask) -> None:
         api = DataSourceApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
@@ -131,14 +120,14 @@ class TestDataSourceApi:
                 return_value=MagicMock(all=lambda: []),
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
         assert response["data"] == []
 
-    def test_patch_enable_binding(self, app: Flask, patch_tenant, mock_engine):
+    def test_patch_enable_binding(self, app: Flask, mock_engine: None) -> None:
         api = DataSourceApi()
-        method = unwrap(api.patch)
+        method = inspect.unwrap(api.patch)
 
         binding = MagicMock(id="b1", disabled=True)
 
@@ -152,14 +141,14 @@ class TestDataSourceApi:
             mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
-            response, status = method(api, "b1", "enable")
+            response, status = method(api, "tenant-1", "b1", "enable")
 
         assert status == 200
         assert binding.disabled is False
 
-    def test_patch_disable_binding(self, app: Flask, patch_tenant, mock_engine):
+    def test_patch_disable_binding(self, app: Flask, mock_engine: None) -> None:
         api = DataSourceApi()
-        method = unwrap(api.patch)
+        method = inspect.unwrap(api.patch)
 
         binding = MagicMock(id="b1", disabled=False)
 
@@ -173,14 +162,14 @@ class TestDataSourceApi:
             mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
-            response, status = method(api, "b1", "disable")
+            response, status = method(api, "tenant-1", "b1", "disable")
 
         assert status == 200
         assert binding.disabled is True
 
-    def test_patch_binding_not_found(self, app: Flask, patch_tenant, mock_engine):
+    def test_patch_binding_not_found(self, app: Flask, mock_engine: None) -> None:
         api = DataSourceApi()
-        method = unwrap(api.patch)
+        method = inspect.unwrap(api.patch)
 
         with (
             app.test_request_context("/"),
@@ -191,11 +180,11 @@ class TestDataSourceApi:
             mock_session.execute.return_value.scalar_one_or_none.return_value = None
 
             with pytest.raises(NotFound):
-                method(api, "b1", "enable")
+                method(api, "tenant-1", "b1", "enable")
 
-    def test_patch_enable_already_enabled(self, app: Flask, patch_tenant, mock_engine):
+    def test_patch_enable_already_enabled(self, app: Flask, mock_engine: None) -> None:
         api = DataSourceApi()
-        method = unwrap(api.patch)
+        method = inspect.unwrap(api.patch)
 
         binding = MagicMock(id="b1", disabled=False)
 
@@ -208,11 +197,11 @@ class TestDataSourceApi:
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             with pytest.raises(ValueError):
-                method(api, "b1", "enable")
+                method(api, "tenant-1", "b1", "enable")
 
-    def test_patch_disable_already_disabled(self, app: Flask, patch_tenant, mock_engine):
+    def test_patch_disable_already_disabled(self, app: Flask, mock_engine: None) -> None:
         api = DataSourceApi()
-        method = unwrap(api.patch)
+        method = inspect.unwrap(api.patch)
 
         binding = MagicMock(id="b1", disabled=True)
 
@@ -225,17 +214,17 @@ class TestDataSourceApi:
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             with pytest.raises(ValueError):
-                method(api, "b1", "disable")
+                method(api, "tenant-1", "b1", "disable")
 
 
 class TestDataSourceNotionListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_get_credential_not_found(self, app: Flask, patch_tenant):
+    def test_get_credential_not_found(self, app: Flask, current_user: Account) -> None:
         api = DataSourceNotionListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/?credential_id=c1"),
@@ -245,11 +234,11 @@ class TestDataSourceNotionListApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api)
+                method(api, "tenant-1", current_user)
 
-    def test_get_success_no_dataset_id(self, app: Flask, patch_tenant, mock_engine):
+    def test_get_success_no_dataset_id(self, app: Flask, current_user: Account, mock_engine: None) -> None:
         api = DataSourceNotionListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         page = MagicMock(
             page_id="p1",
@@ -284,13 +273,13 @@ class TestDataSourceNotionListApi:
                 ),
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1", current_user)
 
         assert status == 200
 
-    def test_get_success_with_dataset_id(self, app: Flask, patch_tenant, mock_engine):
+    def test_get_success_with_dataset_id(self, app: Flask, current_user: Account, mock_engine: None) -> None:
         api = DataSourceNotionListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         page = MagicMock(
             page_id="p1",
@@ -337,13 +326,13 @@ class TestDataSourceNotionListApi:
             mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.scalars.return_value.all.return_value = [document]
 
-            response, status = method(api)
+            response, status = method(api, "tenant-1", current_user)
 
         assert status == 200
 
-    def test_get_invalid_dataset_type(self, app: Flask, patch_tenant, mock_engine):
+    def test_get_invalid_dataset_type(self, app: Flask, current_user: Account, mock_engine: None) -> None:
         api = DataSourceNotionListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         dataset = MagicMock(data_source_type="other_type")
 
@@ -360,17 +349,17 @@ class TestDataSourceNotionListApi:
             patch("controllers.console.datasets.data_source.sessionmaker"),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, "tenant-1", current_user)
 
 
 class TestDataSourceNotionPreviewApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_get_preview_success(self, app: Flask, patch_tenant):
+    def test_get_preview_success(self, app: Flask) -> None:
         api = DataSourceNotionPreviewApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         extractor = MagicMock(extract=lambda: [MagicMock(page_content="hello")])
 
@@ -385,21 +374,22 @@ class TestDataSourceNotionPreviewApi:
                 return_value=extractor,
             ),
         ):
-            response, status = method(api, "p1", "page")
+            response, status = method(api, "tenant-1", "p1", "page")
 
         assert status == 200
 
 
 class TestDataSourceNotionIndexingEstimateApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_post_indexing_estimate_success(self, app: Flask, patch_tenant):
+    def test_post_indexing_estimate_success(self, app: Flask) -> None:
         api = DataSourceNotionIndexingEstimateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
-        payload = {
+        empty_rules: dict[str, object] = {}
+        payload: dict[str, object] = {
             "notion_info_list": [
                 {
                     "workspace_id": "w1",
@@ -407,7 +397,7 @@ class TestDataSourceNotionIndexingEstimateApi:
                     "pages": [{"page_id": "p1", "type": "page"}],
                 }
             ],
-            "process_rule": {"rules": {}},
+            "process_rule": {"rules": empty_rules},
             "doc_form": IndexStructureType.PARAGRAPH_INDEX,
             "doc_language": "English",
         }
@@ -422,19 +412,19 @@ class TestDataSourceNotionIndexingEstimateApi:
                 return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, "tenant-1")
 
         assert status == 200
 
 
 class TestDataSourceNotionDatasetSyncApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_get_success(self, app: Flask, patch_tenant):
+    def test_get_success(self, app: Flask) -> None:
         api = DataSourceNotionDatasetSyncApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
@@ -455,9 +445,9 @@ class TestDataSourceNotionDatasetSyncApi:
 
         assert status == 200
 
-    def test_get_dataset_not_found(self, app: Flask, patch_tenant):
+    def test_get_dataset_not_found(self, app: Flask) -> None:
         api = DataSourceNotionDatasetSyncApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
@@ -472,12 +462,12 @@ class TestDataSourceNotionDatasetSyncApi:
 
 class TestDataSourceNotionDocumentSyncApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_get_success(self, app: Flask, patch_tenant):
+    def test_get_success(self, app: Flask) -> None:
         api = DataSourceNotionDocumentSyncApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
@@ -498,9 +488,9 @@ class TestDataSourceNotionDocumentSyncApi:
 
         assert status == 200
 
-    def test_get_document_not_found(self, app: Flask, patch_tenant):
+    def test_get_document_not_found(self, app: Flask) -> None:
         api = DataSourceNotionDocumentSyncApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
