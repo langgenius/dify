@@ -23,8 +23,8 @@ type WorkflowGeneratorStore = {
  * to a different intent and confusingly leak across opens.
  *
  * Studio-refine sessions (``currentAppId`` set) keep their history so the
- * user can close and reopen the toolbar Generate button without losing the
- * versions they were comparing.
+ * user can close and reopen the generator from the same Studio without losing
+ * the versions they were comparing.
  */
 const resetNewAppHistory = (mode: WorkflowGeneratorMode) => {
   if (typeof window === 'undefined')

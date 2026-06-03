@@ -16,6 +16,18 @@ vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
   },
 }))
 
+// Controllable app-store state — the handler reads `appDetail` to decide
+// whether to thread the current Studio app through to the generator. Mutated
+// per-test; getState() reads it lazily so updates land after the mock factory.
+const mockAppStore: { appDetail: { id: string, mode: string } | undefined } = {
+  appDetail: undefined,
+}
+vi.mock('@/app/components/app/store', () => ({
+  useStore: {
+    getState: () => ({ appDetail: mockAppStore.appDetail }),
+  },
+}))
+
 describe('/create slash command', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -58,8 +70,10 @@ describe('/create slash command', () => {
 
   describe('register() — `create.open` command-bus handler', () => {
     // Register populates the global command bus; tests below rely on it so we
-    // run it once per case and clean up via the symmetric unregister().
+    // run it once per case and clean up via the symmetric unregister(). Reset
+    // the app-store state so each case controls its own Studio context.
     beforeEach(() => {
+      mockAppStore.appDetail = undefined
       createCommand.register?.({} as never)
     })
 
@@ -67,28 +81,48 @@ describe('/create slash command', () => {
       createCommand.unregister?.()
     })
 
-    // /create is scoped to new-app creation — it MUST always open the modal
-    // with just the requested mode, never with currentAppId. Refining the
-    // current Studio draft is handled by the Studio toolbar button instead.
-    it('should open the generator with only the requested mode (no current-app context)', async () => {
+    // No Studio app open (e.g. /create from the apps list) — the modal opens
+    // for new-app creation only, with just the requested mode.
+    it('should open the generator with only the requested mode when no Studio app is open', async () => {
       await executeCommand('create.open', { mode: 'workflow' })
 
       expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow' })
     })
 
-    // Critical guarantee: even when invoked from a workflow Studio URL, the
-    // handler must NOT sniff the URL to inject currentAppId — that branch
-    // produced a mode-mismatch dead-end when the user picked the "wrong"
-    // mode from the submenu while inside Studio.
-    it('should NOT capture currentAppId even when invoked from a Studio URL', async () => {
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { pathname: '/app/abc-123/workflow' },
+    // In-Studio create-and-apply: when a graph-based app is open and its mode
+    // matches the picked mode, the handler threads id + mode through so the
+    // modal can offer "Apply to current draft".
+    it('should thread the current app context when a matching Studio app is open', async () => {
+      mockAppStore.appDetail = { id: 'abc-123', mode: 'workflow' }
+
+      await executeCommand('create.open', { mode: 'workflow' })
+
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'workflow',
+        currentAppId: 'abc-123',
+        currentAppMode: 'workflow',
       })
+    })
+
+    // Mode mismatch (Workflow Studio open, but the user picked Chatflow) must
+    // NOT capture currentAppId — applying a chatflow graph onto a workflow
+    // draft is the dead-end we explicitly avoid, so it stays new-app only.
+    it('should fall back to new-app only when the picked mode differs from the open app', async () => {
+      mockAppStore.appDetail = { id: 'abc-123', mode: 'workflow' }
 
       await executeCommand('create.open', { mode: 'advanced-chat' })
 
       expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'advanced-chat' })
+    })
+
+    // Non-graph Studio apps (Chat / Agent / Completion) have no canvas to
+    // apply onto, so the handler ignores them and opens new-app only.
+    it('should ignore non-graph app modes and open new-app only', async () => {
+      mockAppStore.appDetail = { id: 'abc-123', mode: 'chat' }
+
+      await executeCommand('create.open', { mode: 'workflow' })
+
+      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow' })
     })
 
     // Defensive fallback: if a caller forgets to pass a mode (or passes none),

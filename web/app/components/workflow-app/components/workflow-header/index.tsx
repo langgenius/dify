@@ -11,7 +11,6 @@ import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
-import GenerateTrigger from './generate-trigger'
 
 const WorkflowHeader = () => {
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
@@ -38,12 +37,7 @@ const WorkflowHeader = () => {
     return {
       normal: {
         components: {
-          middle: (
-            <div className="flex items-center gap-2">
-              <GenerateTrigger />
-              <FeaturesTrigger />
-            </div>
-          ),
+          middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
         },
         runAndHistoryProps: {

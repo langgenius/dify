@@ -2,7 +2,9 @@ import type { SlashCommandHandler } from './types'
 import type { WorkflowGeneratorMode } from '@/app/components/workflow/workflow-generator/types'
 import { RiChat3Line, RiNodeTree } from '@remixicon/react'
 import * as React from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
+import { AppModeEnum } from '@/types/app'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 type CreateOption = {
@@ -31,16 +33,19 @@ const OPTIONS: CreateOption[] = [
 ]
 
 /**
- * `/create` command — generate a brand-new Workflow or Chatflow app from a
+ * `/create` command — generate a Workflow or Chatflow app from a
  * natural-language description.
  *
- * This command is scoped to NEW-app creation only. Refining the current
- * Studio draft is handled by the toolbar button in
- * ``components/workflow-app/components/workflow-header/generate-trigger.tsx``,
- * which opens the same modal with the app's real mode locked + currentAppId
- * set. Keeping the two journeys separate avoids the mode-mismatch dead-end
- * the URL-sniffing approach used to produce when /create was triggered from
- * a Workflow Studio page with the "wrong" mode picked.
+ * The user-picked mode is passed through to the generator modal explicitly
+ * rather than sniffed from the URL, which avoids the mode-mismatch dead-end
+ * the URL-sniffing approach used to produce.
+ *
+ * When triggered from inside a graph-based Studio (Workflow / Advanced-Chat)
+ * whose app mode matches the picked mode, it threads the current app (id +
+ * mode) through so the modal offers "Apply to current draft" — this is the
+ * in-Studio create-and-apply journey that replaced the old toolbar button.
+ * With no Studio app open, or when the picked mode differs from the open
+ * app's mode, it falls back to new-app creation only.
  */
 export const createCommand: SlashCommandHandler = {
   name: 'create',
@@ -71,7 +76,28 @@ export const createCommand: SlashCommandHandler = {
     registerCommands({
       'create.open': async (args) => {
         const mode: WorkflowGeneratorMode = (args?.mode ?? 'workflow') as WorkflowGeneratorMode
-        // No currentAppId / currentAppMode — /create is new-app only.
+
+        // If a graph-based Studio app is open and its mode matches the picked
+        // mode, thread it through so the modal can offer "Apply to current
+        // draft". A mode mismatch (or no app open) falls back to new-app only,
+        // mirroring the precondition the modal uses for canApplyToCurrent.
+        const appDetail = useAppStore.getState().appDetail
+        const currentAppMode: WorkflowGeneratorMode | null
+          = appDetail?.mode === AppModeEnum.WORKFLOW
+            ? 'workflow'
+            : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+              ? 'advanced-chat'
+              : null
+
+        if (appDetail && currentAppMode === mode) {
+          useWorkflowGeneratorStore.getState().openGenerator({
+            mode,
+            currentAppId: appDetail.id,
+            currentAppMode,
+          })
+          return
+        }
+
         useWorkflowGeneratorStore.getState().openGenerator({ mode })
       },
     })
