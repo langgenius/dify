@@ -1072,7 +1072,7 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AgentAppFeaturesRequest](#agentappfeaturesrequest) |
+| payload | body |  | Yes | [AgentAppFeaturesPayload](#agentappfeaturespayload) |
 | app_id | path | Application ID | Yes | string |
 
 ##### Responses
@@ -10769,7 +10769,7 @@ Get banner list
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | variant | string |  | Yes |
 
-#### AgentAppFeaturesRequest
+#### AgentAppFeaturesPayload
 
 Presentation features configurable on an Agent App.
 
