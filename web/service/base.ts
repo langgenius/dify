@@ -33,6 +33,7 @@ import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
 import { basePath } from '@/utils/var'
+import { consoleApiV2Prefix } from './console-api-v2'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
@@ -93,6 +94,7 @@ export type IOtherOptions = {
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   request?: Request
+  apiPrefixOverride?: string
 
   onData?: IOnData // for stream
   onThought?: IOnThought
@@ -852,6 +854,14 @@ export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
   return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
 
+export const getConsoleV2 = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(
+    url,
+    Object.assign({}, options, { method: 'GET' }),
+    { ...otherOptions, apiPrefixOverride: consoleApiV2Prefix() },
+  )
+}
+
 // For public API
 export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
@@ -870,6 +880,14 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
  */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
+}
+
+export const postConsoleV2 = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(
+    url,
+    Object.assign({}, options, { method: 'POST' }),
+    { ...otherOptions, apiPrefixOverride: consoleApiV2Prefix() },
+  )
 }
 
 // For Marketplace API

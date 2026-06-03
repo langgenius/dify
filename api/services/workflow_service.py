@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import event, exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -42,6 +42,7 @@ from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
@@ -74,6 +75,7 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.errors.app import (
@@ -103,13 +105,35 @@ class WorkflowService:
     Workflow Service
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    _node_execution_service_repo: DifyAPIWorkflowNodeExecutionRepository
+    _session: Session | None
+
+    def __init__(self, session_maker: sessionmaker[Session] | None = None, *, session: Session | None = None):
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._session = session
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
+
+    @classmethod
+    def from_session(cls, session: Session) -> "WorkflowService":
+        """Create a service instance bound to the caller-owned database session.
+
+        Use this when the caller owns the SQLAlchemy transaction. New methods
+        that are designed for caller-owned transactions read this stored
+        session instead of accepting another ``session`` argument.
+        """
+
+        return cls(sessionmaker(bind=session.get_bind(), expire_on_commit=False), session=session)
+
+    def _require_session(self) -> Session:
+        """Return the caller-owned session configured through ``from_session``."""
+
+        if self._session is None:
+            raise RuntimeError("WorkflowService.from_session(...) is required for this operation.")
+        return self._session
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
         """
@@ -146,9 +170,8 @@ class WorkflowService:
         """
         Get draft workflow
 
-        When ``session`` is provided, reuse it so callers that already hold a
-        Session avoid checking out an extra request-scoped ``db.session``
-        connection. Falls back to ``db.session`` for backward compatibility.
+        Pass ``session`` when the caller owns the transaction. Omit it only for
+        callers that intentionally use the configured default database session.
         """
         if workflow_id:
             return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
@@ -173,9 +196,8 @@ class WorkflowService:
         """
         fetch published workflow by workflow_id
 
-        When ``session`` is provided, reuse it so callers that already hold a
-        Session avoid checking out an extra request-scoped ``db.session``
-        connection. Falls back to ``db.session`` for backward compatibility.
+        Pass ``session`` when the caller owns the transaction. Omit it only for
+        callers that intentionally use the configured default database session.
         """
         bind = session if session is not None else db.session
         workflow = bind.scalar(
@@ -200,9 +222,8 @@ class WorkflowService:
         """
         Get published workflow
 
-        When ``session`` is provided, reuse it so callers that already hold a
-        Session avoid checking out an extra request-scoped ``db.session``
-        connection. Falls back to ``db.session`` for backward compatibility.
+        Pass ``session`` when the caller owns the transaction. Omit it only for
+        callers that intentionally use the configured default database session.
         """
 
         if not app_model.workflow_id:
@@ -230,6 +251,33 @@ class WorkflowService:
 
         stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
         return {str(app_id) for app_id in db.session.scalars(stmt).all()}
+
+    def get_tenant_scoped_workflow_app(
+        self,
+        *,
+        session: Session,
+        app_id: str,
+        tenant_id: str,
+        modes: Sequence[AppMode] = (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW),
+    ) -> App | None:
+        """Load an editable workflow-bearing app inside the caller's tenant.
+
+        Return ``None`` for missing, archived, other-tenant, or unsupported-mode
+        apps so callers can respond with a single not-found error. Permission
+        checks stay outside this method because they depend on the authenticated
+        account's workspace role rather than the app row.
+        """
+
+        return session.scalar(
+            select(App)
+            .where(
+                App.id == app_id,
+                App.tenant_id == tenant_id,
+                App.status == "normal",
+                App.mode.in_(modes),
+            )
+            .limit(1)
+        )
 
     def get_all_published_workflow(
         self,
@@ -280,50 +328,24 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
     ) -> Workflow:
-        """
-        Sync draft workflow
+        """Sync draft workflow through the default service transaction contract.
+
+        Owns ``db.session`` commit and draft-synced signal emission. Call
+        ``sync_draft_workflow_with_session`` from a service created with
+        ``from_session`` when the caller owns the session.
+
         :raises WorkflowHashNotEqualError
         """
-        # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model)
-
-        if workflow and workflow.unique_hash != unique_hash:
-            raise WorkflowHashNotEqualError()
-
-        # validate features structure
-        self.validate_features_structure(app_model=app_model, features=features)
-
-        # validate graph structure
-        self.validate_graph_structure(graph=graph)
-
-        # create draft workflow if not found
-        if not workflow:
-            workflow = Workflow(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type=WorkflowType.from_app_mode(app_model.mode).value,
-                version=Workflow.VERSION_DRAFT,
-                graph=json.dumps(graph),
-                features=json.dumps(features),
-                created_by=account.id,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-            )
-            db.session.add(workflow)
-        # update draft workflow if found
-        else:
-            workflow.graph = json.dumps(graph)
-            workflow.features = json.dumps(features)
-            workflow.updated_by = account.id
-            workflow.updated_at = naive_utc_now()
-            workflow.environment_variables = environment_variables
-            workflow.conversation_variables = conversation_variables
-
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
-
-        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-            session=cast(Session, db.session),
-            draft_workflow=workflow,
+        session = cast(Session, db.session)
+        workflow = self._upsert_draft_workflow(
+            session=session,
+            app_model=app_model,
+            graph=graph,
+            features=features,
+            unique_hash=unique_hash,
+            account_id=account.id,
+            environment_variables=environment_variables,
+            conversation_variables=conversation_variables,
         )
 
         # commit db session changes
@@ -334,6 +356,113 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
+
+    def sync_draft_workflow_with_session(
+        self,
+        *,
+        app_model: App,
+        graph: dict[str, Any],
+        features: dict[str, Any],
+        unique_hash: str | None,
+        account: Account,
+        environment_variable_mappings: Sequence[Mapping[str, Any]],
+        conversation_variable_mappings: Sequence[Mapping[str, Any]],
+    ) -> Workflow:
+        """Sync a draft workflow using a caller-owned SQLAlchemy session.
+
+        The service must be created with ``from_session``. The app must already
+        be loaded by the caller, and this method validates optimistic hash,
+        feature structure, graph structure, variable mappings, and agent-node
+        bindings before scheduling the collaboration sync signal for the
+        session's post-commit hook. If the request rolls back, the signal is
+        not emitted.
+
+        :raises WorkflowHashNotEqualError: if the stored draft hash differs from
+            the client hash.
+        """
+
+        session = self._require_session()
+        environment_variables = [
+            variable_factory.build_environment_variable_from_mapping(mapping)
+            for mapping in Workflow.normalize_environment_variable_mappings(environment_variable_mappings)
+        ]
+        conversation_variables = [
+            variable_factory.build_conversation_variable_from_mapping(mapping)
+            for mapping in conversation_variable_mappings
+        ]
+        workflow = self._upsert_draft_workflow(
+            session=session,
+            app_model=app_model,
+            graph=graph,
+            features=features,
+            unique_hash=unique_hash,
+            account_id=account.id,
+            environment_variables=environment_variables,
+            conversation_variables=conversation_variables,
+        )
+        self._send_draft_synced_after_commit(session=session, app_model=app_model, workflow=workflow)
+        return workflow
+
+    def _upsert_draft_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        graph: dict[str, Any],
+        features: dict[str, Any],
+        unique_hash: str | None,
+        account_id: str,
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
+    ) -> Workflow:
+        """Create or update the draft row after validating the canvas payload."""
+
+        workflow = self.get_draft_workflow(app_model=app_model, session=session)
+
+        if workflow and workflow.unique_hash != unique_hash:
+            raise WorkflowHashNotEqualError()
+
+        self.validate_features_structure(app_model=app_model, features=features)
+        self.validate_graph_structure(graph=graph)
+
+        if not workflow:
+            workflow = Workflow(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type=WorkflowType.from_app_mode(app_model.mode).value,
+                version=Workflow.VERSION_DRAFT,
+                graph=json.dumps(graph),
+                features=json.dumps(features),
+                created_by=account_id,
+            )
+            workflow.set_environment_variables(environment_variables, session=session)
+            workflow.conversation_variables = conversation_variables
+            session.add(workflow)
+        else:
+            workflow.graph = json.dumps(graph)
+            workflow.features = json.dumps(features)
+            workflow.updated_by = account_id
+            workflow.updated_at = naive_utc_now()
+            workflow.set_environment_variables(environment_variables, session=session)
+            workflow.conversation_variables = conversation_variables
+
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        session.flush()
+        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+            session=session,
+            draft_workflow=workflow,
+        )
+        return workflow
+
+    def _send_draft_synced_after_commit(self, *, session: Session, app_model: App, workflow: Workflow) -> None:
+        """Emit the draft-sync signal only after the caller's transaction commits."""
+
+        def send_signal(committed_session: Session) -> None:
+            if committed_session is session:
+                app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
+
+        event.listen(session, "after_commit", send_signal, once=True)
 
     def update_draft_workflow_environment_variables(
         self,

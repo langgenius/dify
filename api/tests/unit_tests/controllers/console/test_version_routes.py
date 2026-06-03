@@ -1,27 +1,23 @@
-import builtins
+"""Route tests for the console version endpoint."""
+
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from flask.views import MethodView
 
 from configs import dify_config
-from extensions import ext_fastopenapi
-
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+from controllers.console import bp as console_bp
 
 
 @pytest.fixture
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
     return app
 
 
-def test_console_version_fastopenapi_returns_current_version(app: Flask):
-    ext_fastopenapi.init_app(app)
-
+def test_console_version_returns_current_version(app: Flask):
     with patch("controllers.console.version.dify_config.CHECK_UPDATE_URL", None):
         client = app.test_client()
         response = client.get("/console/api/version", query_string={"current_version": "0.0.0"})

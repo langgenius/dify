@@ -19,6 +19,7 @@ export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
   'http://localhost:5001/console/api',
 )
+export const API_V2_PREFIX = env.NEXT_PUBLIC_API_V2_PREFIX?.replace(/\/+$/, '')
 export const PUBLIC_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
   'http://localhost:5001/api',

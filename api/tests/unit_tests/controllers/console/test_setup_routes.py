@@ -1,26 +1,23 @@
-import builtins
+"""Route tests for the console setup endpoints."""
+
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from flask.views import MethodView
 
-from extensions import ext_fastopenapi
-
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+from controllers.console import bp as console_bp
 
 
 @pytest.fixture
 def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.secret_key = "test-secret"
+    app.register_blueprint(console_bp)
     return app
 
 
-def test_console_setup_fastopenapi_get_not_started(app: Flask):
-    ext_fastopenapi.init_app(app)
-
+def test_console_setup_get_not_started(app: Flask):
     with (
         patch("controllers.console.setup.dify_config.EDITION", "SELF_HOSTED"),
         patch("controllers.console.setup.get_setup_status", return_value=None),
@@ -32,9 +29,7 @@ def test_console_setup_fastopenapi_get_not_started(app: Flask):
     assert response.get_json() == {"step": "not_started", "setup_at": None}
 
 
-def test_console_setup_fastopenapi_post_success(app: Flask):
-    ext_fastopenapi.init_app(app)
-
+def test_console_setup_post_success(app: Flask):
     payload = {
         "email": "admin@example.com",
         "name": "Admin",

@@ -2,7 +2,7 @@ import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
-import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
+import { apiURL, apiV2URL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
 import { resetState, startMiddleware, stopMiddleware } from './setup'
 
@@ -67,6 +67,14 @@ const main = async () => {
     logFilePath: path.join(logDir, 'cucumber-api.log'),
   })
 
+  const fastApiProcess = await startLoggedProcess({
+    command: 'npx',
+    args: ['tsx', './scripts/setup.ts', 'fastapi'],
+    cwd: e2eDir,
+    label: 'fastapi server',
+    logFilePath: path.join(logDir, 'cucumber-fastapi.log'),
+  })
+
   const celeryProcess = await startLoggedProcess({
     command: 'npx',
     args: ['tsx', './scripts/setup.ts', 'celery'],
@@ -81,6 +89,7 @@ const main = async () => {
       cleanupPromise = (async () => {
         await stopWebServer()
         await stopManagedProcess(celeryProcess)
+        await stopManagedProcess(fastApiProcess)
         await stopManagedProcess(apiProcess)
 
         if (startMiddlewareForRun) {
@@ -112,6 +121,13 @@ const main = async () => {
     }
     catch {
       throw new Error(`API did not become ready at ${apiURL}/health.`)
+    }
+
+    try {
+      await waitForUrl(`${apiV2URL}/system/health`, 180_000, 1_000)
+    }
+    catch {
+      throw new Error(`FastAPI did not become ready at ${apiV2URL}/system/health.`)
     }
 
     await startWebServer({

@@ -163,10 +163,13 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     getAbortController,
     fetchCompat = false,
     request,
+    apiPrefixOverride,
   } = otherOptions
 
   let base: string
-  if (isMarketplaceAPI)
+  if (apiPrefixOverride)
+    base = apiPrefixOverride
+  else if (isMarketplaceAPI)
     base = MARKETPLACE_API_PREFIX
   else if (isPublicAPI)
     base = PUBLIC_API_PREFIX

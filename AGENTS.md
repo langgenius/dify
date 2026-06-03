@@ -14,6 +14,8 @@ The codebase is split into:
 ## Backend Workflow
 
 - Read `api/AGENTS.md` for details
+- For FastAPI/API v2 work, also read `api/AGENTS_FastAPI.md` before editing `api/api_fastapi/**`,
+  `api/fastapi_app.py`, `api/tests_fastapi/**`, or frontend calls to `/api/v2/**`.
 - Run backend CLI commands through `uv run --project api <command>`.
 - Integration tests are CI-only and are not expected to run in the local environment.
 

@@ -114,6 +114,10 @@ test:
 			--ignore=api/tests/unit_tests/controllers; \
 		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
 			api/tests/unit_tests/controllers; \
+		echo "Running v2 FastAPI unit tests"; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
+			--cov-append \
+			api/tests_fastapi/unit_tests; \
 	fi
 	@echo "✅ Unit tests complete"
 
@@ -131,6 +135,10 @@ test-all:
 			--ignore=api/tests/unit_tests/controllers; \
 		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
 			api/tests/unit_tests/controllers; \
+		echo "Running v2 FastAPI unit tests"; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
+			--cov-append \
+			api/tests_fastapi/unit_tests; \
 		echo "Running backend integration tests"; \
 		uv run --project api --dev pytest -p no:benchmark --start-middleware -n auto \
 			--timeout "$${PYTEST_TIMEOUT:-180}" \
@@ -138,6 +146,11 @@ test-all:
 			api/tests/integration_tests/workflow \
 			api/tests/integration_tests/tools \
 			api/tests/test_containers_integration_tests; \
+		echo "Running v2 FastAPI integration tests"; \
+		uv run --project api --dev pytest -p no:benchmark -n auto \
+			--timeout "$${PYTEST_TIMEOUT:-180}" \
+			--cov-append \
+			api/tests_fastapi/integration_tests; \
 		echo "Running VDB smoke tests"; \
 		uv run --project api --dev pytest --start-vdb \
 			--timeout "$${PYTEST_TIMEOUT:-180}" \

@@ -39,6 +39,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_API_PREFIX: z.string().optional(),
   /**
+   * The standalone FastAPI/API v2 base URL. When unset, v2 requests derive from NEXT_PUBLIC_API_PREFIX.
+   */
+  NEXT_PUBLIC_API_V2_PREFIX: z.string().optional(),
+  /**
    * The base path for the application
    */
   NEXT_PUBLIC_BASE_PATH: z.string().regex(/^\/.*[^/]$/).or(z.literal('')).default(''),
@@ -182,6 +186,7 @@ export const env = createEnv({
     NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
     NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
+    NEXT_PUBLIC_API_V2_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_V2_PREFIX : getRuntimeEnvFromBody('apiV2Prefix'),
     NEXT_PUBLIC_BASE_PATH: isServer ? process.env.NEXT_PUBLIC_BASE_PATH : getRuntimeEnvFromBody('basePath'),
     NEXT_PUBLIC_BATCH_CONCURRENCY: isServer ? process.env.NEXT_PUBLIC_BATCH_CONCURRENCY : getRuntimeEnvFromBody('batchConcurrency'),
     NEXT_PUBLIC_COOKIE_DOMAIN: isServer ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN : getRuntimeEnvFromBody('cookieDomain'),
@@ -244,6 +249,13 @@ export const env = createEnv({
 type ClientEnvKey = keyof typeof clientSchema
 type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
 
+const clientEnvKeyToDatasetAttribute = (envKey: ClientEnvKey) => {
+  if (envKey === 'NEXT_PUBLIC_API_V2_PREFIX')
+    return 'data-api-v2-prefix'
+
+  return concat('data-', kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))))
+}
+
 /**
  * Browser-only function to get runtime env value from HTML body dataset.
  */
@@ -266,7 +278,7 @@ export function getDatasetMap() {
   return ObjectFromEntries(
     ObjectKeys(clientSchema)
       .map(envKey => [
-        concat('data-', kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX)))),
+        clientEnvKeyToDatasetAttribute(envKey),
         env[envKey],
       ]),
   )
