@@ -212,7 +212,7 @@ function PermissionSummaryButton({
       aria-label={t('access.permissions.editAriaLabel', { environment: environmentLabel })}
       onClick={onClick}
       className={cn(
-        'inline-flex h-8 w-full min-w-0 items-center gap-2 rounded-lg border border-components-input-border-active bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'inline-flex h-8 w-full min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
         disabled && 'cursor-not-allowed opacity-50 hover:bg-components-input-bg-normal',
       )}
     >
@@ -463,8 +463,8 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <DetailTableRow className="block h-auto pc:table-row pc:h-8">
-      <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
+    <DetailTableRow className="block h-auto pc:table-row">
+      <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 align-top pc:table-cell pc:p-3 pc:pr-2">
         <div className="system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.environment')}
         </div>
@@ -474,7 +474,7 @@ export function EnvironmentPermissionRow({
           </span>
         </div>
       </DetailTableCell>
-      <DetailTableCell className="block h-auto max-w-none px-4 py-1 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
+      <DetailTableCell className="block h-auto max-w-none px-4 py-1 align-top pc:table-cell pc:p-3 pc:pr-2">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
@@ -497,7 +497,7 @@ export function EnvironmentPermissionRow({
           />
         )}
       </DetailTableCell>
-      <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
+      <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:p-3 pc:pr-2">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.subjects')}
         </div>

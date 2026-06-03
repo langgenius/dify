@@ -18,8 +18,8 @@ function navItemFromListApp(app: AppInstance): NavItem[] {
     name: app.name,
     link: `/deployments/${app.id}/overview`,
     icon_type: 'emoji',
-    icon: '',
-    icon_background: null,
+    icon: '🚀',
+    icon_background: '#E0EAFF',
     icon_url: null,
   }]
 }
@@ -35,8 +35,8 @@ function navItemFromOverview(instance?: AppInstance): NavItem | undefined {
     name,
     link: `/deployments/${instance.id}/overview`,
     icon_type: 'emoji',
-    icon: '',
-    icon_background: null,
+    icon: '🚀',
+    icon_background: '#E0EAFF',
     icon_url: null,
   }
 }

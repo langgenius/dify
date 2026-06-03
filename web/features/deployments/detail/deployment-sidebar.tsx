@@ -5,17 +5,18 @@ import type { InstanceDetailTabKey } from './tabs'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
-import { useHover, useKeyPress, useLocalStorageState } from 'ahooks'
+import { useHover, useKeyPress } from 'ahooks'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
-import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { consoleQuery } from '@/service/client'
+import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
 
 type TabDef = {
@@ -63,12 +64,6 @@ function ApiIcon({ className }: TailwindNavIconProps) {
 function ApiSelectedIcon({ className }: TailwindNavIconProps) {
   return <span aria-hidden className={cn('i-ri-code-s-slash-fill', className)} />
 }
-function SettingsIcon({ className }: TailwindNavIconProps) {
-  return <span aria-hidden className={cn('i-ri-settings-3-line', className)} />
-}
-function SettingsSelectedIcon({ className }: TailwindNavIconProps) {
-  return <span aria-hidden className={cn('i-ri-settings-3-fill', className)} />
-}
 
 const TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
@@ -76,7 +71,6 @@ const TABS: TabDef[] = [
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
   { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon },
   { key: 'api-tokens', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
-  { key: 'settings', icon: SettingsIcon, selectedIcon: SettingsSelectedIcon },
 ]
 
 function isShortcutFromInputArea(target: EventTarget | null) {
@@ -89,9 +83,9 @@ function isShortcutFromInputArea(target: EventTarget | null) {
 }
 
 function useDeploymentSidebarMode(isMobile: boolean) {
-  const [persistedMode, setPersistedMode] = useLocalStorageState<DeploymentSidebarMode>(
+  const [persistedMode, setPersistedMode] = useLocalStorage<DeploymentSidebarMode>(
     DEPLOYMENT_SIDEBAR_MODE_KEY,
-    { defaultValue: 'expand' },
+    'expand',
   )
   const sidebarMode = isMobile ? 'collapse' : persistedMode ?? 'expand'
 
@@ -107,6 +101,21 @@ function useDeploymentSidebarMode(isMobile: boolean) {
 
 type DeploymentSidebarProps = {
   appInstanceId: string
+}
+
+function DeploymentIcon({ expand }: {
+  expand: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-text-primary-on-surface',
+        expand ? 'size-10' : 'size-8',
+      )}
+    >
+      <span aria-hidden className={cn('i-ri-rocket-fill', expand ? 'size-5' : 'size-4')} />
+    </div>
+  )
 }
 
 function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
@@ -161,22 +170,23 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
               )
             : (
                 <>
-                  <div className="flex items-center gap-1">
-                    <AppIcon
-                      size={expand ? 'large' : 'medium'}
-                      iconType="emoji"
-                      icon=""
-                      background={null}
-                    />
-                  </div>
+                  <DeploymentIcon expand={expand} />
                   {expand && (
-                    <div className="flex flex-col items-start gap-1">
-                      <div className="flex w-full">
-                        <TitleTooltip content={instanceName}>
-                          <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
-                            {instanceName}
-                          </div>
-                        </TitleTooltip>
+                    <div className="flex min-w-0 flex-col items-start gap-1">
+                      <div className="flex w-full min-w-0 items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <TitleTooltip content={instanceName}>
+                            <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
+                              {instanceName}
+                            </div>
+                          </TitleTooltip>
+                        </div>
+                        <DeploymentActionsMenu
+                          appInstanceId={appInstanceId}
+                          appName={instanceName}
+                          className="-mt-1 shrink-0"
+                          triggerClassName="bg-transparent shadow-none"
+                        />
                       </div>
                       {app.description && (
                         <TitleTooltip content={app.description}>

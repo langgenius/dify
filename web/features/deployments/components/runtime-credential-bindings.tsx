@@ -70,7 +70,7 @@ function RuntimeCredentialSelect({
       <SelectTrigger
         aria-label={ariaLabel}
         className={cn(
-          'h-8 min-w-0 border border-divider-subtle px-2 text-left system-sm-medium hover:border-components-input-border-hover focus:border-components-input-border-active',
+          'h-8 min-w-0 px-2 text-left system-sm-medium',
           !selectedOption && 'text-text-quaternary',
         )}
       >

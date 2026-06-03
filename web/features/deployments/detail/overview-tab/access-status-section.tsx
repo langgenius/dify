@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { DeploymentStatusBadge } from '../../deployment-ui'
 import { environmentId } from '../../environment'
 import { hasRuntimeInstanceDeployment } from '../../runtime-status'
 import { SectionState } from '../common'
-import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, OVERVIEW_STATUS_BADGE_CLASS_NAME } from './card-styles'
+import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 
 type AccessStatusSectionProps = {
   appInstanceId: string
@@ -85,23 +86,7 @@ export function AccessStatusSection({ appInstanceId, accessChannels }: AccessSta
                   {item.label}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <span
-                    className={cn(
-                      OVERVIEW_STATUS_BADGE_CLASS_NAME,
-                      item.enabled
-                        ? 'text-util-colors-green-green-700'
-                        : 'text-text-tertiary',
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'size-1.5 shrink-0 rounded-full',
-                        item.enabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
-                      )}
-                    />
-                    {item.enabled ? t('overview.enabled') : t('overview.disabled')}
-                  </span>
+                  <StatusBadge enabled={item.enabled} />
                   <span
                     aria-hidden
                     className="i-ri-arrow-right-line size-4 text-text-quaternary opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:translate-x-0.5 group-focus-visible:opacity-100"
@@ -209,23 +194,10 @@ function StatusBadge({ enabled }: {
   const { t } = useTranslation('deployments')
 
   return (
-    <span
-      className={cn(
-        OVERVIEW_STATUS_BADGE_CLASS_NAME,
-        enabled
-          ? 'text-util-colors-green-green-700'
-          : 'text-text-tertiary',
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          'size-1.5 shrink-0 rounded-full',
-          enabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
-        )}
-      />
-      {enabled ? t('overview.enabled') : t('overview.disabled')}
-    </span>
+    <DeploymentStatusBadge
+      status={enabled ? 'ready' : 'not_deployed'}
+      label={enabled ? t('overview.enabled') : t('overview.disabled')}
+    />
   )
 }
 

@@ -51,7 +51,6 @@ export function InstanceDetail({ appInstanceId, children }: {
   const selectedSegment = useSelectedLayoutSegment()
   const selectedTab = selectedSegment ?? undefined
   const activeTab: InstanceDetailTabKey = isInstanceDetailTabKey(selectedTab) ? selectedTab : 'overview'
-  const contentMaxWidthClassName = activeTab === 'settings' ? 'max-w-[872px]' : 'max-w-[1120px]'
 
   useDocumentTitle(t('documentTitle.detail'))
 
@@ -61,7 +60,7 @@ export function InstanceDetail({ appInstanceId, children }: {
         <DeploymentSidebar appInstanceId={appInstanceId} />
         <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
           <div className="h-full min-w-0 overflow-y-auto">
-            <div className={`mx-auto flex min-h-full w-full ${contentMaxWidthClassName} flex-col`}>
+            <div className="flex min-h-full w-full flex-col">
               <div className="flex w-full flex-col gap-y-0.5 px-4 pt-3 pb-2 sm:px-6">
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0">

@@ -8,5 +8,3 @@ export const OVERVIEW_INTERACTIVE_CARD_CLASS_NAME = cn(
 )
 
 export const OVERVIEW_ICON_CLASS_NAME = 'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
-
-export const OVERVIEW_STATUS_BADGE_CLASS_NAME = 'inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-background-section-burn px-2 system-xs-medium'

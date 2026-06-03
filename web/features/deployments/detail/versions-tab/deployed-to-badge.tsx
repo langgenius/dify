@@ -6,7 +6,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import {
-  deploymentStatusIconClassName,
   deploymentStatusToneClassNames,
 } from '../../deployment-ui-utils'
 
@@ -30,17 +29,17 @@ export function DeployedToBadge({ item }: {
         render={(
           <span
             className={cn(
-              'inline-flex h-6 max-w-full cursor-default items-center gap-1.5 rounded-md border px-2 system-xs-medium',
+              'inline-flex h-5 max-w-full cursor-default items-center gap-1 rounded-md border px-1.5 system-xs-medium',
               toneClassNames.badge,
             )}
           >
             <span
               aria-hidden
-              className={cn('size-3.5 shrink-0', deploymentStatusIconClassName(status), toneClassNames.icon)}
+              className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, status === 'deploying' && 'animate-pulse')}
             />
             <span className="truncate">{item.environmentName}</span>
             <span className="shrink-0 opacity-70">·</span>
-            <span className="shrink-0">{statusLabel}</span>
+            <span className="shrink-0 system-2xs-medium-uppercase">{statusLabel}</span>
           </span>
         )}
       />

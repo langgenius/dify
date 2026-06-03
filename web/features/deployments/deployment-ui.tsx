@@ -2,6 +2,7 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import type { ComponentPropsWithRef } from 'react'
+import type { DeploymentUiStatus } from './runtime-status'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,6 +11,39 @@ import {
 } from './deployment-ui-utils'
 import { environmentName } from './environment'
 import { deploymentStatus } from './runtime-status'
+
+type DeploymentStatusBadgeProps = Omit<ComponentPropsWithRef<'span'>, 'children'> & {
+  status: DeploymentUiStatus
+  label: string
+}
+
+export function DeploymentStatusBadge({
+  status,
+  label,
+  className,
+  ref,
+  ...props
+}: DeploymentStatusBadgeProps) {
+  const toneClassNames = deploymentStatusToneClassNames(status)
+
+  return (
+    <span
+      ref={ref}
+      className={cn(
+        'inline-flex h-5 max-w-full cursor-default items-center gap-1 rounded-md border px-1.5 system-2xs-medium-uppercase',
+        toneClassNames.badge,
+        className,
+      )}
+      {...props}
+    >
+      <span
+        aria-hidden
+        className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, status === 'deploying' && 'animate-pulse')}
+      />
+      <span className="truncate">{label}</span>
+    </span>
+  )
+}
 
 type EnvironmentDeploymentBadgeProps = Omit<ComponentPropsWithRef<'span'>, 'children' | 'title'> & {
   row: EnvironmentDeployment
@@ -39,7 +73,7 @@ export function EnvironmentDeploymentBadge({
       ref={ref}
       aria-label={ariaLabel ?? label}
       className={cn(
-        'inline-flex h-6 max-w-full cursor-default items-center gap-1.5 rounded-md border px-2 system-xs-medium',
+        'inline-flex h-5 max-w-full cursor-default items-center gap-1 rounded-md border px-1.5 system-xs-medium',
         toneClassNames.badge,
         className,
       )}

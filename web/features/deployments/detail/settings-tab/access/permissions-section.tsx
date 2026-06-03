@@ -39,14 +39,14 @@ function AccessPermissionsSkeleton() {
       </DetailTableHeader>
       <DetailTableBody className="block pc:table-row-group">
         {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
-          <DetailTableRow key={key} className="block h-auto pc:table-row pc:h-8">
-            <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
+          <DetailTableRow key={key} className="block h-auto pc:table-row">
+            <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 pc:table-cell pc:p-3 pc:pr-2">
               <SkeletonRectangle className="h-4 w-32 animate-pulse" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto max-w-none px-4 py-1 pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
+            <DetailTableCell className="block h-auto max-w-none px-4 py-1 pc:table-cell pc:p-3 pc:pr-2">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 pc:table-cell pc:max-w-[200px] pc:px-2.5 pc:py-[5px] pc:pl-3">
+            <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 pc:table-cell pc:p-3 pc:pr-2">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
           </DetailTableRow>

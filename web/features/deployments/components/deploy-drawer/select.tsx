@@ -59,7 +59,7 @@ export function DeploymentSelect({ value, onChange, options, placeholder }: Sele
     >
       <SelectTrigger
         className={cn(
-          'h-8 min-w-0 border border-components-input-border-active px-2 text-left system-sm-medium',
+          'h-8 min-w-0 px-2 text-left system-sm-medium',
           !selectedOption && 'text-text-quaternary',
         )}
       >

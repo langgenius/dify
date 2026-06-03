@@ -18,6 +18,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
 import { EnvironmentDeploymentBadge } from '../deployment-ui'
 import { deploymentStatusLabelKey } from '../deployment-ui-utils'
@@ -115,9 +116,6 @@ function EnvironmentChip({ row }: {
     row.currentRelease ? releaseLabel(row.currentRelease) : undefined,
     statusLabel,
   ].filter(Boolean).join(' · ')
-  const quietReadyStatusClassName = status === 'ready'
-    ? 'border-divider-subtle bg-background-section-burn text-text-secondary'
-    : undefined
 
   return (
     <Tooltip>
@@ -127,7 +125,7 @@ function EnvironmentChip({ row }: {
             row={row}
             showStatus={false}
             summaryLabel={tooltipSummary}
-            className={cn('max-w-44', quietReadyStatusClassName)}
+            className="max-w-44"
           />
         )}
       />
@@ -359,6 +357,12 @@ export function InstanceCard({ app }: {
     <div
       className="group relative col-span-1 inline-flex min-h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-all duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
     >
+      <DeploymentActionsMenu
+        appInstanceId={appInstanceId}
+        appName={appName}
+        className="pointer-events-none absolute top-3 right-3 z-10 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
+        triggerClassName="data-popup-open:pointer-events-auto data-popup-open:opacity-100"
+      />
       <div className="flex min-h-0 flex-1 flex-col">
         <Link
           href={detailHref}

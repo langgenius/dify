@@ -7,16 +7,15 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { TitleTooltip } from '../../components/title-tooltip'
+import { DeploymentStatusBadge } from '../../deployment-ui'
 import {
-  deploymentStatusIconClassName,
   deploymentStatusLabelKey,
-  deploymentStatusToneClassNames,
 } from '../../deployment-ui-utils'
 import { environmentId, environmentName } from '../../environment'
 import { releaseCommit, releaseLabel } from '../../release'
 import { deploymentStatus } from '../../runtime-status'
 import { openDeployDrawerAtom } from '../../store'
-import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, OVERVIEW_STATUS_BADGE_CLASS_NAME } from './card-styles'
+import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 import { computeDrift, latestReleaseId } from './overview-drift'
 
 type EnvironmentTileProps = {
@@ -29,8 +28,7 @@ type TileKind = 'empty' | 'latest' | 'behind' | 'older' | 'deploying' | 'failed'
 
 type TileConfig = {
   kind: TileKind
-  dotClass: string
-  statusClass: string
+  status: DeploymentUiStatus
   actionClass: string
   showRelease: boolean
   intent: 'drawer' | 'navigate' | 'disabled'
@@ -140,23 +138,11 @@ function RuntimeStatusSignal({ status, t }: {
   status: DeploymentUiStatus
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
-  const toneClassNames = deploymentStatusToneClassNames(status)
   const label = t(deploymentStatusLabelKey(status))
 
   return (
     <TitleTooltip content={label}>
-      <span
-        className={cn(
-          'inline-flex h-6 max-w-full shrink-0 cursor-default items-center gap-1.5 rounded-md border px-2 system-xs-medium',
-          toneClassNames.badge,
-        )}
-      >
-        <span
-          aria-hidden
-          className={cn('size-3.5 shrink-0', deploymentStatusIconClassName(status), toneClassNames.icon)}
-        />
-        <span className="truncate">{label}</span>
-      </span>
+      <DeploymentStatusBadge status={status} label={label} />
     </TitleTooltip>
   )
 }
@@ -171,10 +157,11 @@ function StatusSignal({ className, config, drift, t }: {
 
   return (
     <TitleTooltip content={title}>
-      <span className={cn(OVERVIEW_STATUS_BADGE_CLASS_NAME, config.statusClass, className)}>
-        <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', config.dotClass)} />
-        <span>{renderStatus(config.kind, drift, t)}</span>
-      </span>
+      <DeploymentStatusBadge
+        status={config.status}
+        label={renderStatus(config.kind, drift, t)}
+        className={className}
+      />
     </TitleTooltip>
   )
 }
@@ -189,8 +176,7 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (status === 'deploying') {
     return {
       kind: 'deploying',
-      dotClass: 'bg-util-colors-blue-blue-500 animate-pulse',
-      statusClass: 'text-util-colors-blue-blue-700',
+      status: 'deploying',
       actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'navigate',
@@ -200,8 +186,7 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (status === 'deploy_failed') {
     return {
       kind: 'failed',
-      dotClass: 'bg-util-colors-red-red-500',
-      statusClass: 'text-util-colors-red-red-700',
+      status: 'deploy_failed',
       actionClass: 'text-primary-600 hover:bg-state-accent-hover',
       showRelease: true,
       intent: 'drawer',
@@ -212,8 +197,7 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (drift.kind === 'undeployed') {
     return {
       kind: 'empty',
-      dotClass: 'bg-text-quaternary',
-      statusClass: 'text-text-tertiary',
+      status: 'not_deployed',
       actionClass: hasAnyRelease
         ? 'text-primary-600 hover:bg-state-accent-hover'
         : 'text-text-tertiary',
@@ -226,8 +210,7 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (drift.kind === 'up-to-date') {
     return {
       kind: 'latest',
-      dotClass: 'bg-util-colors-green-green-500',
-      statusClass: 'text-util-colors-green-green-700',
+      status: 'ready',
       actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'drawer',
@@ -238,8 +221,7 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
   if (drift.kind === 'behind') {
     return {
       kind: 'behind',
-      dotClass: 'bg-util-colors-warning-warning-500',
-      statusClass: 'text-util-colors-warning-warning-700',
+      status: 'drifted',
       actionClass: 'text-primary-600 hover:bg-state-accent-hover',
       showRelease: true,
       intent: 'drawer',
@@ -249,8 +231,7 @@ function resolveConfig({ drift, status, hasAnyRelease, latestId, currentReleaseI
 
   return {
     kind: 'older',
-    dotClass: 'bg-text-tertiary',
-    statusClass: 'text-text-tertiary',
+    status: 'unknown',
     actionClass: 'text-primary-600 hover:bg-state-accent-hover',
     showRelease: true,
     intent: 'drawer',
