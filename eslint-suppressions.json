@@ -4967,7 +4967,9 @@
                                                                          }
                                            },
     "web/app/signin/components/mail-and-code-auth.tsx":  {
-
+                                                             "no-restricted-imports":  {
+                                                                                           "count":  1
+                                                                                       }
                                                          },
     "web/app/signin/components/mail-and-password-auth.tsx":  {
                                                                  "no-restricted-imports":  {
