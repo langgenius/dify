@@ -8,9 +8,10 @@ from core.rag.extractor.excel_extractor import ExcelExtractor
 
 
 class _FakeCell:
-    def __init__(self, value, hyperlink=None):
+    def __init__(self, value, hyperlink=None, number_format=None):
         self.value = value
         self.hyperlink = hyperlink
+        self.number_format = number_format
 
 
 class _FakeSheet:
@@ -115,3 +116,43 @@ class TestExcelExtractor:
 
         empty_sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
         assert extractor._find_header_and_columns(empty_sheet) == (0, {}, 0)
+
+    def test_extract_xlsx_preserves_percentage_formatting(self, monkeypatch):
+        """Test that percentage-formatted cells are extracted as percentages, not decimals."""
+        sheet = _FakeSheet(
+            header_rows=[("Item", "Score")],
+            data_rows=[
+                (_FakeCell("Test A"), _FakeCell(0.9, number_format="0%")),
+                (_FakeCell("Test B"), _FakeCell(0.456, number_format="0%")),
+                (_FakeCell("Test C"), _FakeCell(0.456, number_format="0.0%")),
+                (_FakeCell("Test D"), _FakeCell(0.12345, number_format="0.00%")),
+                (_FakeCell("Test E"), _FakeCell(123.45, number_format="General")),
+                (_FakeCell("Test Hash 1"), _FakeCell(0.9, number_format="0.#%")),
+                (_FakeCell("Test Hash 2"), _FakeCell(0.912, number_format="0.##%")),
+            ],
+        )
+
+        workbook = _FakeWorkbook({"Sheet1": sheet})
+        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbook)
+
+        extractor = ExcelExtractor("/tmp/test.xlsx")
+        docs = extractor.extract()
+
+        assert len(docs) == 7
+        # 0.9 with 0% format should become 90%
+        assert '"Score":"90%"' in docs[0].page_content
+        assert "0.9" not in docs[0].page_content
+        # 0.456 with 0% format should round to 46% (not 45.6%)
+        assert '"Score":"46%"' in docs[1].page_content
+        assert "0.456" not in docs[1].page_content
+        assert "45.6%" not in docs[1].page_content
+        # 0.456 with 0.0% format should become 45.6%
+        assert '"Score":"45.6%"' in docs[2].page_content
+        # 0.12345 with 0.00% format should become 12.35% (rounded)
+        assert '"Score":"12.35%"' in docs[3].page_content
+        # Regular number without percentage format should remain as-is
+        assert '"Score":"123.45"' in docs[4].page_content
+        # 0.9 with 0.#% format should become 90% (trailing zero stripped)
+        assert '"Score":"90%"' in docs[5].page_content
+        # 0.912 with 0.##% format should become 91.2% (one trailing zero stripped)
+        assert '"Score":"91.2%"' in docs[6].page_content
