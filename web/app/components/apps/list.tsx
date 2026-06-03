@@ -14,7 +14,6 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -61,7 +60,6 @@ const List: FC<Props> = ({
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
-  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, undefined, { raw: true })
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -139,11 +137,13 @@ const List: FC<Props> = ({
   ]
 
   useEffect(() => {
-    if (needRefreshAppList === '1') {
-      setNeedRefreshAppList(null)
+    // eslint-disable-next-line no-restricted-globals -- useLocalStorage bails out during server render; this effect only runs on the client.
+    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
+      // eslint-disable-next-line no-restricted-globals -- preserve the raw refresh flag format used by app creation flows.
+      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       refetch()
     }
-  }, [needRefreshAppList, refetch, setNeedRefreshAppList])
+  }, [refetch])
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true

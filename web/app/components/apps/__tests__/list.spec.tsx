@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
@@ -488,12 +489,25 @@ describe('List', () => {
 
   describe('Local Storage Refresh', () => {
     it('should call refetch when refresh key is set in localStorage', () => {
-      localStorage.setItem('needRefreshAppList', '1')
+      const getItemSpy = vi.spyOn(localStorage, 'getItem')
+      const removeItemSpy = vi.spyOn(localStorage, 'removeItem')
+      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
 
       renderList()
 
+      expect(getItemSpy).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY)
+      expect(removeItemSpy).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY)
       expect(mockRefetch).toHaveBeenCalled()
-      expect(localStorage.getItem('needRefreshAppList')).toBeNull()
+      expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBeNull()
+    })
+
+    it('should not call refetch when refresh key is not set in localStorage', () => {
+      const removeItemSpy = vi.spyOn(localStorage, 'removeItem')
+
+      renderList()
+
+      expect(removeItemSpy).not.toHaveBeenCalled()
+      expect(mockRefetch).not.toHaveBeenCalled()
     })
   })
 
