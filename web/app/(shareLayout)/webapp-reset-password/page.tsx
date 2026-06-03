@@ -7,10 +7,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
-import { setLocalStorageItem } from '@/utils/local-storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -24,6 +24,7 @@ export default function CheckCode() {
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
+  const setCountDown = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
 
   const handleGetEMailVerificationCode = async () => {
     try {
