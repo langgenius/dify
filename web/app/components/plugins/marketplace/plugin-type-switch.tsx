@@ -12,7 +12,8 @@ import {
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
-import { BoxSparkleFill as PluginIcon, Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 

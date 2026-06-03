@@ -4,9 +4,9 @@ import type { MotionValue } from 'motion/react'
 import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { SubmitRequestDropdown } from '@/app/components/plugins/plugin-page/nav-operations'
 import PluginTypeSwitch from '../plugin-type-switch'
 import SearchBoxWrapper from '../search-box/search-box-wrapper'
 
@@ -235,9 +235,9 @@ const Description = ({
     <div className="relative z-20 flex w-full flex-col items-start">
       <div className="flex h-[60px] w-full items-center rounded-lg border-[0.5px] border-white/50 bg-components-panel-bg-blur backdrop-blur-[6px]">
         <div className="flex h-full min-w-0 flex-1 items-center px-5 py-2">
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1.5">
             <DifyLogo alt="" className="h-6 w-[52px]" />
-            <span className="text-[21px] leading-6 font-normal whitespace-nowrap text-text-primary">
+            <span className="max-w-0 overflow-hidden title-3xl-semi-bold whitespace-nowrap text-text-primary opacity-0 transition-all duration-200 md:max-w-[150px] md:opacity-100">
               {tCommon('mainNav.marketplace')}
             </span>
           </div>
@@ -253,9 +253,7 @@ const Description = ({
         />
         <div className="flex h-full shrink-0 items-center justify-end gap-4 pr-3.5 pl-4">
           <Divider type="vertical" className="mx-0 h-4 bg-divider-regular" />
-          <ActionButton className="h-8 w-8 p-2">
-            <span className="i-ri-book-open-line size-4 text-text-secondary" />
-          </ActionButton>
+          <SubmitRequestDropdown dividerAfterFirst />
         </div>
       </div>
     </div>
