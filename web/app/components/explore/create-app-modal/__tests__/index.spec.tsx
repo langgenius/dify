@@ -1,6 +1,6 @@
 import type { CreateAppModalProps } from '../index'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { createMockPlan, createMockPlanTotal, createMockPlanUsage } from '@/__mocks__/provider-context'
 import { Plan } from '@/app/components/billing/type'
@@ -107,11 +107,17 @@ const setup = async (overrides: Partial<CreateAppModalProps> = {}) => {
 
 const getAppIconTrigger = (): HTMLElement => {
   const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-  const iconRow = nameInput.parentElement?.parentElement
+  const iconRow = nameInput.parentElement
   const iconTrigger = iconRow?.firstElementChild
   if (!(iconTrigger instanceof HTMLElement))
     throw new Error('Failed to locate app icon trigger')
   return iconTrigger
+}
+
+const openAppIconPicker = () => {
+  fireEvent.click(getAppIconTrigger())
+
+  return screen.getByRole('dialog', { name: 'app.iconPicker.emoji' })
 }
 
 describe('CreateAppModal', () => {
@@ -322,13 +328,15 @@ describe('CreateAppModal', () => {
         appIconUrl: 'https://example.com/icon.png',
       })
 
-      fireEvent.click(getAppIconTrigger())
+      const pickerDialog = openAppIconPicker()
 
-      expect(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))!.toBeInTheDocument()
+      expect(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
+      fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.cancel' }))
 
-      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
+      })
     })
 
     it('should update icon payload when selecting emoji and confirming', async () => {
@@ -340,16 +348,11 @@ describe('CreateAppModal', () => {
           appIconUrl: 'https://example.com/icon.png',
         })
 
-        fireEvent.click(getAppIconTrigger())
+        const pickerDialog = openAppIconPicker()
 
-        const categoryLabel = screen.getByText('people')
-        const emojiGrid = categoryLabel.nextElementSibling
-        const clickableEmojiWrapper = emojiGrid?.firstElementChild
-        if (!(clickableEmojiWrapper instanceof HTMLElement))
-          throw new Error('Failed to locate emoji wrapper')
-        fireEvent.click(clickableEmojiWrapper)
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: '😀' }))
 
-        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
         await act(async () => {
@@ -378,15 +381,10 @@ describe('CreateAppModal', () => {
           appIconBackground: '#FFEAD5',
         })
 
-        fireEvent.click(getAppIconTrigger())
+        const pickerDialog = openAppIconPicker()
 
-        const colorOption = Array.from(document.querySelectorAll('[style^="background:"]'))
-          .find(element => element.getAttribute('style')?.includes('#E4FBCC'))
-        if (!(colorOption instanceof HTMLElement) || !(colorOption.parentElement instanceof HTMLElement))
-          throw new Error('Failed to locate background color option')
-
-        fireEvent.click(colorOption.parentElement)
-        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: '#E4FBCC' }))
+        fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
         await act(async () => {
