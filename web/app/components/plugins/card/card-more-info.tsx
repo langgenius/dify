@@ -1,15 +1,41 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import DownloadCount from './base/download-count'
 
 type Props = {
   downloadCount?: number
   tags: string[]
+  variant?: 'default' | 'marketplace'
 }
 
 const CardMoreInfoComponent = ({
   downloadCount,
   tags,
+  variant = 'default',
 }: Props) => {
+  if (variant === 'marketplace') {
+    return (
+      <div className="flex min-h-7 items-center py-1">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 overflow-hidden">
+          {tags.map(tag => (
+            <div
+              key={tag}
+              className={cn(
+                'flex max-w-[120px] min-w-[18px] shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-[5px]',
+                'border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]',
+                'system-2xs-medium-uppercase text-text-tertiary',
+              )}
+              title={tag}
+            >
+              <span aria-hidden className="i-ri-price-tag-line size-3 shrink-0" />
+              <span className="truncate">{tag}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-5 items-center">
       {downloadCount !== undefined && <DownloadCount downloadCount={downloadCount} />}

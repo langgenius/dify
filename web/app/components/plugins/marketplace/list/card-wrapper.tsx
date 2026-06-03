@@ -1,7 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -43,32 +42,34 @@ const CardWrapperComponent = ({
   if (showInstallButton) {
     return (
       <div
-        className="group relative cursor-pointer rounded-xl hover:bg-components-panel-on-panel-item-bg-hover"
+        className="group relative cursor-pointer rounded-xl"
       >
         <Card
           key={plugin.name}
           payload={plugin}
+          variant="marketplace"
           footer={(
             <CardMoreInfo
               downloadCount={plugin.install_count}
               tags={tagLabels}
+              variant="marketplace"
             />
           )}
         />
-        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-hover:flex">
+        <div className="pointer-events-none absolute right-[-0.5px] bottom-[-0.5px] left-[-0.5px] z-10 flex items-center gap-2 rounded-b-xl bg-linear-to-t from-components-panel-on-panel-item-bg-hover from-[60%] to-background-gradient-mask-transparent px-4 pt-8 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <Button
             variant="primary"
-            className="w-[calc(50%-4px)]"
+            className="min-w-0 flex-1 shadow-md"
             onClick={showInstallFromMarketplace}
           >
             {t('detailPanel.operation.install', { ns: 'plugin' })}
           </Button>
-          <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block w-[calc(50%-4px)] flex-1 shrink-0">
+          <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block min-w-0 flex-1 shrink-0">
             <Button
-              className="w-full gap-0.5"
+              className="w-full gap-0.5 shadow-xs backdrop-blur-[5px]"
             >
               {t('detailPanel.operation.detail', { ns: 'plugin' })}
-              <RiArrowRightUpLine className="ml-1 size-4" />
+              <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-4" />
             </Button>
           </a>
         </div>
@@ -94,10 +95,12 @@ const CardWrapperComponent = ({
       <Card
         key={plugin.name}
         payload={plugin}
+        variant="marketplace"
         footer={(
           <CardMoreInfo
             downloadCount={plugin.install_count}
             tags={tagLabels}
+            variant="marketplace"
           />
         )}
       />
