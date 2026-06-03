@@ -107,6 +107,14 @@ def _get_start_span_call(start_span_mock, *, span_name: str):
     raise AssertionError(f"Could not find start_span call with name={span_name!r}")
 
 
+def _get_start_span_call_by_kind(start_span_mock, *, span_kind: str):
+    for call in start_span_mock.call_args_list:
+        attributes = call.kwargs.get("attributes", {})
+        if attributes.get(SpanAttributes.OPENINFERENCE_SPAN_KIND) == span_kind:
+            return call
+    raise AssertionError(f"Could not find start_span call with span kind={span_kind!r}")
+
+
 class _FakeQuery:
     def __init__(self, result):
         self._result = result
@@ -367,6 +375,7 @@ class TestWorkflowSessionResolution:
         )
 
         assert _resolve_trace_session_id(trace_info) == "session-1"
+        assert _resolve_workflow_session_id(trace_info) == "session-1"
 
     def test_resolve_workflow_session_id_falls_back_to_existing_workflow_behavior(self):
         trace_info = _make_workflow_info(
@@ -1952,6 +1961,40 @@ def test_message_trace_keeps_conversation_id_as_session(mock_db, trace_instance)
         trace_instance.tracer.start_span, span_name=TraceTaskName.MESSAGE_TRACE.value
     )
     assert message_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "conversation-2"
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+def test_message_trace_uses_trace_session_id_metadata_as_session(mock_db, trace_instance):
+    mock_db.engine = MagicMock()
+    info = _make_message_info(metadata={"app_id": "app-1", "trace_session_id": "session-1"})
+    info.message_data = MagicMock()
+    info.message_data.conversation_id = "conversation-2"
+    info.message_data.from_account_id = "acc2"
+    info.message_data.from_end_user_id = None
+    info.message_data.query = "q2"
+    info.message_data.answer = "a2"
+    info.message_data.status = "s2"
+    info.message_data.model_id = "m2"
+    info.message_data.model_provider = "p2"
+    info.message_data.message_metadata = "{}"
+    info.message_data.error = None
+    info.error = None
+
+    root_span = MagicMock()
+    message_span = MagicMock()
+    llm_span = MagicMock()
+    trace_instance.tracer.start_span.side_effect = [root_span, message_span, llm_span]
+
+    trace_instance.message_trace(info)
+
+    message_span_call = _get_start_span_call(
+        trace_instance.tracer.start_span, span_name=TraceTaskName.MESSAGE_TRACE.value
+    )
+    llm_span_call = _get_start_span_call_by_kind(
+        trace_instance.tracer.start_span, span_kind=OpenInferenceSpanKindValues.LLM.value
+    )
+    assert message_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "session-1"
+    assert llm_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "session-1"
 
 
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")

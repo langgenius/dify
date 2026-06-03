@@ -61,6 +61,12 @@ SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 logger = logging.getLogger(__name__)
 
 
+def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
+    if isinstance(args, Mapping):
+        return extract_trace_session_id_from_args(args)
+    return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
+
+
 class WorkflowAppGenerator(BaseAppGenerator):
     @staticmethod
     def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
@@ -415,7 +421,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
@@ -501,7 +510,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs or {}),
             workflow_execution_id=str(uuid.uuid4()),
         )

@@ -64,6 +64,12 @@ from services.workflow_draft_variable_service import (
 logger = logging.getLogger(__name__)
 
 
+def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
+    if isinstance(args, Mapping):
+        return extract_trace_session_id_from_args(args)
+    return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
+
+
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     _dialogue_count: int
 
@@ -332,7 +338,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_iteration_run=AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
@@ -418,7 +427,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs),
         )
         contexts.plugin_tool_providers.set({})
