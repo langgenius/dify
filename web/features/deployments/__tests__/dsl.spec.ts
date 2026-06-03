@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  dslAppMode,
   dslAppName,
   dslEnvVarSlots,
+  isWorkflowDsl,
 } from '../dsl'
 
 describe('deployment DSL helpers', () => {
@@ -74,6 +76,14 @@ workflow:
       expect(dslAppName('app:\n  name: "  Demo App  "\n')).toBe('Demo App')
       expect(dslAppName('workflow: {}\n')).toBe('')
       expect(dslAppName('app: [')).toBe('')
+    })
+
+    it('should detect workflow DSL from app mode metadata', () => {
+      expect(dslAppMode('app:\n  mode: workflow\n')).toBe('workflow')
+      expect(isWorkflowDsl('app:\n  mode: workflow\n')).toBe(true)
+      expect(isWorkflowDsl('app:\n  mode: advanced-chat\nworkflow: {}\n')).toBe(false)
+      expect(isWorkflowDsl('workflow: {}\n')).toBe(false)
+      expect(isWorkflowDsl('app: [')).toBe(false)
     })
   })
 })

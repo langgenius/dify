@@ -8,11 +8,13 @@ export function DslStep({
   dslFile,
   isReadingDsl,
   readError,
+  unsupportedMode,
   onDslFileChange,
 }: {
   dslFile?: File
   isReadingDsl: boolean
   readError: boolean
+  unsupportedMode: boolean
   onDslFileChange: (file?: File) => void
 }) {
   const { t } = useTranslation('deployments')
@@ -40,6 +42,11 @@ export function DslStep({
         {readError && (
           <div className="system-xs-regular text-text-destructive">
             {t('createGuide.dsl.readFailed')}
+          </div>
+        )}
+        {unsupportedMode && (
+          <div role="alert" className="system-xs-regular text-text-destructive">
+            {t('createGuide.dsl.unsupportedMode')}
           </div>
         )}
       </div>

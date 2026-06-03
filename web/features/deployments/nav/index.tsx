@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import Nav from '@/app/components/header/nav'
 import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { toAppMode } from '../app-mode'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
 
 function navItemFromListApp(app: AppInstance): NavItem[] {
@@ -22,7 +21,6 @@ function navItemFromListApp(app: AppInstance): NavItem[] {
     icon: '',
     icon_background: null,
     icon_url: null,
-    mode: toAppMode(),
   }]
 }
 
@@ -40,7 +38,6 @@ function navItemFromOverview(instance?: AppInstance): NavItem | undefined {
     icon: '',
     icon_background: null,
     icon_url: null,
-    mode: toAppMode(),
   }
 }
 

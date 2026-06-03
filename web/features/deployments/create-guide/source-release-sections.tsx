@@ -37,6 +37,7 @@ export function CreationSections({
   dslFile,
   isReadingDsl,
   dslReadError,
+  dslUnsupportedMode,
 }: {
   children?: ReactNode
   defaultedReleaseName: string
@@ -64,6 +65,7 @@ export function CreationSections({
   dslFile?: File
   isReadingDsl: boolean
   dslReadError: boolean
+  dslUnsupportedMode: boolean
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-7 pb-4">
@@ -85,6 +87,7 @@ export function CreationSections({
               dslFile={dslFile}
               isReadingDsl={isReadingDsl}
               readError={dslReadError}
+              unsupportedMode={dslUnsupportedMode}
               onDslFileChange={onDslFileChange}
             />
           )}

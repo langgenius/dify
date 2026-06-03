@@ -1,8 +1,10 @@
 import type { DeploymentEnvVarSlot } from './components/env-var-bindings-utils'
 import { load as yamlLoad } from 'js-yaml'
+import { AppModeEnum } from '@/types/app'
 
 type DslMetadata = {
   app?: {
+    mode?: unknown
     name?: unknown
   }
   workflow?: {
@@ -73,6 +75,14 @@ export function dslAppName(content: string) {
   const name = parseDsl(content)?.app?.name
 
   return typeof name === 'string' ? name.trim() : ''
+}
+
+export function dslAppMode(content: string) {
+  return stringValue(parseDsl(content)?.app?.mode)
+}
+
+export function isWorkflowDsl(content: string) {
+  return dslAppMode(content) === AppModeEnum.WORKFLOW
 }
 
 export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {

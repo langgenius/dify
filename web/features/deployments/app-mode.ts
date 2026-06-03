@@ -1,7 +1,9 @@
 import { AppModeEnum } from '@/types/app'
 
-const appModeValues = new Set<string>(Object.values(AppModeEnum))
+export function isWorkflowAppMode(mode?: string | null): mode is AppModeEnum.WORKFLOW {
+  return mode === AppModeEnum.WORKFLOW
+}
 
-export function toAppMode(mode?: string): AppModeEnum {
-  return appModeValues.has(mode ?? '') ? (mode as AppModeEnum) : AppModeEnum.WORKFLOW
+export function isWorkflowApp<T extends { mode?: string | null }>(app?: T): app is T & { mode: AppModeEnum.WORKFLOW } {
+  return isWorkflowAppMode(app?.mode)
 }

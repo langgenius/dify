@@ -8,7 +8,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useHover, useKeyPress, useLocalStorageState } from 'ahooks'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getAppModeLabel } from '@/app/components/app-sidebar/app-info/app-mode-labels'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
 import AppIcon from '@/app/components/base/app-icon'
@@ -17,7 +16,6 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/client'
-import { toAppMode } from '../app-mode'
 import { TitleTooltip } from '../components/title-tooltip'
 
 type TabDef = {
@@ -116,7 +114,6 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
   expand: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation()
   const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: {
       params: { appInstanceId },
@@ -126,7 +123,6 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
   const isLoading = !app?.id && overviewQuery.isLoading
   const isUnavailable = !app?.id || overviewQuery.isError
   const instanceName = app?.name ?? appInstanceId
-  const appModeLabel = app?.id ? getAppModeLabel(toAppMode(), tCommon) : ''
 
   return (
     <div className={cn('shrink-0', expand ? 'p-2' : 'p-1')}>
@@ -181,9 +177,6 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
                             {instanceName}
                           </div>
                         </TitleTooltip>
-                      </div>
-                      <div className="flex max-w-full items-center gap-1.5 system-2xs-medium-uppercase text-text-tertiary">
-                        <span className="shrink-0 whitespace-nowrap">{appModeLabel}</span>
                       </div>
                       {app.description && (
                         <TitleTooltip content={app.description}>

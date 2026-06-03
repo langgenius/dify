@@ -6,14 +6,13 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { toAppMode } from '../app-mode'
 import { DeploymentStateMessage } from '../components/empty-state'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 function sourceAppSearchText(app: App) {
-  return `${app.name} ${app.id} ${app.mode}`.toLowerCase()
+  return `${app.name} ${app.id}`.toLowerCase()
 }
 
 function SourceAppSkeleton() {
@@ -37,9 +36,6 @@ function SourceAppOption({ app, selected, onSelect }: {
   selected: boolean
   onSelect: () => void
 }) {
-  const { t } = useTranslation('deployments')
-  const mode = toAppMode(app.mode)
-
   return (
     <label
       className={cn(
@@ -57,9 +53,8 @@ function SourceAppOption({ app, selected, onSelect }: {
         background={app.icon_background}
         imageUrl={app.icon_url}
       />
-      <span className="flex min-w-0 grow flex-col gap-0.5">
+      <span className="flex min-w-0 grow">
         <span className={cn('truncate system-sm-medium', selected ? 'text-text-accent' : 'text-text-primary')}>{app.name}</span>
-        <span className={cn('truncate system-xs-regular', selected ? 'text-text-secondary' : 'text-text-tertiary')}>{t(`appMode.${mode}`)}</span>
       </span>
       <input
         type="radio"

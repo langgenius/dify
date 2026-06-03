@@ -19,15 +19,17 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { AppModeEnum } from '@/types/app'
+import { isWorkflowApp } from '../app-mode'
 import { TitleTooltip } from './title-tooltip'
 
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
 
-export type SourceAppPickerValue = Pick<App, 'id' | 'name'> & Partial<Pick<App, 'icon_type' | 'icon' | 'icon_background' | 'icon_url'>>
+export type SourceAppPickerValue = Pick<App, 'id' | 'name'> & Partial<Pick<App, 'icon_type' | 'icon' | 'icon_background' | 'icon_url' | 'mode'>>
 
 function sourceAppSearchText(app: App) {
-  return `${app.name} ${app.id} ${app.mode}`.toLowerCase()
+  return `${app.name} ${app.id}`.toLowerCase()
 }
 
 function SourceAppTrigger({ open, app }: {
@@ -80,13 +82,10 @@ function SourceAppTrigger({ open, app }: {
 function SourceAppOption({ app }: {
   app: App
 }) {
-  const { t } = useTranslation('deployments')
-  const modeLabel = t(`appMode.${app.mode}`, { defaultValue: app.mode })
-
   return (
     <ComboboxItem
       value={app}
-      className="mx-0 grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
+      className="mx-0 grid-cols-[minmax(0,1fr)] gap-3 py-1 pr-3 pl-2"
     >
       <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
         <AppIcon
@@ -108,7 +107,6 @@ function SourceAppOption({ app }: {
           </span>
         </TitleTooltip>
       </ComboboxItemText>
-      <span className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">{modeLabel}</span>
     </ComboboxItem>
   )
 }
@@ -148,6 +146,7 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
           page: Number(pageParam),
           limit: SOURCE_APP_PAGE_SIZE,
           name: searchText,
+          mode: AppModeEnum.WORKFLOW,
         },
       }),
       getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
@@ -156,7 +155,7 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
     }),
   })
 
-  const apps = data?.pages.flatMap(page => page.data) ?? []
+  const apps = data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
 
   return (
     <Combobox<App>

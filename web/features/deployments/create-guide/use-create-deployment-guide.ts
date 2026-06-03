@@ -18,6 +18,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { AppModeEnum } from '@/types/app'
+import { isWorkflowApp } from '../app-mode'
 import {
   envVarValuesWithDefaults,
   hasEnvVarSlotKey,
@@ -35,6 +37,7 @@ import { DEPLOYMENT_PAGE_SIZE, SOURCE_APPS_PAGE_SIZE } from '../data'
 import {
   dslAppName,
   dslEnvVarSlots,
+  isWorkflowDsl,
 } from '../dsl'
 import {
   environmentDeploymentId,
@@ -126,6 +129,7 @@ export function useCreateDeploymentGuide() {
           page: Number(pageParam),
           limit: SOURCE_APPS_PAGE_SIZE,
           name: sourceSearchText,
+          mode: AppModeEnum.WORKFLOW,
         },
       }),
       getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
@@ -133,7 +137,7 @@ export function useCreateDeploymentGuide() {
       placeholderData: keepPreviousData,
     }),
   })
-  const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []
+  const sourceApps = sourceAppsQuery.data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
   const appInstancesQuery = useQuery({
     ...consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
       input: {
@@ -145,12 +149,17 @@ export function useCreateDeploymentGuide() {
     }),
     placeholderData: keepPreviousData,
   })
-  const effectiveSelectedApp = selectedApp ?? sourceApps[0]
+  const effectiveSelectedApp = isWorkflowApp(selectedApp) ? selectedApp : sourceApps[0]
   const hasDslContent = Boolean(dslContent.trim())
+  const dslUnsupportedMode = method === 'importDsl'
+    && hasDslContent
+    && !isReadingDsl
+    && !dslReadError
+    && !isWorkflowDsl(dslContent)
   const encodedDslContent = hasDslContent ? encodeUtf8Base64(dslContent) : ''
   const shouldResolveDeploymentTarget = step === 'target'
   const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
-  const shouldLoadDslDeploymentOptions = method === 'importDsl' && hasDslContent && !isReadingDsl && !dslReadError
+  const shouldLoadDslDeploymentOptions = method === 'importDsl' && hasDslContent && !isReadingDsl && !dslReadError && !dslUnsupportedMode
   const shouldLoadSourceDeploymentTarget = shouldLoadSourceDeploymentOptions && shouldResolveDeploymentTarget
   const shouldLoadDslDeploymentTarget = shouldLoadDslDeploymentOptions && shouldResolveDeploymentTarget
   const shouldLoadDeploymentTarget = shouldLoadSourceDeploymentTarget || shouldLoadDslDeploymentTarget
@@ -250,7 +259,7 @@ export function useCreateDeploymentGuide() {
   const existingInstanceNames = appInstancesQuery.data?.data?.map(appInstance => appInstance.name?.trim()).filter((name): name is string => Boolean(name)) ?? []
   const hasInstanceNameConflict = Boolean(submittedInstanceName && existingInstanceNames.includes(submittedInstanceName))
   const instanceNameError = hasInstanceNameConflict ? t('createGuide.release.instanceNameConflict') : undefined
-  const isSourceReady = Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError : effectiveSelectedApp?.id))
+  const isSourceReady = Boolean(method && (method === 'importDsl' ? hasDslContent && !isReadingDsl && !dslReadError && !dslUnsupportedMode : effectiveSelectedApp?.id))
   const isInitialReleaseReady = Boolean(isSourceReady && submittedInstanceName && submittedReleaseName && !hasInstanceNameConflict)
   const showTargetConfiguration = Boolean(method && step === 'target')
   const hasUnsupportedDslNodes = unsupportedDslNodes.length > 0
@@ -353,9 +362,9 @@ export function useCreateDeploymentGuide() {
   }
 
   async function createReleaseArtifactsAndContinue() {
-    if (method === 'bindApp' && (!effectiveSelectedApp?.id || isDeploying))
+    if (method === 'bindApp' && (!effectiveSelectedApp?.id || !isWorkflowApp(effectiveSelectedApp) || isDeploying))
       return
-    if (method === 'importDsl' && (!hasDslContent || isReadingDsl || dslReadError || isDeploying))
+    if (method === 'importDsl' && (!hasDslContent || isReadingDsl || dslReadError || dslUnsupportedMode || isDeploying))
       return
 
     setSelectedEnvironmentId('')
@@ -428,10 +437,14 @@ export function useCreateDeploymentGuide() {
       return
     if (deployToEnvironment && !selectedEnvironment?.id)
       return
-    if (method === 'bindApp' && !effectiveSelectedApp?.id)
+    if (method === 'bindApp' && (!effectiveSelectedApp?.id || !isWorkflowApp(effectiveSelectedApp)))
       return
     if (method === 'importDsl' && !hasDslContent)
       return
+    if (method === 'importDsl' && !isWorkflowDsl(dslContent)) {
+      toast.error(t('createGuide.dsl.unsupportedMode'))
+      return
+    }
 
     setSubmissionUnsupportedDslNodes([])
     try {
@@ -560,6 +573,7 @@ export function useCreateDeploymentGuide() {
       defaultedReleaseName,
       dslFile,
       dslReadError,
+      dslUnsupportedMode,
       instanceDescription,
       instanceName,
       instanceNameError,
@@ -585,6 +599,8 @@ export function useCreateDeploymentGuide() {
       onSearchTextChange: setSourceSearchText,
       onSelectMethod: handleSelectMethod,
       onSelectSourceApp: (app: App) => {
+        if (!isWorkflowApp(app))
+          return
         clearUnsupportedDslNodes()
         setSelectedApp(app)
       },

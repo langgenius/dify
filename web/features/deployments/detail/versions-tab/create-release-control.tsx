@@ -16,8 +16,10 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { consoleQuery } from '@/service/client'
+import { isWorkflowApp, isWorkflowAppMode } from '../../app-mode'
 import { SourceAppPicker } from '../../components/create-instance-modal'
 import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
+import { isWorkflowDsl } from '../../dsl'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../../error'
 import { releaseLabel } from '../../release'
 
@@ -41,6 +43,25 @@ function encodeUtf8Base64(value: string) {
 
 function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefined) {
   return value?.[0]
+}
+
+function workflowSourceAppPickerValue(value: unknown, fallbackId: string): SourceAppPickerValue | undefined {
+  if (!value || typeof value !== 'object')
+    return undefined
+
+  const record = value as Record<string, unknown>
+  const mode = typeof record.mode === 'string' ? record.mode : undefined
+  if (!isWorkflowAppMode(mode))
+    return undefined
+
+  const id = typeof record.id === 'string' && record.id ? record.id : fallbackId
+  const name = typeof record.name === 'string' && record.name ? record.name : id
+
+  return {
+    id,
+    name,
+    mode,
+  }
 }
 
 export function CreateReleaseControl({ appInstanceId, variant = 'primary', size = 'small', label, className }: {
@@ -83,14 +104,11 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       ? { params: { app_id: defaultSourceAppId } }
       : skipToken,
   }))
-  const defaultSourceApp: SourceAppPickerValue | undefined = latestSourceAppId
-    ? {
-        id: latestSourceAppId,
-        name: defaultSourceAppQuery.data?.name || latestSourceAppId,
-      }
+  const defaultSourceApp = latestSourceAppId
+    ? workflowSourceAppPickerValue(defaultSourceAppQuery.data, latestSourceAppId)
     : undefined
   const selectedSourceApp = sourceApp ?? defaultSourceApp
-  const selectedSourceAppId = selectedSourceApp?.id
+  const selectedSourceAppId = selectedSourceApp && isWorkflowApp(selectedSourceApp) ? selectedSourceApp.id : undefined
 
   const isCreatePending = createReleaseFromSourceApp.isPending || createReleaseFromDsl.isPending
 
@@ -198,6 +216,10 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
     if (releaseSourceMode === 'dsl') {
       if (!dslContent.trim() || isReadingDsl || dslReadError)
         return
+      if (!isWorkflowDsl(dslContent)) {
+        toast.error(t('versions.dslUnsupportedMode'))
+        return
+      }
 
       createReleaseFromDsl.mutate({
         body: {
@@ -236,8 +258,9 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
   const hasReleaseName = Boolean(releaseName.trim())
   const releaseNameRequired = releaseNameTouched && !hasReleaseName
   const hasDslContent = Boolean(dslContent.trim())
+  const hasUnsupportedDslMode = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !isWorkflowDsl(dslContent)
   const canCreateFromSourceApp = releaseSourceMode === 'sourceApp' && Boolean(selectedSourceAppId)
-  const canCreateFromDsl = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError
+  const canCreateFromDsl = releaseSourceMode === 'dsl' && hasDslContent && !isReadingDsl && !dslReadError && !hasUnsupportedDslMode
   const canCreate = Boolean(hasReleaseName && !isCreatePending && (canCreateFromSourceApp || canCreateFromDsl))
 
   return (
@@ -338,6 +361,11 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
                             {dslReadError && (
                               <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
                                 {t('versions.dslReadFailed')}
+                              </div>
+                            )}
+                            {hasUnsupportedDslMode && (
+                              <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
+                                {t('versions.dslUnsupportedMode')}
                               </div>
                             )}
                           </div>
