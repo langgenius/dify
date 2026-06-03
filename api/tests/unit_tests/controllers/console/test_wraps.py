@@ -31,9 +31,9 @@ from services.feature_service import LicenseStatus
 
 
 @pytest.fixture(autouse=True)
-def reset_setup_required_cache(monkeypatch):
+def reset_setup_required_cache():
     """Keep setup_required's process cache isolated across unit tests."""
-    monkeypatch.setattr(wraps, "_setup_required_completed", False)
+    wraps._is_setup_completed.reset_success()
 
 
 class MockUser(UserMixin):
