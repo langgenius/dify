@@ -435,6 +435,23 @@ class TestTenantInfoResponse:
         assert payload["plan"] == "team"
         assert payload["created_at"] == int(created_at.timestamp())
 
+    def test_tenant_info_response_has_typed_custom_config(self):
+        payload = TenantInfoResponse.model_validate(
+            {
+                "id": "t1",
+                "custom_config": {
+                    "remove_webapp_brand": True,
+                    "replace_webapp_logo": "logo-file-id",
+                    "ignored": "value",
+                },
+            }
+        ).model_dump(mode="json")
+
+        assert payload["custom_config"] == {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": "logo-file-id",
+        }
+
 
 class TestSwitchWorkspaceApi:
     def test_switch_success(self, app: Flask):

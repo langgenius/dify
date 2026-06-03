@@ -1,9 +1,9 @@
 import type { AppMode } from '@dify/contracts/api/openapi/types.gen'
-import { Args, Flags } from '../../../framework/flags.js'
-import { OutputFormat, table } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runGetApp } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { OutputFormat, table } from '@/framework/output'
+import { runGetApp } from './run'
 
 const APP_MODE_VALUES: readonly AppMode[] = [
   'advanced-chat',
@@ -59,7 +59,7 @@ export default class GetApp extends DifyCommand {
       name: flags.name,
       tag: flags.tag,
       format,
-    }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
+    }, { active: ctx.active, http: ctx.http, io: ctx.io })
     return table({
       format,
       data: result.data,

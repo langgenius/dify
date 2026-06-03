@@ -1,7 +1,7 @@
-import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '../../../api/oauth-device.js'
-import { DEFAULT_CLIENT_ID } from '../../../api/oauth-device.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
+import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '@/api/oauth-device'
+import { DEFAULT_CLIENT_ID } from '@/api/oauth-device'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_INTERVAL_MS = 5_000
 export const MAX_INTERVAL_MS = 60_000

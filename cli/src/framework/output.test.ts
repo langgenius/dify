@@ -1,12 +1,12 @@
-import type { FormattedPrintable, NamePrintable, TablePrintable } from './output.js'
+import type { FormattedPrintable, NamePrintable, TablePrintable } from './output'
 import { describe, expect, it } from 'vitest'
-import { OutputFormatNotSupportedError } from './errors.js'
+import { OutputFormatNotSupportedError } from './errors'
 import {
   formatted,
   raw,
   stringifyOutput,
   table,
-} from './output.js'
+} from './output'
 
 function makeFormatted(opts: { text?: string, json?: unknown, name?: string }): FormattedPrintable & NamePrintable {
   return {

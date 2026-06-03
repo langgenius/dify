@@ -110,16 +110,20 @@ class AgentRunRunner:
     async def _run_agent(self) -> tuple[JsonValue, CompositorSessionSnapshot]:
         """Run pydantic-ai inside an entered Agenton run.
 
-        Known input-shaped Agenton enter-time runtime errors, such as trying to
-        resume a ``CLOSED`` snapshot layer, are normalized to
-        ``AgentRunValidationError``. Output/history-layer graph invariants are
-        validated from the public composition before entering Agenton so
-        misnamed or extra reserved layers never silently degrade. Later runtime
-        failures still propagate as execution errors so they become terminal
-        failed runs rather than client validation responses. Structured output
-        uses a resolved contract whose type itself encodes both the model-facing
-        schema and the runtime validation hooks, so invalid model outputs can be
-        corrected before Dify Agent emits success.
+        Known request-shaped Agenton enter-time failures are normalized to
+        ``AgentRunValidationError``. That includes the existing small class of
+        enter-time ``RuntimeError`` values reported by Agenton plus
+        layer-construction or snapshot-hydration ``ValueError`` failures that
+        arise before the run becomes active, such as missing shell settings for a
+        requested ``dify.shell`` layer or malformed serialized shell offsets.
+        Output/history-layer graph invariants are validated from the public
+        composition before entering Agenton so misnamed or extra reserved layers
+        never silently degrade. Later runtime failures still propagate as
+        execution errors so they become terminal failed runs rather than client
+        validation responses. Structured output uses a resolved contract whose
+        type itself encodes both the model-facing schema and the runtime
+        validation hooks, so invalid model outputs can be corrected before Dify
+        Agent emits success.
         """
         try:
             validate_output_layer_composition(self.request.composition)
@@ -170,6 +174,10 @@ class AgentRunRunner:
                 append_successful_run_history(history_layer, result.new_messages())
         except RuntimeError as exc:
             if not entered_run and is_agenton_enter_validation_runtime_error(exc):
+                raise AgentRunValidationError(str(exc)) from exc
+            raise
+        except ValueError as exc:
+            if not entered_run:
                 raise AgentRunValidationError(str(exc)) from exc
             raise
 

@@ -11,6 +11,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.db.session_factory import session_factory
+from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
@@ -307,6 +308,7 @@ class DifyNodeFactory(NodeFactory):
         self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = graphon_ssrf_proxy
+        self._remote_file_http_client = remote_fetcher.graphon_remote_file_fetcher
         self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(
             self._dify_context,
             conversation_id_getter=self._conversation_id,
@@ -318,7 +320,7 @@ class DifyNodeFactory(NodeFactory):
         )
         self._llm_file_saver = build_dify_llm_file_saver(
             run_context=self._dify_context,
-            http_client=self._http_request_http_client,
+            http_client=self._remote_file_http_client,
             conversation_id_getter=self._conversation_id,
         )
         self._human_input_runtime = DifyHumanInputNodeRuntime(
@@ -416,7 +418,7 @@ class DifyNodeFactory(NodeFactory):
             ),
             BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
                 "unstructured_api_config": self._document_extractor_unstructured_api_config,
-                "http_client": self._http_request_http_client,
+                "http_client": self._remote_file_http_client,
             },
             BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
@@ -530,7 +532,7 @@ class DifyNodeFactory(NodeFactory):
         if validated_node_data.type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
             node_init_kwargs["template_renderer"] = self._jinja2_template_renderer
         if include_http_client:
-            node_init_kwargs["http_client"] = self._http_request_http_client
+            node_init_kwargs["http_client"] = self._remote_file_http_client
         if include_llm_file_saver:
             node_init_kwargs["llm_file_saver"] = self._llm_file_saver
         if include_prompt_message_serializer:

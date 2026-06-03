@@ -9,8 +9,8 @@ import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { IS_CE_EDITION } from '@/config'
 
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type IAccountSettingProps = {
   langGeniusVersionInfo: LangGeniusVersionResponse

@@ -259,3 +259,6 @@ scripts/stress-test/reports/
 .qoder/*
 .context/
 .eslintcache
+
+# Vitest local reports
+web/.vitest-reports/

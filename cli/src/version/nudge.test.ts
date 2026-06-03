@@ -1,13 +1,13 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { NudgeStore } from '../cache/nudge-store.js'
+import type { NudgeStore } from '@/cache/nudge-store'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { loadNudgeStore } from '../cache/nudge-store.js'
-import { ENV_CACHE_DIR } from '../store/dir.js'
-import { CACHE_NUDGE, getCache } from '../store/manager.js'
-import { maybeNudgeCompat } from './nudge.js'
+import { loadNudgeStore } from '@/cache/nudge-store'
+import { ENV_CACHE_DIR } from '@/store/dir'
+import { CACHE_NUDGE, getCache } from '@/store/manager'
+import { maybeNudgeCompat } from './nudge'
 
 const HOST = 'https://cloud.dify.ai'
 const NOW = new Date('2026-05-20T12:00:00.000Z')
