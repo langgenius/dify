@@ -300,8 +300,12 @@ def _get_node_span_kind(node_type: str) -> OpenInferenceSpanKindValues:
     return _NODE_TYPE_TO_SPAN_KIND.get(node_type, OpenInferenceSpanKindValues.CHAIN)
 
 
-def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
-    """Resolve the workflow session ID for Phoenix workflow spans."""
+def _metadata_trace_session_id(trace_info: BaseTraceInfo) -> str | None:
+    value = trace_info.metadata.get("trace_session_id")
+    return value if isinstance(value, str) and value else None
+
+
+def _resolve_workflow_session_fallback(trace_info: WorkflowTraceInfo) -> str:
     if trace_info.conversation_id:
         return trace_info.conversation_id
 
@@ -310,6 +314,28 @@ def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
         return parent_workflow_run_id
 
     return trace_info.workflow_run_id
+
+
+def _resolve_message_session_fallback(trace_info: MessageTraceInfo) -> str:
+    if trace_info.message_data is not None:
+        conversation_id = getattr(trace_info.message_data, "conversation_id", None)
+        if conversation_id:
+            return conversation_id
+    return ""
+
+
+def _resolve_trace_session_id(trace_info: WorkflowTraceInfo | MessageTraceInfo) -> str:
+    trace_session_id = _metadata_trace_session_id(trace_info)
+    if trace_session_id:
+        return trace_session_id
+    if isinstance(trace_info, WorkflowTraceInfo):
+        return _resolve_workflow_session_fallback(trace_info)
+    return _resolve_message_session_fallback(trace_info)
+
+
+def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
+    """Resolve the workflow session ID for Phoenix workflow spans."""
+    return _resolve_trace_session_id(trace_info)
 
 
 def _resolve_workflow_parent_context(trace_info: BaseTraceInfo) -> tuple[str | None, str | None]:
@@ -752,7 +778,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             file_list=safe_json_dumps(file_list),
             query=trace_info.query or "",
         )
-        workflow_session_id = _resolve_workflow_session_id(trace_info)
+        workflow_session_id = _resolve_trace_session_id(trace_info)
         parent_workflow_run_id, parent_node_execution_id = _resolve_workflow_parent_context(trace_info)
         logger.info(
             "[Arize/Phoenix] Workflow session resolution: workflow_run_id=%s conversation_id=%s "
@@ -1090,6 +1116,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             model_provider=trace_info.message_data.model_provider or "",
             model_id=trace_info.message_data.model_id or "",
         )
+        message_session_id = _resolve_trace_session_id(trace_info)
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
@@ -1104,7 +1131,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             SpanAttributes.OUTPUT_VALUE: trace_info.message_data.answer,
             SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
             SpanAttributes.METADATA: safe_json_dumps(metadata),
-            SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id or "",
+            SpanAttributes.SESSION_ID: message_session_id or "",
         }
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
@@ -1136,7 +1163,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.OUTPUT_VALUE: outputs_str,
                 SpanAttributes.OUTPUT_MIME_TYPE: outputs_mime_type,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
-                SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id or "",
+                SpanAttributes.SESSION_ID: message_session_id or "",
             }
             llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
             if trace_info.total_tokens is not None and trace_info.total_tokens > 0:

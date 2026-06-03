@@ -20,6 +20,7 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
     _resolve_node_parent,
     _resolve_published_parent_span_context,
     _resolve_structured_parent_execution_id,
+    _resolve_trace_session_id,
     _resolve_workflow_parent_context,
     _resolve_workflow_session_id,
     datetime_to_nanos,
@@ -358,6 +359,33 @@ class TestGetNodeSpanKind:
 
 
 class TestWorkflowSessionResolution:
+    def test_resolve_workflow_session_id_prefers_trace_session_id_metadata(self):
+        trace_info = _make_workflow_info(
+            conversation_id="conversation-1",
+            workflow_run_id="workflow-run-1",
+            metadata={"app_id": "app-1", "trace_session_id": "session-1"},
+        )
+
+        assert _resolve_trace_session_id(trace_info) == "session-1"
+
+    def test_resolve_workflow_session_id_falls_back_to_existing_workflow_behavior(self):
+        trace_info = _make_workflow_info(
+            conversation_id="conversation-1",
+            workflow_run_id="workflow-run-1",
+            metadata={"app_id": "app-1"},
+        )
+
+        assert _resolve_trace_session_id(trace_info) == "conversation-1"
+
+    def test_resolve_message_session_id_prefers_trace_session_id_metadata(self):
+        message_data = SimpleNamespace(conversation_id="conversation-1")
+        trace_info = _make_message_info(
+            message_data=message_data,
+            metadata={"app_id": "app-1", "trace_session_id": "session-1"},
+        )
+
+        assert _resolve_trace_session_id(trace_info) == "session-1"
+
     def test_prefers_conversation_id(self):
         info = _make_workflow_trace_info(conversation_id="conversation-1")
 
