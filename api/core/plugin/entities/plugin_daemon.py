@@ -168,6 +168,7 @@ class PluginInstallTask(BasePluginEntity):
 class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")
+    task: PluginInstallTask | None = Field(default=None, description="The install task created for this request.")
 
 
 class PluginVerification(BaseModel):
