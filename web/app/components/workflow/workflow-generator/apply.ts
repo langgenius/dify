@@ -163,7 +163,6 @@ export const applyToCurrentApp = async ({
   // 404), so we treat any fetch failure as "no existing draft" and sync without
   // a hash.
   let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
-  let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
   try {
     existing = await fetchWorkflowDraft(url)
   }
