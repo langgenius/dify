@@ -7,7 +7,7 @@
   "createFromBlank": "创建空白 Snippet",
   "currentDSLVersion": "系统支持 DSL 版本：",
   "defaultName": "未命名 Snippet",
-  "deleteConfirmContent": "删除后不可恢复，引用此 Snippet 的工作流不会自动更新。",
+  "deleteConfirmContent": "此操作无法撤销。使用此 Snippet 的工作流不会受到影响。",
   "deleteConfirmTitle": "删除 Snippet？",
   "deleteFailed": "删除 Snippet 失败",
   "deleted": "Snippet 已删除",

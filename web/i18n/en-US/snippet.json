@@ -7,7 +7,7 @@
   "createFromBlank": "Create from blank",
   "currentDSLVersion": "System-supported DSL version: ",
   "defaultName": "Untitled Snippet",
-  "deleteConfirmContent": "Once deleted, it cannot be recovered, and Workflows that reference this Snippet will not update automatically.",
+  "deleteConfirmContent": "This can't be undone. Workflows that use this snippet won't be affected.",
   "deleteConfirmTitle": "Delete Snippet?",
   "deleteFailed": "Failed to delete snippet",
   "deleted": "Snippet deleted",
