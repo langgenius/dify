@@ -35,7 +35,7 @@ export default function MailAndCodeAuth() {
       setIsLoading(true)
       const ret = await sendWebAppEMailLoginCode(email, locale)
       if (ret.result === 'success') {
-        setLocalStorageItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountDown(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
