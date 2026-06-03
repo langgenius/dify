@@ -37,6 +37,34 @@ describe('configuration debug hooks', () => {
     })
   })
 
+  it('should initialize multiple-model debug settings from local storage', () => {
+    localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify({
+      'app-1': {
+        multiple: true,
+        configs: [
+          {
+            id: 'model-1',
+            model: 'gpt-4o',
+            provider: 'langgenius/openai/openai',
+            parameters: { temperature: 0.7 },
+          },
+        ],
+      },
+    }))
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(true)
+    expect(result.current.multipleModelConfigs).toEqual([
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+    ])
+  })
+
   it('should persist multiple-model debug settings in local storage', () => {
     const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
 
