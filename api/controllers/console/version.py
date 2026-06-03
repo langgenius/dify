@@ -1,11 +1,17 @@
 import logging
 
 import httpx
+from flask import request
+from flask_restx import Resource
 from packaging import version
 from pydantic import BaseModel, Field
 
 from configs import dify_config
-from controllers.fastopenapi import console_router
+from controllers.common.schema import query_params_from_model, register_response_schema_models
+from fields.base import ResponseModel
+from libs.helper import dump_response
+
+from . import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +20,12 @@ class VersionQuery(BaseModel):
     current_version: str = Field(..., description="Current application version")
 
 
-class VersionFeatures(BaseModel):
+class VersionFeatures(ResponseModel):
     can_replace_logo: bool = Field(description="Whether logo replacement is supported")
     model_load_balancing_enabled: bool = Field(description="Whether model load balancing is enabled")
 
 
-class VersionResponse(BaseModel):
+class VersionResponse(ResponseModel):
     version: str = Field(description="Latest version number")
     release_date: str = Field(description="Release date of latest version")
     release_notes: str = Field(description="Release notes for latest version")
@@ -27,11 +33,9 @@ class VersionResponse(BaseModel):
     features: VersionFeatures = Field(description="Feature flags and capabilities")
 
 
-@console_router.get(
-    "/version",
-    response_model=VersionResponse,
-    tags=["console"],
-)
+register_response_schema_models(console_ns, VersionFeatures, VersionResponse)
+
+
 def check_version_update(query: VersionQuery) -> VersionResponse:
     """Check for application version updates."""
     check_update_url = dify_config.CHECK_UPDATE_URL
@@ -80,3 +84,17 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     except version.InvalidVersion:
         logger.warning("Invalid version format: latest=%s, current=%s", latest_version, current_version)
         return False
+
+
+@console_ns.route("/version")
+class VersionApi(Resource):
+    @console_ns.doc("check_version_update")
+    @console_ns.doc(
+        description="Check for application version updates",
+        params=query_params_from_model(VersionQuery),
+    )
+    @console_ns.response(200, "Success", console_ns.models[VersionResponse.__name__])
+    def get(self):
+        """Check for application version updates."""
+        query = VersionQuery.model_validate(request.args.to_dict(flat=True))
+        return dump_response(VersionResponse, check_version_update(query))

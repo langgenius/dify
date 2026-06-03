@@ -6127,6 +6127,45 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Success | [TenantInfoResponse](#tenantinforesponse) |
 
+### /init
+
+#### GET
+##### Summary
+
+Get initialization validation status
+
+##### Description
+
+Get initialization validation status
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [InitStatusResponse](#initstatusresponse) |
+
+#### POST
+##### Summary
+
+Validate initialization password
+
+##### Description
+
+Validate initialization password
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [InitValidatePayload](#initvalidatepayload) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Success | [InitValidateResponse](#initvalidateresponse) |
+| 400 | Already setup or validation failed |  |
+
 ### /installed-apps
 
 #### GET
@@ -6925,6 +6964,23 @@ Handle OAuth callback for trigger provider
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### /ping
+
+#### GET
+##### Summary
+
+Health check endpoint for connection testing
+
+##### Description
+
+Health check endpoint for connection testing
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [PingResponse](#pingresponse) |
 
 ### /rag/pipeline/customized/templates/{template_id}
 
@@ -7935,6 +7991,45 @@ Generate structured output rules using LLM
 | 400 | Invalid request parameters |
 | 402 | Provider quota exceeded |
 
+### /setup
+
+#### GET
+##### Summary
+
+Get system setup status
+
+##### Description
+
+Get system setup status
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [SetupStatusResponse](#setupstatusresponse) |
+
+#### POST
+##### Summary
+
+Initialize system setup with admin account
+
+##### Description
+
+Initialize system setup with admin account
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SetupRequestPayload](#setuprequestpayload) |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Success | [SetupResponse](#setupresponse) |
+| 400 | Already setup or validation failed |  |
+
 ### /spec/schema-definitions
 
 #### GET
@@ -8316,6 +8411,29 @@ Get hosted trial model provider configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | [TrialModelsResponse](#trialmodelsresponse) |
+
+### /version
+
+#### GET
+##### Summary
+
+Check for application version updates
+
+##### Description
+
+Check for application version updates
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| current_version | query | Current application version | Yes | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [VersionResponse](#versionresponse) |
 
 ### /website/crawl
 
@@ -13741,6 +13859,24 @@ Request payload for bulk downloading documents as a zip archive.
 | notion_info_list | [ [NotionInfo](#notioninfo) ] |  | No |
 | website_info_list | [WebsiteInfo](#websiteinfo) |  | No |
 
+#### InitStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string | Initialization status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
+
+#### InitValidatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| password | string | Initialization password | Yes |
+
+#### InitValidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string | Operation result | Yes |
+
 #### Inner
 
 | Name | Type | Description | Required |
@@ -14689,6 +14825,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
+#### PingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string | Health check result | Yes |
+
 #### PipelineVariableResponse
 
 | Name | Type | Description | Required |
@@ -15176,6 +15318,28 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | option_source | [StringListSource](#stringlistsource) |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### SetupRequestPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string | Admin email address | Yes |
+| language | string | Admin language | No |
+| name | string | Admin name (max 30 characters) | Yes |
+| password | string | Admin password | Yes |
+
+#### SetupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string | Setup result | Yes |
+
+#### SetupStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| setup_at | string | Setup completion time (ISO format) | No |
+| step | string | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
 
 #### SimpleAccount
 
@@ -15836,6 +16000,23 @@ in form definiton, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### VersionFeatures
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_replace_logo | boolean | Whether logo replacement is supported | Yes |
+| model_load_balancing_enabled | boolean | Whether model load balancing is enabled | Yes |
+
+#### VersionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_auto_update | boolean | Whether auto-update is supported | Yes |
+| features | [VersionFeatures](#versionfeatures) | Feature flags and capabilities | Yes |
+| release_date | string | Release date of latest version | Yes |
+| release_notes | string | Release notes for latest version | Yes |
+| version | string | Latest version number | Yes |
 
 #### WebAppAuthModel
 
@@ -16628,169 +16809,3 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
-
-## FastOpenAPI Preview (OpenAPI 3.0)
-
-### Dify API (FastOpenAPI PoC)
-FastOpenAPI proof of concept for Dify API
-
-#### Version: 1.0
-
----
-
-##### [GET] /console/api/init
-**Get initialization validation status.**
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [InitStatusResponse](#initstatusresponse)<br> |
-
-##### [POST] /console/api/init
-**Validate initialization password.**
-
-###### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [InitValidatePayload](#initvalidatepayload)<br> |
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Created | **application/json**: [InitValidateResponse](#initvalidateresponse)<br> |
-
-##### [GET] /console/api/ping
-**Health check endpoint for connection testing.**
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [PingResponse](#pingresponse)<br> |
-
-##### [GET] /console/api/setup
-**Get system setup status.
-
-    NOTE: This endpoint is unauthenticated by design.
-
-    During first-time bootstrap there is no admin account yet, so frontend initialization must be
-    able to query setup progress before any login flow exists.
-
-    Only bootstrap-safe status information should be returned by this endpoint.
-    **
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [SetupStatusResponse](#setupstatusresponse)<br> |
-
-##### [POST] /console/api/setup
-**Initialize system setup with admin account.
-
-    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
-    and init-password validation rather than user session authentication.
-    **
-
-###### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [SetupRequestPayload](#setuprequestpayload)<br> |
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Created | **application/json**: [SetupResponse](#setupresponse)<br> |
-
-##### [GET] /console/api/version
-**Check for application version updates.**
-
-###### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| current_version | query |  | Yes | string |
-
-###### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | OK | **application/json**: [VersionResponse](#versionresponse)<br> |
-
----
-##### Schemas
-
-###### ErrorSchema
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| error | { **"details"**: string, **"message"**: string, **"status"**: integer, **"type"**: string } |  | Yes |
-
-###### InitStatusResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| status | string, <br>**Available values:** "finished", "not_started" | Initialization status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
-
-###### InitValidatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| password | string | Initialization password | Yes |
-
-###### InitValidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string | Operation result | Yes |
-
-###### PingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string | Health check result | Yes |
-
-###### SetupRequestPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string | Admin email address | Yes |
-| language |  | Admin language | No |
-| name | string | Admin name (max 30 characters) | Yes |
-| password | string | Admin password | Yes |
-
-###### SetupResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string | Setup result | Yes |
-
-###### SetupStatusResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| setup_at |  | Setup completion time (ISO format) | No |
-| step | string, <br>**Available values:** "finished", "not_started" | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
-
-###### VersionFeatures
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| can_replace_logo | boolean | Whether logo replacement is supported | Yes |
-| model_load_balancing_enabled | boolean | Whether model load balancing is enabled | Yes |
-
-###### VersionResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| can_auto_update | boolean | Whether auto-update is supported | Yes |
-| features | [VersionFeatures](#versionfeatures) | Feature flags and capabilities | Yes |
-| release_date | string | Release date of latest version | Yes |
-| release_notes | string | Release notes for latest version | Yes |
-| version | string | Latest version number | Yes |

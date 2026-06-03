@@ -1,16 +1,19 @@
 from typing import Literal
 
 from flask import request
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from configs import dify_config
-from controllers.fastopenapi import console_router
-from libs.helper import EmailStr, extract_remote_ip
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from fields.base import ResponseModel
+from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.password import valid_password
 from models.model import DifySetup, db
 from services.account_service import RegisterService, TenantService
 
+from . import console_ns
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
@@ -28,20 +31,19 @@ class SetupRequestPayload(BaseModel):
         return valid_password(value)
 
 
-class SetupStatusResponse(BaseModel):
+class SetupStatusResponse(ResponseModel):
     step: Literal["not_started", "finished"] = Field(description="Setup step status")
     setup_at: str | None = Field(default=None, description="Setup completion time (ISO format)")
 
 
-class SetupResponse(BaseModel):
+class SetupResponse(ResponseModel):
     result: str = Field(description="Setup result", examples=["success"])
 
 
-@console_router.get(
-    "/setup",
-    response_model=SetupStatusResponse,
-    tags=["console"],
-)
+register_schema_models(console_ns, SetupRequestPayload)
+register_response_schema_models(console_ns, SetupStatusResponse, SetupResponse)
+
+
 def get_setup_status_api() -> SetupStatusResponse:
     """Get system setup status.
 
@@ -62,12 +64,6 @@ def get_setup_status_api() -> SetupStatusResponse:
     return SetupStatusResponse(step="finished")
 
 
-@console_router.post(
-    "/setup",
-    response_model=SetupResponse,
-    tags=["console"],
-    status_code=201,
-)
 @only_edition_self_hosted
 def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     """Initialize system setup with admin account.
@@ -104,3 +100,24 @@ def get_setup_status() -> DifySetup | bool | None:
         return db.session.scalar(select(DifySetup).limit(1))
 
     return True
+
+
+@console_ns.route("/setup")
+class SetupApi(Resource):
+    @console_ns.doc("get_setup_status")
+    @console_ns.doc(description="Get system setup status")
+    @console_ns.response(200, "Success", console_ns.models[SetupStatusResponse.__name__])
+    def get(self):
+        """Get system setup status."""
+        return dump_response(SetupStatusResponse, get_setup_status_api())
+
+    @console_ns.doc("setup_system")
+    @console_ns.doc(description="Initialize system setup with admin account")
+    @console_ns.expect(console_ns.models[SetupRequestPayload.__name__])
+    @console_ns.response(201, "Success", console_ns.models[SetupResponse.__name__])
+    @console_ns.response(400, "Already setup or validation failed")
+    @only_edition_self_hosted
+    def post(self):
+        """Initialize system setup with admin account."""
+        payload = SetupRequestPayload.model_validate(console_ns.payload or {})
+        return dump_response(SetupResponse, setup_system(payload)), 201
