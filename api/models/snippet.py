@@ -105,6 +105,12 @@ class CustomizedSnippet(Base):
         return None
 
     @property
+    def author_name(self) -> str | None:
+        """Get the creator account name."""
+        account = self.created_by_account
+        return account.name if account else None
+
+    @property
     def updated_by_account(self) -> Account | None:
         """Get the account that last updated this snippet."""
         if self.updated_by:

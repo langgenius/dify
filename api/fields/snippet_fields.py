@@ -17,6 +17,7 @@ snippet_list_fields = {
     "icon_info": fields.Raw,
     "tags": fields.List(fields.Nested(tag_fields)),
     "created_by": fields.String,
+    "author_name": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
