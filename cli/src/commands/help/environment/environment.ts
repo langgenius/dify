@@ -1,4 +1,4 @@
-import { ENV_REGISTRY } from '../../../env/registry.js'
+import { ENV_REGISTRY } from '@/env/registry'
 
 export function runHelpEnvironment(): string {
   let out = 'ENVIRONMENT VARIABLES\n\n'

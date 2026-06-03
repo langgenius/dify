@@ -1,22 +1,19 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../../auth/hosts.js'
-import type { TokenStore } from '../../../../auth/store.js'
-import type { IOStreams } from '../../../../io/streams.js'
-import { unlink } from 'node:fs/promises'
-import { join } from 'node:path'
-import { AccountSessionsClient } from '../../../../api/account-sessions.js'
-import { HOSTS_FILE_NAME } from '../../../../auth/hosts.js'
-import { BaseError } from '../../../../errors/base.js'
-import { ErrorCode } from '../../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../../io/color.js'
-import { runWithSpinner } from '../../../../io/spinner.js'
-import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '../../../../limit/limit.js'
+import type { ActiveContext, Registry } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
+import type { Store } from '@/store/store'
+import type { IOStreams } from '@/sys/io/streams'
+import { AccountSessionsClient } from '@/api/account-sessions'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { runWithSpinner } from '@/sys/io/spinner'
 
 export type DevicesListOptions = {
   readonly io: IOStreams
-  readonly bundle: HostsBundle | undefined
-  readonly http: KyInstance
+  readonly tokenId: string
+  readonly http: HttpClient
   readonly json?: boolean
   readonly page?: number
   readonly limitRaw?: string
@@ -24,7 +21,6 @@ export type DevicesListOptions = {
 }
 
 export async function runDevicesList(opts: DevicesListOptions): Promise<void> {
-  const b = requireLogin(opts.bundle)
   const sessions = new AccountSessionsClient(opts.http)
   const env = opts.envLookup ?? ((k: string) => process.env[k])
   const limit = resolveLimit(opts.limitRaw, env)
@@ -39,7 +35,7 @@ export async function runDevicesList(opts: DevicesListOptions): Promise<void> {
     return
   }
 
-  opts.io.out.write(renderTable(envelope.data, b.token_id ?? ''))
+  opts.io.out.write(renderTable(envelope.data, opts.tokenId))
 }
 
 function resolveLimit(raw: string | undefined, env: (k: string) => string | undefined): number {
@@ -72,11 +68,11 @@ export async function listAllSessions(client: AccountSessionsClient): Promise<re
 }
 
 export type DevicesRevokeOptions = {
-  readonly configDir: string
   readonly io: IOStreams
-  readonly bundle: HostsBundle | undefined
-  readonly http: KyInstance
-  readonly store: TokenStore
+  readonly reg: Registry
+  readonly active: ActiveContext
+  readonly store: Store
+  readonly http: HttpClient
   readonly target?: string
   readonly all: boolean
   readonly yes?: boolean
@@ -84,7 +80,6 @@ export type DevicesRevokeOptions = {
 
 export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
-  const b = requireLogin(opts.bundle)
   if (!opts.all && (opts.target === undefined || opts.target === '')) {
     throw new BaseError({
       code: ErrorCode.UsageMissingArg,
@@ -95,7 +90,7 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
 
   const sessions = new AccountSessionsClient(opts.http)
   const rows = await listAllSessions(sessions)
-  const { ids, selfHit } = pickTargets(rows, opts, b.token_id ?? '')
+  const { ids, selfHit } = pickTargets(rows, opts, opts.active.ctx.token_id ?? '')
   if (ids.length === 0) {
     opts.io.out.write('no sessions to revoke\n')
     return
@@ -105,20 +100,9 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
     await sessions.revoke(id)
 
   if (selfHit)
-    await clearLocal(opts.configDir, b, opts.store)
+    opts.reg.forget(opts.active, opts.store)
 
   opts.io.out.write(`${cs.successIcon()} Revoked ${ids.length} session(s)\n`)
-}
-
-function requireLogin(b: HostsBundle | undefined): HostsBundle {
-  if (b === undefined || b.current_host === '' || b.tokens?.bearer === undefined || b.tokens.bearer === '') {
-    throw new BaseError({
-      code: ErrorCode.NotLoggedIn,
-      message: 'not logged in',
-      hint: 'run \'difyctl auth login\'',
-    })
-  }
-  return b
 }
 
 export type PickResult = {
@@ -177,19 +161,4 @@ function renderTable(rows: readonly SessionRow[], currentId: string): string {
   const fmt = (cells: readonly string[]): string =>
     cells.map((c, i) => c.padEnd(widths[i] ?? 0)).join('  ').trimEnd()
   return body.length === 0 ? `${fmt(header)}\n` : `${[fmt(header), ...body.map(fmt)].join('\n')}\n`
-}
-
-async function clearLocal(configDir: string, bundle: HostsBundle, store: TokenStore): Promise<void> {
-  const accountId = bundle.account?.id ?? bundle.external_subject?.email ?? 'default'
-  try {
-    await store.delete(bundle.current_host, accountId)
-  }
-  catch { /* best-effort */ }
-  try {
-    await unlink(join(configDir, HOSTS_FILE_NAME))
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
-      throw err
-  }
 }

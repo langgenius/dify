@@ -1,8 +1,8 @@
-import { resolveConfigDir } from '../../../config/dir.js'
-import { Args } from '../../../framework/flags.js'
-import { raw } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runConfigGet } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Args } from '@/framework/flags'
+import { raw } from '@/framework/output'
+import { getConfigurationStore } from '@/store/manager'
+import { runConfigGet } from './run'
 
 export default class ConfigGet extends DifyCommand {
   static override description = 'Print one config key\'s value'
@@ -17,6 +17,6 @@ export default class ConfigGet extends DifyCommand {
 
   async run(argv: string[]) {
     const { args } = this.parse(ConfigGet, argv)
-    return raw(await runConfigGet({ dir: resolveConfigDir(), key: args.key }))
+    return raw(runConfigGet({ store: getConfigurationStore(), key: args.key }))
   }
 }

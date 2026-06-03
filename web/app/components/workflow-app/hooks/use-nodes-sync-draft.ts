@@ -10,8 +10,8 @@ import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-seri
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { postWithKeepalive } from '@/service/fetch'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 

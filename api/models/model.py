@@ -366,6 +366,10 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
+    # New Agent App type backed by the Dify Agent runtime (distinct from the
+    # legacy ``agent-chat`` ReAct app). The app is bound 1:1 to a roster Agent
+    # via ``Agent.app_id``; its configuration lives in the Agent Soul snapshot.
+    AGENT = "agent"
     CHANNEL = "channel"
     RAG_PIPELINE = "rag-pipeline"
 
@@ -457,6 +461,27 @@ class App(Base):
             return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
         return None
+
+    @property
+    def bound_agent_id(self) -> str | None:
+        """For an Agent App (mode=agent), the roster Agent it is backed by.
+
+        Resolved via ``Agent.app_id`` so the console can open the Composer in
+        roster-detail mode from the app id. ``None`` for non-agent apps.
+        """
+        if self.mode != AppMode.AGENT:
+            return None
+        from .agent import Agent, AgentScope, AgentSource, AgentStatus
+
+        agent = db.session.scalar(
+            select(Agent).where(
+                Agent.app_id == self.id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        return agent.id if agent else None
 
     @property
     def api_base_url(self) -> str:

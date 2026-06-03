@@ -288,6 +288,12 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const isAgent = app.is_agent === true || app.mode === 'agent-chat'
     const query = body.query ?? ''
     const scenario = getScenario()
+    if (scenario === 'run-422-stale') {
+      return c.json(
+        { error: { code: 'query_not_supported_for_workflow', message: 'query not supported for workflow mode' } },
+        { status: 422 },
+      )
+    }
     if (scenario === 'stream-error') {
       const errSse = sseChunks([{ event: 'error', data: { message: 'boom', status: 503 } }])
       return new Response(errSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
@@ -356,7 +362,20 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         subject_type: 'external_sso',
         subject_email: 'sso@dify.ai',
         subject_issuer: 'https://issuer.example',
+        account: null,
+        workspaces: [],
+        default_workspace_id: null,
         token_id: 'tok-sso-1',
+      })
+    }
+    if (scenario === 'no-email') {
+      return c.json({
+        token: 'dfoa_test',
+        subject_type: 'account',
+        account: { id: ACCOUNT.id, email: '', name: '' },
+        workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
+        default_workspace_id: 'ws-1',
+        token_id: 'tok-1',
       })
     }
     return c.json({

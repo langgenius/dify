@@ -1,10 +1,8 @@
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import yaml from 'js-yaml'
+import type { Store } from '@/store/store'
 import { z } from 'zod'
-import { DIR_PERM, FILE_PERM } from '../config/dir.js'
-
-export const HOSTS_FILE_NAME = 'hosts.yml'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { getHostStore, tokenKey } from '@/store/manager'
 
 const StorageModeSchema = z.enum(['keychain', 'file'])
 export type StorageMode = z.infer<typeof StorageModeSchema>
@@ -29,72 +27,152 @@ export const ExternalSubjectSchema = z.object({
 })
 export type ExternalSubject = z.infer<typeof ExternalSubjectSchema>
 
-export const TokensSchema = z.object({
-  bearer: z.string(),
-})
-export type Tokens = z.infer<typeof TokensSchema>
-
-export const HostsBundleSchema = z.object({
-  current_host: z.string().default(''),
-  scheme: z.string().optional(),
-  account: AccountSchema.optional(),
+export const AccountContextSchema = z.object({
+  account: AccountSchema,
   workspace: WorkspaceSchema.optional(),
   available_workspaces: z.array(WorkspaceSchema).optional(),
-  token_storage: StorageModeSchema.default('file'),
   token_id: z.string().optional(),
   token_expires_at: z.string().optional(),
-  tokens: TokensSchema.optional(),
   external_subject: ExternalSubjectSchema.optional(),
 })
-export type HostsBundle = z.infer<typeof HostsBundleSchema>
+export type AccountContext = z.infer<typeof AccountContextSchema>
 
-export async function loadHosts(dir: string): Promise<HostsBundle | undefined> {
-  const path = join(dir, HOSTS_FILE_NAME)
-  let raw: string
-  try {
-    raw = await readFile(path, 'utf8')
+export const HostEntrySchema = z.object({
+  scheme: z.string().optional(),
+  current_account: z.string().optional(),
+  accounts: z.record(z.string(), AccountContextSchema).default({}),
+})
+export type HostEntry = z.infer<typeof HostEntrySchema>
+
+export const RegistrySchema = z.object({
+  token_storage: StorageModeSchema.default('file'),
+  current_host: z.string().optional(),
+  hosts: z.record(z.string(), HostEntrySchema).default({}),
+})
+export type RegistryData = z.infer<typeof RegistrySchema>
+
+export type ActiveContext = {
+  readonly host: string
+  readonly email: string
+  readonly ctx: AccountContext
+  readonly scheme?: string
+}
+
+export function notLoggedInError(hint = 'run \'difyctl auth login\''): BaseError {
+  return new BaseError({ code: ErrorCode.NotLoggedIn, message: 'not logged in', hint })
+}
+
+export class Registry {
+  private readonly data: RegistryData
+
+  private constructor(data: RegistryData) {
+    this.data = data
   }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT')
+
+  static load(): Registry {
+    const raw = getHostStore().getTyped<Record<string, unknown>>()
+    if (raw === null)
+      return Registry.empty()
+    return new Registry(RegistrySchema.parse(raw))
+  }
+
+  static empty(mode: StorageMode = 'file'): Registry {
+    return new Registry(RegistrySchema.parse({ token_storage: mode, hosts: {} }))
+  }
+
+  static from(data: RegistryData): Registry {
+    return new Registry(data)
+  }
+
+  get hosts(): RegistryData['hosts'] { return this.data.hosts }
+  get current_host(): string | undefined { return this.data.current_host }
+  get token_storage(): StorageMode { return this.data.token_storage }
+  set token_storage(mode: StorageMode) { this.data.token_storage = mode }
+
+  resolveActive(): ActiveContext | undefined {
+    const host = this.data.current_host
+    if (host === undefined || host === '')
       return undefined
-    throw err
+    const entry = this.data.hosts[host]
+    if (entry === undefined)
+      return undefined
+    const email = entry?.current_account
+    if (!email)
+      return undefined
+    const ctx = entry.accounts[email]
+    if (ctx === undefined)
+      return undefined
+    return { host, email, ctx, scheme: entry.scheme }
   }
-  const parsed = yaml.load(raw)
-  return HostsBundleSchema.parse(parsed ?? {})
-}
 
-export async function saveHosts(dir: string, bundle: HostsBundle): Promise<void> {
-  await mkdir(dir, { recursive: true, mode: DIR_PERM })
-  const validated = HostsBundleSchema.parse(bundle)
-  const body = yaml.dump(stripUndefined(validated), { lineWidth: -1, noRefs: true, sortKeys: false })
-  const target = join(dir, HOSTS_FILE_NAME)
-  const tmp = `${target}.tmp.${process.pid}.${Date.now()}`
-  try {
-    await writeFile(tmp, body, { mode: FILE_PERM })
-    await rename(tmp, target)
+  requireActive(hint?: string): ActiveContext {
+    const active = this.resolveActive()
+    if (active === undefined)
+      throw notLoggedInError(hint)
+    return active
   }
-  catch (err) {
-    try {
-      await unlink(tmp)
+
+  upsert(host: string, email: string, ctx: AccountContext): void {
+    const entry = this.data.hosts[host] ?? { accounts: {} }
+    entry.accounts[email] = ctx
+    this.data.hosts[host] = entry
+  }
+
+  remove(host: string, email: string): void {
+    const entry = this.data.hosts[host]
+    if (entry === undefined)
+      return
+    const wasActive = entry.current_account === email
+    delete entry.accounts[email]
+    if (wasActive)
+      entry.current_account = undefined
+    if (Object.keys(entry.accounts).length === 0) {
+      delete this.data.hosts[host]
+      if (this.data.current_host === host)
+        this.data.current_host = undefined
     }
-    catch { /* tmp may not exist */ }
-    throw err
+    else if (wasActive && this.data.current_host === host) {
+      this.data.current_host = undefined
+    }
   }
-  const { chmod, stat } = await import('node:fs/promises')
-  try {
-    const info = await stat(target)
-    if ((info.mode & 0o777) !== FILE_PERM)
-      await chmod(target, FILE_PERM)
-  }
-  catch { /* best-effort */ }
-}
 
-function stripUndefined<T extends Record<string, unknown>>(input: T): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(input)) {
-    if (v === undefined)
-      continue
-    out[k] = v
+  setHost(host: string): void {
+    this.data.current_host = host
   }
-  return out
+
+  setAccount(email: string): void {
+    const host = this.data.current_host
+    if (host === undefined)
+      return
+    const entry = this.data.hosts[host]
+    if (entry !== undefined)
+      entry.current_account = email
+  }
+
+  setScheme(host: string, scheme: string): void {
+    const entry = this.data.hosts[host]
+    if (entry !== undefined)
+      entry.scheme = scheme
+  }
+
+  activate(host: string, email: string, ctx: AccountContext): void {
+    this.upsert(host, email, ctx)
+    this.setHost(host)
+    this.setAccount(email)
+  }
+
+  // Teardown for "this credential is gone": drop the token, drop the context
+  // (unsets pointers when active), persist. Logout + self-revoke share it.
+  forget(active: ActiveContext, store: Store): void {
+    try {
+      store.unset(tokenKey(active.host, active.email))
+    }
+    catch { /* best-effort */ }
+    this.remove(active.host, active.email)
+    this.save()
+  }
+
+  save(): void {
+    getHostStore().setTyped(RegistrySchema.parse(this.data))
+  }
 }

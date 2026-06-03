@@ -1,8 +1,8 @@
-import { Args, Flags } from '../../../framework/flags.js'
-import { formatted } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../_shared/global-flags.js'
-import { runSetMember } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { Args, Flags } from '@/framework/flags'
+import { formatted, OutputFormat } from '@/framework/output'
+import { runSetMember } from './run'
 
 export default class SetMember extends DifyCommand {
   static override description = 'Change a member\'s role in the active (or specified) workspace'
@@ -27,7 +27,7 @@ export default class SetMember extends DifyCommand {
       description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
     }),
     'http-retry': httpRetryFlag,
-    'output': Flags.string({ char: 'o', description: 'output format (json|yaml|name|text)', default: '' }),
+    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.TEXT], default: '' }),
   }
 
   async run(argv: string[]) {
@@ -36,7 +36,7 @@ export default class SetMember extends DifyCommand {
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
     const result = await runSetMember(
       { memberId: args.memberId, role: flags.role, workspace: flags.workspace, format },
-      { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
+      { active: ctx.active, http: ctx.http, io: ctx.io },
     )
     return formatted({ format, data: result.data })
   }

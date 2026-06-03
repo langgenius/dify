@@ -5,3 +5,7 @@ node_modules/
 .vitest-cache/
 docs/specs/
 context/
+test/**/*.ts.map
+test/**/*.js.map
+test/**/*.js
+test/**/*.d.ts

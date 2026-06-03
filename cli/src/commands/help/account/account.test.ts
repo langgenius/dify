@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runHelpAccount } from './account.js'
+import { runHelpAccount } from './account'
 
 describe('runHelpAccount', () => {
   it('mentions auth login device flow', () => {

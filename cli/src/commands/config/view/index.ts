@@ -1,8 +1,8 @@
-import { resolveConfigDir } from '../../../config/dir.js'
-import { Flags } from '../../../framework/flags.js'
-import { raw } from '../../../framework/output.js'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runConfigView } from './run.js'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { raw } from '@/framework/output'
+import { getConfigurationStore } from '@/store/manager'
+import { runConfigView } from './run'
 
 export default class ConfigView extends DifyCommand {
   static override description = 'Print the resolved config'
@@ -18,6 +18,6 @@ export default class ConfigView extends DifyCommand {
 
   async run(argv: string[]) {
     const { flags } = this.parse(ConfigView, argv)
-    return raw(await runConfigView({ dir: resolveConfigDir(), json: flags.json }))
+    return raw(runConfigView({ store: getConfigurationStore(), json: flags.json }))
   }
 }

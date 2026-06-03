@@ -1,17 +1,17 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { AppInfoCache } from '../../../cache/app-info.js'
-import type { IOStreams } from '../../../io/streams.js'
-import type { RunContext } from '../../run/app/_strategies/index.js'
-import { AppMetaClient } from '../../../api/app-meta.js'
-import { AppRunClient } from '../../../api/app-run.js'
-import { AppsClient } from '../../../api/apps.js'
-import { colorEnabled, colorScheme } from '../../../io/color.js'
-import { FieldInfo } from '../../../types/app-meta.js'
-import { resolveWorkspaceId } from '../../../workspace/resolver.js'
-import { pickStrategy } from '../../run/app/_strategies/index.js'
-import { RUN_MODES } from '../../run/app/handlers.js'
-import { AppRunPrintFlags } from '../../run/app/print-flags.js'
+import type { ActiveContext } from '@/auth/hosts'
+import type { AppInfoCache } from '@/cache/app-info'
+import type { RunContext } from '@/commands/run/app/_strategies/index'
+import type { HttpClient } from '@/http/types'
+import type { IOStreams } from '@/sys/io/streams'
+import { AppMetaClient } from '@/api/app-meta'
+import { AppRunClient } from '@/api/app-run'
+import { AppsClient } from '@/api/apps'
+import { pickStrategy } from '@/commands/run/app/_strategies/index'
+import { RUN_MODES } from '@/commands/run/app/handlers'
+import { getEnv, processExit } from '@/sys/index'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { FieldInfo } from '@/types/app-meta'
+import { resolveWorkspaceId } from '@/workspace/resolver'
 
 export type ResumeAppOptions = {
   readonly appId: string
@@ -29,8 +29,8 @@ export type ResumeAppOptions = {
 }
 
 export type ResumeAppDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
   readonly cache?: AppInfoCache
@@ -76,8 +76,8 @@ async function resolveInputs(
 }
 
 export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Promise<void> {
-  const env = deps.envLookup ?? ((k: string) => process.env[k])
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
+  const env = deps.envLookup ?? getEnv
+  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
 
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
@@ -85,13 +85,13 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
   const mode = m.info?.mode ?? RUN_MODES.Workflow
 
   const runClient = new AppRunClient(deps.http)
-  const exit = deps.exit ?? ((code: number) => process.exit(code) as never)
+  const exit = deps.exit ?? processExit
 
   let action = opts.action
   if (action === undefined) {
-    const formResp = await deps.http.get(
+    const formResp = await deps.http.get<{ user_actions: { id: string }[] }>(
       `apps/${encodeURIComponent(opts.appId)}/form/human_input/${encodeURIComponent(opts.formToken)}`,
-    ).json<{ user_actions: { id: string }[] }>()
+    )
     if (formResp.user_actions.length === 1) {
       action = formResp.user_actions[0]?.id ?? ''
     }
@@ -115,7 +115,6 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
     deps.io.err.write(`  ${cs.dim('workflow execution resumed')}\n`)
   }
   const livePrint = opts.stream === true
-  const printFlags = new AppRunPrintFlags()
 
   const adaptedRunClient = {
     runStream: (_appId: string, _body: unknown, streamOpts?: { signal?: AbortSignal }) =>
@@ -145,7 +144,6 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
     isText,
     livePrint,
     runClient: adaptedRunClient as unknown as AppRunClient,
-    printFlags,
     exit,
     think: opts.think ?? false,
   }

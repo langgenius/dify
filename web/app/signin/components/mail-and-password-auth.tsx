@@ -1,6 +1,7 @@
 import type { ResponseError } from '@/service/fetch'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +11,7 @@ import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { login } from '@/service/common'
 import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
@@ -25,6 +27,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const { t } = useTranslation()
   const locale = useLocale()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
@@ -75,8 +78,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           const redirectUrl = resolvePostLoginRedirect(searchParams)
-          router.replace(redirectUrl || '/apps')
+          router.replace(redirectUrl || '/')
         }
       }
       else {
