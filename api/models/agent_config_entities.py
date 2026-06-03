@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from enum import StrEnum
 from typing import Any, Final, Literal
@@ -40,14 +42,182 @@ class OutputErrorStrategy(StrEnum):
 # JSON-schema-friendly name pattern. Stage 4 §3.1 / §10.1.
 _OUTPUT_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+JsonPrimitive = str | int | float | bool | None
+RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | list[bool]
+
+
+class AgentFlexibleConfig(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.model_dump(mode="python").get(key, default)
+
+    def items(self):
+        return self.model_dump(mode="python").items()
+
+    def __bool__(self) -> bool:
+        return bool(self.model_dump(mode="python", exclude_none=True, exclude_defaults=True))
+
+
+class AgentFileRefConfig(AgentFlexibleConfig):
+    id: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    transfer_method: str | None = Field(default=None, max_length=64)
+    url: str | None = None
+
+
+class AgentSkillRefConfig(AgentFlexibleConfig):
+    id: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+    file_id: str | None = Field(default=None, max_length=255)
+    path: str | None = None
+
+
+class AgentCliToolConfig(AgentFlexibleConfig):
+    enabled: bool = True
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+    command: str | None = None
+
+
+class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
+    id: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+
+
+class AgentKnowledgeQueryConfig(AgentFlexibleConfig):
+    query: str | None = None
+    top_k: int | None = Field(default=None, ge=1)
+    score_threshold: float | None = Field(default=None, ge=0, le=1)
+    score_threshold_enabled: bool | None = None
+
+
+class AgentHumanContactConfig(AgentFlexibleConfig):
+    id: str | None = Field(default=None, max_length=255)
+    contact_id: str | None = Field(default=None, max_length=255)
+    human_id: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=255)
+    email: str | None = Field(default=None, max_length=255)
+
+
+class AgentHumanToolConfig(AgentFlexibleConfig):
+    enabled: bool = True
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+
+
+class AgentEnvVariableConfig(AgentFlexibleConfig):
+    name: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    value: RuntimeParameterValue = None
+    required: bool = False
+
+
+class AgentSecretRefConfig(AgentFlexibleConfig):
+    name: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    id: str | None = Field(default=None, max_length=255)
+    provider: str | None = Field(default=None, max_length=255)
+
+
+class AgentSandboxProviderConfig(AgentFlexibleConfig):
+    image: str | None = None
+    working_dir: str | None = None
+    env: list[AgentEnvVariableConfig] = Field(default_factory=list)
+
+
+class AgentMemoryArtifactConfig(AgentFlexibleConfig):
+    id: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    name: str | None = Field(default=None, max_length=255)
+    url: str | None = None
+
+
+class AgentModelResponseFormatConfig(AgentFlexibleConfig):
+    type: str | None = Field(default=None, max_length=64)
+
+
+class AgentSoulModelSettings(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    temperature: float | None = None
+    top_p: float | None = None
+    presence_penalty: float | None = None
+    frequency_penalty: float | None = None
+    max_tokens: int | None = None
+    stop: list[str] | None = None
+    response_format: AgentModelResponseFormatConfig | None = None
+
+
+class AgentFeatureToggleConfig(AgentFlexibleConfig):
+    enabled: bool = False
+
+
+class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
+    language: str | None = None
+    voice: str | None = None
+    autoPlay: str | None = None
+
+
+class AgentSuggestedQuestionsAfterAnswerFeatureConfig(AgentFeatureToggleConfig):
+    prompt: str | None = None
+    model: AgentSoulModelConfig | None = None
+
+
+class AgentModerationIOConfig(AgentFlexibleConfig):
+    enabled: bool = False
+    preset_response: str | None = None
+
+
+class AgentModerationProviderConfig(AgentFlexibleConfig):
+    keywords: str | None = None
+    api_based_extension_id: str | None = None
+    inputs_config: AgentModerationIOConfig | None = None
+    outputs_config: AgentModerationIOConfig | None = None
+
+
+class AgentSensitiveWordAvoidanceFeatureConfig(AgentFeatureToggleConfig):
+    type: str | None = None
+    config: AgentModerationProviderConfig | None = None
+
+
+class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
+    opening_statement: str | None = None
+    suggested_questions: list[str] | None = None
+    suggested_questions_after_answer: AgentSuggestedQuestionsAfterAnswerFeatureConfig | None = None
+    speech_to_text: AgentFeatureToggleConfig | None = None
+    text_to_speech: AgentTextToSpeechFeatureConfig | None = None
+    retriever_resource: AgentFeatureToggleConfig | None = None
+    sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
+
+
+class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
+    selector: list[JsonPrimitive] | None = None
+    variable_selector: list[JsonPrimitive] | None = None
+    value_selector: list[JsonPrimitive] | None = None
+    node_id: str | None = Field(default=None, max_length=255)
+    output: str | None = Field(default=None, max_length=255)
+    name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+
+
+class WorkflowNodeJobMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    file_refs: list[AgentFileRefConfig] | None = None
+
 
 class AgentSoulPromptConfig(BaseModel):
     system_prompt: str = ""
 
 
 class AgentSoulSkillsFilesConfig(BaseModel):
-    files: list[dict[str, Any]] = Field(default_factory=list)
-    skills: list[dict[str, Any]] = Field(default_factory=list)
+    files: list[AgentFileRefConfig] = Field(default_factory=list)
+    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
 
 
 class AgentSoulDifyToolCredentialRef(BaseModel):
@@ -97,7 +267,7 @@ class AgentSoulDifyToolConfig(BaseModel):
     # (see :meth:`_validate_provider_and_credentials`).
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
-    runtime_parameters: dict[str, Any] = Field(default_factory=dict)
+    runtime_parameters: dict[str, RuntimeParameterValue] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod
@@ -118,7 +288,7 @@ class AgentSoulDifyToolConfig(BaseModel):
         return normalized
 
     @model_validator(mode="after")
-    def _validate_provider_and_credentials(self) -> "AgentSoulDifyToolConfig":
+    def _validate_provider_and_credentials(self) -> AgentSoulDifyToolConfig:
         if not self.provider_id and not (self.plugin_id and self.provider):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
@@ -134,34 +304,34 @@ class AgentSoulDifyToolConfig(BaseModel):
 
 class AgentSoulToolsConfig(BaseModel):
     dify_tools: list[AgentSoulDifyToolConfig] = Field(default_factory=list)
-    cli_tools: list[dict[str, Any]] = Field(default_factory=list)
+    cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
 
 
 class AgentSoulKnowledgeConfig(BaseModel):
-    datasets: list[dict[str, Any]] = Field(default_factory=list)
+    datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
     query_mode: AgentKnowledgeQueryMode | None = None
-    query_config: dict[str, Any] = Field(default_factory=dict)
+    query_config: AgentKnowledgeQueryConfig = Field(default_factory=AgentKnowledgeQueryConfig)
 
 
 class AgentSoulHumanConfig(BaseModel):
-    contacts: list[dict[str, Any]] = Field(default_factory=list)
-    tools: list[dict[str, Any]] = Field(default_factory=list)
+    contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
+    tools: list[AgentHumanToolConfig] = Field(default_factory=list)
 
 
 class AgentSoulEnvConfig(BaseModel):
-    variables: list[dict[str, Any]] = Field(default_factory=list)
-    secret_refs: list[dict[str, Any]] = Field(default_factory=list)
+    variables: list[AgentEnvVariableConfig] = Field(default_factory=list)
+    secret_refs: list[AgentSecretRefConfig] = Field(default_factory=list)
 
 
 class AgentSoulSandboxConfig(BaseModel):
     provider: str | None = None
-    config: dict[str, Any] = Field(default_factory=dict)
+    config: AgentSandboxProviderConfig = Field(default_factory=AgentSandboxProviderConfig)
 
 
 class AgentSoulMemoryConfig(BaseModel):
     scope: str | None = None
     budget: str | None = None
-    artifacts: list[dict[str, Any]] = Field(default_factory=list)
+    artifacts: list[AgentMemoryArtifactConfig] = Field(default_factory=list)
 
 
 class AgentSoulModelCredentialRef(BaseModel):
@@ -179,7 +349,7 @@ class AgentSoulModelConfig(BaseModel):
     model_provider: str = Field(min_length=1, max_length=255)
     model: str = Field(min_length=1, max_length=255)
     credential_ref: AgentSoulModelCredentialRef | None = None
-    model_settings: dict[str, Any] = Field(default_factory=dict)
+    model_settings: AgentSoulModelSettings = Field(default_factory=AgentSoulModelSettings)
 
 
 class AppVariableConfig(BaseModel):
@@ -202,9 +372,9 @@ class AgentSoulConfig(BaseModel):
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None
-    app_features: dict[str, Any] = Field(default_factory=dict)
+    app_features: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)
     app_variables: list[AppVariableConfig] = Field(default_factory=list)
-    misc_legacy: dict[str, Any] = Field(default_factory=dict)
+    misc_legacy: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)
 
 
 class DeclaredOutputFileConfig(BaseModel):
@@ -230,7 +400,7 @@ class DeclaredArrayItem(BaseModel):
     description: str | None = None
 
     @model_validator(mode="after")
-    def _reject_nested_array(self) -> "DeclaredArrayItem":
+    def _reject_nested_array(self) -> DeclaredArrayItem:
         if self.type == DeclaredOutputType.ARRAY:
             raise ValueError("nested arrays are not supported as array_item.type")
         return self
@@ -246,13 +416,13 @@ class DeclaredOutputCheckConfig(BaseModel):
 
     enabled: bool = False
     prompt: str | None = None
-    benchmark_file_ref: dict[str, Any] | None = None
+    benchmark_file_ref: AgentFileRefConfig | None = None
     # Reserved for stage 4.1: pick a different model than Agent Soul's for the check.
     # Stage 4 leaves this Optional and unused by FileOutputCheckExecutor.
-    model_ref: dict[str, Any] | None = None
+    model_ref: AgentSoulModelConfig | None = None
 
     @model_validator(mode="after")
-    def _require_prompt_and_benchmark_when_enabled(self) -> "DeclaredOutputCheckConfig":
+    def _require_prompt_and_benchmark_when_enabled(self) -> DeclaredOutputCheckConfig:
         if self.enabled:
             if not self.prompt or not self.prompt.strip():
                 raise ValueError("prompt is required when output check is enabled")
@@ -288,7 +458,7 @@ class DeclaredOutputFailureStrategy(BaseModel):
     default_value: Any = None
 
     @model_validator(mode="after")
-    def _require_default_value_when_default_strategy(self) -> "DeclaredOutputFailureStrategy":
+    def _require_default_value_when_default_strategy(self) -> DeclaredOutputFailureStrategy:
         if self.on_failure == OutputErrorStrategy.DEFAULT_VALUE and self.default_value is None:
             raise ValueError(
                 "default_value must be provided when on_failure=default_value; None is reserved for 'not set'."
@@ -326,7 +496,7 @@ class DeclaredOutputConfig(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _validate_shape(self) -> "DeclaredOutputConfig":
+    def _validate_shape(self) -> DeclaredOutputConfig:
         if not _OUTPUT_NAME_PATTERN.fullmatch(self.name):
             raise ValueError(
                 f"output name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} (JSON-schema-friendly identifier)"
@@ -427,7 +597,7 @@ class WorkflowNodeJobConfig(BaseModel):
     schema_version: int = 1
     mode: WorkflowNodeJobMode = WorkflowNodeJobMode.TELL_AGENT_WHAT_TO_DO
     workflow_prompt: str = ""
-    previous_node_output_refs: list[dict[str, Any]] = Field(default_factory=list)
+    previous_node_output_refs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
-    human_contacts: list[dict[str, Any]] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
+    metadata: WorkflowNodeJobMetadata = Field(default_factory=WorkflowNodeJobMetadata)

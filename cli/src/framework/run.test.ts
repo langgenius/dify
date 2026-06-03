@@ -1,7 +1,7 @@
 import type { CommandConstructor } from './command'
 import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vitest'
-import { BaseError, newError } from '@/errors/base'
+import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { Command } from './command'
 import { run, sniffOutputFormat } from './run'
@@ -171,7 +171,7 @@ describe('run() catch routing', () => {
   it('routes Server5xx error with http_status line and generic exit', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw newError(ErrorCode.Server5xx, 'upstream boom').withHttpStatus(502)
+        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom')).withHttpStatus(502)
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
@@ -182,7 +182,7 @@ describe('run() catch routing', () => {
   it('renders request line and http_status when both are present', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw newError(ErrorCode.Server5xx, 'upstream boom')
+        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom'))
           .withRequest('GET', 'https://api.dify.ai/v1/me')
           .withHttpStatus(502)
       }
@@ -197,7 +197,7 @@ describe('run() catch routing', () => {
   it('serializes method and url in JSON envelope', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw newError(ErrorCode.Server4xxOther, 'not found')
+        throw HttpClientError.from(newError(ErrorCode.Server4xxOther, 'not found'))
           .withRequest('GET', 'https://api.dify.ai/v1/apps/x')
           .withHttpStatus(404)
       }
