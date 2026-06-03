@@ -30,7 +30,7 @@ class TestEndUserApi:
         end_user.id = str(uuid4())
         end_user.tenant_id = app_model.tenant_id
         end_user.app_id = app_model.id
-        end_user.type = EndUserType.SERVICE_API_LEGACY
+        end_user.type = EndUserType.SERVICE_API
         end_user.external_user_id = "external-123"
         end_user.name = "Alice"
         end_user._is_anonymous = True
