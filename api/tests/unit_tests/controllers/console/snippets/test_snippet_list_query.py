@@ -21,6 +21,23 @@ def test_snippet_list_query_accepts_creator_id_alias() -> None:
     assert query.creators == [creator_id]
 
 
+def test_normalize_snippet_list_query_accepts_indexed_creator_ids() -> None:
+    first = "9e8959cf-a67b-4d34-9906-1d687517b248"
+    second = "1886f96a-5bf0-42bf-961d-8d2129049076"
+
+    normalized = _normalize_snippet_list_query_args(
+        MultiDict(
+            [
+                ("creator_ids[1]", second),
+                ("creator_ids[0]", first),
+                ("keyword", "search"),
+            ]
+        )
+    )
+
+    assert normalized == {"keyword": "search", "creators": [first, second]}
+
+
 def test_normalize_snippet_list_query_accepts_indexed_tag_ids() -> None:
     first = "11111111-1111-1111-1111-111111111111"
     second = "22222222-2222-2222-2222-222222222222"
