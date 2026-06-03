@@ -3685,11 +3685,6 @@ export const loop2 = {
   nodes: nodes6,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get62 = oc
   .route({
     inputStructure: 'detailed',
@@ -3767,11 +3762,6 @@ export const validate2 = {
   post: post50,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get63 = oc
   .route({
     inputStructure: 'detailed',
