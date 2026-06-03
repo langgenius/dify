@@ -1,8 +1,10 @@
 import json
 import os
 import threading
+from typing import cast
 
 from flask import Response
+from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
 from controllers.console.admin import admin_required
@@ -57,14 +59,13 @@ def init_app(app: DifyApp):
         from extensions.ext_database import db
 
         engine = db.engine
-        # TODO: Fix the type error
-        # FIXME maybe its sqlalchemy issue
+        pool = cast(QueuePool, engine.pool)
         return {
             "pid": os.getpid(),
-            "pool_size": engine.pool.size(),  # type: ignore
-            "checked_in_connections": engine.pool.checkedin(),  # type: ignore
-            "checked_out_connections": engine.pool.checkedout(),  # type: ignore
-            "overflow_connections": engine.pool.overflow(),  # type: ignore
-            "connection_timeout": engine.pool.timeout(),  # type: ignore
-            "recycle_time": db.engine.pool._recycle,  # type: ignore
+            "pool_size": pool.size(),
+            "checked_in_connections": pool.checkedin(),
+            "checked_out_connections": pool.checkedout(),
+            "overflow_connections": pool.overflow(),
+            "connection_timeout": pool.timeout(),
+            "recycle_time": pool._recycle,
         }
