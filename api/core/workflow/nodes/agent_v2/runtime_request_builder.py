@@ -14,6 +14,7 @@ from dify_agent.layers.shell import (
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest
+from pydantic import BaseModel
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -401,6 +402,7 @@ class WorkflowAgentRuntimeRequestBuilder:
 
 def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
     """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
+    sandbox_config = _plain_mapping(agent_soul.sandbox.config)
     return DifyShellLayerConfig(
         cli_tools=[tool for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools) if tool is not None],
         env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
@@ -409,44 +411,55 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         ],
         sandbox=DifyShellSandboxConfig(
             provider=agent_soul.sandbox.provider,
-            config=agent_soul.sandbox.config,
+            config=sandbox_config,
         )
-        if agent_soul.sandbox.provider or agent_soul.sandbox.config
+        if agent_soul.sandbox.provider or sandbox_config
         else None,
     )
 
 
-def _shell_cli_tool(item: Mapping[str, Any]) -> DifyShellCliToolConfig | None:
+def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
+    data = _plain_mapping(item)
     commands: list[str] = []
-    raw_commands = item.get("install_commands")
+    raw_commands = data.get("install_commands")
     if isinstance(raw_commands, list):
         commands.extend(str(command) for command in raw_commands if str(command).strip())
     for key in ("install_command", "install", "setup_command"):
-        raw_command = item.get(key)
+        raw_command = data.get(key)
         if isinstance(raw_command, str) and raw_command.strip():
             commands.append(raw_command)
-    name = item.get("name") or item.get("tool_name") or item.get("label")
+    name = data.get("name") or data.get("tool_name") or data.get("label")
     if not commands and not isinstance(name, str):
         return None
     return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
 
 
-def _shell_env_var(item: Mapping[str, Any]) -> DifyShellEnvVarConfig | None:
-    name = _name_from_mapping(item)
+def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
+    data = _plain_mapping(item)
+    name = _name_from_mapping(data)
     if name is None:
         return None
-    value = item.get("value", item.get("default", ""))
+    value = data.get("value", data.get("default", ""))
     if not isinstance(value, str):
         value = str(value)
     return DifyShellEnvVarConfig(name=name, value=value)
 
 
-def _shell_secret_ref(item: Mapping[str, Any]) -> DifyShellSecretRefConfig | None:
-    name = _name_from_mapping(item)
+def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
+    data = _plain_mapping(item)
+    name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = item.get("ref") or item.get("id") or item.get("credential_id") or item.get("provider_credential_id")
+    ref = data.get("ref") or data.get("id") or data.get("credential_id") or data.get("provider_credential_id")
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
+
+
+def _plain_mapping(item: object) -> dict[str, Any]:
+    if isinstance(item, BaseModel):
+        return item.model_dump(mode="python", exclude_none=True)
+    if isinstance(item, Mapping):
+        return dict(item)
+    return {}
 
 
 def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
