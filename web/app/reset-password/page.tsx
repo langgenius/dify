@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
@@ -93,4 +93,3 @@ export default function CheckCode() {
     </div>
   )
 }
-
