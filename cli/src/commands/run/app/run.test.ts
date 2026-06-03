@@ -351,6 +351,26 @@ describe('runApp', () => {
     })
   })
 
+  it('422 on run: invalidates cache and adds republish hint', async () => {
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    // warm cache with successful run
+    await runApp(
+      { appId: 'app-1', message: 'hi' },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(cache.get(mock.url, 'app-1')).toBeDefined()
+
+    mock.setScenario('run-422-stale')
+    const err = await runApp(
+      { appId: 'app-1', message: 'hi' },
+      { active: active(), http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
+    ).catch((e: unknown) => e)
+    expect(err).toMatchObject({ code: 'server_4xx_other', httpStatus: 422 })
+    expect((err as { hint?: string }).hint).toMatch(/cache cleared/)
+    expect(cache.get(mock.url, 'app-1')).toBeUndefined()
+  })
+
   it('workflow: --file overrides same-named key from --inputs (file wins)', async () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })

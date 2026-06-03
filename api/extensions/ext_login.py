@@ -1,5 +1,5 @@
 import json
-from typing import cast
+from typing import cast, override
 
 import flask_login
 from flask import Request, Response, request
@@ -28,6 +28,7 @@ class DifyLoginManager(flask_login.LoginManager):
     Flask-Login's broader callback contract.
     """
 
+    @override
     def unauthorized(self) -> Response:
         """Return the registered unauthorized handler result as a Flask `Response`."""
         return cast(Response, super().unauthorized())

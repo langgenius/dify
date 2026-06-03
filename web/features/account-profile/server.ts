@@ -1,5 +1,5 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { UserProfileWithMeta } from './client'
-import type { AccountProfileResponse } from '@/contract/console/account'
 import { queryOptions } from '@tanstack/react-query'
 import { getServerConsoleRequestHeaders, resolveServerConsoleApiUrl, serverConsoleQuery } from '@/service/server'
 
@@ -22,7 +22,7 @@ export const serverUserProfileQueryOptions = () =>
       if (!response.ok)
         throw response
 
-      const profile: AccountProfileResponse = await response.clone().json()
+      const profile: GetAccountProfileResponse = await response.clone().json()
       return {
         profile,
         meta: {

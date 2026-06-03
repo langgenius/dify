@@ -1,6 +1,7 @@
 import type { CommandOutput } from './output'
 import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, OptionalArgValueType } from './types'
-import { parseArgv } from './flags'
+import { setVerbose } from './context'
+import { hasBooleanFlag, parseArgv, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
 
 export type CommandConstructor = {
   new(): Command
@@ -28,10 +29,15 @@ type ParseResult<C extends CommandConstructor> = {
 export abstract class Command implements ICommand {
   static description?: string
   static flags: Record<string, FlagDefinition<OptionalArgValueType>> = {}
+
   static args: Record<string, ArgDefinition<string | undefined>> = {}
   static examples: string[] = []
 
   abstract run(argv: string[]): Promise<CommandOutput | void>
+
+  processGlobalFlags(argv: readonly string[]): void {
+    setVerbose(hasBooleanFlag(argv, VERBOSE_FLAG, VERBOSE_CHAR))
+  }
 
   protected parse<C extends CommandConstructor>(ctor: C, argv: string[]): ParseResult<C> {
     const meta = {
