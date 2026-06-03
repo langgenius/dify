@@ -17,6 +17,7 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
@@ -69,12 +70,13 @@ const PlanComp: FC<Props> = ({
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending)
       return
     mutateAsync().then((res) => {
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      setEducationVerifying(null)
       if (unmountedRef.current)
         return
       router.push(`/education-apply?token=${res.token}`)
