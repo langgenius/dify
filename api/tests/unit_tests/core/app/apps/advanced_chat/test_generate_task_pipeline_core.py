@@ -50,6 +50,7 @@ from core.app.entities.task_entities import (
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
 from graphon.entities.pause_reason import PauseReasonType
+from graphon.nodes.human_input.entities import UserActionConfig
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
