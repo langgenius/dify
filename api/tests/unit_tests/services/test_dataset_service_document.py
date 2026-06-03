@@ -1687,3 +1687,30 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     account_context,
                     dataset_process_rule=SimpleNamespace(id="rule-1"),
                 )
+
+
+class TestDocumentServiceEstimateArgsValidation:
+    """Unit tests for indexing estimate argument validation."""
+
+    def test_estimate_args_validate_preserves_hierarchical_chunking_rules(self):
+        args = {
+            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1"]}},
+            "process_rule": {
+                "mode": "hierarchical",
+                "rules": {
+                    "pre_processing_rules": [
+                        {"id": "remove_extra_spaces", "enabled": False},
+                        {"id": "remove_urls_emails", "enabled": False},
+                    ],
+                    "segmentation": {"separator": "\\n\\n", "max_tokens": 1024},
+                    "parent_mode": "paragraph",
+                    "subchunk_segmentation": {"separator": "\\n", "max_tokens": 512},
+                },
+            },
+        }
+
+        DocumentService.estimate_args_validate(args)
+
+        rules = args["process_rule"]["rules"]
+        assert rules["parent_mode"] == "paragraph"
+        assert rules["subchunk_segmentation"] == {"separator": "\\n", "max_tokens": 512}

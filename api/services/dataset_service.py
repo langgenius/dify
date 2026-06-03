@@ -138,6 +138,8 @@ class _EstimateSegmentation(BaseModel):
 class _EstimateRules(BaseModel):
     pre_processing_rules: list[_EstimatePreProcessingRule]
     segmentation: _EstimateSegmentation
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: _EstimateSegmentation | None = None
 
     @field_validator("pre_processing_rules")
     @classmethod
