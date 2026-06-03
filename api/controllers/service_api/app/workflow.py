@@ -30,7 +30,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.helper.trace_id_helper import get_external_trace_id
+from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
     response_mode: Literal["blocking", "streaming"] | None = None
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
 
 
 class WorkflowLogQuery(BaseModel):
@@ -274,6 +275,9 @@ class WorkflowRunApi(Resource):
 
         payload = WorkflowRunPayload.model_validate(service_api_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -330,6 +334,9 @@ class WorkflowRunByIdApi(Resource):
 
         payload = WorkflowRunPayload.model_validate(service_api_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
 
         # Add workflow_id to args for AppGenerateService
         args["workflow_id"] = workflow_id

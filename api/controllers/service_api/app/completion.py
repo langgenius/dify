@@ -28,7 +28,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.helper.trace_id_helper import get_external_trace_id
+from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
@@ -56,6 +56,7 @@ class CompletionRequestPayload(BaseModel):
     files: list[dict[str, Any]] | None = None
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="dev")
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
 
 
 class ChatRequestPayload(BaseModel):
@@ -67,6 +68,7 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -115,6 +117,9 @@ class CompletionApi(Resource):
         payload = CompletionRequestPayload.model_validate(service_api_ns.payload or {})
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
@@ -213,6 +218,9 @@ class ChatApi(Resource):
 
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
