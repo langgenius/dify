@@ -817,12 +817,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 18
     }
@@ -2419,11 +2413,6 @@
       "count": 2
     }
   },
-  "web/app/components/explore/create-app-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/tab.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2516,11 +2505,6 @@
   "web/app/components/goto-anything/hooks/use-goto-anything-results.ts": {
     "@tanstack/query/exhaustive-deps": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-dropdown/index.tsx": {
-    "no-restricted-globals": {
-      "count": 3
     }
   },
   "web/app/components/header/account-setting/data-source-page-new/card.tsx": {
@@ -3748,9 +3732,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -4679,11 +4660,6 @@
       "count": 12
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4899,11 +4875,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/variable-inspect/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/variable-inspect/left.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -5018,22 +4989,6 @@
   },
   "web/app/signin/check-code/page.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },

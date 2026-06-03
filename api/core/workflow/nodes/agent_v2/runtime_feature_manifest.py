@@ -31,7 +31,7 @@ RESERVED_AGENT_BACKEND_FEATURES = frozenset(
 def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any]:
     """Describe PRD capabilities supported by or still reserved from Agent backend runtime."""
     warnings: list[dict[str, str]] = []
-    soul_dump = agent_soul.model_dump(mode="json")
+    soul_dump = agent_soul.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
     for section in sorted(RESERVED_AGENT_BACKEND_FEATURES):
         value = _get_nested(soul_dump, section)
         has_value = bool(value)
