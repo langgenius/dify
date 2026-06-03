@@ -112,7 +112,7 @@ class AgentAppRuntimeRequestBuilder:
                     model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
                     credentials=self._normalize_credentials(credentials),
-                    model_settings=agent_soul.model.model_settings,
+                    model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
