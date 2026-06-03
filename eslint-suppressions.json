@@ -817,12 +817,6 @@
     }
   },
   "web/app/components/base/chat/chat-with-history/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 18
     }
@@ -1867,11 +1861,6 @@
       "count": 4
     }
   },
-  "web/app/components/billing/plan/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/pricing/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 12
@@ -2401,11 +2390,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/education-verify-action-recorder.tsx": {
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "web/app/components/explore/app-list/index.tsx": {
@@ -3758,9 +3742,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -4397,11 +4378,6 @@
       "count": 9
     }
   },
-  "web/app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 8
@@ -4694,11 +4670,6 @@
       "count": 12
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4914,11 +4885,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/variable-inspect/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/variable-inspect/left.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -5103,11 +5069,6 @@
     },
     "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "web/context/modal-context-provider.tsx": {
-    "no-restricted-globals": {
-      "count": 2
     }
   },
   "web/context/provider-context-provider.tsx": {
