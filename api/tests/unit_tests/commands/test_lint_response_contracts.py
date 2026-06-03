@@ -139,9 +139,7 @@ class BadDeleteApi(Resource):
     assert module.main() == 1
 
 
-def test_main_hides_unknown_details_by_default(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
-):
+def test_main_hides_unknown_details_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys):
     module = _load_lint_response_contracts_module()
     controller_path = tmp_path / "controllers" / "sample.py"
     controller_path.parent.mkdir()
