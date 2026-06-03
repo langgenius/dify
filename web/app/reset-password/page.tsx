@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
@@ -12,6 +12,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
 
 export default function CheckCode() {
@@ -91,3 +92,4 @@ export default function CheckCode() {
     </div>
   )
 }
+
