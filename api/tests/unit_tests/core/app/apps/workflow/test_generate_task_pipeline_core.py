@@ -297,8 +297,10 @@ class TestWorkflowGenerateTaskPipeline:
             class FakeSession:
                 def scalar(self, stmt):
                     return None
+
                 def commit(self):
                     pass
+
             yield FakeSession()
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
