@@ -98,6 +98,23 @@ describe('CreateAppCard', () => {
       render(<CreateAppCard ref={defaultRef} selectedAppType="chat" />)
       expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
+
+    it('should disable create actions when disabled', () => {
+      render(<CreateAppCard ref={defaultRef} disabled />)
+
+      const buttons = screen.getAllByRole('button')
+      buttons.forEach((button) => {
+        expect(button).toBeDisabled()
+      })
+
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
+      fireEvent.click(screen.getByText('app.importDSL'))
+
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('create-template-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+    })
   })
 
   describe('User Interactions - Create App Modal', () => {
@@ -222,7 +239,7 @@ describe('CreateAppCard', () => {
       const { container } = render(<CreateAppCard ref={defaultRef} />)
       const card = container.firstChild as HTMLElement
 
-      expect(card).toHaveClass('h-[160px]', 'rounded-xl')
+      expect(card).toHaveClass('h-40', 'rounded-xl')
     })
 
     it('should have proper button styling', () => {

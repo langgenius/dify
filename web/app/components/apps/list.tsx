@@ -14,6 +14,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -45,7 +46,7 @@ const List: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isLoadingCurrentWorkspace, workspacePermissionKeys } = useAppContext()
+  const { workspacePermissionKeys, isLoadingWorkspacePermissionKeys } = useAppContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { replace } = useRouter()
@@ -60,6 +61,7 @@ const List: FC<Props> = ({
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
+  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, undefined, { raw: true })
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -137,11 +139,11 @@ const List: FC<Props> = ({
   ]
 
   useEffect(() => {
-    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
-      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
+    if (needRefreshAppList === '1') {
+      setNeedRefreshAppList(null)
       refetch()
     }
-  }, [refetch])
+  }, [needRefreshAppList, refetch, setNeedRefreshAppList])
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true
@@ -177,6 +179,7 @@ const List: FC<Props> = ({
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+  const isNewAppCardDisabled = !canCreateApp && !isLoadingWorkspacePermissionKeys
 
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
@@ -249,15 +252,14 @@ const List: FC<Props> = ({
           !hasAnyApp && 'overflow-hidden',
         )}
         >
-          {(canCreateApp || isLoadingCurrentWorkspace) && (
-            <NewAppCard
-              ref={newAppCardRef}
-              isLoading={isLoadingCurrentWorkspace}
-              onSuccess={refetch}
-              selectedAppType={category}
-              className={cn(!hasAnyApp && 'z-10')}
-            />
-          )}
+          <NewAppCard
+            ref={newAppCardRef}
+            disabled={isNewAppCardDisabled}
+            isLoading={isLoadingWorkspacePermissionKeys}
+            onSuccess={refetch}
+            selectedAppType={category}
+            className={cn(!hasAnyApp && 'z-10')}
+          />
           {showSkeleton
             ? <AppCardSkeleton count={6} />
             : hasAnyApp

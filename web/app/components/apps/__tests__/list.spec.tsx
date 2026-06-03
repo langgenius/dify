@@ -47,10 +47,14 @@ vi.mock('@/service/client', () => ({
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+let mockWorkspacePermissionKeys = ['app.create_and_management']
+let mockIsLoadingWorkspacePermissionKeys = false
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }),
 }))
 
@@ -203,9 +207,13 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: React.forwardRef((_props: unknown, _ref: React.ForwardedRef<unknown>) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-  }),
+  default: (props: { disabled?: boolean, isLoading?: boolean }) => {
+    return React.createElement('button', {
+      'data-testid': 'new-app-card',
+      'type': 'button',
+      'disabled': props.disabled || props.isLoading,
+    }, 'New App Card')
+  },
 }))
 
 vi.mock('../empty', () => ({
@@ -260,6 +268,8 @@ describe('List', () => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockWorkspacePermissionKeys = ['app.create_and_management']
+    mockIsLoadingWorkspacePermissionKeys = false
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
@@ -446,17 +456,19 @@ describe('List', () => {
     })
   })
 
-  describe('Non-Editor User', () => {
-    it('should not render new app card for non-editors', () => {
+  describe('Create Permission', () => {
+    it('should render disabled new app card when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
-      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+      expect(screen.getByTestId('new-app-card')).toBeDisabled()
     })
 
-    it('should not render drop DSL hint for non-editors', () => {
+    it('should not render drop DSL hint when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys = []
 
       renderList()
 

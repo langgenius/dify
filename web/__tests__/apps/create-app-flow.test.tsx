@@ -52,6 +52,7 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
   useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
@@ -275,12 +276,18 @@ describe('Create App Flow', () => {
       expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
-    it('should not render NewAppCard when user lacks app creation permission', () => {
+    it('should render disabled NewAppCard when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      const startFromBlankButton = screen.getByRole('button', { name: 'app.newApp.startFromBlank' })
+
+      expect(startFromBlankButton).toBeDisabled()
+
+      fireEvent.click(startFromBlankButton)
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
     })
 
     it('should show loading state when workspace is loading', () => {

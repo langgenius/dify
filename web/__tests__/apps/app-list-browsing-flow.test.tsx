@@ -65,6 +65,7 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
   useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
@@ -294,7 +295,7 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
 
-    it('should hide NewAppCard when user lacks app creation permission', () => {
+    it('should show disabled NewAppCard when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       mockPages = [createPage([
@@ -303,7 +304,10 @@ describe('App List Browsing Flow', () => {
 
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.newApp.startFromBlank' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'app.newApp.startFromTemplate' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'app.importDSL' })).toBeDisabled()
     })
   })
 
