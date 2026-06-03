@@ -1,6 +1,8 @@
 import hashlib
+import ipaddress
 import json
 import logging
+import socket
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
@@ -707,13 +709,53 @@ class MCPToolManageService:
             raise ValueError(f"MCP tool {server_identifier} already exists")
         raise error
 
-    def _is_valid_url(self, url: str) -> bool:
-        """Validate URL format."""
+    @staticmethod
+    def _is_valid_url(url: str) -> bool:
+        """Validate URL format and reject private/internal IP addresses to prevent SSRF.
+
+        Checks:
+        1. URL format: scheme must be http or https, netloc must be present
+        2. DNS resolution: resolve hostname to IP addresses
+        3. SSRF protection: reject private, loopback, link-local, multicast,
+           reserved, and unspecified IP ranges (RFC 1918, RFC 6598, etc.)
+        """
         if not url:
             return False
         try:
             parsed = urlparse(url)
-            return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
+            if not (all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]):
+                return False
+
+            # Extract hostname from netloc (strip port and brackets)
+            hostname = parsed.hostname
+            if not hostname:
+                return False
+
+            # Resolve hostname and check if any resolved IP is private/internal
+            try:
+                addrs = socket.getaddrinfo(hostname, None)
+                for addr in addrs:
+                    ip_str = addr[4][0]
+                    try:
+                        ip = ipaddress.ip_address(ip_str)
+                        if (
+                            ip.is_private
+                            or ip.is_loopback
+                            or ip.is_link_local
+                            or ip.is_multicast
+                            or ip.is_reserved
+                            or ip.is_unspecified
+                        ):
+                            logger.warning("SSRF blocked: URL %s resolved to restricted IP %s", url, ip_str)
+                            return False
+                    except ValueError:
+                        continue
+            except (socket.gaierror, socket.herror, OSError):
+                # DNS resolution failed — block the URL to prevent DNS rebinding attacks
+                logger.warning("SSRF blocked: DNS resolution failed for %s", hostname)
+                return False
+
+            return True
         except (ValueError, TypeError):
             return False
 
