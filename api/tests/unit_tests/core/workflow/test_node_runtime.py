@@ -470,6 +470,46 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
     get_runtime.assert_called_once()
 
 
+def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
+    get_runtime = MagicMock(return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
+    monkeypatch.setattr(
+        node_runtime,
+        "get_system_text",
+        lambda _pool, key: (
+            "outer-workflow-run-id" if key == node_runtime.SystemVariableKey.WORKFLOW_EXECUTION_ID else None
+        ),
+    )
+
+    run_context = _build_run_context()
+    run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
+    runtime = node_runtime.DifyToolNodeRuntime(run_context)
+    node_data = ToolNodeData(
+        title="Workflow Tool Node",
+        desc=None,
+        provider_id="workflow-provider-id",
+        provider_type=ToolProviderType.WORKFLOW,
+        provider_name="workflow-provider",
+        tool_name="workflow-tool",
+        tool_label="Workflow Tool",
+        tool_configurations={},
+        tool_parameters={},
+    )
+
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=node_data,
+        variable_pool=object(),
+        node_execution_id="node-execution-id",
+    )
+
+    assert handle.raw.trace_session_id == "session-1"
+    assert runtime_tool.runtime.runtime_parameters == {}
+
+
 def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

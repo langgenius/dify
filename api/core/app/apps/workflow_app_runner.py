@@ -118,6 +118,7 @@ class WorkflowBasedAppRunner:
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
+        trace_session_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -138,6 +139,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow_id,

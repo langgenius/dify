@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
@@ -84,6 +84,35 @@ class TestWorkflowBasedAppRunner:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
             )
+
+    def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        captured = {}
+
+        def fake_from_graph_init_context(**kwargs):
+            captured["run_context"] = kwargs["graph_init_context"].run_context
+            return SimpleNamespace()
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            fake_from_graph_init_context,
+        )
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
+
+        runner._init_graph(
+            graph_config={"nodes": [], "edges": []},
+            graph_runtime_state=runtime_state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            root_node_id="root",
+            trace_session_id="session-1",
+        )
+
+        assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
 
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
