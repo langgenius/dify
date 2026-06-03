@@ -62,8 +62,8 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
       section="orchestrate"
     >
       <WorkflowWithDefaultContext
-        edges={publishedEdgesData}
-        nodes={publishedNodesData}
+        edges={draftEdgesData}
+        nodes={draftNodesData}
       >
         <SnippetMain
           key={snippetId}
