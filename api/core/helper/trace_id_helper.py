@@ -117,9 +117,23 @@ def extract_trace_session_id_from_args(args: Mapping[str, Any]) -> dict[str, str
     Extract normalized ``trace_session_id`` from generation args for entity extras.
     """
     trace_session_id = args.get(TRACE_SESSION_ID_ARG)
-    if isinstance(trace_session_id, str) and trace_session_id:
-        return {TRACE_SESSION_ID_ARG: trace_session_id.strip()}
+    if isinstance(trace_session_id, str):
+        normalized = trace_session_id.strip()
+        if normalized:
+            return {TRACE_SESSION_ID_ARG: normalized}
     return {}
+
+
+def omit_trace_session_id_from_payload(payload: Any) -> Any:
+    """
+    Return a payload copy without transport-level ``trace_session_id``.
+
+    Controllers validate this field through :func:`get_trace_session_id` so lower-priority
+    body values cannot fail DTO validation before header/query priority is applied.
+    """
+    if isinstance(payload, Mapping) and TRACE_SESSION_ID_ARG in payload:
+        return {key: value for key, value in payload.items() if key != TRACE_SESSION_ID_ARG}
+    return payload
 
 
 def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str, ParentTraceContext]:

@@ -100,6 +100,10 @@ def test_extract_trace_session_id_from_args_returns_empty_dict_when_missing():
     assert extract_trace_session_id_from_args({}) == {}
 
 
+def test_extract_trace_session_id_from_args_returns_empty_dict_when_blank_after_trim():
+    assert extract_trace_session_id_from_args({"trace_session_id": "   "}) == {}
+
+
 class TestTraceIdHelper:
     """Test cases for trace_id_helper.py"""
 

@@ -28,7 +28,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id
+from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
@@ -114,7 +114,9 @@ class CompletionApi(Resource):
         if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
-        payload = CompletionRequestPayload.model_validate(service_api_ns.payload or {})
+        payload = CompletionRequestPayload.model_validate(
+            omit_trace_session_id_from_payload(service_api_ns.payload) or {}
+        )
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
         trace_session_id = get_trace_session_id(request)
@@ -214,7 +216,7 @@ class ChatApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
+        payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
 
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
