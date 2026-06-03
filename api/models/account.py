@@ -258,6 +258,8 @@ class Tenant(TypeBase):
         DateTime, server_default=func.current_timestamp(), init=False, onupdate=func.current_timestamp()
     )
 
+    role: TenantAccountRole | None = field(default=None, init=False)
+
     def get_accounts(self) -> list[Account]:
         return list(
             db.session.scalars(

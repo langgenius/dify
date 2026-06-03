@@ -1033,11 +1033,63 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert all(len(chunk) > 0 for chunk in result)
 
     def test_double_slash_n(self):
+        # fixed_separator is passed as-is (no unicode_escape decoding); callers must
+        # supply the actual separator characters they want to split on.
         data = "chunk 1\n\nsubchunk 1.\nsubchunk 2.\n\n---\n\nchunk 2\n\nsubchunk 1\nsubchunk 2."
-        separator = "\\n\\n---\\n\\n"
+        separator = "\n\n---\n\n"  # actual newlines, not escaped backslash-n sequences
         splitter = FixedRecursiveCharacterTextSplitter(fixed_separator=separator)
         chunks = splitter.split_text(data)
         assert chunks == ["chunk 1\n\nsubchunk 1.\nsubchunk 2.", "chunk 2\n\nsubchunk 1\nsubchunk 2."]
+
+    def test_non_ascii_fixed_separator_fullwidth_comma(self):
+        """Non-ASCII fixed_separator must not be corrupted.
+
+        Previously, codecs.decode(sep, "unicode_escape") would mangle multi-byte
+        characters such as the fullwidth comma ，(U+FF0C), producing wrong splits
+        or raising a decode error.  The separator must now be used verbatim.
+        """
+        text = "第一段，第二段，第三段"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="，",
+            chunk_size=100,
+            chunk_overlap=0,
+        )
+        chunks = splitter.split_text(text)
+        assert chunks == ["第一段", "第二段", "第三段"]
+
+    def test_non_ascii_separator_not_decoded_as_unicode_escape(self):
+        """Literal backslash-n in fixed_separator must NOT be converted to a real newline.
+
+        The old codecs.decode approach would silently turn the two-character
+        sequence \\n into an actual newline, so callers who intended a literal
+        backslash-n separator would get unexpected results.  Now the separator
+        is used as-is, so a literal backslash-n never matches real newlines.
+        """
+        data = "part A\n\npart B"  # actual newline characters
+        literal_sep = "\\n\\n"  # two-character sequences: backslash + n (×2)
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator=literal_sep,
+            chunk_size=100,
+            chunk_overlap=0,
+        )
+        chunks = splitter.split_text(data)
+        # The literal \\n\\n is not present in data, so no split should occur.
+        assert chunks == ["part A\n\npart B"]
+
+    def test_non_ascii_separator_mixed_with_newlines_in_content(self):
+        """Non-ASCII fixed_separator must split correctly when chunk content contains newlines.
+
+        Regression: if the separator were processed with unicode_escape decoding,
+        the non-ASCII bytes would be corrupted and the split would silently fail.
+        """
+        text = "段落一内容。\n它有多行，段落二内容。\n它也有多行，段落三"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="，",
+            chunk_size=200,
+            chunk_overlap=0,
+        )
+        chunks = splitter.split_text(text)
+        assert chunks == ["段落一内容。\n它有多行", "段落二内容。\n它也有多行", "段落三"]
 
     def test_recursive_split_keep_separator_and_recursive_fallback(self):
         """Cover keep-separator split branch and recursive _split_text fallback."""
