@@ -9,8 +9,12 @@ const MarketplacePage = ({
   searchParams,
 }: MarketplacePageProps) => {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-body pt-8">
-      <Marketplace searchParams={searchParams} />
+    <div id="marketplace-container" className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default-subtle pr-1">
+      <Marketplace
+        showInstallButton={false}
+        searchParams={searchParams}
+        isMarketplacePlatform
+      />
     </div>
   )
 }
