@@ -84,15 +84,15 @@ describe('human input form upload services', () => {
         expires_at: Math.floor(Date.now() / 1000) + 60,
       })
     mockUpload.mockResolvedValueOnce({
-        id: 'remote-file-1',
-        name: 'remote.txt',
-        size: 10,
-        extension: 'txt',
-        mime_type: 'text/plain',
-        created_by: 'actor-1',
-        created_at: Math.floor(Date.now() / 1000),
-        url: 'https://example.com/remote.txt',
-      })
+      id: 'remote-file-1',
+      name: 'remote.txt',
+      size: 10,
+      extension: 'txt',
+      mime_type: 'text/plain',
+      created_by: 'actor-1',
+      created_at: Math.floor(Date.now() / 1000),
+      url: 'https://example.com/remote.txt',
+    })
 
     const response = await uploadHumanInputFormRemoteFileInfo('remote-form-token', 'https://example.com/file.txt')
 
