@@ -4894,11 +4894,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/variable-inspect/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/variable-inspect/left.tsx": {
     "ts/no-explicit-any": {
       "count": 1
