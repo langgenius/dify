@@ -83,6 +83,9 @@ Chat applications support session persistence, allowing previous chat history to
         - Query parameter: via URL query parameter <code>trace_id</code>.<br/>
         - Request Body: via request body field <code>trace_id</code> (i.e., this field).<br/>
       </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+        (Optional) Trace session ID for observability grouping. This value overrides the OpenInference session.id exported by Arize/Phoenix tracing and does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports Header <code>X-Trace-Session-Id</code>, query parameter <code>trace_session_id</code>, and request body field <code>trace_session_id</code>. Priority: Header &gt; Query parameter &gt; Request Body.
+      </Property>
     </Properties>
 
     ### Response

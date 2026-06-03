@@ -83,6 +83,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - クエリパラメータ：URLクエリパラメータ <code>trace_id</code> で渡す。<br/>
         - リクエストボディ：リクエストボディの <code>trace_id</code> フィールドで渡す（本フィールド）。<br/>
       </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+        （オプション）可観測性のグルーピングに使用するトレースセッションID。この値は Arize/Phoenix tracing がエクスポートする OpenInference session.id を上書きし、conversation_id、workflow_run_id、trace_id、または span の関係は変更しません。Header <code>X-Trace-Session-Id</code>、クエリパラメータ <code>trace_session_id</code>、リクエストボディフィールド <code>trace_session_id</code> をサポートします。優先順位：Header &gt; クエリパラメータ &gt; リクエストボディ。
+      </Property>
     </Properties>
 
     ### 応答

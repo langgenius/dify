@@ -66,6 +66,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         1. Header: via HTTP Header `X-Trace-Id`, highest priority.
         2. Query parameter: via URL query parameter `trace_id`.
         3. Request Body: via request body field `trace_id` (i.e., this field).
+      - `trace_session_id` (string) Optional
+        Trace session ID for observability grouping. This value overrides the OpenInference session.id exported by Arize/Phoenix tracing and does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports Header `X-Trace-Session-Id`, query parameter `trace_session_id`, and request body field `trace_session_id`. Priority: Header > Query parameter > Request Body.
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
@@ -680,6 +682,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         1. Header: via HTTP Header `X-Trace-Id`, highest priority.
         2. Query parameter: via URL query parameter `trace_id`.
         3. Request Body: via request body field `trace_id` (i.e., this field).
+      - `trace_session_id` (string) Optional
+        Trace session ID for observability grouping. This value overrides the OpenInference session.id exported by Arize/Phoenix tracing and does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports Header `X-Trace-Session-Id`, query parameter `trace_session_id`, and request body field `trace_session_id`. Priority: Header > Query parameter > Request Body.
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.

@@ -64,6 +64,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `url` 文件地址。（仅当传递方式为 `remote_url` 时）。
           - `upload_file_id` 上传文件 ID。（仅当传递方式为 `local_file `时）。
       </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+      （选填）用于可观测性分组的链路会话 ID。该值会覆盖 Arize/Phoenix 追踪导出的 OpenInference session.id，不会改变 conversation_id、workflow_run_id、trace_id 或 span 关系。支持 Header <code>X-Trace-Session-Id</code>、查询参数 <code>trace_session_id</code> 和请求体字段 <code>trace_session_id</code>。优先级：Header &gt; Query 参数 &gt; Request Body。
+      </Property>
     </Properties>
 
     ### Response
