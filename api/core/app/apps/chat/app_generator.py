@@ -238,10 +238,10 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
-                if conversation is None :
+                if conversation is None:
                     queue_manager.publish_error(
-                       ValueError(f"Conversation not found: {conversation_id}"),
-                          PublishFrom.APPLICATION_MANAGER,
+                        ValueError(f"Conversation not found: {conversation_id}"),
+                        PublishFrom.APPLICATION_MANAGER,
                     )
                     return
                 if message is None:
