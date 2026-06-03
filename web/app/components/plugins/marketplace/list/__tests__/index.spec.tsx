@@ -100,6 +100,14 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 vi.mock('../../utils', () => ({
+  buildCarouselPages: <T,>(items: T[], itemsPerPage: number): T[][] => {
+    const pages: T[][] = []
+
+    for (let i = 0; i < items.length; i += itemsPerPage)
+      pages.push(items.slice(i, i + itemsPerPage))
+
+    return pages
+  },
   getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
     `/plugins/${plugin.org}/${plugin.name}`,
   getPluginDetailLinkInMarketplace: (plugin: Plugin) =>

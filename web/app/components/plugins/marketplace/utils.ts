@@ -17,6 +17,15 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
+export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
+  const pages: T[][] = []
+
+  for (let i = 0; i < items.length; i += itemsPerPage)
+    pages.push(items.slice(i, i + itemsPerPage))
+
+  return pages
+}
+
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
     return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`

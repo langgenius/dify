@@ -85,29 +85,36 @@ const PluginTypeSwitch = ({
     )}
     >
       {
-        options.map(option => (
-          <div
-            key={option.value}
-            className={cn(
-              'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap',
-              isHero
-                ? 'text-text-primary-on-surface hover:bg-white/20'
-                : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              activePluginType === option.value && (isHero
-                ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
-                : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
-            )}
-            onClick={() => {
-              handleActivePluginTypeChange(option.value)
-              if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
-                setSearchMode(null)
-              }
-            }}
-          >
-            {option.icon}
-            {option.text}
-          </div>
-        ))
+        options.map((option) => {
+          const isActive = activePluginType === option.value
+
+          return (
+            <div
+              key={option.value}
+              className={cn(
+                'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap',
+                isHero
+                  ? 'text-text-primary-on-surface'
+                  : 'text-text-tertiary',
+                !isActive && (isHero
+                  ? 'hover:bg-white/20'
+                  : 'hover:bg-state-base-hover hover:text-text-secondary'),
+                isActive && (isHero
+                  ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
+                  : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
+              )}
+              onClick={() => {
+                handleActivePluginTypeChange(option.value)
+                if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
+                  setSearchMode(null)
+                }
+              }}
+            >
+              {option.icon}
+              {option.text}
+            </div>
+          )
+        })
       }
     </div>
   )

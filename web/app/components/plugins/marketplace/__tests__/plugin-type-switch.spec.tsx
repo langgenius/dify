@@ -10,6 +10,7 @@ vi.mock('#i18n', () => ({
     t: (key: string) => {
       const map: Record<string, string> = {
         'category.all': 'All',
+        'marketplace.allPlugins': 'All plugins',
         'category.models': 'Models',
         'category.tools': 'Tools',
         'category.datasources': 'Data Sources',
@@ -60,6 +61,28 @@ describe('PluginTypeSwitch', () => {
 
     const allButton = screen.getByText('All').closest('div')
     expect(allButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
+  })
+
+  it('should not apply hover styling to the active category', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All').closest('div')
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(allButton).not.toHaveClass('hover:bg-state-base-hover')
+    expect(allButton).not.toHaveClass('hover:text-text-secondary')
+    expect(modelsButton).toHaveClass('hover:bg-state-base-hover')
+    expect(modelsButton).toHaveClass('hover:text-text-secondary')
+  })
+
+  it('should render hero labels with plugin copy and no hover styling on the active category', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch variant="hero" />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All plugins').closest('div')
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(allButton).not.toHaveClass('hover:bg-white/20')
+    expect(modelsButton).toHaveClass('hover:bg-white/20')
   })
 
   it('should apply custom className', () => {

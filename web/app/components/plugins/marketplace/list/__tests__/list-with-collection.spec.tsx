@@ -59,6 +59,11 @@ const pluginsMap: Record<string, Plugin[]> = {
 describe('ListWithCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    })
   })
 
   it('renders only collections that contain plugins', () => {
@@ -115,5 +120,27 @@ describe('ListWithCollection', () => {
 
     expect(screen.getAllByTestId('custom-card')).toHaveLength(2)
     expect(screen.queryByTestId('card-wrapper')).not.toBeInTheDocument()
+  })
+
+  it('uses carousel navigation instead of view more when collection exceeds two rows', () => {
+    const collection = {
+      ...collections[0]!,
+      searchable: true,
+      search_params: { query: 'featured' },
+    }
+    const plugins = Array.from({ length: 9 }, (_, index) => ({
+      plugin_id: `p${index + 1}`,
+      name: `Plugin ${index + 1}`,
+    })) as Plugin[]
+
+    render(
+      <ListWithCollection
+        marketplaceCollections={[collection]}
+        marketplaceCollectionPluginsMap={{ featured: plugins }}
+      />,
+    )
+
+    expect(screen.queryByText('plugin.marketplace.viewMore')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Scroll right' })).toBeInTheDocument()
   })
 })
