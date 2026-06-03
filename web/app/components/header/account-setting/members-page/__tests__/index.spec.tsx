@@ -125,7 +125,13 @@ vi.mock('../member-details-modal', () => ({
       <div>Member Details Modal</div>
       <div data-testid="details-member-name">{member.name}</div>
       <div data-testid="details-can-assign">{String(canAssignRoles)}</div>
-      <button onClick={() => onAssignSubmit?.([createRole({ id: 'role-next', name: 'Next role' })])}>Submit Member Roles</button>
+      <button onClick={() => onAssignSubmit?.([
+        createRole({ id: 'role-next', name: 'Next role' }),
+        createRole({ id: 'role-extra', name: 'Extra role' }),
+      ])}
+      >
+        Submit Member Roles
+      </button>
       <button onClick={onClose}>Close Member Details Modal</button>
     </div>
   ),
@@ -521,7 +527,7 @@ describe('MembersPage', () => {
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })
 
-  it('should keep member details open after role assignment succeeds', async () => {
+  it('should submit only one member role when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
     renderMembersPage()
@@ -536,6 +542,25 @@ describe('MembersPage', () => {
     expect(mockRefetch).toHaveBeenCalled()
     expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
     expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
+  })
+
+  it('should submit multiple member roles when RBAC is enabled', async () => {
+    const user = userEvent.setup()
+
+    renderWithSystemFeatures(<MembersPage />, {
+      systemFeatures: {
+        is_email_setup: true,
+        rbac_enabled: true,
+      },
+    })
+
+    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
+
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      memberId: '2',
+      roleIds: ['role-next', 'role-extra'],
+    }, expect.any(Object))
   })
 
   it('should not open member details when clicking the member menu area', async () => {

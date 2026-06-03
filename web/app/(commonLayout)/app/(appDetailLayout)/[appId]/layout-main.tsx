@@ -14,6 +14,7 @@ import {
   RiUserSettingsFill,
   RiUserSettingsLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmount } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -25,6 +26,7 @@ import { useAppInfoActions } from '@/app/components/app-sidebar/app-info/use-app
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useLocalStorage } from '@/hooks/use-local-storage'
@@ -59,6 +61,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const [storedAppSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
   const { isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -86,6 +89,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const canAccessMonitor = appACLCapabilities.canMonitor
   const canAccessLog = appACLCapabilities.canMonitor
+  const canAccessConfig = systemFeatures.rbac_enabled && appACLCapabilities.canAccessConfig
 
   const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum): NavigationItem[] => {
     const navConfig = [
@@ -126,7 +130,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
             selectedIcon: RiDashboard2Fill,
           }]
         : []),
-      ...(appACLCapabilities.canAccessConfig
+      ...(canAccessConfig
         ? [{
             name: t('settings.appAccess', { ns: 'common' }),
             href: `/app/${appId}/access-config`,
@@ -137,7 +141,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       ),
     ]
     return navConfig
-  }, [appACLCapabilities, canAccessLog, canAccessMonitor, t])
+  }, [appACLCapabilities, canAccessConfig, canAccessLog, canAccessMonitor, t])
 
   const navigation = useMemo(() => {
     if (!appDetailRes)
@@ -180,7 +184,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         ? layoutPath
         : canAccessMonitor
           ? `/app/${appId}/overview`
-          : appACLCapabilities.canAccessConfig
+          : canAccessConfig
             ? `/app/${appId}/access-config`
             : '/apps'
 
@@ -200,7 +204,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       router.replace(fallbackPath)
       return
     }
-    if (!appACLCapabilities.canAccessConfig && pathname.endsWith('access-config')) {
+    if (!canAccessConfig && pathname.endsWith('access-config')) {
       router.replace(fallbackPath)
       return
     }
@@ -213,7 +217,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     else {
       setAppDetail({ ...res, enable_sso: false })
     }
-  }, [appACLCapabilities, appDetailRes, appId, canAccessLog, canAccessMonitor, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
+  }, [appACLCapabilities, appDetailRes, appId, canAccessConfig, canAccessLog, canAccessMonitor, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()

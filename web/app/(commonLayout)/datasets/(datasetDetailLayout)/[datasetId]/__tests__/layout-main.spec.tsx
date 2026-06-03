@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -52,8 +53,9 @@ vi.mock('@/hooks/use-document-title', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar', () => ({
-  default: ({ extraInfo }: { extraInfo?: (mode: 'expand' | 'collapse') => ReactNode }) => (
+  default: ({ extraInfo, navigation }: { extraInfo?: (mode: 'expand' | 'collapse') => ReactNode, navigation: Array<{ name: string }> }) => (
     <aside aria-label="dataset navigation">
+      {navigation.map(item => <div key={item.name}>{item.name}</div>)}
       {extraInfo?.('expand')}
     </aside>
   ),
@@ -93,7 +95,7 @@ describe('DatasetDetailLayout', () => {
       } as unknown as ReturnType<typeof useDatasetDetail>)
 
       // Act
-      render(
+      renderWithSystemFeatures(
         <DatasetDetailLayout datasetId="dataset-1">
           <div>Pipeline content</div>
         </DatasetDetailLayout>,
@@ -116,7 +118,7 @@ describe('DatasetDetailLayout', () => {
       } as unknown as ReturnType<typeof useDatasetDetail>)
 
       // Act
-      render(
+      renderWithSystemFeatures(
         <DatasetDetailLayout datasetId="dataset-1">
           <div>Pipeline content</div>
         </DatasetDetailLayout>,
@@ -147,7 +149,7 @@ describe('DatasetDetailLayout', () => {
       } as unknown as ReturnType<typeof useDatasetDetail>)
 
       // Act
-      render(
+      renderWithSystemFeatures(
         <DatasetDetailLayout datasetId="dataset-1">
           <div>Pipeline content</div>
         </DatasetDetailLayout>,
@@ -174,7 +176,7 @@ describe('DatasetDetailLayout', () => {
         refetch: vi.fn(),
       } as unknown as ReturnType<typeof useDatasetDetail>)
 
-      render(
+      renderWithSystemFeatures(
         <DatasetDetailLayout datasetId="dataset-1">
           <div>Document settings content</div>
         </DatasetDetailLayout>,
@@ -199,7 +201,7 @@ describe('DatasetDetailLayout', () => {
         refetch: vi.fn(),
       } as unknown as ReturnType<typeof useDatasetDetail>)
 
-      render(
+      renderWithSystemFeatures(
         <DatasetDetailLayout datasetId="dataset-1">
           <div>Dataset settings content</div>
         </DatasetDetailLayout>,
@@ -207,6 +209,64 @@ describe('DatasetDetailLayout', () => {
 
       expect(screen.getByText('Dataset settings content')).toBeInTheDocument()
       expect(screen.queryByText('Dataset extra info')).not.toBeInTheDocument()
+    })
+
+    it('should redirect direct access config route to datasets page when RBAC is disabled', async () => {
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'external',
+          runtime_mode: 'general',
+          permission_keys: [DatasetACLPermission.AccessConfig],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      renderWithSystemFeatures(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Access config content</div>
+        </DatasetDetailLayout>,
+        {
+          systemFeatures: {
+            rbac_enabled: false,
+          },
+        },
+      )
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      })
+    })
+
+    it('should hide the access config navigation tab when RBAC is disabled', () => {
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/settings')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'external',
+          runtime_mode: 'general',
+          permission_keys: [DatasetACLPermission.AccessConfig],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      renderWithSystemFeatures(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Dataset settings content</div>
+        </DatasetDetailLayout>,
+        {
+          systemFeatures: {
+            rbac_enabled: false,
+          },
+        },
+      )
+
+      expect(screen.queryByText('common.settings.knowledgeBaseAccess')).not.toBeInTheDocument()
     })
   })
 })

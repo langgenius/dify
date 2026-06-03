@@ -10,9 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import AssignRolesModal from './assign-roles-modal'
@@ -33,6 +35,7 @@ const MemberMenu = ({
   onTransferOwnership,
 }: MemberMenuProps) => {
   const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
 
@@ -51,16 +54,20 @@ const MemberMenu = ({
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
   const handleAssignRolesSubmit = useCallback((roles: Role[]) => {
+    const roleIds = systemFeatures.rbac_enabled
+      ? roles.map(role => role.id)
+      : roles.slice(0, 1).map(role => role.id)
+
     updateRolesOfMember({
       memberId: member.id,
-      roleIds: roles.map(role => role.id),
+      roleIds,
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
         onOperate()
       },
     })
-  }, [member.id, onOperate, t, updateRolesOfMember])
+  }, [member.id, onOperate, systemFeatures.rbac_enabled, t, updateRolesOfMember])
 
   const handleRemove = useCallback(async () => {
     setOpen(false)
@@ -142,6 +149,7 @@ const MemberMenu = ({
       {assignModalOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}
+          allowMultipleRoles={systemFeatures.rbac_enabled}
           onClose={() => setAssignModalOpen(false)}
           onSubmit={handleAssignRolesSubmit}
         />

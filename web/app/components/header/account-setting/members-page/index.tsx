@@ -56,9 +56,13 @@ const MembersPage = () => {
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
   const handleAssignRolesSubmit = (roles: Role[]) => {
+    const roleIds = systemFeatures.rbac_enabled
+      ? roles.map(role => role.id)
+      : roles.slice(0, 1).map(role => role.id)
+
     updateRolesOfMember({
       memberId: detailsMember!.id,
-      roleIds: roles.map(role => role.id),
+      roleIds,
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
@@ -207,6 +211,7 @@ const MembersPage = () => {
             && detailsMember.role !== 'owner'
             && userProfile.email !== detailsMember.email
           }
+          allowMultipleRoles={systemFeatures.rbac_enabled}
           onClose={handleCloseDetails}
           onAssignSubmit={handleAssignRolesSubmit}
         />

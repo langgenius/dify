@@ -19,6 +19,7 @@ import PermissionRoleChip from './permission-role-chip'
 export type MemberDetailsModalProps = {
   member: Member
   canAssignRoles?: boolean
+  allowMultipleRoles?: boolean
   onClose: () => void
   onAssignSubmit?: (roles: Role[]) => void
 }
@@ -26,6 +27,7 @@ export type MemberDetailsModalProps = {
 const MemberDetailsModal = ({
   member,
   canAssignRoles = false,
+  allowMultipleRoles = true,
   onClose,
   onAssignSubmit,
 }: MemberDetailsModalProps) => {
@@ -47,18 +49,21 @@ const MemberDetailsModal = ({
   }, [])
 
   const handleAssignSubmit = useCallback((roles: Role[]) => {
-    setPendingRoles(roles)
+    setPendingRoles(allowMultipleRoles ? roles : roles.slice(0, 1))
     setAssignOpen(false)
-  }, [])
+  }, [allowMultipleRoles])
 
   const handleRemove = useCallback((role: Role) => {
+    if (!allowMultipleRoles && selectedRoles.length <= 1)
+      return
+
     setPendingRoles(selectedRoles.filter(selectedRole => selectedRole.id !== role.id))
-  }, [selectedRoles])
+  }, [allowMultipleRoles, selectedRoles])
 
   const handleSave = useCallback(() => {
-    onAssignSubmit?.(selectedRoles)
+    onAssignSubmit?.(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
     onClose()
-  }, [onAssignSubmit, onClose, selectedRoles])
+  }, [allowMultipleRoles, onAssignSubmit, onClose, selectedRoles])
 
   return (
     <>
@@ -191,6 +196,7 @@ const MemberDetailsModal = ({
       {assignOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}
+          allowMultipleRoles={allowMultipleRoles}
           onClose={handleClose}
           onSubmit={handleAssignSubmit}
         />

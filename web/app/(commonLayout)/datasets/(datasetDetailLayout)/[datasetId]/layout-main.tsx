@@ -13,6 +13,7 @@ import {
   RiUserSettingsFill,
   RiUserSettingsLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +25,7 @@ import ExtraInfo from '@/app/components/datasets/extra-info'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useLocalStorage } from '@/hooks/use-local-storage'
@@ -66,6 +68,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   eventEmitter?.useSubscription((value: EventEmitterValue) => {
     if (typeof value === 'object' && value.type === 'workflow-canvas-maximize' && typeof value.payload === 'boolean')
@@ -88,6 +91,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     () => getDatasetACLCapabilities(datasetRes?.permission_keys, datasetCreatorPermissionOptions),
     [datasetCreatorPermissionOptions, datasetRes?.permission_keys],
   )
+  const canAccessConfig = systemFeatures.rbac_enabled && datasetACLCapabilities.canAccessConfig
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
 
@@ -125,7 +129,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiUserSettingsLine,
         selectedIcon: RiUserSettingsFill,
         disabled: false,
-        visible: datasetACLCapabilities.canAccessConfig,
+        visible: canAccessConfig,
       },
     ]
 
@@ -149,7 +153,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
 
     return baseNavigation.filter(item => item.visible).map(({ visible, ...item }) => item)
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities, canAccessConfig])
 
   const fallbackPath = useMemo(() => {
     if (datasetRes?.provider !== 'external' && (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse))
@@ -158,10 +162,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return `/datasets/${datasetId}/hitTesting`
     if (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)
       return `/datasets/${datasetId}/settings`
-    if (datasetACLCapabilities.canAccessConfig)
+    if (canAccessConfig)
       return `/datasets/${datasetId}/access-config`
     return '/datasets'
-  }, [datasetACLCapabilities, datasetId, datasetRes?.provider])
+  }, [datasetACLCapabilities, canAccessConfig, datasetId, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
@@ -204,9 +208,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       router.replace(fallbackPath)
       return
     }
-    if (!datasetACLCapabilities.canAccessConfig && pathname.endsWith('/access-config'))
+    if (!canAccessConfig && pathname.endsWith('/access-config'))
       router.replace(fallbackPath)
-  }, [datasetACLCapabilities, datasetRes, fallbackPath, pathname, router, shouldRedirect])
+  }, [datasetACLCapabilities, canAccessConfig, datasetRes, fallbackPath, pathname, router, shouldRedirect])
 
   if (!datasetRes && !error)
     return <Loading type="app" />

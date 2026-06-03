@@ -1,5 +1,6 @@
-import { render, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -52,7 +53,11 @@ vi.mock('@/service/use-apps', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar', () => ({
-  default: () => <div data-testid="app-sidebar" />,
+  default: ({ navigation }: { navigation: Array<{ name: string }> }) => (
+    <div data-testid="app-sidebar">
+      {navigation.map(item => <div key={item.name}>{item.name}</div>)}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/app-sidebar/app-info', () => ({
@@ -113,7 +118,7 @@ describe('AppDetailLayout permissions', () => {
   it('subscribes to app detail query and publishes query data into the app store', async () => {
     vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 
-    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
     await waitFor(() => {
       expect(useAppDetail).toHaveBeenCalledWith('app-1')
@@ -127,7 +132,7 @@ describe('AppDetailLayout permissions', () => {
   it('does not re-subscribe the app detail query just because the child route changes', async () => {
     vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 
-    const { rerender } = render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    const { rerender } = renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
     await waitFor(() => {
       expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({ id: 'app-1' }))
     })
@@ -149,7 +154,7 @@ describe('AppDetailLayout permissions', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useAppDetail>)
 
-    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
@@ -157,7 +162,7 @@ describe('AppDetailLayout permissions', () => {
   })
 
   it('redirects direct overview access to app list when no app surface is available', async () => {
-    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
@@ -167,7 +172,11 @@ describe('AppDetailLayout permissions', () => {
   it('redirects direct overview access to access config when only app ACL access config is available', async () => {
     vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.AccessConfig]))
 
-    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>, {
+      systemFeatures: {
+        rbac_enabled: true,
+      },
+    })
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-config')
@@ -175,10 +184,39 @@ describe('AppDetailLayout permissions', () => {
     expect(mockReplace).not.toHaveBeenCalledWith('/apps')
   })
 
+  it('redirects direct access config route to app list when RBAC is disabled', async () => {
+    mockPathname = '/app/app-1/access-config'
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.AccessConfig]))
+
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>, {
+      systemFeatures: {
+        rbac_enabled: false,
+      },
+    })
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
+    })
+  })
+
+  it('hides the access config navigation tab when RBAC is disabled', async () => {
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.AccessConfig]))
+
+    const { queryByText } = renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>, {
+      systemFeatures: {
+        rbac_enabled: false,
+      },
+    })
+
+    await waitFor(() => {
+      expect(queryByText('common.settings.appAccess')).not.toBeInTheDocument()
+    })
+  })
+
   it('allows direct overview access with app ACL monitor permission', async () => {
     vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 
-    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
     await waitFor(() => {
       expect(useAppDetail).toHaveBeenCalledWith('app-1')
@@ -199,7 +237,7 @@ describe('AppDetailLayout permissions', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useAppDetail>)
 
-    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+    renderWithSystemFeatures(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
 
     await waitFor(() => {
       expect(useAppDetail).toHaveBeenCalledWith('app-1')

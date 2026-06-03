@@ -15,6 +15,7 @@ import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
 
 export type AssignRolesModalProps = {
   selectedRoles: Role[]
+  allowMultipleRoles?: boolean
   onClose: () => void
   onSubmit: (roles: Role[]) => void
 }
@@ -23,6 +24,7 @@ type AssignRolesModalBodyProps = AssignRolesModalProps
 
 const AssignRolesModalBody = ({
   selectedRoles,
+  allowMultipleRoles = true,
   onClose,
   onSubmit,
 }: AssignRolesModalBodyProps) => {
@@ -59,6 +61,7 @@ const AssignRolesModalBody = ({
       <WorkspaceRoleCheckboxList
         selectedRoleIds={selectedRoleIds}
         selectedRoles={selected}
+        allowMultipleRoles={allowMultipleRoles}
         onSelectedRolesChange={setSelected}
       />
 
@@ -84,6 +87,7 @@ const AssignRolesModalBody = ({
 
 const AssignRolesModal = ({
   selectedRoles,
+  allowMultipleRoles = true,
   onClose,
   onSubmit,
 }: AssignRolesModalProps) => {
@@ -97,6 +101,7 @@ const AssignRolesModal = ({
     >
       <AssignRolesModalBody
         selectedRoles={selectedRoles}
+        allowMultipleRoles={allowMultipleRoles}
         onClose={onClose}
         onSubmit={onSubmit}
       />

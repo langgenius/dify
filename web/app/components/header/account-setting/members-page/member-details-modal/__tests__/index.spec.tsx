@@ -151,5 +151,29 @@ describe('MemberDetailsModal', () => {
         expect.objectContaining({ id: 'role-2', name: 'Second role' }),
       ])
     })
+
+    it('should replace the selected role when multiple roles are not allowed', async () => {
+      const user = userEvent.setup()
+      const handleAssignSubmit = vi.fn()
+
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          allowMultipleRoles={false}
+          onClose={vi.fn()}
+          onAssignSubmit={handleAssignSubmit}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
+      await user.click(screen.getByRole('radio', { name: /Second role/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      expect(handleAssignSubmit).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'role-2', name: 'Second role' }),
+      ])
+    })
   })
 })
