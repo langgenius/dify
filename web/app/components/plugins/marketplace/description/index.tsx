@@ -21,6 +21,8 @@ const EXPANDED_PADDING_TOP = 32
 const COLLAPSED_PADDING_TOP = 12
 const EXPANDED_PADDING_BOTTOM = 24
 const COLLAPSED_PADDING_BOTTOM = 12
+const EXPANDED_TITLE_MARGIN_TOP = 32
+const EXPANDED_TABS_MARGIN_TOP = 32
 
 const Description = ({
   isMarketplacePlatform = false,
@@ -163,8 +165,8 @@ const Description = ({
       return currentTitleHeight * (1 - currentProgress)
     },
   )
-  const tabsMarginTop = useTransform(smoothProgress, [0, 1], [48, hasMarketplaceNav ? 16 : 0])
-  const titleMarginTop = useTransform(smoothProgress, [0, 1], [hasMarketplaceNav ? 80 : 0, 0])
+  const tabsMarginTop = useTransform(smoothProgress, [0, 1], [EXPANDED_TABS_MARGIN_TOP, hasMarketplaceNav ? 16 : 0])
+  const titleMarginTop = useTransform(smoothProgress, [0, 1], [hasMarketplaceNav ? EXPANDED_TITLE_MARGIN_TOP : 0, 0])
   const paddingTop = useTransform(smoothProgress, [0, 1], [hasMarketplaceNav ? COLLAPSED_PADDING_TOP : EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
   const paddingBottom = useTransform(smoothProgress, [0, 1], [EXPANDED_PADDING_BOTTOM, COLLAPSED_PADDING_BOTTOM])
 

@@ -142,6 +142,9 @@ describe('Description', () => {
       const hero = container.firstElementChild
       const navWrapper = container.querySelector('.relative.z-20.flex.w-full.flex-col.items-start')
       const heroContentWrapper = container.querySelector('.relative.z-10.mx-5')
+      const titleWrapper = screen.getByRole('heading', { level: 1 }).parentElement?.parentElement
+      const tabs = screen.getByText('All plugins').closest('.flex.shrink-0.items-center.gap-1.overflow-x-auto')
+      const tabsWrapper = tabs?.parentElement
 
       expect(hero).toHaveClass('px-3')
       expect(hero).not.toHaveClass('px-8')
@@ -149,6 +152,8 @@ describe('Description', () => {
       expect(navWrapper).toBeInTheDocument()
       expect(navWrapper).not.toHaveClass('p-3')
       expect(heroContentWrapper).toBeInTheDocument()
+      expect(titleWrapper).toHaveStyle({ marginTop: '32px' })
+      expect(tabsWrapper).toHaveStyle({ marginTop: '32px' })
     })
   })
 
