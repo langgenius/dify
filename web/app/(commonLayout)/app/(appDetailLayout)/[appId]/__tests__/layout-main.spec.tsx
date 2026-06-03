@@ -164,6 +164,17 @@ describe('AppDetailLayout permissions', () => {
     })
   })
 
+  it('redirects direct overview access to access config when only app ACL access config is available', async () => {
+    vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.AccessConfig]))
+
+    render(<AppDetailLayout appId="app-1"><div>Child</div></AppDetailLayout>)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-config')
+    })
+    expect(mockReplace).not.toHaveBeenCalledWith('/apps')
+  })
+
   it('allows direct overview access with app ACL monitor permission', async () => {
     vi.mocked(useAppDetail).mockReturnValue(mockAppDetailResponse([AppACLPermission.Monitor]))
 

@@ -66,6 +66,12 @@ describe('app-redirection', () => {
         workspacePermissionKeys: ['app.create_and_management'],
       })).toBe('/app/app-123/configuration')
     })
+
+    it('returns access config path when app ACL can only configure access', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.AccessConfig] }
+
+      expect(getRedirectionPath(app)).toBe('/app/app-123/access-config')
+    })
   })
 
   /**

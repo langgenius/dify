@@ -27,6 +27,7 @@ import Loading from '@/app/components/base/loading'
 import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
@@ -55,6 +56,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const [storedAppSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
   const { isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const appInfoActions = useAppInfoActions({ resetKey: appId })
@@ -148,14 +150,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     if (appDetail) {
-      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
-      setAppSidebarExpand(isMobile ? mode : localeMode)
+      setAppSidebarExpand(isMobile ? mode : storedAppSidebarMode)
       // TODO: consider screen size and mode
       // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSidebarExpand('collapse')
     }
-  }, [appDetail, isMobile, setAppSidebarExpand])
+  }, [appDetail, isMobile, setAppSidebarExpand, storedAppSidebarMode])
 
   useEffect(() => {
     setAppDetail()
@@ -173,24 +174,34 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     // redirection
     const canAccessLayout = appACLCapabilities.canAccessLayout
     const layoutPath = `/app/${appId}/${(res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`
+    const fallbackPath = appACLCapabilities.canEdit
+      ? `/app/${appId}/develop`
+      : canAccessLayout
+        ? layoutPath
+        : canAccessMonitor
+          ? `/app/${appId}/overview`
+          : appACLCapabilities.canAccessConfig
+            ? `/app/${appId}/access-config`
+            : '/apps'
+
     if (!canAccessLayout && (pathname.endsWith('configuration') || pathname.endsWith('workflow'))) {
-      router.replace(`/app/${appId}/overview`)
+      router.replace(fallbackPath)
       return
     }
     if (!appACLCapabilities.canEdit && pathname.endsWith('develop')) {
-      router.replace(canAccessLayout ? layoutPath : `/app/${appId}/overview`)
+      router.replace(fallbackPath)
       return
     }
     if (!canAccessLog && pathname.endsWith('logs')) {
-      router.replace(`/app/${appId}/overview`)
+      router.replace(fallbackPath)
       return
     }
     if (!canAccessMonitor && pathname.endsWith('overview')) {
-      router.replace(appACLCapabilities.canEdit ? `/app/${appId}/develop` : (canAccessLayout ? layoutPath : '/apps'))
+      router.replace(fallbackPath)
       return
     }
     if (!appACLCapabilities.canAccessConfig && pathname.endsWith('access-config')) {
-      router.replace(`/app/${appId}/overview`)
+      router.replace(fallbackPath)
       return
     }
     if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {

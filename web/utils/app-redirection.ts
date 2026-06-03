@@ -14,15 +14,20 @@ export const getRedirectionPath = (
 ) => {
   const appACLCapabilities = getAppACLCapabilities(app.permission_keys, creatorPermissionOptions)
 
-  if (!appACLCapabilities.canAccessLayout) {
-    return `/app/${app.id}/overview`
-  }
-  else {
+  if (appACLCapabilities.canAccessLayout) {
     if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
       return `/app/${app.id}/workflow`
     else
       return `/app/${app.id}/configuration`
   }
+
+  if (appACLCapabilities.canMonitor)
+    return `/app/${app.id}/overview`
+
+  if (appACLCapabilities.canAccessConfig)
+    return `/app/${app.id}/access-config`
+
+  return `/app/${app.id}/overview`
 }
 
 export const getRedirection = (
