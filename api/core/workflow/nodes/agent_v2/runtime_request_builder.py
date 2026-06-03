@@ -139,7 +139,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
                     credentials=self._normalize_credentials(credentials),
-                    model_settings=agent_soul.model.model_settings,
+                    model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 # The execution-context layer is now the only public protocol
                 # carrier for Dify tenant/user/run identifiers. ``user_id`` must

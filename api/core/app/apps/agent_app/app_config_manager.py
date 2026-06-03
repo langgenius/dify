@@ -91,7 +91,7 @@ class AgentAppConfigManager(BaseAppConfigManager):
                 "provider": model.model_provider,
                 "name": model.model,
                 "mode": "chat",
-                "completion_params": dict(model.model_settings or {}),
+                "completion_params": model.model_settings.model_dump(mode="json", exclude_none=True),
             }
         # The Agent Soul system prompt rides the EasyUI "simple" prompt slot; the
         # agent backend is the real prompt authority, this only feeds the chat

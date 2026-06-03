@@ -183,16 +183,15 @@ class WorkflowAgentNodeValidator:
         for human_ref in node_job.human_contacts:
             cls._validate_human_ref(binding=binding, human_ref=human_ref)
 
-        file_refs = node_job.metadata.get("file_refs")
+        file_refs = node_job.metadata.file_refs
         if isinstance(file_refs, list):
             for file_ref in file_refs:
-                if isinstance(file_ref, Mapping):
-                    cls._validate_file_ref(
-                        session=session,
-                        binding=binding,
-                        file_ref=file_ref,
-                        ref_context="metadata file ref",
-                    )
+                cls._validate_file_ref(
+                    session=session,
+                    binding=binding,
+                    file_ref=file_ref,
+                    ref_context="metadata file ref",
+                )
 
     @staticmethod
     def iter_agent_v2_nodes(graph_dict: Mapping[str, Any]) -> Iterator[tuple[str, Mapping[str, Any]]]:
@@ -237,7 +236,7 @@ class WorkflowAgentNodeValidator:
         binding: WorkflowAgentNodeBinding,
         node_job: WorkflowNodeJobConfig,
     ) -> None:
-        forbidden_paths = cls._find_locked_agent_soul_paths(node_job.metadata)
+        forbidden_paths = cls._find_locked_agent_soul_paths(node_job.metadata.model_dump(mode="python"))
         if forbidden_paths:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} cannot override locked Agent Soul fields: "

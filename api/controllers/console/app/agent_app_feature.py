@@ -9,8 +9,6 @@ persists them onto the app's ``app_model_config`` without touching anything the
 Soul owns.
 """
 
-from typing import Any
-
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -27,6 +25,12 @@ from controllers.console.wraps import (
 from events.app_event import app_model_config_was_updated
 from libs.login import login_required
 from models import Account
+from models.agent_config_entities import (
+    AgentFeatureToggleConfig,
+    AgentSensitiveWordAvoidanceFeatureConfig,
+    AgentSuggestedQuestionsAfterAnswerFeatureConfig,
+    AgentTextToSpeechFeatureConfig,
+)
 from models.model import App, AppMode
 from services.agent_app_feature_service import AgentAppFeatureConfigService
 
@@ -42,15 +46,17 @@ class AgentAppFeaturesRequest(BaseModel):
     suggested_questions: list[str] | None = Field(
         default=None, description="Preset questions shown alongside the opener"
     )
-    suggested_questions_after_answer: dict[str, Any] | None = Field(
+    suggested_questions_after_answer: AgentSuggestedQuestionsAfterAnswerFeatureConfig | None = Field(
         default=None, description="Follow-up suggestions config, e.g. {'enabled': true}"
     )
-    speech_to_text: dict[str, Any] | None = Field(default=None, description="Speech-to-text config")
-    text_to_speech: dict[str, Any] | None = Field(default=None, description="Text-to-speech config")
-    retriever_resource: dict[str, Any] | None = Field(
+    speech_to_text: AgentFeatureToggleConfig | None = Field(default=None, description="Speech-to-text config")
+    text_to_speech: AgentTextToSpeechFeatureConfig | None = Field(default=None, description="Text-to-speech config")
+    retriever_resource: AgentFeatureToggleConfig | None = Field(
         default=None, description="Citations / attributions config, e.g. {'enabled': true}"
     )
-    sensitive_word_avoidance: dict[str, Any] | None = Field(default=None, description="Content moderation config")
+    sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = Field(
+        default=None, description="Content moderation config"
+    )
 
 
 register_schema_models(console_ns, AgentAppFeaturesRequest)
