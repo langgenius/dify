@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 
 from graphon.enums import BuiltinNodeTypes
 from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import (
+    AgentFileRefConfig,
+    AgentHumanContactConfig,
+    AgentSoulConfig,
+    WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
+)
 from models.model import UploadFile
 from models.workflow import Workflow
 
@@ -209,7 +215,7 @@ class WorkflowAgentNodeValidator:
                 yield node_id, node_data
 
     @staticmethod
-    def selector_from_ref(ref: Mapping[str, Any]) -> list[str] | None:
+    def selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
         for key in ("selector", "variable_selector", "value_selector"):
             value = ref.get(key)
             if isinstance(value, list) and all(isinstance(item, str) for item in value):
@@ -260,7 +266,7 @@ class WorkflowAgentNodeValidator:
         cls,
         *,
         binding: WorkflowAgentNodeBinding,
-        human_ref: Mapping[str, Any],
+        human_ref: AgentHumanContactConfig,
     ) -> None:
         contact_id = human_ref.get("contact_id") or human_ref.get("human_id") or human_ref.get("id")
         if not isinstance(contact_id, str) or not contact_id:
@@ -305,7 +311,7 @@ class WorkflowAgentNodeValidator:
         *,
         session: Session,
         binding: WorkflowAgentNodeBinding,
-        file_ref: Mapping[str, Any],
+        file_ref: AgentFileRefConfig,
         ref_context: str,
     ) -> None:
         tenant_id = file_ref.get("tenant_id")

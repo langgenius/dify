@@ -25,6 +25,7 @@ from models.agent_config_entities import (
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
 )
 from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
@@ -253,7 +254,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _resolve_previous_node_outputs(
         self,
         variable_pool: VariablePoolReader,
-        refs: Sequence[Mapping[str, Any]],
+        refs: Sequence[WorkflowPreviousNodeOutputRef],
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
@@ -279,7 +280,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         return resolved
 
     @staticmethod
-    def _selector_from_ref(ref: Mapping[str, Any]) -> list[str] | None:
+    def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
         for key in ("selector", "variable_selector", "value_selector"):
             value = ref.get(key)
             if isinstance(value, list) and all(isinstance(item, str) for item in value):
