@@ -205,7 +205,7 @@ function NormalForm() {
                 )}
                 {hasEmailPasswordLogin && authType === 'password' && (
                   <>
-                    <MailAndPasswordAuth isInvite={isInviteLink} isEmailSetup={systemFeatures.is_email_setup} allowRegistration={systemFeatures.is_allow_register} />
+                    <MailAndPasswordAuth isInvite={isInviteLink} isEmailSetup={systemFeatures.is_email_setup} />
                     {hasEmailCodeLogin && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { setSelectedAuthType('code') }}>
                         <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>

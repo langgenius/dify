@@ -19,7 +19,6 @@ import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 type MailAndPasswordAuthProps = {
   isInvite: boolean
   isEmailSetup: boolean
-  allowRegistration: boolean
 }
 
 type LoginRequestBody = {
@@ -37,7 +36,7 @@ function hasErrorCode(error: unknown, code: string) {
     && error.code === code
 }
 
-export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration: _allowRegistration }: MailAndPasswordAuthProps) {
+export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const router = useRouter()
