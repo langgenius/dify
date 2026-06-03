@@ -597,9 +597,8 @@ class MCPToolManageService:
         if UNCHANGED_SERVER_URL_PLACEHOLDER in new_server_url:
             return ServerUrlValidationResult(needs_validation=False)
 
-        # Validate URL format
-        parsed = urlparse(new_server_url)
-        if not all([parsed.scheme, parsed.netloc]) or parsed.scheme not in ["http", "https"]:
+        # Validate URL format and reject private/internal IPs (SSRF protection)
+        if not MCPToolManageService._is_valid_url(new_server_url):
             raise ValueError("Server URL is not valid.")
 
         # Always encrypt and hash the URL
