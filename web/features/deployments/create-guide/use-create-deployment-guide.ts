@@ -3,7 +3,7 @@
 import type {
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvVarValues } from '../components/env-var-bindings-utils'
+import type { EnvVarValueSelection, EnvVarValues } from '../components/env-var-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
 import type {
   BindingSelections,
@@ -35,6 +35,7 @@ import {
 } from '../components/runtime-credential-bindings-utils'
 import { DEPLOYMENT_PAGE_SIZE, SOURCE_APPS_PAGE_SIZE } from '../data'
 import {
+  encodeDslContent,
   dslAppName,
   dslEnvVarSlots,
   isWorkflowDsl,
@@ -53,17 +54,6 @@ const RANDOM_SUFFIX_MAX_ATTEMPTS = 16
 
 function hasEnvironmentId(environment?: Environment): environment is EnvironmentOption {
   return Boolean(environment?.id)
-}
-
-function encodeUtf8Base64(value: string) {
-  const bytes = new TextEncoder().encode(value)
-  const chunkSize = 0x8000
-  const chunks: string[] = []
-
-  for (let offset = 0; offset < bytes.length; offset += chunkSize)
-    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
-
-  return btoa(chunks.join(''))
 }
 
 function randomLetterCombination(length: number) {
@@ -156,7 +146,7 @@ export function useCreateDeploymentGuide() {
     && !isReadingDsl
     && !dslReadError
     && !isWorkflowDsl(dslContent)
-  const encodedDslContent = hasDslContent ? encodeUtf8Base64(dslContent) : ''
+  const encodedDslContent = hasDslContent ? encodeDslContent(dslContent) : ''
   const shouldResolveDeploymentTarget = step === 'target'
   const shouldLoadSourceDeploymentOptions = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
   const shouldLoadDslDeploymentOptions = method === 'importDsl' && hasDslContent && !isReadingDsl && !dslReadError && !dslUnsupportedMode
@@ -635,7 +625,7 @@ export function useCreateDeploymentGuide() {
         setManualBindingSelections(prev => ({ ...prev, [slot]: value }))
       },
       onSelectEnvironment: setSelectedEnvironmentId,
-      onSetEnvVar: (key: string, value: string) => {
+      onSetEnvVar: (key: string, value: EnvVarValueSelection) => {
         setEnvVarValues(prev => ({ ...prev, [key]: value }))
       },
       selectedEnvironmentId: effectiveSelectedEnvironmentId,

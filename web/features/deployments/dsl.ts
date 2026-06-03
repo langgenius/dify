@@ -17,6 +17,17 @@ type DslEnvVarRecord = Record<string, unknown>
 const ENV_VAR_DEFAULT_VALUE_FIELDS = ['value', 'default_value', 'defaultValue', 'default'] as const
 const MASKED_SECRET_PLACEHOLDERS = new Set(['[__HIDDEN__]'])
 
+export function encodeDslContent(value: string) {
+  const bytes = new TextEncoder().encode(value)
+  const chunkSize = 0x8000
+  const chunks: string[] = []
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize)
+    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
+
+  return btoa(chunks.join(''))
+}
+
 function parseDsl(content: string) {
   try {
     return yamlLoad(content) as DslMetadata | undefined
@@ -108,7 +119,13 @@ export function dslEnvVarSlots(content: string): DeploymentEnvVarSlot[] {
       return {
         key,
         ...(description ? { description } : {}),
-        ...(defaultValue !== undefined ? { defaultValue } : {}),
+        ...(defaultValue !== undefined
+          ? {
+              defaultValue,
+              hasDefaultValue: true,
+              maskedDefaultValue: defaultValue,
+            }
+          : {}),
       }
     })
     .filter((slot): slot is DeploymentEnvVarSlot => Boolean(slot))

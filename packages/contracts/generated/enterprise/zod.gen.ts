@@ -63,25 +63,6 @@ export const zAppInstance = z.object({
   updatedAt: z.string().optional(),
 })
 
-export const zAppRunnerLog = z.object({
-  id: z.string().optional(),
-  timestamp: z.iso.datetime().optional(),
-  workflowRunId: z.string().optional(),
-  status: z.string().optional(),
-  durationSeconds: z.number().optional(),
-  totalTokens: z.string().optional(),
-  workspaceId: z.string().optional(),
-  environmentId: z.string().optional(),
-  instanceId: z.string().optional(),
-  endUser: z.string().optional(),
-  invokeFrom: z.string().optional(),
-  traceId: z.string().optional(),
-  difyTraceId: z.string().optional(),
-  body: z.string().optional(),
-  attributesJson: z.string().optional(),
-  resourceAttributesJson: z.string().optional(),
-})
-
 /**
  * BootstrapAssignment is one runtime_instance assignment in a runner's startup
  * baseline. operation is "load" or "unload".
@@ -185,6 +166,7 @@ export const zCredentialSlot = z.object({
     .enum(['PLUGIN_CATEGORY_UNSPECIFIED', 'PLUGIN_CATEGORY_MODEL', 'PLUGIN_CATEGORY_TOOL'])
     .optional(),
   candidates: z.array(zCredentialCandidate).optional(),
+  lastCredentialId: z.string().optional(),
 })
 
 export const zDeleteApiKeyReply = z.record(z.string(), z.unknown())
@@ -206,6 +188,14 @@ export const zDeploymentOptionsReleaseDefaults = z.object({
 export const zEnvVarInput = z.object({
   key: z.string().optional(),
   value: z.string().optional(),
+  valueSource: z
+    .enum([
+      'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
+      'ENV_VAR_VALUE_SOURCE_LITERAL',
+      'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT',
+      'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT',
+    ])
+    .optional(),
 })
 
 export const zCreateInitialDeploymentFromDslReq = z.object({
@@ -241,11 +231,16 @@ export const zDeployReq = z.object({
   credentials: z.array(zCredentialSelectionInput).optional(),
   envVars: z.array(zEnvVarInput).optional(),
   idempotencyKey: z.string().optional(),
-  reuseEnvSnapshot: z.boolean().optional(),
+  reuseLastEnvValues: z.boolean().optional(),
+  reuseLastCredentials: z.boolean().optional(),
 })
 
 export const zEnvVarSlot = z.object({
   key: z.string().optional(),
+  hasDefaultValue: z.boolean().optional(),
+  maskedDefaultValue: z.string().optional(),
+  hasLastValue: z.boolean().optional(),
+  maskedLastValue: z.string().optional(),
 })
 
 export const zDeploymentOptions = z.object({
@@ -332,17 +327,16 @@ export const zGetAppInstanceReply = z.object({
   appInstance: zAppInstance.optional(),
 })
 
-export const zGetAppRunnerLogReply = z.object({
-  data: zAppRunnerLog.optional(),
-  lastArchived: z.iso.datetime().optional(),
-})
-
 export const zGetDeploymentOptionsFromDslReq = z.object({
   dsl: z.string().optional(),
+  appInstanceId: z.string().optional(),
+  environmentId: z.string().optional(),
 })
 
 export const zGetDeploymentOptionsFromSourceAppReq = z.object({
   sourceAppId: z.string().optional(),
+  appInstanceId: z.string().optional(),
+  environmentId: z.string().optional(),
 })
 
 export const zGetDeploymentOptionsReply = z.object({
@@ -360,6 +354,36 @@ export const zListDeployableEnvironmentsReply = z.object({
 
 export const zListReleaseCredentialCandidatesReply = z.object({
   slots: z.array(zCredentialSlot).optional(),
+})
+
+export const zNamedRef = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zAppRunnerLog = z.object({
+  id: z.string().optional(),
+  timestamp: z.iso.datetime().optional(),
+  workflowRunId: z.string().optional(),
+  status: z.string().optional(),
+  durationSeconds: z.number().optional(),
+  totalTokens: z.string().optional(),
+  workspace: zNamedRef.optional(),
+  environment: zNamedRef.optional(),
+  appInstance: zNamedRef.optional(),
+  endUser: z.string().optional(),
+  invokeFrom: z.string().optional(),
+  traceId: z.string().optional(),
+  difyTraceId: z.string().optional(),
+  commitId: z.string().optional(),
+  body: z.string().optional(),
+  attributesJson: z.string().optional(),
+  resourceAttributesJson: z.string().optional(),
+})
+
+export const zGetAppRunnerLogReply = z.object({
+  data: zAppRunnerLog.optional(),
+  lastArchived: z.iso.datetime().optional(),
 })
 
 export const zPromoteReq = z.object({

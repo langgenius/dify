@@ -3,11 +3,22 @@ import type {
   EnvVarSlot,
 } from '@dify/contracts/enterprise/types.gen'
 
-export type EnvVarValues = Record<string, string>
+export type EnvVarValueSource = NonNullable<EnvVarInput['valueSource']>
+
+export type EnvVarValueSelection = {
+  valueSource: EnvVarValueSource
+  value?: string
+}
+
+export type EnvVarValues = Record<string, EnvVarValueSelection>
 export type DeploymentEnvVarSlot = EnvVarSlot & {
   description?: string
   defaultValue?: string
 }
+
+export const ENV_VAR_VALUE_SOURCE_LITERAL = 'ENV_VAR_VALUE_SOURCE_LITERAL' satisfies EnvVarValueSource
+export const ENV_VAR_VALUE_SOURCE_DSL_DEFAULT = 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT' satisfies EnvVarValueSource
+export const ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT = 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT' satisfies EnvVarValueSource
 
 export function envVarSlotKey(slot: EnvVarSlot) {
   return slot.key?.trim() ?? ''
@@ -17,10 +28,66 @@ export function hasEnvVarSlotKey(slot?: EnvVarSlot) {
   return Boolean(slot && envVarSlotKey(slot))
 }
 
+export function hasEnvVarDefaultValue(slot: EnvVarSlot | DeploymentEnvVarSlot) {
+  const deploymentSlot = slot as DeploymentEnvVarSlot
+
+  return Boolean(slot.hasDefaultValue || deploymentSlot.defaultValue !== undefined)
+}
+
+export function hasEnvVarLastValue(slot: EnvVarSlot) {
+  return Boolean(slot.hasLastValue)
+}
+
+export function defaultEnvVarValueSelection(slot: EnvVarSlot | DeploymentEnvVarSlot): EnvVarValueSelection {
+  if (hasEnvVarLastValue(slot)) {
+    return {
+      valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+    }
+  }
+
+  if (hasEnvVarDefaultValue(slot)) {
+    return {
+      valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+    }
+  }
+
+  return {
+    valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+  }
+}
+
+export function envVarValueSelectionForSlot(
+  slot: EnvVarSlot | DeploymentEnvVarSlot,
+  selection?: EnvVarValueSelection,
+): EnvVarValueSelection {
+  if (!selection)
+    return defaultEnvVarValueSelection(slot)
+
+  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT && hasEnvVarLastValue(slot))
+    return selection
+
+  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT && hasEnvVarDefaultValue(slot))
+    return selection
+
+  return {
+    ...selection,
+    valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
+  }
+}
+
 export function hasMissingRequiredEnvVarValue(slot: EnvVarSlot, values: EnvVarValues) {
   const key = envVarSlotKey(slot)
+  if (!key)
+    return true
 
-  return !key || !values[key]?.trim()
+  const selection = envVarValueSelectionForSlot(slot, values[key])
+
+  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
+    return !hasEnvVarLastValue(slot)
+  if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
+    return !hasEnvVarDefaultValue(slot)
+
+  return !selection.value?.trim()
 }
 
 export function mergeEnvVarSlotMetadata(
@@ -48,10 +115,14 @@ export function mergeEnvVarSlotMetadata(
     const currentSlot = slot as DeploymentEnvVarSlot
     const description = currentSlot.description?.trim() || metadata.description?.trim()
     const defaultValue = currentSlot.defaultValue ?? metadata.defaultValue
+    const hasDefaultValue = slot.hasDefaultValue ?? metadata.hasDefaultValue ?? defaultValue !== undefined
+    const maskedDefaultValue = slot.maskedDefaultValue ?? metadata.maskedDefaultValue
 
     return {
       ...slot,
       ...(description ? { description } : {}),
+      ...(hasDefaultValue ? { hasDefaultValue } : {}),
+      ...(maskedDefaultValue ? { maskedDefaultValue } : {}),
       ...(defaultValue !== undefined ? { defaultValue } : {}),
     }
   })
@@ -66,14 +137,15 @@ export function envVarValuesWithDefaults(
 
   slots.forEach((slot) => {
     const key = envVarSlotKey(slot)
-    const defaultValue = slot.defaultValue
 
-    if (!key || defaultValue === undefined || !defaultValue.trim())
-      return
-    if (Object.prototype.hasOwnProperty.call(nextValues, key))
+    if (!key)
       return
 
-    nextValues[key] = defaultValue
+    const nextSelection = envVarValueSelectionForSlot(slot, nextValues[key])
+    if (nextValues[key] === nextSelection)
+      return
+
+    nextValues[key] = nextSelection
     hasChanges = true
   })
 
@@ -90,13 +162,35 @@ export function selectedDeploymentEnvVars(
       if (!key)
         return undefined
 
-      const value = values[key]
-      if (!value?.trim())
+      const selection = envVarValueSelectionForSlot(slot, values[key])
+
+      if (selection.valueSource === ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
+        if (!hasEnvVarLastValue(slot))
+          return undefined
+
+        return {
+          key,
+          valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,
+        }
+      }
+
+      if (selection.valueSource === ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
+        if (!hasEnvVarDefaultValue(slot))
+          return undefined
+
+        return {
+          key,
+          valueSource: ENV_VAR_VALUE_SOURCE_DSL_DEFAULT,
+        }
+      }
+
+      if (!selection.value?.trim())
         return undefined
 
       return {
         key,
-        value,
+        value: selection.value,
+        valueSource: ENV_VAR_VALUE_SOURCE_LITERAL,
       }
     })
     .filter((envVar): envVar is EnvVarInput => Boolean(envVar))

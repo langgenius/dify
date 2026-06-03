@@ -5,6 +5,7 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type {
   DeploymentEnvVarSlot,
+  EnvVarValueSelection,
   EnvVarValues,
 } from '../components/env-var-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
@@ -130,7 +131,7 @@ function TargetStep({
   unsupportedDslNodes: UnsupportedDslNode[]
   onSelectEnvironment: (environmentId: string) => void
   onSelectBinding: (slot: string, value: string) => void
-  onSetEnvVar: (key: string, value: string) => void
+  onSetEnvVar: (key: string, value: EnvVarValueSelection) => void
 }) {
   const { t } = useTranslation('deployments')
   const hasEnvironmentOptions = environments.length > 0
@@ -201,6 +202,7 @@ function TargetStep({
               missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
               bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
               onChange={onSelectBinding}
+              listScrollable={false}
               className="border-components-option-card-option-border bg-components-option-card-option-bg"
             />
           )}
@@ -212,8 +214,13 @@ function TargetStep({
             hint={t('createGuide.target.envVarHint')}
             requiredLabel={t('createGuide.target.required')}
             envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
+            literalSourceLabel={t('createGuide.target.envVarSource.literal')}
+            defaultSourceLabel={t('createGuide.target.envVarSource.default')}
+            lastDeploymentSourceLabel={t('createGuide.target.envVarSource.lastDeployment')}
+            sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
             envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
             onChange={onSetEnvVar}
+            listScrollable={false}
             className="border-components-option-card-option-border bg-components-option-card-option-bg"
           />
         )}
@@ -249,7 +256,7 @@ export function TargetReviewSections({
   isEnvironmentLoading: boolean
   onSelectBinding: (slot: string, value: string) => void
   onSelectEnvironment: (environmentId: string) => void
-  onSetEnvVar: (key: string, value: string) => void
+  onSetEnvVar: (key: string, value: EnvVarValueSelection) => void
   selectedEnvironmentId: string
   unsupportedDslNodes: UnsupportedDslNode[]
 }) {

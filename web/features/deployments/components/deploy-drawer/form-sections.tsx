@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type {
   DeploymentEnvVarSlot,
+  EnvVarValueSelection,
   EnvVarValues,
 } from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
@@ -267,7 +268,7 @@ export function DeploymentBindingsSection({
   showMissingRequiredBindings: boolean
   showMissingRequiredEnvVars: boolean
   onBindingChange: (slot: string, value: string) => void
-  onEnvVarChange: (key: string, value: string) => void
+  onEnvVarChange: (key: string, value: EnvVarValueSelection) => void
 }) {
   const { t } = useTranslation('deployments')
 
@@ -290,6 +291,10 @@ export function DeploymentBindingsSection({
           hint={t('deployDrawer.envVarHint')}
           requiredLabel={t('deployDrawer.requiredBinding')}
           envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
+          literalSourceLabel={t('deployDrawer.envVarSource.literal')}
+          defaultSourceLabel={t('deployDrawer.envVarSource.default')}
+          lastDeploymentSourceLabel={t('deployDrawer.envVarSource.lastDeployment')}
+          sourceAriaLabel={key => t('deployDrawer.envVarSource.ariaLabel', { key })}
           envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
           missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
           listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}

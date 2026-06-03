@@ -37,6 +37,7 @@ type RuntimeCredentialBindingsPanelProps = {
   missingRequiredLabel: string
   bindingCountLabel?: string
   showMissingRequired?: boolean
+  listScrollable?: boolean
   onChange: (slotKey: string, value: string) => void
   className?: string
   listClassName?: string
@@ -102,6 +103,7 @@ export function RuntimeCredentialBindingsPanel({
   missingRequiredLabel,
   bindingCountLabel,
   showMissingRequired = false,
+  listScrollable = true,
   onChange,
   className,
   listClassName,
@@ -128,7 +130,13 @@ export function RuntimeCredentialBindingsPanel({
             </div>
           )
         : (
-            <div className={cn('max-h-[min(360px,34dvh)] overflow-y-auto border-t border-divider-subtle', listClassName)}>
+            <div
+              className={cn(
+                'border-t border-divider-subtle',
+                listScrollable ? 'max-h-[min(360px,34dvh)] overflow-y-auto' : 'overflow-visible',
+                listClassName,
+              )}
+            >
               {slots.map((slot) => {
                 const slotKey = runtimeCredentialSlotKey(slot)
                 const candidates = runtimeCredentialCandidateOptions(slot)

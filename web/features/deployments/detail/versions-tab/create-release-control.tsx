@@ -19,7 +19,7 @@ import { consoleQuery } from '@/service/client'
 import { isWorkflowApp, isWorkflowAppMode } from '../../app-mode'
 import { SourceAppPicker } from '../../components/create-instance-modal'
 import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
-import { isWorkflowDsl } from '../../dsl'
+import { encodeDslContent, isWorkflowDsl } from '../../dsl'
 import { deploymentErrorMessage, unsupportedDslNodeError } from '../../error'
 import { releaseLabel } from '../../release'
 
@@ -29,17 +29,6 @@ const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
 const DEFAULT_RELEASE_SOURCE_MODE: ReleaseSourceMode = 'sourceApp'
 const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
-
-function encodeUtf8Base64(value: string) {
-  const bytes = new TextEncoder().encode(value)
-  const chunkSize = 0x8000
-  const chunks: string[] = []
-
-  for (let offset = 0; offset < bytes.length; offset += chunkSize)
-    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
-
-  return btoa(chunks.join(''))
-}
 
 function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefined) {
   return value?.[0]
@@ -224,7 +213,7 @@ export function CreateReleaseControl({ appInstanceId, variant = 'primary', size 
       createReleaseFromDsl.mutate({
         body: {
           appInstanceId,
-          dsl: encodeUtf8Base64(dslContent),
+          dsl: encodeDslContent(dslContent),
           name: submittedReleaseName,
           description: releaseDescription || undefined,
           createAppInstance: false,

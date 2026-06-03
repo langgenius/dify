@@ -67,13 +67,14 @@ export type AppRunnerLog = {
   status?: string
   durationSeconds?: number
   totalTokens?: string
-  workspaceId?: string
-  environmentId?: string
-  instanceId?: string
+  workspace?: NamedRef
+  environment?: NamedRef
+  appInstance?: NamedRef
   endUser?: string
   invokeFrom?: string
   traceId?: string
   difyTraceId?: string
+  commitId?: string
   body?: string
   attributesJson?: string
   resourceAttributesJson?: string
@@ -209,6 +210,7 @@ export type CredentialSlot = {
   providerId?: string
   category?: 'PLUGIN_CATEGORY_UNSPECIFIED' | 'PLUGIN_CATEGORY_MODEL' | 'PLUGIN_CATEGORY_TOOL'
   candidates?: Array<CredentialCandidate>
+  lastCredentialId?: string
 }
 
 export type DeleteApiKeyReply = {
@@ -230,7 +232,8 @@ export type DeployReq = {
   credentials?: Array<CredentialSelectionInput>
   envVars?: Array<EnvVarInput>
   idempotencyKey?: string
-  reuseEnvSnapshot?: boolean
+  reuseLastEnvValues?: boolean
+  reuseLastCredentials?: boolean
 }
 
 export type Deployment = {
@@ -273,10 +276,19 @@ export type DeploymentReply = {
 export type EnvVarInput = {
   key?: string
   value?: string
+  valueSource?:
+    | 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED'
+    | 'ENV_VAR_VALUE_SOURCE_LITERAL'
+    | 'ENV_VAR_VALUE_SOURCE_DSL_DEFAULT'
+    | 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT'
 }
 
 export type EnvVarSlot = {
   key?: string
+  hasDefaultValue?: boolean
+  maskedDefaultValue?: string
+  hasLastValue?: boolean
+  maskedLastValue?: string
 }
 
 export type Environment = {
@@ -363,10 +375,14 @@ export type GetAppRunnerLogReply = {
 
 export type GetDeploymentOptionsFromDslReq = {
   dsl?: string
+  appInstanceId?: string
+  environmentId?: string
 }
 
 export type GetDeploymentOptionsFromSourceAppReq = {
   sourceAppId?: string
+  appInstanceId?: string
+  environmentId?: string
 }
 
 export type GetDeploymentOptionsReply = {
@@ -413,6 +429,11 @@ export type ListReleaseCredentialCandidatesReply = {
 export type ListReleasesReply = {
   data?: Array<Release>
   pagination?: Pagination
+}
+
+export type NamedRef = {
+  id?: string
+  name?: string
 }
 
 export type PromoteReq = {

@@ -91,6 +91,8 @@ export function selectedRuntimeCredentialSelections(
     const existing = manualBindings[slotKey]
     if (existing && candidates.some(candidate => candidate.value === existing))
       next[slotKey] = existing
+    else if (slot.lastCredentialId && candidates.some(candidate => candidate.value === slot.lastCredentialId))
+      next[slotKey] = slot.lastCredentialId
     else if (candidates.length === 1 && candidates[0])
       next[slotKey] = candidates[0].value
   }
