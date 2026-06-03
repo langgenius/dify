@@ -17,7 +17,7 @@ export type CreateAppPayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: IconType
-  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  mode: 'advanced-chat' | 'agent' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
   name: string
 }
 
@@ -80,6 +80,7 @@ export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
   app_model_config?: ModelConfig
+  bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
   deleted_tools?: Array<DeletedTool>
@@ -200,6 +201,34 @@ export type AgentComposerValidateResponse = {
   result: string
 }
 
+export type AgentAppFeaturesRequest = {
+  opening_statement?: string | null
+  retriever_resource?: {
+    [key: string]: unknown
+  } | null
+  sensitive_word_avoidance?: {
+    [key: string]: unknown
+  } | null
+  speech_to_text?: {
+    [key: string]: unknown
+  } | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: {
+    [key: string]: unknown
+  } | null
+  text_to_speech?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type AgentReferencingWorkflowsResponse = {
+  data?: Array<AgentReferencingWorkflowResponse>
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -295,10 +324,6 @@ export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
-export type SimpleResultResponse = {
-  result: string
-}
-
 export type ConversationPagination = {
   has_next: boolean
   items: Array<Conversation>
@@ -323,7 +348,7 @@ export type CompletionMessagePayload = {
   inputs: {
     [key: string]: unknown
   }
-  model_config: {
+  model_config?: {
     [key: string]: unknown
   }
   query?: string
@@ -1110,6 +1135,14 @@ export type ComposerCandidateCapabilities = {
   human_roster_available?: boolean
 }
 
+export type AgentReferencingWorkflowResponse = {
+  app_id: string
+  app_mode: string
+  app_name: string
+  node_ids?: Array<string>
+  workflow_id: string
+}
+
 export type AnnotationHitHistory = {
   annotation_content?: string | null
   annotation_question?: string | null
@@ -1824,7 +1857,15 @@ export type GetAppsData = {
   query?: {
     is_created_by_me?: boolean | null
     limit?: number
-    mode?: 'advanced-chat' | 'agent-chat' | 'all' | 'channel' | 'chat' | 'completion' | 'workflow'
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'all'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'workflow'
     name?: string | null
     page?: number
     tag_ids?: Array<string> | null
@@ -2235,6 +2276,59 @@ export type PostAppsByAppIdAgentComposerValidateResponses = {
 
 export type PostAppsByAppIdAgentComposerValidateResponse
   = PostAppsByAppIdAgentComposerValidateResponses[keyof PostAppsByAppIdAgentComposerValidateResponses]
+
+export type PostAppsByAppIdAgentFeaturesData = {
+  body: AgentAppFeaturesRequest
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-features'
+}
+
+export type PostAppsByAppIdAgentFeaturesErrors = {
+  400: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentFeaturesError
+  = PostAppsByAppIdAgentFeaturesErrors[keyof PostAppsByAppIdAgentFeaturesErrors]
+
+export type PostAppsByAppIdAgentFeaturesResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAppsByAppIdAgentFeaturesResponse
+  = PostAppsByAppIdAgentFeaturesResponses[keyof PostAppsByAppIdAgentFeaturesResponses]
+
+export type GetAppsByAppIdAgentReferencingWorkflowsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent-referencing-workflows'
+}
+
+export type GetAppsByAppIdAgentReferencingWorkflowsErrors = {
+  404: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentReferencingWorkflowsError
+  = GetAppsByAppIdAgentReferencingWorkflowsErrors[keyof GetAppsByAppIdAgentReferencingWorkflowsErrors]
+
+export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
+  200: AgentReferencingWorkflowsResponse
+}
+
+export type GetAppsByAppIdAgentReferencingWorkflowsResponse
+  = GetAppsByAppIdAgentReferencingWorkflowsResponses[keyof GetAppsByAppIdAgentReferencingWorkflowsResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never

@@ -1,13 +1,13 @@
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { AddressInfo } from 'node:net'
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
 import type { CodeResponse } from './oauth-device.js'
 import { Buffer } from 'node:buffer'
 import * as http from 'node:http'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { isBaseError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { createClient } from '../http/client.js'
+import { isBaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import { DEFAULT_CLIENT_ID, DeviceFlowApi } from './oauth-device.js'
 
 type StubServer = {
@@ -38,7 +38,7 @@ function jsonStub(status: number, body: unknown): (req: http.IncomingMessage, re
 }
 
 function makeApi(mock: DifyMock): DeviceFlowApi {
-  return new DeviceFlowApi(createClient({ host: mock.url }))
+  return new DeviceFlowApi(testHttpClient(mock.url))
 }
 
 describe('DeviceFlowApi.requestCode', () => {
@@ -61,7 +61,7 @@ describe('DeviceFlowApi.requestCode', () => {
   })
 
   it('strips trailing slash from host', async () => {
-    const api = new DeviceFlowApi(createClient({ host: `${mock.url}/` }))
+    const api = new DeviceFlowApi(testHttpClient(`${mock.url}/`))
     const out = await api.requestCode({ device_label: 'l' })
     expect(out.device_code).toBeDefined()
   })
@@ -70,7 +70,7 @@ describe('DeviceFlowApi.requestCode', () => {
     let stub: StubServer | undefined
     try {
       stub = await startStub(jsonStub(404, {}))
-      const api = new DeviceFlowApi(createClient({ host: stub.url }))
+      const api = new DeviceFlowApi(testHttpClient(stub.url))
       let caught: unknown
       try {
         await api.requestCode({ device_label: 'l' })
@@ -116,7 +116,7 @@ describe('DeviceFlowApi.pollOnce', () => {
     let stub: StubServer | undefined
     try {
       stub = await startStub(jsonStub(400, { error: 'authorization_pending' }))
-      const api = new DeviceFlowApi(createClient({ host: stub.url }))
+      const api = new DeviceFlowApi(testHttpClient(stub.url))
       const r = await api.pollOnce({ device_code: 'dc' })
       expect(r.status).toBe('pending')
     }
@@ -150,7 +150,7 @@ describe('DeviceFlowApi.pollOnce', () => {
     let stub: StubServer | undefined
     try {
       stub = await startStub(jsonStub(404, {}))
-      const api = new DeviceFlowApi(createClient({ host: stub.url }))
+      const api = new DeviceFlowApi(testHttpClient(stub.url))
       await expect(api.pollOnce({ device_code: 'dc' })).rejects.toThrow(/device flow/i)
     }
     finally {
@@ -169,7 +169,7 @@ describe('DeviceFlowApi.pollOnce', () => {
     let stub: StubServer | undefined
     try {
       stub = await startStub(jsonStub(200, {}))
-      const api = new DeviceFlowApi(createClient({ host: stub.url }))
+      const api = new DeviceFlowApi(testHttpClient(stub.url))
       await expect(api.pollOnce({ device_code: 'dc' })).rejects.toThrow(/no OAuth envelope|token/i)
     }
     finally {
@@ -181,7 +181,7 @@ describe('DeviceFlowApi.pollOnce', () => {
     let stub: StubServer | undefined
     try {
       stub = await startStub(jsonStub(400, { error: 'something_else' }))
-      const api = new DeviceFlowApi(createClient({ host: stub.url }))
+      const api = new DeviceFlowApi(testHttpClient(stub.url))
       await expect(api.pollOnce({ device_code: 'dc' })).rejects.toThrow(/unknown poll error/)
     }
     finally {

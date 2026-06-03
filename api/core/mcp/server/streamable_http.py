@@ -203,12 +203,13 @@ def extract_answer_from_response(app: App, response: Any) -> str:
     """Extract answer from app generate response"""
     answer = ""
 
-    if isinstance(response, RateLimitGenerator):
-        answer = process_streaming_response(response)
-    elif isinstance(response, Mapping):
-        answer = process_mapping_response(app, response)
-    else:
-        logger.warning("Unexpected response type: %s", type(response))
+    match response:
+        case RateLimitGenerator():
+            answer = process_streaming_response(response)
+        case Mapping():
+            answer = process_mapping_response(app, response)
+        case _:
+            logger.warning("Unexpected response type: %s", type(response))
 
     return answer
 

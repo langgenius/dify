@@ -28,6 +28,7 @@ export const zAppDescribeQuery = z.object({
  */
 export const zAppMode = z.enum([
   'advanced-chat',
+  'agent',
   'agent-chat',
   'channel',
   'chat',
