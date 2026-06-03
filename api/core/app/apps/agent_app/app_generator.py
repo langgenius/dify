@@ -39,6 +39,7 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
 )
 from core.app.llm.model_access import build_dify_model_access
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from models import Account, App, EndUser, Message
@@ -113,7 +114,10 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
-            extras={"auto_generate_conversation_name": args.get("auto_generate_name", True)},
+            extras={
+                "auto_generate_conversation_name": args.get("auto_generate_name", True),
+                **extract_trace_session_id_from_args(args),
+            },
             call_depth=0,
             trace_manager=trace_manager,
             agent_id=agent.id,
