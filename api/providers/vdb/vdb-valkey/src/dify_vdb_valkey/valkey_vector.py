@@ -236,6 +236,7 @@ def _create_glide_client(config: ValkeyVectorConfig) -> tuple[Any, asyncio.Abstr
         "addresses": addresses,
         "use_tls": config.use_ssl,
         "request_timeout": 30_000,
+        "client_name": "dify_vector_store",
     }
     if config.password:
         from glide import ServerCredentials
