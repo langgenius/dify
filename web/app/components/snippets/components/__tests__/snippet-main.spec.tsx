@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -41,6 +42,13 @@ const mockInspectVarsCrud = {
   resetConversationVar: vi.fn(),
   invalidateConversationVarValues: vi.fn(),
 }
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
 let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
 let snippetDetailStoreState: {
@@ -151,8 +159,10 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
     onEdit,
     onExitEditingWithoutSave,
     onPublish,
+    canSave,
     isEditing,
   }: {
+    canSave: boolean
     isEditing: boolean
     onCancel: () => void
     onEdit: () => void
@@ -163,7 +173,7 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
       {!isEditing && <button type="button" onClick={onEdit}>edit</button>}
       <a href="/snippets">snippets list</a>
       <button type="button" onClick={onExitEditingWithoutSave}>exit without save</button>
-      <button type="button" onClick={onPublish}>publish</button>
+      <button type="button" disabled={!canSave} onClick={onPublish}>publish</button>
       <button type="button" onClick={onCancel}>cancel</button>
     </div>
   ),
@@ -228,8 +238,10 @@ const payload: SnippetDetailPayload = {
 
 const renderSnippetMain = ({
   hasInitialDraftChanges = false,
+  currentNodes = [],
 }: {
   hasInitialDraftChanges?: boolean
+  currentNodes?: WorkflowProps['nodes']
 } = {}) => {
   return renderWorkflowComponent(
     <SnippetMain
@@ -245,6 +257,11 @@ const renderSnippetMain = ({
       draftEdges={[] as WorkflowProps['edges']}
       draftViewport={{ x: 0, y: 0, zoom: 1 }}
     />,
+    {
+      initialStoreState: {
+        nodes: currentNodes,
+      },
+    },
   )
 }
 
@@ -255,6 +272,12 @@ const createNodeMetadata = (type: BlockEnum) => ({
   defaultValue: {},
   checkValid: vi.fn(),
 })
+
+const createDraftNode = (id = 'draft-node') => ({
+  id,
+  position: { x: 10, y: 20 },
+  data: { type: BlockEnum.Code, title: 'Draft node' },
+}) as WorkflowProps['nodes'][number]
 
 describe('SnippetMain', () => {
   beforeEach(() => {
@@ -299,7 +322,7 @@ describe('SnippetMain', () => {
 
   describe('Input Fields Sync', () => {
     it('should sync draft input_fields when removing a field from the panel', async () => {
-      renderSnippetMain()
+      renderSnippetMain({ currentNodes: [createDraftNode()] })
 
       fireEvent.click(screen.getByRole('button', { name: 'remove' }))
 
@@ -311,7 +334,7 @@ describe('SnippetMain', () => {
     })
 
     it('should sync draft input_fields when adding a field from the sidebar', async () => {
-      renderSnippetMain()
+      renderSnippetMain({ currentNodes: [createDraftNode()] })
 
       fireEvent.click(screen.getByRole('button', { name: 'submit' }))
 
@@ -333,7 +356,7 @@ describe('SnippetMain', () => {
 
   describe('Draft Sync', () => {
     it('should sync workflow draft during normal editing changes', async () => {
-      renderSnippetMain()
+      renderSnippetMain({ currentNodes: [createDraftNode()] })
 
       const doSyncWorkflowDraft = capturedHooksStore?.doSyncWorkflowDraft as (() => Promise<void>)
       await doSyncWorkflowDraft()
@@ -436,10 +459,13 @@ describe('SnippetMain', () => {
   describe('Publish', () => {
     it('should call the publish mutation', async () => {
       mockDoSyncWorkflowDraft.mockResolvedValueOnce({
-        graph: payload.graph,
+        graph: {
+          ...payload.graph,
+          nodes: [createDraftNode()],
+        },
         input_fields: payload.inputFields,
       })
-      renderSnippetMain()
+      renderSnippetMain({ currentNodes: [createDraftNode()] })
 
       fireEvent.click(screen.getByRole('button', { name: 'publish' }))
 
@@ -450,9 +476,36 @@ describe('SnippetMain', () => {
       })
     })
 
+    it('should not publish when the synced draft graph has no nodes', async () => {
+      mockDoSyncWorkflowDraft.mockResolvedValueOnce({
+        graph: payload.graph,
+        input_fields: payload.inputFields,
+      })
+      renderSnippetMain({ currentNodes: [createDraftNode()] })
+
+      fireEvent.click(screen.getByRole('button', { name: 'publish' }))
+
+      await waitFor(() => {
+        expect(mockDoSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      })
+      expect(mockPublishSnippetMutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('snippet.emptyGraphSaveError')
+    })
+
+    it('should disable publish when current graph has no nodes', () => {
+      renderSnippetMain()
+
+      const publishButton = screen.getByRole('button', { name: 'publish' })
+
+      expect(publishButton).toBeDisabled()
+      fireEvent.click(publishButton)
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockPublishSnippetMutateAsync).not.toHaveBeenCalled()
+    })
+
     it('should not publish when syncing the latest draft fails', async () => {
       mockDoSyncWorkflowDraft.mockResolvedValueOnce(undefined)
-      renderSnippetMain({ hasInitialDraftChanges: true })
+      renderSnippetMain({ hasInitialDraftChanges: true, currentNodes: [createDraftNode()] })
 
       fireEvent.click(screen.getByRole('button', { name: 'publish' }))
 
@@ -463,11 +516,7 @@ describe('SnippetMain', () => {
     })
 
     it('should update local draft state with latest synced graph after publishing', async () => {
-      const latestDraftNode = {
-        id: 'published-draft-node',
-        position: { x: 10, y: 20 },
-        data: { type: BlockEnum.Code, title: 'Published draft node' },
-      } as WorkflowProps['nodes'][number]
+      const latestDraftNode = createDraftNode('published-draft-node')
       mockDoSyncWorkflowDraft.mockResolvedValueOnce({
         graph: {
           nodes: [latestDraftNode],
@@ -476,7 +525,7 @@ describe('SnippetMain', () => {
         },
         input_fields: [payload.inputFields[0]],
       })
-      renderSnippetMain({ hasInitialDraftChanges: true })
+      renderSnippetMain({ hasInitialDraftChanges: true, currentNodes: [createDraftNode()] })
 
       fireEvent.click(screen.getByRole('button', { name: 'publish' }))
 

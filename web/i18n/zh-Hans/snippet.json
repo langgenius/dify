@@ -25,6 +25,7 @@
   "editDone": "Snippet 信息已更新",
   "editFailed": "更新 Snippet 信息失败",
   "editingDraft": "你正在编辑草稿。",
+  "emptyGraphSaveError": "请至少添加一个节点后再保存。",
   "exitEditing": "退出编辑",
   "exportFailed": "导出 Snippet 失败。",
   "importDSLFile": "导入 DSL 文件",

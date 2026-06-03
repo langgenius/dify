@@ -16,6 +16,7 @@ import RunMode from './run-mode'
 type SnippetHeaderProps = {
   snippetId: string
   canDiscardChanges: boolean
+  canSave: boolean
   hasDraftChanges: boolean
   isEditing: boolean
   isPublishing: boolean
@@ -38,6 +39,7 @@ const ViewOnlyBadge = () => {
 }
 
 const EditActions = ({
+  canSave,
   hasDraftChanges,
   isEditing,
   isPublishing,
@@ -46,7 +48,7 @@ const EditActions = ({
   onExitEditingWithoutSave,
   onPublish,
   onSaveAndExitEditing,
-}: Pick<SnippetHeaderProps, 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onEdit' | 'onExitEditing' | 'onExitEditingWithoutSave' | 'onPublish' | 'onSaveAndExitEditing'>) => {
+}: Pick<SnippetHeaderProps, 'canSave' | 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onEdit' | 'onExitEditing' | 'onExitEditingWithoutSave' | 'onPublish' | 'onSaveAndExitEditing'>) => {
   const { t } = useTranslation('snippet')
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
 
@@ -80,6 +82,7 @@ const EditActions = ({
           </Button>
         )}
         disabled={isPublishing}
+        saveDisabled={!canSave}
         loading={isPublishing}
         onDiscard={async () => {
           await onExitEditingWithoutSave()
@@ -93,7 +96,7 @@ const EditActions = ({
       <Button
         variant="primary"
         loading={isPublishing}
-        disabled={isPublishing}
+        disabled={isPublishing || !canSave}
         onClick={onPublish}
       >
         {t('save')}
@@ -105,6 +108,7 @@ const EditActions = ({
 const SnippetHeader = ({
   snippetId,
   canDiscardChanges,
+  canSave,
   hasDraftChanges,
   isEditing,
   isPublishing,
@@ -131,6 +135,7 @@ const SnippetHeader = ({
             : <ViewOnlyBadge />,
           left: (
             <EditActions
+              canSave={canSave}
               hasDraftChanges={hasDraftChanges}
               isEditing={isEditing}
               isPublishing={isPublishing}
@@ -159,7 +164,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [canDiscardChanges, hasDraftChanges, isEditing, isPublishing, onCancel, onEdit, onExitEditing, onExitEditingWithoutSave, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
+  }, [canDiscardChanges, canSave, hasDraftChanges, isEditing, isPublishing, onCancel, onEdit, onExitEditing, onExitEditingWithoutSave, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
 
   return <Header {...headerProps} />
 }

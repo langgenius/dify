@@ -18,6 +18,7 @@ type SaveBeforeLeavingDialogProps = {
   onOpenChange?: (open: boolean) => void
   trigger?: ReactElement
   disabled?: boolean
+  saveDisabled?: boolean
   loading?: boolean
   onDiscard: () => void | Promise<void>
   onSave: () => void | Promise<void>
@@ -28,6 +29,7 @@ const SaveBeforeLeavingDialog = ({
   onOpenChange,
   trigger,
   disabled,
+  saveDisabled,
   loading,
   onDiscard,
   onSave,
@@ -62,7 +64,7 @@ const SaveBeforeLeavingDialog = ({
           <AlertDialogConfirmButton
             tone="default"
             loading={loading}
-            disabled={disabled || loading}
+            disabled={disabled || saveDisabled || loading}
             onClick={onSave}
           >
             {t('saveAndExit')}

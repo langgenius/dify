@@ -7,7 +7,15 @@ vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogCancelButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick }: { children: ReactNode, onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
+  AlertDialogConfirmButton: ({
+    children,
+    disabled,
+    onClick,
+  }: {
+    children: ReactNode
+    disabled?: boolean
+    onClick?: () => void
+  }) => <button type="button" disabled={disabled} onClick={onClick}>{children}</button>,
   AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -53,6 +61,7 @@ describe('SnippetHeader', () => {
         <SnippetHeader
           snippetId="snippet-1"
           canDiscardChanges
+          canSave
           hasDraftChanges={false}
           isEditing={false}
           isPublishing={false}
@@ -82,6 +91,7 @@ describe('SnippetHeader', () => {
         <SnippetHeader
           snippetId="snippet-1"
           canDiscardChanges
+          canSave
           hasDraftChanges
           isEditing
           isPublishing={false}
@@ -101,11 +111,35 @@ describe('SnippetHeader', () => {
       expect(mockCancel).toHaveBeenCalledTimes(1)
     })
 
+    it('should disable save actions when the current graph has no nodes', () => {
+      render(
+        <SnippetHeader
+          snippetId="snippet-1"
+          canDiscardChanges
+          canSave={false}
+          hasDraftChanges
+          isEditing
+          isPublishing={false}
+          onCancel={mockCancel}
+          onEdit={mockEdit}
+          onExitEditing={mockExitEditing}
+          onExitEditingWithoutSave={mockExitEditingWithoutSave}
+          onPublish={mockPublish}
+          onSaveAndExitEditing={mockSaveAndExit}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: /^snippet\.save$/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /snippet\.saveAndExit/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /snippet\.doNotSave/i })).not.toBeDisabled()
+    })
+
     it('should hide the discard draft action when there is no published workflow', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
           canDiscardChanges={false}
+          canSave
           hasDraftChanges
           isEditing
           isPublishing={false}

@@ -25,6 +25,7 @@
   "editDone": "Snippet info updated",
   "editFailed": "Failed to update snippet info",
   "editingDraft": "You are editing a draft.",
+  "emptyGraphSaveError": "Add at least one node before saving.",
   "exitEditing": "Exit Editing",
   "exportFailed": "Export snippet failed.",
   "importDSLFile": "Import DSL file",
