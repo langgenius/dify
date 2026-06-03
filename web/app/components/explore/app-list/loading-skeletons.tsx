@@ -195,9 +195,6 @@ export function ExploreHomeSkeleton({
       <section className="px-8 pb-4">
         <RecommendationSectionSkeletonBody />
       </section>
-      <section className="px-8 pb-0">
-        <RecommendationSectionSkeletonBody hasDescription />
-      </section>
       <ExploreHeaderSkeletonBody />
       <div className="relative flex flex-1 shrink-0 grow flex-col pb-6">
         <ExploreAppListSkeletonBody />

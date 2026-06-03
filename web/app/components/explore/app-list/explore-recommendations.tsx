@@ -5,7 +5,6 @@ import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import ContinueWork from '@/app/components/explore/continue-work'
 import dynamic from '@/next/dynamic'
-import { RecommendationSectionSkeleton } from './loading-skeletons'
 
 const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), { ssr: false })
 
@@ -26,12 +25,6 @@ export function ExploreRecommendations({
       <LearnDify
         canCreate={canCreate}
         className="pb-0"
-        loadingFallback={(
-          <RecommendationSectionSkeleton
-            className="pb-0"
-            hasDescription
-          />
-        )}
         onCreate={onCreate}
         onTry={onTry}
       />
