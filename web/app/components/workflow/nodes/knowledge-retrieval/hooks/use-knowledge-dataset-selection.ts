@@ -24,7 +24,7 @@ type Params = {
   inputRef: MutableRefObject<KnowledgeRetrievalNodeType>
   setInputs: (inputs: KnowledgeRetrievalNodeType) => void
   payloadRetrievalMode: RETRIEVE_TYPE
-  updateDatasetsDetail: (datasets: DataSet[]) => void
+  updateDatasetsDetail: (datasets: DataSet[], requestedIds?: string[]) => void
   fallbackRerankModel: ModelIdentity
 }
 
@@ -44,6 +44,7 @@ const useKnowledgeDatasetSelection = ({
     void (async () => {
       const currentInputs = inputRef.current
       const datasetIds = currentInputs.dataset_ids
+      let loadedDatasets: DataSet[] = []
       if (datasetIds.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({
           url: '/datasets',
@@ -52,16 +53,25 @@ const useKnowledgeDatasetSelection = ({
             ids: datasetIds,
           },
         })
-        setSelectedDatasets(dataSetsWithDetail)
+        const datasetsById = new Map(dataSetsWithDetail.map(dataset => [dataset.id, dataset] as const))
+        loadedDatasets = datasetIds.reduce<DataSet[]>((acc, id) => {
+          const dataset = datasetsById.get(id)
+          if (dataset)
+            acc.push(dataset)
+
+          return acc
+        }, [])
+        updateDatasetsDetail(loadedDatasets, datasetIds)
+        setSelectedDatasets(loadedDatasets)
       }
 
-      const nextInputs = produce(currentInputs, (draft) => {
-        draft.dataset_ids = datasetIds
+      const nextInputs = produce(inputRef.current, (draft) => {
+        draft.dataset_ids = loadedDatasets.map(dataset => dataset.id)
       })
       setInputs(nextInputs)
       setSelectedDatasetsLoaded(true)
     })()
-  }, [inputRef, setInputs])
+  }, [inputRef, setInputs, updateDatasetsDetail])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
     const {
