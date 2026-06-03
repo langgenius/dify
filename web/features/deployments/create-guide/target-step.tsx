@@ -5,8 +5,8 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type {
   DeploymentEnvVarSlot,
-  EnvVarValueSelection,
   EnvVarValues,
+  EnvVarValueSelection,
 } from '../components/env-var-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
 import type { BindingSelections, EnvironmentOption } from './types'

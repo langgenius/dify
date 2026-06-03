@@ -2,9 +2,9 @@
 
 import type {
   DeploymentEnvVarSlot,
+  EnvVarValues,
   EnvVarValueSelection,
   EnvVarValueSource,
-  EnvVarValues,
 } from './env-var-bindings-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -18,9 +18,9 @@ import {
   ENV_VAR_VALUE_SOURCE_LITERAL,
   envVarSlotKey,
   envVarValueSelectionForSlot,
-  hasMissingRequiredEnvVarValue,
   hasEnvVarDefaultValue,
   hasEnvVarLastValue,
+  hasMissingRequiredEnvVarValue,
 } from './env-var-bindings-utils'
 import { TitleTooltip } from './title-tooltip'
 

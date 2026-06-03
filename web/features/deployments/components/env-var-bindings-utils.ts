@@ -38,7 +38,7 @@ export function hasEnvVarLastValue(slot: EnvVarSlot) {
   return Boolean(slot.hasLastValue)
 }
 
-export function defaultEnvVarValueSelection(slot: EnvVarSlot | DeploymentEnvVarSlot): EnvVarValueSelection {
+function defaultEnvVarValueSelection(slot: EnvVarSlot | DeploymentEnvVarSlot): EnvVarValueSelection {
   if (hasEnvVarLastValue(slot)) {
     return {
       valueSource: ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT,

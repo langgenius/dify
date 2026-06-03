@@ -7,8 +7,8 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type {
   DeploymentEnvVarSlot,
-  EnvVarValueSelection,
   EnvVarValues,
+  EnvVarValueSelection,
 } from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
