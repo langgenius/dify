@@ -1,40 +1,40 @@
-// The only hand-authored part of the agent skill (D3.0). Everything else in
-// SKILL.md and reference/*.md is derived from the single source of truth
-// (CONTRACT, the command tree, agentGuide(), TOPICS) by renderSkill(). This
-// shell holds the three things that have nowhere to derive from: the
-// frontmatter trigger, a one-line statement of what the skill provides, and
-// the framing for the safety section. The golden-path `workflow` is a
-// curated ordering of existing command paths — its prose is still derived
-// from each command's own description and examples.
+// The difyctl agent skill, in full — one hand-authored, pure-delegation file.
+//
+// It inlines NO command list, NO flag list, and ships no reference files. The
+// command surface is discovered at runtime via `difyctl help -o json`, so this
+// template has nothing to derive from the binary and nothing that can drift
+// from it. `{{VERSION}}` is the only substitution; it is filled at emit time by
+// renderSkill() in ./skill.
+//
+// RED LINE: keep this pure delegation. The moment a command or flag listing is
+// added here, the embedded static copy can fall out of sync with the command
+// surface — at which point it must instead be generated from the command model
+// with a snapshot test (see SKILL-SPEC.md §10, decision D2).
+export const SKILL_TEMPLATE = `---
+name: difyctl
+description: Drive the difyctl CLI to manage Dify apps, workspaces, members and runs. Use when the task involves difyctl or operating a Dify instance from the command line.
+---
 
-export type SkillShell = {
-  // Skill frontmatter. `description` is the trigger an agent matches on.
-  readonly name: string
-  readonly description: string
-  // One line stating what installing this skill grants.
-  readonly opening: string
-  // Lead-in prose for the SAFETY section; the command lists below it are derived.
-  readonly safetyFraming: string
-  // The core workflow chain, as ordered command paths. Each step's wording is
-  // pulled from that command's own descriptor, not written here.
-  readonly workflow: readonly string[]
-}
+# difyctl
 
-export const SKILL_SHELL: SkillShell = {
-  name: 'difyctl',
-  description:
-    'Drive the Dify platform from the command line with difyctl: authenticate, '
-    + 'list and inspect apps, run apps (including workflow apps that pause for '
-    + 'human input), and manage workspace members. Use when a task involves '
-    + 'invoking a Dify app or workspace from a shell.',
-  opening:
-    'This skill teaches an agent to operate `difyctl`, the Dify command-line '
-    + 'interface. Every command supports `-o json` for stable, machine-readable '
-    + 'output — always pass it.',
-  safetyFraming:
-    'difyctl commands are classified by what they change — remote state or local '
-    + 'files. Read-only commands are safe to call freely and are not listed here. '
-    + 'Confirm intent before any command below, and treat `destructive` commands '
-    + 'as irreversible.',
-  workflow: ['auth login', 'get app', 'describe app', 'run app', 'resume app'],
-}
+difyctl is self-describing — do not guess commands.
+
+## Discover the command surface
+Run \`difyctl help -o json\` for the version-current map: every command
+(args, flags, examples, \`effect\`) plus the global \`contract\` (exit codes,
+output formats, error envelope, HITL protocol). Treat that JSON as the
+source of truth; this file only bootstraps you into it.
+
+## The one non-obvious thing: HITL pauses are not failures
+A run can pause for human input. It exits with **code 2** and emits a
+\`paused\` JSON payload — this is success-with-pending, NOT a crash.
+Resume as the payload instructs (see \`difyctl resume app --help\`).
+
+## Before any write/destructive action
+Check the command's \`effect\` (\`read\` / \`write\` / \`destructive\`) in
+\`difyctl help -o json\` before running it.
+
+---
+difyctl skill v{{VERSION}} — if \`difyctl version\` differs, re-run
+\`difyctl skills install\` to refresh.
+`

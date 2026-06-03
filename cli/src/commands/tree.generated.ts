@@ -23,7 +23,6 @@ import GetWorkspace from '@/commands/get/workspace/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 import SetMember from '@/commands/set/member/index'
-import SkillInit from '@/commands/skill/init/index'
 import UseAccount from '@/commands/use/account/index'
 import UseHost from '@/commands/use/host/index'
 import UseWorkspace from '@/commands/use/workspace/index'
@@ -93,11 +92,6 @@ export const commandTree: CommandTree = {
   set: {
     subcommands: {
       member: { command: SetMember, subcommands: {} },
-    },
-  },
-  skill: {
-    subcommands: {
-      init: { command: SkillInit, subcommands: {} },
     },
   },
   use: {
