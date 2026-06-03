@@ -70,7 +70,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import build_system_variables
@@ -1064,6 +1065,16 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 )
             )
         session.add_all(message_files)
+
+        if trace_manager := self._application_generate_entity.trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
+                )
+            )
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""
