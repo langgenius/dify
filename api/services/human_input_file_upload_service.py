@@ -93,8 +93,11 @@ class HumanInputFileUploadService:
                 token=upload_token,
             )
             session.add(token_model)
+            # Snapshot the expiry before commit so callers do not depend on the
+            # session factory's expire_on_commit policy.
+            token = HumanInputUploadToken(upload_token=upload_token, expires_at=form.expiration_time)
 
-        return HumanInputUploadToken(upload_token=upload_token, expires_at=form.expiration_time)
+        return token
 
     def validate_upload_token(self, upload_token: str) -> HumanInputUploadContext:
         """Resolve an upload token and ensure the bound form is still active."""
