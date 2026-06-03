@@ -2203,14 +2203,14 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
 })
 
 /**
- * AgentAppFeaturesRequest
+ * AgentAppFeaturesPayload
  *
  * Presentation features configurable on an Agent App.
  *
  * All fields are optional; an omitted field is reset to its disabled/empty
  * default (the config form sends the full desired feature state on save).
  */
-export const zAgentAppFeaturesRequest = z.object({
+export const zAgentAppFeaturesPayload = z.object({
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.optional(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.optional(),
@@ -2882,7 +2882,7 @@ export const zPostAppsByAppIdAgentComposerValidatePath = z.object({
  */
 export const zPostAppsByAppIdAgentComposerValidateResponse = zAgentComposerValidateResponse
 
-export const zPostAppsByAppIdAgentFeaturesBody = zAgentAppFeaturesRequest
+export const zPostAppsByAppIdAgentFeaturesBody = zAgentAppFeaturesPayload
 
 export const zPostAppsByAppIdAgentFeaturesPath = z.object({
   app_id: z.string(),

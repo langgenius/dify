@@ -201,7 +201,7 @@ export type AgentComposerValidateResponse = {
   result: string
 }
 
-export type AgentAppFeaturesRequest = {
+export type AgentAppFeaturesPayload = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig
@@ -2398,7 +2398,7 @@ export type PostAppsByAppIdAgentComposerValidateResponse
   = PostAppsByAppIdAgentComposerValidateResponses[keyof PostAppsByAppIdAgentComposerValidateResponses]
 
 export type PostAppsByAppIdAgentFeaturesData = {
-  body: AgentAppFeaturesRequest
+  body: AgentAppFeaturesPayload
   path: {
     app_id: string
   }

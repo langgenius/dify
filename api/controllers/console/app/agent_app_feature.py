@@ -23,6 +23,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from events.app_event import app_model_config_was_updated
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.agent_config_entities import (
@@ -35,7 +36,7 @@ from models.model import App, AppMode
 from services.agent_app_feature_service import AgentAppFeatureConfigService
 
 
-class AgentAppFeaturesRequest(BaseModel):
+class AgentAppFeaturesPayload(BaseModel):
     """Presentation features configurable on an Agent App.
 
     All fields are optional; an omitted field is reset to its disabled/empty
@@ -59,7 +60,7 @@ class AgentAppFeaturesRequest(BaseModel):
     )
 
 
-register_schema_models(console_ns, AgentAppFeaturesRequest)
+register_schema_models(console_ns, AgentAppFeaturesPayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -68,7 +69,7 @@ class AgentAppFeatureConfigResource(Resource):
     @console_ns.doc("update_agent_app_features")
     @console_ns.doc(description="Update an Agent App's presentation features (opener, follow-up, citations, ...)")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AgentAppFeaturesRequest.__name__])
+    @console_ns.expect(console_ns.models[AgentAppFeaturesPayload.__name__])
     @console_ns.response(200, "Features updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid configuration")
     @console_ns.response(404, "App not found")
@@ -79,7 +80,7 @@ class AgentAppFeatureConfigResource(Resource):
     @get_app_model(mode=[AppMode.AGENT])
     @with_current_user
     def post(self, current_user: Account, app_model: App):
-        args = AgentAppFeaturesRequest.model_validate(console_ns.payload)
+        args = AgentAppFeaturesPayload.model_validate(console_ns.payload or {})
 
         new_app_model_config = AgentAppFeatureConfigService.update_features(
             app_model=app_model,
@@ -89,4 +90,4 @@ class AgentAppFeatureConfigResource(Resource):
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
 
-        return {"result": "success"}
+        return dump_response(SimpleResultResponse, {"result": "success"})
