@@ -3497,11 +3497,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/use-workflow-canvas-maximize.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks/use-workflow-interactions.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
