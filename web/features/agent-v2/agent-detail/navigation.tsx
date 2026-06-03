@@ -3,7 +3,7 @@
 import type { AgentDetailSectionKey } from './section'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
+import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
@@ -45,6 +45,7 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 export function AgentDetailTop() {
   const { t } = useTranslation()
   const router = useRouter()
+  const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
   return (
     <div className="flex items-center py-3 pr-3 pl-1">
@@ -77,7 +78,7 @@ export function AgentDetailTop() {
         type="button"
         aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
         className="flex shrink-0 items-center gap-1 overflow-hidden rounded-[10px] p-1 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        onClick={() => window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))}
+        onClick={() => setGotoAnythingOpen(true)}
       >
         <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
         <span className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
