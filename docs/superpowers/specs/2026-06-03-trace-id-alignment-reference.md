@@ -172,12 +172,14 @@ This added fallback support for the current OpenTelemetry context and `tracepare
 request X-Trace-Session-Id / query.trace_session_id / JSON body.trace_session_id
   -> args["trace_session_id"]
   -> application_generate_entity.extras["trace_session_id"]
-  -> trace task kwargs or metadata
+  -> workflow trace task kwargs or metadata
   -> WorkflowTraceInfo.metadata["trace_session_id"]
-  -> MessageTraceInfo.metadata["trace_session_id"]
   -> Phoenix session resolver
   -> SpanAttributes.SESSION_ID
 ```
+
+Existing explicit `MESSAGE_TRACE` tasks may still carry `MessageTraceInfo.metadata["trace_session_id"]` for backwards
+compatibility, but app generation pipelines should not enqueue message traces for this feature.
 
 It should intentionally differ from `trace_id` in these ways:
 
