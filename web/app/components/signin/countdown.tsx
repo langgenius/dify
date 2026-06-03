@@ -2,6 +2,7 @@
 import { useCountDown } from 'ahooks'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 
 export const COUNT_DOWN_TIME_MS = 59000
 export const COUNT_DOWN_KEY = 'leftTime'
@@ -12,24 +13,25 @@ type CountdownProps = {
 
 export default function Countdown({ onResend }: CountdownProps) {
   const { t } = useTranslation()
-  const [leftTime, setLeftTime] = useState(() => Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
+  const [storedLeftTime, setStoredLeftTime] = useLocalStorage<number>(COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS)
+  const [leftTime, setLeftTime] = useState(storedLeftTime)
   const [time] = useCountDown({
     leftTime,
     onEnd: () => {
       setLeftTime(0)
-      localStorage.removeItem(COUNT_DOWN_KEY)
+      setStoredLeftTime(null)
     },
   })
 
   const resend = async function () {
     setLeftTime(COUNT_DOWN_TIME_MS)
-    localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+    setStoredLeftTime(COUNT_DOWN_TIME_MS)
     onResend?.()
   }
 
   useEffect(() => {
-    localStorage.setItem(COUNT_DOWN_KEY, `${time}`)
-  }, [time])
+    setStoredLeftTime(time)
+  }, [setStoredLeftTime, time])
 
   return (
     <p className="system-xs-regular text-text-tertiary">

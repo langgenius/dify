@@ -3185,11 +3185,6 @@
       "count": 2
     }
   },
-  "web/app/components/signin/countdown.tsx": {
-    "no-restricted-globals": {
-      "count": 4
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
     "no-restricted-imports": {
       "count": 1
