@@ -44,7 +44,13 @@ For agents (and scripting), start with `difyctl help agent` — the cross-comman
 
 ## Agent skill
 
-`difyctl skill init [dir]` writes a cross-agent skill bundle (`SKILL.md` + `reference/`) derived from your installed binary — same source as `help -o json`, just packaged so an agent auto-loads it. With no `dir` it writes `./.claude/skills/difyctl/` (project-level); `--user` targets `~/.claude/skills/difyctl/`. The bundle is generated, not checked in, and always matches your binary; the command prints the path it wrote. If a copy ever looks stale, run `difyctl version` and regenerate.
+`difyctl skills install` installs a single, pure-delegation `SKILL.md` into your local agents so they auto-load it. The skill does not freeze the command set — it points the agent at `difyctl help -o json` for the live surface, so it never drifts from your binary. It is embedded in the binary (version-stamped) rather than checked in.
+
+- `difyctl skills install` — dry-run: detect installed agents (Claude Code, Codex, opencode) and print where the skill would land. Writes nothing.
+- `difyctl skills install --yes` — write to every detected agent, printing each path. `--agent claude-code[,codex]` restricts to a subset; `<dir>` forces one explicit directory.
+- `difyctl skills install --stdout` — print the `SKILL.md` to stdout (for piping or self-install); writes nothing.
+
+Detection is by config-directory existence (`~/.claude`, `~/.codex`, `~/.config/opencode`). If a copy ever looks stale, run `difyctl version` and re-run `difyctl skills install`.
 
 ## Output formats
 
