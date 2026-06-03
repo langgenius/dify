@@ -181,6 +181,7 @@
   "feedback.placeholder": "Please describe what went wrong or how we can improve...",
   "feedback.subtitle": "Please tell us what went wrong with this response",
   "feedback.title": "Provide Feedback",
+  "fileUploader.fileCountLimit": "You can upload a maximum of {{count}} files",
   "fileUploader.fileExtensionBlocked": "This file type is blocked for security reasons",
   "fileUploader.fileExtensionNotSupport": "File extension not supported",
   "fileUploader.pasteFileLink": "Paste file link",
