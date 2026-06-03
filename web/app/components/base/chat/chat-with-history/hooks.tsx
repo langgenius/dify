@@ -124,13 +124,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     undefined,
     rawStorageOptions,
   )
-  const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(storedSidebarCollapseState === 'collapsed')
+  const sidebarCollapseState = storedSidebarCollapseState === 'collapsed'
   const handleSidebarCollapse = useCallback((state: boolean) => {
-    if (appId) {
-      setSidebarCollapseState(state)
+    if (appId)
       setStoredSidebarCollapseState(state ? 'collapsed' : 'expanded')
-    }
-  }, [appId, setSidebarCollapseState, setStoredSidebarCollapseState])
+  }, [appId, setStoredSidebarCollapseState])
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
