@@ -6,10 +6,10 @@ from datetime import datetime
 from importlib import util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
 from werkzeug.datastructures import MultiDict
@@ -17,6 +17,13 @@ from werkzeug.datastructures import MultiDict
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+class _ConsoleModule(ModuleType):
+    console_ns: object
+    api: object | None
+    bp: object | None
+    app: ModuleType
 
 
 def _unwrap(func):
@@ -36,7 +43,7 @@ def app_module():
 
     class _StubNamespace:
         def __init__(self):
-            self.models: dict[str, Any] = {}
+            self.models: dict[str, object] = {}
             self.payload = None
 
         def schema_model(self, name, schema):
@@ -77,7 +84,7 @@ def app_module():
     }
     stubbed_modules: list[tuple[str, ModuleType | None]] = []
 
-    console_module = ModuleType("controllers.console")
+    console_module = _ConsoleModule("controllers.console")
     console_module.__path__ = [str(root / "controllers" / "console")]
     console_module.console_ns = stub_namespace
     console_module.api = None
@@ -89,7 +96,7 @@ def app_module():
     sys.modules["controllers.console.app"] = app_package
     console_module.app = app_package
 
-    def _stub_module(name: str, attrs: dict[str, Any]):
+    def _stub_module(name: str, attrs: dict[str, object]) -> None:
         original = sys.modules.get(name)
         module = ModuleType(name)
         for key, value in attrs.items():
@@ -99,7 +106,7 @@ def app_module():
 
     class _OpsTraceManager:
         @staticmethod
-        def get_app_tracing_config(app_id: str) -> dict[str, Any]:
+        def get_app_tracing_config(app_id: str) -> dict[str, object]:
             return {}
 
         @staticmethod
@@ -116,6 +123,7 @@ def app_module():
     )
 
     spec = util.spec_from_file_location(module_name, module_path)
+    assert spec is not None
     module = util.module_from_spec(spec)
     sys.modules[module_name] = module
 
@@ -147,7 +155,7 @@ def app_models(app_module):
 
 
 @pytest.fixture(autouse=True)
-def patch_signed_url(monkeypatch, app_module):
+def patch_signed_url(monkeypatch: pytest.MonkeyPatch, app_module: ModuleType) -> None:
     """Ensure icon URL generation uses a deterministic helper for tests."""
 
     def _fake_build_icon_url(_icon_type, key: str | None) -> str | None:
@@ -407,10 +415,11 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models):
     assert serialized["data"][1]["icon_url"] is None
 
 
-def test_app_list_uses_injected_session_for_draft_workflows(app, app_module, monkeypatch):
+def test_app_list_uses_injected_session_for_draft_workflows(
+    app: Flask, app_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = app_module.AppListApi()
     method = _unwrap(api.get)
-    current_user = SimpleNamespace(id="user-1")
     app_item = SimpleNamespace(
         id="app-1",
         name="Workflow App",
@@ -428,7 +437,6 @@ def test_app_list_uses_injected_session_for_draft_workflows(app, app_module, mon
     session.execute.return_value.scalars.return_value.all.return_value = [workflow]
     scoped_session = SimpleNamespace(execute=MagicMock(side_effect=AssertionError("db.session should not be used")))
 
-    monkeypatch.setattr(app_module, "current_account_with_tenant", lambda: (current_user, "tenant-1"))
     monkeypatch.setattr(
         app_module,
         "AppService",
@@ -442,7 +450,7 @@ def test_app_list_uses_injected_session_for_draft_workflows(app, app_module, mon
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
 
     with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
-        response, status = method(session)
+        response, status = method("tenant-1", "user-1", session)
 
     assert status == 200
     assert response["data"][0]["has_draft_trigger"] is True
