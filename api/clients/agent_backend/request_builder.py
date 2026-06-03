@@ -30,6 +30,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -48,6 +49,7 @@ WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
 AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
+DIFY_SHELL_LAYER_ID = "shell"
 
 # Layer types that hold credentials in their per-run config. These are excluded
 # from the cleanup-replay composition (and from the snapshot that is sent with
@@ -167,6 +169,9 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
+    # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
+    include_shell: bool = False
     session_snapshot: CompositorSessionSnapshot | None = None
     include_history: bool = True
     suspend_on_exit: bool = True
@@ -199,6 +204,9 @@ class AgentBackendAgentAppRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
+    # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
+    include_shell: bool = False
     session_snapshot: CompositorSessionSnapshot | None = None
     include_history: bool = True
     suspend_on_exit: bool = True
@@ -286,6 +294,18 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.tools,
+                )
+            )
+
+        if run_input.include_shell:
+            # Sandboxed bash workspace (dify.shell). The layer declares NoLayerDeps,
+            # so the spec carries no deps; shellctl connection is server-injected.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=DifyShellLayerConfig(),
                 )
             )
 
@@ -429,6 +449,18 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.tools,
+                )
+            )
+
+        if run_input.include_shell:
+            # Sandboxed bash workspace (dify.shell). The layer declares NoLayerDeps,
+            # so the spec carries no deps; shellctl connection is server-injected.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=DifyShellLayerConfig(),
                 )
             )
 

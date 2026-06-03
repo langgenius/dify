@@ -16,6 +16,7 @@ from dify_agent.layers.dify_plugin import (
 )
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -30,6 +31,7 @@ from clients.agent_backend import (
     DIFY_PLUGIN_TOOLS_LAYER_ID,
     WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
     WORKFLOW_USER_PROMPT_LAYER_ID,
+    AgentBackendAgentAppRunInput,
     AgentBackendModelConfig,
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
@@ -37,6 +39,7 @@ from clients.agent_backend import (
     CleanupLayerSpec,
     redact_for_agent_backend_log,
 )
+from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 
 
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
@@ -249,3 +252,57 @@ def test_redact_for_agent_backend_log_hides_credentials():
     redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
 
     assert redacted["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+
+
+def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunInput:
+    return AgentBackendAgentAppRunInput(
+        model=AgentBackendModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+            credentials={"api_key": "secret-key"},
+        ),
+        execution_context=DifyExecutionContextLayerConfig(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            invoke_from="agent_app",
+        ),
+        agent_soul_prompt="You are Iris.",
+        user_prompt="List files.",
+        include_shell=include_shell,
+        metadata={"conversation_id": "conv-1"},
+    )
+
+
+def test_workflow_request_builder_omits_shell_layer_by_default():
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
+    assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
+
+
+def test_workflow_request_builder_adds_shell_layer_when_include_shell():
+    run_input = _run_input()
+    run_input.include_shell = True
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    assert DIFY_SHELL_LAYER_ID in layers
+    shell = layers[DIFY_SHELL_LAYER_ID]
+    assert shell.type == DIFY_SHELL_LAYER_TYPE_ID
+    # The shell layer declares NoLayerDeps, so the spec must carry no deps.
+    assert not shell.deps
+
+
+def test_agent_app_request_builder_omits_shell_layer_by_default():
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
+    assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
+
+
+def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input(include_shell=True))
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    assert DIFY_SHELL_LAYER_ID in layers
+    assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
+    assert not layers[DIFY_SHELL_LAYER_ID].deps

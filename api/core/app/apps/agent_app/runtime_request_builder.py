@@ -22,6 +22,7 @@ from clients.agent_backend import (
     AgentBackendRunRequestBuilder,
     redact_for_agent_backend_log,
 )
+from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.workflow.nodes.agent_v2.plugin_tools_builder import (
     WorkflowAgentPluginToolsBuilder,
@@ -126,6 +127,7 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=agent_soul.prompt.system_prompt or None,
                 user_prompt=context.user_query,
                 tools=tools_layer,
+                include_shell=dify_config.AGENT_SHELL_ENABLED,
                 session_snapshot=context.session_snapshot,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,

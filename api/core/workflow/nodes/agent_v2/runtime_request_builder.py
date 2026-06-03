@@ -15,6 +15,7 @@ from clients.agent_backend import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
+from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.variables.segments import Segment
@@ -164,6 +165,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
+                include_shell=dify_config.AGENT_SHELL_ENABLED,
                 session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
