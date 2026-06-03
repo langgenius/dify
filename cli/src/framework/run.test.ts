@@ -3,6 +3,7 @@ import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vitest'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
+import { CONTRACT } from '@/help/contract'
 import { Command } from './command'
 import { run, sniffOutputFormat } from './run'
 
@@ -388,16 +389,24 @@ describe('run() help routing', () => {
     expect(result.exit).toBe(1)
   })
 
-  it('lists USAGE, COMMANDS, EXAMPLES, GUIDES and LEARN MORE in the top-level overview', async () => {
+  it('lists USAGE, COMMANDS, EXAMPLES, GLOBAL FLAGS, GUIDES and LEARN MORE in the top-level overview', async () => {
     const result = await captureRun(tree, ['help'])
     expect(result.stdout).toContain('USAGE')
     expect(result.stdout).toContain('COMMANDS')
     expect(result.stdout).toContain('EXAMPLES')
+    expect(result.stdout).toContain('GLOBAL FLAGS')
     expect(result.stdout).toContain('GUIDES')
     expect(result.stdout).toContain('LEARN MORE')
     expect(result.stdout).toContain('account')
     expect(result.stdout).toContain('environment')
     expect(result.stdout).toContain('external')
+  })
+
+  it('derives the GLOBAL FLAGS output format list from the contract', async () => {
+    const result = await captureRun(tree, ['help'])
+    expect(result.stdout).toContain('-o, --output')
+    expect(result.stdout).toContain(`Output format: ${CONTRACT.outputFormats.join('|')}`)
+    expect(result.stdout).toContain('--http-retry')
   })
 
   it('does not print trailing whitespace on group rows', async () => {

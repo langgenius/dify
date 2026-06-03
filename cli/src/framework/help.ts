@@ -3,7 +3,7 @@ import type { CommandTree } from './registry'
 import type { ArgValueType, FlagDefinition } from './types'
 import type { HelpTopic } from '@/help/topics'
 import yaml from 'js-yaml'
-import { CONTRACT } from '@/help/contract'
+import { CONTRACT, GLOBAL_FLAG_HELP } from '@/help/contract'
 import { TOPICS } from '@/help/topics'
 import { collectCommands } from './registry'
 
@@ -202,12 +202,18 @@ function renderTopicRows(): string {
   return TOPICS.map(t => `  ${t.name.padEnd(width)}${t.summary}`).join('\n')
 }
 
+function renderGlobalFlagRows(): string {
+  const width = GLOBAL_FLAG_HELP.reduce((max, f) => Math.max(max, f.label.length), 0) + 2
+  return GLOBAL_FLAG_HELP.map(f => `  ${f.label.padEnd(width)}${f.description}`).join('\n')
+}
+
 function formatTopLevelHelpText(tree: CommandTree): string {
   const sections = [
     `${BIN} — Dify command-line interface`,
     `USAGE\n  ${BIN} <command> <subcommand> [flags]`,
     `COMMANDS\n${renderCommandRows(collectCommands(tree))}`,
     `EXAMPLES\n${ROOT_EXAMPLES.map(ex => `  $ ${ex}`).join('\n')}`,
+    `GLOBAL FLAGS\n${renderGlobalFlagRows()}`,
     `GUIDES\n${renderTopicRows()}`,
     `LEARN MORE\n`
     + `  Use \`${BIN} <command> --help\` for details on a command.\n`
