@@ -1222,6 +1222,38 @@ class TestDatasetCollectionBindingService:
 class TestDatasetPermissionService:
     """Unit tests for dataset partial-member management helpers."""
 
+    def test_get_dataset_partial_member_list_returns_scalar_results(self):
+        with patch("services.dataset_service.db") as mock_db:
+            mock_db.session.scalars.return_value.all.return_value = ["user-1", "user-2"]
+
+            result = DatasetPermissionService.get_dataset_partial_member_list("dataset-1")
+
+        assert result == ["user-1", "user-2"]
+
+    def test_update_partial_member_list_replaces_permissions_and_commits(self):
+        with patch("services.dataset_service.db") as mock_db:
+            DatasetPermissionService.update_partial_member_list(
+                "tenant-1",
+                "dataset-1",
+                [{"user_id": "user-1"}, {"user_id": "user-2"}],
+            )
+
+        mock_db.session.execute.assert_called()
+        mock_db.session.add_all.assert_called_once()
+        mock_db.session.commit.assert_called_once()
+
+    def test_update_partial_member_list_accepts_plain_user_id_strings(self):
+        with patch("services.dataset_service.db") as mock_db:
+            DatasetPermissionService.update_partial_member_list(
+                "tenant-1",
+                "dataset-1",
+                ["user-1", "user-2"],
+            )
+
+        mock_db.session.add_all.assert_called_once()
+        inserted_permissions = mock_db.session.add_all.call_args.args[0]
+        assert [permission.account_id for permission in inserted_permissions] == ["user-1", "user-2"]
+
     def test_update_partial_member_list_rolls_back_on_exception(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.add_all.side_effect = RuntimeError("boom")

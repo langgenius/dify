@@ -1,6 +1,8 @@
 from textwrap import dedent
 
-from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
+import pytest
+
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
 
@@ -9,7 +11,12 @@ CODE_LANGUAGE = CodeLanguage.JAVASCRIPT
 
 def test_javascript_plain():
     code = 'console.log("Hello World")'
-    result_message = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
+    try:
+        result_message = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
+    except CodeExecutionError as error:
+        if "status code 502" in str(error) or "network issue" in str(error):
+            pytest.skip(f"Sandbox service is temporarily unavailable: {error}")
+        raise
     assert result_message == "Hello World\n"
 
 
