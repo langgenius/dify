@@ -212,7 +212,6 @@ class EndUserType(StrEnum):
     MCP = "mcp"
     OPENAPI = "openapi"
     SERVICE_API = "service-api"
-    SERVICE_API_LEGACY = "service_api"
     TRIGGER = "trigger"
 
 

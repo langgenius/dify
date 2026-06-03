@@ -2,8 +2,6 @@ import ast
 import inspect
 from pathlib import Path
 
-import pytest
-
 from models.enums import EndUserType
 from models.model import EndUser
 from models.types import EnumText
@@ -18,7 +16,6 @@ def test_end_user_type_covers_persisted_creation_values():
         "mcp",
         "openapi",
         "service-api",
-        "service_api",
         "trigger",
     }
 
@@ -68,18 +65,6 @@ def test_end_user_type_column_uses_enum_text():
 
     assert isinstance(column_type, EnumText)
     assert column_type._enum_class is EndUserType
-
-
-@pytest.mark.parametrize("legacy_type", [EndUserType.SERVICE_API_LEGACY, EndUserType.SERVICE_API_LEGACY.value])
-def test_end_user_rejects_legacy_service_api_type_for_new_records(legacy_type: EndUserType | str):
-    with pytest.raises(ValueError, match="service_api"):
-        EndUser(
-            tenant_id="11111111-1111-1111-1111-111111111111",
-            app_id="22222222-2222-2222-2222-222222222222",
-            type=legacy_type,
-            session_id="legacy-service-api-user",
-            is_anonymous=False,
-        )
 
 
 def test_production_end_user_constructors_use_end_user_type_enum():

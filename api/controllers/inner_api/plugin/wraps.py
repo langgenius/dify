@@ -76,7 +76,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
-                    type=EndUserType.SERVICE_API_LEGACY,
+                    type=EndUserType.SERVICE_API,
                     is_anonymous=is_anonymous,
                     session_id=user_id,
                 )
