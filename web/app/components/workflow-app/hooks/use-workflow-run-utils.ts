@@ -78,8 +78,6 @@ export const createRunningWorkflowState = () => {
     },
     tracing: [],
     resultText: '',
-    reasoningContent: {},
-    reasoningFinished: false,
   }
 }
 

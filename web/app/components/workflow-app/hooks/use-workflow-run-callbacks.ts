@@ -27,7 +27,6 @@ type WorkflowRunEventHandlers = {
   handleWorkflowAgentLog: NonNullable<IOtherOptions['onAgentLog']>
   handleWorkflowTextChunk: NonNullable<IOtherOptions['onTextChunk']>
   handleWorkflowTextReplace: NonNullable<IOtherOptions['onTextReplace']>
-  handleWorkflowReasoning: NonNullable<IOtherOptions['onReasoning']>
   handleWorkflowPaused: () => void
 }
 
@@ -115,7 +114,6 @@ export const createBaseWorkflowRunCallbacks = ({
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
-    handleWorkflowReasoning,
     handleWorkflowPaused,
   } = handlers
   const {
@@ -246,9 +244,6 @@ export const createBaseWorkflowRunCallbacks = ({
     onTextReplace: (params) => {
       handleWorkflowTextReplace(params)
     },
-    onReasoning: (params) => {
-      handleWorkflowReasoning(params)
-    },
     onTTSChunk: (messageId: string, audio: string) => {
       if (!audio || audio === '')
         return
@@ -330,7 +325,6 @@ export const createFinalWorkflowRunCallbacks = ({
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
-    handleWorkflowReasoning,
     handleWorkflowPaused,
   } = handlers
   const {
@@ -444,9 +438,6 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onTextReplace: (params) => {
       handleWorkflowTextReplace(params)
-    },
-    onReasoning: (params) => {
-      handleWorkflowReasoning(params)
     },
     onTTSChunk: (messageId: string, audio: string) => {
       if (!audio || audio === '')

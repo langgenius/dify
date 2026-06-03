@@ -27,7 +27,6 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
-    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -42,7 +41,6 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
-    ReasoningChunkStreamResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
@@ -268,41 +266,6 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses[0].data.text == "hi"
         assert published == [queue_message]
 
-    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
-        pipeline = _make_pipeline()
-        event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
-
-        responses = list(pipeline._handle_reasoning_chunk_event(event))
-
-        assert len(responses) == 1
-        response = responses[0]
-        assert isinstance(response, ReasoningChunkStreamResponse)
-        # workflow runs have no message, so the id is omitted
-        assert response.data.message_id is None
-        assert response.data.reasoning == "pondering"
-        assert response.data.node_id == "llm-1"
-        assert response.data.is_final is False
-
-    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
-        pipeline = _make_pipeline()
-        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
-
-        responses = list(pipeline._handle_reasoning_chunk_event(event))
-
-        assert responses == []
-
-    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
-        pipeline = _make_pipeline()
-        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
-
-        responses = list(pipeline._handle_reasoning_chunk_event(event))
-
-        assert len(responses) == 1
-        response = responses[0]
-        assert isinstance(response, ReasoningChunkStreamResponse)
-        assert response.data.reasoning == ""
-        assert response.data.is_final is True
-
     def test_dispatch_event_handles_node_failed(self):
         pipeline = _make_pipeline()
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
@@ -320,7 +283,7 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert list(pipeline._dispatch_event(event)) == ["done"]
 
-    def test_handle_stop_event_yields_finish(self):
+    def test_handle_stop_event_yields_finish(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
@@ -331,6 +294,19 @@ class TestWorkflowGenerateTaskPipeline:
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
 
+        @contextmanager
+        def _fake_session():
+            class FakeSession:
+                def scalar(self, stmt):
+                    return None
+
+                def commit(self):
+                    pass
+
+            yield FakeSession()
+
+        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+
         responses = list(
             pipeline._handle_workflow_failed_and_stop_events(
                 QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
@@ -338,6 +314,58 @@ class TestWorkflowGenerateTaskPipeline:
         )
 
         assert responses == ["finish"]
+
+    def test_handle_stop_event_updates_workflow_run_status(self, monkeypatch: pytest.MonkeyPatch):
+        pipeline = _make_pipeline()
+        pipeline._workflow_execution_id = "run-id"
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
+            start_at=0.0,
+        )
+        pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
+
+        status_updates: list[dict] = []
+
+        class FakeWorkflowRun:
+            def __init__(self):
+                self.status = None
+                self.error = None
+                self.finished_at = None
+
+        fake_run = FakeWorkflowRun()
+
+        class FakeSession:
+            def scalar(self, stmt):
+                return fake_run
+
+            def commit(self):
+                status_updates.append(
+                    {
+                        "status": fake_run.status,
+                        "error": fake_run.error,
+                        "finished_at": fake_run.finished_at,
+                    }
+                )
+
+        @contextmanager
+        def _fake_session():
+            yield FakeSession()
+
+        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+
+        responses = list(
+            pipeline._handle_workflow_failed_and_stop_events(
+                QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
+            )
+        )
+
+        assert responses == ["finish"]
+        assert len(status_updates) == 1
+        assert status_updates[0]["status"] == WorkflowExecutionStatus.STOPPED
+        assert status_updates[0]["error"] == "Stopped by user."
+        assert status_updates[0]["finished_at"] is not None
 
     def test_save_workflow_app_log_created_from(self):
         pipeline = _make_pipeline()

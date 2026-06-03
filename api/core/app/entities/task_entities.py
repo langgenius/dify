@@ -743,8 +743,7 @@ class ReasoningChunkStreamResponse(StreamResponse):
         Data entity
         """
 
-        # chat apps set this; workflow runs have no message
-        message_id: str | None = None
+        message_id: str
         reasoning: str
         node_id: str | None = None
         is_final: bool = False

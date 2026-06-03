@@ -59,41 +59,6 @@ describe('collect — chat', () => {
   })
 })
 
-describe('collect — chat separated reasoning', () => {
-  function reasoningEvent(reasoning: string, isFinal: boolean) {
-    return ev('reasoning_chunk', { data: { message_id: 'm1', reasoning, node_id: 'llm-1', is_final: isFinal } })
-  }
-
-  it('backfills metadata.reasoning from live deltas when the server omits it', async () => {
-    const got = await collect(iterOf(
-      reasoningEvent('pon', false),
-      reasoningEvent('dering', true),
-      ev('message', { message_id: 'm1', answer: 'answer' }),
-      ev('message_end', { metadata: { usage: { tokens: 3 } } }),
-    ), 'advanced-chat')
-    expect(got.answer).toBe('answer')
-    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'pondering' })
-    expect((got.metadata as { usage?: unknown }).usage).toEqual({ tokens: 3 })
-  })
-
-  it('keeps the server-persisted reasoning over live deltas', async () => {
-    const got = await collect(iterOf(
-      reasoningEvent('live', true),
-      ev('message', { answer: 'a' }),
-      ev('message_end', { metadata: { reasoning: { 'llm-1': 'persisted' } } }),
-    ), 'advanced-chat')
-    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'persisted' })
-  })
-
-  it('leaves metadata untouched when there is no reasoning at all', async () => {
-    const got = await collect(iterOf(
-      ev('message', { answer: 'a' }),
-      ev('message_end', { metadata: { usage: { tokens: 1 } } }),
-    ), 'advanced-chat')
-    expect((got.metadata as { reasoning?: unknown }).reasoning).toBeUndefined()
-  })
-})
-
 describe('collect — agent-chat', () => {
   it('captures agent_thoughts', async () => {
     const got = await collect(iterOf(
@@ -129,39 +94,6 @@ describe('collect — workflow', () => {
     ), 'workflow')
     expect(got.mode).toBe('workflow')
     expect((got.data as { outputs: { x: number } }).outputs.x).toBe(1)
-  })
-})
-
-describe('collect — workflow separated reasoning', () => {
-  function wfReasoning(reasoning: string, nodeId: string, isFinal: boolean) {
-    return ev('reasoning_chunk', { data: { reasoning, node_id: nodeId, is_final: isFinal } })
-  }
-
-  it('accumulates reasoning_chunk per node into metadata.reasoning', async () => {
-    const got = await collect(iterOf(
-      ev('node_started', { id: 'llm-1' }),
-      wfReasoning('pon', 'llm-1', false),
-      wfReasoning('dering', 'llm-1', true),
-      ev('workflow_finished', { data: { status: 'succeeded', outputs: { result: 'clean' } } }),
-    ), 'workflow')
-    expect((got.data as { outputs: { result: string } }).outputs.result).toBe('clean')
-    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'pondering' })
-  })
-
-  it('keys reasoning by node, leaves metadata absent when there is none', async () => {
-    const got = await collect(iterOf(
-      ev('workflow_finished', { data: { status: 'succeeded', outputs: { result: 'clean' } } }),
-    ), 'workflow')
-    expect((got.metadata as { reasoning?: unknown } | undefined)?.reasoning).toBeUndefined()
-  })
-
-  it('merges reasoning into metadata already carried by workflow_finished', async () => {
-    const got = await collect(iterOf(
-      wfReasoning('think', 'llm-1', true),
-      ev('workflow_finished', { data: { status: 'succeeded' }, metadata: { usage: { tokens: 7 } } }),
-    ), 'workflow')
-    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'think' })
-    expect((got.metadata as { usage?: unknown }).usage).toEqual({ tokens: 7 })
   })
 })
 

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
 import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/editor'
@@ -61,10 +60,7 @@ const ResultText: FC<ResultTextProps> = ({
         <>
           {outputs && (
             <div className="px-4 py-2">
-              {/* ThinkBlock's timer reads isResponding from ChatContext, which the run panel otherwise lacks. */}
-              <ChatContextProvider chatList={[]} isResponding={!!isRunning}>
-                <Markdown content={outputs} />
-              </ChatContextProvider>
+              <Markdown content={outputs} />
             </div>
           )}
           {!!allFiles?.length && allFiles.map(item => (
