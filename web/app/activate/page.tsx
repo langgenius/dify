@@ -2,12 +2,21 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import Loading from '@/app/components/base/loading'
 import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Header from '../signin/_header'
 import ActivateForm from './activateForm'
 
 const Activate = () => {
-  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder, isPlaceholderData } = useQuery(systemFeaturesQueryOptions())
+  if (isPlaceholderData) {
+    return (
+      <div className="flex min-h-screen w-full justify-center bg-background-default-burn">
+        <Loading />
+      </div>
+    )
+  }
+
   return (
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
       <div className={cn('flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle')}>

@@ -20,19 +20,21 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 
 const Header = () => {
   const locale = useLocale()
-  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder, isPlaceholderData } = useQuery(systemFeaturesQueryOptions())
 
   return (
     <div className="flex w-full items-center justify-between p-6">
-      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
-        ? (
-            <img
-              src={systemFeatures.branding.login_page_logo}
-              className="block h-7 w-auto object-contain"
-              alt="logo"
-            />
-          )
-        : <DifyLogo size="large" />}
+      {isPlaceholderData
+        ? <div className="h-7 w-16 bg-transparent" />
+        : systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
+          ? (
+              <img
+                src={systemFeatures.branding.login_page_logo}
+                className="block h-7 w-auto object-contain"
+                alt="logo"
+              />
+            )
+          : <DifyLogo size="large" />}
       <div className="flex items-center gap-1">
         <LocaleMenu
           value={locale}

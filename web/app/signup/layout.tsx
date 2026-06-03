@@ -2,13 +2,22 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 
+import Loading from '@/app/components/base/loading'
 import Header from '@/app/signin/_header'
 import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function RegisterLayout({ children }: any) {
-  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder, isPlaceholderData } = useQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
+  if (isPlaceholderData) {
+    return (
+      <div className="flex min-h-screen w-full justify-center bg-background-default-burn">
+        <Loading />
+      </div>
+    )
+  }
+
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
