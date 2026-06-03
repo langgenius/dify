@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -140,6 +140,7 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
+    @override
     def output(self, key, obj, **kwargs):
         if obj is None:
             return None
@@ -175,6 +176,7 @@ def build_avatar_url(avatar: str | None) -> str | None:
 
 
 class AvatarUrlField(fields.Raw):
+    @override
     def output(self, key, obj, **kwargs):
         if obj is None:
             return None
@@ -187,11 +189,13 @@ class AvatarUrlField(fields.Raw):
 
 
 class TimestampField(fields.Raw):
+    @override
     def format(self, value) -> int:
         return int(value.timestamp())
 
 
 class OptionalTimestampField(fields.Raw):
+    @override
     def format(self, value) -> int | None:
         if value is None:
             return None

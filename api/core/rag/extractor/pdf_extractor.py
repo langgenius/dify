@@ -5,6 +5,7 @@ import io
 import logging
 import uuid
 from collections.abc import Iterator
+from typing import override
 
 import pypdfium2
 import pypdfium2.raw as pdfium_c
@@ -55,6 +56,7 @@ class PdfExtractor(BaseExtractor):
         self._user_id = user_id
         self._file_cache_key = file_cache_key
 
+    @override
     def extract(self) -> list[Document]:
         plaintext_file_exists = False
         if self._file_cache_key:
