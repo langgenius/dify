@@ -219,6 +219,31 @@ class TestDatasetModelValidation:
         assert result["reranking_enable"] is False
         assert result["score_threshold_enabled"] is False
 
+    def test_dataset_retrieval_model_dict_property_merges_partial_values(self):
+        """Test retrieval_model_dict property fills in missing legacy keys."""
+        # Arrange
+        dataset = Dataset(
+            tenant_id=str(uuid4()),
+            name="Test Dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=str(uuid4()),
+            retrieval_model={
+                "top_k": 4,
+                "score_threshold_enabled": True,
+                "score_threshold": 0.42,
+            },
+        )
+
+        # Act
+        result = dataset.retrieval_model_dict
+
+        # Assert
+        assert result["search_method"] == "semantic_search"
+        assert result["reranking_enable"] is False
+        assert result["top_k"] == 4
+        assert result["score_threshold_enabled"] is True
+        assert result["score_threshold"] == 0.42
+
     def test_dataset_gen_collection_name_by_id(self):
         """Test static method for generating collection name."""
         # Arrange

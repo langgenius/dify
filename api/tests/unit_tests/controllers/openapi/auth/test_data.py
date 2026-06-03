@@ -115,3 +115,69 @@ def test_auth_data_token_id_optional():
         scopes=frozenset(),
     )
     assert data.token_id is None
+
+
+def test_request_context_workspace_membership_default_false():
+    ctx = RequestContext(token_type=TokenType.OAUTH_ACCOUNT, path_params={})
+    assert ctx.workspace_membership is False
+
+
+def test_request_context_workspace_membership_set():
+    ctx = RequestContext(token_type=TokenType.OAUTH_ACCOUNT, path_params={}, workspace_membership=True)
+    assert ctx.workspace_membership is True
+
+
+def test_request_context_allowed_roles_default_none():
+    ctx = RequestContext(token_type=TokenType.OAUTH_ACCOUNT, path_params={})
+    assert ctx.allowed_roles is None
+
+
+def test_request_context_allowed_roles_set():
+    from models.account import TenantAccountRole
+
+    roles = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+    ctx = RequestContext(token_type=TokenType.OAUTH_ACCOUNT, path_params={}, allowed_roles=roles)
+    assert ctx.allowed_roles == roles
+
+
+def test_auth_data_allowed_roles_default_none():
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+    )
+    assert data.allowed_roles is None
+
+
+def test_auth_data_allowed_roles_set():
+    from models.account import TenantAccountRole
+
+    roles = frozenset({TenantAccountRole.ADMIN})
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+        allowed_roles=roles,
+    )
+    assert data.allowed_roles == roles
+
+
+def test_auth_data_tenant_role_default_none():
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+    )
+    assert data.tenant_role is None
+
+
+def test_auth_data_tenant_role_set():
+    from models.account import TenantAccountRole
+
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="abc",
+        scopes=frozenset(),
+        tenant_role=TenantAccountRole.ADMIN,
+    )
+    assert data.tenant_role == TenantAccountRole.ADMIN
