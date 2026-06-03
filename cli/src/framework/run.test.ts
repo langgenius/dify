@@ -388,10 +388,13 @@ describe('run() help routing', () => {
     expect(result.exit).toBe(1)
   })
 
-  it('lists a GUIDES section in the top-level overview', async () => {
+  it('lists USAGE, COMMANDS, EXAMPLES, GUIDES and LEARN MORE in the top-level overview', async () => {
     const result = await captureRun(tree, ['help'])
+    expect(result.stdout).toContain('USAGE')
     expect(result.stdout).toContain('COMMANDS')
+    expect(result.stdout).toContain('EXAMPLES')
     expect(result.stdout).toContain('GUIDES')
+    expect(result.stdout).toContain('LEARN MORE')
     expect(result.stdout).toContain('account')
     expect(result.stdout).toContain('environment')
     expect(result.stdout).toContain('external')
@@ -473,5 +476,12 @@ describe('run() help routing', () => {
     const result = await captureRun(groupTree, ['auth', 'nope', '--help'])
     expect(result.stderr).toContain('unknown help topic: auth nope')
     expect(result.exit).toBe(1)
+  })
+
+  it('renders full-depth leaves at the top level (third-level commands visible)', async () => {
+    const result = await captureRun(groupTree, [])
+    expect(result.stdout).toContain('auth login')
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('auth devices revoke')
   })
 })

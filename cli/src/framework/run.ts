@@ -1,7 +1,7 @@
 import type { CommandTree } from './registry'
 import { BaseError } from '@/errors/base'
 import { formatErrorForCli } from '@/errors/format'
-import { findTopic, TOPICS } from '@/help/topics'
+import { findTopic } from '@/help/topics'
 import { formatHelp, formatTopic, formatTopLevelHelp, renderCommandRows } from './help'
 import { stringifyOutput } from './output'
 import { collectCommands, findSuggestions, resolveCommand } from './registry'
@@ -70,10 +70,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       process.exit(1)
     }
 
-    if (isStructuredFormat(format))
-      process.stdout.write(formatTopLevelHelp(tree, format))
-    else
-      printTopLevelHelp(tree)
+    process.stdout.write(formatTopLevelHelp(tree, format))
 
     return
   }
@@ -149,31 +146,4 @@ export function sniffOutputFormat(argv: readonly string[]): string {
 
 function isStructuredFormat(format: string): boolean {
   return format === 'json' || format === 'yaml'
-}
-
-function printTopLevelHelp(tree: CommandTree): void {
-  process.stdout.write('difyctl — Dify command-line interface\n\n')
-  process.stdout.write('COMMANDS\n')
-
-  for (const [topic, node] of Object.entries(tree)) {
-    if (node.command?.hidden === true)
-      continue
-
-    const desc = node.command?.description ?? ''
-    process.stdout.write(desc ? `  ${topic}  ${desc}\n` : `  ${topic}\n`)
-
-    for (const [verb, sub] of Object.entries(node.subcommands)) {
-      if (sub.command?.hidden === true)
-        continue
-      const subDesc = sub.command?.description ?? ''
-      process.stdout.write(subDesc ? `    ${verb}  ${subDesc}\n` : `    ${verb}\n`)
-    }
-  }
-
-  process.stdout.write('\nGUIDES\n')
-
-  for (const topic of TOPICS)
-    process.stdout.write(`  ${topic.name}  ${topic.summary}\n`)
-
-  process.stdout.write('\n')
 }

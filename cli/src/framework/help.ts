@@ -188,11 +188,44 @@ export function renderCommandRows(commands: Array<{ command: CommandConstructor,
   return lines.join('\n')
 }
 
+// Curated onboarding examples for the top-level overview (gh-style): the
+// shortest path from zero to a structured app run. Editorial, not an exhaustive
+// dump — per-command examples live in each command's own `--help`.
+const ROOT_EXAMPLES = [
+  `${BIN} auth login`,
+  `${BIN} get app`,
+  `${BIN} run app <id> "hello" -o json`,
+]
+
+function renderTopicRows(): string {
+  const width = TOPICS.reduce((max, t) => Math.max(max, t.name.length), 0) + 2
+  return TOPICS.map(t => `  ${t.name.padEnd(width)}${t.summary}`).join('\n')
+}
+
+function formatTopLevelHelpText(tree: CommandTree): string {
+  const sections = [
+    `${BIN} — Dify command-line interface`,
+    `USAGE\n  ${BIN} <command> <subcommand> [flags]`,
+    `COMMANDS\n${renderCommandRows(collectCommands(tree))}`,
+    `EXAMPLES\n${ROOT_EXAMPLES.map(ex => `  $ ${ex}`).join('\n')}`,
+    `GUIDES\n${renderTopicRows()}`,
+    `LEARN MORE\n`
+    + `  Use \`${BIN} <command> --help\` for details on a command.\n`
+    + `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} --help -o json\`.`,
+  ]
+
+  return `${sections.join('\n\n')}\n`
+}
+
 export function formatTopLevelHelp(tree: CommandTree, format: string): string {
-  return serialize({
-    bin: BIN,
-    contract: CONTRACT,
-    commands: collectCommands(tree).map(({ command, path }) => describeCommand(command, path.join(' '))),
-    topics: TOPICS.map(t => ({ name: t.name, summary: t.summary })),
-  }, format)
+  if (isStructured(format)) {
+    return serialize({
+      bin: BIN,
+      contract: CONTRACT,
+      commands: collectCommands(tree).map(({ command, path }) => describeCommand(command, path.join(' '))),
+      topics: TOPICS.map(t => ({ name: t.name, summary: t.summary })),
+    }, format)
+  }
+
+  return formatTopLevelHelpText(tree)
 }
