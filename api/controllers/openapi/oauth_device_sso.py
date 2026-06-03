@@ -82,6 +82,19 @@ def _trusted_origin() -> str:
     return base
 
 
+def _device_url(query: str) -> str:
+    """Absolute web-origin URL for the /device SPA page.
+
+    sso-complete runs on the API origin (CONSOLE_API_URL); /device is served
+    by the web frontend (CONSOLE_WEB_URL). A bare relative redirect resolves
+    against the API origin and dead-ends in split-origin deployments, so the
+    target must be built from CONSOLE_WEB_URL (assumed always set).
+    `query` includes the leading "?".
+    """
+    base = dify_config.CONSOLE_WEB_URL.rstrip("/")
+    return f"{base}/device{query}"
+
+
 @bp.route("/oauth/device/sso-initiate", methods=["GET"])
 @enterprise_only
 @rate_limit(LIMIT_SSO_INITIATE_PER_IP)

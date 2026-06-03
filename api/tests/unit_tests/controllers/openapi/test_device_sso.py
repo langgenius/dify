@@ -77,3 +77,28 @@ def test_sso_complete_idp_callback_url_uses_canonical_path():
     from controllers.openapi import oauth_device_sso
 
     assert oauth_device_sso._SSO_COMPLETE_PATH == "/openapi/v1/oauth/device/sso-complete"
+
+
+def test_device_url_uses_console_web_url_when_set(monkeypatch):
+    """Redirect target must be absolute on the web origin so split-origin
+    deployments (web :3000 / api :5001) land on the SPA, not the API host.
+    """
+    from configs import dify_config
+    from controllers.openapi import oauth_device_sso
+
+    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://web.example.com")
+    assert (
+        oauth_device_sso._device_url("?sso_verified=1")
+        == "https://web.example.com/device?sso_verified=1"
+    )
+
+
+def test_device_url_strips_trailing_slash(monkeypatch):
+    from configs import dify_config
+    from controllers.openapi import oauth_device_sso
+
+    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://web.example.com/")
+    assert (
+        oauth_device_sso._device_url("?sso_error=x")
+        == "https://web.example.com/device?sso_error=x"
+    )
