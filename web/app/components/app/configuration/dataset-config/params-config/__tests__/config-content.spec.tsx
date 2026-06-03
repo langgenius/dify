@@ -18,11 +18,13 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   type Props = {
     defaultModel?: { provider: string, model: string }
     onSelect?: (model: { provider: string, model: string }) => void
+    readonly?: boolean
   }
 
-  const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
+  const MockModelSelector = ({ defaultModel, onSelect, readonly }: Props) => (
     <button
       type="button"
+      disabled={readonly}
       onClick={() => onSelect?.(defaultModel ?? { provider: 'mock-provider', model: 'mock-model' })}
     >
       Mock ModelSelector
@@ -227,6 +229,17 @@ describe('ConfigContent', () => {
             search_method: RETRIEVE_METHOD.semantic,
           },
         }),
+        createDataset({
+          id: 'dataset-id-2',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
       ]
 
       // Act
@@ -269,6 +282,18 @@ describe('ConfigContent', () => {
       })
       const selectedDatasets: DataSet[] = [
         createDataset({
+          id: 'dataset-id-2',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+        createDataset({
+          id: 'dataset-id-2',
           indexing_technique: 'high_quality' as IndexingType,
           provider: 'dify',
           embedding_model: 'text-embedding',
@@ -319,6 +344,16 @@ describe('ConfigContent', () => {
             search_method: RETRIEVE_METHOD.semantic,
           },
         }),
+        createDataset({
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
       ]
 
       // Act
@@ -358,6 +393,17 @@ describe('ConfigContent', () => {
             search_method: RETRIEVE_METHOD.semantic,
           },
         }),
+        createDataset({
+          id: 'dataset-id-2',
+          indexing_technique: 'economy' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
       ]
 
       // Act
@@ -377,6 +423,70 @@ describe('ConfigContent', () => {
           reranking_enable: true,
         }),
       )
+    })
+
+    it('should disable weighted score interactions when only one dataset is selected', () => {
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_mode: RerankingModeEnum.WeightedScore,
+      })
+      const selectedDatasets: DataSet[] = [
+        createDataset({
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+
+      expect(screen.getByLabelText('dataset.weightedScore.semantic')).toBeDisabled()
+    })
+
+    it('should disable rerank toggle and model selector when only one dataset is selected', () => {
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_enable: true,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: {
+          reranking_provider_name: 'provider',
+          reranking_model_name: 'rerank-model',
+        },
+      })
+      const selectedDatasets: DataSet[] = [
+        createDataset({
+          indexing_technique: 'economy' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+
+      expect(screen.getAllByRole('switch')[0]).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('button', { name: 'Mock ModelSelector' })).toBeDisabled()
     })
   })
 })
