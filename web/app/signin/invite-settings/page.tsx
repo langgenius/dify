@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -54,7 +54,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

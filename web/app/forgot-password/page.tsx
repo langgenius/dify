@@ -1,9 +1,9 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
 import Header from '../signin/_header'
@@ -13,7 +13,7 @@ const ForgotPassword = () => {
   useDocumentTitle('')
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
 
   return (
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

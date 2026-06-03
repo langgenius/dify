@@ -1,8 +1,8 @@
 'use client'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import Divider from '@/app/components/base/divider'
 import { useLocale } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import dynamic from '@/next/dynamic'
@@ -20,7 +20,7 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 
 const Header = () => {
   const locale = useLocale()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
 
   return (
     <div className="flex w-full items-center justify-between p-6">

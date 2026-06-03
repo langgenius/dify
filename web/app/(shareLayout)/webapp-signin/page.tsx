@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
@@ -15,7 +16,7 @@ import NormalForm from './normalForm'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder, isPlaceholderData: isSystemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -39,6 +40,14 @@ const WebSSOForm: FC = () => {
     return (
       <div className="flex h-full items-center justify-center">
         <AppUnavailable code={t('common.appUnavailable', { ns: 'share' })} unknownReason="redirect url is invalid." />
+      </div>
+    )
+  }
+
+  if (isSystemFeaturesPlaceholder) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading />
       </div>
     )
   }

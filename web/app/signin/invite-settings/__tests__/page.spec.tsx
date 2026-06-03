@@ -1,4 +1,5 @@
 import type { MockedFunction } from 'vitest'
+import { useQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLocale } from '@/context/i18n'
@@ -15,13 +16,7 @@ vi.mock('@tanstack/react-query', async () => {
     useQueryClient: vi.fn(() => ({
       resetQueries: vi.fn(),
     })),
-    useSuspenseQuery: vi.fn(() => ({
-      data: {
-        branding: {
-          enabled: true,
-        },
-      },
-    })),
+    useQuery: vi.fn(),
   }
 })
 
@@ -67,6 +62,7 @@ const mockRefetch = vi.fn()
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
+const mockUseQuery = useQuery as unknown as MockedFunction<typeof useQuery>
 const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
 const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<typeof useInvitationCheck>
 const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<typeof getBrowserTimezone>
@@ -79,6 +75,13 @@ describe('InviteSettingsPage', () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams('invite_token=invite-token') as unknown as ReturnType<typeof useSearchParams>,
     )
+    mockUseQuery.mockReturnValue({
+      data: {
+        branding: {
+          enabled: true,
+        },
+      },
+    } as ReturnType<typeof useQuery>)
     mockUseInvitationCheck.mockReturnValue({
       data: {
         is_valid: true,

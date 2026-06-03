@@ -4,6 +4,10 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { cloudSystemFeatures, defaultSystemFeatures } from './config'
 
+export const systemFeaturesPlaceholder = IS_CLOUD_EDITION
+  ? cloudSystemFeatures
+  : defaultSystemFeatures
+
 /**
  * Soft-fallback to defaults so the dashboard stays usable when /system-features fails.
  *
@@ -25,12 +29,14 @@ export const systemFeaturesQueryOptions = () => {
     return queryOptions<GetSystemFeaturesResponse>({
       queryKey,
       queryFn: async () => cloudSystemFeatures,
+      placeholderData: systemFeaturesPlaceholder,
       staleTime: 'static',
     })
   }
 
   return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
+    placeholderData: systemFeaturesPlaceholder,
     queryFn: async () => {
       try {
         return await consoleClient.systemFeatures.get()

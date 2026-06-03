@@ -1,11 +1,15 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { setLocaleOnClient } from '@/i18n-config'
 import Header from '../_header'
 
-vi.mock('@tanstack/react-query', () => ({
-  useSuspenseQuery: vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  return {
+    ...actual,
+    useQuery: vi.fn(),
+  }
+})
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
@@ -19,10 +23,6 @@ vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({}),
-}))
-
 vi.mock('../_locale-menu', () => ({
   default: ({ onChange }: { onChange?: (value: string) => void }) => (
     <button type="button" onClick={() => onChange?.('ja-JP')}>
@@ -31,20 +31,20 @@ vi.mock('../_locale-menu', () => ({
   ),
 }))
 
-const mockUseSuspenseQuery = vi.mocked(useSuspenseQuery)
+const mockUseQuery = vi.mocked(useQuery)
 const mockSetLocaleOnClient = vi.mocked(setLocaleOnClient)
 
 describe('Signin Header', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSuspenseQuery.mockReturnValue({
+    mockUseQuery.mockReturnValue({
       data: {
         branding: {
           enabled: false,
           login_page_logo: '',
         },
       },
-    } as ReturnType<typeof useSuspenseQuery>)
+    } as ReturnType<typeof useQuery>)
   })
 
   it('should switch locale without forcing a full page reload', () => {

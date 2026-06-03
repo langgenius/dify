@@ -1,17 +1,17 @@
 'use client'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 
 const ExternalMemberSSOAuth = () => {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder, isPlaceholderData: isSystemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -63,8 +63,19 @@ const ExternalMemberSSOAuth = () => {
   }, [getAppCodeFromRedirectUrl, redirectUrl, router, systemFeatures.webapp_auth.sso_config.protocol])
 
   useEffect(() => {
+    if (isSystemFeaturesPlaceholder)
+      return
+
     handleSSOLogin()
-  }, [handleSSOLogin])
+  }, [handleSSOLogin, isSystemFeaturesPlaceholder])
+
+  if (isSystemFeaturesPlaceholder) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading />
+      </div>
+    )
+  }
 
   if (!systemFeatures.webapp_auth.sso_config.protocol) {
     return (

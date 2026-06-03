@@ -1,12 +1,12 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useQuery } from '@tanstack/react-query'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Header from './_header'
 
 export default function DeviceLayout({ children }: { children: React.ReactNode }) {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures = systemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   return (
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

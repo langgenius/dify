@@ -1,44 +1,41 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { IS_CE_EDITION } from '@/config'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesPlaceholder, systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SSOAuth from './components/sso-auth'
 
+type AuthType = 'code' | 'password'
+
 const NormalForm = () => {
   const { t } = useTranslation()
 
-  const [isLoading, setIsLoading] = useState(true)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [authType, updateAuthType] = useState<'code' | 'password'>('password')
-  const [showORLine, setShowORLine] = useState(false)
-  const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
+  const { data: systemFeatures = systemFeaturesPlaceholder, isPlaceholderData: isSystemFeaturesPlaceholder } = useQuery(systemFeaturesQueryOptions())
+  const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
-  const init = useCallback(async () => {
-    try {
-      setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
-      setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))
-      updateAuthType(systemFeatures.enable_email_password_login ? 'password' : 'code')
-    }
-    catch (error) {
-      console.error(error)
-      setAllMethodsAreDisabled(true)
-    }
-    finally { setIsLoading(false) }
-  }, [systemFeatures])
-  useEffect(() => {
-    init()
-  }, [init])
-  if (isLoading) {
+  const hasSsoLogin = Boolean(systemFeatures.sso_enforced_for_signin)
+  const hasEmailCodeLogin = systemFeatures.enable_email_code_login
+  const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
+  const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
+  const defaultAuthType: AuthType = hasEmailPasswordLogin ? 'password' : 'code'
+  const authType = selectedAuthType === 'password' && hasEmailPasswordLogin
+    ? 'password'
+    : selectedAuthType === 'code' && hasEmailCodeLogin
+      ? 'code'
+      : defaultAuthType
+  const showORLine = hasSsoLogin && hasEmailLogin
+  const allMethodsAreDisabled = !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
+
+  if (isSystemFeaturesPlaceholder) {
     return (
       <div className={
         cn(
@@ -110,7 +107,7 @@ const NormalForm = () => {
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
-            {systemFeatures.sso_enforced_for_signin && (
+            {hasSsoLogin && (
               <div className="w-full">
                 <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
               </div>
@@ -128,23 +125,23 @@ const NormalForm = () => {
             </div>
           )}
           {
-            (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login) && (
+            hasEmailLogin && (
               <>
-                {systemFeatures.enable_email_code_login && authType === 'code' && (
+                {hasEmailCodeLogin && authType === 'code' && (
                   <>
                     <MailAndCodeAuth />
-                    {systemFeatures.enable_email_password_login && (
-                      <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('password') }}>
+                    {hasEmailPasswordLogin && (
+                      <div className="cursor-pointer py-1 text-center" onClick={() => { setSelectedAuthType('password') }}>
                         <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
                 )}
-                {systemFeatures.enable_email_password_login && authType === 'password' && (
+                {hasEmailPasswordLogin && authType === 'password' && (
                   <>
                     <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
-                    {systemFeatures.enable_email_code_login && (
-                      <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('code') }}>
+                    {hasEmailCodeLogin && (
+                      <div className="cursor-pointer py-1 text-center" onClick={() => { setSelectedAuthType('code') }}>
                         <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
                       </div>
                     )}
