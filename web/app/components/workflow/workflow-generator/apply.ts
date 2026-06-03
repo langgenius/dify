@@ -47,13 +47,11 @@ export class WorkflowApplyOrphanError extends Error {
 
 const isHashCollisionResponse = (e: unknown): boolean => {
   // The shared ``post()`` wrapper rejects with the raw ``Response`` for non-401
-  // failures (see ``service/base.ts::request`` catch branch). We sniff 409 +
-  // the backend's error_code so transient 4xx errors don't all collapse into
-  // "hash collision".
+  // failures (see ``service/base.ts::request`` catch branch). At this layer the
+  // only reliable signal is the HTTP status.
   if (!e || typeof e !== 'object')
     return false
-  const candidate = e as { status?: number, code?: string }
-  return candidate.status === 409 || candidate.code === 'draft_workflow_not_sync'
+  return (e as { status?: number }).status === 409
 }
 
 // Derive a sane App name from the user's instruction: trim, cap at 40 chars,
