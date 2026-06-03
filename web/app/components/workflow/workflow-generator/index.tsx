@@ -21,12 +21,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import IdeaOutput from '@/app/components/app/configuration/config/automatic/idea-output'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useAppContext } from '@/context/app-context'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -39,28 +39,25 @@ import useGenGraph from './use-gen-graph'
 const STORAGE_MODEL_KEY = 'workflow-gen-model'
 const FE_TIMEOUT_MS = 60_000
 
+// Stable default used both as the SSR/empty-storage seed for the persisted
+// model and as the merge base when patching a partial update. Module-level so
+// the reference stays identical across renders (useLocalStorage uses it as the
+// server value, which must not change identity each render).
+const EMPTY_MODEL: Model = {
+  name: '',
+  provider: '',
+  mode: 'chat' as unknown as ModelModeType.chat,
+  completion_params: {} as CompletionParams,
+}
+
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
-    <Generator className="size-8 text-text-quaternary" />
+    <span className="i-custom-vender-other-generator size-8 text-text-quaternary" />
     <div className="text-center text-[13px] leading-5 font-normal text-text-tertiary">
       {label}
     </div>
   </div>
 )
-
-// SSR-safe one-shot read of the persisted model selection. Returns null on
-// the server, on first-time use, or when the stored payload is corrupt.
-const readStoredModel = (): Model | null => {
-  if (typeof window === 'undefined')
-    return null
-  try {
-    const raw = localStorage.getItem(STORAGE_MODEL_KEY)
-    return raw ? JSON.parse(raw) as Model : null
-  }
-  catch {
-    return null
-  }
-}
 
 // AbortController throws a DOMException in modern browsers and a plain
 // Error in older / non-DOM environments — accept both so we don't toast
@@ -112,14 +109,10 @@ const WorkflowGeneratorModal: React.FC = () => {
   const currentAppMode = useWorkflowGeneratorStore(s => s.currentAppMode)
   const closeGenerator = useWorkflowGeneratorStore(s => s.closeGenerator)
 
-  // Lazy initial — readStoredModel() touches localStorage and JSON.parse,
-  // both fine once but wasteful if we read them on every render.
-  const [model, setModel] = useState<Model>(() => readStoredModel() || {
-    name: '',
-    provider: '',
-    mode: 'chat' as unknown as ModelModeType.chat,
-    completion_params: {} as CompletionParams,
-  })
+  // Persisted model selection. ``useLocalStorage`` is the storage boundary
+  // mandated for client-only preferences — the empty model is the SSR/seed
+  // value so ``model`` is always a concrete ``Model`` (never null) here.
+  const [model, setModel] = useLocalStorage<Model>(STORAGE_MODEL_KEY, EMPTY_MODEL)
 
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
@@ -128,34 +121,29 @@ const WorkflowGeneratorModal: React.FC = () => {
   // catalogue fetch completes.
   useEffect(() => {
     if (defaultModel && !model.name) {
-      // eslint-disable-next-line react/set-state-in-effect
       setModel(prev => ({
-        ...prev,
+        ...(prev ?? EMPTY_MODEL),
         name: defaultModel.model,
         provider: defaultModel.provider.provider,
       }))
     }
-  }, [defaultModel, model.name])
+  }, [defaultModel, model.name, setModel])
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
-    const newModel: Model = {
-      ...model,
+    setModel(prev => ({
+      ...(prev ?? EMPTY_MODEL),
       provider: newValue.provider,
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
-    }
-    setModel(newModel)
-    localStorage.setItem(STORAGE_MODEL_KEY, JSON.stringify(newModel))
-  }, [model])
+    }))
+  }, [setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
-    const newModel: Model = {
-      ...model,
+    setModel(prev => ({
+      ...(prev ?? EMPTY_MODEL),
       completion_params: newParams as CompletionParams,
-    }
-    setModel(newModel)
-    localStorage.setItem(STORAGE_MODEL_KEY, JSON.stringify(newModel))
-  }, [model])
+    }))
+  }, [setModel])
 
   const [instruction, setInstruction] = useState('')
   const [ideaOutput, setIdeaOutput] = useState('')
@@ -471,7 +459,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                         onClick={onGenerate}
                         disabled={!model.name}
                       >
-                        <Generator className="size-4" />
+                        <span className="i-custom-vender-other-generator size-4" />
                         <span className="text-xs font-semibold">{t('workflowGenerator.generate')}</span>
                       </Button>
                     )}
