@@ -261,7 +261,7 @@ const SnippetMain = ({
   draftEdges,
   draftViewport,
 }: SnippetMainProps) => {
-  const [isEditing, setIsEditing] = useState(true)
+  const [isEditing, setIsEditing] = useState(!hasPublishedWorkflow)
   const [localDraftState, setLocalDraftState] = useState<LocalDraftState>()
   const [draftChangeState, setDraftChangeState] = useState({
     initial: hasInitialDraftChanges,

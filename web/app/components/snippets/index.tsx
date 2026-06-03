@@ -55,6 +55,10 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
     return <SnippetPageLoading />
   }
 
+  const hasPublishedWorkflow = !!data.publishedWorkflow
+  const initialWorkflowNodesData = hasPublishedWorkflow ? publishedNodesData : draftNodesData
+  const initialWorkflowEdgesData = hasPublishedWorkflow ? publishedEdgesData : draftEdgesData
+
   return (
     <SnippetLayout
       snippetId={snippetId}
@@ -62,8 +66,8 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
       section="orchestrate"
     >
       <WorkflowWithDefaultContext
-        edges={draftEdgesData}
-        nodes={draftNodesData}
+        edges={initialWorkflowEdgesData}
+        nodes={initialWorkflowNodesData}
       >
         <SnippetMain
           key={snippetId}
@@ -71,7 +75,7 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
           payload={data.published}
           draftPayload={data.draft}
           hasInitialDraftChanges={data.hasDraftChanges}
-          hasPublishedWorkflow={!!data.publishedWorkflow}
+          hasPublishedWorkflow={hasPublishedWorkflow}
           nodes={publishedNodesData}
           edges={publishedEdgesData}
           viewport={data.published.graph.viewport}

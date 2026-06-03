@@ -238,22 +238,28 @@ const payload: SnippetDetailPayload = {
 
 const renderSnippetMain = ({
   hasInitialDraftChanges = false,
+  hasPublishedWorkflow = false,
   currentNodes = [],
+  workflowNodes = [],
+  workflowDraftNodes = [],
 }: {
   hasInitialDraftChanges?: boolean
+  hasPublishedWorkflow?: boolean
   currentNodes?: WorkflowProps['nodes']
+  workflowNodes?: WorkflowProps['nodes']
+  workflowDraftNodes?: WorkflowProps['nodes']
 } = {}) => {
   return renderWorkflowComponent(
     <SnippetMain
       payload={payload}
       draftPayload={payload}
       hasInitialDraftChanges={hasInitialDraftChanges}
-      hasPublishedWorkflow
+      hasPublishedWorkflow={hasPublishedWorkflow}
       snippetId="snippet-1"
-      nodes={[] as WorkflowProps['nodes']}
+      nodes={workflowNodes}
       edges={[] as WorkflowProps['edges']}
       viewport={{ x: 0, y: 0, zoom: 1 }}
-      draftNodes={[] as WorkflowProps['nodes']}
+      draftNodes={workflowDraftNodes}
       draftEdges={[] as WorkflowProps['edges']}
       draftViewport={{ x: 0, y: 0, zoom: 1 }}
     />,
@@ -318,6 +324,61 @@ describe('SnippetMain', () => {
       reset: mockReset,
       setFields: mockSetFields,
     }
+  })
+
+  describe('Initial Mode', () => {
+    it('should enter draft editing mode by default when there is no published workflow', () => {
+      const draftNode = createDraftNode('draft-node')
+
+      renderSnippetMain({
+        hasPublishedWorkflow: false,
+        workflowDraftNodes: [draftNode],
+      })
+
+      expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument()
+      expect(capturedWorkflowNodes?.map(node => node.id)).toEqual(['draft-node'])
+    })
+
+    it('should enter readonly mode with published graph by default when published workflow exists', async () => {
+      const publishedNode = createDraftNode('published-node')
+      const draftNode = createDraftNode('draft-node')
+
+      renderSnippetMain({
+        hasPublishedWorkflow: true,
+        workflowNodes: [publishedNode],
+        workflowDraftNodes: [draftNode],
+      })
+
+      expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument()
+      expect(capturedWorkflowNodes?.map(node => node.id)).toEqual(['published-node'])
+
+      const doSyncWorkflowDraft = capturedHooksStore?.doSyncWorkflowDraft as (() => Promise<void>)
+      await doSyncWorkflowDraft()
+
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
+
+    it('should switch from readonly published graph to draft graph without forced draft sync', async () => {
+      const publishedNode = createDraftNode('published-node')
+      const draftNode = createDraftNode('draft-node')
+
+      renderSnippetMain({
+        hasPublishedWorkflow: true,
+        workflowNodes: [publishedNode],
+        workflowDraftNodes: [draftNode],
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'edit' }))
+
+      await waitFor(() => {
+        expect(capturedWorkflowNodes?.map(node => node.id)).toEqual(['draft-node'])
+      })
+
+      const doSyncWorkflowDraft = capturedHooksStore?.doSyncWorkflowDraft as ((notRefreshWhenSyncError?: boolean) => Promise<void>)
+      await doSyncWorkflowDraft(true)
+
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
   })
 
   describe('Input Fields Sync', () => {

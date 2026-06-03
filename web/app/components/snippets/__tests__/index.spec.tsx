@@ -14,7 +14,13 @@ vi.mock('../hooks/use-snippet-init', () => ({
 }))
 
 vi.mock('../components/snippet-main', () => ({
-  default: ({ snippetId }: { snippetId: string }) => <div data-testid="snippet-main">{snippetId}</div>,
+  default: ({
+    hasPublishedWorkflow,
+    snippetId,
+  }: {
+    hasPublishedWorkflow: boolean
+    snippetId: string
+  }) => <div data-testid="snippet-main">{`${snippetId}:${String(hasPublishedWorkflow)}`}</div>,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -164,11 +170,34 @@ describe('SnippetPage', () => {
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
   })
 
-  it('should initialize workflow context with draft graph data', () => {
+  it('should initialize workflow context with published graph data when the published workflow exists', () => {
+    render(<SnippetPage snippetId="snippet-1" />)
+
+    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(mockPublishedSnippetDetail.graph.nodes)
+    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(mockPublishedSnippetDetail.graph.edges)
+    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:true')
+  })
+
+  it('should initialize workflow context with draft graph data when the published workflow is empty', () => {
+    mockUseSnippetInit.mockReturnValue({
+      data: {
+        snippet: mockDraftSnippetDetail.snippet,
+        published: mockPublishedSnippetDetail,
+        draft: mockDraftSnippetDetail,
+        draftWorkflow: {
+          hash: 'draft-hash',
+        },
+        publishedWorkflow: undefined,
+        hasDraftChanges: true,
+      },
+      isLoading: false,
+    })
+
     render(<SnippetPage snippetId="snippet-1" />)
 
     expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(mockDraftSnippetDetail.graph.nodes)
     expect(capturedWorkflowDefaultContextProps?.edges).toEqual(mockDraftSnippetDetail.graph.edges)
+    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:false')
   })
 
   it('should render loading fallback when orchestrate data is unavailable', () => {
