@@ -80,7 +80,8 @@ The root `.env.example` file contains the essential startup settings. Optional a
 
 1. **Common Variables**:
 
-   - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: URLs for the API and frontend services.
+   - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: public URLs for the API and frontend services.
+   - `SERVER_CONSOLE_API_URL`: internal URL used by the web service for server-side console API requests. Keep the default `http://api:5001` for standard Docker Compose deployments, and only change it when your web service must reach the API through a different internal address.
    - `FILES_URL`, `INTERNAL_FILES_URL`: Public and internal base URLs for file downloads and previews.
    - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs. 
    
