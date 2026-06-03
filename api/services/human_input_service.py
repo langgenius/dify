@@ -42,9 +42,9 @@ from tasks.app_generate.workflow_execute_task import resume_app_execution
 _file_access_controller = DatabaseFileAccessController()
 
 
-_JsonObjectAdapter = TypeAdapter(dict[str, JsonValue])
-_JsonValueAdapter = TypeAdapter(JsonValue)
-_MappingSequenceAdapter = TypeAdapter(Sequence[Mapping[str, Any]])
+_JsonObjectAdapter: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
+_JsonValueAdapter: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+_MappingSequenceAdapter: TypeAdapter[Sequence[Mapping[str, Any]]] = TypeAdapter(Sequence[Mapping[str, Any]])
 
 
 class Form:
