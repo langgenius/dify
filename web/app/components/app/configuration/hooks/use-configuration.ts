@@ -102,6 +102,7 @@ export type ConfigurationViewModel = {
   onSelectDataSets: (data: DataSet[]) => void
   promptVariables: PromptVariable[]
   selectedIds: string[]
+  selectedDatasets?: DataSet[]
   showAppConfigureFeaturesModal: boolean
   showLoading: boolean
   showUseGPT4Confirm: boolean
@@ -701,6 +702,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onSelectDataSets: handleSelect,
     promptVariables: modelConfig.configs.prompt_variables,
     selectedIds,
+    selectedDatasets: dataSets,
     showAppConfigureFeaturesModal,
     showLoading: !hasFetchedDetail || isLoadingCurrentWorkspace || !currentWorkspace?.id,
     showUseGPT4Confirm,

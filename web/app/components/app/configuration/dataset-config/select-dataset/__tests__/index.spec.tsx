@@ -193,6 +193,98 @@ describe('SelectDataSet', () => {
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
   })
 
+  it('preserves selectedDatasets outside the loaded page and prunes missing selected IDs', async () => {
+    const datasetOne = makeDataset({
+      id: 'set-1',
+      name: 'Dataset One',
+    })
+    const offPageDataset = makeDataset({
+      id: 'off-page-set',
+      name: 'Off Page Dataset',
+    })
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [datasetOne] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+
+    const onSelect = vi.fn()
+    await act(async () => {
+      render(
+        <SelectDataSet
+          {...baseProps}
+          onSelect={onSelect}
+          selectedIds={['off-page-set', 'missing-set']}
+          selectedDatasets={[offPageDataset]}
+        />,
+      )
+    })
+
+    expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Dataset One'))
+    })
+    expect(screen.getByText('2 appDebug.feature.dataSet.selected')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    })
+
+    expect(onSelect).toHaveBeenCalledWith([offPageDataset, datasetOne])
+  })
+
+  it('uses the latest selectedDatasets when opened after props change', async () => {
+    const datasetOne = makeDataset({
+      id: 'set-1',
+      name: 'Dataset One',
+    })
+    const offPageDataset = makeDataset({
+      id: 'off-page-set',
+      name: 'Off Page Dataset',
+    })
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [datasetOne] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+
+    const onSelect = vi.fn()
+    const { rerender } = render(
+      <SelectDataSet
+        {...baseProps}
+        isShow={false}
+        onSelect={onSelect}
+        selectedIds={[]}
+        selectedDatasets={[]}
+      />,
+    )
+
+    await act(async () => {
+      rerender(
+        <SelectDataSet
+          {...baseProps}
+          isShow
+          onSelect={onSelect}
+          selectedIds={['off-page-set']}
+          selectedDatasets={[offPageDataset]}
+        />,
+      )
+    })
+
+    expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    })
+
+    expect(onSelect).toHaveBeenCalledWith([offPageDataset])
+  })
+
   it('should deselect existing selections and ignore unavailable dataset clicks', async () => {
     const datasetOne = makeDataset({
       id: 'set-1',

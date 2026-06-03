@@ -69,6 +69,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   onSelectDataSets,
   promptVariables,
   selectedIds,
+  selectedDatasets,
   showAppConfigureFeaturesModal,
   showLoading,
   showUseGPT4Confirm,
@@ -188,6 +189,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             isShow={isShowSelectDataSet}
             onClose={onCloseSelectDataSet}
             selectedIds={selectedIds}
+            selectedDatasets={selectedDatasets}
             onSelect={onSelectDataSets}
           />
 

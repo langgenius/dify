@@ -3,19 +3,21 @@ import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SelectDataset from '@/app/components/app/configuration/dataset-config/select-dataset'
 
 type Props = Readonly<{
   selectedIds: string[]
   modal?: boolean
+  selectedDatasets?: DataSet[]
   onChange: (dataSets: DataSet[]) => void
 }>
 
 const AddDataset: FC<Props> = ({
   selectedIds,
   modal,
+  selectedDatasets,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -28,6 +30,11 @@ const AddDataset: FC<Props> = ({
     onChange(datasets)
     hideModal()
   }, [onChange, hideModal])
+
+  const currentSelectedIds = useMemo(() => {
+    return selectedDatasets?.length ? selectedDatasets.map(dataset => dataset.id) : selectedIds
+  }, [selectedDatasets, selectedIds])
+
   return (
     <div>
       <button
@@ -42,7 +49,8 @@ const AddDataset: FC<Props> = ({
         isShow={isShowModal}
         modal={modal}
         onClose={hideModal}
-        selectedIds={selectedIds}
+        selectedIds={currentSelectedIds}
+        selectedDatasets={selectedDatasets}
         onSelect={handleSelect}
       />
     </div>

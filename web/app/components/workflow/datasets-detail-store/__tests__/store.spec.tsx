@@ -66,6 +66,34 @@ describe('datasets-detail-store store', () => {
     })
   })
 
+  it('prunes requested dataset ids that are missing from the returned details', () => {
+    const store = createDatasetsDetailStore()
+
+    store.getState().updateDatasetsDetail([
+      createDataset('dataset-1', 'Dataset One'),
+      createDataset('dataset-2', 'Dataset Two'),
+      createDataset('dataset-3', 'Dataset Three'),
+    ])
+    store.getState().updateDatasetsDetail([
+      createDataset('dataset-2', 'Dataset Two Updated'),
+    ], ['dataset-1', 'dataset-2'])
+
+    expect(store.getState().datasetsDetail).toMatchObject({
+      'dataset-2': { name: 'Dataset Two Updated' },
+      'dataset-3': { name: 'Dataset Three' },
+    })
+    expect(store.getState().datasetsDetail['dataset-1']).toBeUndefined()
+  })
+
+  it('prunes requested dataset ids when the returned details are empty', () => {
+    const store = createDatasetsDetailStore()
+
+    store.getState().updateDatasetsDetail([createDataset('dataset-1', 'Dataset One')])
+    store.getState().updateDatasetsDetail([], ['dataset-1'])
+
+    expect(store.getState().datasetsDetail).toEqual({})
+  })
+
   it('reads state from the datasets detail context', () => {
     const store = createDatasetsDetailStore()
     store.getState().updateDatasetsDetail([createDataset('dataset-3')])
