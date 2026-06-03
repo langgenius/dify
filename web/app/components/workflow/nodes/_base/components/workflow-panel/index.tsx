@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -157,6 +158,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
   const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
+  const setNodePanelWidthStorage = useSetLocalStorage<string>('workflow-node-panel-width', { raw: true })
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -169,10 +171,10 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
-      localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+      setNodePanelWidthStorage(`${newValue}`)
 
     setNodePanelWidth(newValue)
-  }, [maxNodePanelWidth, setNodePanelWidth])
+  }, [maxNodePanelWidth, setNodePanelWidth, setNodePanelWidthStorage])
 
   const handleResize = useCallback((width: number) => {
     updateNodePanelWidth(width, 'user')
