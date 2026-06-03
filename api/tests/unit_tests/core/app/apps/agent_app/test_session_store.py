@@ -143,9 +143,7 @@ def test_load_for_conversation_resolves_without_agent_or_config_scope():
     store.save_active_snapshot(scope=_scope(), backend_run_id="run-1", snapshot=_snapshot(messages=2))
 
     # The inspector only knows tenant/app/conversation, not the agent config version.
-    loaded = store.load_active_snapshot_for_conversation(
-        tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1"
-    )
+    loaded = store.load_active_snapshot_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
     assert loaded is not None
     assert loaded.layers[0].runtime_state["messages"] == [
         {"role": "user", "content": "m0"},
@@ -155,11 +153,17 @@ def test_load_for_conversation_resolves_without_agent_or_config_scope():
 
 def test_load_for_conversation_returns_none_when_cleaned_or_absent():
     store = AgentAppRuntimeSessionStore()
-    assert store.load_active_snapshot_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1") is None
+    assert (
+        store.load_active_snapshot_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
+        is None
+    )
 
     store.save_active_snapshot(scope=_scope(), backend_run_id="run-1", snapshot=_snapshot())
     store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
-    assert store.load_active_snapshot_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1") is None
+    assert (
+        store.load_active_snapshot_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
+        is None
+    )
 
 
 def test_load_for_conversation_isolates_other_conversations():

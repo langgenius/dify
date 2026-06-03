@@ -1103,6 +1103,69 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 | 200 | Referencing workflows listed successfully | [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse) |
 | 404 | App not found |  |
 
+### /apps/{app_id}/agent-workspace/files
+
+#### GET
+##### Description
+
+List a directory in an Agent App conversation's sandbox workspace (read-only)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| conversation_id | query | Conversation ID | No | string |
+| path | query | Directory path | No | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Listing returned | [WorkspaceListResponse](#workspacelistresponse) |
+
+### /apps/{app_id}/agent-workspace/files/download
+
+#### GET
+##### Description
+
+Download a file from an Agent App conversation's sandbox workspace (read-only)
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| conversation_id | query | Conversation ID | No | string |
+| path | query | File path | No | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | File bytes |
+
+### /apps/{app_id}/agent-workspace/files/preview
+
+#### GET
+##### Description
+
+Preview a text/binary file in an Agent App conversation's sandbox workspace
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| conversation_id | query | Conversation ID | No | string |
+| path | query | File path | No | string |
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview returned | [WorkspacePreviewResponse](#workspacepreviewresponse) |
+
 ### /apps/{app_id}/agent/logs
 
 #### GET
@@ -16599,6 +16662,15 @@ Workflow tool configuration
 | remove_webapp_brand | boolean |  | No |
 | replace_webapp_logo | string |  | No |
 
+#### WorkspaceFileEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mtime | integer |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| type | string | *Enum:* `"dir"`, `"file"`, `"symlink"` | Yes |
+
 #### WorkspaceInfoPayload
 
 | Name | Type | Description | Required |
@@ -16612,6 +16684,14 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
+#### WorkspaceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entries | [ [WorkspaceFileEntryResponse](#workspacefileentryresponse) ] |  | No |
+| path | string |  | Yes |
+| truncated | boolean |  | No |
+
 #### WorkspacePermissionResponse
 
 | Name | Type | Description | Required |
@@ -16619,6 +16699,16 @@ Workflow tool configuration
 | allow_member_invite | boolean |  | Yes |
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
+
+#### WorkspacePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | Yes |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
 
 #### _AnonymousInlineModel_b1954337d565
 

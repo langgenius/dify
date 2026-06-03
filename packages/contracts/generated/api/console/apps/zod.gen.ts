@@ -111,6 +111,17 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * WorkspacePreviewResponse
+ */
+export const zWorkspacePreviewResponse = z.object({
+  binary: z.boolean(),
+  path: z.string(),
+  size: z.int(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -835,6 +846,25 @@ export const zAgentReferencingWorkflowResponse = z.object({
  */
 export const zAgentReferencingWorkflowsResponse = z.object({
   data: z.array(zAgentReferencingWorkflowResponse).optional(),
+})
+
+/**
+ * WorkspaceFileEntryResponse
+ */
+export const zWorkspaceFileEntryResponse = z.object({
+  mtime: z.int(),
+  name: z.string(),
+  size: z.int(),
+  type: z.enum(['dir', 'file', 'symlink']),
+})
+
+/**
+ * WorkspaceListResponse
+ */
+export const zWorkspaceListResponse = z.object({
+  entries: z.array(zWorkspaceFileEntryResponse).optional(),
+  path: z.string(),
+  truncated: z.boolean().optional().default(false),
 })
 
 /**
@@ -2672,6 +2702,48 @@ export const zGetAppsByAppIdAgentReferencingWorkflowsPath = z.object({
  * Referencing workflows listed successfully
  */
 export const zGetAppsByAppIdAgentReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
+
+export const zGetAppsByAppIdAgentWorkspaceFilesPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentWorkspaceFilesQuery = z.object({
+  conversation_id: z.string().optional(),
+  path: z.string().optional(),
+})
+
+/**
+ * Listing returned
+ */
+export const zGetAppsByAppIdAgentWorkspaceFilesResponse = zWorkspaceListResponse
+
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadQuery = z.object({
+  conversation_id: z.string().optional(),
+  path: z.string().optional(),
+})
+
+/**
+ * File bytes
+ */
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse = z.record(z.string(), z.unknown())
+
+export const zGetAppsByAppIdAgentWorkspaceFilesPreviewPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery = z.object({
+  conversation_id: z.string().optional(),
+  path: z.string().optional(),
+})
+
+/**
+ * Preview returned
+ */
+export const zGetAppsByAppIdAgentWorkspaceFilesPreviewResponse = zWorkspacePreviewResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),

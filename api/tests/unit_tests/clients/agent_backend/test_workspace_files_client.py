@@ -41,7 +41,9 @@ def test_list_files_parses_entries() -> None:
 def test_preview_parses_text() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/workspaces/abc1234/files/preview"
-        return httpx.Response(200, json={"path": "n.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"})
+        return httpx.Response(
+            200, json={"path": "n.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+        )
 
     result = _client(handler).preview("abc1234", "n.txt")
 
@@ -56,7 +58,12 @@ def test_download_decodes_base64_to_bytes() -> None:
         assert request.url.path == "/workspaces/abc1234/files/download"
         return httpx.Response(
             200,
-            json={"path": "b.bin", "size": len(raw), "truncated": False, "content_base64": base64.b64encode(raw).decode()},
+            json={
+                "path": "b.bin",
+                "size": len(raw),
+                "truncated": False,
+                "content_base64": base64.b64encode(raw).decode(),
+            },
         )
 
     result = _client(handler).download("abc1234", "b.bin")

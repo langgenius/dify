@@ -256,9 +256,7 @@ class DifyShellRuntimeState(BaseModel):
                 raise ValueError("workspace_cwd requires a matching session_id.")
             expected_workspace = _workspace_cwd(self.session_id)
             if self.workspace_cwd != expected_workspace:
-                raise ValueError(
-                    f"workspace_cwd must equal {expected_workspace!r} for session_id {self.session_id!r}."
-                )
+                raise ValueError(f"workspace_cwd must equal {expected_workspace!r} for session_id {self.session_id!r}.")
         unknown_offset_job_ids = set(self.job_offsets) - set(self.job_ids)
         if unknown_offset_job_ids:
             names = ", ".join(sorted(unknown_offset_job_ids))
@@ -694,12 +692,12 @@ def _workspace_mkdir_script(*, session_id: str) -> str:
     of silently reusing another session's workspace.
     """
     safe_session_id = _validated_session_id(session_id)
-    workspace_dir = f'$HOME/workspace/{safe_session_id}'
+    workspace_dir = f"$HOME/workspace/{safe_session_id}"
     return (
         'mkdir -p "$HOME/workspace"; '
         f'if mkdir "{workspace_dir}"; then exit 0; fi; '
         f'if [ -e "{workspace_dir}" ]; then exit {_WORKSPACE_COLLISION_EXIT_CODE}; fi; '
-        'exit 1'
+        "exit 1"
     )
 
 

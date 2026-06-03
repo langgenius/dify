@@ -277,6 +277,7 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
         return next(clients)
 
     compositor = Compositor([LayerNode("shell", _shell_provider(client_factory=factory))])
+
     async def scenario() -> None:
         async with compositor.enter(configs={"shell": DifyShellLayerConfig()}) as run:
             shell_layer = run.get_layer("shell", DifyShellLayer)
@@ -342,7 +343,10 @@ def test_shell_layer_delete_removes_workspace_then_force_deletes_tracked_jobs_an
 
     assert client.events[:2] == [("run", 'rm -rf -- "$HOME/workspace/abc12ff"'), ("wait", "cleanup-job")]
     assert {call.job_id for call in client.delete_calls} == {"user-job", "mkdir-job", "cleanup-job"}
-    assert all(client.events.index(("delete", call.job_id)) > client.events.index(("wait", "cleanup-job")) for call in client.delete_calls)
+    assert all(
+        client.events.index(("delete", call.job_id)) > client.events.index(("wait", "cleanup-job"))
+        for call in client.delete_calls
+    )
     assert all(call.force is True for call in client.delete_calls)
     assert layer.runtime_state.job_ids == []
     assert layer.runtime_state.job_offsets == {}

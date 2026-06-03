@@ -229,6 +229,20 @@ export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
+export type WorkspaceListResponse = {
+  entries?: Array<WorkspaceFileEntryResponse>
+  path: string
+  truncated?: boolean
+}
+
+export type WorkspacePreviewResponse = {
+  binary: boolean
+  path: string
+  size: number
+  text?: string | null
+  truncated: boolean
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -1141,6 +1155,13 @@ export type AgentReferencingWorkflowResponse = {
   app_name: string
   node_ids?: Array<string>
   workflow_id: string
+}
+
+export type WorkspaceFileEntryResponse = {
+  mtime: number
+  name: string
+  size: number
+  type: 'dir' | 'file' | 'symlink'
 }
 
 export type AnnotationHitHistory = {
@@ -2329,6 +2350,65 @@ export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
 
 export type GetAppsByAppIdAgentReferencingWorkflowsResponse
   = GetAppsByAppIdAgentReferencingWorkflowsResponses[keyof GetAppsByAppIdAgentReferencingWorkflowsResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    conversation_id?: string
+    path?: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesResponses = {
+  200: WorkspaceListResponse
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesResponse
+  = GetAppsByAppIdAgentWorkspaceFilesResponses[keyof GetAppsByAppIdAgentWorkspaceFilesResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    conversation_id?: string
+    path?: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files/download'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponse
+  = GetAppsByAppIdAgentWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadResponses]
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    conversation_id?: string
+    path?: string
+  }
+  url: '/apps/{app_id}/agent-workspace/files/preview'
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponses = {
+  200: WorkspacePreviewResponse
+}
+
+export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponse
+  = GetAppsByAppIdAgentWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdAgentWorkspaceFilesPreviewResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
