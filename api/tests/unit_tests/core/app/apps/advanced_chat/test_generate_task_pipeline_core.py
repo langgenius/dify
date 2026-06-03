@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -564,6 +565,9 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_save_message_strips_markdown_and_sets_usage(self):
         pipeline = _make_pipeline()
+        trace_manager = SimpleNamespace(add_trace_task=Mock())
+        pipeline._application_generate_entity.trace_manager = trace_manager
+        pipeline._application_generate_entity.extras = {"trace_session_id": "session-1"}
         pipeline._recorded_files = [
             {
                 "type": "image",
@@ -616,6 +620,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.status == MessageStatus.NORMAL
         assert message.answer == "hello"
         assert message.message_metadata
+        trace_manager.add_trace_task.assert_not_called()
 
     def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()

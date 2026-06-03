@@ -896,7 +896,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
 
-    def test_save_message_persists_fields_and_emits_trace(self, monkeypatch: pytest.MonkeyPatch):
+    def test_save_message_persists_fields_without_enqueuing_message_trace(self, monkeypatch: pytest.MonkeyPatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -946,7 +946,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert message_obj.message == "serialized-prompt"
         assert message_obj.answer == "hello"
         assert message_obj.provider_response_latency == 5.0
-        assert trace_manager.add_trace_task.called
+        trace_manager.add_trace_task.assert_not_called()
         assert len(sent_payloads) == 1
 
     def test_save_message_raises_when_message_not_found(self):
