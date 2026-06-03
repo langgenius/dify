@@ -19,10 +19,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span data-testid="shortcuts">{keys.join('+')}</span>,
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
@@ -95,9 +91,9 @@ describe('RunMode', () => {
     })
 
     it('should render keyboard shortcuts', () => {
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByTestId('shortcuts')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
     })
 
     it('should call start run when button clicked', () => {

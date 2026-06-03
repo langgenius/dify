@@ -92,6 +92,33 @@ class WorkflowAgentBindingType(StrEnum):
     INLINE_AGENT = "inline_agent"
 
 
+class AgentRuntimeSessionStatus(StrEnum):
+    """Lifecycle state of an Agent backend session snapshot.
+
+    Owner-agnostic: applies both to workflow Agent Node runs (owner =
+    workflow_run) and to Agent App conversations (owner = conversation).
+    """
+
+    # Snapshot can be reused by a later Agent run in the same session.
+    ACTIVE = "active"
+    # Snapshot has been retired and must not be submitted to Agent backend again.
+    CLEANED = "cleaned"
+
+
+class AgentRuntimeSessionOwnerType(StrEnum):
+    """Which product surface owns an Agent runtime session row."""
+
+    # Owned by one workflow Agent Node execution scope.
+    WORKFLOW_RUN = "workflow_run"
+    # Owned by one Agent App conversation (multi-turn chat).
+    CONVERSATION = "conversation"
+
+
+# Back-compat alias: the workflow lifecycle code (shipped in PR #36724) imports
+# the old name. Kept so unifying the table does not churn that path.
+WorkflowAgentRuntimeSessionStatus = AgentRuntimeSessionStatus
+
+
 class Agent(DefaultFieldsMixin, Base):
     """Workspace-scoped Agent identity used by Agent Roster and workflow-only agents."""
 
@@ -231,17 +258,29 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
         UniqueConstraint(
             "tenant_id",
             "workflow_id",
+            "workflow_version",
             "node_id",
-            name="workflow_agent_node_binding_node_unique",
+            name="workflow_agent_node_binding_node_version_unique",
         ),
         Index("workflow_agent_node_binding_agent_idx", "tenant_id", "agent_id"),
         Index("workflow_agent_node_binding_current_snapshot_idx", "tenant_id", "current_snapshot_id"),
         Index("workflow_agent_node_binding_app_idx", "tenant_id", "app_id"),
+        Index(
+            "workflow_agent_node_binding_workflow_version_idx",
+            "tenant_id",
+            "workflow_id",
+            "workflow_version",
+        ),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # Tracks which workflow version (draft or a published version string) this
+    # binding belongs to. Mirrors ``Workflow.version`` and lets us keep separate
+    # rows for the draft workflow and each published copy under the same
+    # workflow_id, restoring the stage 1 §5.3 unique key.
+    workflow_version: Mapped[str] = mapped_column(String(255), nullable=False)
     node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     binding_type: Mapped[WorkflowAgentBindingType] = mapped_column(
         EnumText(WorkflowAgentBindingType, length=32), nullable=False
@@ -261,3 +300,92 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
         if isinstance(self.node_job_config, str):
             return json.loads(self.node_job_config)
         return dict(self.node_job_config)
+
+
+class AgentRuntimeSession(DefaultFieldsMixin, Base):
+    """Persisted Agent backend session snapshot, owner-agnostic.
+
+    One unified table serves both owners (decision Q2):
+    - workflow Agent Node runs: ``owner_type = workflow_run``; the
+      ``workflow_id / workflow_run_id / node_id / binding_id /
+      agent_config_snapshot_id / composition_layer_specs`` columns are set.
+    - Agent App conversations: ``owner_type = conversation``; the
+      ``conversation_id`` and ``agent_config_snapshot_id`` columns are set and
+      the workflow columns stay NULL.
+
+    The snapshot is runtime state returned by Agent backend, kept separate from
+    Agent Soul snapshots and workflow node-job config.
+    """
+
+    __tablename__ = "agent_runtime_sessions"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_runtime_session_pkey"),
+        # Workflow owner uniqueness (partial: only rows with a workflow_run_id).
+        Index(
+            "agent_runtime_session_workflow_scope_unique",
+            "tenant_id",
+            "workflow_run_id",
+            "node_id",
+            "binding_id",
+            "agent_id",
+            unique=True,
+            postgresql_where=sa.text("workflow_run_id IS NOT NULL"),
+        ),
+        # Conversation owner uniqueness (partial: only rows with a conversation_id).
+        Index(
+            "agent_runtime_session_conversation_scope_unique",
+            "tenant_id",
+            "conversation_id",
+            "agent_id",
+            "agent_config_snapshot_id",
+            unique=True,
+            postgresql_where=sa.text("conversation_id IS NOT NULL"),
+        ),
+        Index(
+            "agent_runtime_session_workflow_lookup_idx",
+            "tenant_id",
+            "workflow_run_id",
+            "node_id",
+            "status",
+        ),
+        Index(
+            "agent_runtime_session_conversation_lookup_idx",
+            "tenant_id",
+            "conversation_id",
+            "status",
+        ),
+        Index("agent_runtime_session_backend_run_idx", "backend_run_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_type: Mapped[AgentRuntimeSessionOwnerType] = mapped_column(
+        EnumText(AgentRuntimeSessionOwnerType, length=32), nullable=False
+    )
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    session_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
+    # Workflow-owner columns (NULL for conversation owner).
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    # JSON-encoded list of cleanup layer specs ({name, type, deps, config}).
+    # Drives Agent backend cleanup-only runs: the agenton compositor rejects a
+    # session snapshot whose layer names do not match the cleanup composition,
+    # so we replay the same layer graph (minus credential-bearing plugin layers).
+    composition_layer_specs: Mapped[str] = mapped_column(LongText, nullable=False, server_default="[]")
+    # Conversation-owner column (NULL for workflow owner).
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    status: Mapped[AgentRuntimeSessionStatus] = mapped_column(
+        EnumText(AgentRuntimeSessionStatus, length=32),
+        nullable=False,
+        default=AgentRuntimeSessionStatus.ACTIVE,
+    )
+    cleaned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+# Back-compat alias for the shipped workflow lifecycle code (PR #36724).
+WorkflowAgentRuntimeSession = AgentRuntimeSession

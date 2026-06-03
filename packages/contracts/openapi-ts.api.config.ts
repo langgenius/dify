@@ -2,7 +2,7 @@ import type { UserConfig } from '@hey-api/openapi-ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig } from '@hey-api/openapi-ts'
 
 type JsonObject = Record<string, unknown>
 
@@ -100,6 +100,7 @@ const apiSpecs: ApiSpec[] = [
   { filename: 'console-swagger.json', name: 'console' },
   { filename: 'web-swagger.json', name: 'web' },
   { filename: 'service-swagger.json', name: 'service' },
+  { filename: 'openapi-swagger.json', name: 'openapi' },
 ]
 
 const inaccurateGeneratedContractDescription = 'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.'
@@ -975,6 +976,12 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       'name': 'zod',
       '~resolvers': {
         enum: markNullableEnumSchema,
+        string: (ctx) => {
+          if (ctx.schema.format !== 'binary')
+            return undefined
+
+          return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+        },
       },
     },
     {

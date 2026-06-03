@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
 
 type TaskStatusIndicatorProps = {
@@ -67,16 +67,15 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
             <div className="absolute -top-1 -right-1">
               {(isInstalling || isInstallingWithSuccess) && (
                 <ProgressCircle
-                  percentage={(totalPluginsLength > 0 ? successPluginsLength / totalPluginsLength : 0) * 100}
-                  circleFillColor="fill-components-progress-brand-bg"
+                  value={(totalPluginsLength > 0 ? successPluginsLength / totalPluginsLength : 0) * 100}
+                  aria-label={tip}
                 />
               )}
               {isInstallingWithError && (
                 <ProgressCircle
-                  percentage={(totalPluginsLength > 0 ? runningPluginsLength / totalPluginsLength : 0) * 100}
-                  circleFillColor="fill-components-progress-brand-bg"
-                  sectorFillColor="fill-components-progress-error-border"
-                  circleStrokeColor="stroke-components-progress-error-border"
+                  value={(totalPluginsLength > 0 ? runningPluginsLength / totalPluginsLength : 0) * 100}
+                  color="error"
+                  aria-label={tip}
                 />
               )}
               {showSuccessIcon && !isInstalling && !isInstallingWithSuccess && !isInstallingWithError && (

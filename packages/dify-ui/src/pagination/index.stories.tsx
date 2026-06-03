@@ -58,7 +58,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound pagination primitive for list navigation. It combines semantic page buttons, a NumberField-backed page jump summary, and a ToggleGroup-backed page-size selector.',
+        component: 'Compound pagination primitive for list navigation. It combines semantic page buttons, a NumberField-backed page jump summary, and a SegmentedControl-backed page-size selector.',
       },
     },
   },

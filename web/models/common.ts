@@ -1,3 +1,4 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
@@ -18,24 +19,8 @@ export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export type UserProfileResponse = {
-  id: string
-  name: string
-  email: string
-  avatar: string
-  avatar_url: string | null
-  is_password_set: boolean
-  interface_language?: string
-  interface_theme?: string
-  timezone?: string
-  last_login_at?: string
-  last_active_at?: string
-  last_login_ip?: string
-  created_at?: string
-}
-
 export type UserProfileOriginResponse = {
-  json: () => Promise<UserProfileResponse>
+  json: () => Promise<GetAccountProfileResponse>
   bodyUsed: boolean
   headers: any
 }
@@ -50,8 +35,11 @@ export type LangGeniusVersionResponse = {
   current_env: string
 }
 
-export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at' | 'avatar_url'> & {
+export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
   avatar: string
+  last_login_at?: string
+  last_active_at?: string
+  created_at?: string
   status: 'pending' | 'active' | 'banned' | 'closed'
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
 }

@@ -901,7 +901,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id: str):
+    def get(self, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run node execution list
         """

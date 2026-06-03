@@ -13,9 +13,9 @@ import {
   NumberFieldInput,
 } from '../number-field'
 import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from '../toggle-group'
+  SegmentedControl,
+  SegmentedControlItem,
+} from '../segmented-control'
 
 type PageItem = number | 'ellipsis-start' | 'ellipsis-end'
 
@@ -523,7 +523,7 @@ export function PaginationPageSize<Value extends number = number>({
       <div className="w-13 shrink-0 text-end system-2xs-regular-uppercase text-text-tertiary opacity-0 transition-opacity group-hover/page-size:opacity-100 group-focus-within/page-size:opacity-100 motion-reduce:transition-none">
         {label}
       </div>
-      <ToggleGroup
+      <SegmentedControl
         value={[String(value)]}
         aria-label={ariaLabel}
         onValueChange={(nextValue) => {
@@ -539,15 +539,15 @@ export function PaginationPageSize<Value extends number = number>({
         }}
       >
         {options.map(option => (
-          <ToggleGroupItem
+          <SegmentedControlItem
             key={option}
             value={String(option)}
             className="min-w-9 data-pressed:text-text-primary"
           >
             {option}
-          </ToggleGroupItem>
+          </SegmentedControlItem>
         ))}
-      </ToggleGroup>
+      </SegmentedControl>
     </div>
   )
 }

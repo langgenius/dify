@@ -2,7 +2,6 @@
 
 import type { QueryClient } from '@tanstack/react-query'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { TanStackDevtoolsLoader } from '@/app/components/devtools/tanstack/loader'
 import { isServer } from '@/utils/client'
 import { makeQueryClient } from './query-client-server'
 
@@ -22,7 +21,6 @@ export const TanstackQueryInitializer = ({ children }: { children: React.ReactNo
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <TanStackDevtoolsLoader />
     </QueryClientProvider>
   )
 }

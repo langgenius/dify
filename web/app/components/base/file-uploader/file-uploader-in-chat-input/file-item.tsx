@@ -1,13 +1,13 @@
 import type { FileEntity } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileTypeIcon from '../file-type-icon'
@@ -110,9 +110,9 @@ const FileItem = ({
           {
             progress >= 0 && !fileIsUploaded(file) && (
               <ProgressCircle
-                percentage={progress}
-                size={12}
+                value={progress}
                 className="shrink-0"
+                aria-label={t('uploading', { ns: 'custom' })}
               />
             )
           }

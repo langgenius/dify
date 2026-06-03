@@ -34,14 +34,14 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 // Mock useIndexStatus hook
 vi.mock('../hooks', () => ({
   useIndexStatus: () => ({
-    queuing: { text: 'Queuing', color: 'orange' },
-    indexing: { text: 'Indexing', color: 'blue' },
-    paused: { text: 'Paused', color: 'yellow' },
-    error: { text: 'Error', color: 'red' },
-    available: { text: 'Available', color: 'green' },
-    enabled: { text: 'Enabled', color: 'green' },
-    disabled: { text: 'Disabled', color: 'gray' },
-    archived: { text: 'Archived', color: 'gray' },
+    queuing: { text: 'Queuing', status: 'warning' },
+    indexing: { text: 'Indexing', status: 'normal' },
+    paused: { text: 'Paused', status: 'warning' },
+    error: { text: 'Error', status: 'error' },
+    available: { text: 'Available', status: 'success' },
+    enabled: { text: 'Enabled', status: 'success' },
+    disabled: { text: 'Disabled', status: 'disabled' },
+    archived: { text: 'Archived', status: 'disabled' },
   }),
 }))
 

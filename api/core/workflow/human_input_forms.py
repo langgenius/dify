@@ -63,7 +63,7 @@ def _get_surface_form_token(
     *,
     surface: HumanInputSurface | None,
 ) -> str | None:
-    if surface == HumanInputSurface.SERVICE_API:
+    if surface in {HumanInputSurface.SERVICE_API, HumanInputSurface.OPENAPI}:
         for recipient_type, token in recipients:
             if recipient_type == RecipientType.STANDALONE_WEB_APP and token:
                 return token

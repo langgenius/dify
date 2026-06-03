@@ -6,12 +6,12 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
+import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
-import { LicenseStatus } from '@/types/feature'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -50,7 +50,7 @@ const NormalForm = () => {
       if (isLoggedIn) {
         setIsRedirecting(true)
         const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || '/apps')
+        router.replace(redirectUrl || '/')
         return
       }
 
@@ -75,7 +75,7 @@ const NormalForm = () => {
       setAllMethodsAreDisabled(true)
     }
     finally { setInitCheckLoading(false) }
-  }, [isLoggedIn, message, router, invite_token, isInviteLink, systemFeatures])
+  }, [isLoggedIn, message, router, searchParams, invite_token, isInviteLink, systemFeatures])
   useEffect(() => {
     init()
   }, [init])

@@ -1,7 +1,7 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { SystemFeatures } from '@/types/feature'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
@@ -144,7 +144,7 @@ describe('AccountDropdown', () => {
 
   const renderWithRouter = (
     ui: React.ReactElement,
-    options: { systemFeatures?: DeepPartial<SystemFeatures> } = {},
+    options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
   ) => {
     return renderWithSystemFeatures(ui, {
       systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
@@ -277,7 +277,6 @@ describe('AccountDropdown', () => {
       // Assert
       await waitFor(() => {
         expect(mockLogout).toHaveBeenCalled()
-        expect(localStorage.removeItem).toHaveBeenCalledWith('setup_status')
         expect(mockPush).toHaveBeenCalledWith('/signin')
       })
     })
@@ -353,8 +352,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-warning-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
     })
 
     it('should show green indicator when version is latest', () => {
@@ -374,8 +372,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
     })
   })
 })
