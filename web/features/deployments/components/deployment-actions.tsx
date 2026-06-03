@@ -30,14 +30,19 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 
 type AppInstanceWithId = AppInstance & { id: string }
+type UpdateAppInstanceInput = Parameters<typeof consoleClient.enterprise.appInstanceService.updateAppInstance>[0]
+type EditDeploymentFormValues = {
+  name: string
+  description: string
+}
 
 const ACTION_TRIGGER_CLASS_NAME = cn(
   'inline-flex size-8 items-center justify-center rounded-lg bg-components-panel-bg text-text-tertiary shadow-xs outline-hidden',
@@ -66,45 +71,33 @@ function EditDeploymentFormSkeleton() {
 
 function EditDeploymentForm({
   app,
+  isSaving,
   onClose,
+  onSubmit,
 }: {
   app: AppInstanceWithId
+  isSaving: boolean
   onClose: () => void
+  onSubmit: (values: EditDeploymentFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
   const initialName = app.name ?? app.id
   const initialDescription = app.description ?? ''
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
-  const canSave = Boolean(name.trim() && (name !== initialName || description !== initialDescription) && !updateInstance.isPending)
+  const normalizedName = name.trim()
+  const normalizedDescription = description.trim()
+  const canSave = Boolean(normalizedName && (normalizedName !== initialName || normalizedDescription !== initialDescription) && !isSaving)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!canSave)
       return
 
-    updateInstance.mutate(
-      {
-        params: {
-          appInstanceId: app.id,
-        },
-        body: {
-          appInstanceId: app.id,
-          name: name.trim(),
-          description: description.trim() || undefined,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t('settings.updated'))
-          onClose()
-        },
-        onError: () => {
-          toast.error(t('settings.updateFailed'))
-        },
-      },
-    )
+    onSubmit({
+      name: normalizedName,
+      description: normalizedDescription,
+    })
   }
 
   return (
@@ -136,7 +129,7 @@ function EditDeploymentForm({
         <Button
           type="button"
           variant="secondary"
-          disabled={updateInstance.isPending}
+          disabled={isSaving}
           onClick={onClose}
         >
           {t('createModal.cancel')}
@@ -145,7 +138,7 @@ function EditDeploymentForm({
           type="submit"
           variant="primary"
           disabled={!canSave}
-          loading={updateInstance.isPending}
+          loading={isSaving}
         >
           {t('settings.save')}
         </Button>
@@ -164,6 +157,36 @@ function EditDeploymentDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('deployments')
+  const queryClient = useQueryClient()
+  const updateInstance = useMutation({
+    mutationFn: (variables: UpdateAppInstanceInput) =>
+      consoleClient.enterprise.appInstanceService.updateAppInstance(variables),
+    onSuccess: (_data, variables) => {
+      const updatedAppInstanceId = variables.params.appInstanceId
+
+      toast.success(t('settings.updated'))
+      onOpenChange(false)
+
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.enterprise.appInstanceService.getAppInstance.key({
+            type: 'query',
+            input: {
+              params: {
+                appInstanceId: updatedAppInstanceId,
+              },
+            },
+          }),
+        }),
+      ])
+    },
+    onError: () => {
+      toast.error(t('settings.updateFailed'))
+    },
+  })
   const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
     input: open
       ? { params: { appInstanceId } }
@@ -173,10 +196,33 @@ function EditDeploymentDialog({
   const appWithId = app?.id ? { ...app, id: app.id } : undefined
   const formKey = appWithId ? `${appWithId.id}-${appWithId.name ?? ''}-${appWithId.description ?? ''}` : 'loading'
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && updateInstance.isPending)
+      return
+    onOpenChange(nextOpen)
+  }
+
+  function handleClose() {
+    handleOpenChange(false)
+  }
+
+  function handleSubmit(values: EditDeploymentFormValues) {
+    updateInstance.mutate({
+      params: {
+        appInstanceId,
+      },
+      body: {
+        appInstanceId,
+        name: values.name,
+        description: values.description || undefined,
+      },
+    })
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-120 max-w-[calc(100vw-32px)] p-0">
-        <DialogCloseButton />
+        <DialogCloseButton disabled={updateInstance.isPending} />
         <div className="border-b border-divider-subtle px-6 py-5">
           <DialogTitle className="title-xl-semi-bold text-text-primary">
             {t('card.menu.editInfo')}
@@ -195,7 +241,9 @@ function EditDeploymentDialog({
                     <EditDeploymentForm
                       key={formKey}
                       app={appWithId}
-                      onClose={() => onOpenChange(false)}
+                      isSaving={updateInstance.isPending}
+                      onClose={handleClose}
+                      onSubmit={handleSubmit}
                     />
                   )
                 : <div className="system-sm-regular text-text-tertiary">{t('detail.notFound')}</div>}
