@@ -1053,7 +1053,8 @@ describe('CardWrapper (via List integration)', () => {
       expect(mockSetTrue).toHaveBeenCalled()
     })
 
-    it('should render detail link with correct href', () => {
+    it('should open marketplace detail from the detail action', () => {
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
       const plugin = createMockPlugin({
         name: 'link-test-plugin',
         org: 'test-org',
@@ -1068,9 +1069,13 @@ describe('CardWrapper (via List integration)', () => {
         />,
       )
 
-      const detailLink = screen.getByText('Detail').closest('a')
-      expect(detailLink).toHaveAttribute('href', '/plugins/test-org/link-test-plugin')
-      expect(detailLink).toHaveAttribute('target', '_blank')
+      fireEvent.click(screen.getByText('Detail'))
+
+      expect(openSpy).toHaveBeenCalledWith(
+        '/plugins/test-org/link-test-plugin',
+        '_blank',
+        'noopener,noreferrer',
+      )
     })
 
     it('should render InstallFromMarketplace modal when isShowInstallFromMarketplace is true', () => {
@@ -1129,7 +1134,7 @@ describe('CardWrapper (via List integration)', () => {
   // showInstallButton=false Branch Tests
   // ================================
   describe('showInstallButton=false branch', () => {
-    it('should render as a link when showInstallButton is false', () => {
+    it('should render without install or detail actions when showInstallButton is false', () => {
       const plugin = createMockPlugin({
         name: 'link-plugin',
         org: 'test-org',
@@ -1149,7 +1154,7 @@ describe('CardWrapper (via List integration)', () => {
       expect(screen.queryByText('Detail')).not.toBeInTheDocument()
     })
 
-    it('should render card within link for non-install mode', () => {
+    it('should render card for non-install mode', () => {
       const plugin = createMockPlugin({
         name: 'card-link-plugin',
         org: 'card-org',

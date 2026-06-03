@@ -27,7 +27,7 @@ const CardMoreInfoComponent = ({
               )}
               title={tag}
             >
-              <span aria-hidden className="i-ri-price-tag-line size-3 shrink-0" />
+              <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
               <span className="truncate">{tag}</span>
             </div>
           ))}

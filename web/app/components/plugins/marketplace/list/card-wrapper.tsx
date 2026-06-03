@@ -10,7 +10,7 @@ import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
+import { getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
@@ -38,6 +38,9 @@ const CardWrapperComponent = ({
   // Memoize tag labels to prevent recreating array on every render
   const tagLabels = useMemo(() =>
     plugin.tags.map(tag => getTagLabel(tag.name)), [plugin.tags, getTagLabel])
+  const handleOpenMarketplaceDetail = () => {
+    window.open(getPluginLinkInMarketplace(plugin, marketplaceLinkParams), '_blank', 'noopener,noreferrer')
+  }
 
   if (showInstallButton) {
     return (
@@ -64,14 +67,13 @@ const CardWrapperComponent = ({
           >
             {t('detailPanel.operation.install', { ns: 'plugin' })}
           </Button>
-          <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block min-w-0 flex-1 shrink-0">
-            <Button
-              className="w-full gap-0.5 shadow-xs backdrop-blur-[5px]"
-            >
-              {t('detailPanel.operation.detail', { ns: 'plugin' })}
-              <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-4" />
-            </Button>
-          </a>
+          <Button
+            className="min-w-0 flex-1 gap-0.5 shadow-xs backdrop-blur-[5px]"
+            onClick={handleOpenMarketplaceDetail}
+          >
+            {t('detailPanel.operation.detail', { ns: 'plugin' })}
+            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-4" />
+          </Button>
         </div>
         {
           isShowInstallFromMarketplace && (
@@ -88,9 +90,8 @@ const CardWrapperComponent = ({
   }
 
   return (
-    <a
-      className="group relative inline-block cursor-pointer rounded-xl"
-      href={getPluginDetailLinkInMarketplace(plugin)}
+    <div
+      className="group relative rounded-xl"
     >
       <Card
         key={plugin.name}
@@ -104,7 +105,7 @@ const CardWrapperComponent = ({
           />
         )}
       />
-    </a>
+    </div>
   )
 }
 
