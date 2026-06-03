@@ -149,6 +149,8 @@ describe('ListWithCollection', () => {
     expect(partnerLink).toHaveAttribute('href', 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk')
     expect(partnerLink).toHaveAttribute('target', '_blank')
     expect(partnerLink).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(partnerLink.querySelector('.i-ri-external-link-line')).toHaveClass('size-3')
+    expect(partnerLink.querySelector('.i-ri-arrow-right-up-line')).not.toBeInTheDocument()
     expect(screen.getByText('|')).toHaveClass('text-divider-regular')
     expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
   })
@@ -197,5 +199,11 @@ describe('ListWithCollection', () => {
 
     expect(screen.queryByText('plugin.marketplace.viewMore')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Scroll right' })).toBeInTheDocument()
+    const carousel = screen.getByRole('region')
+    const carouselViewport = carousel.querySelector('.overflow-hidden')
+    const carouselContent = carouselViewport?.firstElementChild
+    expect(carousel).not.toHaveClass('overflow-hidden')
+    expect(carouselViewport).toHaveClass('overflow-hidden', '[border-radius:inherit]')
+    expect(carouselContent).toHaveStyle({ columnGap: '12px' })
   })
 })

@@ -1,10 +1,12 @@
 'use client'
 
-import type { RemixiconComponentType } from '@remixicon/react'
+/* eslint-disable react/set-state-in-effect */
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import { useMemo } from 'react'
-import { Carousel as BaseCarousel, useCarousel } from '@/app/components/base/carousel'
+import Autoplay from 'embla-carousel-autoplay'
+import useEmblaCarousel from 'embla-carousel-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
+type CarouselApi = ReturnType<typeof useEmblaCarousel>[1]
 
 type CarouselProps = {
   children: React.ReactNode
@@ -19,14 +21,14 @@ type NavButtonProps = {
   direction: 'left' | 'right'
   disabled: boolean
   onClick: () => void
-  Icon: RemixiconComponentType
+  iconClassName: string
 }
 
 const NavButton = ({
   direction,
   disabled,
   onClick,
-  Icon,
+  iconClassName,
 }: NavButtonProps) => (
   <button
     className={cn(
@@ -37,17 +39,31 @@ const NavButton = ({
     disabled={disabled}
     aria-label={`Scroll ${direction}`}
   >
-    <Icon className="h-4 w-4 text-components-button-secondary-text" />
+    <span aria-hidden className={cn('size-4 text-components-button-secondary-text', iconClassName)} />
   </button>
 )
 
 type CarouselControlsProps = {
+  api: CarouselApi
   showPagination: boolean
+  selectedIndex: number
+  scrollNext: () => void
+  scrollPrev: () => void
+  scrollSnaps: number[]
 }
 
-const CarouselControls = ({ showPagination }: CarouselControlsProps) => {
-  const { api, selectedIndex, scrollPrev, scrollNext } = useCarousel()
-  const scrollSnaps = api?.scrollSnapList() ?? []
+const CarouselControls = ({
+  api,
+  showPagination,
+  selectedIndex,
+  scrollNext,
+  scrollPrev,
+  scrollSnaps,
+}: CarouselControlsProps) => {
+  const paginationItems = scrollSnaps.map((snap, index) => ({
+    id: `${snap}-${index}`,
+    snap,
+  }))
   const totalPages = scrollSnaps.length
 
   if (totalPages <= 1)
@@ -57,9 +73,9 @@ const CarouselControls = ({ showPagination }: CarouselControlsProps) => {
     <div className="absolute -top-10 right-0 flex items-center gap-3">
       {showPagination && (
         <div className="flex items-center gap-1">
-          {scrollSnaps.map((snap, index) => (
+          {paginationItems.map((item, index) => (
             <button
-              key={snap}
+              key={item.id}
               className={cn(
                 'h-[5px] w-[5px] rounded-full transition-all',
                 selectedIndex === index
@@ -77,13 +93,13 @@ const CarouselControls = ({ showPagination }: CarouselControlsProps) => {
           direction="left"
           disabled={totalPages <= 1}
           onClick={scrollPrev}
-          Icon={RiArrowLeftSLine}
+          iconClassName="i-ri-arrow-left-s-line"
         />
         <NavButton
           direction="right"
           disabled={totalPages <= 1}
           onClick={scrollNext}
-          Icon={RiArrowRightSLine}
+          iconClassName="i-ri-arrow-right-s-line"
         />
       </div>
     </div>
@@ -103,26 +119,70 @@ const Carousel = ({
       return []
 
     return [
-      BaseCarousel.Plugin.Autoplay({
+      Autoplay({
         delay: autoPlayInterval,
         stopOnInteraction: false,
         stopOnMouseEnter: true,
       }),
     ]
   }, [autoPlay, autoPlayInterval])
+  const [carouselRef, api] = useEmblaCarousel(
+    { align: 'start', containScroll: 'trimSnaps', loop: true },
+    plugins,
+  )
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
+  const scrollPrev = useCallback(() => {
+    api?.scrollPrev()
+  }, [api])
+  const scrollNext = useCallback(() => {
+    api?.scrollNext()
+  }, [api])
+
+  useEffect(() => {
+    if (!api)
+      return
+
+    const handleSelect = () => {
+      setSelectedIndex(api.selectedScrollSnap())
+      setScrollSnaps(api.scrollSnapList())
+    }
+
+    handleSelect()
+    api.on('reInit', handleSelect)
+    api.on('select', handleSelect)
+
+    return () => {
+      api.off('reInit', handleSelect)
+      api.off('select', handleSelect)
+    }
+  }, [api])
 
   return (
-    <BaseCarousel
-      opts={{ align: 'start', containScroll: 'trimSnaps', loop: true }}
-      plugins={plugins}
-      className={className}
-      style={{ overflowX: 'clip', overflowY: 'visible' }}
+    <div
+      className={cn('relative', className)}
+      role="region"
+      aria-roledescription="carousel"
     >
-      <BaseCarousel.Content>
-        {children}
-      </BaseCarousel.Content>
-      {showNavigation && <CarouselControls showPagination={showPagination} />}
-    </BaseCarousel>
+      {showNavigation && (
+        <CarouselControls
+          api={api}
+          showPagination={showPagination}
+          selectedIndex={selectedIndex}
+          scrollNext={scrollNext}
+          scrollPrev={scrollPrev}
+          scrollSnaps={scrollSnaps}
+        />
+      )}
+      <div
+        ref={carouselRef}
+        className="overflow-hidden [border-radius:inherit]"
+      >
+        <div className="flex" style={{ columnGap: '12px' }}>
+          {children}
+        </div>
+      </div>
+    </div>
   )
 }
 

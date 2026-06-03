@@ -1,6 +1,6 @@
 export const GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 
-export const CAROUSEL_PAGE_CLASS = 'min-w-0 shrink-0 grow-0 basis-full'
+export const CAROUSEL_PAGE_CLASS = 'w-full shrink-0'
 
 export const CAROUSEL_PAGE_GRID_CLASS = GRID_CLASS
 

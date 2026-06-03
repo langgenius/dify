@@ -119,7 +119,7 @@ const ListWithCollection = ({
                           className="flex items-center gap-x-0.5 text-text-accent hover:underline"
                         >
                           <span>{t('marketplace.becomePartner', { ns: 'plugin' })}</span>
-                          <span aria-hidden className="i-ri-arrow-right-up-line h-3.5 w-3.5" />
+                          <span aria-hidden className="i-ri-external-link-line size-3" />
                         </a>
                       </>
                     )}
