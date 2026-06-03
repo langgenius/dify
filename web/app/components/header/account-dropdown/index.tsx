@@ -119,18 +119,15 @@ export default function AppSelector() {
   const { setShowAccountSettingModal } = useModalContext()
 
   const { mutateAsync: logout } = useLogout()
-  const removeEducationReverifyPrevExpireAt = useSetLocalStorage<string>('education-reverify-prev-expire-at', { raw: true })
-  const removeEducationReverifyHasNoticed = useSetLocalStorage<string>('education-reverify-has-noticed', { raw: true })
-  const removeEducationExpiredHasNoticed = useSetLocalStorage<string>('education-expired-has-noticed', { raw: true })
   const handleLogout = async () => {
     await logout()
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
-    removeEducationReverifyPrevExpireAt(null)
-    removeEducationReverifyHasNoticed(null)
-    removeEducationExpiredHasNoticed(null)
+    removeLocalStorageItem('education-reverify-prev-expire-at')
+    removeLocalStorageItem('education-reverify-has-noticed')
+    removeLocalStorageItem('education-expired-has-noticed')
 
     router.push('/signin')
   }
