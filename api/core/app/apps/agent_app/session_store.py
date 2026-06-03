@@ -44,6 +44,28 @@ class AgentAppRuntimeSessionStore:
                 return None
             return CompositorSessionSnapshot.model_validate_json(row.session_snapshot)
 
+    def load_active_snapshot_for_conversation(
+        self, *, tenant_id: str, app_id: str, conversation_id: str
+    ) -> CompositorSessionSnapshot | None:
+        """Load a conversation's active snapshot without the agent/config scope.
+
+        One Agent App conversation maps to one active session, so the workspace
+        inspector can resolve it from the conversation alone (it does not know
+        which agent config version a past turn ran under).
+        """
+        stmt = select(AgentRuntimeSession).where(
+            AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+            AgentRuntimeSession.tenant_id == tenant_id,
+            AgentRuntimeSession.app_id == app_id,
+            AgentRuntimeSession.conversation_id == conversation_id,
+            AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+        )
+        with session_factory.create_session() as session:
+            row = session.scalar(stmt)
+            if row is None:
+                return None
+            return CompositorSessionSnapshot.model_validate_json(row.session_snapshot)
+
     def save_active_snapshot(
         self,
         *,
