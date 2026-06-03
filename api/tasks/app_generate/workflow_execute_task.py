@@ -248,7 +248,10 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
 
 def _publish_error_event(exc: Exception, workflow_run_id: str, app_mode: AppMode) -> None:
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
-    payload = json.dumps({"event": "error", "message": str(exc), "status": 500})
+    error_code = getattr(exc, "code", None) or 500
+    payload = json.dumps(
+        {"event": "error", "message": str(exc), "status": error_code, "workflow_run_id": workflow_run_id}
+    )
     topic.publish(payload.encode())
 
 
