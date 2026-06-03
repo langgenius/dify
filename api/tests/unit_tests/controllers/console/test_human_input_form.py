@@ -43,10 +43,9 @@ def test_jsonify_form_definition() -> None:
 
 def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
     form = SimpleNamespace(tenant_id="tenant-1")
-    monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-2"))
 
     with pytest.raises(NotFoundError):
-        ConsoleHumanInputFormApi._ensure_console_access(form)
+        ConsoleHumanInputFormApi._ensure_console_access(form, "tenant-2")
 
 
 def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,14 +61,13 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
             return form
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-1"))
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
     handler = _unwrap(api.get)
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
-        response = handler(api, form_token="token")
+        response = handler(api, "tenant-1", form_token="token")
 
     payload = json.loads(response.get_data(as_text=True))
     assert payload["fields"] == ["a"]
@@ -84,7 +82,6 @@ def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPat
             return None
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-1"))
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
@@ -92,7 +89,7 @@ def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPat
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, form_token="token")
+            handler(api, "tenant-1", form_token="token")
 
 
 def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -106,10 +103,6 @@ def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.Monkey
             return form
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "tenant-1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
@@ -124,6 +117,8 @@ def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.Monkey
             handler(
                 api,
                 HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+                "tenant-1",
+                SimpleNamespace(id="user-1"),
                 form_token="token",
             )
 
@@ -139,10 +134,6 @@ def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest
             return form
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "tenant-1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
@@ -157,6 +148,8 @@ def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest
             handler(
                 api,
                 HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+                "tenant-1",
+                SimpleNamespace(id="user-1"),
                 form_token="token",
             )
 
@@ -176,10 +169,6 @@ def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
             submit_mock(**kwargs)
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "tenant-1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
@@ -193,6 +182,8 @@ def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         response = handler(
             api,
             HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+            "tenant-1",
+            SimpleNamespace(id="user-1"),
             form_token="token",
         )
 
@@ -216,10 +207,6 @@ def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypa
             submit_mock(**kwargs)
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (current_user, "tenant-1"),
-    )
     monkeypatch.setattr(
         "controllers.console.wraps.current_account_with_tenant",
         lambda: (current_user, "tenant-1"),
@@ -254,10 +241,6 @@ def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) 
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="u1"), "t1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
@@ -265,7 +248,7 @@ def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) 
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, workflow_run_id="run-1")
+            handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
 
 
 def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -285,10 +268,6 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="u1"), "t1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
@@ -296,7 +275,7 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, workflow_run_id="run-1")
+            handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
 
 
 def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -316,10 +295,6 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="u1"), "t1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
@@ -327,7 +302,7 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, workflow_run_id="run-1")
+            handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
 
 
 def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -364,17 +339,13 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
         "workflow_run_result_to_finish_response",
         lambda **_kwargs: response_obj,
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "t1"),
-    )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
     handler = _unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
-        response = handler(api, workflow_run_id="run-1")
+        response = handler(api, "t1", SimpleNamespace(id="user-1"), workflow_run_id="run-1")
 
     assert response.mimetype == "text/event-stream"
     assert "data" in response.get_data(as_text=True)
