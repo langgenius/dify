@@ -267,22 +267,30 @@ export const useUpdateModelProviders = () => {
   return updateModelProviders
 }
 
-export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string) => {
+export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string, enabled = true) => {
   const exclude = useMemo(() => {
     return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
   }, [providers])
   const {
     plugins: collectionPlugins = [],
     isLoading: isCollectionLoading,
-  } = useMarketplacePluginsByCollectionId('__model-settings-pinned-models')
+  } = useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced = () => {},
+    resetPlugins = () => {},
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
 
   useEffect(() => {
+    if (!enabled) {
+      cancelQueryPluginsWithDebounced()
+      resetPlugins()
+      return
+    }
+
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
@@ -304,26 +312,29 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         sort_order: 'DESC',
       })
     }
-  }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
+  }, [cancelQueryPluginsWithDebounced, enabled, queryPlugins, queryPluginsWithDebounced, resetPlugins, searchText, exclude])
 
   const allPlugins = useMemo(() => {
+    if (!enabled)
+      return []
+
     const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
       for (let i = 0; i < plugins.length; i++) {
         const plugin = plugins[i]
 
-        if (plugin.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin.plugin_id))
-          allPlugins.push(plugin)
+        if (plugin!.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin!.plugin_id))
+          allPlugins.push(plugin!)
       }
     }
 
     return allPlugins
-  }, [plugins, collectionPlugins, exclude])
+  }, [enabled, plugins, collectionPlugins, exclude])
 
   return {
-    plugins: searchText ? plugins : allPlugins,
-    isLoading: isCollectionLoading || isPluginsLoading,
+    plugins: enabled && searchText ? plugins : allPlugins,
+    isLoading: enabled && (isCollectionLoading || isPluginsLoading),
   }
 }
 

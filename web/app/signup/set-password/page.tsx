@@ -1,17 +1,22 @@
 'use client'
 import type { MailRegisterResponse } from '@/service/use-common'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
+import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useMailRegister } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
+import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
+import { getBrowserTimezone } from '@/utils/timezone'
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
@@ -29,8 +34,10 @@ const parseUtmInfo = () => {
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
+  const locale = useLocale()
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -64,10 +71,13 @@ const ChangePasswordForm = () => {
         token,
         new_password: password,
         password_confirm: confirmPassword,
+        language: locale,
+        timezone: getBrowserTimezone(),
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
         const utmInfo = parseUtmInfo()
+        rememberCreateAppExternalAttribution({ utmInfo })
         trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
           ...utmInfo,
@@ -80,13 +90,14 @@ const ChangePasswordForm = () => {
         Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
         toast.success(t('api.actionSuccess', { ns: 'common' }))
-        router.replace('/apps')
+        await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+        router.replace('/')
       }
     }
     catch (error) {
       console.error(error)
     }
-  }, [password, token, valid, confirmPassword, register])
+  }, [password, token, valid, confirmPassword, register, locale, queryClient, router, t])
 
   return (
     <div className={
@@ -102,7 +113,7 @@ const ChangePasswordForm = () => {
           <h2 className="title-4xl-semi-bold text-text-primary">
             {t('changePassword', { ns: 'login' })}
           </h2>
-          <p className="body-md-regular mt-2 text-text-secondary">
+          <p className="mt-2 body-md-regular text-text-secondary">
             {t('changePasswordTip', { ns: 'login' })}
           </p>
         </div>
@@ -111,7 +122,7 @@ const ChangePasswordForm = () => {
           <div>
             {/* Password */}
             <div className="mb-5">
-              <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
+              <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
                 {t('account.newPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">
@@ -124,11 +135,11 @@ const ChangePasswordForm = () => {
                 />
 
               </div>
-              <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
+              <div className="mt-1 body-xs-regular text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
             </div>
             {/* Confirm Password */}
             <div className="mb-5">
-              <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
+              <label htmlFor="confirmPassword" className="my-2 system-md-semibold text-text-secondary">
                 {t('account.confirmPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">

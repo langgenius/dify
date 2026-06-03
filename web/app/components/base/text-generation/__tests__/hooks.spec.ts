@@ -5,7 +5,7 @@ import { useTextGeneration } from '../hooks'
 const mockNotify = vi.fn()
 const mockSsePost = vi.fn<(url: string, fetchOptions: { body: Record<string, unknown> }, otherOptions: IOtherOptions) => void>()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },

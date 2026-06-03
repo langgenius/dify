@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
@@ -25,7 +26,7 @@ def unwrap(func):
 
 class TestRagPipelineImportApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def _payload(self, mode="create"):
@@ -35,7 +36,7 @@ class TestRagPipelineImportApi:
             "name": "Test",
         }
 
-    def test_post_success_200(self, app):
+    def test_post_success_200(self, app: Flask):
         api = RagPipelineImportApi()
         method = unwrap(api.post)
 
@@ -52,20 +53,16 @@ class TestRagPipelineImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, user)
 
         assert status == 200
         assert response == {"status": "success"}
 
-    def test_post_failed_400(self, app):
+    def test_post_failed_400(self, app: Flask):
         api = RagPipelineImportApi()
         method = unwrap(api.post)
 
@@ -82,20 +79,16 @@ class TestRagPipelineImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, user)
 
         assert status == 400
         assert response == {"status": "failed"}
 
-    def test_post_pending_202(self, app):
+    def test_post_pending_202(self, app: Flask):
         api = RagPipelineImportApi()
         method = unwrap(api.post)
 
@@ -112,15 +105,11 @@ class TestRagPipelineImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, user)
 
         assert status == 202
         assert response == {"status": "pending"}
@@ -128,10 +117,10 @@ class TestRagPipelineImportApi:
 
 class TestRagPipelineImportConfirmApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_confirm_success(self, app):
+    def test_confirm_success(self, app: Flask):
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
@@ -146,20 +135,16 @@ class TestRagPipelineImportConfirmApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api, "import-1")
+            response, status = method(api, user, "import-1")
 
         assert status == 200
         assert response == {"ok": True}
 
-    def test_confirm_failed(self, app):
+    def test_confirm_failed(self, app: Flask):
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
@@ -174,15 +159,11 @@ class TestRagPipelineImportConfirmApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
                 return_value=service,
             ),
         ):
-            response, status = method(api, "import-1")
+            response, status = method(api, user, "import-1")
 
         assert status == 400
         assert response == {"ok": False}
@@ -190,10 +171,10 @@ class TestRagPipelineImportConfirmApi:
 
 class TestRagPipelineImportCheckDependenciesApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = RagPipelineImportCheckDependenciesApi()
         method = unwrap(api.get)
 
@@ -219,10 +200,10 @@ class TestRagPipelineImportCheckDependenciesApi:
 
 class TestRagPipelineExportApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_with_include_secret(self, app):
+    def test_get_with_include_secret(self, app: Flask):
         api = RagPipelineExportApi()
         method = unwrap(api.get)
 

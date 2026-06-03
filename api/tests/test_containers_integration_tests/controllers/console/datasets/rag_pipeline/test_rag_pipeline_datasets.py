@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Protocol, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -16,21 +19,26 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
 )
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+class _WrappedCallable(Protocol):
+    __wrapped__: Callable[..., object]
+
+
+def unwrap(func: Callable[..., object]) -> Callable[..., object]:
+    current: Callable[..., object] | _WrappedCallable = func
+    while hasattr(current, "__wrapped__"):
+        current = cast(_WrappedCallable, current).__wrapped__
+    return cast(Callable[..., object], current)
 
 
 class TestCreateRagPipelineDatasetApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def _valid_payload(self):
+    def _valid_payload(self) -> dict[str, str]:
         return {"yaml_content": "name: test"}
 
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -45,20 +53,16 @@ class TestCreateRagPipelineDatasetApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
                 return_value=mock_service,
             ),
         ):
-            response, status = method(api)
+            response, status = cast(tuple[dict[str, str], int], method(api, "tenant-1", user))
 
         assert status == 201
         assert response == import_info
 
-    def test_post_forbidden_non_editor(self, app):
+    def test_post_forbidden_non_editor(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -68,15 +72,11 @@ class TestCreateRagPipelineDatasetApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
         ):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "tenant-1", user)
 
-    def test_post_dataset_name_duplicate(self, app):
+    def test_post_dataset_name_duplicate(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -90,42 +90,34 @@ class TestCreateRagPipelineDatasetApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
                 return_value=mock_service,
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api)
+                method(api, "tenant-1", user)
 
-    def test_post_invalid_payload(self, app):
+    def test_post_invalid_payload(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
-        payload = {}
+        payload: dict[str, str] = {}
         user = MagicMock(is_dataset_editor=True)
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api)
+                method(api, "tenant-1", user)
 
 
 class TestCreateEmptyRagPipelineDatasetApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask) -> Flask:
         return flask_app_with_containers
 
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask) -> None:
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
@@ -135,10 +127,6 @@ class TestCreateEmptyRagPipelineDatasetApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.DatasetService.create_empty_rag_pipeline_dataset",
                 return_value=dataset,
             ),
@@ -147,23 +135,17 @@ class TestCreateEmptyRagPipelineDatasetApi:
                 return_value={"id": "ds-1"},
             ),
         ):
-            response, status = method(api)
+            response, status = cast(tuple[dict[str, str], int], method(api, "tenant-1", user))
 
         assert status == 201
         assert response == {"id": "ds-1"}
 
-    def test_post_forbidden_non_editor(self, app):
+    def test_post_forbidden_non_editor(self, app: Flask) -> None:
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
         user = MagicMock(is_dataset_editor=False)
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-        ):
+        with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "tenant-1", user)

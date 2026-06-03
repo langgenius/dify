@@ -1,11 +1,11 @@
 'use client'
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiErrorWarningFill } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
-import { cn } from '@/utils/classnames'
 
 export enum NodeStatusEnum {
   warning = 'warning',
@@ -57,7 +57,7 @@ const NodeStatus = ({
       {...props}
     >
       <Icon
-        className={cn('h-3.5 w-3.5 shrink-0', iconClassName)}
+        className={cn('size-3.5 shrink-0', iconClassName)}
       />
       <span>{message ?? defaultMessage}</span>
       {children}

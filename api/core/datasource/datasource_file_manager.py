@@ -12,7 +12,7 @@ from uuid import uuid4
 import httpx
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
@@ -35,28 +35,14 @@ class DatasourceFileManager:
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
         data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        sign = hmac.new(
+            dify_config.SECRET_KEY.encode(),
+            data_to_sign.encode(),
+            hashlib.sha256,
+        ).digest()
         encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
         return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-
-    @staticmethod
-    def verify_file(datasource_file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
-        """
-        verify signature
-        """
-        data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
-
-        # verify signature
-        if sign != recalculated_encoded_sign:
-            return False
-
-        current_time = int(time.time())
-        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
     @staticmethod
     def create_file_by_raw(
@@ -111,7 +97,7 @@ class DatasourceFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = ssrf_proxy.get(file_url)
+            response = remote_fetcher.make_request("GET", file_url)
             response.raise_for_status()
             blob = response.content
         except httpx.TimeoutException:

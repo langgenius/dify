@@ -1,17 +1,17 @@
 import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentUpdater } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
 import { useAddSegment } from '@/service/knowledge/use-segment'
-import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { IndexingType } from '../../create/step-two'
 import { useSegmentListContext } from './completed'
@@ -117,41 +117,51 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   return (
     <div className="flex h-full flex-col">
       <div
-        className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}
+        className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4')}
       >
         <div className="flex flex-col">
-          <div className="text-text-primary system-xl-semibold">
+          <div className="system-xl-semibold text-text-primary">
             {t('segment.addChunk', { ns: 'datasetDocuments' })}
           </div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag label={t('segment.newChunk', { ns: 'datasetDocuments' })!} />
             <Dot />
-            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
+            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>
         </div>
         <div className="flex items-center">
           {fullScreen && (
             <>
-              <AddAnother className="mr-3" isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+              <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
                 loading={loading}
                 actionType="add"
               />
-              <Divider type="vertical" className="ml-4 mr-2 h-3.5 bg-divider-regular" />
+              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
             </>
           )}
-          <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" />
-          </div>
-          <div className="flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={handleCancel.bind(null, 'esc')}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            aria-label={t('operation.zoomIn', { ns: 'common' })}
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            onClick={toggleFullScreen}
+          >
+            <RiExpandDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label={t('operation.close', { ns: 'common' })}
+            className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            onClick={handleCancel.bind(null, 'esc')}
+          >
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
       </div>
       <div className={cn('flex grow', fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3')}>
-        <div className={cn('overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={cn('overflow-hidden break-all whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}
@@ -180,7 +190,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       </div>
       {!fullScreen && (
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
-          <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+          <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}

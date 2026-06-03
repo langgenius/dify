@@ -5,6 +5,8 @@ from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
+from core.helper.trace_id_helper import ParentTraceContext
+
 
 class BaseTraceInfo(BaseModel):
     message_id: str | None = None
@@ -51,8 +53,8 @@ class BaseTraceInfo(BaseModel):
     def resolved_parent_context(self) -> tuple[str | None, str | None]:
         """Resolve cross-workflow parent linking from metadata.
 
-        Extracts typed parent IDs from the untyped ``parent_trace_context``
-        metadata dict (set by tool_node when invoking nested workflows).
+        Extracts typed parent IDs from the ``parent_trace_context`` metadata
+        payload (set by tool_node when invoking nested workflows).
 
         Returns:
             (trace_correlation_override, parent_span_id_source) where
@@ -60,13 +62,18 @@ class BaseTraceInfo(BaseModel):
             parent_span_id_source is the outer node_execution_id.
         """
         parent_ctx = self.metadata.get("parent_trace_context")
-        if not isinstance(parent_ctx, dict):
+        if isinstance(parent_ctx, ParentTraceContext):
+            context = parent_ctx
+        elif isinstance(parent_ctx, Mapping):
+            try:
+                context = ParentTraceContext.model_validate(parent_ctx)
+            except ValueError:
+                return None, None
+        else:
             return None, None
-        trace_override = parent_ctx.get("parent_workflow_run_id")
-        parent_span = parent_ctx.get("parent_node_execution_id")
         return (
-            trace_override if isinstance(trace_override, str) else None,
-            parent_span if isinstance(parent_span, str) else None,
+            context.parent_workflow_run_id,
+            context.parent_node_execution_id,
         )
 
     @field_serializer("start_time", "end_time")

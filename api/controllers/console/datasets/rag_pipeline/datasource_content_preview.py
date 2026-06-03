@@ -4,6 +4,7 @@ from flask_restx import (  # type: ignore
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -12,8 +13,6 @@ from models import Account
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class Parser(BaseModel):
     inputs: dict
@@ -21,7 +20,7 @@ class Parser(BaseModel):
     credential_id: str | None = None
 
 
-console_ns.schema_model(Parser.__name__, Parser.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+register_schema_models(console_ns, Parser)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")

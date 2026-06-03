@@ -1,7 +1,7 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiImageAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { ACCEPT_TYPES } from '../constants'
 import { useUpload } from '../hooks/use-upload'
 import { useFileStoreWithSelector } from '../store'
@@ -29,20 +29,14 @@ const ImageUploader = () => {
         onChange={fileChangeHandle}
       />
       <div className="flex flex-wrap gap-1">
-        <Tooltip
-          popupContent={t('imageUploader.tooltip', {
-            ns: 'datasetHitTesting',
-            size: fileUploadConfig.imageFileSizeLimit,
-            batchCount: fileUploadConfig.imageFileBatchLimit,
-          })}
-          popupClassName="system-xs-medium p-1.5 rounded-lg text-text-secondary"
-          position="top"
-          offset={4}
-          disabled={files.length === 0}
-        >
-          <div
-            className="group flex cursor-pointer items-center gap-x-2"
-            onClick={selectHandle}
+        <Tooltip disabled={files.length === 0}>
+          <TooltipTrigger
+            render={(
+              <div
+                className="group flex cursor-pointer items-center gap-x-2"
+                onClick={selectHandle}
+              />
+            )}
           >
             <div className="flex size-8 items-center justify-center rounded-lg border border-dashed border-components-dropzone-border bg-components-button-tertiary-bg group-hover:bg-components-button-tertiary-bg-hover">
               <RiImageAddLine className="size-4 text-text-tertiary" />
@@ -56,7 +50,14 @@ const ImageUploader = () => {
                 })}
               </span>
             )}
-          </div>
+          </TooltipTrigger>
+          <TooltipContent sideOffset={4} className="rounded-lg p-1.5 system-xs-medium text-text-secondary">
+            {t('imageUploader.tooltip', {
+              ns: 'datasetHitTesting',
+              size: fileUploadConfig.imageFileSizeLimit,
+              batchCount: fileUploadConfig.imageFileBatchLimit,
+            })}
+          </TooltipContent>
         </Tooltip>
       </div>
     </div>

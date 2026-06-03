@@ -63,7 +63,7 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
   return (
     <div
       ref={ref}
-      className="w-full pb-1 pt-3"
+      className="w-full pt-3 pb-1"
     >
       <ComponentUi
         nodeId={nodeId}

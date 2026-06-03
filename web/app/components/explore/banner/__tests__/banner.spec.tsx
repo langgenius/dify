@@ -1,6 +1,6 @@
-import type * as React from 'react'
 import type { Banner as BannerType } from '@/models/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Banner from '../banner'
@@ -8,6 +8,13 @@ import Banner from '../banner'
 const mockUseGetBanners = vi.fn()
 const mockUseSelector = vi.fn()
 const mockTrackEvent = vi.fn()
+let mockSelectedIndex = 0
+const mockCarouselListeners = new Set<() => void>()
+
+const setMockSelectedIndex = (index: number) => {
+  mockSelectedIndex = index
+  mockCarouselListeners.forEach(listener => listener())
+}
 
 vi.mock('@/service/use-explore', () => ({
   useGetBanners: (...args: unknown[]) => mockUseGetBanners(...args),
@@ -54,13 +61,23 @@ vi.mock('@/app/components/base/carousel', () => ({
       },
     },
   ),
-  useCarousel: () => ({
-    api: {
-      scrollTo: vi.fn(),
-      slideNodes: () => [],
-    },
-    selectedIndex: 0,
-  }),
+  useCarousel: () => {
+    const selectedIndex = React.useSyncExternalStore(
+      (listener) => {
+        mockCarouselListeners.add(listener)
+        return () => mockCarouselListeners.delete(listener)
+      },
+      () => mockSelectedIndex,
+    )
+
+    return {
+      api: {
+        scrollTo: vi.fn(),
+        slideNodes: () => [],
+      },
+      selectedIndex,
+    }
+  },
 }))
 
 vi.mock('../banner-item', () => ({
@@ -102,7 +119,10 @@ const createMockBanner = (id: string, status: string = 'enabled', title: string 
 
 describe('Banner', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.useFakeTimers()
+    mockSelectedIndex = 0
+    mockCarouselListeners.clear()
     mockUseSelector.mockImplementation(selector => selector({
       userProfile: {
         id: 'account-123',
@@ -112,7 +132,6 @@ describe('Banner', () => {
 
   afterEach(() => {
     cleanup()
-    vi.clearAllMocks()
     vi.useRealTimers()
   })
 
@@ -257,7 +276,7 @@ describe('Banner', () => {
       expect(screen.getByTestId('carousel')).toHaveClass('rounded-2xl')
     })
 
-    it('tracks enabled banner impressions with expected payload', () => {
+    it('tracks only the current banner impression and reports the next one after slide changes', () => {
       mockUseGetBanners.mockReturnValue({
         data: [
           createMockBanner('1', 'enabled', 'Enabled Banner 1'),
@@ -270,7 +289,7 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      expect(mockTrackEvent).toHaveBeenCalledTimes(2)
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1)
       expect(mockTrackEvent).toHaveBeenNthCalledWith(1, 'explore_banner_impression', expect.objectContaining({
         banner_id: '1',
         title: 'Enabled Banner 1',
@@ -281,6 +300,12 @@ describe('Banner', () => {
         account_id: 'account-123',
         event_time: expect.any(Number),
       }))
+
+      act(() => {
+        setMockSelectedIndex(1)
+      })
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(2)
       expect(mockTrackEvent).toHaveBeenNthCalledWith(2, 'explore_banner_impression', expect.objectContaining({
         banner_id: '3',
         title: 'Enabled Banner 2',

@@ -34,7 +34,7 @@ export const updateNestedVarGroupItem = (
     return
 
   draft.advanced_settings.groups[index] = {
-    ...draft.advanced_settings.groups[index],
+    ...draft.advanced_settings.groups[index]!,
     ...payload,
   }
 })
@@ -72,8 +72,8 @@ export const toggleGroupEnabled = ({
     }
   }
   else if (draft.advanced_settings.groups.length > 0) {
-    draft.output_type = draft.advanced_settings.groups[0].output_type
-    draft.variables = draft.advanced_settings.groups[0].variables
+    draft.output_type = draft.advanced_settings.groups[0]!.output_type
+    draft.variables = draft.advanced_settings.groups[0]!.variables
   }
 
   draft.advanced_settings.group_enabled = enabled
@@ -85,7 +85,7 @@ export const addGroup = (inputs: VariableAssignerNodeType) => {
   groups.forEach((item) => {
     const match = /(\d+)$/.exec(item.group_name)
     if (match) {
-      const num = Number.parseInt(match[1], 10)
+      const num = Number.parseInt(match[1]!, 10)
       if (num > maxInGroupName)
         maxInGroupName = num
     }
@@ -116,5 +116,5 @@ export const renameGroup = (
   if (index < 0)
     return
 
-  draft.advanced_settings.groups[index].group_name = name
+  draft.advanced_settings.groups[index]!.group_name = name
 })

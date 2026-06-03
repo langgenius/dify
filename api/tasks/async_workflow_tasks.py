@@ -7,15 +7,15 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NotRequired
 
 from celery import shared_task
-from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
@@ -23,6 +23,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -40,6 +41,13 @@ from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntit
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowGeneratorArgsDict(TypedDict):
+    inputs: dict[str, Any]
+    files: list[Any]
+    _skip_prepare_user_inputs: bool
+    workflow_id: NotRequired[str]
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -90,15 +98,13 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     )
 
 
-def _build_generator_args(trigger_data: TriggerData) -> dict[str, Any]:
+def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDict:
     """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
-
-    args: dict[str, Any] = {
+    return {
         "inputs": dict(trigger_data.inputs),
         "files": list(trigger_data.files),
-        SKIP_PREPARE_USER_INPUTS_KEY: True,
+        "_skip_prepare_user_inputs": True,
     }
-    return args
 
 
 def _execute_workflow_common(
@@ -156,7 +162,12 @@ def _execute_workflow_common(
                 state_owner_user_id=workflow.created_by,
             )
 
-            # Execute the workflow with the trigger type
+            # NOTE (hj24)
+            # Release the transaction before the blocking generate() call,
+            # otherwise the connection stays "idle in transaction" for hours.
+            session.commit()
+            # NOTE END
+
             generator.generate(
                 app_model=app_model,
                 workflow=workflow,

@@ -1,5 +1,6 @@
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -12,7 +13,6 @@ import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { cn } from '@/utils/classnames'
 
 type NodeVariableItemProps = {
   node: Node
@@ -50,26 +50,26 @@ const NodeVariableItem = ({
   const VariableIcon = useMemo(() => {
     if (isEnv) {
       return (
-        <Env className="h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600" />
+        <Env className="size-3.5 shrink-0 text-util-colors-violet-violet-600" />
       )
     }
 
     if (isChatVar) {
       return (
-        <BubbleX className="h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700" />
+        <BubbleX className="size-3.5 shrink-0 text-util-colors-teal-teal-700" />
       )
     }
 
     if (isRagVar) {
       return (
-        <InputField className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+        <InputField className="size-3.5 shrink-0 text-text-accent" />
       )
     }
 
     return (
       <Variable02
         className={cn(
-          'h-3.5 w-3.5 shrink-0 text-text-accent',
+          'size-3.5 shrink-0 text-text-accent',
           isException && 'text-text-warning',
         )}
       />
@@ -80,7 +80,7 @@ const NodeVariableItem = ({
     return (
       <div
         className={cn(
-          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
+          'ml-0.5 shrink truncate system-xs-medium text-text-accent',
           isEnv && 'text-text-primary',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',

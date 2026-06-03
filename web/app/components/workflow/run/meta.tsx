@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type Props = {
-  status: string
-  executor?: string
-  startTime?: number
-  time?: number
-  tokens?: number
-  steps?: number
-  showSteps?: boolean
+  readonly status: string
+  readonly executor?: string
+  readonly startTime?: number
+  readonly time?: number
+  readonly tokens?: number
+  readonly steps?: number
+  readonly showSteps?: boolean
 }
 
 const MetaData: FC<Props> = ({
@@ -27,11 +27,11 @@ const MetaData: FC<Props> = ({
 
   return (
     <div className="relative">
-      <div className="system-xs-medium-uppercase h-6 py-1 text-text-tertiary">{t('meta.title', { ns: 'runLog' })}</div>
+      <div className="h-6 py-1 system-xs-medium-uppercase text-text-tertiary">{t('meta.title', { ns: 'runLog' })}</div>
       <div className="py-1">
         <div className="flex">
-          <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.status', { ns: 'runLog' })}</div>
-          <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
+          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">{t('meta.status', { ns: 'runLog' })}</div>
+          <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
               <div className="my-1 h-2 w-16 rounded-xs bg-text-quaternary" />
             )}
@@ -56,8 +56,8 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.executor', { ns: 'runLog' })}</div>
-          <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
+          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">{t('meta.executor', { ns: 'runLog' })}</div>
+          <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
               <div className="my-1 h-2 w-[88px] rounded-xs bg-text-quaternary" />
             )}
@@ -67,8 +67,8 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.startTime', { ns: 'runLog' })}</div>
-          <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
+          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">{t('meta.startTime', { ns: 'runLog' })}</div>
+          <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
               <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
             )}
@@ -78,8 +78,8 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.time', { ns: 'runLog' })}</div>
-          <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
+          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">{t('meta.time', { ns: 'runLog' })}</div>
+          <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
               <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
             )}
@@ -89,8 +89,8 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.tokens', { ns: 'runLog' })}</div>
-          <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
+          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">{t('meta.tokens', { ns: 'runLog' })}</div>
+          <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {['running', 'paused'].includes(status) && (
               <div className="my-1 h-2 w-[48px] animate-pulse rounded-xs bg-text-quaternary" />
             )}
@@ -101,8 +101,8 @@ const MetaData: FC<Props> = ({
         </div>
         {showSteps && (
           <div className="flex">
-            <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.steps', { ns: 'runLog' })}</div>
-            <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
+            <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">{t('meta.steps', { ns: 'runLog' })}</div>
+            <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
               {status === 'running' && (
                 <div className="my-1 h-2 w-[24px] rounded-xs bg-text-quaternary" />
               )}

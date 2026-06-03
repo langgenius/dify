@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { MetadataItemWithEdit } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiIndeterminateCircleLine } from '@remixicon/react'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import InputCombined from './input-combined'
 import Label from './label'
 
@@ -24,6 +24,7 @@ const AddRow: FC<Props> = ({
     <div className={cn('flex h-6 items-center space-x-0.5', className)}>
       <Label text={payload.name} />
       <InputCombined
+        label={payload.name}
         type={payload.type}
         value={payload.value}
         onChange={value => onChange({ ...payload, value })}

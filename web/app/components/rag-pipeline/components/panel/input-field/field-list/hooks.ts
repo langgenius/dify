@@ -1,11 +1,11 @@
 import type { SortableItem } from './types'
 import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { ChangeType } from '@/app/components/workflow/types'
 import { usePipeline } from '../../../../hooks/use-pipeline'
@@ -46,9 +46,9 @@ export const useFieldList = ({ initialInputFields, onInputFieldsChange, nodeId, 
   const handleRemoveField = useCallback((index: number) => {
     const itemToRemove = inputFieldsRef.current[index]
     // Check if the variable is used in other nodes
-    if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove.variable || ''])) {
+    if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])) {
       showRemoveVarConfirm()
-      setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove.variable || ''])
+      setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])
       setRemoveIndex(index as number)
       return
     }

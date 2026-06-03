@@ -36,12 +36,31 @@ class FileInfo(BaseModel):
     size: int
 
 
+def decode_remote_url(url: str, query_string: bytes | str = b"") -> str:
+    decoded_url = urllib.parse.unquote(url)
+    if isinstance(query_string, bytes):
+        raw_query = query_string.decode()
+    else:
+        raw_query = query_string
+    if not raw_query:
+        return decoded_url
+
+    if decoded_url.endswith(("?", "&")):
+        separator = ""
+    elif urllib.parse.urlsplit(decoded_url).query:
+        separator = "&"
+    else:
+        separator = "?"
+    return f"{decoded_url}{separator}{raw_query}"
+
+
 def guess_file_info_from_response(response: httpx.Response):
     url = str(response.url)
     # Try to extract filename from URL
     parsed_url = urllib.parse.urlparse(url)
     url_path = parsed_url.path
-    filename = os.path.basename(url_path)
+    # Decode percent-encoded characters in the path segment
+    filename = urllib.parse.unquote(os.path.basename(url_path))
 
     # If filename couldn't be extracted, use Content-Disposition header
     if not filename:

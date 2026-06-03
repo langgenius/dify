@@ -2,7 +2,9 @@
 import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
 import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiTimeLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -10,9 +12,8 @@ import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
-import { cn } from '@/utils/classnames'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Label from '../label'
 import PluginsPicker from './plugins-picker'
 import StrategyPicker from './strategy-picker'
@@ -33,7 +34,13 @@ const SettingTimeZone: FC<{
 }) => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   return (
-    <span className="body-xs-regular cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
+    <button
+      type="button"
+      className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+    >
+      {children}
+    </button>
   )
 }
 const AutoUpdateSetting: FC<Props> = ({
@@ -41,7 +48,10 @@ const AutoUpdateSetting: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
 
   const {
     strategy_setting,
@@ -104,20 +114,21 @@ const AutoUpdateSetting: FC<Props> = ({
 
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
-      <div
-        className="group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
+      <button
+        type="button"
+        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onClick}
       >
         <div className="flex w-0 grow items-center gap-x-1">
           <RiTimeLine className={cn(
-            'h-4 w-4 shrink-0 text-text-tertiary',
+            'size-4 shrink-0 text-text-tertiary',
             isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
           )}
           />
           {inputElem}
         </div>
         <div className="system-sm-regular text-text-tertiary">{convertTimezoneToOffsetStr(timezone)}</div>
-      </div>
+      </button>
     )
   }, [timezone])
 
@@ -137,19 +148,18 @@ const AutoUpdateSetting: FC<Props> = ({
           <>
             <div className="flex items-center justify-between">
               <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
-              <div className="flex flex-col justify-start">
+              <div className="flex flex-col items-end">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
                   timezone={timezone}
                   onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
                   onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
-                  popupClassName="z-99"
                   title={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
                   placement="bottom-end"
                 />
-                <div className="body-xs-regular mt-1 text-right text-text-tertiary">
+                <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                   <Trans
                     i18nKey={`${i18nPrefix}.changeTimezone`}
                     ns="plugin"

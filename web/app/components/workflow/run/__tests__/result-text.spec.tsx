@@ -43,7 +43,7 @@ describe('ResultText', () => {
 
     expect(screen.getByText('runLog.resultEmpty.title')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('runLog.resultEmpty.link'))
+    fireEvent.click(screen.getByRole('button', { name: 'runLog.resultEmpty.link' }))
 
     expect(onClick).toHaveBeenCalledTimes(1)
   })

@@ -26,7 +26,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -494,9 +494,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('iter-1')
-      expect(trace.node_id).toBe('n-iter')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('iter-1')
+      expect(trace!.node_id).toBe('n-iter')
+      expect(trace!.status).toBe('running')
     })
 
     it('should update matching tracing on finish', () => {
@@ -558,9 +558,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('loop-1')
-      expect(trace.node_id).toBe('n-loop')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('loop-1')
+      expect(trace!.node_id).toBe('n-loop')
+      expect(trace!.status).toBe('running')
     })
 
     it('should update matching tracing on finish', () => {
@@ -582,8 +582,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('loop-1')
-      expect(trace.node_id).toBe('n-loop')
+      expect(trace!.id).toBe('loop-1')
+      expect(trace!.node_id).toBe('n-loop')
       expect((trace as any).output).toBe('done')
     })
 
@@ -618,9 +618,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1')
-      expect(trace.node_id).toBe('node-1')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('trace-1')
+      expect(trace!.node_id).toBe('node-1')
+      expect(trace!.status).toBe('running')
     })
 
     it('should update existing tracing entry with same node_id', () => {
@@ -632,9 +632,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1-v2')
-      expect(trace.node_id).toBe('node-1')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('trace-1-v2')
+      expect(trace!.node_id).toBe('node-1')
+      expect(trace!.status).toBe('running')
     })
 
     it('should push retry data to tracing', () => {
@@ -650,8 +650,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('retry-1')
-      expect(trace.node_id).toBe('node-1')
+      expect(trace!.id).toBe('retry-1')
+      expect(trace!.node_id).toBe('node-1')
       expect((trace as any).retry_index).toBe(1)
     })
 
@@ -669,8 +669,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1')
-      expect(trace.status).toBe('succeeded')
+      expect(trace!.id).toBe('trace-1')
+      expect(trace!.status).toBe('succeeded')
       expect((trace as any).outputs).toEqual({ text: 'done' })
     })
 
@@ -688,8 +688,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('trace-1')
+      expect(trace!.status).toBe('running')
     })
   })
 
@@ -790,7 +790,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.humanInputFormDataList).toHaveLength(1)
-      expect(answer!.humanInputFormDataList![0].node_id).toBe('human-node')
+      expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node')
       expect((answer!.humanInputFormDataList![0] as any).form_token).toBe('token-1')
     })
 
@@ -834,8 +834,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.humanInputFormDataList).toHaveLength(2)
-      expect(answer!.humanInputFormDataList![0].node_id).toBe('human-node-1')
-      expect(answer!.humanInputFormDataList![1].node_id).toBe('human-node-2')
+      expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node-1')
+      expect(answer!.humanInputFormDataList![1]!.node_id).toBe('human-node-2')
     })
 
     it('should set tracing node status to Paused when tracing index found', () => {
@@ -875,7 +875,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.humanInputFormDataList).toHaveLength(0)
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
-      expect(answer!.humanInputFilledFormDataList![0].node_id).toBe('human-node')
+      expect(answer!.humanInputFilledFormDataList![0]!.node_id).toBe('human-node')
       expect((answer!.humanInputFilledFormDataList![0] as any).form_data).toEqual({ answer: 'yes' })
     })
   })

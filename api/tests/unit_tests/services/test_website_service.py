@@ -89,7 +89,7 @@ def test_website_crawl_api_request_from_args_valid_and_to_crawl_request() -> Non
         ({"provider": "firecrawl", "url": "https://example.com"}, "Options are required"),
     ],
 )
-def test_website_crawl_api_request_from_args_requires_fields(args: dict, missing_msg: str) -> None:
+def test_website_crawl_api_request_from_args_requires_fields(args: dict[str, Any], missing_msg: str) -> None:
     with pytest.raises(ValueError, match=missing_msg):
         WebsiteCrawlApiRequest.from_args(args)
 

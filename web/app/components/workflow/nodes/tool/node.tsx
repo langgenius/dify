@@ -35,7 +35,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute right-3 top-[-32px] z-40">
+        <div className="pointer-events-auto absolute top-[-32px] right-3 z-40">
           <InstallPluginButton
             size="small"
             className="font-medium! text-text-accent!"
@@ -53,7 +53,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         <div className="space-y-0.5" aria-disabled={shouldDim}>
           {hasConfigs && toolConfigs.map(key => (
             <div key={key} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
-              <div title={key} className="max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary">
+              <div title={key} className="max-w-[100px] shrink-0 truncate text-xs font-medium text-text-tertiary uppercase">
                 {key}
               </div>
               {typeof tool_configurations[key].value === 'string' && (
@@ -75,8 +75,8 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           ))}
           {showAuthorizationWarning && (
             <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-              <span className="mr-1 size-[4px] shrink-0 radius-2xs bg-text-warning-secondary" />
-              <div className="grow truncate text-text-warning system-xs-medium" title={t('nodes.tool.authorizationRequired', { ns: 'workflow' })}>
+              <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
+              <div className="grow truncate system-xs-medium text-text-warning" title={t('nodes.tool.authorizationRequired', { ns: 'workflow' })}>
                 {t('nodes.tool.authorizationRequired', { ns: 'workflow' })}
               </div>
             </div>

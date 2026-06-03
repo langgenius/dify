@@ -1,20 +1,16 @@
+import type { ReactElement } from 'react'
 import type { ToolWithProvider } from '../../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { defaultSystemFeatures } from '@/types/feature'
 import { BlockEnum } from '../../types'
 import DataSources from '../data-sources'
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -28,10 +24,13 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
+
+let enableMarketplaceForRender = false
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplaceForRender } })
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 
@@ -63,16 +62,6 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
   ...overrides,
 })
 
-const createSystemFeatures = (enableMarketplace: boolean) => ({
-  ...defaultSystemFeatures,
-  enable_marketplace: enableMarketplace,
-})
-
-const createGlobalPublicStoreState = (enableMarketplace: boolean) => ({
-  systemFeatures: createSystemFeatures(enableMarketplace),
-  setSystemFeatures: vi.fn(),
-})
-
 const createMarketplacePluginsMock = (
   overrides: Partial<UseMarketplacePluginsReturn> = {},
 ): UseMarketplacePluginsReturn => ({
@@ -93,7 +82,7 @@ const createMarketplacePluginsMock = (
 describe('DataSources', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(false)))
+    enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
@@ -162,7 +151,7 @@ describe('DataSources', () => {
   describe('Marketplace Search', () => {
     it('should query marketplace plugins for datasource search results', async () => {
       const queryPluginsWithDebounced = vi.fn()
-      mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(true)))
+      enableMarketplaceForRender = true
       mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
         queryPluginsWithDebounced,
       }))

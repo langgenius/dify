@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import s from '../../../style.module.css'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false): ReactNode => {

@@ -112,7 +112,7 @@ describe('FilterCondition', () => {
     expect(screen.getByText(/operator:/)).toBeInTheDocument()
     expect(screen.getByText(/sub-variable:/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.ifElse.optionName.doc' }))
+    await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByText('workflow.nodes.ifElse.optionName.image'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -282,7 +282,7 @@ describe('FilterCondition', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.ifElse.optionName.localUpload' }))
+    await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByText('workflow.nodes.ifElse.optionName.url'))
     expect(onChange).toHaveBeenCalledWith({
       key: 'transfer_method',
@@ -305,6 +305,6 @@ describe('FilterCondition', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Select value' })).toBeInTheDocument()
+    expect(screen.getByText('Select value')).toBeInTheDocument()
   })
 })

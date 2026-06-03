@@ -1,15 +1,17 @@
 import type { ResponseError } from '@/service/fetch'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { login } from '@/service/common'
 import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
@@ -25,6 +27,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const { t } = useTranslation()
   const locale = useLocale()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
@@ -75,8 +78,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          const redirectUrl = resolvePostLoginRedirect()
-          router.replace(redirectUrl || '/apps')
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          router.replace(redirectUrl || '/')
         }
       }
       else {
@@ -96,7 +100,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   return (
     <form onSubmit={noop}>
       <div className="mb-3">
-        <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">
+        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">
@@ -115,7 +119,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="text-text-secondary system-md-semibold">{t('password', { ns: 'login' })}</span>
+          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}

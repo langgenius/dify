@@ -165,3 +165,11 @@ export const updateTracingConfig = ({ appId, body }: { appId: string, body: Trac
 export const removeTracingConfig = ({ appId, provider }: { appId: string, provider: TracingProvider }): Promise<CommonResponse> => {
   return del<CommonResponse>(`/apps/${appId}/trace-config?tracing_provider=${provider}`)
 }
+
+type PublishToCreatorsPlatformResponse = {
+  redirect_url: string
+}
+
+export const publishToCreatorsPlatform = ({ appID }: { appID: string }): Promise<PublishToCreatorsPlatformResponse> => {
+  return post<PublishToCreatorsPlatformResponse>(`apps/${appID}/publish-to-creators-platform`, { body: {} })
+}

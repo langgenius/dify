@@ -1,15 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import TaskStatusIndicator from '../task-status-indicator'
 
-vi.mock('@/app/components/base/progress-bar/progress-circle', () => ({
-  default: ({ percentage }: { percentage: number }) => (
-    <div data-testid="progress-circle" data-percentage={percentage} />
-  ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" data-tip={popupContent}>{children}</div>
+vi.mock('@langgenius/dify-ui/progress', () => ({
+  ProgressCircle: ({ value }: { value: number }) => (
+    <div data-testid="progress-circle" data-value={value} />
   ),
 }))
 
@@ -38,18 +32,17 @@ describe('TaskStatusIndicator', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<TaskStatusIndicator {...defaultProps} />)
-      expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Installing plugins' })).toBeInTheDocument()
     })
 
-    it('should pass tip to tooltip', () => {
+    it('should use tip as the trigger accessible name', () => {
       render(<TaskStatusIndicator {...defaultProps} tip="My tip" />)
-      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-tip', 'My tip')
+      expect(screen.getByRole('button', { name: 'My tip' })).toBeInTheDocument()
     })
 
     it('should render install icon by default', () => {
       const { container } = render(<TaskStatusIndicator {...defaultProps} />)
-      // RiInstallLine renders as svg
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-install-line')).toBeInTheDocument()
       expect(screen.queryByTestId('downloading-icon')).not.toBeInTheDocument()
     })
   })
@@ -75,7 +68,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const progress = screen.getByTestId('progress-circle')
-      expect(progress).toHaveAttribute('data-percentage', '40')
+      expect(progress).toHaveAttribute('data-value', '40')
     })
 
     it('should show progress circle when isInstallingWithSuccess', () => {
@@ -88,7 +81,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const progress = screen.getByTestId('progress-circle')
-      expect(progress).toHaveAttribute('data-percentage', '75')
+      expect(progress).toHaveAttribute('data-value', '75')
     })
 
     it('should show error progress circle when isInstallingWithError', () => {
@@ -113,7 +106,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const progress = screen.getByTestId('progress-circle')
-      expect(progress).toHaveAttribute('data-percentage', '0')
+      expect(progress).toHaveAttribute('data-value', '0')
     })
   })
 
@@ -127,7 +120,6 @@ describe('TaskStatusIndicator', () => {
           totalPluginsLength={3}
         />,
       )
-      // RiCheckboxCircleFill is rendered as svg with text-text-success
       const successIcon = container.querySelector('.text-text-success')
       expect(successIcon).toBeInTheDocument()
     })

@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
@@ -26,17 +26,18 @@ const ToolItem: FC<Props> = ({
   return (
     <div className="p-1">
       <div
-        className="flex w-full select-none items-center rounded-lg pr-2 hover:bg-state-base-hover"
+        className="flex w-full items-center rounded-lg pr-2 select-none hover:bg-state-base-hover"
       >
-        <div className="flex h-8 grow items-center space-x-2 pl-3 pr-2">
+        <div className="flex h-8 grow items-center space-x-2 pr-2 pl-3">
           <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
-          <div className="system-sm-medium max-w-[150px] shrink-0 truncate text-text-primary">{renderI18nObject(label, language)}</div>
-          <div className="system-xs-regular max-w-[150px] shrink-0  truncate text-text-quaternary">{org}</div>
+          <div className="max-w-[150px] shrink-0 truncate system-sm-medium text-text-primary">{renderI18nObject(label, language)}</div>
+          <div className="max-w-[150px] shrink-0 truncate system-xs-regular text-text-quaternary">{org}</div>
         </div>
         <Checkbox
           checked={isChecked}
-          onCheck={onCheckChange}
+          onCheckedChange={() => onCheckChange()}
           className="shrink-0"
+          aria-label={renderI18nObject(label, language)}
         />
       </div>
     </div>

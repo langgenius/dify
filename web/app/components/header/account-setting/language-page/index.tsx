@@ -1,10 +1,9 @@
 'use client'
-import type { Item } from '@/app/components/base/select'
 import type { Locale } from '@/i18n-config'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SimpleSelect } from '@/app/components/base/select'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
@@ -12,6 +11,16 @@ import { languages } from '@/i18n-config/language'
 import { useRouter } from '@/next/navigation'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
+
+type SelectOption = {
+  value: string
+  name: string
+}
+
+type TimezoneOption = {
+  value: string | number
+  name: string
+}
 
 const titleClassName = `
   mb-2 system-sm-semibold text-text-secondary
@@ -22,7 +31,10 @@ export default function LanguagePage() {
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
-  const handleSelectLanguage = async (item: Item) => {
+  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
+  const selectedLanguage = languageOptions.find(item => item.value === (locale || userProfile.interface_language))
+  const selectedTimezone = timezones.find(item => item.value === userProfile.timezone)
+  const handleSelectLanguage = async (item: SelectOption) => {
     const url = '/account/interface-language'
     const bodyKey = 'interface_language'
     setEditing(true)
@@ -39,7 +51,7 @@ export default function LanguagePage() {
       setEditing(false)
     }
   }
-  const handleSelectTimezone = async (item: Item) => {
+  const handleSelectTimezone = async (item: TimezoneOption) => {
     const url = '/account/timezone'
     const bodyKey = 'timezone'
     setEditing(true)
@@ -59,11 +71,55 @@ export default function LanguagePage() {
     <>
       <div className="mb-8">
         <div className={titleClassName}>{t('language.displayLanguage', { ns: 'common' })}</div>
-        <SimpleSelect defaultValue={locale || userProfile.interface_language} items={languages.filter(item => item.supported)} onSelect={item => handleSelectLanguage(item)} disabled={editing} notClearable={true} />
+        <Select
+          value={selectedLanguage?.value ?? null}
+          disabled={editing}
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
+            const nextItem = languageOptions.find(item => item.value === nextValue)
+            if (nextItem)
+              handleSelectLanguage(nextItem)
+          }}
+        >
+          <SelectTrigger size="large">
+            {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+          </SelectTrigger>
+          <SelectContent>
+            {languageOptions.map(item => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="mb-8">
         <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
-        <SimpleSelect defaultValue={userProfile.timezone} items={timezones} onSelect={item => handleSelectTimezone(item)} disabled={editing} notClearable={true} />
+        <Select
+          value={selectedTimezone ? String(selectedTimezone.value) : null}
+          disabled={editing}
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
+            const nextItem = timezones.find(item => String(item.value) === nextValue)
+            if (nextItem)
+              handleSelectTimezone(nextItem)
+          }}
+        >
+          <SelectTrigger size="large">
+            {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
+          </SelectTrigger>
+          <SelectContent>
+            {timezones.map(item => (
+              <SelectItem key={item.value} value={String(item.value)}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </>
   )

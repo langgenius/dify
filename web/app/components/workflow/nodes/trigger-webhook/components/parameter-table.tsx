@@ -28,7 +28,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
+  // Memoize typeOptions to prevent unnecessary re-renders that cause Select state resets
   const typeOptions = useMemo(() =>
     createParameterTypeOptions(contentType), [contentType])
 
@@ -58,7 +58,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   ]
 
   // Choose sensible default type for new rows according to content type
-  const defaultTypeValue: VarType = typeOptions[0]?.value || 'string'
+  const defaultTypeValue: VarType = typeOptions[0]?.value! || 'string'
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {

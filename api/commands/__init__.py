@@ -3,6 +3,13 @@ CLI command modules extracted from `commands.py`.
 """
 
 from .account import create_tenant, reset_email, reset_password
+from .data_migrate import data_migrate, legacy_model_types
+from .data_migration import (
+    export_migration_data,
+    export_migration_data_template,
+    import_migration_data,
+    migration_data_wizard,
+)
 from .plugin import (
     extract_plugins,
     extract_unique_plugins,
@@ -25,7 +32,12 @@ from .retention import (
     restore_workflow_runs,
 )
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
-from .system import convert_to_agent_apps, fix_app_site_missing, reset_encrypt_key_pair, upgrade_db
+from .system import (
+    convert_to_agent_apps,
+    fix_app_site_missing,
+    reset_encrypt_key_pair,
+    upgrade_db,
+)
 from .vector import (
     add_qdrant_index,
     migrate_annotation_vector_database,
@@ -44,18 +56,24 @@ __all__ = [
     "clear_orphaned_file_records",
     "convert_to_agent_apps",
     "create_tenant",
+    "data_migrate",
     "delete_archived_workflow_runs",
     "export_app_messages",
+    "export_migration_data",
+    "export_migration_data_template",
     "extract_plugins",
     "extract_unique_plugins",
     "file_usage",
     "fix_app_site_missing",
+    "import_migration_data",
     "install_plugins",
     "install_rag_pipeline_plugins",
+    "legacy_model_types",
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",
     "migrate_knowledge_vector_database",
     "migrate_oss",
+    "migration_data_wizard",
     "old_metadata_migration",
     "remove_orphaned_files_on_storage",
     "reset_email",

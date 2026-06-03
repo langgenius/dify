@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import BlockInput, { getInputKeys } from '../index'
 
 vi.mock('@/utils/var', () => ({

@@ -49,8 +49,8 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
         const nodes = produce(prevNodes, (draft) => {
           const index = prevNodes.findIndex(node => node.nodeId === nodeId)
           if (index !== -1) {
-            draft[index].vars = payload
-            draft[index].isValueFetched = true
+            draft[index]!.vars = payload
+            draft[index]!.isValueFetched = true
           }
         })
 
@@ -111,7 +111,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
           const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
           if (!targetVar)
             return
-          targetVar.name = selector[1]
+          targetVar.name = selector[1]!
           targetVar.selector = selector
         })
         return {

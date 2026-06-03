@@ -22,24 +22,57 @@ vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
   default: ({ modelName }: { modelName: string }) => <span data-testid="model-icon">{modelName}</span>,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const ReactModule = await vi.importActual<typeof import('react')>('react')
-  const OpenContext = ReactModule.createContext(false)
+  const OpenContext = ReactModule.createContext<{ open: boolean, setOpen: (nextOpen: boolean) => void } | null>(null)
+
+  const useOpenContext = () => {
+    const context = ReactModule.use(OpenContext)
+    if (!context)
+      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    return context
+  }
 
   return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-      <OpenContext.Provider value={open}>
+    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+      <OpenContext.Provider value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div data-testid="portal-root">{children}</div>
       </OpenContext.Provider>
     ),
-    PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) => (
-      <div className={className} onClick={onClick}>
-        {children}
-      </div>
-    ),
-    PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-      const open = ReactModule.useContext(OpenContext)
-      return open ? <div className={className}>{children}</div> : null
+    DropdownMenuTrigger: ({
+      children,
+      render,
+    }: {
+      children: React.ReactNode
+      render?: React.ReactElement
+    }) => {
+      const { open, setOpen } = useOpenContext()
+
+      if (render) {
+        return ReactModule.cloneElement(render, {
+          onClick: () => setOpen(!open),
+        } as Record<string, unknown>, children)
+      }
+
+      return <button type="button" onClick={() => setOpen(!open)}>{children}</button>
+    },
+    DropdownMenuContent: ({ children, popupClassName }: { children: React.ReactNode, popupClassName?: string }) => {
+      const context = useOpenContext()
+      return context.open ? <div className={popupClassName}>{children}</div> : null
+    },
+    DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+      const { setOpen } = useOpenContext()
+      return (
+        <button
+          type="button"
+          onClick={(event) => {
+            onClick?.(event)
+            setOpen(false)
+          }}
+        >
+          {children}
+        </button>
+      )
     },
   }
 })

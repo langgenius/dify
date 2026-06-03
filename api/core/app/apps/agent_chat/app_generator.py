@@ -6,7 +6,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, Literal, overload
 
 from flask import Flask, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import ValidationError
 
 from configs import dify_config
@@ -24,6 +23,7 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, In
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
@@ -167,7 +167,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,

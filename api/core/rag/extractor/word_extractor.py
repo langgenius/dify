@@ -1,8 +1,9 @@
 """Word (.docx) document extractor used for RAG ingestion.
 
-Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
+Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
+import inspect
 import logging
 import mimetypes
 import os
@@ -16,7 +17,7 @@ from docx.oxml.ns import qn
 from docx.text.run import Run
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -36,8 +37,11 @@ class WordExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
+    _closed: bool
+
     def __init__(self, file_path: str, tenant_id: str, user_id: str):
         """Initialize with file path."""
+        self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
         self.user_id = user_id
@@ -47,7 +51,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = ssrf_proxy.get(self.file_path)
+            response = remote_fetcher.make_request("GET", self.file_path)
 
             if response.status_code != 200:
                 response.close()
@@ -65,9 +69,27 @@ class WordExtractor(BaseExtractor):
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
+    def close(self) -> None:
+        """Best-effort cleanup for downloaded temporary files."""
+        if getattr(self, "_closed", False):
+            return
+
+        self._closed = True
+        temp_file = getattr(self, "temp_file", None)
+        if temp_file is None:
+            return
+
+        try:
+            close_result = temp_file.close()
+            if inspect.isawaitable(close_result):
+                close_awaitable = getattr(close_result, "close", None)
+                if callable(close_awaitable):
+                    close_awaitable()
+        except Exception:
+            logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
+
     def __del__(self):
-        if hasattr(self, "temp_file"):
-            self.temp_file.close()
+        self.close()
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
@@ -88,7 +110,7 @@ class WordExtractor(BaseExtractor):
     def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
@@ -98,7 +120,7 @@ class WordExtractor(BaseExtractor):
                     if not self._is_valid_url(url):
                         continue
                     try:
-                        response = ssrf_proxy.get(url)
+                        response = remote_fetcher.make_request("GET", url)
                     except Exception as e:
                         logger.warning("Failed to download image from URL: %s: %s", url, str(e))
                         continue

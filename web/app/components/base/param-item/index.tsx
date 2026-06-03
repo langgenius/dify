@@ -1,8 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { Slider } from '@/app/components/base/ui/slider'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +8,10 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '../ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   className?: string
@@ -30,25 +31,25 @@ type Props = {
 
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
-    <div className={className}>
+    <FieldsetRoot className={className}>
+      <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
         <div className="flex h-6 items-center">
           {hasSwitch && (
             <Switch
               size="md"
               className="mr-2"
-              value={enable}
-              onChange={async (val) => {
+              checked={enable}
+              onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
-          {!noTooltip && (
-            <Tooltip
-              triggerClassName="w-4 h-4 shrink-0"
-              popupContent={<div className="w-[200px]">{tip}</div>}
-            />
+          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
+          {!noTooltip && tip && (
+            <Infotip aria-label={tip} popupClassName="w-[200px]">
+              {tip}
+            </Infotip>
           )}
         </div>
       </div>
@@ -62,11 +63,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={value}
             onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
-            <NumberFieldGroup size="regular">
-              <NumberFieldInput size="regular" className="w-[72px]" />
+            <NumberFieldGroup>
+              <NumberFieldInput aria-label={name} className="w-18" />
               <NumberFieldControls>
-                <NumberFieldIncrement size="regular" />
-                <NumberFieldDecrement size="regular" />
+                <NumberFieldIncrement />
+                <NumberFieldDecrement />
               </NumberFieldControls>
             </NumberFieldGroup>
           </NumberField>
@@ -83,7 +84,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           />
         </div>
       </div>
-    </div>
+    </FieldsetRoot>
   )
 }
 export default ParamItem

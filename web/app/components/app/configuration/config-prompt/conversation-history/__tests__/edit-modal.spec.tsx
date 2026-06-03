@@ -3,8 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import EditModal from '../edit-modal'
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 describe('Conversation history edit modal', () => {

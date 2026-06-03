@@ -1,8 +1,8 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -38,7 +38,7 @@ const TimeoutInput: FC<Props> = ({
         onChange={handleValueChange}
         disabled={readonly}
       />
-      <div className="flex items-center gap-0.5 radius-lg bg-components-segmented-control-bg-normal p-0.5">
+      <div className="flex items-center gap-0.5 rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
         <div
           className={cn(
             'rounded-lg px-2 py-1 text-text-tertiary',
@@ -48,7 +48,7 @@ const TimeoutInput: FC<Props> = ({
           )}
           onClick={() => !readonly && onChange({ timeout, unit: 'day' })}
         >
-          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.days`, { ns: 'workflow' })}</div>
+          <div className="p-0.5 system-sm-medium">{t(`${i18nPrefix}.timeout.days`, { ns: 'workflow' })}</div>
         </div>
         <div
           className={cn(
@@ -59,7 +59,7 @@ const TimeoutInput: FC<Props> = ({
           )}
           onClick={() => !readonly && onChange({ timeout, unit: 'hour' })}
         >
-          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.hours`, { ns: 'workflow' })}</div>
+          <div className="p-0.5 system-sm-medium">{t(`${i18nPrefix}.timeout.hours`, { ns: 'workflow' })}</div>
         </div>
       </div>
     </div>

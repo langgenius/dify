@@ -119,14 +119,14 @@ const NotionPageSelector = ({
   }, [currentCredentialId, datasetId, invalidPreImportNotionPages, onSelect])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId]!)
 
     onSelect(selectedPages)
   }, [pagesMapAndSelectedPagesId, onSelect])
 
   const handlePreviewPage = useCallback((previewPageId: string) => {
     if (onPreview)
-      onPreview(pagesMapAndSelectedPagesId[0][previewPageId])
+      onPreview(pagesMapAndSelectedPagesId[0][previewPageId]!)
   }, [pagesMapAndSelectedPagesId, onPreview])
 
   const handleConfigureNotion = useCallback(() => {
@@ -177,7 +177,7 @@ const NotionPageSelector = ({
                   value={selectedPagesId}
                   disabledValue={pagesMapAndSelectedPagesId[2]}
                   searchValue={searchValue}
-                  list={notionsPages!.notion_info?.[0].pages || []}
+                  list={notionsPages!.notion_info?.[0]!.pages || []}
                   pagesMap={pagesMapAndSelectedPagesId[0]}
                   onSelect={handleSelectPages}
                   canPreview={canPreview}

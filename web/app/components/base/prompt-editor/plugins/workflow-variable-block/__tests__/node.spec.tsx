@@ -1,5 +1,5 @@
 import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
-import type { Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { createEditor } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -57,45 +57,43 @@ describe('WorkflowVariableBlockNode', () => {
   it('should decorate with component props from node state', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.number)
-      const environmentVariables: Var[] = [{ variable: 'env.key', type: VarType.string }]
-      const conversationVariables: Var[] = [{ variable: 'conversation.topic', type: VarType.string }]
-      const ragVariables: Var[] = [{ variable: 'rag.shared.answer', type: VarType.string }]
+      const availableVariables: NodeOutPutVar[] = [{
+        nodeId: 'node-1',
+        title: 'Node A',
+        vars: [{ variable: 'answer', type: VarType.string }],
+      }]
 
       const node = new WorkflowVariableBlockNode(
         ['node-1', 'answer'],
         { 'node-1': { title: 'A', type: BlockEnum.LLM } },
         getVarType,
         'decorator-key',
-        environmentVariables,
-        conversationVariables,
-        ragVariables,
+        availableVariables,
       )
 
       const decorated = node.decorate()
       expect(decorated.props.nodeKey).toBe('decorator-key')
       expect(decorated.props.variables).toEqual(['node-1', 'answer'])
       expect(decorated.props.workflowNodesMap).toEqual({ 'node-1': { title: 'A', type: BlockEnum.LLM } })
-      expect(decorated.props.environmentVariables).toEqual(environmentVariables)
-      expect(decorated.props.conversationVariables).toEqual(conversationVariables)
-      expect(decorated.props.ragVariables).toEqual(ragVariables)
+      expect(decorated.props.availableVariables).toEqual(availableVariables)
     })
   })
 
-  it('should export and import json with full payload', () => {
+  it('should export and import json with available variables payload', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.string)
-      const environmentVariables: Var[] = [{ variable: 'env.key', type: VarType.string }]
-      const conversationVariables: Var[] = [{ variable: 'conversation.topic', type: VarType.string }]
-      const ragVariables: Var[] = [{ variable: 'rag.shared.answer', type: VarType.string }]
+      const availableVariables: NodeOutPutVar[] = [{
+        nodeId: 'node-1',
+        title: 'Node A',
+        vars: [{ variable: 'answer', type: VarType.string }],
+      }]
 
       const node = new WorkflowVariableBlockNode(
         ['node-1', 'answer'],
         { 'node-1': { title: 'A', type: BlockEnum.LLM } },
         getVarType,
         undefined,
-        environmentVariables,
-        conversationVariables,
-        ragVariables,
+        availableVariables,
       )
 
       expect(node.exportJSON()).toEqual({
@@ -104,9 +102,7 @@ describe('WorkflowVariableBlockNode', () => {
         variables: ['node-1', 'answer'],
         workflowNodesMap: { 'node-1': { title: 'A', type: BlockEnum.LLM } },
         getVarType,
-        environmentVariables,
-        conversationVariables,
-        ragVariables,
+        availableVariables,
       })
 
       const imported = WorkflowVariableBlockNode.importJSON({
@@ -115,48 +111,51 @@ describe('WorkflowVariableBlockNode', () => {
         variables: ['node-2', 'result'],
         workflowNodesMap: { 'node-2': { title: 'B', type: BlockEnum.Tool } },
         getVarType,
-        environmentVariables,
-        conversationVariables,
-        ragVariables,
+        availableVariables,
       })
 
       expect(imported).toBeInstanceOf(WorkflowVariableBlockNode)
       expect(imported.getVariables()).toEqual(['node-2', 'result'])
       expect(imported.getWorkflowNodesMap()).toEqual({ 'node-2': { title: 'B', type: BlockEnum.Tool } })
+      expect(imported.getAvailableVariables()).toEqual(availableVariables)
     })
   })
 
   it('should return getters and text content in expected format', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.string)
-      const environmentVariables: Var[] = [{ variable: 'env.key', type: VarType.string }]
-      const conversationVariables: Var[] = [{ variable: 'conversation.topic', type: VarType.string }]
-      const ragVariables: Var[] = [{ variable: 'rag.shared.answer', type: VarType.string }]
+      const availableVariables: NodeOutPutVar[] = [{
+        nodeId: 'node-1',
+        title: 'Node A',
+        vars: [{ variable: 'answer', type: VarType.string }],
+      }]
       const node = new WorkflowVariableBlockNode(
         ['node-1', 'answer'],
         { 'node-1': { title: 'A', type: BlockEnum.LLM } },
         getVarType,
         undefined,
-        environmentVariables,
-        conversationVariables,
-        ragVariables,
+        availableVariables,
       )
 
       expect(node.getVariables()).toEqual(['node-1', 'answer'])
       expect(node.getWorkflowNodesMap()).toEqual({ 'node-1': { title: 'A', type: BlockEnum.LLM } })
       expect(node.getVarType()).toBe(getVarType)
-      expect(node.getEnvironmentVariables()).toEqual(environmentVariables)
-      expect(node.getConversationVariables()).toEqual(conversationVariables)
-      expect(node.getRagVariables()).toEqual(ragVariables)
+      expect(node.getAvailableVariables()).toEqual(availableVariables)
       expect(node.getTextContent()).toBe('{{#node-1.answer#}}')
     })
   })
 
   it('should create node helper and type guard checks', () => {
     runInEditor(() => {
-      const node = $createWorkflowVariableBlockNode(['node-1', 'answer'], {}, undefined)
+      const availableVariables: NodeOutPutVar[] = [{
+        nodeId: 'node-1',
+        title: 'Node A',
+        vars: [{ variable: 'answer', type: VarType.string }],
+      }]
+      const node = $createWorkflowVariableBlockNode(['node-1', 'answer'], {}, undefined, availableVariables)
 
       expect(node).toBeInstanceOf(WorkflowVariableBlockNode)
+      expect(node.getAvailableVariables()).toEqual(availableVariables)
       expect($isWorkflowVariableBlockNode(node)).toBe(true)
       expect($isWorkflowVariableBlockNode(null)).toBe(false)
       expect($isWorkflowVariableBlockNode(undefined)).toBe(false)

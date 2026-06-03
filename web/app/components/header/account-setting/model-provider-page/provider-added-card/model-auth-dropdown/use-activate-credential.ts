@@ -1,7 +1,7 @@
 import type { Credential, ModelProvider } from '../../declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useActiveProviderCredential } from '@/service/use-models'
 import { useUpdateModelList, useUpdateModelProviders } from '../../hooks'
 

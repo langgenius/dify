@@ -13,11 +13,11 @@ export enum InputFieldType {
   fileTypes = 'fileTypes',
 }
 
-export type InputTypeSelectConfiguration = {
+type InputTypeSelectConfiguration = {
   supportFile: boolean
 }
 
-export type NumberSliderConfiguration = {
+type NumberSliderConfiguration = {
   description: string
   max?: number
   min?: number

@@ -1,12 +1,13 @@
 import json
 import logging
-from typing import Any, TypedDict, cast
+from collections.abc import Sequence
+from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
@@ -17,53 +18,134 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
+from models.agent import AgentIconType
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 logger = logging.getLogger(__name__)
 
 
+class AppListParams(BaseModel):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
+    name: str | None = None
+    tag_ids: list[str] | None = None
+    is_created_by_me: bool | None = None
+    status: str | None = None
+    openapi_visible: bool = False
+
+
+class CreateAppParams(BaseModel):
+    name: str = Field(min_length=1)
+    description: str | None = None
+    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    api_rph: int = 0
+    api_rpm: int = 0
+    max_active_requests: int | None = None
+
+
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
+    @staticmethod
+    def get_app_by_id(
+        session: Session | scoped_session,
+        app_id: str,
+    ) -> App | None:
+        return session.get(App, app_id)
+
+    @staticmethod
+    def get_visible_app_by_id(
+        session: Session | scoped_session,
+        app_id: str,
+    ) -> App | None:
+        app = session.get(App, app_id)
+        if not app or app.status != "normal" or not is_openapi_visible(app):
+            return None
+        return app
+
+    @staticmethod
+    def find_visible_apps_by_ids(
+        session: Session | scoped_session,
+        app_ids: Sequence[str],
+    ) -> list[App]:
+        if not app_ids:
+            return []
+        return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
+
+    @staticmethod
+    def find_visible_apps_by_name(
+        session: Session | scoped_session,
+        *,
+        name: str,
+        tenant_id: str,
+    ) -> list[App]:
+        return list(
+            session.execute(
+                apply_openapi_gate(
+                    select(App).where(
+                        App.name == name,
+                        App.tenant_id == tenant_id,
+                        App.status == "normal",
+                    )
+                )
+            ).scalars()
+        )
+
+    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
         :param tenant_id: tenant id
-        :param args: request args
+        :param params: query parameters
         :return:
         """
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
-        if args["mode"] == "workflow":
+        if params.mode == "workflow":
             filters.append(App.mode == AppMode.WORKFLOW)
-        elif args["mode"] == "completion":
+        elif params.mode == "completion":
             filters.append(App.mode == AppMode.COMPLETION)
-        elif args["mode"] == "chat":
+        elif params.mode == "chat":
             filters.append(App.mode == AppMode.CHAT)
-        elif args["mode"] == "advanced-chat":
+        elif params.mode == "advanced-chat":
             filters.append(App.mode == AppMode.ADVANCED_CHAT)
-        elif args["mode"] == "agent-chat":
+        elif params.mode == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT)
+        elif params.mode == "agent":
+            filters.append(App.mode == AppMode.AGENT)
 
-        if args.get("is_created_by_me", False):
+        if params.status:
+            filters.append(App.status == params.status)
+        # OpenAPI surface visibility gate. Pushed into the query so
+        # `pagination.total` reflects only apps the openapi caller can
+        # actually reach — post-filtering by enable_api after the page
+        # arrives would make `total` page-dependent.
+        if params.openapi_visible:
+            filters.append(App.enable_api.is_(True))
+        if params.is_created_by_me:
             filters.append(App.created_by == user_id)
-        if args.get("name"):
+        if params.name:
             from libs.helper import escape_like_pattern
 
-            name = args["name"][:30]
+            name = params.name[:30]
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-        # Check if tag_ids is not empty to avoid WHERE false condition
-        if args.get("tag_ids") and len(args["tag_ids"]) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
+        if params.tag_ids and len(params.tag_ids) > 0:
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -71,21 +153,21 @@ class AppService:
 
         app_models = db.paginate(
             sa.select(App).where(*filters).order_by(App.created_at.desc()),
-            page=args["page"],
-            per_page=args["limit"],
+            page=params.page,
+            per_page=params.limit,
             error_out=False,
         )
 
         return app_models
 
-    def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
+    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account) -> App:
         """
         Create app
         :param tenant_id: tenant id
-        :param args: request args
+        :param params: app creation parameters
         :param account: Account instance
         """
-        app_mode = AppMode.value_of(args["mode"])
+        app_mode = AppMode.value_of(params.mode)
         app_template = default_app_templates[app_mode]
 
         # get model config
@@ -143,15 +225,16 @@ class AppService:
             default_model_config["model"] = json.dumps(default_model_dict)
 
         app = App(**app_template["app"])
-        app.name = args["name"]
-        app.description = args.get("description", "")
-        app.mode = args["mode"]
-        app.icon_type = args.get("icon_type", "emoji")
-        app.icon = args["icon"]
-        app.icon_background = args["icon_background"]
+        app.name = params.name
+        app.description = params.description or ""
+        app.mode = app_mode
+        app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
+        app.icon = params.icon
+        app.icon_background = params.icon_background
         app.tenant_id = tenant_id
-        app.api_rph = args.get("api_rph", 0)
-        app.api_rpm = args.get("api_rpm", 0)
+        app.api_rph = params.api_rph
+        app.api_rpm = params.api_rpm
+        app.max_active_requests = params.max_active_requests
         app.created_by = account.id
         app.updated_by = account.id
 
@@ -166,6 +249,39 @@ class AppService:
             db.session.flush()
 
             app.app_model_config_id = app_model_config.id
+        elif app_mode == AppMode.AGENT:
+            # An Agent App keeps its model / prompt / tools in the bound Agent
+            # Soul, so the app_model_config row carries no model — only the
+            # app-level presentation features the PRD requires (conversation
+            # opener, follow-up suggestions, citations, moderation, annotation).
+            # They default to disabled/empty here and are read by both the
+            # webapp /parameters endpoint and the chat pipeline. agent_mode is
+            # left unset so App.is_agent stays False (this is the new Agent App
+            # type, not a legacy function-call/react agent).
+            agent_app_model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
+            db.session.add(agent_app_model_config)
+            db.session.flush()
+
+            app.app_model_config_id = agent_app_model_config.id
+
+        # Agent App type is backed 1:1 by a roster Agent (linked via Agent.app_id).
+        # Created in the same transaction so the App and its backing Agent persist
+        # atomically; the Agent Soul (model/prompt/tools) is configured afterward
+        # in the Composer.
+        if app_mode == AppMode.AGENT:
+            from services.agent.roster_service import AgentRosterService
+
+            icon_type = AgentIconType(params.icon_type) if params.icon_type else None
+            AgentRosterService(db.session).create_backing_agent_for_app(
+                tenant_id=tenant_id,
+                account_id=account.id,
+                app_id=app.id,
+                name=params.name,
+                description=params.description or "",
+                icon_type=icon_type,
+                icon=params.icon,
+                icon_background=params.icon_background,
+            )
 
         db.session.commit()
 
@@ -303,17 +419,22 @@ class AppService:
 
         return app
 
-    def update_app_icon(self, app: App, icon: str, icon_background: str) -> App:
+    def update_app_icon(
+        self, app: App, icon: str, icon_background: str, icon_type: IconType | str | None = None
+    ) -> App:
         """
         Update app icon
         :param app: App instance
         :param icon: new icon
         :param icon_background: new icon_background
+        :param icon_type: new icon type
         :return: App instance
         """
         assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
+        if icon_type is not None:
+            app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
@@ -389,7 +510,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta: dict = {"tool_icons": {}}
+        meta: dict[str, Any] = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow

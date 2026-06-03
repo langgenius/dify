@@ -173,6 +173,10 @@ export const QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
     type: VarType.string,
   },
   {
+    variable: 'class_label',
+    type: VarType.string,
+  },
+  {
     variable: 'usage',
     type: VarType.object,
   },
@@ -215,6 +219,10 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
 export const HUMAN_INPUT_OUTPUT_STRUCT: Var[] = [
   {
     variable: '__action_id',
+    type: VarType.string,
+  },
+  {
+    variable: '__action_value',
     type: VarType.string,
   },
   {

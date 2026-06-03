@@ -2,13 +2,21 @@
 import type { FC } from 'react'
 import type { KeyValue } from '../../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalSelect } from '@/app/components/base/select'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
 // import Input from '@/app/components/base/input'
@@ -47,23 +55,40 @@ const KeyValueItem: FC<Props> = ({
   insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
+  const hasValuePayload = payload.type === 'file'
+    ? !!payload.file?.length
+    : !!payload.value
 
   const handleChange = useCallback((key: string) => {
     return (value: string | ValueSelector) => {
+      const shouldAddNextItem = isLastItem
+        && (
+          (key === 'value' && !payload.value && !!value)
+          || (key === 'file' && (!payload.file || payload.file.length === 0) && Array.isArray(value) && value.length > 0)
+        )
+
       const newPayload = produce(payload, (draft: any) => {
         draft[key] = value
       })
       onChange(newPayload)
+
+      if (shouldAddNextItem)
+        onAdd()
     }
-  }, [onChange, payload])
+  }, [isLastItem, onAdd, onChange, payload])
 
   const filterOnlyFileVariable = (varPayload: Var) => {
     return [VarType.file, VarType.arrayFile].includes(varPayload.type)
   }
 
+  const handleValueContainerClick = useCallback(() => {
+    if (isLastItem && hasValuePayload)
+      onAdd()
+  }, [hasValuePayload, isLastItem, onAdd])
+
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'h-min-7 group flex border-t border-divider-regular')}>
+    <div className={cn(className, 'group flex min-h-7 border-t border-divider-regular')}>
       <div className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>
         {!keyNotSupportVar
           ? (
@@ -80,7 +105,7 @@ const KeyValueItem: FC<Props> = ({
             )
           : (
               <input
-                className="system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-transparent outline-hidden hover:bg-components-input-bg-hover focus:ring-0"
+                className="appearance-none rounded-none border-none bg-transparent system-sm-regular outline-hidden hover:bg-components-input-bg-hover focus:bg-gray-100! focus:ring-0"
                 value={payload.key}
                 onChange={e => handleChange('key')(e.target.value)}
               />
@@ -88,21 +113,34 @@ const KeyValueItem: FC<Props> = ({
       </div>
       {isSupportFile && (
         <div className="w-[70px] shrink-0 border-r border-divider-regular">
-          <PortalSelect
-            value={payload.type!}
-            onSelect={item => handleChange('type')(item.value as string)}
-            items={[
-              { name: 'text', value: 'text' },
-              { name: 'file', value: 'file' },
-            ]}
-            readonly={readonly}
-            triggerClassName="rounded-none h-7 text-text-primary"
-            triggerClassNameFn={isOpen => isOpen ? 'bg-state-base-hover' : 'bg-transparent'}
-            popupClassName="w-[80px] h-7"
-          />
+          <Select
+            value={payload.type ?? 'text'}
+            onValueChange={value => value && handleChange('type')(value)}
+            readOnly={readonly}
+          >
+            <SelectTrigger
+              aria-label={t(`${i18nPrefix}.type`, { ns: 'workflow' })}
+              className="h-7 rounded-none bg-transparent text-text-primary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent popupClassName="w-[80px]" listClassName="min-w-0">
+              <SelectItem value="text">
+                <SelectItemText>text</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+              <SelectItem value="file">
+                <SelectItemText>file</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
-      <div className={cn(isSupportFile ? 'grow' : 'w-1/2')} onClick={() => isLastItem && onAdd()}>
+      <div
+        className={cn(isSupportFile ? 'grow' : 'w-1/2')}
+        onClick={handleValueContainerClick}
+      >
         {(isSupportFile && payload.type === 'file')
           ? (
               <VarReferencePicker

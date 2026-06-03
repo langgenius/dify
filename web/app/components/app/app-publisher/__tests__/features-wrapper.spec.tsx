@@ -1,5 +1,5 @@
 /* eslint-disable ts/no-explicit-any */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import FeaturesWrappedAppPublisher from '../features-wrapper'
 
 const mockSetFeatures = vi.fn()
@@ -136,5 +136,24 @@ describe('FeaturesWrappedAppPublisher', () => {
         annotationReply: { enabled: true },
       }))
     })
+  })
+
+  it('should close restore confirmation without restoring when cancelled', async () => {
+    render(
+      <FeaturesWrappedAppPublisher
+        publishedConfig={publishedConfig as any}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('restore-through-wrapper'))
+    const dialog = screen.getByRole('alertdialog')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(publishedConfig.modelConfig.resetAppConfig).not.toHaveBeenCalled()
+    expect(mockSetFeatures).not.toHaveBeenCalled()
   })
 })

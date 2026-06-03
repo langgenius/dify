@@ -54,7 +54,7 @@ class FakeTopic:
         return self._state["subscribed"]
 
 
-def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch):
+def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch: pytest.MonkeyPatch):
     topic = FakeTopic()
 
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
@@ -88,7 +88,11 @@ def test_normalize_terminal_events_defaults():
     }
 
 
-def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch):
+def test_normalize_terminal_events_empty_values():
+    assert _normalize_terminal_events([]) == set({})
+
+
+def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.MonkeyPatch):
     topic = FakeTopic()
     times = [1000.0, 1000.0, 1001.0, 1001.0, 1002.0]
 
@@ -106,3 +110,21 @@ def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch):
     assert next(generator) == StreamEvent.PING.value
     # next receive yields None -> ping interval triggers
     assert next(generator) == StreamEvent.PING.value
+
+
+def test_stream_topic_events_can_continue_past_pause():
+    topic = FakeTopic()
+    topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_PAUSED.value}).encode())
+    topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
+
+    generator = stream_topic_events(
+        topic=topic,
+        idle_timeout=1.0,
+        terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
+    )
+
+    assert next(generator) == StreamEvent.PING.value
+    assert next(generator)["event"] == StreamEvent.WORKFLOW_PAUSED.value
+    assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    with pytest.raises(StopIteration):
+        next(generator)

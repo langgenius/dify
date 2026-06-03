@@ -22,8 +22,8 @@ const Header = () => {
   }, [workflowStore])
 
   return (
-    <div className="flex items-center gap-x-2 pl-4 pr-3 pt-4">
-      <div className="system-xl-semibold grow pl-1 pr-8 text-text-primary">
+    <div className="flex items-center gap-x-2 pt-4 pr-3 pl-4">
+      <div className="grow pr-8 pl-1 system-xl-semibold text-text-primary">
         {t('testRun.title', { ns: 'datasetPipeline' })}
       </div>
       <button

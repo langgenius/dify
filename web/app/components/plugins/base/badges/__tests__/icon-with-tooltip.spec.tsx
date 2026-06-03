@@ -3,24 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Theme } from '@/types/app'
 import IconWithTooltip from '../icon-with-tooltip'
 
-// Mock Tooltip component
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    popupContent,
-    popupClassName,
-  }: {
-    children: React.ReactNode
-    popupContent?: string
-    popupClassName?: string
-  }) => (
-    <div data-testid="tooltip" data-popup-content={popupContent} data-popup-classname={popupClassName}>
-      {children}
-    </div>
-  ),
-}))
-
-// Mock icon components
 const MockLightIcon = ({ className }: { className?: string }) => (
   <div data-testid="light-icon" className={className}>Light Icon</div>
 )
@@ -44,10 +26,10 @@ describe('IconWithTooltip', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+      expect(screen.getByTestId('light-icon')).toBeInTheDocument()
     })
 
-    it('should render Tooltip wrapper', () => {
+    it('should render tooltip trigger with accessible label when popupContent is provided', () => {
       render(
         <IconWithTooltip
           theme={Theme.light}
@@ -57,21 +39,7 @@ describe('IconWithTooltip', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-popup-content', 'Test tooltip')
-    })
-
-    it('should apply correct popupClassName to Tooltip', () => {
-      render(
-        <IconWithTooltip
-          theme={Theme.light}
-          BadgeIconLight={MockLightIcon}
-          BadgeIconDark={MockDarkIcon}
-        />,
-      )
-
-      const tooltip = screen.getByTestId('tooltip')
-      expect(tooltip).toHaveAttribute('data-popup-classname')
-      expect(tooltip.getAttribute('data-popup-classname')).toContain('border-components-panel-border')
+      expect(screen.getByLabelText('Test tooltip')).toBeInTheDocument()
     })
   })
 
@@ -131,7 +99,7 @@ describe('IconWithTooltip', () => {
       expect(icon).toHaveClass('custom-class')
     })
 
-    it('should apply default h-5 w-5 class to icon', () => {
+    it('should apply default size-5 class to icon', () => {
       render(
         <IconWithTooltip
           theme={Theme.light}
@@ -141,8 +109,7 @@ describe('IconWithTooltip', () => {
       )
 
       const icon = screen.getByTestId('light-icon')
-      expect(icon).toHaveClass('h-5')
-      expect(icon).toHaveClass('w-5')
+      expect(icon).toHaveClass('size-5')
     })
 
     it('should merge custom className with default classes', () => {
@@ -156,8 +123,7 @@ describe('IconWithTooltip', () => {
       )
 
       const icon = screen.getByTestId('light-icon')
-      expect(icon).toHaveClass('h-5')
-      expect(icon).toHaveClass('w-5')
+      expect(icon).toHaveClass('size-5')
       expect(icon).toHaveClass('ml-2')
     })
 
@@ -171,10 +137,7 @@ describe('IconWithTooltip', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-popup-content',
-        'Custom tooltip content',
-      )
+      expect(screen.getByLabelText('Custom tooltip content')).toBeInTheDocument()
     })
 
     it('should handle undefined popupContent', () => {
@@ -186,7 +149,7 @@ describe('IconWithTooltip', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+      expect(screen.getByTestId('light-icon')).toBeInTheDocument()
     })
   })
 
@@ -239,7 +202,7 @@ describe('IconWithTooltip', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-popup-content', longContent)
+      expect(screen.getByLabelText(longContent)).toBeInTheDocument()
     })
 
     it('should handle special characters in popupContent', () => {
@@ -253,7 +216,7 @@ describe('IconWithTooltip', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-popup-content', specialContent)
+      expect(screen.getByLabelText(specialContent)).toBeInTheDocument()
     })
   })
 })

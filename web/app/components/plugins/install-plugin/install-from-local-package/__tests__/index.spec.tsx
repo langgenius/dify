@@ -292,6 +292,12 @@ describe('InstallFromLocalPackage', () => {
       expect(screen.getByTestId('is-bundle')).toHaveTextContent('true')
     })
 
+    it('should constrain dialog height so bundle dependency lists can scroll', () => {
+      render(<InstallFromLocalPackage {...defaultProps} file={createMockBundleFile()} />)
+
+      expect(screen.getByRole('dialog')).toHaveClass('max-h-[calc(100dvh-48px)]')
+    })
+
     it('should identify package file correctly', () => {
       render(<InstallFromLocalPackage {...defaultProps} />)
 

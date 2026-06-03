@@ -30,9 +30,9 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
       <div className="box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
           {t('table.empty.element.title', { ns: 'appLog' })}
-          <ThreeDotsIcon className="relative -left-1.5 -top-3 inline text-text-secondary" />
+          <ThreeDotsIcon className="relative -top-3 -left-1.5 inline text-text-secondary" />
         </span>
-        <div className="system-sm-regular mt-2 text-text-tertiary">
+        <div className="mt-2 system-sm-regular text-text-tertiary">
           <Trans
             i18nKey="table.empty.element.content"
             ns="appLog"

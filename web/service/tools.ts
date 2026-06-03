@@ -92,7 +92,7 @@ export const removeCustomCollection = (collectionName: string) => {
 }
 
 export const importSchemaFromURL = (url: string) => {
-  return get('/workspaces/current/tool-provider/api/remote', {
+  return get<{ schema: string }>('/workspaces/current/tool-provider/api/remote', {
     params: {
       url,
     },

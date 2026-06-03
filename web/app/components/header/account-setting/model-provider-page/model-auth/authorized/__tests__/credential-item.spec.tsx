@@ -2,8 +2,8 @@ import type { Credential } from '../../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import CredentialItem from '../credential-item'
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: () => <div data-testid="indicator" />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: () => <div data-testid="indicator" />,
 }))
 
 describe('CredentialItem', () => {

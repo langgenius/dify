@@ -2,9 +2,9 @@
 import type { Mock } from 'vitest'
 import type { AnnotationItem } from '../type'
 import type { App } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContext } from '@/context/provider-context'
 import {
   addAnnotation,
@@ -67,7 +67,7 @@ vi.mock('../header-opts', () => ({
 let latestListProps: any
 
 vi.mock('../list', () => ({
-  default: (props: any) => {
+  List: (props: any) => {
     latestListProps = props
     if (!props.list.length)
       return <div data-testid="list-empty" />
@@ -440,7 +440,7 @@ describe('Annotation', () => {
       latestListProps.onSelectedIdsChange([annotation.id])
     })
     await act(async () => {
-      latestListProps.onCancel()
+      latestListProps.onSelectedIdsChange([])
     })
 
     expect(latestListProps.selectedIds).toEqual([])

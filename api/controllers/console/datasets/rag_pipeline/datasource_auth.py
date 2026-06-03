@@ -2,16 +2,17 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.plugin.impl.oauth import OAuthHandler
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
@@ -56,6 +57,7 @@ register_schema_models(
     DatasourceDefaultPayload,
     DatasourceUpdateNamePayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/get-authorization-url")
@@ -196,12 +198,13 @@ class DatasourceAuth(Resource):
     def get(self, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
-        _, current_tenant_id = current_account_with_tenant()
+        user, current_tenant_id = current_account_with_tenant()
 
         datasources = datasource_provider_service.list_datasource_credentials(
             tenant_id=current_tenant_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
+            user=user,
         )
         return {"result": datasources}, 200
 
@@ -209,6 +212,7 @@ class DatasourceAuth(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceCredentialDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -306,6 +310,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def delete(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -321,6 +326,7 @@ class DatasourceAuthOauthCustomClient(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceDefaultPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -342,6 +348,7 @@ class DatasourceAuthDefaultApi(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceUpdateNamePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

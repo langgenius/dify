@@ -2,13 +2,12 @@ import base64
 import hashlib
 import os
 import uuid
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
-from typing import Literal, Union
+from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from graphon.file import helpers as file_helpers
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
@@ -24,6 +23,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 from models import Account
@@ -52,7 +52,7 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:
@@ -107,14 +107,13 @@ class FileService:
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
         )
-        # The `UploadFile` ID is generated within its constructor, so flushing to retrieve the ID is unnecessary.
-        # We can directly generate the `source_url` here before committing.
-        if not upload_file.source_url:
-            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         with self._session_maker(expire_on_commit=False) as session:
             session.add(upload_file)
             session.commit()
+
+        if not upload_file.source_url:
+            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
 
@@ -132,12 +131,13 @@ class FileService:
         return file_size <= file_size_limit
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = (
-            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
-        )
-        if not upload_file:
-            raise NotFound("File not found")
-        blob = storage.load_once(upload_file.key)
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            if not upload_file:
+                raise NotFound("File not found")
+            upload_file_key = upload_file.key
+
+        blob = storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
@@ -173,12 +173,14 @@ class FileService:
 
         return upload_file
 
-    def get_file_preview(self, file_id: str):
+    def get_file_preview(self, file_id: str, tenant_id: str):
         """
         Return a short text preview extracted from a document file.
         """
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
+            )
 
         if not upload_file:
             raise NotFound("File not found")
@@ -200,7 +202,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -220,7 +222,7 @@ class FileService:
             raise NotFound("File not found or signature is invalid")
 
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -231,7 +233,7 @@ class FileService:
 
     def get_public_image_preview(self, file_id: str):
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -247,7 +249,7 @@ class FileService:
 
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")
@@ -324,7 +326,7 @@ class FileService:
     def build_upload_files_zip_tempfile(
         *,
         upload_files: Sequence[UploadFile],
-    ) -> Iterator[str]:
+    ) -> Generator[str, None, None]:  # Changed from Iterator[str]
         """
         Build a ZIP from `UploadFile`s and yield a tempfile path.
 

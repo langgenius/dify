@@ -7,8 +7,8 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
+from typing import override
 
-from graphon.entities import WorkflowNodeExecution
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -16,6 +16,7 @@ from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
+from graphon.entities import WorkflowNodeExecution
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -105,6 +106,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._triggered_from,
         )
 
+    @override
     def save(self, execution: WorkflowNodeExecution):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
@@ -147,6 +149,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             # For now, we'll re-raise the exception
             raise
 
+    @override
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,

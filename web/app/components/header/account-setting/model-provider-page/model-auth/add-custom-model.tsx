@@ -4,6 +4,20 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  Button,
+} from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
+import {
   RiAddCircleFill,
   RiAddLine,
 } from '@remixicon/react'
@@ -13,17 +27,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Button,
-} from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { cn } from '@/utils/classnames'
 import ModelIcon from '../model-icon'
 import { useAuth } from './hooks/use-auth'
 import { useCanAddedModels } from './hooks/use-custom-models'
@@ -67,56 +71,51 @@ const AddCustomModel = ({
     },
   )
   const notAllowCustomCredential = provider.allow_custom_token === false
-
-  const renderTrigger = useCallback((open?: boolean) => {
-    const Item = (
+  const renderTrigger = useCallback((open?: boolean, onClick?: () => void) => {
+    const item = (
       <Button
         variant="ghost"
         size="small"
+        onClick={onClick}
         className={cn(
           'text-text-tertiary',
           open && 'bg-components-button-ghost-bg-hover',
           notAllowCustomCredential && !!noModels && 'cursor-not-allowed opacity-50',
         )}
       >
-        <RiAddCircleFill className="mr-1 h-3.5 w-3.5" />
+        <RiAddCircleFill className="mr-1 size-3.5" />
         {t('modelProvider.addModel', { ns: 'common' })}
       </Button>
     )
     if (notAllowCustomCredential && !!noModels) {
       return (
-        <Tooltip asChild popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={item} />
+          <TooltipContent>{t('auth.credentialUnavailable', { ns: 'plugin' })}</TooltipContent>
         </Tooltip>
       )
     }
-    return Item
+    return item
   }, [t, notAllowCustomCredential, noModels])
 
+  if (noModels) {
+    return renderTrigger(false, notAllowCustomCredential ? undefined : handleOpenModalForAddNewCustomModel)
+  }
+
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={() => {
-        if (noModels) {
-          if (notAllowCustomCredential)
-            return
-          handleOpenModalForAddNewCustomModel()
-          return
-        }
-
-        setOpen(prev => !prev)
-      }}
+      <PopoverTrigger
+        nativeButton={false}
+        render={<div className="inline-block">{renderTrigger(open)}</div>}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        {renderTrigger(open)}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1002">
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-[304px] overflow-y-auto p-1">
             {
@@ -125,18 +124,18 @@ const AddCustomModel = ({
                   key={model.model}
                   className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                   onClick={() => {
-                    handleOpenModalForAddCustomModelToModelList(undefined, model)
                     setOpen(false)
+                    handleOpenModalForAddCustomModelToModelList(undefined, model)
                   }}
                 >
                   <ModelIcon
-                    className="mr-1 h-5 w-5 shrink-0"
+                    className="mr-1 size-5 shrink-0"
                     iconClassName="h-5 w-5"
                     provider={provider}
                     modelName={model.model}
                   />
                   <div
-                    className="grow truncate text-text-primary system-md-regular"
+                    className="grow truncate system-md-regular text-text-primary"
                     title={model.model}
                   >
                     {model.model}
@@ -148,20 +147,20 @@ const AddCustomModel = ({
           {
             !notAllowCustomCredential && (
               <div
-                className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 text-text-accent-light-mode-only system-xs-medium"
+                className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
                 onClick={() => {
-                  handleOpenModalForAddNewCustomModel()
                   setOpen(false)
+                  handleOpenModalForAddNewCustomModel()
                 }}
               >
-                <RiAddLine className="mr-1 h-4 w-4" />
+                <RiAddLine className="mr-1 size-4" />
                 {t('modelProvider.auth.addNewModel', { ns: 'common' })}
               </div>
             )
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

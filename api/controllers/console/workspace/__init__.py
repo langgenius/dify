@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from functools import wraps
 
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -21,12 +22,12 @@ def plugin_permission_required(
             tenant_id = current_tenant_id
 
             with sessionmaker(db.engine).begin() as session:
-                permission = (
-                    session.query(TenantPluginPermission)
+                permission = session.scalar(
+                    select(TenantPluginPermission)
                     .where(
                         TenantPluginPermission.tenant_id == tenant_id,
                     )
-                    .first()
+                    .limit(1)
                 )
 
                 if not permission:
@@ -34,22 +35,24 @@ def plugin_permission_required(
                     return view(*args, **kwargs)
 
                 if install_required:
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.NOBODY:
-                        raise Forbidden()
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.ADMINS:
-                        if not user.is_admin_or_owner:
+                    match permission.install_permission:
+                        case TenantPluginPermission.InstallPermission.NOBODY:
                             raise Forbidden()
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.EVERYONE:
-                        pass
+                        case TenantPluginPermission.InstallPermission.ADMINS:
+                            if not user.is_admin_or_owner:
+                                raise Forbidden()
+                        case TenantPluginPermission.InstallPermission.EVERYONE:
+                            pass
 
                 if debug_required:
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.NOBODY:
-                        raise Forbidden()
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.ADMINS:
-                        if not user.is_admin_or_owner:
+                    match permission.debug_permission:
+                        case TenantPluginPermission.DebugPermission.NOBODY:
                             raise Forbidden()
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE:
-                        pass
+                        case TenantPluginPermission.DebugPermission.ADMINS:
+                            if not user.is_admin_or_owner:
+                                raise Forbidden()
+                        case TenantPluginPermission.DebugPermission.EVERYONE:
+                            pass
 
             return view(*args, **kwargs)
 

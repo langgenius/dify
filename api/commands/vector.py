@@ -30,7 +30,7 @@ def vdb_migrate(scope: str):
 
 def migrate_annotation_vector_database():
     """
-    Migrate annotation datas to target vector database .
+    Migrate annotation data to target vector database.
     """
     click.echo(click.style("Starting annotation data migration.", fg="green"))
     create_count = 0
@@ -140,7 +140,7 @@ def migrate_annotation_vector_database():
 
 def migrate_knowledge_vector_database():
     """
-    Migrate vector database datas to target vector database .
+    Migrate vector database data to target vector database.
     """
     click.echo(click.style("Starting vector database migration.", fg="green"))
     create_count = 0
@@ -341,10 +341,9 @@ def add_qdrant_index(field: str):
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
         import qdrant_client
+        from dify_vdb_qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
-
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:

@@ -194,13 +194,13 @@ describe('DebugWithMultipleModel', () => {
     it('should handle empty multipleModelConfigs array', () => {
       renderComponent({ multipleModelConfigs: [] })
       expect(screen.queryByTestId('debug-item')).not.toBeInTheDocument()
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
     })
 
     it('should handle model config with missing required fields', () => {
       const incompleteConfig = { id: 'incomplete' } as ModelAndParameter
       renderComponent({ multipleModelConfigs: [incompleteConfig] })
-      expect(screen.getByTestId('debug-item')).toBeInTheDocument()
+      expect(screen.getByTestId('debug-item'))!.toBeInTheDocument()
     })
 
     it('should handle more than 4 model configs', () => {
@@ -257,7 +257,8 @@ describe('DebugWithMultipleModel', () => {
       renderComponent()
 
       // Should still render but handle gracefully
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      // Should still render but handle gracefully
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
       expect(capturedChatInputProps?.inputsForm).toHaveLength(3)
     })
   })
@@ -287,7 +288,7 @@ describe('DebugWithMultipleModel', () => {
       rerender(<DebugWithMultipleModel {...props2} />)
 
       const items = screen.getAllByTestId('debug-item')
-      expect(items[0]).toHaveAttribute('data-model-id', 'model-2')
+      expect(items[0])!.toHaveAttribute('data-model-id', 'model-2')
     })
   })
 
@@ -296,14 +297,14 @@ describe('DebugWithMultipleModel', () => {
       renderComponent()
 
       const chatInput = screen.getByTestId('chat-input-area')
-      expect(chatInput).toBeInTheDocument()
+      expect(chatInput)!.toBeInTheDocument()
 
       // Check for button accessibility
       const sendButton = screen.getByRole('button', { name: /send/i })
-      expect(sendButton).toBeInTheDocument()
+      expect(sendButton)!.toBeInTheDocument()
 
       const featureButton = screen.getByRole('button', { name: /feature/i })
-      expect(featureButton).toBeInTheDocument()
+      expect(featureButton)!.toBeInTheDocument()
     })
 
     it('should apply ARIA attributes correctly', () => {
@@ -312,8 +313,8 @@ describe('DebugWithMultipleModel', () => {
 
       // Debug items should be identifiable
       const debugItem = screen.getByTestId('debug-item')
-      expect(debugItem).toBeInTheDocument()
-      expect(debugItem).toHaveAttribute('data-model-id')
+      expect(debugItem)!.toBeInTheDocument()
+      expect(debugItem)!.toHaveAttribute('data-model-id')
     })
   })
 
@@ -422,7 +423,8 @@ describe('DebugWithMultipleModel', () => {
       fireEvent.click(screen.getByRole('button', { name: /feature/i }))
 
       // Assert
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
       expect(capturedChatInputProps?.inputs).toEqual({ audience: 'engineers' })
       expect(capturedChatInputProps?.inputsForm).toEqual([
         expect.objectContaining({ label: 'City', variable: 'city', hide: false, required: true }),
@@ -446,7 +448,8 @@ describe('DebugWithMultipleModel', () => {
       renderComponent()
 
       // Assert
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
     })
 
     it('should hide chat input when not in chat mode', () => {
@@ -459,6 +462,37 @@ describe('DebugWithMultipleModel', () => {
       // Act
       renderComponent({ multipleModelConfigs })
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByTestId('chat-input-area')).not.toBeInTheDocument()
       expect(screen.getAllByTestId('debug-item')).toHaveLength(1)
@@ -538,7 +572,8 @@ describe('DebugWithMultipleModel', () => {
       expect(secondItems).toHaveLength(1)
 
       // Check that the element still renders the same content
-      expect(firstItems[0]).toHaveTextContent(secondItems[0].textContent || '')
+      // Check that the element still renders the same content
+      expect(firstItems[0])!.toHaveTextContent(secondItems[0]!.textContent || '')
     })
 
     it('should recalculate size and position when number of models changes', () => {
@@ -557,8 +592,8 @@ describe('DebugWithMultipleModel', () => {
       )
 
       const twoItems = screen.getAllByTestId('debug-item')
-      expect(twoItems[0].style.width).toBe('calc(50% - 4px - 24px)')
-      expect(twoItems[1].style.width).toBe('calc(50% - 4px - 24px)')
+      expect(twoItems[0]!.style.width).toBe('calc(50% - 4px - 24px)')
+      expect(twoItems[1]!.style.width).toBe('calc(50% - 4px - 24px)')
     })
   })
 
@@ -583,7 +618,7 @@ describe('DebugWithMultipleModel', () => {
         expect(element.style.height).toBe('')
 
       expect(element.style.transform).toBe(expectation.transform)
-      expectation.classes?.forEach(cls => expect(element).toHaveClass(cls))
+      expectation.classes?.forEach(cls => expect(element)!.toHaveClass(cls))
     }
 
     it('should arrange items in two-column layout for two models', () => {
@@ -596,13 +631,13 @@ describe('DebugWithMultipleModel', () => {
 
       // Assert
       expect(items).toHaveLength(2)
-      expectItemLayout(items[0], {
+      expectItemLayout(items[0]!, {
         width: 'calc(50% - 4px - 24px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
-      expectItemLayout(items[1], {
+      expectItemLayout(items[1]!, {
         width: 'calc(50% - 4px - 24px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
@@ -620,19 +655,19 @@ describe('DebugWithMultipleModel', () => {
 
       // Assert
       expect(items).toHaveLength(3)
-      expectItemLayout(items[0], {
+      expectItemLayout(items[0]!, {
         width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
-      expectItemLayout(items[1], {
+      expectItemLayout(items[1]!, {
         width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mr-2'],
       })
-      expectItemLayout(items[2], {
+      expectItemLayout(items[2]!, {
         width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(calc(200% + 16px)) translateY(0)',
@@ -655,25 +690,25 @@ describe('DebugWithMultipleModel', () => {
 
       // Assert
       expect(items).toHaveLength(4)
-      expectItemLayout(items[0], {
+      expectItemLayout(items[0]!, {
         width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2', 'mb-2'],
       })
-      expectItemLayout(items[1], {
+      expectItemLayout(items[1]!, {
         width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mb-2'],
       })
-      expectItemLayout(items[2], {
+      expectItemLayout(items[2]!, {
         width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(calc(100% + 8px))',
         classes: ['mr-2'],
       })
-      expectItemLayout(items[3], {
+      expectItemLayout(items[3]!, {
         width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(calc(100% + 8px))',
@@ -699,7 +734,7 @@ describe('DebugWithMultipleModel', () => {
     it('should set scroll area height for chat modes', () => {
       const { container } = renderComponent()
       const scrollArea = container.querySelector('.relative.mb-3.grow.overflow-auto.px-6') as HTMLElement
-      expect(scrollArea).toBeInTheDocument()
+      expect(scrollArea)!.toBeInTheDocument()
       expect(scrollArea.style.height).toBe('calc(100% - 60px)')
     })
 

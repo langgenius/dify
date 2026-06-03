@@ -64,7 +64,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute right-3 top-[-32px] z-40">
+        <div className="pointer-events-auto absolute top-[-32px] right-3 z-40">
           <InstallPluginButton
             size="small"
             extraIdentifiers={[
@@ -87,7 +87,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
           >
             <div
               title={key}
-              className="max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary"
+              className="max-w-[100px] shrink-0 truncate text-xs font-medium text-text-tertiary uppercase"
             >
               {key}
             </div>

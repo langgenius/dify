@@ -1,12 +1,12 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { IS_DEV } from '@/config'
-import { cn } from '@/utils/classnames'
 
 type ErrorBoundaryState = {
   hasError: boolean
@@ -67,7 +67,7 @@ class ErrorBoundaryInner extends React.Component<
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
@@ -82,7 +82,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onError(error, errorInfo)
   }
 
-  componentDidUpdate(prevProps: any) {
+  override componentDidUpdate(prevProps: any) {
     const { resetKeys, resetOnPropsChange } = this.props
     const { hasError } = this.state
 
@@ -98,7 +98,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onResetKeysChange(prevProps.resetKeys)
   }
 
-  render() {
+  override render() {
     const { hasError, error, errorInfo, errorCount } = this.state
     const {
       fallback,
@@ -130,7 +130,7 @@ class ErrorBoundaryInner extends React.Component<
           )}
         >
           <div className="mb-4 flex items-center gap-2">
-            <RiAlertLine className="text-state-critical-solid h-8 w-8" />
+            <RiAlertLine className="text-state-critical-solid size-8" />
             <h2 className="text-xl font-semibold text-text-primary">
               {customTitle || copy.title}
             </h2>
@@ -144,21 +144,21 @@ class ErrorBoundaryInner extends React.Component<
             <details className="mb-6 w-full max-w-2xl">
               <summary className="mb-2 cursor-pointer text-sm font-medium text-text-tertiary hover:text-text-secondary">
                 <span className="inline-flex items-center gap-1">
-                  <RiBugLine className="h-4 w-4" />
+                  <RiBugLine className="size-4" />
                   {copy.details}
                 </span>
               </summary>
               <div className="rounded-lg bg-gray-100 p-4">
                 <div className="mb-2">
                   <span className="font-mono text-xs font-semibold text-gray-600">{copy.error}</span>
-                  <pre className="mt-1 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-800">
+                  <pre className="mt-1 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-800">
                     {error.toString()}
                   </pre>
                 </div>
                 {errorInfo && (
                   <div>
                     <span className="font-mono text-xs font-semibold text-gray-600">{copy.componentStack}</span>
-                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-700">
+                    <pre className="mt-1 max-h-40 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-700">
                       {errorInfo.componentStack}
                     </pre>
                   </div>

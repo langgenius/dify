@@ -111,10 +111,14 @@ vi.mock('../use-workflow-history', () => ({
 
 vi.mock('../../utils', async importOriginal => ({
   ...(await importOriginal<typeof import('../../utils')>()),
-  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
-  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
   initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
   initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
+}))
+
+vi.mock('../../utils/elk-layout', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../utils/elk-layout')>()),
+  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
+  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
 }))
 
 describe('use-workflow-interactions exports', () => {
@@ -220,7 +224,7 @@ describe('use-workflow-interactions exports', () => {
     })
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const nextNodes = mockSetNodes.mock.calls[0][0]
+    const nextNodes = mockSetNodes.mock.calls[0]![0]
     expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(expect.objectContaining({
       width: expect.any(Number),
       height: expect.any(Number),

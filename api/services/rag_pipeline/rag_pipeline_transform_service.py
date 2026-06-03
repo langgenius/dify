@@ -2,14 +2,17 @@ import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import yaml
 from flask_login import current_user
 from sqlalchemy import select
 
+from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
@@ -20,7 +23,6 @@ from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +156,7 @@ class RagPipelineTransformService:
             raise ValueError("Unsupported doc form")
         return pipeline_yaml
 
-    def _deal_file_extensions(self, node: dict):
+    def _deal_file_extensions(self, node: dict[str, Any]):
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
@@ -167,7 +169,7 @@ class RagPipelineTransformService:
         dataset: Dataset,
         indexing_technique: str | None,
         retrieval_model: RetrievalSetting | None,
-        node: dict,
+        node: dict[str, Any],
     ):
         knowledge_configuration_dict = node.get("data", {})
 
@@ -191,7 +193,7 @@ class RagPipelineTransformService:
 
     def _create_pipeline(
         self,
-        data: dict,
+        data: dict[str, Any],
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
@@ -258,7 +260,7 @@ class RagPipelineTransformService:
         db.session.add(pipeline)
         return pipeline
 
-    def _deal_dependencies(self, pipeline_yaml: dict, tenant_id: str):
+    def _deal_dependencies(self, pipeline_yaml: dict[str, Any], tenant_id: str):
         installer_manager = PluginInstaller()
         installed_plugins = installer_manager.list_plugins(tenant_id)
 
@@ -272,6 +274,13 @@ class RagPipelineTransformService:
                 plugin_unique_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
                 plugin_id = plugin_unique_identifier.split(":")[0]
                 if plugin_id not in installed_plugins_ids:
+                    if not dify_config.MARKETPLACE_ENABLED:
+                        logger.warning(
+                            "Marketplace disabled; skipping auto-install of %s. "
+                            "Pre-install via Console if pipeline requires it.",
+                            plugin_id,
+                        )
+                        continue
                     plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)  # type: ignore
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)

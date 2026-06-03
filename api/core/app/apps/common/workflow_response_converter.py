@@ -6,19 +6,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, TypedDict, Union
 
-from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from graphon.file import FILE_MODEL_IDENTITY, File
-from graphon.runtime import GraphRuntimeState
-from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
-from graphon.variables.variables import Variable
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -65,9 +52,31 @@ from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
+
+# Maps the entry surface a workflow was invoked from to the HITL surface that
+# its resume tokens must be filtered for. Surfaces not in this map fall back to
+# the general priority ordering (typically CONSOLE > BACKSTAGE).
+_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
+    InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
+    InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
+}
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.file import FILE_MODEL_IDENTITY, File
+from graphon.runtime import GraphRuntimeState
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.variables import Variable
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.human_input import HumanInputForm
@@ -267,17 +276,18 @@ class WorkflowResponseConverter:
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
-        if isinstance(user, Account):
-            created_by = AccountCreatedByDict(
-                id=user.id,
-                name=user.name,
-                email=user.email,
-            )
-        elif isinstance(user, EndUser):
-            created_by = EndUserCreatedByDict(
-                id=user.id,
-                user=user.session_id,
-            )
+        match user:
+            case Account():
+                created_by = AccountCreatedByDict(
+                    id=user.id,
+                    name=user.name,
+                    email=user.email,
+                )
+            case EndUser():
+                created_by = EndUserCreatedByDict(
+                    id=user.id,
+                    user=user.session_id,
+                )
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -336,7 +346,22 @@ class WorkflowResponseConverter:
                     except (TypeError, json.JSONDecodeError):
                         definition_payload = {}
                     display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-                form_token_by_form_id = load_form_tokens_by_form_id(human_input_form_ids, session=session)
+                form_token_by_form_id = load_form_tokens_by_form_id(
+                    human_input_form_ids,
+                    session=session,
+                    surface=_INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from),
+                )
+
+        # Reconnect paths must preserve the same pause-reason contract as live streams;
+        # otherwise clients see schema drift after resume.
+        pause_reasons = enrich_human_input_pause_reasons(
+            pause_reasons,
+            form_tokens_by_form_id=form_token_by_form_id,
+            expiration_times_by_form_id={
+                form_id: int(expiration_time.timestamp())
+                for form_id, expiration_time in expiration_times_by_form_id.items()
+            },
+        )
 
         responses: list[StreamResponse] = []
 
@@ -431,17 +456,18 @@ class WorkflowResponseConverter:
 
         created_by: Mapping[str, object]
         user = creator_user
-        if isinstance(user, Account):
-            created_by = {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-            }
-        else:
-            created_by = {
-                "id": user.id,
-                "user": user.session_id,
-            }
+        match user:
+            case Account():
+                created_by = {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                }
+            case _:
+                created_by = {
+                    "id": user.id,
+                    "user": user.session_id,
+                }
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -538,15 +564,16 @@ class WorkflowResponseConverter:
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
-        if isinstance(event, QueueNodeSucceededEvent):
-            status = WorkflowNodeExecutionStatus.SUCCEEDED
-            error_message = event.error
-        elif isinstance(event, QueueNodeFailedEvent):
-            status = WorkflowNodeExecutionStatus.FAILED
-            error_message = event.error
-        else:
-            status = WorkflowNodeExecutionStatus.EXCEPTION
-            error_message = event.error
+        match event:
+            case QueueNodeSucceededEvent():
+                status = WorkflowNodeExecutionStatus.SUCCEEDED
+                error_message = event.error
+            case QueueNodeFailedEvent():
+                status = WorkflowNodeExecutionStatus.FAILED
+                error_message = event.error
+            case _:
+                status = WorkflowNodeExecutionStatus.EXCEPTION
+                error_message = event.error
 
         return NodeFinishStreamResponse(
             task_id=task_id,
@@ -822,24 +849,24 @@ class WorkflowResponseConverter:
             return []
 
         files: list[Mapping[str, Any]] = []
-        if isinstance(value, FileSegment):
-            files.append(value.value.to_dict())
-        elif isinstance(value, ArrayFileSegment):
-            files.extend([i.to_dict() for i in value.value])
-        elif isinstance(value, File):
-            files.append(value.to_dict())
-        elif isinstance(value, list):
-            for item in value:
-                file = cls._get_file_var_from_value(item)
+        match value:
+            case FileSegment():
+                files.append(value.value.to_dict())
+            case ArrayFileSegment():
+                files.extend([i.to_dict() for i in value.value])
+            case File():
+                files.append(value.to_dict())
+            case list():
+                for item in value:
+                    file = cls._get_file_var_from_value(item)
+                    if file:
+                        files.append(file)
+            case dict():
+                file = cls._get_file_var_from_value(value)
                 if file:
                     files.append(file)
-        elif isinstance(
-            value,
-            dict,
-        ):
-            file = cls._get_file_var_from_value(value)
-            if file:
-                files.append(file)
+            case _:
+                pass
 
         return files
 

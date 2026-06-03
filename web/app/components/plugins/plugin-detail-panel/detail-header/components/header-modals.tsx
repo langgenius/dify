@@ -3,7 +3,6 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from '../hooks'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,7 +11,8 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { useTranslation } from 'react-i18next'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'
@@ -75,13 +75,13 @@ const HeaderModals: FC<HeaderModalsProps> = ({
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pb-4 pt-6">
-            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
-              <span className="text-text-secondary system-md-semibold">{label[locale]}</span>
+              <span className="system-md-semibold text-text-secondary">{label[locale]}</span>
               {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
             </AlertDialogDescription>
           </div>
