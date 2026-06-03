@@ -51,6 +51,12 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: (timestamp: number) => `formatted-${timestamp}`,
+  }),
+}))
+
 describe('MetadataDocument', () => {
   const mockDocDetail = {
     id: 'doc-1',

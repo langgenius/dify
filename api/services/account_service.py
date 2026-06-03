@@ -119,6 +119,8 @@ class TokenPair(BaseModel):
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
 REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
+ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX = "account_last_active_refresh:"
+ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
 
 
 class AccountService:
@@ -151,6 +153,40 @@ class AccountService:
     @staticmethod
     def _get_account_refresh_token_key(account_id: str) -> str:
         return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
+
+    @staticmethod
+    def _get_account_last_active_refresh_key(account_id: str) -> str:
+        return f"{ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX}{account_id}"
+
+    @staticmethod
+    @redis_fallback(default_return=True)
+    def _should_refresh_account_last_active(account_id: str) -> bool:
+        return bool(
+            redis_client.set(
+                AccountService._get_account_last_active_refresh_key(account_id),
+                1,
+                ex=int(ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL.total_seconds()),
+                nx=True,
+            )
+        )
+
+    @staticmethod
+    def _refresh_account_last_active(account: Account) -> None:
+        now = naive_utc_now()
+        refresh_before = now - ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL
+
+        if account.last_active_at >= refresh_before:
+            return
+
+        if not AccountService._should_refresh_account_last_active(account.id):
+            return
+
+        db.session.execute(
+            update(Account)
+            .where(Account.id == account.id, Account.last_active_at < refresh_before)
+            .values(last_active_at=now, updated_at=func.current_timestamp())
+        )
+        db.session.commit()
 
     @staticmethod
     def _store_refresh_token(refresh_token: str, account_id: str):
@@ -229,9 +265,7 @@ class AccountService:
             available_ta.current = True
             db.session.commit()
 
-        if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
-            account.last_active_at = naive_utc_now()
-            db.session.commit()
+        AccountService._refresh_account_last_active(account)
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         db.session.refresh(account)
