@@ -2507,11 +2507,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-dropdown/index.tsx": {
-    "no-restricted-globals": {
-      "count": 3
-    }
-  },
   "web/app/components/header/account-setting/data-source-page-new/card.tsx": {
     "ts/no-explicit-any": {
       "count": 2
