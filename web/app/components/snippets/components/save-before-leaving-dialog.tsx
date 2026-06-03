@@ -50,7 +50,7 @@ const SaveBeforeLeavingDialog = ({
         </div>
         <AlertDialogActions className="px-8 pt-0">
           <AlertDialogCancelButton disabled={disabled || loading}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t('continueEditing')}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
             tone="destructive"
