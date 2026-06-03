@@ -74,7 +74,8 @@ const RoleTag = ({
   const [open, setOpen] = useState(false)
 
   const isMember = type === 'account'
-  const canOpenMenu = (showRemove && !!onRemove) || canChangeLockStatus
+  const canShowRemove = showRemove && !!onRemove && (canChangeLockStatus || !isLocked)
+  const canOpenMenu = canShowRemove || canChangeLockStatus
 
   const chipClassName = cn(
     'inline-flex h-6 max-w-full items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-section p-1 system-xs-regular text-text-primary transition-colors outline-none',
@@ -146,11 +147,11 @@ const RoleTag = ({
           </DropdownMenuItem>
         )}
         {
-          canChangeLockStatus && showRemove && !!onRemove && (
+          canChangeLockStatus && canShowRemove && (
             <DropdownMenuSeparator className="my-0" />
           )
         }
-        {showRemove && !!onRemove && (
+        {canShowRemove && (
           <DropdownMenuItem
             variant="destructive"
             className="h-8 gap-2 rounded-lg px-2 py-1 system-sm-regular"
