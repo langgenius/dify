@@ -19,16 +19,21 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
+from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
+from core.tools.tool_manager import ToolManager
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from models.provider_ids import ToolProviderID
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
+from services.tools.tools_transform_service import ToolTransformService
 
 
 class AutoUpgradeSettingsResponse(TypedDict):
@@ -266,6 +271,33 @@ def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
     return content
 
 
+def _list_hardcoded_builtin_tool_providers(tenant_id: str) -> list[dict[str, Any]]:
+    db_builtin_providers = {
+        str(ToolProviderID(provider.provider)): provider
+        for provider in ToolManager.list_default_builtin_providers(tenant_id)
+    }
+    builtin_providers = []
+
+    for provider in ToolManager.list_hardcoded_providers():
+        if is_filtered(
+            include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+            exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
+            data=provider,
+            name_func=lambda provider_controller: provider_controller.entity.identity.name,
+        ):
+            continue
+
+        user_provider = ToolTransformService.builtin_provider_to_user_provider(
+            provider_controller=provider,
+            db_provider=db_builtin_providers.get(provider.entity.identity.name),
+            decrypt_credentials=False,
+        )
+        ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_provider)
+        builtin_providers.append(user_provider)
+
+    return [provider.to_dict() for provider in BuiltinToolProviderSort.sort(builtin_providers)]
+
+
 @console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[PluginDebuggingKeyResponse.__name__])
@@ -323,7 +355,11 @@ class PluginCategoryListApi(Resource):
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 
-        return jsonable_encoder({"plugins": plugins.list, "has_more": plugins.has_more})
+        builtin_tools = []
+        if plugin_category == PluginCategory.Tool:
+            builtin_tools = _list_hardcoded_builtin_tool_providers(tenant_id)
+
+        return jsonable_encoder({"plugins": plugins.list, "builtin_tools": builtin_tools, "has_more": plugins.has_more})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
