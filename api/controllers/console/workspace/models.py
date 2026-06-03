@@ -193,7 +193,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, provider):
+    def get(self, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
 
