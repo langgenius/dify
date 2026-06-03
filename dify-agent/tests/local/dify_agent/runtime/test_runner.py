@@ -663,7 +663,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         async def duplicate_shell_run() -> str:
             return "tool"
 
-        return [Tool(duplicate_shell_run, name="shell.run")]
+        return [Tool(duplicate_shell_run, name="shell_run")]
 
     def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> object:
         del model, tools, output_type
@@ -739,7 +739,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         async with httpx.AsyncClient() as client:
             with pytest.raises(
                 AgentRunValidationError,
-                match="unique tool names across all layers, got duplicates: shell.run",
+                match="unique tool names across all layers, got duplicates: shell_run",
             ):
                 await AgentRunRunner(
                     sink=sink,

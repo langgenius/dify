@@ -1,7 +1,7 @@
 """Shellctl-backed Dify shell layer.
 
 ``DifyShellLayer`` is a stateful pydantic-ai tool layer that exposes exactly
-``shell.run``, ``shell.wait``, ``shell.input``, and ``shell.interrupt``. The
+``shell_run``, ``shell_wait``, ``shell_input``, and ``shell_interrupt``. The
 layer persists only JSON-safe shell session state in ``runtime_state`` and keeps
 its live shellctl HTTP client on the layer instance only while
 ``resource_context()`` is active. Agenton enters that resource scope before
@@ -58,51 +58,51 @@ _SESSION_ID_ATTEMPT_LIMIT = 256
 _SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
 _SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
 
-1. shell.run
+1. shell_run
    Start a new shell job in the current isolated workspace.
    Use it to execute commands or scripts.
 
-2. shell.wait
+2. shell_wait
    Wait for more output or completion from an existing shell job.
-   Use it when shell.run returns done=false.
+   Use it when shell_run returns done=false.
 
-3. shell.input
+3. shell_input
    Send stdin text to a running shell job, then wait for new output.
    Use it for interactive commands that are waiting for input.
 
-4. shell.interrupt
+4. shell_interrupt
    Interrupt a running shell job.
    Use it to stop a long-running, stuck, or no-longer-needed command.
 
 Common arguments:
 
 - script:
-  The command or script to execute. Used by shell.run.
+  The command or script to execute. Used by shell_run.
 
 - job_id:
-  The id of a shell job returned by shell.run.
-  Use it with shell.wait, shell.input, and shell.interrupt.
+  The id of a shell job returned by shell_run.
+  Use it with shell_wait, shell_input, and shell_interrupt.
   Never invent a job_id.
 
 - timeout:
   Maximum time, in seconds, to wait for output or completion for this tool call.
-  A timeout does not necessarily mean the job has stopped; if done=false, use shell.wait again.
+  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.
 
 - text:
-  Text to send to the running process stdin. Used by shell.input.
+  Text to send to the running process stdin. Used by shell_input.
   Include "\\n" if the process expects Enter.
 
 - grace_seconds:
-  Time to wait after interrupting before forceful cleanup. Used by shell.interrupt.
+  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.
 
 Usage rules:
 
-- Start with shell.run.
-- If shell.run returns done=false, call shell.wait with the returned job_id.
-- Use shell.input only when the job is running and waiting for stdin.
-- Use shell.interrupt when a job is stuck or should be stopped.
+- Start with shell_run.
+- If shell_run returns done=false, call shell_wait with the returned job_id.
+- Use shell_input only when the job is running and waiting for stdin.
+- Use shell_interrupt when a job is stuck or should be stopped.
 
-The script argument of shell.run can be a normal shell script, or a shebang script.
+The script argument of shell_run can be a normal shell script, or a shebang script.
 If the first line is a shebang, the shell layer executes the script directly.
 
 Tips:
@@ -273,7 +273,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     The mutable serializable state lives in ``runtime_state``; the live client is
     intentionally kept off-snapshot in ``_shellctl_client``. Tool methods update
     tracked job ids and output offsets after every successful shellctl response so
-    later ``shell.wait``/``shell.input`` calls can resume from the last known
+    later ``shell_wait``/``shell_input`` calls can resume from the last known
     offset without exposing offsets as model-controlled inputs.
     """
 
@@ -320,10 +320,10 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     @override
     def tools(self) -> Sequence[PydanticAITool[object]]:
         return [
-            Tool(self._tool_run, name="shell.run"),
-            Tool(self._tool_wait, name="shell.wait"),
-            Tool(self._tool_input, name="shell.input"),
-            Tool(self._tool_interrupt, name="shell.interrupt"),
+            Tool(self._tool_run, name="shell_run"),
+            Tool(self._tool_wait, name="shell_wait"),
+            Tool(self._tool_input, name="shell_input"),
+            Tool(self._tool_interrupt, name="shell_interrupt"),
         ]
 
     @override
