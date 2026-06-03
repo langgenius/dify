@@ -47,8 +47,19 @@ def upgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        # PostgreSQL: Create uuidv7 functions
-        op.execute(sa.text(r"""
+        # PostgreSQL: Create uuidv7 functions.
+        # PostgreSQL 18 ships a native pg_catalog.uuidv7(), so only create our own
+        # implementation when the server does not already provide one. Otherwise the
+        # CREATE FUNCTION below and the unqualified COMMENT statement collide with the
+        # built-in and the migration fails.
+        has_native_uuidv7 = conn.execute(sa.text(
+            "SELECT 1 FROM pg_proc p "
+            "JOIN pg_namespace n ON p.pronamespace = n.oid "
+            "WHERE p.proname = 'uuidv7' AND n.nspname = 'pg_catalog'"
+        )).scalar()
+
+        if not has_native_uuidv7:
+            op.execute(sa.text(r"""
 /* Main function to generate a uuidv7 value with millisecond precision */
 CREATE FUNCTION uuidv7() RETURNS uuid
 AS
@@ -95,7 +106,10 @@ def downgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        op.execute(sa.text("DROP FUNCTION uuidv7"))
-        op.execute(sa.text("DROP FUNCTION uuidv7_boundary"))
+        # IF EXISTS keeps the downgrade a no-op on PostgreSQL 18, where the native
+        # pg_catalog.uuidv7() was kept and no public.uuidv7() was created. Scoping the
+        # drop to the public schema avoids touching the built-in.
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7()"))
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7_boundary(timestamptz)"))
     else:
         pass
