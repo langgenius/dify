@@ -133,10 +133,10 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             pipeline._task_state = mock_task_state
             return pipeline
 
-    def test_get_message_event_type_called_once_when_first_llm_chunk_arrives(
+    def test_llm_chunk_always_streams_as_message_event(
         self, pipeline, mock_message_cycle_manager
     ):
-        """Expect get_message_event_type to be called when processing the first LLM chunk event."""
+        """LLM text chunks should always be streamed as MESSAGE, regardless of file state."""
         # Setup a minimal LLM chunk event
         chunk = Mock()
         chunk.delta.message.content = "hi"
@@ -150,8 +150,12 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         # Execute
         list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
-        # Assert
-        mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
+        # Assert: get_message_event_type should NOT be called for LLM chunks
+        mock_message_cycle_manager.get_message_event_type.assert_not_called()
+        # Assert: message_to_stream_response should be called WITHOUT explicit event_type (defaults to MESSAGE)
+        mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
+            answer="hi", message_id="test-message-id"
+        )
 
     def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, mock_task_state):
         """Test handling of LLM chunk events with text content."""
@@ -167,15 +171,13 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_queue_message.event = llm_chunk_event
         pipeline.queue_manager.listen.return_value = [mock_queue_message]
 
-        mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
-
         # Execute
         responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
         mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
-            answer="Hello, world!", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+            answer="Hello, world!", message_id="test-message-id"
         )
         assert mock_task_state.llm_result.message.content == "Hello, world!"
 
@@ -196,15 +198,13 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_queue_message.event = llm_chunk_event
         pipeline.queue_manager.listen.return_value = [mock_queue_message]
 
-        mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
-
         # Execute
         responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
         mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
-            answer="Hello world!", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+            answer="Hello world!", message_id="test-message-id"
         )
         assert mock_task_state.llm_result.message.content == "Hello world!"
 
@@ -400,7 +400,6 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         ]
         pipeline.queue_manager.listen.return_value = mock_queue_messages
 
-        mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
         pipeline.ping_stream_response = Mock(return_value=Mock(spec=PingStreamResponse))
 
         # Execute
@@ -413,8 +412,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         # Verify calls to message_to_stream_response
         assert mock_message_cycle_manager.message_to_stream_response.call_count == 2
         mock_message_cycle_manager.message_to_stream_response.assert_any_call(
-            answer="Hello", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+            answer="Hello", message_id="test-message-id"
         )
         mock_message_cycle_manager.message_to_stream_response.assert_any_call(
-            answer=" world!", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+            answer=" world!", message_id="test-message-id"
         )
