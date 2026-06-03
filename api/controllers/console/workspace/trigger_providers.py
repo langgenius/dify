@@ -78,7 +78,7 @@ class TriggerProviderIconApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         user = current_user
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
@@ -104,7 +104,7 @@ class TriggerProviderInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Get info for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -120,7 +120,7 @@ class TriggerSubscriptionListApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """List all trigger subscriptions for the current tenant's provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -150,7 +150,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         """Add a new subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -179,7 +179,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def get(self, provider, subscription_builder_id):
+    def get(self, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
         return jsonable_encoder(
             TriggerSubscriptionBuilderService.get_subscription_builder_by_id(subscription_builder_id)
@@ -195,7 +195,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    def post(self, provider: str, subscription_builder_id: str):
         """Verify and update a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -227,7 +227,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    def post(self, provider: str, subscription_builder_id: str):
         """Update a subscription instance for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -261,7 +261,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def get(self, provider, subscription_builder_id):
+    def get(self, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -284,7 +284,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    def post(self, provider: str, subscription_builder_id: str):
         """Build a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -408,7 +408,7 @@ class TriggerOAuthAuthorizeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Initiate OAuth authorization flow for a trigger provider"""
         user = current_user
         assert isinstance(user, Account)
@@ -490,7 +490,7 @@ class TriggerOAuthAuthorizeApi(Resource):
 @console_ns.route("/oauth/plugin/<path:provider>/trigger/callback")
 class TriggerOAuthCallbackApi(Resource):
     @setup_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Handle OAuth callback for trigger provider"""
         context_id = request.cookies.get("context_id")
         if not context_id:
@@ -558,7 +558,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Get OAuth client configuration for a provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -604,7 +604,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         """Configure custom OAuth client for a provider"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -630,7 +630,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def delete(self, provider):
+    def delete(self, provider: str):
         """Remove custom OAuth client configuration"""
         user = current_user
         assert user.current_tenant_id is not None
@@ -658,7 +658,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    def post(self, provider, subscription_id):
+    def post(self, provider: str, subscription_id: str):
         """Verify credentials for an existing subscription (edit mode only)"""
         user = current_user
         assert user.current_tenant_id is not None
