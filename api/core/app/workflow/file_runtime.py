@@ -102,7 +102,14 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         self._assert_upload_file_access(upload_file_id=upload_file_id)
         base_url = self._base_url(for_external=for_external)
         url = f"{base_url}/files/{upload_file_id}/file-preview"
-        query = self._sign_query(payload=f"file-preview|{upload_file_id}")
+        # Include tenant_id in the signature when an access scope is active,
+        # so the signed URL is bound to the current tenant and cannot be
+        # replayed across tenants.
+        tenant_id: str | None = None
+        scope = self._file_access_controller.current_scope()
+        if scope is not None:
+            tenant_id = scope.tenant_id
+        query = self._sign_query(payload=f"file-preview|{upload_file_id}", tenant_id=tenant_id)
         if as_attachment:
             query["as_attachment"] = "true"
         return f"{url}?{urllib.parse.urlencode(query)}"
@@ -121,7 +128,22 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         timestamp: str,
         nonce: str,
         sign: str,
+        tenant_id: str | None = None,
     ) -> bool:
+        """Verify the HMAC signature for a file preview URL.
+
+        Supports two payload formats for backward compatibility:
+        - New format (with tenant binding): ``{kind}-preview|{file_id}|{tenant_id}|{timestamp}|{nonce}``
+        - Legacy format (no tenant binding): ``{kind}-preview|{file_id}|{timestamp}|{nonce}``
+        """
+        # Try new tenant-bound format first when tenant_id is provided
+        if tenant_id:
+            payload = f"{preview_kind}-preview|{file_id}|{tenant_id}|{timestamp}|{nonce}"
+            recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
+            if sign == base64.urlsafe_b64encode(recalculated).decode():
+                return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+        # Fall back to legacy format without tenant binding
         payload = f"{preview_kind}-preview|{file_id}|{timestamp}|{nonce}"
         recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
         if sign != base64.urlsafe_b64encode(recalculated).decode():
@@ -138,15 +160,27 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def _secret_key() -> bytes:
         return dify_config.SECRET_KEY.encode()
 
-    def _sign_query(self, *, payload: str) -> dict[str, str]:
+    def _sign_query(self, *, payload: str, tenant_id: str | None = None) -> dict[str, str]:
+        """Build signed query parameters for a file preview URL.
+
+        When *tenant_id* is provided it is included in both the HMAC payload
+        and the returned query dict so the verifier can enforce tenant isolation.
+        """
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
-        sign = hmac.new(self._secret_key(), f"{payload}|{timestamp}|{nonce}".encode(), hashlib.sha256).digest()
-        return {
+        if tenant_id:
+            full_payload = f"{payload}|{tenant_id}|{timestamp}|{nonce}"
+        else:
+            full_payload = f"{payload}|{timestamp}|{nonce}"
+        sign = hmac.new(self._secret_key(), full_payload.encode(), hashlib.sha256).digest()
+        result: dict[str, str] = {
             "timestamp": timestamp,
             "nonce": nonce,
             "sign": base64.urlsafe_b64encode(sign).decode(),
         }
+        if tenant_id:
+            result["tenant_id"] = tenant_id
+        return result
 
     def _resolve_storage_key(self, *, file: File) -> str:
         parsed_reference = parse_file_reference(file.reference)
