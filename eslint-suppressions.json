@@ -168,7 +168,9 @@
                                                                                           }
                                                                },
     "web/app/(shareLayout)/webapp-reset-password/page.tsx":  {
-
+                                                                 "no-restricted-imports":  {
+                                                                                               "count":  1
+                                                                                           }
                                                              },
     "web/app/(shareLayout)/webapp-reset-password/set-password/page.tsx":  {
                                                                               "no-restricted-imports":  {
@@ -181,7 +183,9 @@
                                                                                               }
                                                                 },
     "web/app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx":  {
-
+                                                                                  "no-restricted-imports":  {
+                                                                                                                "count":  1
+                                                                                                            }
                                                                               },
     "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx":  {
                                                                                       "no-restricted-imports":  {
