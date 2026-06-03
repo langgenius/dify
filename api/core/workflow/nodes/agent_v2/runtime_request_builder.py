@@ -456,7 +456,7 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
 
 def _plain_mapping(item: object) -> dict[str, Any]:
     if isinstance(item, BaseModel):
-        return item.model_dump(mode="python", exclude_none=True)
+        return item.model_dump(mode="python", exclude_none=True, exclude_defaults=True)
     if isinstance(item, Mapping):
         return dict(item)
     return {}
