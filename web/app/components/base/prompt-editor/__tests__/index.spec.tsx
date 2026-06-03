@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => {
       })),
       parseEditorState: vi.fn(() => ({ state: 'parsed' })),
       setEditorState: vi.fn(),
+      setEditable: vi.fn(),
       focus: vi.fn(),
       update: vi.fn((fn: () => void) => fn()),
     },
@@ -326,6 +327,20 @@ describe('PromptEditor', () => {
     it('should render with editable=false', () => {
       render(<PromptEditor editable={false} placeholder="read only" />)
       expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should update lexical editable state when editable prop changes', () => {
+      const { rerender } = render(<PromptEditor editable={true} />)
+
+      expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(true)
+
+      rerender(<PromptEditor editable={false} />)
+
+      expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(false)
+
+      rerender(<PromptEditor editable={true} />)
+
+      expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(true)
     })
 
     it('should render with isSupportFileVar=true', () => {

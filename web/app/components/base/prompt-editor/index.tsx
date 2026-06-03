@@ -20,6 +20,7 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
@@ -97,6 +98,16 @@ const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
   return null
 }
 
+const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    editor.setEditable(editable)
+  }, [editable, editor])
+
+  return null
+}
+
 export type PromptEditorProps = {
   instanceId?: string
   compact?: boolean
@@ -122,7 +133,7 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void }> }>
+  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -191,16 +202,18 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }
 
   useEffect(() => {
-    eventEmitter?.emit({
+    const event: EventEmitterValue = {
       type: UPDATE_DATASETS_EVENT_EMITTER,
       payload: contextBlock?.datasets,
-    } as any)
+    }
+    eventEmitter?.emit(event)
   }, [eventEmitter, contextBlock?.datasets])
   useEffect(() => {
-    eventEmitter?.emit({
+    const event: EventEmitterValue = {
       type: UPDATE_HISTORY_EVENT_EMITTER,
       payload: historyBlock?.history,
-    } as any)
+    }
+    eventEmitter?.emit(event)
   }, [eventEmitter, historyBlock?.history])
 
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null)
@@ -243,6 +256,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           onEditorChange={handleEditorChange}
         />
         <ValueSyncPlugin value={value} />
+        <EditableSyncPlugin editable={editable} />
       </div>
     </LexicalComposer>
   )
