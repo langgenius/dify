@@ -42,8 +42,6 @@ type SnippetMainProps = {
   draftPayload: SnippetDetailPayload
   hasInitialDraftChanges: boolean
   hasPublishedWorkflow: boolean
-  publishedWorkflowHash?: string
-  draftWorkflowHash?: string
   snippetId: string
   draftNodes: WorkflowProps['nodes']
   draftEdges: WorkflowProps['edges']
@@ -235,8 +233,6 @@ const SnippetMain = ({
   draftPayload,
   hasInitialDraftChanges,
   hasPublishedWorkflow,
-  publishedWorkflowHash,
-  draftWorkflowHash,
   snippetId,
   nodes,
   edges,
@@ -276,7 +272,6 @@ const SnippetMain = ({
   const displayNodes = isEditing ? effectiveDraftNodes : nodes
   const displayEdges = isEditing ? effectiveDraftEdges : edges
   const displayViewport = isEditing ? effectiveDraftViewport : viewport
-  const displayWorkflowHash = isEditing ? draftWorkflowHash : publishedWorkflowHash
   const { graph, snippet } = displayPayload
   const {
     doSyncWorkflowDraft: syncWorkflowDraft,
@@ -567,7 +562,7 @@ const SnippetMain = ({
       />
       <div className="relative min-h-0 min-w-0 grow">
         <WorkflowWithInnerContext
-          key={`${snippetId}-${isEditing ? 'draft' : 'published'}-${displayWorkflowHash ?? ''}`}
+          key={`${snippetId}-${isEditing ? 'draft' : 'published'}`}
           nodes={displayNodes}
           edges={displayEdges}
           viewport={displayViewport ?? graph.viewport}

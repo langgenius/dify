@@ -4,6 +4,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { isEqual } from 'es-toolkit/predicate'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropdown'
@@ -79,8 +80,12 @@ const SnippetSidebar = ({
   }, [fields, hideAddVarModal, onFieldsChange, validateFields])
 
   const handleVarListChange = useCallback((list: InputVar[]) => {
-    onFieldsChange(list.map(toSnippetInputField))
-  }, [onFieldsChange])
+    const nextFields = list.map(toSnippetInputField)
+    if (isEqual(nextFields, fields))
+      return
+
+    onFieldsChange(nextFields)
+  }, [fields, onFieldsChange])
 
   return (
     <aside className="flex h-full w-90 shrink-0 flex-col overflow-hidden rounded-tl-2xl border-r border-divider-subtle bg-background-default">

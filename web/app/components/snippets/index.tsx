@@ -72,8 +72,6 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
           draftPayload={data.draft}
           hasInitialDraftChanges={data.hasDraftChanges}
           hasPublishedWorkflow={!!data.publishedWorkflow}
-          publishedWorkflowHash={data.publishedWorkflow?.hash}
-          draftWorkflowHash={data.draftWorkflow?.hash}
           nodes={publishedNodesData}
           edges={publishedEdgesData}
           viewport={data.published.graph.viewport}
