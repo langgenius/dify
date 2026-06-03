@@ -161,6 +161,33 @@ export function formatTopic(topic: HelpTopic, format = ''): string {
   return topic.render()
 }
 
+// Renders a list of commands as aligned `path  description` rows, grouped by
+// their first path segment (a blank line between groups). Shared by the
+// top-level overview and namespace drill-in (`difyctl <group> --help`) so both
+// derive from the same full-depth `collectCommands` walk and the canonical
+// space-joined command path.
+export function renderCommandRows(commands: Array<{ command: CommandConstructor, path: string[] }>): string {
+  const rows = commands.map(({ command, path }) => ({
+    label: path.join(' '),
+    desc: command.description ?? '',
+    group: path[0] ?? '',
+  }))
+
+  const width = rows.reduce((max, r) => Math.max(max, r.label.length), 0) + 2
+  const lines: string[] = []
+  let prevGroup: string | undefined
+
+  for (const r of rows) {
+    if (prevGroup !== undefined && r.group !== prevGroup)
+      lines.push('')
+
+    prevGroup = r.group
+    lines.push(r.desc ? `  ${r.label.padEnd(width)}${r.desc}` : `  ${r.label}`)
+  }
+
+  return lines.join('\n')
+}
+
 export function formatTopLevelHelp(tree: CommandTree, format: string): string {
   return serialize({
     bin: BIN,

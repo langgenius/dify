@@ -2,9 +2,9 @@ import type { CommandTree } from './registry'
 import { BaseError } from '@/errors/base'
 import { formatErrorForCli } from '@/errors/format'
 import { findTopic, TOPICS } from '@/help/topics'
-import { formatHelp, formatTopic, formatTopLevelHelp } from './help'
+import { formatHelp, formatTopic, formatTopLevelHelp, renderCommandRows } from './help'
 import { stringifyOutput } from './output'
-import { findSuggestions, resolveCommand } from './registry'
+import { collectCommands, findSuggestions, resolveCommand } from './registry'
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help') || argv.includes('-h')) {
@@ -41,6 +41,20 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
 
           return
         }
+      }
+
+      // Namespace drill-in: `difyctl auth --help` / `difyctl auth devices --help`.
+      // Group nodes have no command of their own (no index.ts), so resolveCommand
+      // misses them; surface their subtree instead of erroring. A strict-prefix
+      // match over the full-depth command walk keeps this purely derived.
+      const subtree = collectCommands(tree).filter(
+        c => c.path.length > helpArgv.length && helpArgv.every((token, i) => c.path[i] === token),
+      )
+
+      if (subtree.length > 0) {
+        process.stdout.write(`COMMANDS\n${renderCommandRows(subtree)}\n`)
+
+        return
       }
 
       process.stderr.write(`unknown help topic: ${helpArgv.join(' ')}\n`)

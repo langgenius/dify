@@ -421,4 +421,57 @@ describe('run() help routing', () => {
     expect(obj.command).toBe('get app')
     expect(Array.isArray(obj.flags)).toBe(true)
   })
+
+  class Login extends Command {
+    static override description = 'Sign in'
+    async run() {}
+  }
+
+  class DevicesList extends Command {
+    static override description = 'List sessions'
+    async run() {}
+  }
+
+  class DevicesRevoke extends Command {
+    static override description = 'Revoke a session'
+    async run() {}
+  }
+
+  const groupTree: CommandTree = {
+    auth: {
+      subcommands: {
+        login: { command: Login, subcommands: {} },
+        devices: {
+          subcommands: {
+            list: { command: DevicesList, subcommands: {} },
+            revoke: { command: DevicesRevoke, subcommands: {} },
+          },
+        },
+      },
+    },
+  }
+
+  it('drills into a namespace node for `<group> --help` instead of erroring', async () => {
+    const result = await captureRun(groupTree, ['auth', '--help'])
+    expect(result.stdout).toContain('auth login')
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('auth devices revoke')
+    expect(result.stderr).not.toContain('unknown help topic')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('drills into a nested namespace node for `<group> <sub> --help`', async () => {
+    const result = await captureRun(groupTree, ['auth', 'devices', '--help'])
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('auth devices revoke')
+    expect(result.stdout).not.toContain('auth login')
+    expect(result.stderr).not.toContain('unknown help topic')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('still errors for an unknown namespace-looking path', async () => {
+    const result = await captureRun(groupTree, ['auth', 'nope', '--help'])
+    expect(result.stderr).toContain('unknown help topic: auth nope')
+    expect(result.exit).toBe(1)
+  })
 })
