@@ -4326,9 +4326,9 @@ Get compliance document download link
 #### GET
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [DataSourceIntegrateListResponse](#datasourceintegratelistresponse) |
 
 #### PATCH
 ##### Responses
@@ -4349,9 +4349,9 @@ Get compliance document download link
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [DataSourceIntegrateListResponse](#datasourceintegratelistresponse) |
 
 #### PATCH
 ##### Parameters
@@ -4662,13 +4662,6 @@ Initialize dataset with documents
 
 ### /datasets/notion-indexing-estimate
 
-#### GET
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [TextContentResponse](#textcontentresponse) |
-
 #### POST
 ##### Parameters
 
@@ -4678,9 +4671,9 @@ Initialize dataset with documents
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [IndexingEstimate](#indexingestimate) |
 
 ### /datasets/process-rule
 
@@ -6652,6 +6645,7 @@ Mark a notification as dismissed for the current user.
 | ---- | ---------- | ----------- | -------- | ------ |
 | page_id | path |  | Yes | string |
 | page_type | path |  | Yes | string |
+| credential_id | query | Credential ID | Yes | string |
 
 ##### Responses
 
@@ -6659,29 +6653,21 @@ Mark a notification as dismissed for the current user.
 | ---- | ----------- | ------ |
 | 200 | Success | [TextContentResponse](#textcontentresponse) |
 
-#### POST
+### /notion/pre-import/pages
+
+#### GET
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| page_id | path |  | Yes | string |
-| page_type | path |  | Yes | string |
-| payload | body |  | Yes | [NotionEstimatePayload](#notionestimatepayload) |
+| credential_id | query | Credential ID | Yes | string |
+| dataset_id | query | Dataset ID | No | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /notion/pre-import/pages
-
-#### GET
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | [NotionIntegrateInfoListResponse](#notionintegrateinfolistresponse) |
 
 ### /oauth/authorize/{provider}
 
@@ -12456,19 +12442,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | info_list | [InfoList](#infolist) |  | Yes |
 
-#### DataSourceIntegrate
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| disabled | boolean |  | No |
-| id | string |  | No |
-| is_bound | boolean |  | No |
-| link | string |  | No |
-| provider | string |  | No |
-| source_info | [DataSourceIntegrateWorkspace](#datasourceintegrateworkspace) |  | No |
-
-#### DataSourceIntegrateIcon
+#### DataSourceIntegrateIconResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -12476,31 +12450,43 @@ Condition detail
 | type | string |  | No |
 | url | string |  | No |
 
-#### DataSourceIntegrateList
+#### DataSourceIntegrateListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [DataSourceIntegrate](#datasourceintegrate) ] |  | No |
+| data | [ [DataSourceIntegrateResponse](#datasourceintegrateresponse) ] |  | Yes |
 
-#### DataSourceIntegratePage
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| page_icon | [DataSourceIntegrateIcon](#datasourceintegrateicon) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### DataSourceIntegrateWorkspace
+#### DataSourceIntegratePageResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| pages | [ [DataSourceIntegratePage](#datasourceintegratepage) ] |  | No |
-| total | integer |  | No |
-| workspace_icon | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
+| page_icon | [DataSourceIntegrateIconResponse](#datasourceintegrateiconresponse) |  | Yes |
+| page_id | string |  | Yes |
+| page_name | string |  | Yes |
+| parent_id | string |  | Yes |
+| type | string |  | Yes |
+
+#### DataSourceIntegrateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| disabled | boolean |  | Yes |
+| id | string |  | Yes |
+| is_bound | boolean |  | Yes |
+| link | string |  | Yes |
+| provider | string |  | Yes |
+| source_info | [DataSourceIntegrateWorkspaceResponse](#datasourceintegrateworkspaceresponse) |  | Yes |
+
+#### DataSourceIntegrateWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [DataSourceIntegratePageResponse](#datasourceintegratepageresponse) ] |  | Yes |
+| total | integer |  | Yes |
+| workspace_icon | string |  | Yes |
+| workspace_id | string |  | Yes |
+| workspace_name | string |  | Yes |
 
 #### DatasetAndDocumentResponse
 
@@ -13906,6 +13892,14 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | include_secret | string | Whether to include secret values in the exported DSL | No |
 
+#### IndexingEstimate
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| preview | [ [PreviewDetail](#previewdetail) ] |  | Yes |
+| qa_preview | [ [QAPreviewDetail](#qapreviewdetail) ] |  | No |
+| total_segments | integer |  | Yes |
+
 #### IndexingEstimatePayload
 
 | Name | Type | Description | Required |
@@ -14462,31 +14456,31 @@ Enum class for model type.
 | pages | [ [NotionPage](#notionpage) ] |  | Yes |
 | workspace_id | string |  | Yes |
 
-#### NotionIntegrateInfoList
+#### NotionIntegrateInfoListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| notion_info | [ [NotionIntegrateWorkspace](#notionintegrateworkspace) ] |  | No |
+| notion_info | [ [NotionIntegrateWorkspaceResponse](#notionintegrateworkspaceresponse) ] |  | Yes |
 
-#### NotionIntegratePage
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| is_bound | boolean |  | No |
-| page_icon | [DataSourceIntegrateIcon](#datasourceintegrateicon) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### NotionIntegrateWorkspace
+#### NotionIntegratePageResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| pages | [ [NotionIntegratePage](#notionintegratepage) ] |  | No |
-| workspace_icon | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
+| is_bound | boolean |  | Yes |
+| page_icon | [DataSourceIntegrateIconResponse](#datasourceintegrateiconresponse) |  | Yes |
+| page_id | string |  | Yes |
+| page_name | string |  | Yes |
+| parent_id | string |  | Yes |
+| type | string |  | Yes |
+
+#### NotionIntegrateWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [NotionIntegratePageResponse](#notionintegratepageresponse) ] |  | Yes |
+| workspace_icon | string |  | Yes |
+| workspace_id | string |  | Yes |
+| workspace_name | string |  | Yes |
 
 #### NotionPage
 
@@ -15018,6 +15012,14 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | enabled | boolean |  | Yes |
 | id | string |  | Yes |
 
+#### PreviewDetail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| child_chunks | [ string ] |  | No |
+| content | string |  | Yes |
+| summary | string |  | No |
+
 #### ProcessRule
 
 | Name | Type | Description | Required |
@@ -15043,6 +15045,13 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | original_document_id | string |  | No |
 | response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | start_node_id | string |  | Yes |
+
+#### QAPreviewDetail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| question | string |  | Yes |
 
 #### Quota
 
