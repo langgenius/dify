@@ -1,33 +1,22 @@
 'use client'
 
+import type { App as WorkspaceApp } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import ContinueWorkItem from './item'
 
 type ContinueWorkProps = {
+  apps: WorkspaceApp[]
   className?: string
 }
 
 const ContinueWork = ({
+  apps,
   className,
 }: ContinueWorkProps) => {
   const { t } = useTranslation()
-  const { data } = useQuery(consoleQuery.apps.list.queryOptions({
-    input: {
-      query: {
-        page: 1,
-        limit: 8,
-        name: '',
-      },
-    },
-    staleTime: 0,
-    gcTime: 0,
-  }))
-  const apps = data?.data ?? []
 
   if (apps.length === 0)
     return null

@@ -16,10 +16,6 @@ const setMockSelectedIndex = (index: number) => {
   mockCarouselListeners.forEach(listener => listener())
 }
 
-vi.mock('@/service/use-explore', () => ({
-  useGetBanners: (...args: unknown[]) => mockUseGetBanners(...args),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
@@ -126,6 +122,11 @@ const createMockBanner = (id: string, status: string = 'enabled', title: string 
   },
 } as BannerType)
 
+const renderBanner = () => {
+  const query = mockUseGetBanners()
+  return render(<Banner banners={query.data ?? []} />)
+}
+
 describe('Banner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -145,31 +146,19 @@ describe('Banner', () => {
     vi.useRealTimers()
   })
 
-  describe('loading state', () => {
-    it('renders loading state when isLoading is true', () => {
+  describe('data boundary', () => {
+    it('renders the greeting shell without local loading UI when parent passes no banners', () => {
       mockUseGetBanners.mockReturnValue({
         data: null,
         isLoading: true,
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
-      expect(screen.getByRole('status', { name: 'loading' })).toBeInTheDocument()
-    })
-
-    it('matches the loaded greeting card shell while loading', () => {
-      mockUseGetBanners.mockReturnValue({
-        data: null,
-        isLoading: true,
-        isError: false,
-      })
-
-      render(<Banner />)
-
-      const loadingWrapper = screen.getByRole('status', { name: 'loading' })
-      expect(loadingWrapper).toHaveClass('px-8', 'pt-6', 'pb-4')
-      expect(loadingWrapper.querySelector('.gap-1')).toBeInTheDocument()
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'loading' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
     })
   })
 
@@ -181,7 +170,7 @@ describe('Banner', () => {
         isError: true,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
       expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
@@ -196,7 +185,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
       expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
@@ -212,7 +201,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
       expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
@@ -225,7 +214,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
       expect(screen.queryByTestId('carousel')).not.toBeInTheDocument()
@@ -240,7 +229,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
     })
@@ -252,7 +241,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('What if… this is where your next idea begins.')).toBeInTheDocument()
     })
@@ -267,7 +256,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
 
@@ -287,7 +276,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(screen.getByTestId('carousel')).toBeInTheDocument()
     })
@@ -303,7 +292,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const bannerItems = screen.getAllByTestId('banner-item')
       expect(bannerItems).toHaveLength(2)
@@ -319,7 +308,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const bannerItem = screen.getByTestId('banner-item')
       expect(bannerItem).toHaveAttribute('data-autoplay-delay', '5000')
@@ -336,7 +325,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(mockTrackEvent).toHaveBeenCalledTimes(1)
       expect(mockTrackEvent).toHaveBeenNthCalledWith(1, 'explore_banner_impression', expect.objectContaining({
@@ -380,7 +369,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       expect(mockTrackEvent).not.toHaveBeenCalled()
     })
@@ -394,7 +383,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const wrapper = screen.getByText('Welcome back, Evan 👋').closest('.relative')!
       fireEvent.mouseEnter(wrapper)
@@ -410,7 +399,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const wrapper = screen.getByText('Welcome back, Evan 👋').closest('.relative')!
 
@@ -430,7 +419,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       act(() => {
         window.dispatchEvent(new Event('resize'))
@@ -447,7 +436,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       act(() => {
         window.dispatchEvent(new Event('resize'))
@@ -468,7 +457,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       act(() => {
         window.dispatchEvent(new Event('resize'))
@@ -508,7 +497,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      const { unmount } = render(<Banner />)
+      const { unmount } = renderBanner()
       unmount()
 
       expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
@@ -524,7 +513,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      const { unmount } = render(<Banner />)
+      const { unmount } = renderBanner()
 
       act(() => {
         window.dispatchEvent(new Event('resize'))
@@ -537,17 +526,17 @@ describe('Banner', () => {
     })
   })
 
-  describe('hook calls', () => {
-    it('calls useGetBanners with correct locale', () => {
+  describe('props', () => {
+    it('renders the provided banners without fetching them locally', () => {
       mockUseGetBanners.mockReturnValue({
-        data: [],
+        data: [createMockBanner('1', 'enabled', 'Provided Banner')],
         isLoading: false,
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
-      expect(mockUseGetBanners).toHaveBeenCalledWith('en-US')
+      expect(screen.getByText('BannerItem: Provided Banner')).toBeInTheDocument()
     })
   })
 
@@ -563,7 +552,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const carouselItems = screen.getAllByTestId('carousel-item')
       expect(carouselItems).toHaveLength(3)
@@ -580,7 +569,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const bannerItems = screen.getAllByTestId('banner-item')
       expect(bannerItems[0]).toHaveAttribute('data-banner-id', '1')
@@ -598,7 +587,7 @@ describe('Banner', () => {
         isError: false,
       })
 
-      render(<Banner />)
+      renderBanner()
 
       const bannerItem = screen.getByTestId('banner-item')
       expect(bannerItem).toHaveAttribute('data-language', 'en-US')
@@ -614,9 +603,9 @@ describe('Banner', () => {
         isError: false,
       })
 
-      const { rerender } = render(<Banner />)
+      const { rerender } = renderBanner()
 
-      rerender(<Banner />)
+      rerender(<Banner banners={mockUseGetBanners().data ?? []} />)
 
       expect(screen.getByTestId('carousel')).toBeInTheDocument()
     })

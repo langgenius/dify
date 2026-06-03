@@ -1,5 +1,4 @@
 /* eslint-disable react/set-state-in-effect */
-import type { FC } from 'react'
 import type { Banner } from '@/models/app'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,14 +21,14 @@ const INDICATOR_WIDTH = 20
 const INDICATOR_GAP = 8
 const MIN_VIEW_MORE_WIDTH = 160
 
-export const BannerItem: FC<BannerItemProps> = ({
+export function BannerItem({
   banner,
   autoplayDelay,
   sort,
   language,
   accountId,
   isPaused = false,
-}) => {
+}: BannerItemProps) {
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
   const { category, title, description, 'img-src': imgSrc } = banner.content
@@ -44,6 +43,13 @@ export const BannerItem: FC<BannerItemProps> = ({
     const nextIndex = totalSlides > 0 ? (selectedIndex + 1) % totalSlides : 0
     return { slides, totalSlides, nextIndex }
   }, [api, selectedIndex])
+  const indicatorItems = useMemo(
+    () => slideInfo.slides.map((slide, index) => ({
+      id: slide.dataset?.bannerId ?? `${banner.id}-${index}`,
+      index,
+    })),
+    [banner.id, slideInfo.slides],
+  )
 
   const indicatorsWidth = useMemo(() => {
     const count = slideInfo.totalSlides
@@ -172,9 +178,9 @@ export const BannerItem: FC<BannerItemProps> = ({
           >
             {/* Slide navigation indicators */}
             <div className="flex items-center gap-1">
-              {slideInfo.slides.map((_: unknown, index: number) => (
+              {indicatorItems.map(({ id, index }) => (
                 <IndicatorButton
-                  key={index}
+                  key={id}
                   index={index}
                   selectedIndex={selectedIndex}
                   isNextSlide={index === slideInfo.nextIndex}
@@ -194,6 +200,8 @@ export const BannerItem: FC<BannerItemProps> = ({
         <img
           src={imgSrc}
           alt={title}
+          width={224}
+          height={168}
           className="h-[168px] w-56 shrink-0 rounded-xl object-cover"
         />
       </div>

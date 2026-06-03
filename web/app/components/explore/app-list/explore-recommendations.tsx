@@ -1,6 +1,7 @@
 'use client'
 
 import type { App } from '@/models/explore'
+import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import ContinueWork from '@/app/components/explore/continue-work'
 import dynamic from '@/next/dynamic'
@@ -10,20 +11,18 @@ const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), {
 
 export function ExploreRecommendations({
   canCreate,
-  isContinueWorkLoading,
+  continueWorkApps,
   onCreate,
   onTry,
 }: {
   canCreate: boolean
-  isContinueWorkLoading: boolean
+  continueWorkApps: WorkspaceApp[]
   onCreate: (app: App) => void
   onTry: (params: TryAppSelection) => void
 }) {
   return (
     <>
-      {isContinueWorkLoading
-        ? <RecommendationSectionSkeleton className="pb-4" />
-        : <ContinueWork className="pb-4" />}
+      <ContinueWork apps={continueWorkApps} className="pb-4" />
       <LearnDify
         canCreate={canCreate}
         className="pb-0"
