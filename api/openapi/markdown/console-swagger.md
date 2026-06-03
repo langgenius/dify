@@ -4662,19 +4662,6 @@ Initialize dataset with documents
 
 ### /datasets/notion-indexing-estimate
 
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | query | Credential ID | Yes | string |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [TextContentResponse](#textcontentresponse) |
-
 #### POST
 ##### Parameters
 
@@ -6665,21 +6652,6 @@ Mark a notification as dismissed for the current user.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | [TextContentResponse](#textcontentresponse) |
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| page_id | path |  | Yes | string |
-| page_type | path |  | Yes | string |
-| payload | body |  | Yes | [NotionEstimatePayload](#notionestimatepayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [IndexingEstimate](#indexingestimate) |
 
 ### /notion/pre-import/pages
 

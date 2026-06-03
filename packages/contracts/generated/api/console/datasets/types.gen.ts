@@ -196,10 +196,6 @@ export type DatasetMetadataBuiltInFieldsResponse = {
   fields: Array<DatasetMetadataBuiltInFieldResponse>
 }
 
-export type TextContentResponse = {
-  content: string
-}
-
 export type NotionEstimatePayload = {
   doc_form?: string
   doc_language?: string
@@ -1403,22 +1399,6 @@ export type GetDatasetsMetadataBuiltInResponses = {
 
 export type GetDatasetsMetadataBuiltInResponse
   = GetDatasetsMetadataBuiltInResponses[keyof GetDatasetsMetadataBuiltInResponses]
-
-export type GetDatasetsNotionIndexingEstimateData = {
-  body?: never
-  path?: never
-  query: {
-    credential_id: string
-  }
-  url: '/datasets/notion-indexing-estimate'
-}
-
-export type GetDatasetsNotionIndexingEstimateResponses = {
-  200: TextContentResponse
-}
-
-export type GetDatasetsNotionIndexingEstimateResponse
-  = GetDatasetsNotionIndexingEstimateResponses[keyof GetDatasetsNotionIndexingEstimateResponses]
 
 export type PostDatasetsNotionIndexingEstimateData = {
   body: NotionEstimatePayload

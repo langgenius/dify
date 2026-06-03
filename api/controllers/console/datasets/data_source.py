@@ -302,11 +302,10 @@ class DataSourceNotionListApi(Resource):
             return dump_response(NotionIntegrateInfoListResponse, {"notion_info": notion_info}), 200
 
 
-@console_ns.route(
-    "/notion/pages/<uuid:page_id>/<string:page_type>/preview",
-    "/datasets/notion-indexing-estimate",
-)
-class DataSourceNotionApi(Resource):
+@console_ns.route("/notion/pages/<uuid:page_id>/<string:page_type>/preview")
+class DataSourceNotionPreviewApi(Resource):
+    """Preview one authorized Notion page through the datasource credential."""
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -337,6 +336,11 @@ class DataSourceNotionApi(Resource):
 
         text_docs = extractor.extract()
         return {"content": "\n".join([doc.page_content for doc in text_docs])}, 200
+
+
+@console_ns.route("/datasets/notion-indexing-estimate")
+class DataSourceNotionIndexingEstimateApi(Resource):
+    """Estimate indexing work for selected Notion pages."""
 
     @setup_required
     @login_required

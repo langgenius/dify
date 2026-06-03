@@ -82,13 +82,6 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
- * TextContentResponse
- */
-export const zTextContentResponse = z.object({
-  content: z.string(),
-})
-
-/**
  * NotionEstimatePayload
  */
 export const zNotionEstimatePayload = z.object({
@@ -1555,15 +1548,6 @@ export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
  * Built-in fields retrieved successfully
  */
 export const zGetDatasetsMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
-
-export const zGetDatasetsNotionIndexingEstimateQuery = z.object({
-  credential_id: z.string().min(1),
-})
-
-/**
- * Success
- */
-export const zGetDatasetsNotionIndexingEstimateResponse = zTextContentResponse
 
 export const zPostDatasetsNotionIndexingEstimateBody = zNotionEstimatePayload
 

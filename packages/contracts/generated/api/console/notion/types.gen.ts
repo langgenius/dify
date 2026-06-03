@@ -8,36 +8,8 @@ export type TextContentResponse = {
   content: string
 }
 
-export type NotionEstimatePayload = {
-  doc_form?: string
-  doc_language?: string
-  notion_info_list: Array<{
-    [key: string]: unknown
-  }>
-  process_rule: {
-    [key: string]: unknown
-  }
-}
-
-export type IndexingEstimate = {
-  preview: Array<PreviewDetail>
-  qa_preview?: Array<QaPreviewDetail> | null
-  total_segments: number
-}
-
 export type NotionIntegrateInfoListResponse = {
   notion_info: Array<NotionIntegrateWorkspaceResponse>
-}
-
-export type PreviewDetail = {
-  child_chunks?: Array<string> | null
-  content: string
-  summary?: string | null
-}
-
-export type QaPreviewDetail = {
-  answer: string
-  question: string
 }
 
 export type NotionIntegrateWorkspaceResponse = {
@@ -80,23 +52,6 @@ export type GetNotionPagesByPageIdByPageTypePreviewResponses = {
 
 export type GetNotionPagesByPageIdByPageTypePreviewResponse
   = GetNotionPagesByPageIdByPageTypePreviewResponses[keyof GetNotionPagesByPageIdByPageTypePreviewResponses]
-
-export type PostNotionPagesByPageIdByPageTypePreviewData = {
-  body: NotionEstimatePayload
-  path: {
-    page_id: string
-    page_type: string
-  }
-  query?: never
-  url: '/notion/pages/{page_id}/{page_type}/preview'
-}
-
-export type PostNotionPagesByPageIdByPageTypePreviewResponses = {
-  200: IndexingEstimate
-}
-
-export type PostNotionPagesByPageIdByPageTypePreviewResponse
-  = PostNotionPagesByPageIdByPageTypePreviewResponses[keyof PostNotionPagesByPageIdByPageTypePreviewResponses]
 
 export type GetNotionPreImportPagesData = {
   body?: never

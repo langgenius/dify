@@ -10,42 +10,6 @@ export const zTextContentResponse = z.object({
 })
 
 /**
- * NotionEstimatePayload
- */
-export const zNotionEstimatePayload = z.object({
-  doc_form: z.string().optional().default('text_model'),
-  doc_language: z.string().optional().default('English'),
-  notion_info_list: z.array(z.record(z.string(), z.unknown())),
-  process_rule: z.record(z.string(), z.unknown()),
-})
-
-/**
- * PreviewDetail
- */
-export const zPreviewDetail = z.object({
-  child_chunks: z.array(z.string()).nullish(),
-  content: z.string(),
-  summary: z.string().nullish(),
-})
-
-/**
- * QAPreviewDetail
- */
-export const zQaPreviewDetail = z.object({
-  answer: z.string(),
-  question: z.string(),
-})
-
-/**
- * IndexingEstimate
- */
-export const zIndexingEstimate = z.object({
-  preview: z.array(zPreviewDetail),
-  qa_preview: z.array(zQaPreviewDetail).nullish(),
-  total_segments: z.int(),
-})
-
-/**
  * DataSourceIntegrateIconResponse
  */
 export const zDataSourceIntegrateIconResponse = z.object({
@@ -96,18 +60,6 @@ export const zGetNotionPagesByPageIdByPageTypePreviewQuery = z.object({
  * Success
  */
 export const zGetNotionPagesByPageIdByPageTypePreviewResponse = zTextContentResponse
-
-export const zPostNotionPagesByPageIdByPageTypePreviewBody = zNotionEstimatePayload
-
-export const zPostNotionPagesByPageIdByPageTypePreviewPath = z.object({
-  page_id: z.string(),
-  page_type: z.string(),
-})
-
-/**
- * Success
- */
-export const zPostNotionPagesByPageIdByPageTypePreviewResponse = zIndexingEstimate
 
 export const zGetNotionPreImportPagesQuery = z.object({
   credential_id: z.string().min(1),
