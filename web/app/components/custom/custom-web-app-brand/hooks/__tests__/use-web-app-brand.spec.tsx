@@ -1,6 +1,6 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { AppContextValue } from '@/context/app-context'
-import type { SystemFeatures } from '@/types/feature'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
@@ -18,7 +18,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
 import useWebAppBrand from '../use-web-app-brand'
 
-let currentBrandingOverrides: Partial<SystemFeatures['branding']> = {}
+let currentBrandingOverrides: Partial<GetSystemFeaturesResponse['branding']> = {}
 const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
   renderHookWithSystemFeatures(callback, {
     systemFeatures: {

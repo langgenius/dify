@@ -1,4 +1,4 @@
-import { loadHosts } from '@/auth/hosts'
+import { Registry } from '@/auth/hosts'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { Flags } from '@/framework/flags'
 import { realStreams } from '@/sys/io/streams'
@@ -18,7 +18,7 @@ export default class Whoami extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     const { flags } = this.parse(Whoami, argv)
-    const bundle = loadHosts()
-    await runWhoami({ io: realStreams(), bundle, json: flags.json })
+    const reg = Registry.load()
+    await runWhoami({ io: realStreams(), reg, json: flags.json })
   }
 }

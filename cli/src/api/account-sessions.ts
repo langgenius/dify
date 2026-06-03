@@ -1,22 +1,17 @@
 import type { SessionListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { HttpClient } from '@/http/types'
 
 export class AccountSessionsClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
   }
 
   async list(q?: { page?: number, limit?: number }): Promise<SessionListResponse> {
-    const params = new URLSearchParams()
-    if (q?.page !== undefined)
-      params.set('page', String(q.page))
-    if (q?.limit !== undefined)
-      params.set('limit', String(q.limit))
-    const hasParams = Array.from(params.keys()).length > 0
-    const opts = hasParams ? { searchParams: params } : undefined
-    return this.http.get('account/sessions', opts).json<SessionListResponse>()
+    return this.http.get<SessionListResponse>('account/sessions', {
+      searchParams: { page: q?.page, limit: q?.limit },
+    })
   }
 
   async revoke(sessionId: string): Promise<void> {

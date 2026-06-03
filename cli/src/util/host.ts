@@ -3,6 +3,10 @@ import { ErrorCode } from '@/errors/codes'
 
 export const DEFAULT_HOST = 'https://cloud.dify.ai'
 
+export function openAPIBase(host: string): string {
+  return `${host.replace(/\/+$/, '')}/openapi/v1/`
+}
+
 export type ResolveHostOptions = {
   raw: string
   insecure: boolean

@@ -1,6 +1,6 @@
 import type { BaseError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
-import { newError } from '@/errors/base'
+import { HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { RUN_MODES } from './handlers'
 
@@ -173,9 +173,9 @@ export function decodeStreamError(data: Uint8Array): BaseError {
   const code = env.status !== undefined && env.status > 0 && env.status < 500
     ? ErrorCode.Server4xxOther
     : ErrorCode.Server5xx
-  let err = newError(code, message)
+  const err = newError(code, message)
   if (env.status !== undefined && env.status > 0)
-    err = err.withHttpStatus(env.status)
+    return HttpClientError.from(err).withHttpStatus(env.status)
   return err
 }
 

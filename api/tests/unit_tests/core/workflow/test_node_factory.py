@@ -452,6 +452,7 @@ class TestDifyNodeFactoryCreateNode:
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
         factory._template_transform_max_output_length = 2048
         factory._http_request_http_client = sentinel.http_client
+        factory._remote_file_http_client = sentinel.remote_file_http_client
         factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
         factory._file_reference_factory = sentinel.file_reference_factory
         factory._prompt_message_serializer = sentinel.prompt_message_serializer
@@ -597,7 +598,7 @@ class TestDifyNodeFactoryCreateNode:
             factory._bound_tool_file_manager_factory.assert_called_once_with()
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
-            assert kwargs["http_client"] is sentinel.http_client
+            assert kwargs["http_client"] is sentinel.remote_file_http_client
 
     def test_human_input_node_receives_runtime_repository_and_file_reference_factory(
         self,
@@ -777,7 +778,7 @@ class TestDifyNodeFactoryCreateNode:
                 BuiltinNodeTypes.LLM,
                 "LLMNode",
                 {
-                    "http_client": sentinel.http_client,
+                    "http_client": sentinel.remote_file_http_client,
                     "llm_file_saver": sentinel.llm_file_saver,
                     "prompt_message_serializer": sentinel.prompt_message_serializer,
                     "retriever_attachment_loader": sentinel.retriever_attachment_loader,
@@ -788,7 +789,7 @@ class TestDifyNodeFactoryCreateNode:
                 BuiltinNodeTypes.QUESTION_CLASSIFIER,
                 "QuestionClassifierNode",
                 {
-                    "http_client": sentinel.http_client,
+                    "http_client": sentinel.remote_file_http_client,
                     "llm_file_saver": sentinel.llm_file_saver,
                     "prompt_message_serializer": sentinel.prompt_message_serializer,
                     "template_renderer": sentinel.jinja2_template_renderer,
