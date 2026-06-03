@@ -53,22 +53,15 @@ function Category({
           label: renderCategoryName(name),
           isAll: false,
         })),
-      ].map((item) => {
-        const isSelected = item.isAll ? isAllCategories : item.name === value
-
-        return (
-          <SegmentedControlItem
-            key={item.isAll ? 'all' : item.name}
-            value={item.name}
-            className={cn(
-              'h-8 min-w-12 shrink-0 cursor-pointer rounded-lg border-0 px-2.5 py-2 text-center shadow-none hover:bg-state-base-hover focus-visible:ring-1 data-pressed:border-0 data-pressed:bg-state-base-active data-pressed:text-text-secondary data-pressed:shadow-none',
-              isSelected ? 'system-sm-semibold text-text-secondary' : 'system-sm-medium text-text-tertiary',
-            )}
-          >
-            {item.label}
-          </SegmentedControlItem>
-        )
-      })}
+      ].map(item => (
+        <SegmentedControlItem
+          key={item.isAll ? 'all' : item.name}
+          value={item.name}
+          className="h-8 min-w-12 shrink-0 cursor-pointer rounded-lg border-0 px-2.5 py-2 text-center system-sm-medium text-text-tertiary shadow-none hover:bg-state-base-hover focus-visible:ring-1 data-pressed:border-0 data-pressed:bg-state-base-active data-pressed:system-sm-semibold data-pressed:text-text-secondary data-pressed:shadow-none"
+        >
+          {item.label}
+        </SegmentedControlItem>
+      ))}
     </SegmentedControl>
   )
 }

@@ -24,6 +24,7 @@ import {
 } from '@/app/education-apply/constants'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useAccountSettingModal,
   usePricingModal,
@@ -110,14 +111,11 @@ export const ModalContextProvider = ({
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
   const { currentWorkspace } = useAppContext()
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
-    const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-
-    if (educationVerifying === 'yes')
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-
+    setEducationVerifying(educationVerifying => educationVerifying === 'yes' ? null : educationVerifying)
     accountSettingCallbacksRef.current?.onCancelCallback?.()
     accountSettingCallbacksRef.current = null
     setUrlAccountModalState(null)

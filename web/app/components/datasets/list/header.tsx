@@ -7,7 +7,6 @@ import SearchInput from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import ServiceApi from '../extra-info/service-api'
-import DatasetListPageTitle from './page-title'
 
 type Props = {
   apiBaseUrl: string
@@ -47,47 +46,46 @@ const DatasetListHeader = ({
   const { t } = useTranslation()
 
   return (
-    <div className="sticky top-0 z-10 flex flex-col bg-background-body px-6 pt-2 pb-2">
-      <div className="flex items-start justify-between gap-4 pt-2">
-        <DatasetListPageTitle
-          title={t('knowledge', { ns: 'dataset' })}
-          description={t('studioDescription', { ns: 'dataset' })}
-        />
-        <div className="flex h-[42px] shrink-0 items-end">
-          <Button
-            className="gap-0.5 shadow-xs"
+    <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
+      <div className="flex h-6 w-full items-center gap-2">
+        <h1 className="min-w-0 flex-1 text-[18px]/[21.6px] font-semibold text-text-primary">{t('knowledge', { ns: 'dataset' })}</h1>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            className="flex items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover"
             onClick={onExternalApiClick}
           >
-            <span className="i-custom-vender-solid-development-api-connection-mod h-4 w-4 text-components-button-secondary-text" />
-            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
-          </Button>
+            <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0" />
+            <span className="px-0.5 system-xs-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
+          </button>
+          {isCurrentWorkspaceManager && (
+            <ServiceApi apiBaseUrl={apiBaseUrl} />
+          )}
         </div>
       </div>
-      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {isCurrentWorkspaceOwner && (
-            <CheckboxWithLabel
-              isChecked={includeAll}
-              onChange={onIncludeAllChange}
-              label={t('allKnowledge', { ns: 'dataset' })}
-              labelClassName="system-md-regular text-text-tertiary"
-              className="h-8"
-              tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
-            />
-          )}
           <TagFilter type="knowledge" value={tagFilterValue} onChange={onTagsChange} onOpenTagManagement={onOpenTagManagement} />
           <SearchInput
             className="w-[200px]"
             value={keywords}
             onChange={onKeywordsChange}
           />
+          {isCurrentWorkspaceOwner && (
+            <>
+              <div className="h-3.5 w-px bg-divider-regular" />
+              <CheckboxWithLabel
+                isChecked={includeAll}
+                onChange={onIncludeAllChange}
+                label={t('allKnowledge', { ns: 'dataset' })}
+                labelClassName="system-md-regular text-text-tertiary"
+                className="h-8"
+                tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
+              />
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {
-            isCurrentWorkspaceManager && (
-              <ServiceApi apiBaseUrl={apiBaseUrl} />
-            )
-          }
           {isCurrentWorkspaceEditor && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger

@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import AppDetailTop from '../app-detail-top'
 
 const mockBack = vi.fn()
@@ -18,41 +20,59 @@ vi.mock('../toggle-button', () => ({
   ),
 }))
 
+function GotoAnythingOpenProbe() {
+  const open = useGotoAnythingOpen()
+
+  return <div data-testid="goto-anything-open">{String(open)}</div>
+}
+
+const renderWithGotoAnythingStore = (ui: ReactNode) => {
+  const store = createStore()
+
+  return render(
+    <JotaiProvider store={store}>
+      {ui}
+    </JotaiProvider>,
+  )
+}
+
 describe('AppDetailTop', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('links the home icon to home instead of studio', () => {
-    render(<AppDetailTop />)
+    renderWithGotoAnythingStore(<AppDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
   })
 
   it('links the Studio breadcrumb to the Studio page', () => {
-    render(<AppDetailTop />)
+    renderWithGotoAnythingStore(<AppDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
   })
 
   it('keeps the back button and quick search actions', () => {
-    const handleOpen = vi.fn()
-    window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+    renderWithGotoAnythingStore(
+      <>
+        <AppDetailTop />
+        <GotoAnythingOpenProbe />
+      </>,
+    )
+    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
 
-    render(<AppDetailTop />)
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
     expect(mockBack).toHaveBeenCalledTimes(1)
-    expect(handleOpen).toHaveBeenCalledTimes(1)
-
-    window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
   })
 
   it('renders the sidebar toggle action in the top right', () => {
     const onToggle = vi.fn()
 
-    render(<AppDetailTop expand={false} onToggle={onToggle} />)
+    renderWithGotoAnythingStore(<AppDetailTop expand={false} onToggle={onToggle} />)
     fireEvent.click(screen.getByTestId('toggle-button'))
 
     expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')

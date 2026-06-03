@@ -45,7 +45,10 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
     if (typeof Ctor.deprecated === 'string' && Ctor.deprecated.length > 0)
       process.stderr.write(`deprecated: ${Ctor.deprecated}\n`)
     const cmd = new Ctor()
-    const output = await cmd.run(argv.slice(resolved.path.length))
+    const commandArgv = argv.slice(resolved.path.length)
+    cmd.processGlobalFlags(commandArgv)
+
+    const output = await cmd.run(commandArgv)
     if (output !== undefined)
       process.stdout.write(stringifyOutput(output))
   }

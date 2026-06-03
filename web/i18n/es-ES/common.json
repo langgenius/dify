@@ -443,6 +443,7 @@
   "modelProvider.invalidApiKey": "Clave API inválida",
   "modelProvider.item.deleteDesc": "{{modelName}} se está utilizando como modelo de razonamiento del sistema. Algunas funciones no estarán disponibles después de la eliminación. Por favor confirma.",
   "modelProvider.item.freeQuota": "CUOTA GRATUITA",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Balanceo de carga",
   "modelProvider.loadBalancingDescription": "Reduce la presión con múltiples conjuntos de credenciales.",
   "modelProvider.loadBalancingHeadline": "Balanceo de Carga",

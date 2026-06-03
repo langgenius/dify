@@ -52,6 +52,7 @@ type PluginsPanelProps = {
   canInstall?: boolean
   contentInset?: PluginPageContentInset
   fixedCategory?: PluginCategoryEnum
+  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSwitchToMarketplace?: () => void
   toolbarAction?: ReactNode
 }
@@ -60,6 +61,7 @@ const PluginsPanel = ({
   canInstall = true,
   contentInset = 'default',
   fixedCategory,
+  layout,
   onSwitchToMarketplace,
   toolbarAction,
 }: PluginsPanelProps) => {
@@ -138,23 +140,30 @@ const PluginsPanel = ({
         ? t('categorySingle.extension', { ns: 'plugin' })
         : undefined
 
-  return (
+  const toolbar = (
+    <div className={cn(
+      layout
+        ? 'flex w-full items-center bg-components-panel-bg'
+        : [
+            isIntegrationCategoryPage
+              ? 'flex h-12 shrink-0 items-center bg-components-panel-bg py-2'
+              : 'sticky top-0 z-10 flex flex-col items-start justify-center gap-3 self-stretch bg-components-panel-bg pt-1 pb-3',
+            contentFrameClassName,
+          ],
+    )}
+    >
+      {!layout && !isIntegrationCategoryPage && <div className="h-px self-stretch bg-divider-subtle"></div>}
+      <FilterManagement
+        hideCategoryFilter={!!fixedCategory}
+        hideTagFilter={!!fixedCategory && !isTriggerIntegrationPage}
+        onFilterChange={handleFilterChange}
+        rightSlot={toolbarAction}
+      />
+    </div>
+  )
+
+  const body = (
     <>
-      <div className={cn(
-        isIntegrationCategoryPage
-          ? 'flex h-12 shrink-0 items-center bg-components-panel-bg py-2'
-          : 'sticky top-0 z-10 flex flex-col items-start justify-center gap-3 self-stretch bg-components-panel-bg pt-1 pb-3',
-        contentFrameClassName,
-      )}
-      >
-        {!isIntegrationCategoryPage && <div className="h-px self-stretch bg-divider-subtle"></div>}
-        <FilterManagement
-          hideCategoryFilter={!!fixedCategory}
-          hideTagFilter={!!fixedCategory && !isTriggerIntegrationPage}
-          onFilterChange={handleFilterChange}
-          rightSlot={toolbarAction}
-        />
-      </div>
       {isPluginListLoading && <Loading type="app" />}
       {!isPluginListLoading && (
         <>
@@ -206,6 +215,19 @@ const PluginsPanel = ({
                 )}
         </>
       )}
+    </>
+  )
+
+  return (
+    <>
+      {layout
+        ? layout({ body, toolbar })
+        : (
+            <>
+              {toolbar}
+              {body}
+            </>
+          )}
       <PluginDetailPanel
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}

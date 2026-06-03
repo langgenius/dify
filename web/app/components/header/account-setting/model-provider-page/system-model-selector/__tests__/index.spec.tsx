@@ -8,6 +8,8 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
     'modelProvider.systemModelSettings': 'System Model Settings',
+    'modelProvider.systemModelSettingsDesc': 'Set default models.',
+    'modelProvider.systemModelSettingsTitle': 'Default Model Settings',
     'modelProvider.systemReasoningModel.key': 'System Reasoning Model',
     'modelProvider.systemReasoningModel.tip': 'Reasoning model tip',
     'modelProvider.embeddingModel.key': 'Embedding Model',
@@ -28,7 +30,7 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
-const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean }>)
+const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, showModelMeta?: boolean }>)
 
 let mockIsCurrentWorkspaceManager = true
 
@@ -72,7 +74,7 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: { hideProviderSettingsFooter?: boolean, onSelect: (model: { model: string, provider: string }) => void }) => {
+  default: (props: { hideProviderSettingsFooter?: boolean, showModelMeta?: boolean, onSelect: (model: { model: string, provider: string }) => void }) => {
     mockModelSelectorProps.push(props)
     return <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
   },
@@ -196,5 +198,16 @@ describe('SystemModel', () => {
     })
 
     expect(mockModelSelectorProps.every(props => props.hideProviderSettingsFooter)).toBe(true)
+  })
+
+  it('should hide model metadata in default model selectors', async () => {
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(mockModelSelectorProps).toHaveLength(5)
+    })
+
+    expect(mockModelSelectorProps.every(props => props.showModelMeta === false)).toBe(true)
   })
 })

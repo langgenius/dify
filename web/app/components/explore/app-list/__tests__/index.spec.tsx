@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
-import { fetchAppDetail } from '@/service/explore'
+import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
@@ -19,6 +20,8 @@ let mockLearnDifyApps: App[] = []
 let mockLearnDifyLoading = false
 let mockWorkspaceApps: WorkspaceApp[] = []
 let mockWorkspaceAppsLoading = false
+let mockBanners: BannerType[] = []
+let mockBannersLoading = false
 let mockIsLoading = false
 let mockIsError = false
 const mockHandleImportDSL = vi.fn()
@@ -26,11 +29,6 @@ const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 
 vi.mock('@/service/use-explore', () => ({
-  useExploreAppList: () => ({
-    data: mockExploreData,
-    isLoading: mockIsLoading,
-    isError: mockIsError,
-  }),
   useLearnDifyAppList: () => ({
     data: mockLearnDifyApps,
     isLoading: mockLearnDifyLoading,
@@ -41,6 +39,7 @@ vi.mock('@/service/use-explore', () => ({
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
+  fetchBanners: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -49,16 +48,28 @@ vi.mock('@/service/client', () => ({
   },
   consoleQuery: {
     systemFeatures: {
-      queryKey: () => ['console', 'systemFeatures'],
+      get: {
+        queryKey: () => ['console', 'systemFeatures'],
+      },
     },
     apps: {
       list: {
-        queryOptions: (options: { input?: { query?: { limit?: number } } }) => {
+        queryOptions: (options: {
+          input?: { query?: { limit?: number } }
+          select?: (response: {
+            data: WorkspaceApp[]
+            has_more: boolean
+            limit: number
+            page: number
+            total: number
+          }) => unknown
+        }) => {
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
           if (mockWorkspaceAppsLoading) {
             return {
               queryKey: ['console', 'apps', 'list', options],
               queryFn: () => new Promise(() => {}),
+              select: options.select,
             }
           }
           const response = {
@@ -72,8 +83,17 @@ vi.mock('@/service/client', () => ({
             queryKey: ['console', 'apps', 'list', options],
             queryFn: () => Promise.resolve(response),
             initialData: response,
+            select: options.select,
           }
         },
+      },
+    },
+    explore: {
+      apps: {
+        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+      },
+      banners: {
+        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
       },
     },
   },
@@ -154,7 +174,9 @@ vi.mock('../../try-app', () => ({
 }))
 
 vi.mock('../../banner/banner', () => ({
-  default: () => <div data-testid="explore-banner">banner</div>,
+  default: ({ banners }: { banners: BannerType[] }) => (
+    <div data-testid="explore-banner" data-banner-count={banners.length}>banner</div>
+  ),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
@@ -219,6 +241,20 @@ const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp
   access_mode: overrides.access_mode,
 } as WorkspaceApp)
 
+const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
+  id: overrides.id ?? 'banner-1',
+  status: overrides.status ?? 'enabled',
+  link: overrides.link ?? 'https://example.com',
+  content: overrides.content ?? {
+    'category': 'Featured',
+    'title': 'Explore Banner',
+    'description': 'Banner description',
+    'img-src': 'https://example.com/banner.png',
+  },
+  sort: overrides.sort ?? 1,
+  created_at: overrides.created_at ?? '2024-01-01T00:00:00Z',
+})
+
 const mockMemberRole = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
@@ -241,6 +277,10 @@ type RenderOptions = {
   isCloudEdition?: boolean
 }
 
+const localeInput = { query: { language: 'en' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
+const exploreBannersQueryKey = ['console', 'explore', 'banners', localeInput, 'en']
+
 const renderAppList = (
   hasEditPermission = false,
   onSuccess?: () => void,
@@ -252,6 +292,34 @@ const renderAppList = (
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
     systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
   })
+  if (!mockIsLoading && !mockIsError && mockExploreData)
+    queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
+  if (options.enableExploreBanner && !mockBannersLoading)
+    queryClient.setQueryData(exploreBannersQueryKey, mockBanners)
+
+  const mockFetchAppList = fetchAppList as unknown as Mock
+  const mockFetchBanners = fetchBanners as unknown as Mock
+
+  if (mockIsLoading) {
+    mockFetchAppList.mockImplementation(() => new Promise(() => {}))
+  }
+  else if (mockIsError) {
+    mockFetchAppList.mockRejectedValue(new Error('Failed to load explore apps'))
+  }
+  else {
+    mockFetchAppList.mockResolvedValue({
+      categories: mockExploreData?.categories ?? [],
+      recommended_apps: mockExploreData?.allList ?? [],
+    })
+  }
+
+  if (mockBannersLoading) {
+    mockFetchBanners.mockImplementation(() => new Promise(() => {}))
+  }
+  else {
+    mockFetchBanners.mockResolvedValue(mockBanners)
+  }
+
   const Wrapped = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
       <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
@@ -287,6 +355,8 @@ describe('AppList', () => {
     mockLearnDifyLoading = false
     mockWorkspaceApps = []
     mockWorkspaceAppsLoading = false
+    mockBanners = []
+    mockBannersLoading = false
     mockIsLoading = false
     mockIsError = false
     mockConfig.isCloudEdition = false
@@ -306,10 +376,10 @@ describe('AppList', () => {
       renderAppList()
 
       expect(screen.queryByText('explore.apps.description')).not.toBeInTheDocument()
-      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(4)
+      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
     })
 
-    it('should show a recommendation placeholder while continue work apps are loading', () => {
+    it('should keep the whole home page in the initial skeleton while continue work apps are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -319,10 +389,10 @@ describe('AppList', () => {
       renderAppList()
 
       expect(screen.queryByRole('heading', { name: 'explore.continueWork.title' })).not.toBeInTheDocument()
-      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
     })
 
-    it('should show a recommendation placeholder while learn dify items are loading', () => {
+    it('should not render learn dify content while learn dify items are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -333,7 +403,7 @@ describe('AppList', () => {
       renderAppList()
 
       expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
-      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
     it('should not show the learn dify placeholder when the section is hidden', () => {
@@ -361,7 +431,7 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByText('explore.apps.description')).toBeInTheDocument()
+      expect(screen.getByText('explore.apps.title')).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -589,21 +659,25 @@ describe('AppList', () => {
       expect(screen.getByText('Gamma')).toBeInTheDocument()
     })
 
-    it('should render nothing when isError is true', () => {
+    it('should render nothing when isError is true', async () => {
+      vi.useRealTimers()
       mockIsError = true
       mockExploreData = undefined
 
       const { container } = renderAppList()
 
-      expect(container.innerHTML).toBe('')
+      await waitFor(() => {
+        expect(container.innerHTML).toBe('')
+      })
     })
 
-    it('should render nothing when data is undefined', () => {
+    it('should render the initial skeleton while app list data is pending', () => {
       mockExploreData = undefined
+      mockIsLoading = true
 
-      const { container } = renderAppList()
+      renderAppList()
 
-      expect(container.innerHTML).toBe('')
+      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     })
 
     it('should close create modal via hide button', async () => {
@@ -741,10 +815,25 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
+      mockBanners = [createBanner()]
 
       renderAppList(false, undefined, undefined, { enableExploreBanner: true })
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
+      expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
+    })
+
+    it('should keep the whole home page in the initial skeleton while banners are loading', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockBannersLoading = true
+
+      renderAppList(false, undefined, undefined, { enableExploreBanner: true })
+
+      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
     })
   })
 })

@@ -124,12 +124,10 @@ vi.mock('@/app/components/plugins/plugin-page/plugin-tasks', () => ({
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   __esModule: true,
   default: ({
-    fixedWarningAlignment,
     layout,
     onSearchTextChange,
     searchText,
   }: {
-    fixedWarningAlignment?: string
     layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode
     onSearchTextChange?: (value: string) => void
     searchText: string
@@ -143,15 +141,13 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
         />
       </div>
     )
-    const body = (
-      <div data-testid="model-provider-page" data-fixed-warning-alignment={fixedWarningAlignment} />
-    )
+    const body = <div data-testid="model-provider-page" />
 
     if (layout)
       return layout({ body, toolbar })
 
     return (
-      <div data-testid="model-provider-page" data-fixed-warning-alignment={fixedWarningAlignment}>
+      <div data-testid="model-provider-page">
         <input
           aria-label="search"
           value={searchText}
@@ -164,7 +160,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
 
 vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
   __esModule: true,
-  default: () => <div data-testid="data-source-page" />,
+  default: ({ layout }: { layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode }) => {
+    const toolbar = <div data-testid="data-source-toolbar" />
+    const body = <div data-testid="data-source-page" />
+
+    if (layout)
+      return layout({ body, toolbar })
+
+    return body
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page', () => ({
@@ -175,10 +179,15 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page', () =
 vi.mock('../tool-provider-list', async () => {
   const { useState } = await vi.importActual<typeof import('react')>('react')
 
-  const MockProviderList = ({ category }: { category?: string }) => {
+  const MockProviderList = ({ category, layout }: { category?: string, layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode }) => {
     const [mountedCategory] = useState(category)
+    const toolbar = <div data-testid="tool-provider-toolbar" />
+    const body = <div data-testid="tool-provider-list" data-mounted-category={mountedCategory}>{category}</div>
 
-    return <div data-testid="tool-provider-list" data-mounted-category={mountedCategory}>{category}</div>
+    if (layout)
+      return layout({ body, toolbar })
+
+    return body
   }
 
   return {
@@ -189,12 +198,24 @@ vi.mock('../tool-provider-list', async () => {
 
 vi.mock('../plugin-category-page', () => ({
   __esModule: true,
-  default: ({ canInstall, category, onSwitchToMarketplace, toolbarAction }: { canInstall?: boolean, category: string, onSwitchToMarketplace?: () => void, toolbarAction?: React.ReactNode }) => (
-    <div data-can-install={canInstall ? 'true' : 'false'} data-testid={`plugin-category-${category}`}>
-      <button type="button" aria-label="empty marketplace" onClick={onSwitchToMarketplace}>marketplace</button>
-      {toolbarAction}
-    </div>
-  ),
+  default: ({ canInstall, category, layout, onSwitchToMarketplace, toolbarAction }: { canInstall?: boolean, category: string, layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode, onSwitchToMarketplace?: () => void, toolbarAction?: React.ReactNode }) => {
+    const toolbar = <div data-testid="plugin-category-toolbar">{toolbarAction}</div>
+    const body = (
+      <div data-can-install={canInstall ? 'true' : 'false'} data-testid={`plugin-category-${category}`}>
+        <button type="button" aria-label="empty marketplace" onClick={onSwitchToMarketplace}>marketplace</button>
+      </div>
+    )
+
+    if (layout)
+      return layout({ body, toolbar })
+
+    return (
+      <>
+        {toolbar}
+        {body}
+      </>
+    )
+  },
 }))
 
 const renderIntegrationsPage = (searchParams?: Record<string, string>, section?: React.ComponentProps<typeof IntegrationsPage>['section']) => {
@@ -235,10 +256,9 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-    expect(screen.getByTestId('model-provider-toolbar').parentElement).toHaveClass('max-w-[1600px]', 'px-6', 'pt-2')
+    expect(screen.getByTestId('model-provider-toolbar').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6', 'pt-3', 'pb-2')
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6')
     expect(screen.getByTestId('model-provider-page').parentElement).not.toHaveClass('pt-2')
-    expect(screen.getByTestId('model-provider-page')).toHaveAttribute('data-fixed-warning-alignment', 'content-frame')
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'common.settings.provider' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'common.settings.dataSource' })).not.toHaveAttribute('aria-current')
@@ -465,7 +485,9 @@ describe('IntegrationsPage', () => {
   it('aligns model provider headers to the unified content frame', () => {
     renderIntegrationsPage({ section: 'provider' })
 
-    expect(screen.getByText('common.modelProvider.pageDesc').parentElement?.parentElement).toHaveClass('max-w-[1600px]', 'px-6')
+    const description = screen.getByText('common.modelProvider.pageDesc')
+    expect(description.closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toBeInTheDocument()
   })
 
   it('aligns plugin category headers to the unified content frame', () => {

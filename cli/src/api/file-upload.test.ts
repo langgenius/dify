@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { isBaseError } from '@/errors/base'
+import { isHttpClientError } from '@/errors/base'
 import { FileUploadClient } from './file-upload.js'
 
 const UPLOADED = {
@@ -70,7 +70,7 @@ describe('FileUploadClient.upload', () => {
     stub = await startStubServer(cap => jsonResponder(413, { error: 'file too large' }, cap))
 
     await expect(makeClient(stub.url).upload('app-1', filePath)).rejects.toSatisfy(
-      err => isBaseError(err) && err.httpStatus === 413,
+      err => isHttpClientError(err) && err.httpStatus === 413,
     )
   })
 })

@@ -357,14 +357,14 @@ describe('runApp', () => {
     // warm cache with successful run
     await runApp(
       { appId: 'app-1', message: 'hi' },
-      { bundle: bundle(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(cache.get(mock.url, 'app-1')).toBeDefined()
 
     mock.setScenario('run-422-stale')
     const err = await runApp(
       { appId: 'app-1', message: 'hi' },
-      { bundle: bundle(), http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
     ).catch((e: unknown) => e)
     expect(err).toMatchObject({ code: 'server_4xx_other', httpStatus: 422 })
     expect((err as { hint?: string }).hint).toMatch(/cache cleared/)

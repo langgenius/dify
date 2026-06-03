@@ -141,7 +141,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         {t(labelKey, { ns: 'common' })}
         <Infotip
           aria-label={tipText}
-          className="ml-0.5"
+          className="ml-0.5 text-text-tertiary"
           popupClassName="w-[261px]"
         >
           {tipText}
@@ -160,20 +160,23 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         onClick={() => setOpen(true)}
       >
         {isLoading
-          ? <span className="mr-1 i-ri-loader-2-line size-3.5 animate-spin" />
-          : <span className="mr-1 i-ri-equalizer-2-line size-3.5" />}
+          ? <span className="mr-0.5 i-ri-loader-2-line size-3.5 animate-spin" />
+          : <span className="mr-0.5 i-ri-brain-2-line size-3.5" />}
         {t('modelProvider.systemModelSettings', { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           backdropProps={{ forceRender: true }}
-          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden p-0"
+          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden rounded-2xl p-0"
         >
           <DialogCloseButton className="top-5 right-5" />
           <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.systemModelSettings', { ns: 'common' })}
+              {t('modelProvider.systemModelSettingsTitle', { ns: 'common' })}
             </DialogTitle>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t('modelProvider.systemModelSettingsDesc', { ns: 'common' })}
+            </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             <div className="flex flex-col gap-4">
@@ -184,6 +187,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                   />
                 </div>
@@ -195,6 +199,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                   />
                 </div>
@@ -206,6 +211,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                   />
                 </div>
@@ -217,6 +223,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                   />
                 </div>
@@ -228,13 +235,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                   />
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
+          <div className="flex h-[76px] shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button
               className="min-w-[72px]"
               onClick={() => setOpen(false)}

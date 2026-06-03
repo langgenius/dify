@@ -1,82 +1,95 @@
-import { Trans, useTranslation } from 'react-i18next'
+import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import FirstEmptyActionCard from '@/app/components/apps/first-empty-state/action-card'
 
+const EMPTY_PLACEHOLDER_CARD_IDS = Array.from({ length: 16 }, (_, index) => `dataset-placeholder-card-${index}`)
+
 type EmptyCreateAction = {
-  badge: string
-  badgeVariant: 'basic' | 'advanced'
-  id: string
+  badge?: string
   href: string
-  icon: string
+  icon: ReactNode
+  id: string
   title: string
   description: string
 }
 
-const DatasetFirstEmptyState = () => {
+function DatasetFirstEmptyState() {
   const { t } = useTranslation()
 
   const actions: EmptyCreateAction[] = [
     {
-      badge: t('firstEmpty.basicBadge', { ns: 'dataset' }),
-      badgeVariant: 'basic',
-      id: 'create',
+      badge: t('firstEmpty.recommended', { ns: 'dataset' }),
       href: '/datasets/create',
-      icon: '📚',
-      title: t('createDataset', { ns: 'dataset' }),
+      icon: <span aria-hidden className="i-ri-add-line size-4" />,
+      id: 'create',
+      title: t('firstEmpty.createTitle', { ns: 'dataset' }),
       description: t('firstEmpty.createDescription', { ns: 'dataset' }),
     },
     {
-      badge: t('firstEmpty.advancedBadge', { ns: 'dataset' }),
-      badgeVariant: 'advanced',
-      id: 'pipeline',
       href: '/datasets/create-from-pipeline',
-      icon: '🧭',
-      title: t('createFromPipeline', { ns: 'dataset' }),
+      icon: <span aria-hidden className="i-ri-flow-chart size-4" />,
+      id: 'pipeline',
+      title: t('firstEmpty.pipelineTitle', { ns: 'dataset' }),
       description: t('firstEmpty.pipelineDescription', { ns: 'dataset' }),
     },
     {
-      badge: t('firstEmpty.advancedBadge', { ns: 'dataset' }),
-      badgeVariant: 'advanced',
-      id: 'connect',
       href: '/datasets/connect',
-      icon: '🎓',
+      icon: <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4" />,
+      id: 'connect',
       title: t('connectDataset', { ns: 'dataset' }),
       description: t('firstEmpty.connectDescription', { ns: 'dataset' }),
     },
   ]
 
   return (
-    <div className="flex grow flex-col px-6">
-      <div className="flex flex-1 items-center justify-center py-10">
-        <section className="mx-auto flex w-full max-w-[933px] flex-col items-center gap-6 text-center">
-          <div className="flex w-full max-w-[739px] flex-col items-center gap-2">
-            <h2 className="text-xl/6 font-semibold text-text-primary">{t('firstEmpty.title', { ns: 'dataset' })}</h2>
-            <p className="w-full truncate system-sm-regular text-text-tertiary">
-              {t('firstEmpty.description', { ns: 'dataset' })}
-            </p>
-          </div>
-          <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-3">
-            {actions.map(({ badge, badgeVariant, id, href, icon, title, description }) => (
+    <div className="flex grow flex-col overflow-hidden">
+      <div className="relative min-h-[520px] flex-1 overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {EMPTY_PLACEHOLDER_CARD_IDS.map(id => (
+            <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
+          ))}
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
+        <section className="absolute inset-0 flex items-center justify-center overflow-hidden p-2" aria-labelledby="datasets-first-empty-title">
+          <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
+                <div className="flex size-full min-w-px items-center justify-center">
+                  <span aria-hidden className="i-ri-book-2-line size-6 text-text-tertiary" />
+                </div>
+              </div>
+              <h2 id="datasets-first-empty-title" className="system-sm-regular text-text-tertiary">
+                {t('firstEmpty.title', { ns: 'dataset' })}
+              </h2>
+            </div>
+            <div className="flex w-full flex-col gap-2 pb-8">
+              <div className="flex flex-col gap-2">
+                {actions.slice(0, 2).map(action => (
+                  <FirstEmptyActionCard
+                    key={action.id}
+                    badge={action.badge}
+                    description={action.description}
+                    href={action.href}
+                    icon={action.icon}
+                    title={action.title}
+                    visualStyle="list"
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-text-tertiary">
+                <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
+                <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'dataset' })}</span>
+                <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
+              </div>
               <FirstEmptyActionCard
-                key={id}
-                badge={badge}
-                badgeVariant={badgeVariant}
-                description={description}
-                href={href}
-                icon={icon}
-                title={title}
-                visualStyle="compact"
+                description={actions[2]!.description}
+                href={actions[2]!.href}
+                icon={actions[2]!.icon}
+                title={actions[2]!.title}
+                visualStyle="list"
               />
-            ))}
+            </div>
           </div>
-          <p className="max-w-full rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] text-center system-2xs-medium-uppercase text-text-tertiary">
-            <Trans
-              i18nKey="firstEmpty.pickHint"
-              ns="dataset"
-              components={{
-                highlight: <span className="text-text-tertiary" />,
-              }}
-            />
-          </p>
         </section>
       </div>
     </div>

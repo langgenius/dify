@@ -388,15 +388,16 @@ describe('ProviderList', () => {
       expect(toolbar).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(toolbar).toHaveClass('max-w-[1600px]')
       expect(toolbar).not.toHaveClass('sticky')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6', 'gap-2', 'pt-2')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('px-6', 'gap-2', 'pt-1')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('max-w-[1600px]')
     })
 
-    it('keeps tool cards at three columns on desktop and wider screens', () => {
+    it('uses the Figma two-column wrapping layout in compact integrations pages', () => {
       renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).not.toHaveClass('lg:grid-cols-4')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('flex', 'flex-wrap')
+      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('grid-cols-1', 'md:grid-cols-3')
+      expect(screen.getByTestId('card-google-search')).toHaveClass('min-w-[min(100%,496px)]', 'flex-1')
     })
 
     it('keeps the default plugin card border visible until a card is selected', () => {
@@ -408,7 +409,7 @@ describe('ProviderList', () => {
 
       fireEvent.click(screen.getByTestId('card-google-search'))
 
-      expect(screen.getByTestId('card-google-search')).toHaveClass('border-[1.5px]', 'border-components-option-card-option-selected-border')
+      expect(screen.getByTestId('card-google-search')).toHaveClass('outline-[1.5px]', 'outline-components-option-card-option-selected-border')
     })
   })
 

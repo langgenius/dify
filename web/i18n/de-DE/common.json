@@ -443,6 +443,7 @@
   "modelProvider.invalidApiKey": "Ungültiger API-Schlüssel",
   "modelProvider.item.deleteDesc": "{{modelName}} werden als System-Reasoning-Modelle verwendet. Einige Funktionen stehen nach der Entfernung nicht zur Verfügung. Bitte bestätigen.",
   "modelProvider.item.freeQuota": "KOSTENLOSES KONTINGENT",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "Lastenausgleich",
   "modelProvider.loadBalancingDescription": "Reduzieren Sie den Druck mit mehreren Sätzen von Anmeldeinformationen.",
   "modelProvider.loadBalancingHeadline": "Lastenausgleich",

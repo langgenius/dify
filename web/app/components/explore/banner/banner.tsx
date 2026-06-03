@@ -1,35 +1,15 @@
-import type { FC } from 'react'
 import type { Banner as BannerType } from '@/models/app'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
-import { useGetBanners } from '@/service/use-explore'
 import { BannerItem } from './banner-item'
 
 const AUTOPLAY_DELAY = 5000
 const RESIZE_DEBOUNCE_DELAY = 50
-
-const LoadingState: FC = () => {
-  const { t } = useTranslation()
-
-  return (
-    <div
-      role="status"
-      aria-label={t('loading', { ns: 'common' })}
-      className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4"
-    >
-      <div className="flex w-full flex-col gap-1">
-        <SkeletonRectangle className="my-0 h-6 w-[240px] max-w-full animate-pulse" />
-        <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
-      </div>
-    </div>
-  )
-}
 
 type BannerImpressionTrackerProps = {
   banners: BannerType[]
@@ -38,12 +18,12 @@ type BannerImpressionTrackerProps = {
   trackedBannerIdsRef: React.MutableRefObject<Set<string>>
 }
 
-const BannerImpressionTracker: FC<BannerImpressionTrackerProps> = ({
+function BannerImpressionTracker({
   banners,
   accountId,
   language,
   trackedBannerIdsRef,
-}) => {
+}: BannerImpressionTrackerProps) {
   const { selectedIndex } = useCarousel()
 
   useEffect(() => {
@@ -70,10 +50,15 @@ const BannerImpressionTracker: FC<BannerImpressionTrackerProps> = ({
   return null
 }
 
-const Banner: FC = () => {
+type BannerProps = {
+  banners: BannerType[]
+}
+
+function Banner({
+  banners,
+}: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { data: banners, isLoading, isError } = useGetBanners(locale)
   const accountId = useSelector(s => s.userProfile.id)
   const userName = useSelector(s => s.userProfile.name)
   const [isHovered, setIsHovered] = useState(false)
@@ -87,7 +72,7 @@ const Banner: FC = () => {
   )
 
   const isPaused = isHovered || isResizing
-  const notShowSlider = isError || enabledBanners.length === 0
+  const notShowSlider = enabledBanners.length === 0
 
   // Handle window resize to pause animation
   useEffect(() => {
@@ -110,9 +95,6 @@ const Banner: FC = () => {
         clearTimeout(resizeTimerRef.current)
     }
   }, [])
-
-  if (isLoading)
-    return <LoadingState />
 
   return (
     <div
@@ -151,7 +133,7 @@ const Banner: FC = () => {
             />
             <Carousel.Content>
               {enabledBanners.map((banner, index) => (
-                <Carousel.Item key={banner.id}>
+                <Carousel.Item key={banner.id} data-banner-id={banner.id}>
                   <BannerItem
                     banner={banner}
                     autoplayDelay={AUTOPLAY_DELAY}

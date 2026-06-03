@@ -1,6 +1,7 @@
 'use client'
 
 import type { NavIcon } from './nav-link'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDashboard2Fill,
   RiDashboard2Line,
@@ -34,12 +35,17 @@ type AppDetailNavItem = {
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
 const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
 
-const renderNavDivider = (key: string) => (
-  <div key={key} className="px-3 py-0.5">
+const renderNavDivider = (key: string, expand: boolean) => (
+  <div key={key} className={cn(expand ? 'px-3 py-0.5' : 'px-1 py-0.5')}>
     <Divider
       type="horizontal"
-      bgStyle="gradient"
-      className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
+      bgStyle={expand ? 'gradient' : 'solid'}
+      className={cn(
+        'my-0 h-px',
+        expand
+          ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
+          : 'bg-divider-subtle',
+      )}
     />
   </div>
 )
@@ -114,21 +120,30 @@ const AppDetailSection = ({
   const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
+    <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
+      {!expand && (
+        <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-[3px]">
+          <Divider
+            type="horizontal"
+            bgStyle="solid"
+            className="my-0 h-px w-[27px] bg-divider-subtle"
+          />
+        </div>
+      )}
       <div className="px-1 py-2">
         <AppInfoView
           expand={expand}
           actions={appInfoActions}
         />
       </div>
-      <nav className="flex flex-col gap-y-0.5 px-1 py-1">
+      <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
         {navigation.map((item) => {
           const shouldRenderDividerBefore = isLogsNavItem(item)
           const shouldRenderDividerAfter = hasAnnotationsNavigation ? isAnnotationsNavItem(item) : isLogsNavItem(item)
 
           return (
             <Fragment key={item.href}>
-              {shouldRenderDividerBefore && renderNavDivider(`${item.href}-before`)}
+              {shouldRenderDividerBefore && renderNavDivider(`${item.href}-before`, expand)}
               <NavLink
                 mode={expand ? 'expand' : 'collapse'}
                 iconMap={{ selected: item.selectedIcon, normal: item.icon }}
@@ -136,7 +151,7 @@ const AppDetailSection = ({
                 href={item.href}
                 pathname={pathname}
               />
-              {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`)}
+              {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`, expand)}
             </Fragment>
           )
         })}

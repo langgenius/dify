@@ -20,15 +20,15 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenuTrigger: ({ children, className }: { children: ReactNode, className?: string }) => (
     <button data-testid="dropdown-trigger" className={className}>{children}</button>
   ),
-  DropdownMenuContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="dropdown-content">{children}</div>
+  DropdownMenuContent: ({ children, popupClassName }: { children: ReactNode, popupClassName?: string }) => (
+    <div data-testid="dropdown-content" className={popupClassName}>{children}</div>
   ),
-  DropdownMenuItem: ({ children, onClick, render, destructive }: { children: ReactNode, onClick?: () => void, render?: ReactElement, destructive?: boolean }) => {
+  DropdownMenuItem: ({ children, className, onClick, render, variant }: { children: ReactNode, className?: string, onClick?: () => void, render?: ReactElement, variant?: string }) => {
     if (render)
-      return cloneElement(render, { onClick, 'data-destructive': destructive } as Record<string, unknown>, children)
-    return <div data-testid="dropdown-item" data-destructive={destructive} onClick={onClick}>{children}</div>
+      return cloneElement(render, { className, onClick, 'data-variant': variant } as Record<string, unknown>, children)
+    return <div data-testid="dropdown-item" className={className} data-variant={variant} onClick={onClick}>{children}</div>
   },
-  DropdownMenuSeparator: () => <hr data-testid="dropdown-separator" />,
+  DropdownMenuSeparator: ({ className }: { className?: string }) => <hr data-testid="dropdown-separator" className={className} />,
 }))
 
 describe('OperationDropdown', () => {
@@ -60,6 +60,15 @@ describe('OperationDropdown', () => {
       expect(screen.getByTestId('dropdown-content')).toBeInTheDocument()
     })
 
+    it('should render figma-aligned dropdown surface and rows', () => {
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.getByTestId('dropdown-content')).toHaveClass('w-[192px]', 'py-1')
+      expect(screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')).toHaveClass('px-2', 'py-1', 'system-md-regular')
+      expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).toHaveClass('px-2', 'py-1', 'system-md-regular')
+      expect(screen.getByTestId('dropdown-separator')).toHaveClass('my-0')
+    })
+
     it('should render info option for github source', () => {
       render(<OperationDropdown {...defaultProps} source={PluginSource.github} />)
 
@@ -88,6 +97,12 @@ describe('OperationDropdown', () => {
       render(<OperationDropdown {...defaultProps} />)
 
       expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
+    })
+
+    it('should render remove option with normal text color', () => {
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).not.toHaveAttribute('data-variant', 'destructive')
     })
 
     it('should not render info option for marketplace source', () => {

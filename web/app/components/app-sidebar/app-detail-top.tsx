@@ -4,7 +4,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
-import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
+import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import ToggleButton from './toggle-button'
@@ -22,11 +22,27 @@ const AppDetailTop = ({
 }: AppDetailTopProps) => {
   const { t } = useTranslation()
   const router = useRouter()
+  const setGotoAnythingOpen = useSetGotoAnythingOpen()
+
+  if (!expand) {
+    return (
+      <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
+        {onToggle && (
+          <ToggleButton
+            expand={expand}
+            handleToggle={onToggle}
+            iconClassName="i-custom-vender-integrations-panel-left"
+            className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
+          />
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
       <div className="flex min-w-0 flex-1 items-center gap-px">
-        <div className="flex shrink-0 items-center py-2 pr-1.5 pl-0.5">
+        <div className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
           <button
             type="button"
             aria-label={t('operation.back', { ns: 'common' })}
@@ -50,7 +66,7 @@ const AppDetailTop = ({
             </span>
             <Link
               href="/apps"
-              className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
+              className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
             >
               {t('menus.apps', { ns: 'common' })}
             </Link>
@@ -65,7 +81,7 @@ const AppDetailTop = ({
                 type="button"
                 aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
                 className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
-                onClick={() => window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))}
+                onClick={() => setGotoAnythingOpen(true)}
               >
                 <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
               </button>
@@ -86,7 +102,7 @@ const AppDetailTop = ({
           expand={expand}
           handleToggle={onToggle}
           iconClassName="i-custom-vender-integrations-panel-left"
-          className="size-8 rounded-[10px] px-0 text-text-tertiary shadow-none hover:bg-state-base-hover hover:text-text-secondary"
+          className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />
       )}
     </div>

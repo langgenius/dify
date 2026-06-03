@@ -1,36 +1,30 @@
 'use client'
 
 import type { App } from '@/models/explore'
+import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import ContinueWork from '@/app/components/explore/continue-work'
-import LearnDify from '@/app/components/explore/learn-dify'
-import { RecommendationSectionSkeleton } from './loading-skeletons'
+import dynamic from '@/next/dynamic'
+
+const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), { ssr: false })
 
 export function ExploreRecommendations({
   canCreate,
-  isContinueWorkLoading,
+  continueWorkApps,
   onCreate,
   onTry,
 }: {
   canCreate: boolean
-  isContinueWorkLoading: boolean
+  continueWorkApps: WorkspaceApp[]
   onCreate: (app: App) => void
   onTry: (params: TryAppSelection) => void
 }) {
   return (
     <>
-      {isContinueWorkLoading
-        ? <RecommendationSectionSkeleton className="pb-4" />
-        : <ContinueWork className="pb-4" />}
+      <ContinueWork apps={continueWorkApps} className="pb-4" />
       <LearnDify
         canCreate={canCreate}
         className="pb-0"
-        loadingFallback={(
-          <RecommendationSectionSkeleton
-            className="pb-0"
-            hasDescription
-          />
-        )}
         onCreate={onCreate}
         onTry={onTry}
       />

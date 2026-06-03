@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
@@ -5,12 +6,12 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider } from 'jotai'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/atoms'
-import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
+import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
@@ -224,13 +225,25 @@ const appContextValue: AppContextValue = {
 
 const renderMainNav = (
   systemFeatures = { branding: { enabled: false } },
+  options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
   const getMockAppContext = useAppContext as Mock
   const currentAppContext = getMockAppContext() as AppContextValue
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
-  return renderWithSystemFeatures(<JotaiProvider><MainNav /></JotaiProvider>, { systemFeatures, queryClient })
+  return renderWithSystemFeatures(
+    <JotaiProvider store={options.store}>
+      <MainNav />
+      {options.extra}
+    </JotaiProvider>,
+    { systemFeatures, queryClient },
+  )
+}
+
+function GotoAnythingOpenProbe() {
+  const open = useGotoAnythingOpen()
+  return <div data-testid="goto-anything-open">{String(open)}</div>
 }
 
 describe('MainNav', () => {
@@ -315,6 +328,23 @@ describe('MainNav', () => {
 
     expect(screen.queryByText('common.environment.testing')).not.toBeInTheDocument()
     expect(screen.queryByText('common.environment.development')).not.toBeInTheDocument()
+    expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
+  })
+
+  it('hides the environment tag when app detail navigation is collapsed', () => {
+    mockPathname = '/app/app-1/overview'
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      langGeniusVersionInfo: {
+        ...appContextValue.langGeniusVersionInfo,
+        current_env: 'TESTING',
+      },
+    })
+
+    const { container } = renderMainNav()
+    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+
+    expect(screen.queryByText('common.environment.testing')).not.toBeInTheDocument()
     expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
   })
 
@@ -404,7 +434,9 @@ describe('MainNav', () => {
     expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByRole('complementary')).toHaveClass('bg-components-panel-bg-blur')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
@@ -417,7 +449,8 @@ describe('MainNav', () => {
     renderMainNav()
     fireEvent.click(screen.getByTestId('app-detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-14')
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
@@ -514,15 +547,14 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
-  it('dispatches the goto anything open event from the search button', () => {
-    const handleOpen = vi.fn()
-    window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+  it('opens goto anything from the search button', () => {
+    const store = createStore()
 
-    renderMainNav()
+    renderMainNav(undefined, { store, extra: <GotoAnythingOpenProbe /> })
+    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(handleOpen).toHaveBeenCalledTimes(1)
-    window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
   })
 
   it('shows Learn Dify switch in help menu and restores it from localStorage', async () => {

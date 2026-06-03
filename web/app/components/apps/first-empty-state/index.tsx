@@ -1,13 +1,15 @@
 'use client'
 
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import LearnDify from '@/app/components/explore/learn-dify'
 import FirstEmptyActionCard from './action-card'
 
+const EMPTY_PLACEHOLDER_CARD_IDS = Array.from({ length: 16 }, (_, index) => `placeholder-card-${index}`)
+
 type EmptyCreateAction = {
   id: string
-  icon: string
+  icon: ReactNode
   title: string
   description: string
   onClick: () => void
@@ -19,31 +21,31 @@ type Props = {
   onImportDSL: () => void
 }
 
-const FirstEmptyState: FC<Props> = ({
+function FirstEmptyState({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
-}) => {
+}: Props) {
   const { t } = useTranslation()
 
   const actions: EmptyCreateAction[] = [
     {
-      id: 'blank',
-      icon: '🖌️',
-      title: t('newApp.startFromBlank', { ns: 'app' }),
-      description: t('firstEmpty.blankDescription', { ns: 'app' }),
-      onClick: onCreateBlank,
-    },
-    {
       id: 'template',
-      icon: '📑',
+      icon: <span aria-hidden className="i-ri-function-add-line size-4" />,
       title: t('newApp.startFromTemplate', { ns: 'app' }),
       description: t('firstEmpty.templateDescription', { ns: 'app' }),
       onClick: onCreateTemplate,
     },
     {
+      id: 'blank',
+      icon: <span aria-hidden className="i-ri-add-box-line size-4" />,
+      title: t('newApp.startFromBlank', { ns: 'app' }),
+      description: t('firstEmpty.blankDescription', { ns: 'app' }),
+      onClick: onCreateBlank,
+    },
+    {
       id: 'dsl',
-      icon: '📁',
+      icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
       title: t('importDSL', { ns: 'app' }),
       description: t('firstEmpty.importDescription', { ns: 'app' }),
       onClick: onImportDSL,
@@ -51,39 +53,62 @@ const FirstEmptyState: FC<Props> = ({
   ]
 
   return (
-    <div className="flex grow flex-col px-6">
-      <div className="flex flex-1 items-center justify-center py-10">
-        <section className="mx-auto flex w-full max-w-[968px] flex-col items-center text-center">
-          <h2 className="text-2xl/8 font-semibold text-text-primary">{t('firstEmpty.title', { ns: 'app' })}</h2>
-          <p className="mt-2 max-w-[560px] system-sm-regular text-text-tertiary">
-            {t('firstEmpty.description', { ns: 'app' })}
-          </p>
-          <div className="mt-6 grid w-full grid-cols-1 gap-4 md:grid-cols-3">
-            {actions.map(action => (
+    <div className="flex grow flex-col overflow-hidden">
+      <div className="relative min-h-[430px] flex-1 overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {EMPTY_PLACEHOLDER_CARD_IDS.map(id => (
+            <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
+          ))}
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
+        <section className="absolute inset-0 flex items-center justify-center overflow-hidden p-2" aria-labelledby="apps-first-empty-title">
+          <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex size-14 items-center justify-center rounded-[10px]">
+                <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
+                  <span aria-hidden className="i-ri-robot-2-line size-6 text-text-tertiary" />
+                </div>
+              </div>
+              <h2 id="apps-first-empty-title" className="system-sm-regular text-text-tertiary">
+                {t('firstEmpty.title', { ns: 'app' })}
+              </h2>
+            </div>
+            <div className="flex w-full flex-col gap-2">
+              <div className="flex flex-col gap-2">
+                {actions.slice(0, 2).map(action => (
+                  <FirstEmptyActionCard
+                    key={action.id}
+                    description={action.description}
+                    icon={action.icon}
+                    onClick={action.onClick}
+                    title={action.title}
+                    visualStyle="list"
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-text-tertiary">
+                <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
+                <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'app' })}</span>
+                <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
+              </div>
               <FirstEmptyActionCard
-                key={action.id}
-                description={action.description}
-                icon={action.icon}
-                onClick={action.onClick}
-                title={action.title}
+                description={actions[2]!.description}
+                icon={actions[2]!.icon}
+                onClick={actions[2]!.onClick}
+                title={actions[2]!.title}
+                visualStyle="list"
               />
-            ))}
-          </div>
-          <div className="mt-6 flex items-center justify-center gap-2 text-text-quaternary">
-            <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
+            </div>
           </div>
         </section>
       </div>
-      <div className="rounded-t-2xl rounded-b-none bg-background-section p-6 pb-8">
-        <LearnDify
-          className="px-0 pb-0"
-          dismissible={false}
-          itemLimit={3}
-          showDescription={false}
-          title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
-        />
-      </div>
+      <LearnDify
+        className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
+        dismissible={false}
+        itemLimit={4}
+        showDescription
+        title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
+      />
     </div>
   )
 }

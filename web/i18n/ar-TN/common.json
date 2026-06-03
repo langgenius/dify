@@ -443,6 +443,7 @@
   "modelProvider.invalidApiKey": "مفتاح API غير صالح",
   "modelProvider.item.deleteDesc": "يتم استخدام {{modelName}} كنماذج تفكير النظام. لن تكون بعض الوظائف متاحة بعد الإزالة. يرجى التأكيد.",
   "modelProvider.item.freeQuota": "حصة مجانية",
+  "modelProvider.learnMore": "Learn more",
   "modelProvider.loadBalancing": "موازنة التحميل",
   "modelProvider.loadBalancingDescription": "تكوين بيانات اعتماد متعددة للنموذج واستدعاؤها تلقائيًا. ",
   "modelProvider.loadBalancingHeadline": "موازنة التحميل",

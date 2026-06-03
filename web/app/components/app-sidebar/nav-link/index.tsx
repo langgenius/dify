@@ -37,9 +37,11 @@ const NavLink = ({
   const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
+  const isCollapsed = mode !== 'expand'
+
   const renderIcon = () => (
-    <div className={cn(mode !== 'expand' && '-ml-1')}>
-      <NavIcon className="size-4 shrink-0" aria-hidden="true" />
+    <div className={cn(isCollapsed && 'flex size-5 items-center justify-center')}>
+      <NavIcon className={cn('shrink-0', isCollapsed ? 'size-[18px]' : 'size-4')} aria-hidden="true" />
     </div>
   )
 
@@ -49,7 +51,10 @@ const NavLink = ({
         key={name}
         type="button"
         disabled
-        className={cn('flex h-8 cursor-not-allowed items-center rounded-lg system-sm-medium text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover', 'pr-1 pl-3')}
+        className={cn(
+          'cursor-not-allowed rounded-lg system-sm-medium text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
+          isCollapsed ? 'flex size-8 items-center justify-center p-1.5' : 'flex h-8 items-center pr-1 pl-3',
+        )}
         title={mode === 'collapse' ? name : ''}
         aria-disabled
       >
@@ -69,9 +74,13 @@ const NavLink = ({
     <Link
       key={name}
       href={href}
-      className={cn(isActive
-        ? 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
-        : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover', 'flex h-8 items-center rounded-lg pr-1 pl-3')}
+      className={cn(
+        isActive
+          ? 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
+          : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
+        isCollapsed ? 'flex size-8 items-center justify-center p-1.5' : 'flex h-8 items-center rounded-lg pr-1 pl-3',
+        'rounded-lg',
+      )}
       title={mode === 'collapse' ? name : ''}
     >
       {renderIcon()}

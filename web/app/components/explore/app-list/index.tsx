@@ -1,11 +1,13 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
+import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
@@ -16,42 +18,108 @@ import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { useAppContext } from '@/context/app-context'
+import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
-import { fetchAppDetail } from '@/service/explore'
+import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
-import { useExploreAppList } from '@/service/use-explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { ExploreAppListHeader } from './explore-app-list-header'
 import { ExploreRecommendations } from './explore-recommendations'
-import { ExploreAppListSkeleton, ExploreHeaderSkeleton } from './loading-skeletons'
+import { ExploreHomeSkeleton } from './loading-skeletons'
 import s from './style.module.css'
 
 const TryApp = dynamic(() => import('../try-app'), { ssr: false })
 
-function useHomeContinueWorkApps() {
-  return useQuery(consoleQuery.apps.list.queryOptions({
-    input: {
-      query: {
-        page: 1,
-        limit: 8,
-        name: '',
-      },
+type ExploreAppListData = {
+  categories: string[]
+  allList: App[]
+}
+
+const homeContinueWorkAppsInput = {
+  query: {
+    page: 1,
+    limit: 8,
+    name: '',
+  },
+}
+
+const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as const
+
+function getLocaleQueryInput(locale?: string) {
+  return locale
+    ? { query: { language: locale } }
+    : {}
+}
+
+function getExploreAppListQueryOptions(locale?: string) {
+  const input = getLocaleQueryInput(locale)
+  const language = input.query?.language
+
+  return queryOptions<ExploreAppListData>({
+    queryKey: [...consoleQuery.explore.apps.queryKey({ input }), language],
+    queryFn: async () => {
+      const { categories, recommended_apps } = await fetchAppList(language)
+      return {
+        categories,
+        allList: [...recommended_apps].sort((a, b) => a.position - b.position),
+      }
     },
-    staleTime: 0,
-    gcTime: 0,
-  }))
+  })
+}
+
+function getContinueWorkAppsQueryOptions() {
+  return consoleQuery.apps.list.queryOptions({
+    input: homeContinueWorkAppsInput,
+    select: (response): WorkspaceApp[] => response.data ?? [],
+  })
+}
+
+function getBannersQueryOptions(locale?: string) {
+  const input = getLocaleQueryInput(locale)
+  const language = input.query?.language
+
+  return queryOptions<BannerType[]>({
+    queryKey: [...consoleQuery.explore.banners.queryKey({ input }), language],
+    queryFn: () => fetchBanners(language),
+  })
+}
+
+function getDisabledBannersQueryOptions() {
+  return queryOptions<BannerType[]>({
+    queryKey: disabledBannersQueryKey,
+    queryFn: async () => [],
+    initialData: [],
+    staleTime: 'static',
+  })
 }
 
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
+  const locale = useLocale()
   const { userProfile } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(
     systemFeaturesQueryOptions(),
   )
+  const homeQueries = useQueries({
+    queries: [
+      getExploreAppListQueryOptions(locale),
+      getContinueWorkAppsQueryOptions(),
+      systemFeatures.enable_explore_banner
+        ? getBannersQueryOptions(locale)
+        : getDisabledBannersQueryOptions(),
+    ],
+    combine: ([exploreAppListQuery, continueWorkAppsQuery, bannersQuery]) => ({
+      appListData: exploreAppListQuery.data,
+      continueWorkApps: continueWorkAppsQuery.data ?? [],
+      banners: bannersQuery.data ?? [],
+      isPending: exploreAppListQuery.isPending || continueWorkAppsQuery.isPending || bannersQuery.isPending,
+      isAppListError: exploreAppListQuery.isError || (!exploreAppListQuery.isPending && !exploreAppListQuery.data),
+    }),
+  })
   const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
   const userAccount = membersData?.accounts?.find(
@@ -78,18 +146,15 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     defaultValue: allCategoriesEn,
   })
 
-  const { data, isLoading, isError } = useExploreAppList()
-  const { isLoading: isContinueWorkLoading } = useHomeContinueWorkApps()
-
   const filteredList = useMemo(() => {
-    if (!data)
+    if (!homeQueries.appListData)
       return []
-    return data.allList.filter(
+    return homeQueries.appListData.allList.filter(
       item =>
         currCategory === allCategoriesEn
         || item.categories?.includes(currCategory),
     )
-  }, [data, currCategory, allCategoriesEn])
+  }, [homeQueries.appListData, currCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -203,10 +268,8 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
-  if (isError || (!isLoading && !data))
+  if (homeQueries.isAppListError)
     return null
-
-  const categories = data?.categories ?? []
 
   return (
     <div
@@ -215,49 +278,51 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       )}
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
-        {systemFeatures.enable_explore_banner && (
-          <Banner />
-        )}
-        <ExploreRecommendations
-          canCreate={hasEditPermission}
-          isContinueWorkLoading={isContinueWorkLoading}
-          onCreate={handleCreateFromLearnDify}
-          onTry={handleTryApp}
-        />
-
-        {isLoading
-          ? <ExploreHeaderSkeleton />
+        {homeQueries.isPending
+          ? (
+              <ExploreHomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
+            )
           : (
-              <ExploreAppListHeader
-                allCategoriesEn={allCategoriesEn}
-                categories={categories}
-                currCategory={currCategory}
-                keywords={keywords}
-                onCategoryChange={setCurrCategory}
-                onKeywordsChange={handleKeywordsChange}
-              />
-            )}
+              <>
+                {systemFeatures.enable_explore_banner && (
+                  <Banner banners={homeQueries.banners} />
+                )}
+                <ExploreRecommendations
+                  canCreate={hasEditPermission}
+                  continueWorkApps={homeQueries.continueWorkApps}
+                  onCreate={handleCreateFromLearnDify}
+                  onTry={handleTryApp}
+                />
 
-        <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-          <nav
-            className={cn(
-              s.appList,
-              'grid shrink-0 content-start gap-3 px-8',
+                <ExploreAppListHeader
+                  allCategoriesEn={allCategoriesEn}
+                  categories={homeQueries.appListData?.categories ?? []}
+                  currCategory={currCategory}
+                  keywords={keywords}
+                  onCategoryChange={setCurrCategory}
+                  onKeywordsChange={handleKeywordsChange}
+                />
+
+                <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
+                  <nav
+                    className={cn(
+                      s.appList,
+                      'grid shrink-0 content-start gap-3 px-8',
+                    )}
+                  >
+                    {searchFilteredList.map(app => (
+                      <AppCard
+                        key={app.app_id}
+                        app={app}
+                        canCreate={hasEditPermission}
+                        onCreate={() => handleCreateFromAppList(app)}
+                        onTry={handleTryApp}
+                      />
+                    ))}
+                  </nav>
+                </div>
+              </>
             )}
-          >
-            {isLoading
-              ? <ExploreAppListSkeleton />
-              : searchFilteredList.map(app => (
-                  <AppCard
-                    key={app.app_id}
-                    app={app}
-                    canCreate={hasEditPermission}
-                    onCreate={() => handleCreateFromAppList(app)}
-                    onTry={handleTryApp}
-                  />
-                ))}
-          </nav>
-        </div>
       </div>
       {isShowCreateModal && (
         <CreateAppModal
