@@ -5,9 +5,9 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import Avatar from './avatar'
 
 const Header = () => {

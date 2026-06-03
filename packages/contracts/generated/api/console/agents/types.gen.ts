@@ -79,17 +79,13 @@ export type AgentConfigSnapshotDetailResponse = {
 }
 
 export type AgentSoulConfig = {
-  app_features?: {
-    [key: string]: unknown
-  }
+  app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
   env?: AgentSoulEnvConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
-  misc_legacy?: {
-    [key: string]: unknown
-  }
+  misc_legacy?: AgentSoulAppFeaturesConfig
   model?: AgentSoulModelConfig
   prompt?: AgentSoulPromptConfig
   sandbox?: AgentSoulSandboxConfig
@@ -157,6 +153,17 @@ export type AgentConfigRevisionResponse = {
   version_note?: string | null
 }
 
+export type AgentSoulAppFeaturesConfig = {
+  opening_statement?: string | null
+  retriever_resource?: AgentFeatureToggleConfig
+  sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig
+  speech_to_text?: AgentFeatureToggleConfig
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig
+  text_to_speech?: AgentTextToSpeechFeatureConfig
+  [key: string]: unknown
+}
+
 export type AppVariableConfig = {
   default?: unknown
   name: string
@@ -165,37 +172,23 @@ export type AppVariableConfig = {
 }
 
 export type AgentSoulEnvConfig = {
-  secret_refs?: Array<{
-    [key: string]: unknown
-  }>
-  variables?: Array<{
-    [key: string]: unknown
-  }>
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
 }
 
 export type AgentSoulHumanConfig = {
-  contacts?: Array<{
-    [key: string]: unknown
-  }>
-  tools?: Array<{
-    [key: string]: unknown
-  }>
+  contacts?: Array<AgentHumanContactConfig>
+  tools?: Array<AgentHumanToolConfig>
 }
 
 export type AgentSoulKnowledgeConfig = {
-  datasets?: Array<{
-    [key: string]: unknown
-  }>
-  query_config?: {
-    [key: string]: unknown
-  }
+  datasets?: Array<AgentKnowledgeDatasetConfig>
+  query_config?: AgentKnowledgeQueryConfig
   query_mode?: AgentKnowledgeQueryMode
 }
 
 export type AgentSoulMemoryConfig = {
-  artifacts?: Array<{
-    [key: string]: unknown
-  }>
+  artifacts?: Array<AgentMemoryArtifactConfig>
   budget?: string | null
   scope?: string | null
 }
@@ -204,9 +197,7 @@ export type AgentSoulModelConfig = {
   credential_ref?: AgentSoulModelCredentialRef
   model: string
   model_provider: string
-  model_settings?: {
-    [key: string]: unknown
-  }
+  model_settings?: AgentSoulModelSettings
   plugin_id: string
 }
 
@@ -215,25 +206,17 @@ export type AgentSoulPromptConfig = {
 }
 
 export type AgentSoulSandboxConfig = {
-  config?: {
-    [key: string]: unknown
-  }
+  config?: AgentSandboxProviderConfig
   provider?: string | null
 }
 
 export type AgentSoulSkillsFilesConfig = {
-  files?: Array<{
-    [key: string]: unknown
-  }>
-  skills?: Array<{
-    [key: string]: unknown
-  }>
+  files?: Array<AgentFileRefConfig>
+  skills?: Array<AgentSkillRefConfig>
 }
 
 export type AgentSoulToolsConfig = {
-  cli_tools?: Array<{
-    [key: string]: unknown
-  }>
+  cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
@@ -244,12 +227,138 @@ export type AgentConfigRevisionOperation
     | 'save_new_version'
     | 'save_to_roster'
 
+export type AgentFeatureToggleConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentSensitiveWordAvoidanceFeatureConfig = {
+  config?: AgentModerationProviderConfig
+  enabled?: boolean
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
+  enabled?: boolean
+  model?: AgentSoulModelConfig
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type AgentTextToSpeechFeatureConfig = {
+  autoPlay?: string | null
+  enabled?: boolean
+  language?: string | null
+  voice?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSecretRefConfig = {
+  id?: string | null
+  name?: string | null
+  provider?: string | null
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentEnvVariableConfig = {
+  name?: string | null
+  required?: boolean
+  type?: string | null
+  value?: unknown
+  [key: string]: unknown
+}
+
+export type AgentHumanContactConfig = {
+  contact_id?: string | null
+  email?: string | null
+  human_id?: string | null
+  id?: string | null
+  name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentHumanToolConfig = {
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeDatasetConfig = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeQueryConfig = {
+  query?: string | null
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k?: number | null
+  [key: string]: unknown
+}
+
 export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentMemoryArtifactConfig = {
+  id?: string | null
+  name?: string | null
+  type?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
 
 export type AgentSoulModelCredentialRef = {
   id?: string | null
   provider?: string | null
   type: string
+}
+
+export type AgentSoulModelSettings = {
+  frequency_penalty?: number | null
+  max_tokens?: number | null
+  presence_penalty?: number | null
+  response_format?: AgentModelResponseFormatConfig
+  stop?: Array<string> | null
+  temperature?: number | null
+  top_p?: number | null
+  [key: string]: unknown
+}
+
+export type AgentSandboxProviderConfig = {
+  env?: Array<AgentEnvVariableConfig>
+  image?: string | null
+  working_dir?: string | null
+  [key: string]: unknown
+}
+
+export type AgentFileRefConfig = {
+  id?: string | null
+  name?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  path?: string | null
+  [key: string]: unknown
+}
+
+export type AgentCliToolConfig = {
+  command?: string | null
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  [key: string]: unknown
 }
 
 export type AgentSoulDifyToolConfig = {
@@ -268,10 +377,29 @@ export type AgentSoulDifyToolConfig = {
   tool_name: string
 }
 
+export type AgentModerationProviderConfig = {
+  api_based_extension_id?: string | null
+  inputs_config?: AgentModerationIoConfig
+  keywords?: string | null
+  outputs_config?: AgentModerationIoConfig
+  [key: string]: unknown
+}
+
+export type AgentModelResponseFormatConfig = {
+  type?: string | null
+  [key: string]: unknown
+}
+
 export type AgentSoulDifyToolCredentialRef = {
   id?: string | null
   provider?: string | null
   type?: 'provider' | 'tool'
+}
+
+export type AgentModerationIoConfig = {
+  enabled?: boolean
+  preset_response?: string | null
+  [key: string]: unknown
 }
 
 export type GetAgentsData = {

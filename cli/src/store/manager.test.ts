@@ -1,6 +1,6 @@
-import type { Key, Store } from './store.js'
+import type { Key, Store } from './store'
 import { describe, expect, it, vi } from 'vitest'
-import { getTokenStore } from './manager.js'
+import { getTokenStore } from './manager'
 
 function memStore(label: string): Store & { _label: string } {
   const map = new Map<string, unknown>()
@@ -47,7 +47,7 @@ describe('getTokenStore', () => {
   it('falls back to file when probe round-trip mismatches', () => {
     const k = memStore('keyring')
     const f = memStore('file')
-    k.get = vi.fn(() => 'something-else')
+    k.get = vi.fn(() => 'something-else') as Store['get']
     const result = getTokenStore({
       factory: { keyring: () => k, file: () => f },
     })

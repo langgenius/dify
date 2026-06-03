@@ -1,7 +1,7 @@
-import type { DifyMock } from '../../test/fixtures/dify-mock/server.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { createClient } from '../http/client.js'
 import { AppRunClient, buildRunBody } from './app-run.js'
 
 describe('buildRunBody', () => {
@@ -58,7 +58,7 @@ describe('AppRunClient.runStream', () => {
   })
 
   it('yields events for chat app', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     const iter = await c.runStream('app-1', buildRunBody({ message: 'hi' }))
     const dec = new TextDecoder()
     const names: string[] = []
@@ -74,7 +74,7 @@ describe('AppRunClient.runStream', () => {
 
   it('throws typed BaseError on non-2xx open', async () => {
     mock.setScenario('server-5xx')
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }))
+    const c = new AppRunClient(testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }))
     await expect(
       c.runStream('app-1', buildRunBody({ message: 'hi' })),
     ).rejects.toMatchObject({ code: 'server_5xx' })
@@ -82,7 +82,7 @@ describe('AppRunClient.runStream', () => {
 
   it('aborts when signal fires', async () => {
     expect.assertions(1)
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     const ctrl = new AbortController()
     const iter = await c.runStream('app-1', buildRunBody({ message: 'hi' }), { signal: ctrl.signal })
     ctrl.abort()
@@ -95,7 +95,7 @@ describe('AppRunClient.runStream', () => {
   })
 
   it('derives event name from JSON event field when SSE event line absent', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     const iter = await c.runStream('app-2', buildRunBody({ inputs: { x: '1' } }))
     const names: string[] = []
     for await (const ev of iter)
@@ -114,7 +114,7 @@ describe('AppRunClient.stopTask', () => {
   })
 
   it('resolves without error for known app and task', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     await expect(c.stopTask('app-1', 'task-42')).resolves.toBeUndefined()
   })
 })
@@ -129,7 +129,7 @@ describe('AppRunClient.submitHumanInput', () => {
   })
 
   it('resolves without error', async () => {
-    const c = new AppRunClient(createClient({ host: mock.url, bearer: 'dfoa_test' }))
+    const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     await expect(
       c.submitHumanInput('app-1', 'tok-abc', 'approve', { comment: 'looks good' }),
     ).resolves.toBeUndefined()

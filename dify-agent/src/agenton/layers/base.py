@@ -1,10 +1,11 @@
 """Invocation-scoped core layer abstractions and typed dependency binding.
 
-Agenton core deliberately manages only three concerns: stateless layer graph
-composition, serializable ``runtime_state`` lifecycle, and session snapshots. It
-does not own live resources, process handles, HTTP clients, cleanup stacks, or
-any other non-serializable runtime object. Those belong to application layers or
-integration code outside the core.
+Agenton core deliberately manages four concerns: stateless layer graph
+composition, serializable ``runtime_state`` lifecycle, per-active-invocation
+resource scopes, and session snapshots. Live resources remain layer-owned:
+Agenton may enter ``Layer.resource_context()`` for the active scope, but it
+never serializes or snapshots clients, process handles, cleanup stacks, or any
+other non-serializable runtime object.
 
 Layers declare their dependency shape with
 ``Layer[DepsT, PromptT, UserPromptT, ToolT, ConfigT, RuntimeStateT]``.
@@ -24,18 +25,27 @@ when possible, while still allowing subclasses to set them explicitly for
 unusual inheritance patterns.
 
 ``Layer`` is an invocation-scoped business object. It owns ``config``, direct
-``deps``, and serializable ``runtime_state`` plus prompt/tool authoring surfaces,
-but it does not own lifecycle state, exit intent, graph owner tokens, entry
-stacks, resources, or cleanup callbacks. ``CompositorRun`` owns lifecycle state
-and exit intent for one entry. ``SessionSnapshot`` objects are the only supported
-cross-call state carrier.
+``deps``, serializable ``runtime_state``, prompt/tool authoring surfaces, and
+any live resource fields managed by ``resource_context()``. It does not own
+lifecycle state, exit intent, graph owner tokens, or entry stacks.
+``CompositorRun`` owns lifecycle state and exit intent for one entry and
+orchestrates entering and exiting each layer's resource scope. ``SessionSnapshot``
+objects are the only supported cross-call state carrier.
 
 Lifecycle hooks are no-argument business hooks on the layer instance:
 ``on_context_create/resume/suspend/delete(self)``. They should read dependencies
 from ``self.deps`` and read or mutate serializable invocation state through
-``self.runtime_state``. Resource acquisition and deterministic cleanup should be
-handled outside Agenton core, for example by integration-specific context
-managers that wrap compositor entry.
+``self.runtime_state``. ``resource_context(self)`` is the symmetric active-scope
+API for live resources. Agenton enters it before ``on_context_create`` or
+``on_context_resume`` and exits it after ``on_context_suspend`` or
+``on_context_delete``. Create-versus-resume differences stay in the business
+hooks; ``resource_context`` should manage only live resource setup and cleanup.
+Agenton marks a slot ``ACTIVE`` only after ``on_context_create`` or
+``on_context_resume`` returns successfully. If either enter hook raises, normal
+``on_context_suspend``/``on_context_delete`` hooks do not run for that failed
+attempt. Enter hooks therefore own any business compensation or idempotency for
+partial side effects, while Agenton guarantees only ``resource_context()``
+cleanup, not hook rollback.
 
 ``Layer`` is framework-neutral over system prompt, user prompt, and tool item
 types. The native ``prefix_prompts``, ``suffix_prompts``, ``user_prompts``, and
@@ -47,11 +57,13 @@ native values without changing layer implementations.
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import StrEnum
 from types import UnionType
 from typing import (
     Any,
+    AsyncIterator,
     ClassVar,
     Generic,
     Union,
@@ -183,10 +195,11 @@ class Layer(
     snapshot, and then runs no-argument lifecycle hooks. The run owns lifecycle
     state and exit intent; layers never expose a public entry context manager.
 
-    Live resources and handles are intentionally outside this abstraction. Only
-    ``runtime_state`` is managed and snapshotted by Agenton core. Lifecycle hooks
-    should operate on ``self`` and keep any non-serializable cleanup policy in
-    integration code that wraps the compositor.
+    ``runtime_state`` is the only mutable data Agenton snapshots across calls.
+    Live resources belong on the layer instance itself and should be acquired in
+    ``resource_context()``. Agenton keeps that resource scope active while the
+    corresponding enter hook, run body, and exit hook execute, then tears it
+    down deterministically even when later hooks or the body fail.
     """
 
     deps_type: type[_DepsT]
@@ -267,17 +280,46 @@ class Layer(
             resolved_deps[name] = deps[name]
         self.deps = self.deps_type(**resolved_deps)
 
+    @asynccontextmanager
+    async def resource_context(self) -> AsyncIterator[None]:
+        """Wrap one active invocation with live non-serializable resources.
+
+        Agenton enters this no-argument context before ``on_context_create`` or
+        ``on_context_resume`` and exits it after ``on_context_suspend`` or
+        ``on_context_delete``. Use it for live clients, process handles, or
+        other non-serializable objects stored on ``self``. Keep create-versus-
+        resume business differences in the corresponding lifecycle hooks.
+        """
+        yield
+
     async def on_context_create(self) -> None:
-        """Run when the run slot enters from ``LifecycleState.NEW``."""
+        """Run when the run slot enters from ``LifecycleState.NEW``.
+
+        ``resource_context()`` is already active for this layer when this hook
+        runs. If this hook raises, the layer never becomes ``ACTIVE`` and no
+        normal ``on_context_delete()`` hook runs for that failed enter attempt.
+        """
 
     async def on_context_delete(self) -> None:
-        """Run when the run slot exits with ``ExitIntent.DELETE``."""
+        """Run when the run slot exits with ``ExitIntent.DELETE``.
+
+        ``resource_context()`` remains active while this hook runs.
+        """
 
     async def on_context_suspend(self) -> None:
-        """Run when the run slot exits with ``ExitIntent.SUSPEND``."""
+        """Run when the run slot exits with ``ExitIntent.SUSPEND``.
+
+        ``resource_context()`` remains active while this hook runs.
+        """
 
     async def on_context_resume(self) -> None:
-        """Run when the run slot enters from ``LifecycleState.SUSPENDED``."""
+        """Run when the run slot enters from ``LifecycleState.SUSPENDED``.
+
+        ``resource_context()`` is already active for this layer when this hook
+        runs. If this hook raises, the layer never becomes ``ACTIVE`` and no
+        normal ``on_context_suspend()`` or ``on_context_delete()`` hook runs for
+        that failed resume attempt.
+        """
 
     @property
     def prefix_prompts(self) -> Sequence[_PromptT]:

@@ -148,6 +148,11 @@ class _EstimateRules(BaseModel):
         return list(seen.values())
 
 
+class _EstimateHierarchicalRules(_EstimateRules):
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: _EstimateSegmentation | None = None
+
+
 class _SummaryIndexSettingDisabled(BaseModel):
     enable: Literal[False] = False
 
@@ -203,7 +208,7 @@ class _HierarchicalProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     mode: Literal[ProcessRuleMode.HIERARCHICAL]
-    rules: _EstimateRules
+    rules: _EstimateHierarchicalRules
     summary_index_setting: _SummaryIndexSetting | None = None
 
     @field_validator("summary_index_setting", mode="before")
@@ -2971,6 +2976,10 @@ class DocumentService:
         process_rule_dict = validated.process_rule.model_dump(exclude_none=True)
         if validated.process_rule.mode == ProcessRuleMode.AUTOMATIC:
             process_rule_dict["rules"] = {}
+        elif validated.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+            rules = process_rule_dict.get("rules")
+            if isinstance(rules, dict) and not rules.get("parent_mode"):
+                rules["parent_mode"] = "paragraph"
         args["process_rule"] = process_rule_dict
 
     @staticmethod

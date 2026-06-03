@@ -12,6 +12,9 @@ vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
+    useQueryClient: vi.fn(() => ({
+      resetQueries: vi.fn(),
+    })),
     useSuspenseQuery: vi.fn(() => ({
       data: {
         branding: {

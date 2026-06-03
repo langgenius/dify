@@ -11,10 +11,13 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from extensions.ext_database import db
 from fields.dataset_fields import dataset_detail_fields
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
@@ -35,9 +38,10 @@ class CreateRagPipelineDatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         payload = RagPipelineDatasetImportPayload.model_validate(console_ns.payload or {})
-        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -79,10 +83,10 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        current_user, current_tenant_id = current_account_with_tenant()
-
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.create_empty_rag_pipeline_dataset(

@@ -5,7 +5,7 @@ import {
   ErrorCode,
   ExitCode,
   exitFor,
-} from './codes.js'
+} from './codes'
 
 describe('error codes', () => {
   it('has correct number codes (parity with internal/api/errors)', () => {
@@ -42,8 +42,6 @@ describe('error codes', () => {
     [ErrorCode.UsageMissingArg, ExitCode.Usage],
     [ErrorCode.ConfigInvalidKey, ExitCode.Usage],
     [ErrorCode.ConfigInvalidValue, ExitCode.Usage],
-    [ErrorCode.NetworkTimeout, ExitCode.Generic],
-    [ErrorCode.NetworkDns, ExitCode.Generic],
     [ErrorCode.Server5xx, ExitCode.Generic],
     [ErrorCode.Server4xxOther, ExitCode.Generic],
     [ErrorCode.ClientError, ExitCode.Generic],

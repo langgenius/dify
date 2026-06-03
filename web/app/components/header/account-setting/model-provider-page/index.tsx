@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
