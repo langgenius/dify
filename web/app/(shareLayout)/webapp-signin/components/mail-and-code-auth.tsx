@@ -7,7 +7,7 @@ import Input from '@/app/components/base/input'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
+import { setLocalStorageItem } from '@/utils/local-storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
 
@@ -19,7 +19,6 @@ export default function MailAndCodeAuth() {
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
-  const setCountDown = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -35,7 +34,7 @@ export default function MailAndCodeAuth() {
       setIsLoading(true)
       const ret = await sendWebAppEMailLoginCode(email, locale)
       if (ret.result === 'success') {
-        setCountDown(`${COUNT_DOWN_TIME_MS}`)
+        setLocalStorageItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
