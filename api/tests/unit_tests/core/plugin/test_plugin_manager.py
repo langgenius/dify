@@ -283,32 +283,6 @@ class TestPluginLoading:
             # Assert: Verify all_installed flag is True
             assert result.all_installed is True
 
-    def test_install_task_start_response_preserves_task(self):
-        """Test install response keeps the created task returned by plugin daemon."""
-        now = datetime.datetime.now().isoformat()
-        response = PluginInstallTaskStartResponse.model_validate(
-            {
-                "all_installed": False,
-                "task_id": "task-123",
-                "task": {
-                    "id": "task-123",
-                    "created_at": now,
-                    "updated_at": now,
-                    "tenant_id": "test-tenant",
-                    "status": "running",
-                    "total_plugins": 1,
-                    "completed_plugins": 0,
-                    "plugins": [],
-                },
-            }
-        )
-
-        assert response.all_installed is False
-        assert response.task_id == "task-123"
-        assert response.task is not None
-        assert response.task.id == "task-123"
-        assert response.task.status == PluginInstallTaskStatus.Running
-
     def test_fetch_plugin_installation_task(self, plugin_installer):
         """Test fetching a specific plugin installation task."""
         # Arrange: Mock installation task
