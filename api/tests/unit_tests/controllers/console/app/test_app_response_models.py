@@ -458,6 +458,51 @@ def test_app_list_uses_injected_session_for_draft_workflows(app, app_module, mon
     assert serialized["data"][0]["permission_keys"] == ["app.acl.edit"]
 
 
+def test_app_create_api_attaches_permission_keys(app, app_module):
+    method = app_module.AppListApi.post
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-new",
+        name="Created App",
+        description="Summary",
+        mode_compatible_with_agent="advanced-chat",
+        enable_site=True,
+        enable_api=True,
+        permission_keys=[],
+    )
+
+    with app.test_request_context("/apps", method="POST", json={}):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            app_module.console_ns.payload = {
+                "name": "Created App",
+                "description": "Summary",
+                "mode": "advanced-chat",
+            }
+            monkeypatch.setattr(
+                app_module,
+                "current_account_with_tenant",
+                lambda: (SimpleNamespace(id="acct-1"), "tenant-1"),
+            )
+            monkeypatch.setattr(
+                app_module,
+                "AppService",
+                lambda: SimpleNamespace(create_app=lambda tenant_id, params, user: app_obj),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppPermissions,
+                "batch_get",
+                lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
+            )
+
+            resp, status = method(app_module.AppListApi())
+
+    assert status == 201
+    assert app_obj.permission_keys == ["app.acl.view_layout", "app.acl.edit"]
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
 def test_app_list_api_attaches_permission_keys(app, app_module):
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):

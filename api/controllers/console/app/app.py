@@ -593,6 +593,12 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user)
+        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [str(app.id)],
+        )
+        app.permission_keys = permission_keys_map.get(str(app.id), [])
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
