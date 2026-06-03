@@ -70,7 +70,7 @@ export type AppRunnerLog = {
   workspace?: NamedRef
   environment?: NamedRef
   appInstance?: NamedRef
-  endUser?: string
+  operator?: Operator
   invokeFrom?: string
   traceId?: string
   difyTraceId?: string
@@ -398,6 +398,11 @@ export type ListApiKeysReply = {
   apiUrl?: string
 }
 
+export type ListAppInstancesForDashboardReply = {
+  data?: Array<AppInstance>
+  pagination?: Pagination
+}
+
 export type ListAppInstancesReply = {
   data?: Array<AppInstance>
   pagination?: Pagination
@@ -432,6 +437,17 @@ export type ListReleasesReply = {
 }
 
 export type NamedRef = {
+  id?: string
+  name?: string
+}
+
+export type Operator = {
+  type?:
+    | 'OPERATOR_TYPE_UNKNOWN'
+    | 'OPERATOR_TYPE_END_USER'
+    | 'OPERATOR_TYPE_ACCOUNT'
+    | 'OPERATOR_TYPE_SERVICE_ACCOUNT'
+    | 'OPERATOR_TYPE_SYSTEM'
   id?: string
   name?: string
 }

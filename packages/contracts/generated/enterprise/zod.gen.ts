@@ -361,6 +361,23 @@ export const zNamedRef = z.object({
   name: z.string().optional(),
 })
 
+/**
+ * Operator is who triggered the run (the "END USER OR ACCOUNT" column).
+ */
+export const zOperator = z.object({
+  type: z
+    .enum([
+      'OPERATOR_TYPE_UNKNOWN',
+      'OPERATOR_TYPE_END_USER',
+      'OPERATOR_TYPE_ACCOUNT',
+      'OPERATOR_TYPE_SERVICE_ACCOUNT',
+      'OPERATOR_TYPE_SYSTEM',
+    ])
+    .optional(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
 export const zAppRunnerLog = z.object({
   id: z.string().optional(),
   timestamp: z.iso.datetime().optional(),
@@ -371,7 +388,7 @@ export const zAppRunnerLog = z.object({
   workspace: zNamedRef.optional(),
   environment: zNamedRef.optional(),
   appInstance: zNamedRef.optional(),
-  endUser: z.string().optional(),
+  operator: zOperator.optional(),
   invokeFrom: z.string().optional(),
   traceId: z.string().optional(),
   difyTraceId: z.string().optional(),
@@ -691,6 +708,11 @@ export const zPagination = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+})
+
+export const zListAppInstancesForDashboardReply = z.object({
+  data: z.array(zAppInstance).optional(),
+  pagination: zPagination.optional(),
 })
 
 export const zListAppInstancesReply = z.object({
