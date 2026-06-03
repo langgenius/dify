@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { usePathname, useRouter } from '@/next/navigation'
