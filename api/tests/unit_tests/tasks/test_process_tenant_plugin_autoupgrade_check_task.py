@@ -4,19 +4,25 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
-from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from models.account import TenantPluginAutoUpgradeStrategy
 
 MODULE = "tasks.process_tenant_plugin_autoupgrade_check_task"
 
 
-def _make_plugin(plugin_id: str, version: str, source=PluginInstallationSource.Marketplace):
+def _make_plugin(
+    plugin_id: str,
+    version: str,
+    source=PluginInstallationSource.Marketplace,
+    category: PluginCategory = PluginCategory.Tool,
+):
     """Build a minimal stand-in for a PluginInstallation entry returned by manager.list_plugins."""
     return SimpleNamespace(
         plugin_id=plugin_id,
         version=version,
         plugin_unique_identifier=f"{plugin_id}:{version}@deadbeef",
         source=source,
+        declaration=SimpleNamespace(category=category),
     )
 
 
@@ -39,6 +45,7 @@ def _run_task(
     upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
     exclude_plugins=None,
     include_plugins=None,
+    category=None,
 ):
     """
     Execute the celery task synchronously with mocks for the plugin manager,
@@ -72,6 +79,7 @@ def _run_task(
             upgrade_mode,
             exclude_plugins or [],
             include_plugins or [],
+            category,
         )
 
     return upgrade_mock, upgrade_calls
@@ -244,6 +252,26 @@ class TestUpgradeMode:
         )
 
         assert upgrade_mock.call_count == 1
+        assert calls[0][1] == plugins[0].plugin_unique_identifier
+
+    def test_category_strategy_only_upgrades_matching_category(self):
+        plugins = [
+            _make_plugin("acme/model-provider", "1.0.0", category=PluginCategory.Model),
+            _make_plugin("acme/tool-provider", "1.0.0", category=PluginCategory.Tool),
+        ]
+        manifests = [
+            _make_manifest("acme/model-provider", "1.0.1"),
+            _make_manifest("acme/tool-provider", "1.0.1"),
+        ]
+
+        upgrade_mock, calls = _run_task(
+            plugins=plugins,
+            manifests=manifests,
+            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+            category=TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL,
+        )
+
+        upgrade_mock.assert_called_once()
         assert calls[0][1] == plugins[0].plugin_unique_identifier
 
 
