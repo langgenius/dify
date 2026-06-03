@@ -9,6 +9,7 @@ import SnippetMain from '../snippet-main'
 
 const mockSyncInputFieldsDraft = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
+const mockSyncWorkflowDraftWhenPageClose = vi.fn()
 const mockReset = vi.fn()
 const mockSetFields = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
@@ -98,7 +99,7 @@ vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
     syncInputFieldsDraft: mockSyncInputFieldsDraft,
-    syncWorkflowDraftWhenPageClose: vi.fn(),
+    syncWorkflowDraftWhenPageClose: mockSyncWorkflowDraftWhenPageClose,
   }),
 }))
 
@@ -367,6 +368,24 @@ describe('SnippetMain', () => {
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledWith(true)
       expect(mockHandleRestoreFromPublishedWorkflow).not.toHaveBeenCalled()
       expect(mockSyncInputFieldsDraft).not.toHaveBeenCalled()
+    })
+
+    it('should not sync draft from workflow autosave while readonly', async () => {
+      renderSnippetMain({ hasInitialDraftChanges: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'exit without save' }))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument()
+      })
+      mockDoSyncWorkflowDraft.mockClear()
+
+      const doSyncWorkflowDraft = capturedHooksStore?.doSyncWorkflowDraft as (() => Promise<void>)
+      const syncWorkflowDraftWhenPageClose = capturedHooksStore?.syncWorkflowDraftWhenPageClose as (() => void)
+      await doSyncWorkflowDraft()
+      syncWorkflowDraftWhenPageClose()
+
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraftWhenPageClose).not.toHaveBeenCalled()
     })
 
     it('should skip forced draft sync caused by re-entering editing mode', async () => {

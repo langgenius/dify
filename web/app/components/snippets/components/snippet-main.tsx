@@ -388,6 +388,9 @@ const SnippetMain = ({
   const doSyncWorkflowDraft = useCallback((
     ...args: Parameters<typeof syncWorkflowDraft>
   ) => {
+    if (!isEditing)
+      return Promise.resolve()
+
     const [
       notRefreshWhenSyncError,
       callback,
@@ -402,6 +405,13 @@ const SnippetMain = ({
 
     return syncWorkflowDraft(...args)
   }, [isEditing, setHasDraftChanges, syncWorkflowDraft])
+
+  const syncWorkflowDraftWhenPageCloseInEditing = useCallback(() => {
+    if (!isEditing)
+      return
+
+    syncWorkflowDraftWhenPageClose()
+  }, [isEditing, syncWorkflowDraftWhenPageClose])
 
   const handleFieldsChangeInEditing = useCallback((nextFields: SnippetInputField[]) => {
     handleFieldsChange(nextFields)
@@ -488,7 +498,7 @@ const SnippetMain = ({
   const hooksStore = useMemo(() => {
     return {
       doSyncWorkflowDraft,
-      syncWorkflowDraftWhenPageClose,
+      syncWorkflowDraftWhenPageClose: syncWorkflowDraftWhenPageCloseInEditing,
       handleRefreshWorkflowDraft,
       handleBackupDraft,
       handleLoadBackupDraft,
@@ -544,7 +554,7 @@ const SnippetMain = ({
     renameInspectVarName,
     resetConversationVar,
     resetToLastRunVar,
-    syncWorkflowDraftWhenPageClose,
+    syncWorkflowDraftWhenPageCloseInEditing,
   ])
 
   return (
