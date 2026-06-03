@@ -324,9 +324,25 @@ def _is_valid_mapping(mapping: Mapping[str, Any]) -> bool:
     if not mapping or not mapping.get("transfer_method"):
         return False
 
-    if mapping.get("transfer_method") == FileTransferMethod.REMOTE_URL:
+    try:
+        transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
+    except ValueError:
+        return False
+
+    if transfer_method == FileTransferMethod.LOCAL_FILE:
+        return bool(resolve_mapping_file_id(mapping, "upload_file_id"))
+
+    if transfer_method == FileTransferMethod.TOOL_FILE:
+        return bool(resolve_mapping_file_id(mapping, "tool_file_id"))
+
+    if transfer_method == FileTransferMethod.DATASOURCE_FILE:
+        return bool(resolve_mapping_file_id(mapping, "datasource_file_id"))
+
+    if transfer_method == FileTransferMethod.REMOTE_URL:
+        # Remote files are valid when either a persisted upload row exists or a direct URL is provided.
+        if resolve_mapping_file_id(mapping, "upload_file_id"):
+            return True
         url = mapping.get("url") or mapping.get("remote_url")
-        if not url:
-            return False
+        return bool(url)
 
     return True

@@ -8,6 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
+from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import ToolFile, UploadFile
 
@@ -45,6 +46,16 @@ TEST_CONFIG = FileUploadConfig(
 def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
     return _build_from_mapping(
         mapping=mapping,
+        tenant_id=tenant_id,
+        config=config,
+        strict_type_validation=strict_type_validation,
+        access_controller=TEST_ACCESS_CONTROLLER,
+    )
+
+
+def build_from_mappings(*, mappings, tenant_id, config=None, strict_type_validation=False):
+    return _build_from_mappings(
+        mappings=mappings,
         tenant_id=tenant_id,
         config=config,
         strict_type_validation=strict_type_validation,
@@ -421,3 +432,32 @@ def test_disallowed_extensions(mock_upload_file):
 
     with pytest.raises(ValueError, match="File validation failed"):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)
+
+
+def test_build_from_mappings_ignores_placeholder_local_file_mapping():
+    mappings = [
+        {
+            "transfer_method": "local_file",
+            "type": "image",
+            "upload_file_id": "",
+        }
+    ]
+
+    files = build_from_mappings(mappings=mappings, tenant_id=TEST_TENANT_ID)
+
+    assert files == []
+
+
+def test_build_from_mappings_ignores_placeholder_remote_file_mapping():
+    mappings = [
+        {
+            "transfer_method": "remote_url",
+            "type": "image",
+            "upload_file_id": "",
+            "url": "",
+        }
+    ]
+
+    files = build_from_mappings(mappings=mappings, tenant_id=TEST_TENANT_ID)
+
+    assert files == []
