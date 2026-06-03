@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import Header from '../index'
+import { Header } from '../index'
 
 function createMockComponent(testId: string) {
   return () => <div data-testid={testId} />

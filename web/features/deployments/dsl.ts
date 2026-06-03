@@ -77,7 +77,7 @@ export function dslAppName(content: string) {
   return typeof name === 'string' ? name.trim() : ''
 }
 
-export function dslAppMode(content: string) {
+function dslAppMode(content: string) {
   return stringValue(parseDsl(content)?.app?.mode)
 }
 

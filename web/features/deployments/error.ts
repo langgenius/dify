@@ -7,7 +7,7 @@ type DeploymentErrorResponse = {
   unsupported_nodes?: unknown
 }
 
-export const APP_DEPLOY_UNSUPPORTED_DSL_NODE_TYPE = 'APPDEPLOY_UNSUPPORTED_DSL_NODE_TYPE'
+const APP_DEPLOY_UNSUPPORTED_DSL_NODE_TYPE = 'APPDEPLOY_UNSUPPORTED_DSL_NODE_TYPE'
 
 export type UnsupportedDslNode = {
   id: string
