@@ -4,9 +4,8 @@ import type {
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type {
-  DeploymentEnvVarSlot,
-  EnvVarValueSelection,
   EnvVarValues,
+  EnvVarValueSelection,
 } from '../env-var-bindings-utils'
 import type { RuntimeCredentialBindingSelections } from '../runtime-credential-bindings-utils'
 import type { EnvironmentOption } from './form-sections'
@@ -18,7 +17,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { DEPLOYMENT_PAGE_SIZE } from '../../data'
-import { encodeDslContent, dslEnvVarSlots } from '../../dsl'
+import { encodeDslContent } from '../../dsl'
 import { createDeploymentIdempotencyKey } from '../../idempotency'
 import { fetchReleaseDsl } from '../../release-dsl'
 import { isAvailableDeploymentTarget } from '../../runtime-status'
@@ -27,7 +26,6 @@ import {
   envVarValuesWithDefaults,
   hasEnvVarSlotKey,
   hasMissingRequiredEnvVarValue,
-  mergeEnvVarSlotMetadata,
   selectedDeploymentEnvVars,
 } from '../env-var-bindings-utils'
 import {
@@ -63,14 +61,6 @@ type DeployReadyFormProps = DeployFormProps & {
 }
 
 type BindingSelections = RuntimeCredentialBindingSelections
-
-function requiredSlotEnvVarSlot(slot: NonNullable<Release['requiredSlots']>[number]): DeploymentEnvVarSlot | undefined {
-  if (slot.type !== 'SLOT_TYPE_ENV_VAR')
-    return undefined
-
-  const key = slot.name?.trim()
-  return key ? { key } : undefined
-}
 
 function DeployReadyForm({
   appInstanceId,
@@ -136,23 +126,11 @@ function DeployReadyForm({
   }, [deploymentOptionsQuery.data?.options?.credentialSlots])
   const credentialCandidateSlots = bindingOptions.data?.slots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
   const bindingSlots = deploymentOptionCredentialSlots.length > 0 ? deploymentOptionCredentialSlots : credentialCandidateSlots
-  const releaseEnvVarSlots = useMemo(() => {
-    return targetRelease?.requiredSlots
-      ?.map(requiredSlotEnvVarSlot)
-      .filter((slot): slot is DeploymentEnvVarSlot => hasEnvVarSlotKey(slot)) ?? []
-  }, [targetRelease?.requiredSlots])
-  const releaseDslEnvVarSlots = useMemo(() => {
-    return releaseDslQuery.data ? dslEnvVarSlots(releaseDslQuery.data) : []
-  }, [releaseDslQuery.data])
   const deploymentOptionEnvVarSourceSlots = deploymentOptionsQuery.data?.options?.envVarSlots
   const deploymentOptionEnvVarSlots = useMemo(() => {
     return deploymentOptionEnvVarSourceSlots?.filter(hasEnvVarSlotKey) ?? []
   }, [deploymentOptionEnvVarSourceSlots])
-  const envVarSlots = useMemo(() => {
-    const sourceSlots = deploymentOptionEnvVarSlots.length > 0 ? deploymentOptionEnvVarSlots : releaseEnvVarSlots
-
-    return mergeEnvVarSlotMetadata(sourceSlots, releaseDslEnvVarSlots)
-  }, [deploymentOptionEnvVarSlots, releaseDslEnvVarSlots, releaseEnvVarSlots])
+  const envVarSlots = deploymentOptionEnvVarSlots
   const [manualBindings, setManualBindings] = useState<BindingSelections>({})
   const [envVarValues, setEnvVarValues] = useState<EnvVarValues>({})
   const [showValidationErrors, setShowValidationErrors] = useState(false)

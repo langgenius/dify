@@ -3,7 +3,7 @@
 import type {
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
-import type { EnvVarValueSelection, EnvVarValues } from '../components/env-var-bindings-utils'
+import type { EnvVarValues, EnvVarValueSelection } from '../components/env-var-bindings-utils'
 import type { UnsupportedDslNode } from '../error'
 import type {
   BindingSelections,
@@ -35,9 +35,9 @@ import {
 } from '../components/runtime-credential-bindings-utils'
 import { DEPLOYMENT_PAGE_SIZE, SOURCE_APPS_PAGE_SIZE } from '../data'
 import {
-  encodeDslContent,
   dslAppName,
   dslEnvVarSlots,
+  encodeDslContent,
   isWorkflowDsl,
 } from '../dsl'
 import {
