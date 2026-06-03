@@ -5,9 +5,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
-import { setLocalStorageItem } from '@/utils/local-storage'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
 
@@ -19,6 +18,7 @@ export default function MailAndCodeAuth() {
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
+  const setCountDown = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
 
   const handleGetEMailVerificationCode = async () => {
     try {
