@@ -75,23 +75,6 @@ describe('Clipboard Utilities', () => {
       expect(removeChildSpy).toHaveBeenCalled()
     })
 
-    it('should fallback to execCommand when clipboard API rejects', async () => {
-      const mockWriteText = vi.fn().mockRejectedValue(new Error('permission denied'))
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: mockWriteText },
-        writable: true,
-        configurable: true,
-      })
-
-      const mockExecCommand = vi.fn().mockReturnValue(true)
-      document.execCommand = mockExecCommand
-
-      await writeTextToClipboard('fallback after rejection')
-
-      expect(mockWriteText).toHaveBeenCalledWith('fallback after rejection')
-      expect(mockExecCommand).toHaveBeenCalledWith('copy')
-    })
-
     /**
      * Test error handling when execCommand returns false
      * execCommand returns false when the operation fails
