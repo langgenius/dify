@@ -11,7 +11,7 @@ type ISecretKeyButtonProps = {
   canManage?: boolean
 }
 
-const SecretKeyButton = ({ className, appId, textCls, canManage = true }: ISecretKeyButtonProps) => {
+const SecretKeyButton = ({ className, appId, textCls, canManage = false }: ISecretKeyButtonProps) => {
   const [isVisible, setIsVisible] = useState(false)
   const { t } = useTranslation()
 

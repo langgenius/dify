@@ -39,7 +39,7 @@ type StatusItemProps = {
   onUpdate?: (operationName?: string) => void
   canEdit?: boolean
 }
-const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate, canEdit = true }: StatusItemProps) => {
+const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate, canEdit = false }: StatusItemProps) => {
   const { t } = useTranslation()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP

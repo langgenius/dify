@@ -175,6 +175,7 @@ describe('Metadata', () => {
     docDetail: createMockDocDetail(),
     loading: false,
     onUpdate: vi.fn(),
+    canEdit: true,
   }
 
   describe('Rendering', () => {
@@ -198,6 +199,14 @@ describe('Metadata', () => {
 
     it('should hide edit button when canEdit is false', () => {
       render(<Metadata {...defaultProps} canEdit={false} />)
+
+      expect(screen.queryByText(/operation\.edit/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide edit button by default when canEdit is omitted', () => {
+      const { canEdit: _canEdit, ...propsWithoutCanEdit } = defaultProps
+
+      render(<Metadata {...propsWithoutCanEdit} />)
 
       expect(screen.queryByText(/operation\.edit/i)).not.toBeInTheDocument()
     })
@@ -541,6 +550,7 @@ describe('useMetadataState coverage', () => {
     docDetail: createMockDocDetail(),
     loading: false,
     onUpdate: vi.fn(),
+    canEdit: true,
   }
 
   describe('cancelDocType', () => {

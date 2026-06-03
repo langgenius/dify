@@ -21,7 +21,7 @@ type MetadataProps = {
   canEdit?: boolean
 }
 
-const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = true }) => {
+const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = false }) => {
   const { t } = useTranslation()
   const metadataMap = useMetadataMap()
 

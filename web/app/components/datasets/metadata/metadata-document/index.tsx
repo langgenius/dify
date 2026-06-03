@@ -24,7 +24,7 @@ const MetadataDocument: FC<Props> = ({
   documentId,
   className,
   docDetail,
-  canEdit = true,
+  canEdit = false,
 }) => {
   const { t } = useTranslation()
 

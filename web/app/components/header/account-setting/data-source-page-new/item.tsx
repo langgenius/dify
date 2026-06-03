@@ -25,8 +25,8 @@ type ItemProps = {
 const Item = ({
   credentialItem,
   onAction,
-  canUseCredential = true,
-  canManageCredential = true,
+  canUseCredential = false,
+  canManageCredential = false,
 }: ItemProps) => {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)

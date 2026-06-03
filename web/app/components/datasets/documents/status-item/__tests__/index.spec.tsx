@@ -161,6 +161,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       // Switch component should be present in detail scene
@@ -186,6 +187,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       const switchElement = screen.getByRole('switch')
@@ -203,6 +205,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       const switchElement = screen.getByRole('switch')
@@ -220,6 +223,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
         />,
       )
       const switchElement = screen.getByRole('switch')
@@ -275,6 +279,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -302,6 +307,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -343,6 +349,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -371,6 +378,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -402,6 +410,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )
@@ -431,6 +440,7 @@ describe('StatusItem', () => {
             id: 'doc-1',
           }}
           datasetId="dataset-1"
+          canEdit
           onUpdate={mockOnUpdate}
         />,
       )

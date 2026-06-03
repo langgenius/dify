@@ -16,7 +16,7 @@ type MarketplaceProps = {
 }
 
 const Marketplace = async ({
-  showInstallButton = true,
+  showInstallButton = false,
   pluginTypeSwitchClassName,
   searchParams,
 }: MarketplaceProps) => {

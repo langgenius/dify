@@ -27,8 +27,8 @@ const Operator = ({
   credentialItem,
   onAction,
   onRename,
-  canUseCredential = true,
-  canManageCredential = true,
+  canUseCredential = false,
+  canManageCredential = false,
 }: OperatorProps) => {
   const { t } = useTranslation()
   const {

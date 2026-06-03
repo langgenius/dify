@@ -145,6 +145,8 @@ describe('reference-setting-modal', () => {
   describe('ReferenceSettingModal (index.tsx)', () => {
     const defaultProps = {
       payload: createMockReferenceSetting(),
+      canSetPermissions: true,
+      canSetAutoUpdate: true,
       onHide: vi.fn(),
       onSave: vi.fn(),
     }
@@ -940,6 +942,8 @@ describe('reference-setting-modal', () => {
       render(
         <ReferenceSettingModal
           payload={initialPayload}
+          canSetPermissions
+          canSetAutoUpdate
           onHide={onHide}
           onSave={onSave}
         />,
@@ -984,6 +988,8 @@ describe('reference-setting-modal', () => {
       render(
         <ReferenceSettingModal
           payload={initialPayload}
+          canSetPermissions
+          canSetAutoUpdate
           onHide={onHide}
           onSave={onSave}
         />,
@@ -1005,6 +1011,8 @@ describe('reference-setting-modal', () => {
       // Arrange
       const props = {
         payload: createMockReferenceSetting(),
+        canSetPermissions: true,
+        canSetAutoUpdate: true,
         onHide: vi.fn(),
         onSave: vi.fn(),
       }

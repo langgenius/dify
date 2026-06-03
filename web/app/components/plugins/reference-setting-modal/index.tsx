@@ -26,8 +26,8 @@ type Props = {
 
 const PluginSettingModal: FC<Props> = ({
   payload,
-  canSetPermissions = true,
-  canSetAutoUpdate = true,
+  canSetPermissions = false,
+  canSetAutoUpdate = false,
   onHide,
   onSave,
 }) => {

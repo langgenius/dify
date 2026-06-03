@@ -32,6 +32,9 @@ describe('DocumentsHeader', () => {
     datasetId: 'dataset-123',
     dataSourceType: DataSourceType.FILE,
     embeddingAvailable: true,
+    canManageMetadata: true,
+    canAddDocument: true,
+    canEditDocument: true,
     isFreePlan: false,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
@@ -85,6 +88,22 @@ describe('DocumentsHeader', () => {
     it('should render filter input', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('should hide action controls by default when permissions are omitted', () => {
+      const {
+        canManageMetadata: _canManageMetadata,
+        canAddDocument: _canAddDocument,
+        canEditDocument: _canEditDocument,
+        ...propsWithoutPermissions
+      } = defaultProps
+
+      render(<DocumentsHeader {...propsWithoutPermissions} />)
+
+      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('index-failed')).not.toBeInTheDocument()
+      expect(screen.queryByText(/metadata\.metadata/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/list\.addFile/i)).not.toBeInTheDocument()
     })
   })
 
