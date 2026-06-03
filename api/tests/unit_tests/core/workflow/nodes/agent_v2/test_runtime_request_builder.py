@@ -14,6 +14,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
+    build_shell_layer_config,
 )
 from graphon.variables.segments import StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -268,6 +269,50 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest
         "dify_tool_names": [],
         "cli_tool_count": 1,
     }
+
+
+def test_build_shell_layer_config_accepts_legacy_fallback_keys():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {"label": "node", "install_command": "apt-get install -y nodejs"},
+                    {"tool_name": "python", "setup_command": "pip install pytest"},
+                    {"install": "apk add git"},
+                    {"ignored": True},
+                ]
+            },
+            "env": {
+                "variables": [
+                    {"key": "PROJECT_NAME", "default": "demo"},
+                    {"env_name": "RETRY_COUNT", "value": 3},
+                    {"value": "missing-name"},
+                ],
+                "secret_refs": [
+                    {"variable": "TOKEN", "credential_id": "credential-1"},
+                    {"name": "API_KEY", "provider_credential_id": "credential-2"},
+                    {"ref": "missing-name"},
+                ],
+            },
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {"name": "node", "install_commands": ["apt-get install -y nodejs"]},
+        {"name": "python", "install_commands": ["pip install pytest"]},
+        {"name": None, "install_commands": ["apk add git"]},
+    ]
+    assert config["env"] == [
+        {"name": "PROJECT_NAME", "value": "demo"},
+        {"name": "RETRY_COUNT", "value": "3"},
+    ]
+    assert config["secret_refs"] == [
+        {"name": "TOKEN", "ref": "credential-1"},
+        {"name": "API_KEY", "ref": "credential-2"},
+    ]
+    assert config["sandbox"] is None
 
 
 def test_builds_workflow_run_request_with_dify_plugin_tools_layer():

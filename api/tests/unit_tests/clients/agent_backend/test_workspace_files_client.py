@@ -83,6 +83,17 @@ def test_http_error_preserves_status_and_detail() -> None:
     assert exc_info.value.detail == {"code": "not_found", "message": "path not found in workspace"}
 
 
+def test_http_error_with_non_json_body_uses_response_text() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="backend exploded")
+
+    with pytest.raises(AgentBackendHTTPError) as exc_info:
+        _client(handler).preview("abc1234", "note.txt")
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "backend exploded"
+
+
 def test_transport_failure_becomes_transport_error() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused")
@@ -99,6 +110,36 @@ def test_download_without_content_is_502() -> None:
         _client(handler).download("abc1234", "b.bin")
 
     assert exc_info.value.status_code == 502
+
+
+def test_download_with_invalid_base64_is_502() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"path": "b.bin", "size": 3, "truncated": False, "content_base64": "not-@@@"})
+
+    with pytest.raises(AgentBackendHTTPError) as exc_info:
+        _client(handler).download("abc1234", "b.bin")
+
+    assert exc_info.value.status_code == 502
+
+
+def test_download_uses_decoded_size_when_backend_size_is_invalid() -> None:
+    raw = b"abc"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "path": "b.bin",
+                "size": "unknown",
+                "truncated": True,
+                "content_base64": base64.b64encode(raw).decode(),
+            },
+        )
+
+    result = _client(handler).download("abc1234", "b.bin")
+
+    assert result.size == len(raw)
+    assert result.truncated is True
 
 
 def test_non_object_body_is_502() -> None:

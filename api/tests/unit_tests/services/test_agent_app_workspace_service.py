@@ -26,6 +26,7 @@ from services.agent_app_workspace_service import (
     AgentAppWorkspaceService,
     AgentWorkspaceInspectorError,
     WorkflowAgentWorkspaceService,
+    _default_client_factory,
 )
 
 
@@ -135,6 +136,16 @@ def test_shell_layer_without_session_id_raises_no_sandbox() -> None:
     assert exc_info.value.code == "no_sandbox"
 
 
+def test_default_client_factory_requires_agent_backend_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.agent_app_workspace_service.dify_config.AGENT_BACKEND_BASE_URL", "")
+
+    with pytest.raises(AgentWorkspaceInspectorError) as exc_info:
+        _default_client_factory()
+
+    assert exc_info.value.code == "inspector_unavailable"
+    assert exc_info.value.status_code == 503
+
+
 @pytest.fixture
 def _runtime_session_table() -> Generator[None, None, None]:
     engine = session_factory.get_session_maker().kw["bind"]
@@ -212,3 +223,62 @@ def test_workflow_workspace_service_filters_by_node_execution_id() -> None:
     )
 
     assert client.calls == [("preview", "def5678", "out.txt")]
+
+
+@pytest.mark.usefixtures("_runtime_session_table")
+def test_workflow_workspace_service_download_uses_latest_active_session_when_execution_id_is_omitted() -> None:
+    _insert_workflow_session(node_execution_id="node-exec-1", session_id="abc1234")
+    client = FakeClient()
+    service = WorkflowAgentWorkspaceService(client_factory=lambda: client)  # type: ignore[arg-type]
+
+    result = service.download(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        node_execution_id=None,
+        path="out.bin",
+    )
+
+    assert result.content == b"abc"
+    assert client.calls == [("download", "abc1234", "out.bin")]
+
+
+@pytest.mark.usefixtures("_runtime_session_table")
+def test_workflow_workspace_service_raises_when_no_active_session_exists() -> None:
+    client = FakeClient()
+    service = WorkflowAgentWorkspaceService(client_factory=lambda: client)  # type: ignore[arg-type]
+
+    with pytest.raises(AgentWorkspaceInspectorError) as exc_info:
+        service.list_files(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id=None,
+            path=".",
+        )
+
+    assert exc_info.value.code == "no_active_session"
+    assert exc_info.value.status_code == 404
+    assert client.calls == []
+
+
+@pytest.mark.usefixtures("_runtime_session_table")
+def test_workflow_workspace_service_raises_when_snapshot_has_no_shell_session() -> None:
+    _insert_workflow_session(session_id="")
+    client = FakeClient()
+    service = WorkflowAgentWorkspaceService(client_factory=lambda: client)  # type: ignore[arg-type]
+
+    with pytest.raises(AgentWorkspaceInspectorError) as exc_info:
+        service.preview(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id=None,
+            path="out.txt",
+        )
+
+    assert exc_info.value.code == "no_sandbox"
+    assert client.calls == []
