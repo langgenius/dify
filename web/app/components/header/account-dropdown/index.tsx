@@ -21,7 +21,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useLogout } from '@/service/use-common'
-import { removeLocalStorageItem } from '@/utils/local-storage'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Compliance from './compliance'
@@ -119,15 +119,18 @@ export default function AppSelector() {
   const { setShowAccountSettingModal } = useModalContext()
 
   const { mutateAsync: logout } = useLogout()
+  const removeEducationReverifyPrevExpireAt = useSetLocalStorage<string>('education-reverify-prev-expire-at', { raw: true })
+  const removeEducationReverifyHasNoticed = useSetLocalStorage<string>('education-reverify-has-noticed', { raw: true })
+  const removeEducationExpiredHasNoticed = useSetLocalStorage<string>('education-expired-has-noticed', { raw: true })
   const handleLogout = async () => {
     await logout()
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
-    removeLocalStorageItem('education-reverify-prev-expire-at')
-    removeLocalStorageItem('education-reverify-has-noticed')
-    removeLocalStorageItem('education-expired-has-noticed')
+    removeEducationReverifyPrevExpireAt(null)
+    removeEducationReverifyHasNoticed(null)
+    removeEducationExpiredHasNoticed(null)
 
     router.push('/signin')
   }
