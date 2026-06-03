@@ -409,19 +409,6 @@ Verify password reset token validity
 | 400 | Bad request - invalid token format |  |
 | 401 | Invalid or expired token |  |
 
-### /human-input-forms/files
-
-#### POST
-##### Summary
-
-Upload one local file or remote URL file for a HITL human input form
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
 ### /form/human_input/{form_token}
 
 #### GET
@@ -496,6 +483,19 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
+
+### /human-input-forms/files
+
+#### POST
+##### Summary
+
+Upload one local file or remote URL file for a HITL human input form
+
+##### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
 
 ### /login
 
@@ -1224,11 +1224,13 @@ Returns Server-Sent Events stream.
 | email | string |  | Yes |
 | language | string |  | No |
 
-#### HumanInputRemoteFileUploadPayload
+#### HumanInputFileUploadFormPayload
+
+Parsed multipart form fields for HITL uploads.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| url | string (uri) | Remote file URL | Yes |
+| url | string (uri) | Remote file URL | No |
 
 #### HumanInputUploadTokenResponse
 
