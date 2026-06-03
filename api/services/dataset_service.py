@@ -9,6 +9,7 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Annotated, Any, Literal, TypedDict, cast
 
+import pydantic
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
@@ -106,6 +107,40 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
+
+
+# Pydantic models for estimate_args_validate refactoring (issue #36001)
+class PreProcessingRuleItemPydantic(pydantic.BaseModel):
+    id: str
+    enabled: bool
+
+
+class SegmentationConfigPydantic(pydantic.BaseModel):
+    separator: str
+    max_tokens: int
+    chunk_overlap: int = 0
+
+
+class ProcessRulesPydantic(pydantic.BaseModel):
+    pre_processing_rules: list[PreProcessingRuleItemPydantic] = []
+    segmentation: SegmentationConfigPydantic | None = None
+
+
+class SummaryIndexSettingPydantic(pydantic.BaseModel):
+    enable: bool = False
+    model_name: str | None = None
+    model_provider_name: str | None = None
+
+
+class ProcessRulePydantic(pydantic.BaseModel):
+    mode: str
+    rules: ProcessRulesPydantic | None = None
+    summary_index_setting: SummaryIndexSettingPydantic | None = None
+
+
+class EstimateArgsPydantic(pydantic.BaseModel):
+    info_list: dict[str, Any]
+    process_rule: ProcessRulePydantic
 
 
 class ProcessRulesDict(TypedDict):
@@ -2981,6 +3016,8 @@ class DocumentService:
             if isinstance(rules, dict) and not rules.get("parent_mode"):
                 rules["parent_mode"] = "paragraph"
         args["process_rule"] = process_rule_dict
+
+        return validated_args
 
     @staticmethod
     def batch_update_document_status(
