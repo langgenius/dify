@@ -219,4 +219,57 @@ describe('useCreateSnippetFromSelection', () => {
       [SNIPPET_INPUT_FIELD_NODE_ID, 'workflow_id'],
     ])
   })
+
+  it('should keep #context# prompt placeholders when creating a snippet from workflow selection', () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        context: {
+          enabled: true,
+          variable_selector: ['code', 'result'],
+        },
+        prompt: '{{#context#}} {{#code.summary#}}',
+      }),
+    ]
+    const onClose = vi.fn()
+
+    const { result } = renderHook(() => useCreateSnippetFromSelection({
+      edges: [],
+      selectedNodes,
+      onClose,
+    }))
+
+    act(() => {
+      result.current.handleOpenCreateSnippet()
+    })
+
+    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
+    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as {
+      context?: {
+        enabled: boolean
+        variable_selector: string[]
+      }
+      prompt?: string
+    }
+
+    expect(dialogProps.inputFields).toEqual([
+      {
+        label: 'result',
+        variable: 'result',
+        type: PipelineInputVarType.textInput,
+        required: true,
+      },
+      {
+        label: 'summary',
+        variable: 'summary',
+        type: PipelineInputVarType.textInput,
+        required: true,
+      },
+    ])
+    expect(nodeData.context).toEqual({
+      enabled: true,
+      variable_selector: [SNIPPET_INPUT_FIELD_NODE_ID, 'result'],
+    })
+    expect(nodeData.prompt).toBe(`{{#context#}} {{#${SNIPPET_INPUT_FIELD_NODE_ID}.summary#}}`)
+  })
 })

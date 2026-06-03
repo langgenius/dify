@@ -36,6 +36,11 @@ const isValueSelectorList = (value: unknown[]) => {
   return value.length > 0 && value.every(isValueSelector)
 }
 
+const isContextPlaceholderSelector = (selector: ValueSelector) => {
+  return (selector.length === 1 && selector[0] === 'context')
+    || selector.at(-1) === '#context#'
+}
+
 const getCenteredViewport = (nodes: Node[]) => {
   if (!nodes.length)
     return DEFAULT_SNIPPET_VIEWPORT
@@ -66,7 +71,7 @@ const collectSelectorsFromText = (value: string, selectors: ValueSelector[]) => 
       continue
 
     const selector = variablePath.split('.').filter(Boolean)
-    if (selector.length > 0)
+    if (selector.length > 0 && !isContextPlaceholderSelector(selector))
       selectors.push(selector)
   }
 }
@@ -111,6 +116,9 @@ const isExternalVariableSelector = (
     return false
 
   if (nodeId.startsWith('$'))
+    return false
+
+  if (isContextPlaceholderSelector(selector))
     return false
 
   if (selectedNodeIds.has(nodeId))
