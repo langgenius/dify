@@ -83,14 +83,8 @@ def _trusted_origin() -> str:
 
 
 def _device_url(query: str) -> str:
-    """Absolute web-origin URL for the /device SPA page.
-
-    sso-complete runs on the API origin (CONSOLE_API_URL); /device is served
-    by the web frontend (CONSOLE_WEB_URL). A bare relative redirect resolves
-    against the API origin and dead-ends in split-origin deployments, so the
-    target must be built from CONSOLE_WEB_URL (assumed always set).
-    `query` includes the leading "?".
-    """
+    # /device is served by the web frontend, not this API origin — a relative
+    # redirect would dead-end on the API host in split-origin deployments.
     base = dify_config.CONSOLE_WEB_URL.rstrip("/")
     return f"{base}/device{query}"
 
@@ -183,7 +177,7 @@ def sso_complete():
             _RejectedClaims(subject_email=claims.email, subject_issuer=claims.issuer),
             reason="email_belongs_to_dify_account",
         )
-        return redirect("/device?sso_error=email_belongs_to_dify_account", code=302)
+        return redirect(_device_url("?sso_error=email_belongs_to_dify_account"), code=302)
 
     iss = _trusted_origin()
     cookie_value, _ = mint_approval_grant(
@@ -194,7 +188,7 @@ def sso_complete():
         user_code=user_code,
     )
 
-    resp = redirect("/device?sso_verified=1", code=302)
+    resp = redirect(_device_url("?sso_verified=1"), code=302)
     resp.set_cookie(**approval_grant_cookie_kwargs(cookie_value))
     return resp
 
