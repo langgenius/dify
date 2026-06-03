@@ -158,10 +158,11 @@ export const applyToCurrentApp = async ({
 }: ApplyToCurrentAppParams): Promise<void> => {
   const url = `apps/${appId}/workflows/draft`
 
-  // First sync may have no existing draft (workflow apps are created with no
-  // draft and Studio lazy-creates one on the first save). fetchWorkflowDraft
-  // is silent — on a 404 it returns null/undefined, so we treat missing as
-  // "no existing draft" and sync without a hash.
+  // First sync may have no existing draft (workflow apps can exist before Studio
+  // has created/saved a draft). ``fetchWorkflowDraft`` rejects on non-2xx (e.g.
+  // 404), so we treat any fetch failure as "no existing draft" and sync without
+  // a hash.
+  let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
   let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
   try {
     existing = await fetchWorkflowDraft(url)

@@ -81,7 +81,7 @@ class WorkflowGeneratorService:
             model_parameters=model_parameters,
             provider=model_config.provider,
             model_name=model_config.name,
-            model_mode=str(model_config.mode),
+            model_mode=model_config.mode.value,
             mode=mode,
             instruction=instruction,
             ideal_output=ideal_output,

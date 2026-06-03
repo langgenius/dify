@@ -73,7 +73,7 @@ export const generateRule = (body: Record<string, any>) => {
 /**
  * One structured error from the workflow generator backend. ``code`` is a
  * stable machine-readable identifier the frontend maps to localised copy
- * via the ``workflow.generator.errors.<code>`` i18n keys; ``detail`` is the
+ * via the ``workflowGenerator.errors.<code>`` i18n keys; ``detail`` is the
  * raw English diagnostic; ``node_id`` is set when the error is tied to a
  * specific node (the preview canvas can highlight it).
  *
