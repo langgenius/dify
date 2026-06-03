@@ -4985,9 +4985,6 @@
     }
   },
   "web/app/reset-password/page.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
