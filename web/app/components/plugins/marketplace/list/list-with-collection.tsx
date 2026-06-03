@@ -3,7 +3,6 @@
 import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightSLine } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
@@ -18,6 +17,9 @@ import {
   CAROUSEL_PAGE_SIZE,
   GRID_CLASS,
 } from './collection-constants'
+
+const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk'
+const PARTNERS_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
 
 const getViewportWidth = () => typeof window === 'undefined' ? CAROUSEL_BREAKPOINTS.xl : window.innerWidth
 
@@ -95,6 +97,7 @@ const ListWithCollection = ({
           const plugins = marketplaceCollectionPluginsMap[collection.name]!
           const pages = buildCarouselPages(plugins, itemsPerPage)
           const hasMultiplePages = pages.length > 1
+          const isPartnersCollection = PARTNERS_COLLECTION_NAMES.has(collection.name)
 
           return (
             <div
@@ -104,7 +107,23 @@ const ListWithCollection = ({
               <div className="flex items-end justify-between">
                 <div>
                   <div className="title-xl-semi-bold text-text-primary">{collection.label[getLanguage(locale)]}</div>
-                  <div className="system-xs-regular text-text-tertiary">{collection.description[getLanguage(locale)]}</div>
+                  <div className="flex items-center gap-x-2 system-xs-regular text-text-tertiary">
+                    {collection.description[getLanguage(locale)]}
+                    {isPartnersCollection && (
+                      <>
+                        <span className="text-divider-regular">|</span>
+                        <a
+                          href={BECOME_PARTNER_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-x-0.5 text-text-accent hover:underline"
+                        >
+                          <span>{t('marketplace.becomePartner', { ns: 'plugin' })}</span>
+                          <span aria-hidden className="i-ri-arrow-right-up-line h-3.5 w-3.5" />
+                        </a>
+                      </>
+                    )}
+                  </div>
                 </div>
                 {
                   collection.searchable && !hasMultiplePages && (
@@ -113,7 +132,7 @@ const ListWithCollection = ({
                       onClick={() => handleMoreClick(collection.search_params)}
                     >
                       {t('marketplace.viewMore', { ns: 'plugin' })}
-                      <RiArrowRightSLine className="size-4" />
+                      <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
                     </div>
                   )
                 }

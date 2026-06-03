@@ -122,6 +122,61 @@ describe('ListWithCollection', () => {
     expect(screen.queryByTestId('card-wrapper')).not.toBeInTheDocument()
   })
 
+  it('renders become partner link only for partners collection', () => {
+    const partnerCollection: MarketplaceCollection = {
+      name: 'partner-template',
+      label: { 'en-US': 'Partners' },
+      description: { 'en-US': 'Partner plugins' },
+      rule: 'partners',
+      created_at: '',
+      updated_at: '',
+      searchable: false,
+      search_params: {},
+    }
+
+    render(
+      <ListWithCollection
+        marketplaceCollections={[partnerCollection, collections[0]!]}
+        marketplaceCollectionPluginsMap={{
+          'partner-template': [{ plugin_id: 'partner-plugin', name: 'Partner Plugin' }] as Plugin[],
+          'featured': [{ plugin_id: 'featured-plugin', name: 'Featured Plugin' }] as Plugin[],
+        }}
+      />,
+    )
+
+    const partnerLink = screen.getByRole('link', { name: 'plugin.marketplace.becomePartner' })
+
+    expect(partnerLink).toHaveAttribute('href', 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk')
+    expect(partnerLink).toHaveAttribute('target', '_blank')
+    expect(partnerLink).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(screen.getByText('|')).toHaveClass('text-divider-regular')
+    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
+  })
+
+  it('does not render become partner link for misspelled partner collection name', () => {
+    const misspelledPartnerCollection: MarketplaceCollection = {
+      name: 'parters',
+      label: { 'en-US': 'Parters' },
+      description: { 'en-US': 'Misspelled partner plugins' },
+      rule: 'parters',
+      created_at: '',
+      updated_at: '',
+      searchable: false,
+      search_params: {},
+    }
+
+    render(
+      <ListWithCollection
+        marketplaceCollections={[misspelledPartnerCollection]}
+        marketplaceCollectionPluginsMap={{
+          parters: [{ plugin_id: 'misspelled-partner-plugin', name: 'Misspelled Partner Plugin' }] as Plugin[],
+        }}
+      />,
+    )
+
+    expect(screen.queryByRole('link', { name: 'plugin.marketplace.becomePartner' })).not.toBeInTheDocument()
+  })
+
   it('uses carousel navigation instead of view more when collection exceeds two rows', () => {
     const collection = {
       ...collections[0]!,
