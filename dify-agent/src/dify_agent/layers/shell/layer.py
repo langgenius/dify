@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import asynccontextmanager
+import json
 import logging
 import re
 import secrets
@@ -357,6 +358,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         try:
             _ = self._require_client()
             session_id, workspace_cwd = await self._allocate_workspace()
+            await self._bootstrap_workspace(workspace_cwd)
         except BaseException:
             await self._cleanup_create_failure()
             raise
@@ -432,7 +434,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         """Start a new shell job inside the session workspace."""
         try:
             client = self._require_client()
-            result = await client.run(script, cwd=self._require_workspace_cwd(), timeout=timeout)
+            result = await client.run(_wrap_user_script(script), cwd=self._require_workspace_cwd(), timeout=timeout)
             self._track_job_result(result)
             return _job_result_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
@@ -491,6 +493,17 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
                 )
             return session_id, _workspace_cwd(session_id)
         raise RuntimeError("Failed to allocate a unique shell workspace session id after 256 attempts.")
+
+    async def _bootstrap_workspace(self, workspace_cwd: str) -> None:
+        """Apply Agent Soul shell config to the freshly-created workspace."""
+        bootstrap_script = _workspace_bootstrap_script(self.config)
+        if not bootstrap_script:
+            return
+        result = await self._run_internal_job_to_completion(bootstrap_script, cwd=workspace_cwd)
+        if result["exit_code"] != 0:
+            raise RuntimeError(
+                f"Failed to bootstrap shell workspace {workspace_cwd}: {result['status']} exit_code={result['exit_code']}"
+            )
 
     async def _cleanup_create_failure(self) -> None:
         """Best-effort shellctl job cleanup for create failures before ACTIVE state.
@@ -681,6 +694,51 @@ def _workspace_cwd(session_id: str) -> str:
     return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
 
 
+def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
+    """Return the workspace bootstrap script for env + CLI tool declarations."""
+    lines: list[str] = [
+        "set -eu",
+        'mkdir -p ".dify"',
+        "cat > \".dify/env.sh\" <<'DIFY_ENV_EOF'",
+    ]
+    for env_var in config.env:
+        lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+    for secret_ref in config.secret_refs:
+        # Secret refs are resolved outside this public DTO. Preserve the env var
+        # name without inventing a value so host-provided env can flow through.
+        lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
+    if config.sandbox is not None:
+        if config.sandbox.provider:
+            lines.append(f"export DIFY_SANDBOX_PROVIDER={_shquote(config.sandbox.provider)}")
+        if config.sandbox.config:
+            sandbox_config = json.dumps(config.sandbox.config, ensure_ascii=True, sort_keys=True)
+            lines.append(f"export DIFY_SANDBOX_CONFIG_JSON={_shquote(sandbox_config)}")
+    lines.extend(
+        [
+            "DIFY_ENV_EOF",
+            'chmod 600 ".dify/env.sh"',
+        ]
+    )
+    for tool in config.cli_tools:
+        for command in tool.install_commands:
+            lines.append(command)
+    return "\n".join(lines) if len(lines) > 5 or config.cli_tools else ""
+
+
+def _wrap_user_script(script: str) -> str:
+    """Source Agent Soul env before executing a model-requested shell command."""
+    return "\n".join(
+        [
+            'if [ -f ".dify/env.sh" ]; then',
+            "  set -a",
+            '  . ".dify/env.sh"',
+            "  set +a",
+            "fi",
+            script,
+        ]
+    )
+
+
 def _workspace_mkdir_script(*, session_id: str) -> str:
     """Return the internal mkdir command used for proposal-defined collision checks.
 
@@ -703,6 +761,11 @@ def _workspace_mkdir_script(*, session_id: str) -> str:
 
 def _workspace_cleanup_script(*, session_id: str) -> str:
     return f'rm -rf -- "$HOME/workspace/{_validated_session_id(session_id)}"'
+
+
+def _shquote(value: str) -> str:
+    """Single-quote a value for POSIX shells, escaping embedded single quotes."""
+    return "'" + value.replace("'", "'\\''") + "'"
 
 
 def _validated_session_id(session_id: str) -> str:

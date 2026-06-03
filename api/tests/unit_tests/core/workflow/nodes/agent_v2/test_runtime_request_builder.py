@@ -7,6 +7,7 @@ from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsL
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
 
 from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.nodes.agent_v2.plugin_tools_builder import WorkflowAgentPluginToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
@@ -224,13 +225,49 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert dumped["idempotency_key"] == "node-exec-1"
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
     assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"
+    assert output_schema["properties"]["report"]["required"] == ["file_id"]
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert dumped["composition"]["layers"][5]["config"]["model_settings"] == {"temperature": 0.2}
     assert result.metadata["runtime_support"]["reserved_status"]["tools.dify_tools"] == "supported_when_config_valid"
-    assert result.metadata["runtime_support"]["reserved_status"]["tools.cli_tools"] == "reserved_not_executed"
-    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
-    assert warnings[0]["section"] == "agent_soul.tools.cli_tools"
+    assert result.metadata["runtime_support"]["reserved_status"]["tools.cli_tools"] == "supported_by_shell_bootstrap"
+    assert result.metadata["runtime_support"]["unsupported_runtime_warnings"] == []
+
+
+def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            prompt={"system_prompt": "You are careful."},
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            tools={"cli_tools": [{"name": "ripgrep", "install_commands": ["apt-get install -y ripgrep"]}]},
+            env={"variables": [{"name": "PROJECT_NAME", "value": "demo"}]},
+            sandbox={"provider": "independent", "config": {"cpu": 2}},
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID]["config"]
+    assert shell_config["cli_tools"][0]["install_commands"] == ["apt-get install -y ripgrep"]
+    assert shell_config["env"][0] == {"name": "PROJECT_NAME", "value": "demo"}
+    assert shell_config["sandbox"] == {"provider": "independent", "config": {"cpu": 2}}
+    assert result.metadata["agent_tools"] == {
+        "dify_tool_count": 0,
+        "dify_tool_names": [],
+        "cli_tool_count": 1,
+    }
 
 
 def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
@@ -381,6 +418,7 @@ def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
     assert properties["files"]["type"] == "array"
     # `files` defaults to array<file> → items is a file ref object.
     assert properties["files"]["items"]["properties"]["file_id"]["type"] == "string"
+    assert properties["files"]["items"]["required"] == ["file_id"]
     assert properties["json"]["type"] == "object"
     # Defaults are all required=False so no `required:` key on the schema.
     assert "required" not in output_layer["json_schema"]

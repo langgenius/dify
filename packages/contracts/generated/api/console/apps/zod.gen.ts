@@ -2708,8 +2708,8 @@ export const zGetAppsByAppIdAgentWorkspaceFilesPath = z.object({
 })
 
 export const zGetAppsByAppIdAgentWorkspaceFilesQuery = z.object({
-  conversation_id: z.string().optional(),
-  path: z.string().optional(),
+  conversation_id: z.string().min(1),
+  path: z.string().optional().default('.'),
 })
 
 /**
@@ -2722,22 +2722,22 @@ export const zGetAppsByAppIdAgentWorkspaceFilesDownloadPath = z.object({
 })
 
 export const zGetAppsByAppIdAgentWorkspaceFilesDownloadQuery = z.object({
-  conversation_id: z.string().optional(),
-  path: z.string().optional(),
+  conversation_id: z.string().min(1),
+  path: z.string().min(1),
 })
 
 /**
  * File bytes
  */
-export const zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdAgentWorkspaceFilesDownloadResponse = z.custom<Blob | File>()
 
 export const zGetAppsByAppIdAgentWorkspaceFilesPreviewPath = z.object({
   app_id: z.string(),
 })
 
 export const zGetAppsByAppIdAgentWorkspaceFilesPreviewQuery = z.object({
-  conversation_id: z.string().optional(),
-  path: z.string().optional(),
+  conversation_id: z.string().min(1),
+  path: z.string().min(1),
 })
 
 /**
@@ -3630,6 +3630,63 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
  */
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
   = zWorkflowRunNodeExecutionListResponse
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    workflow_run_id: z.string(),
+  })
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesQuery
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().optional().default('.'),
+  })
+
+/**
+ * Listing returned
+ */
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse
+  = zWorkspaceListResponse
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    workflow_run_id: z.string(),
+  })
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadQuery
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().min(1),
+  })
+
+/**
+ * File bytes
+ */
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse
+  = z.custom<Blob | File>()
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewPath
+  = z.object({
+    app_id: z.string(),
+    node_id: z.string(),
+    workflow_run_id: z.string(),
+  })
+
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewQuery
+  = z.object({
+    node_execution_id: z.string().optional(),
+    path: z.string().min(1),
+  })
+
+/**
+ * Preview returned
+ */
+export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse
+  = zWorkspacePreviewResponse
 
 export const zGetAppsByAppIdWorkflowCommentsPath = z.object({
   app_id: z.string(),

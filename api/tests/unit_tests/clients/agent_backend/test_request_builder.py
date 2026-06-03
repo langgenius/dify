@@ -16,7 +16,7 @@ from dify_agent.layers.dify_plugin import (
 )
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
-from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellEnvVarConfig, DifyShellLayerConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -283,6 +283,7 @@ def test_workflow_request_builder_omits_shell_layer_by_default():
 def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     run_input = _run_input()
     run_input.include_shell = True
+    run_input.shell_config = DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo")])
 
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
@@ -292,6 +293,8 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert shell.type == DIFY_SHELL_LAYER_TYPE_ID
     # The shell layer declares NoLayerDeps, so the spec must carry no deps.
     assert not shell.deps
+    shell_config = cast(DifyShellLayerConfig, shell.config)
+    assert shell_config.env[0].name == "PROJECT_NAME"
 
 
 def test_agent_app_request_builder_omits_shell_layer_by_default():
@@ -300,9 +303,14 @@ def test_agent_app_request_builder_omits_shell_layer_by_default():
 
 
 def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
-    request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input(include_shell=True))
+    run_input = _agent_app_input(include_shell=True)
+    run_input.shell_config = DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="APP_ENV", value="enabled")])
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
     assert DIFY_SHELL_LAYER_ID in layers
     assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
     assert not layers[DIFY_SHELL_LAYER_ID].deps
+    shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
+    assert shell_config.env[0].name == "APP_ENV"

@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.shell import (
+    DifyShellCliToolConfig,
+    DifyShellEnvVarConfig,
+    DifyShellLayerConfig,
+    DifyShellSandboxConfig,
+    DifyShellSecretRefConfig,
+)
 from dify_agent.protocol import CreateRunRequest
 
 from clients.agent_backend import (
@@ -123,10 +130,12 @@ class WorkflowAgentRuntimeRequestBuilder:
             )
         except WorkflowAgentPluginToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
-        if tools_layer is not None:
+        if tools_layer is not None or agent_soul.tools.cli_tools:
             metadata["agent_tools"] = {
-                "dify_tool_count": len(tools_layer.tools),
-                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools],
+                "dify_tool_count": len(tools_layer.tools) if tools_layer is not None else 0,
+                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools]
+                if tools_layer is not None
+                else [],
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
@@ -166,6 +175,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
+                shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
@@ -373,7 +383,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                         "mime_type": {"type": "string"},
                         "url": {"type": "string"},
                     },
+                    "required": ["file_id"],
                 }
+        assert_never(output_type)
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -384,3 +396,61 @@ class WorkflowAgentRuntimeRequestBuilder:
             else:
                 normalized[key] = str(value)
         return normalized
+
+
+def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
+    """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
+    return DifyShellLayerConfig(
+        cli_tools=[tool for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools) if tool is not None],
+        env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
+        secret_refs=[
+            secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
+        ],
+        sandbox=DifyShellSandboxConfig(
+            provider=agent_soul.sandbox.provider,
+            config=agent_soul.sandbox.config,
+        )
+        if agent_soul.sandbox.provider or agent_soul.sandbox.config
+        else None,
+    )
+
+
+def _shell_cli_tool(item: Mapping[str, Any]) -> DifyShellCliToolConfig | None:
+    commands: list[str] = []
+    raw_commands = item.get("install_commands")
+    if isinstance(raw_commands, list):
+        commands.extend(str(command) for command in raw_commands if str(command).strip())
+    for key in ("install_command", "install", "setup_command"):
+        raw_command = item.get(key)
+        if isinstance(raw_command, str) and raw_command.strip():
+            commands.append(raw_command)
+    name = item.get("name") or item.get("tool_name") or item.get("label")
+    if not commands and not isinstance(name, str):
+        return None
+    return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
+
+
+def _shell_env_var(item: Mapping[str, Any]) -> DifyShellEnvVarConfig | None:
+    name = _name_from_mapping(item)
+    if name is None:
+        return None
+    value = item.get("value", item.get("default", ""))
+    if not isinstance(value, str):
+        value = str(value)
+    return DifyShellEnvVarConfig(name=name, value=value)
+
+
+def _shell_secret_ref(item: Mapping[str, Any]) -> DifyShellSecretRefConfig | None:
+    name = _name_from_mapping(item)
+    if name is None:
+        return None
+    ref = item.get("ref") or item.get("id") or item.get("credential_id") or item.get("provider_credential_id")
+    return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
+
+
+def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
+    for key in ("name", "key", "env_name", "variable"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None

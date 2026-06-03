@@ -119,7 +119,7 @@ def test_distinct_conversations_do_not_collide():
         assert session.query(AgentRuntimeSession).count() == 2
 
 
-def test_distinct_agent_config_snapshots_do_not_reuse_prior_session():
+def test_distinct_agent_config_snapshots_keep_only_latest_active_session():
     store = AgentAppRuntimeSessionStore()
     store.save_active_snapshot(
         scope=_scope(agent_config_snapshot_id="snap-1"),
@@ -130,12 +130,13 @@ def test_distinct_agent_config_snapshots_do_not_reuse_prior_session():
         scope=_scope(agent_config_snapshot_id="snap-2"), backend_run_id="b", snapshot=_snapshot(messages=2)
     )
 
-    assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-1")) is not None
+    assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-1")) is None
     assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-2")) is not None
     with session_factory.create_session() as session:
         rows = session.query(AgentRuntimeSession).order_by(AgentRuntimeSession.backend_run_id).all()
         assert len(rows) == 2
         assert [row.agent_config_snapshot_id for row in rows] == ["snap-1", "snap-2"]
+        assert [row.status for row in rows] == [AgentRuntimeSessionStatus.CLEANED, AgentRuntimeSessionStatus.ACTIVE]
 
 
 def test_load_for_conversation_resolves_without_agent_or_config_scope():
@@ -148,6 +149,25 @@ def test_load_for_conversation_resolves_without_agent_or_config_scope():
     assert loaded.layers[0].runtime_state["messages"] == [
         {"role": "user", "content": "m0"},
         {"role": "user", "content": "m1"},
+    ]
+
+
+def test_load_for_conversation_uses_latest_active_snapshot_after_config_change():
+    store = AgentAppRuntimeSessionStore()
+    store.save_active_snapshot(
+        scope=_scope(agent_config_snapshot_id="snap-1"), backend_run_id="a", snapshot=_snapshot()
+    )
+    store.save_active_snapshot(
+        scope=_scope(agent_config_snapshot_id="snap-2"), backend_run_id="b", snapshot=_snapshot(messages=3)
+    )
+
+    loaded = store.load_active_snapshot_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
+
+    assert loaded is not None
+    assert loaded.layers[0].runtime_state["messages"] == [
+        {"role": "user", "content": "m0"},
+        {"role": "user", "content": "m1"},
+        {"role": "user", "content": "m2"},
     ]
 
 

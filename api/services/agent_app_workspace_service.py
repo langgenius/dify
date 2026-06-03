@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from agenton.compositor import CompositorSessionSnapshot
+from sqlalchemy import select
 
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from clients.agent_backend.workspace_files_client import (
@@ -23,6 +24,12 @@ from clients.agent_backend.workspace_files_client import (
 )
 from configs import dify_config
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
+from core.db.session_factory import session_factory
+from models.agent import (
+    AgentRuntimeSessionOwnerType,
+    WorkflowAgentRuntimeSession,
+    WorkflowAgentRuntimeSessionStatus,
+)
 
 
 class AgentWorkspaceInspectorError(Exception):
@@ -83,6 +90,114 @@ class AgentAppWorkspaceService:
         return session_id
 
 
+class WorkflowAgentWorkspaceService:
+    """List/preview/download files in a Workflow Agent node sandbox workspace."""
+
+    def __init__(
+        self,
+        *,
+        client_factory: Callable[[], WorkspaceFilesBackendClient] | None = None,
+    ) -> None:
+        self._client_factory = client_factory or _default_client_factory
+
+    def list_files(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+        node_execution_id: str | None,
+        path: str,
+    ) -> WorkspaceListResult:
+        session_id = self._resolve_session_id(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+            node_execution_id=node_execution_id,
+        )
+        return self._client_factory().list_files(session_id, path)
+
+    def preview(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+        node_execution_id: str | None,
+        path: str,
+    ) -> WorkspacePreviewResult:
+        session_id = self._resolve_session_id(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+            node_execution_id=node_execution_id,
+        )
+        return self._client_factory().preview(session_id, path)
+
+    def download(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+        node_execution_id: str | None,
+        path: str,
+    ) -> WorkspaceDownloadResult:
+        session_id = self._resolve_session_id(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+            node_execution_id=node_execution_id,
+        )
+        return self._client_factory().download(session_id, path)
+
+    def _resolve_session_id(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        node_id: str,
+        node_execution_id: str | None,
+    ) -> str:
+        stmt = select(WorkflowAgentRuntimeSession).where(
+            WorkflowAgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.WORKFLOW_RUN,
+            WorkflowAgentRuntimeSession.tenant_id == tenant_id,
+            WorkflowAgentRuntimeSession.app_id == app_id,
+            WorkflowAgentRuntimeSession.workflow_run_id == workflow_run_id,
+            WorkflowAgentRuntimeSession.node_id == node_id,
+            WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
+        )
+        if node_execution_id:
+            stmt = stmt.where(WorkflowAgentRuntimeSession.node_execution_id == node_execution_id)
+        stmt = stmt.order_by(WorkflowAgentRuntimeSession.updated_at.desc()).limit(1)
+
+        with session_factory.create_session() as session:
+            row = session.scalar(stmt)
+
+        if row is None:
+            raise AgentWorkspaceInspectorError(
+                "no_active_session",
+                "this workflow Agent node has no active sandbox session yet",
+                status_code=404,
+            )
+        snapshot = CompositorSessionSnapshot.model_validate_json(row.session_snapshot)
+        session_id = _shell_session_id(snapshot)
+        if not session_id:
+            raise AgentWorkspaceInspectorError(
+                "no_sandbox",
+                "this workflow Agent node has no sandbox workspace",
+                status_code=404,
+            )
+        return session_id
+
+
 def _shell_session_id(snapshot: CompositorSessionSnapshot) -> str | None:
     for layer in snapshot.layers:
         if layer.name == DIFY_SHELL_LAYER_ID:
@@ -102,4 +217,4 @@ def _default_client_factory() -> WorkspaceFilesBackendClient:
     return WorkspaceFilesBackendClient(base_url)
 
 
-__all__ = ["AgentAppWorkspaceService", "AgentWorkspaceInspectorError"]
+__all__ = ["AgentAppWorkspaceService", "AgentWorkspaceInspectorError", "WorkflowAgentWorkspaceService"]

@@ -53,12 +53,16 @@ class AgentAppRuntimeSessionStore:
         inspector can resolve it from the conversation alone (it does not know
         which agent config version a past turn ran under).
         """
-        stmt = select(AgentRuntimeSession).where(
-            AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
-            AgentRuntimeSession.tenant_id == tenant_id,
-            AgentRuntimeSession.app_id == app_id,
-            AgentRuntimeSession.conversation_id == conversation_id,
-            AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+        stmt = (
+            select(AgentRuntimeSession)
+            .where(
+                AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+                AgentRuntimeSession.tenant_id == tenant_id,
+                AgentRuntimeSession.app_id == app_id,
+                AgentRuntimeSession.conversation_id == conversation_id,
+                AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+            )
+            .order_by(AgentRuntimeSession.updated_at.desc())
         )
         with session_factory.create_session() as session:
             row = session.scalar(stmt)
@@ -97,6 +101,20 @@ class AgentAppRuntimeSessionStore:
                 row.session_snapshot = snapshot_json
                 row.status = AgentRuntimeSessionStatus.ACTIVE
                 row.cleaned_at = None
+            session.flush()
+            other_rows = session.scalars(
+                select(AgentRuntimeSession).where(
+                    AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+                    AgentRuntimeSession.tenant_id == scope.tenant_id,
+                    AgentRuntimeSession.app_id == scope.app_id,
+                    AgentRuntimeSession.conversation_id == scope.conversation_id,
+                    AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+                    AgentRuntimeSession.id != row.id,
+                )
+            ).all()
+            for other_row in other_rows:
+                other_row.status = AgentRuntimeSessionStatus.CLEANED
+                other_row.cleaned_at = naive_utc_now()
             session.commit()
 
     def mark_cleaned(self, *, scope: AgentAppSessionScope, backend_run_id: str | None = None) -> None:

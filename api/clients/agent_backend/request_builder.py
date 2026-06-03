@@ -172,6 +172,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
+    shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
     include_history: bool = True
     suspend_on_exit: bool = True
@@ -207,6 +208,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
+    shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
     include_history: bool = True
     suspend_on_exit: bool = True
@@ -305,7 +307,7 @@ class AgentBackendRunRequestBuilder:
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
-                    config=DifyShellLayerConfig(),
+                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 
@@ -460,7 +462,7 @@ class AgentBackendRunRequestBuilder:
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
-                    config=DifyShellLayerConfig(),
+                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 

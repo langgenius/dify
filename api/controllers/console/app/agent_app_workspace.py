@@ -9,20 +9,65 @@ workspace endpoints.
 """
 
 from typing import Literal
+from uuid import UUID
 
-from flask import Response, request
-from flask_restx import Resource
-from pydantic import Field
+from flask import Response
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field
 
 from clients.agent_backend.errors import AgentBackendHTTPError, AgentBackendTransportError
-from controllers.common.schema import register_response_schema_models
+from clients.agent_backend.workspace_files_client import WorkspaceDownloadResult
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models.model import App, AppMode
-from services.agent_app_workspace_service import AgentAppWorkspaceService, AgentWorkspaceInspectorError
+from services.agent_app_workspace_service import (
+    AgentAppWorkspaceService,
+    AgentWorkspaceInspectorError,
+    WorkflowAgentWorkspaceService,
+)
+
+
+class _WorkspaceFileDownloadField(fields.Raw):
+    __schema_type__ = "string"
+    __schema_format__ = "binary"
+
+
+class AgentWorkspaceListQuery(BaseModel):
+    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
+
+
+class AgentWorkspaceFileQuery(BaseModel):
+    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
+
+
+class WorkflowAgentWorkspaceListQuery(BaseModel):
+    path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
+    node_execution_id: str | None = Field(
+        default=None,
+        description=(
+            "Optional workflow node execution ID. When omitted, the latest active session for the node is used."
+        ),
+    )
+
+
+class WorkflowAgentWorkspaceFileQuery(BaseModel):
+    path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
+    node_execution_id: str | None = Field(
+        default=None,
+        description=(
+            "Optional workflow node execution ID. When omitted, the latest active session for the node is used."
+        ),
+    )
 
 
 class WorkspaceFileEntryResponse(ResponseModel):
@@ -50,13 +95,6 @@ register_response_schema_models(console_ns, WorkspaceListResponse)
 register_response_schema_models(console_ns, WorkspacePreviewResponse)
 
 
-def _conversation_id() -> str:
-    conversation_id = (request.args.get("conversation_id") or "").strip()
-    if not conversation_id:
-        raise AgentWorkspaceInspectorError("missing_conversation_id", "conversation_id is required", status_code=400)
-    return conversation_id
-
-
 def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     if isinstance(exc, AgentWorkspaceInspectorError):
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -73,11 +111,32 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     raise exc
 
 
+def _download_response(result: WorkspaceDownloadResult) -> Response | tuple[dict[str, object], int]:
+    if result.truncated:
+        return {
+            "code": "workspace_file_too_large",
+            "message": (
+                "file exceeds the workspace download limit; use preview for partial text or download a smaller file"
+            ),
+            "size": result.size,
+        }, 413
+    filename = result.path.rsplit("/", 1)[-1] or "download"
+    return Response(
+        result.content,
+        mimetype="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(result.content)),
+            "X-Workspace-File-Size": str(result.size),
+        },
+    )
+
+
 @console_ns.route("/apps/<uuid:app_id>/agent-workspace/files")
 class AgentAppWorkspaceListResource(Resource):
     @console_ns.doc("list_agent_app_workspace_files")
     @console_ns.doc(description="List a directory in an Agent App conversation's sandbox workspace (read-only)")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID", "path": "Directory path"})
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentWorkspaceListQuery)})
     @console_ns.response(200, "Listing returned", console_ns.models[WorkspaceListResponse.__name__])
     @setup_required
     @login_required
@@ -85,12 +144,13 @@ class AgentAppWorkspaceListResource(Resource):
     @get_app_model(mode=[AppMode.AGENT])
     def get(self, app_model: App):
         _, tenant_id = current_account_with_tenant()
+        query = query_params_from_request(AgentWorkspaceListQuery)
         try:
             result = AgentAppWorkspaceService().list_files(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=_conversation_id(),
-                path=request.args.get("path", "."),
+                conversation_id=query.conversation_id,
+                path=query.path,
             )
         except Exception as exc:  # normalized to an HTTP response below
             return _handle(exc)
@@ -101,7 +161,7 @@ class AgentAppWorkspaceListResource(Resource):
 class AgentAppWorkspacePreviewResource(Resource):
     @console_ns.doc("preview_agent_app_workspace_file")
     @console_ns.doc(description="Preview a text/binary file in an Agent App conversation's sandbox workspace")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID", "path": "File path"})
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentWorkspaceFileQuery)})
     @console_ns.response(200, "Preview returned", console_ns.models[WorkspacePreviewResponse.__name__])
     @setup_required
     @login_required
@@ -109,15 +169,13 @@ class AgentAppWorkspacePreviewResource(Resource):
     @get_app_model(mode=[AppMode.AGENT])
     def get(self, app_model: App):
         _, tenant_id = current_account_with_tenant()
-        path = request.args.get("path")
-        if not path:
-            return {"code": "missing_path", "message": "path is required"}, 400
+        query = query_params_from_request(AgentWorkspaceFileQuery)
         try:
             result = AgentAppWorkspaceService().preview(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=_conversation_id(),
-                path=path,
+                conversation_id=query.conversation_id,
+                path=query.path,
             )
         except Exception as exc:  # normalized to an HTTP response below
             return _handle(exc)
@@ -128,29 +186,134 @@ class AgentAppWorkspacePreviewResource(Resource):
 class AgentAppWorkspaceDownloadResource(Resource):
     @console_ns.doc("download_agent_app_workspace_file")
     @console_ns.doc(description="Download a file from an Agent App conversation's sandbox workspace (read-only)")
-    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID", "path": "File path"})
-    @console_ns.response(200, "File bytes")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentWorkspaceFileQuery)})
+    @console_ns.doc(produces=["application/octet-stream"])
+    @console_ns.response(200, "File bytes", _WorkspaceFileDownloadField)
+    @console_ns.response(413, "File exceeds the workspace download limit")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT])
     def get(self, app_model: App):
         _, tenant_id = current_account_with_tenant()
-        path = request.args.get("path")
-        if not path:
-            return {"code": "missing_path", "message": "path is required"}, 400
+        query = query_params_from_request(AgentWorkspaceFileQuery)
         try:
             result = AgentAppWorkspaceService().download(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
-                conversation_id=_conversation_id(),
-                path=path,
+                conversation_id=query.conversation_id,
+                path=query.path,
             )
         except Exception as exc:  # normalized to an HTTP response below
             return _handle(exc)
-        filename = result.path.rsplit("/", 1)[-1] or "download"
-        return Response(
-            result.content,
-            mimetype="application/octet-stream",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
+        return _download_response(result)
+
+
+@console_ns.route(
+    "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/workspace/files"
+)
+class WorkflowAgentWorkspaceListResource(Resource):
+    @console_ns.doc("list_workflow_agent_workspace_files")
+    @console_ns.doc(description="List a directory in a Workflow Agent node's sandbox workspace (read-only)")
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "workflow_run_id": "Workflow run ID",
+            "node_id": "Workflow Agent node ID",
+            **query_params_from_model(WorkflowAgentWorkspaceListQuery),
+        }
+    )
+    @console_ns.response(200, "Listing returned", console_ns.models[WorkspaceListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
+        _, tenant_id = current_account_with_tenant()
+        query = query_params_from_request(WorkflowAgentWorkspaceListQuery)
+        try:
+            result = WorkflowAgentWorkspaceService().list_files(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                workflow_run_id=str(workflow_run_id),
+                node_id=node_id,
+                node_execution_id=query.node_execution_id,
+                path=query.path,
+            )
+        except Exception as exc:  # normalized to an HTTP response below
+            return _handle(exc)
+        return result.model_dump()
+
+
+@console_ns.route(
+    "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/workspace/files/preview"
+)
+class WorkflowAgentWorkspacePreviewResource(Resource):
+    @console_ns.doc("preview_workflow_agent_workspace_file")
+    @console_ns.doc(description="Preview a text/binary file in a Workflow Agent node's sandbox workspace")
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "workflow_run_id": "Workflow run ID",
+            "node_id": "Workflow Agent node ID",
+            **query_params_from_model(WorkflowAgentWorkspaceFileQuery),
+        }
+    )
+    @console_ns.response(200, "Preview returned", console_ns.models[WorkspacePreviewResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
+        _, tenant_id = current_account_with_tenant()
+        query = query_params_from_request(WorkflowAgentWorkspaceFileQuery)
+        try:
+            result = WorkflowAgentWorkspaceService().preview(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                workflow_run_id=str(workflow_run_id),
+                node_id=node_id,
+                node_execution_id=query.node_execution_id,
+                path=query.path,
+            )
+        except Exception as exc:  # normalized to an HTTP response below
+            return _handle(exc)
+        return result.model_dump()
+
+
+@console_ns.route(
+    "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/workspace/files/download"
+)
+class WorkflowAgentWorkspaceDownloadResource(Resource):
+    @console_ns.doc("download_workflow_agent_workspace_file")
+    @console_ns.doc(description="Download a file from a Workflow Agent node's sandbox workspace (read-only)")
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "workflow_run_id": "Workflow run ID",
+            "node_id": "Workflow Agent node ID",
+            **query_params_from_model(WorkflowAgentWorkspaceFileQuery),
+        }
+    )
+    @console_ns.doc(produces=["application/octet-stream"])
+    @console_ns.response(200, "File bytes", _WorkspaceFileDownloadField)
+    @console_ns.response(413, "File exceeds the workspace download limit")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, workflow_run_id: UUID, node_id: str):
+        _, tenant_id = current_account_with_tenant()
+        query = query_params_from_request(WorkflowAgentWorkspaceFileQuery)
+        try:
+            result = WorkflowAgentWorkspaceService().download(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                workflow_run_id=str(workflow_run_id),
+                node_id=node_id,
+                node_execution_id=query.node_execution_id,
+                path=query.path,
+            )
+        except Exception as exc:  # normalized to an HTTP response below
+            return _handle(exc)
+        return _download_response(result)
