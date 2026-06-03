@@ -40,7 +40,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
-        setLocalStorageItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountDown(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))
