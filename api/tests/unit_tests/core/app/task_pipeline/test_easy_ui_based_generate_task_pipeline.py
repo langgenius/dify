@@ -133,9 +133,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             pipeline._task_state = mock_task_state
             return pipeline
 
-    def test_llm_chunk_always_streams_as_message_event(
-        self, pipeline, mock_message_cycle_manager
-    ):
+    def test_llm_chunk_always_streams_as_message_event(self, pipeline, mock_message_cycle_manager):
         """LLM text chunks should always be streamed as MESSAGE, regardless of file state."""
         # Setup a minimal LLM chunk event
         chunk = Mock()
