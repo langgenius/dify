@@ -4689,11 +4689,6 @@
       "count": 12
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
