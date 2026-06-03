@@ -111,7 +111,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, push, isFetching])
+  }, [isFetching, t, setNeedRefresh, handleCheckPluginDependencies, push])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -153,7 +153,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, push, isFetching])
+  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push])
 
   return {
     handleImportDSL,

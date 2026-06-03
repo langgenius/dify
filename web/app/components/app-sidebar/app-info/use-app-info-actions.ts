@@ -222,7 +222,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     catch {
       toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, onPlanInfoChanged, replace, t])
+  }, [appDetail, closeModal, onPlanInfoChanged, replace, setNeedRefresh, t])
 
   const onExport = useCallback(async (include = false) => {
     if (!appDetail)
