@@ -44,7 +44,7 @@ export const useWorkflowRunHistory = (url?: string, enabled = true) => {
     getNextPageParam: (lastPage) => {
       if (!lastPage.has_more || !lastPage.data.length)
         return undefined
-      return lastPage.data[lastPage.data.length - 1].id
+      return lastPage.data[lastPage.data.length - 1]?.id
     },
   })
 }

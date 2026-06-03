@@ -74,7 +74,7 @@ const ViewHistory = ({
     if (!el)
       return
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage)
+      if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage)
         fetchNextPage()
     })
     observer.observe(el)
