@@ -16,6 +16,21 @@ def unwrap(func):
     return func
 
 
+@pytest.fixture
+def mock_decorators():
+    """Mock decorators that require database access."""
+    with (
+        patch("controllers.console.wraps.db"),
+        patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+        patch("libs.login.dify_config.LOGIN_DISABLED", False),
+        patch("libs.login.check_csrf_token") as mock_csrf,
+        patch("libs.login._get_user") as mock_get_user,
+    ):
+        mock_csrf.return_value = None
+        mock_get_user.return_value = MagicMock()
+        yield
+
+
 class TestAgentProviderListApi:
     def test_get_success(self, app: Flask):
         api = AgentProviderListApi()
@@ -28,15 +43,11 @@ class TestAgentProviderListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
                 return_value=providers,
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, user)
 
         assert result == providers
 
@@ -50,31 +61,26 @@ class TestAgentProviderListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
                 return_value=[],
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, user)
 
         assert result == []
 
-    def test_get_account_not_found(self, app: Flask):
+    def test_get_account_not_found(self, app: Flask, mock_decorators):
         api = AgentProviderListApi()
-        method = unwrap(api.get)
 
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
+                "controllers.console.wraps.current_account_with_tenant",
                 side_effect=AccountNotFound(),
             ),
         ):
             with pytest.raises(AccountNotFound):
-                method(api)
+                api.get()
 
 
 class TestAgentProviderApi:
@@ -90,15 +96,11 @@ class TestAgentProviderApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.get_agent_provider",
                 return_value=provider_data,
             ),
         ):
-            result = method(api, provider_name)
+            result = method(api, tenant_id, user, provider_name)
 
         assert result == provider_data
 
@@ -113,28 +115,23 @@ class TestAgentProviderApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.get_agent_provider",
                 return_value=None,
             ),
         ):
-            result = method(api, provider_name)
+            result = method(api, tenant_id, user, provider_name)
 
         assert result is None
 
-    def test_get_account_not_found(self, app: Flask):
+    def test_get_account_not_found(self, app: Flask, mock_decorators):
         api = AgentProviderApi()
-        method = unwrap(api.get)
 
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
+                "controllers.console.wraps.current_account_with_tenant",
                 side_effect=AccountNotFound(),
             ),
         ):
             with pytest.raises(AccountNotFound):
-                method(api, "openai")
+                api.get("openai")
